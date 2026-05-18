@@ -326,8 +326,13 @@
 
 // ─── Cards Grid (Notes + Frequency) ──────────────────────────────────────────
 .cardsGrid {
-  @include responsive-grid(380px, 24px);
+  @include responsive-grid(340px, 24px);
   animation: slideUp 0.5s ease;
+
+  @include respond-to(sm) {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
 }
 
 // ─── Shared Card Base ─────────────────────────────────────────────────────────
@@ -568,6 +573,11 @@
   grid-template-columns: 1fr 1fr;
   gap: 16px;
   margin-bottom: 20px;
+
+  @include respond-to(sm) {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
 }
 
 .frequencyItem {
@@ -1202,6 +1212,11 @@
   button {
     flex: 1;
   }
+
+  @include respond-to(sm) {
+    flex-direction: column;
+    gap: 10px;
+  }
 }
 
 .btnConfirm {
@@ -1236,6 +1251,13 @@
   border: 1px solid rgba(255, 255, 255, 0.05);
   padding: 15px 25px;
   border-radius: $radius-lg;
+
+  @include respond-to(sm) {
+    flex-direction: column;
+    gap: 15px;
+    align-items: stretch;
+    padding: 15px;
+  }
 }
 
 .studentTabs {
@@ -1243,6 +1265,10 @@
   gap: 10px;
   overflow-x: auto;
   padding-bottom: 5px; // for scrollbar if needed
+  scrollbar-width: none; /* Hide scrollbar for Firefox */
+  &::-webkit-scrollbar {
+    display: none; /* Hide scrollbar for Chrome, Safari and Opera */
+  }
   
   button {
     background: rgba(255, 255, 255, 0.05);
