@@ -5,6 +5,8 @@ backend/node_modules/
 # Configurações sensíveis — NUNCA versionar
 .env
 *.env
+.env.local
+*.env.local
 backend/.env
 
 # Dados locais (NUNCA versionar - credenciais migradas para o banco/env)
