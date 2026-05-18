@@ -42,6 +42,9 @@ function toGmailUser(u: AuthUser): GmailUser {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 const PortalResponsavel: React.FC = () => {
+  const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  const cleanApiUrl = rawApiUrl.replace(/\/api$/, '');
+
   // ── Auth state ─────────────────────────────────────────────────────────────
   const [authUser,  setAuthUser]  = useState<AuthUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -200,7 +203,7 @@ const PortalResponsavel: React.FC = () => {
     setLoginLoading(true);
     setAuthError(null);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/auth/register-responsavel`, {
+      const response = await fetch(`${cleanApiUrl}/api/auth/register-responsavel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(registerForm)
@@ -294,7 +297,7 @@ const PortalResponsavel: React.FC = () => {
                   onSuccess={async (credentialResponse) => {
                     try {
                       setLoginLoading(true);
-                      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/auth/google-login`, {
+                      const response = await fetch(`${cleanApiUrl}/api/auth/google-login`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ token: credentialResponse.credential })
@@ -401,7 +404,7 @@ const PortalResponsavel: React.FC = () => {
                   onSuccess={async (credentialResponse) => {
                     try {
                       setLoginLoading(true);
-                      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/auth/google-login`, {
+                      const response = await fetch(`${cleanApiUrl}/api/auth/google-login`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ token: credentialResponse.credential })
