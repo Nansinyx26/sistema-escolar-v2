@@ -286,6 +286,42 @@ const PortalResponsavel: React.FC = () => {
               <button type="submit" className={styles.submitBtn} disabled={loginLoading}>
                 {loginLoading ? 'Criando...' : 'Criar Conta'}
               </button>
+              <div className={styles.divider}>
+                <span>ou</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', margin: '16px 0' }}>
+                <GoogleLogin
+                  onSuccess={async (credentialResponse) => {
+                    try {
+                      setLoginLoading(true);
+                      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/auth/google-login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token: credentialResponse.credential })
+                      });
+                      const data = await response.json();
+                      if (!response.ok || !data.success) throw new Error(data.error || 'Erro no login Google');
+                      
+                      setAuthUser(data.user);
+                      setToast({ message: 'Conta Google criada e vinculada com sucesso!', type: 'success' });
+                    } catch (err) {
+                      const msg = err instanceof Error ? err.message : 'Falha na autenticação Google';
+                      setAuthError(msg);
+                      setToast({ message: msg, type: 'error' });
+                    } finally {
+                      setLoginLoading(false);
+                    }
+                  }}
+                  onError={() => {
+                    setAuthError('O cadastro com Google falhou');
+                    setToast({ message: 'O cadastro com Google falhou', type: 'error' });
+                  }}
+                  useOneTap
+                  theme="outline"
+                  shape="rectangular"
+                  text="signup_with"
+                />
+              </div>
               <div className={styles.registerSection}>
                 <p>Já tem uma conta?</p>
                 <button type="button" onClick={() => { setIsRegistering(false); setAuthError(null); }} className={styles.registerLink} style={{background: 'none', border: 'none', padding: 0, cursor: 'pointer'}}>
