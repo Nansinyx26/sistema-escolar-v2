@@ -64,10 +64,11 @@ function csrfValidator(req, res, next) {
         return next();
     }
 
-    // ── Bypass em ambiente de teste ──────────────────────────────────────────
-    // Em testes Jest/Supertest não há navegador para ler o cookie CSRF.
-    // O bypass é seguro pois NODE_ENV=test só existe localmente.
-    if (process.env.NODE_ENV === 'test') {
+    // ── Bypass em testes e desenvolvimento local ─────────────────────────────
+    // Em testes Jest e no desenvolvimento local (cross-origin Vite), 
+    // desabilitamos a validação CSRF para permitir a comunicação local.
+    // A proteção permanece 100% ativa em ambiente de Produção.
+    if (process.env.NODE_ENV !== 'production') {
         return next();
     }
 
