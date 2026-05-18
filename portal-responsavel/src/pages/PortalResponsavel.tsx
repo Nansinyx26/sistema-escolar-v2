@@ -8,7 +8,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { GoogleLogin } from '@react-oauth/google';
+import { useGoogleLogin } from '@react-oauth/google';
 import {
   login,
   logout as apiLogout,
@@ -78,6 +78,39 @@ const PortalResponsavel: React.FC = () => {
   const [dataLoading, setDataLoading] = useState(false);
   const [dataError,   setDataError]   = useState<string | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
+
+  // Real Google login callback using useGoogleLogin hook
+  const handleGoogleLoginSuccess = async (tokenResponse: any) => {
+    try {
+      setLoginLoading(true);
+      setAuthError(null);
+      
+      const response = await fetch(`${cleanApiUrl}/api/auth/google-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: tokenResponse.access_token })
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || 'Erro no login Google');
+      
+      setAuthUser(data.user);
+      setToast({ message: 'Login Google realizado com sucesso!', type: 'success' });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Falha na autenticação Google';
+      setAuthError(msg);
+      setToast({ message: msg, type: 'error' });
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const loginWithGoogle = useGoogleLogin({
+    onSuccess: handleGoogleLoginSuccess,
+    onError: () => {
+      setAuthError('O login com Google falhou');
+      setToast({ message: 'O login com Google falhou', type: 'error' });
+    }
+  });
 
   // ─── Restore session on mount ──────────────────────────────────────────────
   useEffect(() => {
@@ -295,38 +328,20 @@ const PortalResponsavel: React.FC = () => {
               <div className={styles.divider}>
                 <span>ou</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'center', margin: '16px 0' }}>
-                <GoogleLogin
-                  onSuccess={async (credentialResponse) => {
-                    try {
-                      setLoginLoading(true);
-                      const response = await fetch(`${cleanApiUrl}/api/auth/google-login`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ token: credentialResponse.credential })
-                      });
-                      const data = await response.json();
-                      if (!response.ok || !data.success) throw new Error(data.error || 'Erro no login Google');
-                      
-                      setAuthUser(data.user);
-                      setToast({ message: 'Conta Google criada e vinculada com sucesso!', type: 'success' });
-                    } catch (err) {
-                      const msg = err instanceof Error ? err.message : 'Falha na autenticação Google';
-                      setAuthError(msg);
-                      setToast({ message: msg, type: 'error' });
-                    } finally {
-                      setLoginLoading(false);
-                    }
-                  }}
-                  onError={() => {
-                    setAuthError('O cadastro com Google falhou');
-                    setToast({ message: 'O cadastro com Google falhou', type: 'error' });
-                  }}
-                  useOneTap
-                  theme="outline"
-                  shape="rectangular"
-                  text="signup_with"
-                />
+              <div style={{ display: 'flex', justifyContent: 'center', margin: '16px 0', width: '100%' }}>
+                <button
+                  type="button"
+                  className={styles.gmailBtn}
+                  onClick={() => loginWithGoogle()}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <img
+                    src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg"
+                    alt="Google Logo"
+                    style={{ width: '18px', height: '18px' }}
+                  />
+                  <span>Cadastrar com o Google</span>
+                </button>
               </div>
               <div className={styles.registerSection}>
                 <p>Já tem uma conta?</p>
@@ -402,38 +417,20 @@ const PortalResponsavel: React.FC = () => {
                 <span>ou</span>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'center', margin: '16px 0' }}>
-                <GoogleLogin
-                  onSuccess={async (credentialResponse) => {
-                    try {
-                      setLoginLoading(true);
-                      const response = await fetch(`${cleanApiUrl}/api/auth/google-login`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ token: credentialResponse.credential })
-                      });
-                      const data = await response.json();
-                      if (!response.ok || !data.success) throw new Error(data.error || 'Erro no login Google');
-                      
-                      setAuthUser(data.user);
-                      setToast({ message: 'Login Google realizado com sucesso!', type: 'success' });
-                    } catch (err) {
-                      const msg = err instanceof Error ? err.message : 'Falha na autenticação Google';
-                      setAuthError(msg);
-                      setToast({ message: msg, type: 'error' });
-                    } finally {
-                      setLoginLoading(false);
-                    }
-                  }}
-                  onError={() => {
-                    setAuthError('O login com Google falhou');
-                    setToast({ message: 'O login com Google falhou', type: 'error' });
-                  }}
-                  useOneTap
-                  theme="outline"
-                  shape="rectangular"
-                  text="signin_with"
-                />
+              <div style={{ display: 'flex', justifyContent: 'center', margin: '16px 0', width: '100%' }}>
+                <button
+                  type="button"
+                  className={styles.gmailBtn}
+                  onClick={() => loginWithGoogle()}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <img
+                    src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg"
+                    alt="Google Logo"
+                    style={{ width: '18px', height: '18px' }}
+                  />
+                  <span>Entrar com o Google</span>
+                </button>
               </div>
 
               <div className={styles.registerSection}>

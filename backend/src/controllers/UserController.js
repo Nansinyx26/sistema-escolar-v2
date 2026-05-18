@@ -398,17 +398,38 @@ exports.googleLogin = async (req, res) => {
     }
 
     try {
-        const { OAuth2Client } = require('google-auth-library');
-        const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-        
-        const ticket = await client.verifyIdToken({
-            idToken: token,
-            audience: process.env.GOOGLE_CLIENT_ID,
-        });
-        const googlePayload = ticket.getPayload();
-        
-        const email = googlePayload.email.toLowerCase();
-        const nome = googlePayload.name;
+        let email, nome;
+        const DEFAULT_CLIENT_ID = '372860477730-co8eq29vbsafmffmfm2v2ot5givurar1.apps.googleusercontent.com';
+        const clientId = process.env.GOOGLE_CLIENT_ID || DEFAULT_CLIENT_ID;
+
+        // Se o token for um ID Token (JWT), ele começa com "eyJ" (cabeçalho padrão de JWT)
+        if (token.startsWith('eyJ')) {
+            const { OAuth2Client } = require('google-auth-library');
+            const client = new OAuth2Client(clientId);
+            
+            const ticket = await client.verifyIdToken({
+                idToken: token,
+                audience: clientId,
+            });
+            const googlePayload = ticket.getPayload();
+            
+            email = googlePayload.email.toLowerCase();
+            nome = googlePayload.name;
+        } else {
+            // Caso contrário, é um Access Token (fluxo popup de botão customizado)
+            // Buscamos as informações do usuário diretamente na API oficial do Google
+            const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Falha ao validar o Access Token do Google.');
+            }
+            
+            const googlePayload = await response.json();
+            email = googlePayload.email.toLowerCase();
+            nome = googlePayload.name || googlePayload.given_name || email.split('@')[0];
+        }
         
         let user = await Usuario.findOne({ email });
         
