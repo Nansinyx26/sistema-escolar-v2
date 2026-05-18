@@ -42,7 +42,10 @@ function toGmailUser(u: AuthUser): GmailUser {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 const PortalResponsavel: React.FC = () => {
-  const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  const rawApiUrl = import.meta.env.VITE_API_URL || 
+    (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? 'http://localhost:3001' 
+      : (typeof window !== 'undefined' ? window.location.origin : ''));
   const cleanApiUrl = rawApiUrl.replace(/\/api$/, '');
 
   // ── Auth state ─────────────────────────────────────────────────────────────
