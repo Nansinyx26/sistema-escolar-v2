@@ -47,9 +47,6 @@ const PortalResponsavel: React.FC = () => {
   const [authLoading, setAuthLoading] = useState(true);
   const [authError,   setAuthError]   = useState<string | null>(null);
 
-  // ── Gmail hook ─────────────────────────────────────────────────────────────
-  const { loginWithGmail } = useGmailAuth();
-
   // ── Login form ─────────────────────────────────────────────────────────────
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
