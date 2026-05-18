@@ -72,6 +72,7 @@ router.delete('/notificacoes/:id', authJWT, NotificacaoController.delete);
 // --- Autenticação Pública ---
 router.post('/auth/login', UserController.login);
 router.post('/auth/mock-google-login', UserController.mockGoogleLogin);
+router.post('/auth/google-login', UserController.googleLogin);
 router.post('/auth/logout', UserController.logout);
 router.post('/auth/register-responsavel', UserController.registerResponsavel);
 router.post('/auth/forgot-password', UserController.forgotPassword);

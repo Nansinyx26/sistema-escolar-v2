@@ -26,6 +26,7 @@ const EXEMPT_ROUTES = [
     '/api/auth/first-access',
     '/api/auth/register-code',
     '/api/auth/mock-google-login',
+    '/api/auth/google-login',
     '/api/auth/register-responsavel',
     '/api/ping'
 ];

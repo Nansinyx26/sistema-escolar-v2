@@ -356,13 +356,9 @@ exports.login = async (req, res) => {
 exports.mockGoogleLogin = async (req, res) => {
     const { email } = req.body;
     
-    // Proteção: idealmente só rodar em ambiente dev, mas vamos permitir para testes
     try {
         let user = await Usuario.findOne({ email: email.toLowerCase() });
         
-        // Se não existir o usuário com esse e-mail no backend, não podemos emitir um JWT seguro
-        // com ID real. Mas para testes do portal do responsável, podemos criar um usuário "fantasma"
-        // no JWT apenas para passar pela validação authJWT.
         const payload = user ? { 
             id: user._id, 
             perfil: user.perfil, 
@@ -381,17 +377,83 @@ exports.mockGoogleLogin = async (req, res) => {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'Strict',
-            maxAge: 8 * 60 * 60 * 1000 // 8h
+            maxAge: 8 * 60 * 60 * 1000
         });
 
-        res.json({
-            success: true,
-            user: payload
-        });
+        res.json({ success: true, user: payload });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
 };
+
+/**
+ * REAL GOOGLE LOGIN (OAuth 2.0)
+ * Verifica o ID token do Google e cria/autentica o usuário.
+ */
+exports.googleLogin = async (req, res) => {
+    const { token } = req.body;
+    
+    if (!token) {
+        return res.status(400).json({ success: false, error: 'Token Google não fornecido.' });
+    }
+
+    try {
+        const { OAuth2Client } = require('google-auth-library');
+        const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+        
+        const ticket = await client.verifyIdToken({
+            idToken: token,
+            audience: process.env.GOOGLE_CLIENT_ID,
+        });
+        const googlePayload = ticket.getPayload();
+        
+        const email = googlePayload.email.toLowerCase();
+        const nome = googlePayload.name;
+        
+        let user = await Usuario.findOne({ email });
+        
+        // Se não existe, cria um Responsável automaticamente (SSO onboarding)
+        if (!user) {
+            // Senha fantasma que não será usada, pois ele loga com Google
+            const bcrypt = require('bcryptjs');
+            const randomPass = require('crypto').randomBytes(16).toString('hex');
+            const senhaHash = await bcrypt.hash(randomPass, 10);
+            
+            user = await Usuario.create({
+                nome,
+                email,
+                senha: senhaHash,
+                cpf: '000.000.000-00',
+                telefone: '(00) 00000-0000',
+                perfil: 'responsavel',
+                ativo: true,
+                consentimentoAceiteEm: new Date()
+            });
+        }
+        
+        const jwtPayload = { 
+            id: user._id, 
+            perfil: user.perfil, 
+            email: user.email, 
+            nome: user.nome 
+        };
+
+        const sessionToken = jwt.sign(jwtPayload, ACTUAL_JWT_SECRET, { expiresIn: '8h' });
+
+        res.cookie('escola_jwt', sessionToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Strict',
+            maxAge: 8 * 60 * 60 * 1000
+        });
+
+        res.json({ success: true, user: jwtPayload });
+    } catch (e) {
+        console.error('Erro na validação do Google Token:', e);
+        res.status(401).json({ success: false, error: 'Autenticação Google falhou ou token é inválido.' });
+    }
+};
+
 
 exports.logout = async (req, res) => {
     // clearCookie precisa das mesmas opções usadas no setCookie, senão o browser ignora
