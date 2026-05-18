@@ -35,12 +35,13 @@ app.use(helmet({
         directives: {
             "default-src": ["'self'"],
             // SEM 'unsafe-inline': onclick= foi removido de todos os HTMLs
-            "script-src": ["'self'", "cdn.jsdelivr.net", "unpkg.com", "cdnjs.cloudflare.com", "cdn.tailwindcss.com"],
+            "script-src": ["'self'", "cdn.jsdelivr.net", "unpkg.com", "cdnjs.cloudflare.com", "cdn.tailwindcss.com", "https://accounts.google.com"],
             "script-src-attr": ["'none'"], // Bloqueia onclick inline — todos foram migrados para .js
-            "style-src": ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "fonts.googleapis.com", "unpkg.com", "cdnjs.cloudflare.com"],
+            "style-src": ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "fonts.googleapis.com", "unpkg.com", "cdnjs.cloudflare.com", "https://accounts.google.com"],
             "font-src": ["'self'", "cdn.jsdelivr.net", "fonts.gstatic.com", "data:"],
             "img-src": ["'self'", "data:", "blob:"],
-            "connect-src": ["'self'", "https://sistema-escolar-bfty.onrender.com", "http://localhost:3001", "cdn.jsdelivr.net", "unpkg.com"],
+            "connect-src": ["'self'", "https://sistema-escolar-bfty.onrender.com", "http://localhost:3001", "cdn.jsdelivr.net", "unpkg.com", "https://accounts.google.com"],
+            "frame-src": ["'self'", "https://accounts.google.com"], // Necessário para o Iframe de login do Google
             "frame-ancestors": ["'none'"], // Proteção extra contra Clickjacking
             "base-uri": ["'self'"],         // Previne ataques de base tag injection
             "form-action": ["'self'"]       // Previne submissão de formulários para domínios externos
