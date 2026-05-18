@@ -1,0 +1,21 @@
+# Dependências
+node_modules/
+backend/node_modules/
+
+# Configurações sensíveis — NUNCA versionar
+.env
+*.env
+backend/.env
+
+# Dados locais (NUNCA versionar - credenciais migradas para o banco/env)
+data/
+
+# Sistema e Logs
+*.log
+.DS_Store
+Thumbs.db
+
+# Pastas de build/temporárias
+dist/
+.cache/
+scratch/

@@ -1,0 +1,300 @@
+/**
+ * controllers/ResponsavelController.js
+ * Controller dedicado ao Portal do Responsável.
+ * Expõe endpoints para o responsável consultar dados do aluno vinculado
+ * ao e-mail cadastrado no campo `responsavel` do modelo Aluno.
+ *
+ * Rotas criadas:
+ *   GET /api/responsavel/aluno          → dados do aluno vinculado ao e-mail do responsável
+ *   GET /api/responsavel/notas/:alunoId → boletim completo (matérias × bimestres)
+ *   GET /api/responsavel/frequencia/:alunoId → resumo de frequência
+ */
+
+const Aluno = require('../models/Aluno');
+const Nota  = require('../models/Nota');
+const Falta = require('../models/Falta');
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/**
+ * Encontra o aluno vinculado ao e-mail do responsável.
+ * O campo `responsavel` no modelo Aluno armazena o nome ou e-mail do responsável.
+ * Também aceita busca por matrícula passada como query param.
+ */
+async function findAlunoByResponsavel(email, matricula) {
+    const query = matricula
+        ? { matricula }
+        : { $or: [{ responsavel: email }, { responsavel: new RegExp(email, 'i') }] };
+
+    return Aluno.findOne(query).lean();
+}
+
+/**
+ * Middleware de segurança (IDOR protection):
+ * Verifica se o aluno solicitado realmente pertence ao responsável logado.
+ */
+async function verifyOwnership(alunoId, email) {
+    if (!email) return false;
+    const aluno = await Aluno.findOne({
+        $or: [{ _id: alunoId }, { id: alunoId }],
+        $or: [{ responsavel: email }, { responsavel: new RegExp(`^${email}$`, 'i') }]
+    }).lean();
+    return !!aluno;
+}
+
+// ─── GET /api/responsavel/alunos ──────────────────────────────────────────────
+exports.getAlunos = async (req, res) => {
+    try {
+        const email = req.user?.email || req.query.email;
+
+        if (!email) {
+            return res.status(400).json({ success: false, error: 'E-mail obrigatório.' });
+        }
+
+        const query = { $or: [{ responsavel: email }, { responsavel: new RegExp(`^${email}$`, 'i') }] };
+        const alunos = await Aluno.find(query).lean();
+
+        // Retorna apenas campos seguros
+        const safeAlunos = alunos.map(aluno => ({
+            id:             aluno._id,
+            nome:           aluno.nome,
+            sobrenome:      aluno.sobrenome || '',
+            matricula:      aluno.matricula,
+            turma:          aluno.turma || aluno.turmaId,
+            dataNascimento: aluno.nascimento,
+            ativo:          aluno.ativo,
+            foto:           aluno.foto || null,
+        }));
+
+        res.json({ success: true, data: safeAlunos });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+};
+
+// ─── GET /api/responsavel/buscar-aluno ────────────────────────────────────────
+exports.buscarAluno = async (req, res) => {
+    try {
+        const { q } = req.query;
+        if (!q || q.length < 3) {
+            return res.status(400).json({ success: false, error: 'Digite pelo menos 3 caracteres para buscar.' });
+        }
+
+        // Buscar por nome ou matrícula, ignorando case
+        const regex = new RegExp(q, 'i');
+        const query = {
+            $or: [{ nome: regex }, { sobrenome: regex }, { matricula: regex }],
+            ativo: true
+        };
+
+        const alunos = await Aluno.find(query).limit(10).lean();
+
+        // Mapear alunos: se já tiver responsável, a gente oculta a info sensível ou apenas avisa que está vinculado
+        const resultados = alunos.map(a => ({
+            id: a._id,
+            nome: `${a.nome} ${a.sobrenome || ''}`.trim(),
+            matricula: a.matricula,
+            turma: a.turma || a.turmaId,
+            vinculado: !!a.responsavel // true se já tiver responsável
+        }));
+
+        res.json({ success: true, data: resultados });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+};
+
+// ─── POST /api/responsavel/vincular ──────────────────────────────────────────
+exports.vincularAluno = async (req, res) => {
+    try {
+        const email = req.user?.email;
+        const { alunoId } = req.body;
+
+        if (!email) return res.status(401).json({ success: false, error: 'Não autenticado' });
+        if (!alunoId) return res.status(400).json({ success: false, error: 'ID do aluno obrigatório.' });
+
+        const aluno = await Aluno.findById(alunoId);
+        if (!aluno) {
+            return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
+        }
+
+        if (aluno.responsavel) {
+            return res.status(400).json({ success: false, error: 'Este aluno já possui um responsável vinculado.' });
+        }
+
+        // Vincular
+        aluno.responsavel = email;
+        await aluno.save();
+
+        res.json({ success: true, message: 'Aluno vinculado com sucesso!' });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+};
+
+// ─── GET /api/responsavel/notas/:alunoId ─────────────────────────────────────
+exports.getNotas = async (req, res) => {
+    try {
+        const { alunoId } = req.params;
+        const email = req.user?.email;
+
+        // Proteção IDOR: Garante que o responsável logado seja dono deste aluno
+        const isOwner = await verifyOwnership(alunoId, email);
+        if (!isOwner) {
+            return res.status(403).json({ success: false, error: 'Acesso negado. Aluno não vinculado à sua conta.' });
+        }
+
+        const notas = await Nota.find({
+            $or: [{ alunoId }, { alunoId: alunoId }],
+        })
+            .sort({ materiaId: 1, bimestre: 1 })
+            .lean();
+
+        if (!notas.length) {
+            return res.json({ success: true, data: [] });
+        }
+
+        // Estrutura: agrupa por matéria → array de média por bimestre
+        const porMateria = {};
+
+        notas.forEach((n) => {
+            const materia  = n.materiaId || n.descricao || 'Geral';
+            const bimestre = n.bimestre  || 0;
+
+            if (!porMateria[materia]) {
+                porMateria[materia] = {
+                    disciplina: materia,
+                    professor:  n.professor || null,
+                    porBimestre: {},
+                };
+            }
+
+            const bKey = String(bimestre);
+            if (!porMateria[materia].porBimestre[bKey]) {
+                porMateria[materia].porBimestre[bKey] = { soma: 0, count: 0 };
+            }
+
+            if (n.nota !== undefined && n.nota !== null) {
+                porMateria[materia].porBimestre[bKey].soma  += parseFloat(n.nota);
+                porMateria[materia].porBimestre[bKey].count += 1;
+            }
+        });
+
+        // Converte para o formato esperado pelo frontend:
+        // { disciplina, professor, bimestres: [b1, b2, b3, b4] }
+        const resultado = Object.values(porMateria).map((m, idx) => {
+            const bimestres = [1, 2, 3, 4].map((b) => {
+                const entry = m.porBimestre[String(b)];
+                if (!entry || entry.count === 0) return 0;
+                return Math.round((entry.soma / entry.count) * 10) / 10;
+            });
+
+            return {
+                id:         `grade-${idx}`,
+                disciplina: m.disciplina,
+                professor:  m.professor,
+                bimestres,
+            };
+        });
+
+        res.json({ success: true, data: resultado });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+};
+
+// ─── GET /api/responsavel/frequencia/:alunoId ────────────────────────────────
+exports.getFrequencia = async (req, res) => {
+    try {
+        const { alunoId } = req.params;
+        const email = req.user?.email;
+
+        // Proteção IDOR: Garante que o responsável logado seja dono deste aluno
+        const isOwner = await verifyOwnership(alunoId, email);
+        if (!isOwner) {
+            return res.status(403).json({ success: false, error: 'Acesso negado. Aluno não vinculado à sua conta.' });
+        }
+
+        const faltas = await Falta.find({
+            $or: [{ aluno: alunoId }, { aluno: alunoId }],
+        }).lean();
+
+        if (!faltas.length) {
+            return res.json({
+                success: true,
+                data: { presenca: 0, ausencia: 0, atraso: 0, percentual: 0 },
+            });
+        }
+
+        const total    = faltas.length;
+        const ausencia = faltas.filter((f) => f.presente === false && !f.justificada).length;
+        const atraso   = faltas.filter((f) => f.presente === false && f.justificada).length;
+        const presenca = total - ausencia - atraso;
+
+        const percentual = total > 0
+            ? Math.round(((presenca) / total) * 100)
+            : 100;
+
+        res.json({
+            success: true,
+            data: { presenca, ausencia, atraso, percentual },
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+};
+
+// ─── GET /api/responsavel/notificacoes/:alunoId ─────────────────────────────
+exports.getNotificacoes = async (req, res) => {
+    try {
+        const { alunoId } = req.params;
+        const email = req.user?.email;
+
+        // Proteção IDOR: Garante que o responsável logado seja dono deste aluno
+        const isOwner = await verifyOwnership(alunoId, email);
+        if (!isOwner) {
+            return res.status(403).json({ success: false, error: 'Acesso negado. Aluno não vinculado à sua conta.' });
+        }
+
+        const Notificacao = require('../models/Notificacao');
+        const aluno = await Aluno.findOne({
+            $or: [{ _id: alunoId }, { id: alunoId }]
+        }).lean();
+
+        if (!aluno) {
+            return res.status(404).json({ success: false, error: 'Aluno não encontrado' });
+        }
+
+        const turmaId = aluno.turma || aluno.turmaId;
+
+        // Buscando notificações onde destinatarios é 'todos', ou turmaId, ou alunoId
+        const notificacoes = await Notificacao.find({
+            destinatarios: { $in: ['todos', turmaId, String(alunoId), String(aluno._id)] }
+        }).sort({ dataCriacao: -1 }).lean();
+
+        const iconMap = {
+            'info': '📢',
+            'aviso': '⚠️',
+            'evento': '🎉',
+            'financeiro': '💰',
+            'academico': '📚',
+            'saude': '🏥',
+            'falta': '📋'
+        };
+
+        const formatted = notificacoes.map(n => ({
+            id: n.id || String(n._id),
+            tipo: n.tipo,
+            titulo: n.titulo,
+            mensagem: n.mensagem,
+            dataCriacao: n.dataCriacao,
+            lido: n.lido ? n.lido.includes(alunoId) : false,
+            destinatarios: n.destinatarios,
+            icon: iconMap[n.tipo] || '🔔'
+        }));
+
+        res.json({ success: true, data: formatted });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+};

@@ -1,0 +1,154 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Sistema de Cadastro Escolar - Horários">
+    <title>Horários 2026 - CIEP Jaguari</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/favicon/favicon.png">    <link rel="apple-touch-icon" href="/favicon/favicon.png">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/watermark.css">
+    <link rel="stylesheet" href="horario-jaguari.css">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- SheetJS para ler Excel no Navegador -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Tailwind CSS Play CDN — preflight desabilitado para nao conflitar com CSS existente -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      if (window.tailwind) {
+        tailwind.config = { corePlugins: { preflight: false } };
+      }
+    </script></head>
+
+<body>
+    <div class="page">
+        <!-- Navbar -->
+        <nav class="navbar">
+            <div class="navbar-content">
+                <div class="navbar-brand">
+                    <span class="logo"><i class="bi bi-calendar-week"></i></span>
+                    <span>Sistema Escolar</span>
+                </div>
+                <div class="navbar-nav">
+                    <a href="index.html" class="btn btn-ghost"><i class="bi bi-arrow-left"></i> Voltar</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <section id="horario-jaguari" class="container">
+                <div class="page-header">
+                    <div>
+                        <h1><i class="bi bi-calendar3"></i> Horários 2026</h1>
+                        <p>CIEP Profª. Maria Nilde Mascellani — Jaguari &nbsp;|&nbsp; Referência: 25/02/2026</p>
+                    </div>
+                    <div class="header-actions">
+                        <a href="../Horario Jaguari 2026/HORARIO_JAGUARI_2026_CONSOLIDADO.xlsx" download="HORARIO_JAGUARI_2026_CONSOLIDADO.xlsx" class="btn btn-outline">
+                            <i class="bi bi-file-earmark-excel"></i> Baixar Horário Completo (Excel)
+                        </a>
+                        <button id="btn-seed-db" class="btn btn-outline" title="Importar dados oficiais para o banco de dados" style="display:none;"
+                            onclick="HorarioSync.seed().then(r => alert(r.data ? r.data.message : 'Erro no seed'))">
+                            <i class="bi bi-cloud-upload"></i> Sincronizar Banco
+                        </button>
+                    </div>
+                </div>
+
+                <div class="filtros-card card">
+                    <div class="filtros-grid">
+                        <div class="filtro-group">
+                            <label><i class="bi bi-people"></i> Por Turma:</label>
+                            <select id="sel-turma" class="form-input" onchange="mostrarTabela(this.value, 'turma')">
+                                <option value="">Selecione a turma...</option>
+                                <option value="1A">1º Ano A</option>
+                                <option value="1B">1º Ano B</option>
+                                <option value="1C">1º Ano C</option>
+                                <option value="2A">2º Ano A</option>
+                                <option value="2B">2º Ano B</option>
+                                <option value="2C">2º Ano C</option>
+                                <option value="3A">3º Ano A</option>
+                                <option value="3B">3º Ano B</option>
+                                <option value="3C">3º Ano C</option>
+                                <option value="4A">4º Ano A</option>
+                                <option value="4B">4º Ano B</option>
+                                <option value="4C">4º Ano C</option>
+                                <option value="5A">5º Ano A</option>
+                                <option value="5B">5º Ano B</option>
+                                <option value="5C">5º Ano C</option>
+                                <option value="5D">5º Ano D</option>
+                            </select>
+                        </div>
+                        <div class="filtro-divider">ou</div>
+                        <div class="filtro-group">
+                            <label><i class="bi bi-person-badge"></i> Por Professor:</label>
+                            <select id="sel-prof" class="form-input" onchange="mostrarTabela(this.value, 'prof')">
+                                <option value="">Selecione o professor...</option>
+                                <option value="EDILENE">Edilene (P.A. Aux. Dir.)</option>
+                                <option value="MARCOS">Marcos (Ed. Física)</option>
+                                <option value="MARJORIE">Marjorie (Ed. Física)</option>
+                                <option value="MIRIAN">Mirian (Artes)</option>
+                                <option value="ARTES1ANO">Bianca (Artes 1º Ano)</option>
+                                <option value="INGLS">Marcelo (Inglês)</option>
+                                <option value="OFLEITURA">Raquel Castelaneli (Of. Leitura)</option>
+                                <option value="OFMAKER">Sirlene (Of. Maker)</option>
+                                <option value="OFSEBRAE">Cherlane (Of. Sebrae)</option>
+                                <option value="PAMARCIA">Marcia Caldeira (P.A.)</option>
+                                <option value="PADIRCEU">Dirceu (P.A.)</option>
+                                <option value="PALOURDES">Lourdes (P.A.)</option>
+                                <option value="PAPIPOCA">Raquel Pipoca (P.A.)</option>
+                            </select>
+                        </div>
+                        <div class="filtro-group" style="display: flex; align-items: flex-end; gap: 10px;">
+                            <button class="btn btn-primary" onclick="mostrarTabela('GERAL', 'geral')">
+                                <i class="bi bi-table"></i> Visão Geral
+                            </button>
+                            <label for="input-excel" class="btn btn-outline" style="cursor: pointer; margin: 0;">
+                                <i class="bi bi-file-earmark-excel"></i> Importar Excel
+                                <input type="file" id="input-excel" accept=".xlsx, .xls" style="display: none;" onchange="handleExcelImport(this)">
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Editor Toolbar (Hidden by default, shown when clicking a cell in Geral) -->
+                <div id="editor-toolbar" style="display: none; background: var(--bg-elevated); padding: 10px; border-radius: 8px; border: 1px solid var(--border-secondary); margin-bottom: 20px; align-items: center; gap: 15px; box-shadow: var(--shadow-md);">
+                    <div style="font-weight: bold; color: var(--text-primary);"><i class="bi bi-palette"></i> Pintar Célula:</div>
+                    <div id="color-palette" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <!-- Buttons will be generated by JS -->
+                    </div>
+                    <div style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
+                        <span id="save-status" style="color: var(--text-secondary); font-size: 12px;"><i class="bi bi-cloud-check"></i> Salvo automaticamente</span>
+                    </div>
+                </div>
+
+                <div id="tabelas-container">
+                    <div id="tabela-placeholder" class="empty-state">
+                        <i class="bi bi-search"></i>
+                        <h3>Selecione uma opção</h3>
+                        <p>Escolha uma turma, professor ou visão geral para ver os horários</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="../js/api-config.js"></script>
+    <script src="../js/database.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="horario-jaguari.js"></script>
+    <script src="horario-sync.js"></script>
+    <script src="horario-editor.js"></script>
+    <script src="../js/vendor.js"></script>
+</body>
+</html>

@@ -1,0 +1,1278 @@
+/**
+ * styles/portal.module.scss
+ * Scoped styles for every component in the Portal do Responsável.
+ * Uses variables and mixins auto-injected by vite.config.ts.
+ */
+
+// ─── Login Form ───────────────────────────────────────────────────────────────
+.loginForm {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formLabel {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: $text-secondary;
+  letter-spacing: 0.04em;
+}
+
+.inputWrapper {
+  position: relative;
+
+  i {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: $text-tertiary;
+    font-size: 1rem;
+    pointer-events: none;
+  }
+}
+
+.formInput {
+  @include input-base;
+  padding-left: 40px;
+}
+
+.submitBtn {
+  @include button-primary;
+  width: 100%;
+  padding: 14px 24px;
+  font-size: 0.95rem;
+  margin-top: 4px;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+}
+
+.spinnerSm {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+.retryBtn {
+  @include button-ghost;
+  margin-left: auto;
+  font-size: 0.8rem;
+  padding: 4px 12px;
+  border: 1px solid $border-color;
+  border-radius: $radius-sm;
+  color: $accent-cyan;
+
+  &:hover { background: rgba($accent-cyan, 0.08); }
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 8px 0 24px;
+  color: $text-tertiary;
+  font-size: 0.85rem;
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid $border-color;
+  }
+
+  span {
+    padding: 0 10px;
+  }
+}
+
+.registerSection {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid $border-color;
+  font-size: 0.9rem;
+  color: $text-secondary;
+
+  p { margin-bottom: 12px; }
+}
+
+.registerLink {
+  @include button-secondary;
+  width: 100%;
+  text-decoration: none;
+  font-size: 0.9rem;
+  padding: 12px 24px;
+}
+
+// ─── Layout ───────────────────────────────────────────────────────────────────
+.portal {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: $bg-primary;
+}
+
+// ─── Header ───────────────────────────────────────────────────────────────────
+.header {
+  @include glass-morphism;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid $border-color;
+}
+
+.headerContent {
+  @include flex-between;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 72px;
+  gap: 16px;
+
+  @include respond-to(sm) {
+    padding: 0 16px;
+    height: 60px;
+  }
+}
+
+.logo {
+  @include flex-center;
+  gap: 10px;
+  flex-shrink: 0;
+
+  i { font-size: 1.6rem; color: $accent-cyan; }
+}
+
+.logoText {
+  font-family: $font-display;
+  font-size: 1.2rem;
+  font-weight: 700;
+  @include gradient-text;
+
+  @include respond-to(sm) { display: none; }
+}
+
+.logoSub {
+  font-size: 0.72rem;
+  color: $text-tertiary;
+  border-left: 1px solid $border-color;
+  padding-left: 10px;
+  margin-left: 2px;
+
+  @include respond-to(md) { display: none; }
+}
+
+.headerActions {
+  @include flex-center;
+  gap: 12px;
+}
+
+// Bell
+.notificationBell {
+  @include button-ghost;
+  position: relative;
+  padding: 10px;
+  border-radius: 50%;
+  font-size: 1.3rem;
+  color: $text-secondary;
+
+  &:hover { color: $accent-cyan; }
+}
+
+.bellRinging {
+  animation: ring 1.2s ease infinite;
+  color: $accent-cyan !important;
+}
+
+.notificationBadge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: $danger;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 99px;
+  @include flex-center;
+  animation: pulse 2s ease infinite;
+  border: 2px solid $bg-primary;
+}
+
+// User profile
+.userProfile {
+  @include flex-center;
+  gap: 10px;
+
+  @include respond-to(sm) { gap: 6px; }
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: $radius-md;
+  background: linear-gradient(135deg, $accent-cyan, $accent-purple);
+  @include flex-center;
+  flex-shrink: 0;
+  overflow: hidden;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #fff;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+  }
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+
+  @include respond-to(sm) { display: none; }
+}
+
+.userName {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: $text-primary;
+  @include truncate;
+  max-width: 140px;
+}
+
+.userEmail {
+  font-size: 0.72rem;
+  color: $text-tertiary;
+  @include truncate;
+  max-width: 140px;
+}
+
+.logoutBtn {
+  @include button-danger-outline;
+  padding: 8px 14px;
+  font-size: 0.8rem;
+
+  @include respond-to(sm) {
+    span { display: none; }
+    padding: 8px;
+    border-radius: 50%;
+  }
+}
+
+// ─── Main Container ───────────────────────────────────────────────────────────
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 32px 24px;
+  flex: 1;
+
+  @include respond-to(sm) { padding: 20px 16px; }
+}
+
+// ─── Page Header ─────────────────────────────────────────────────────────────
+.pageHeader {
+  margin-bottom: 32px;
+  animation: fadeIn 0.5s ease;
+}
+
+.pageTitle {
+  font-family: $font-display;
+  font-size: 2rem;
+  font-weight: 700;
+  @include gradient-text;
+  margin-bottom: 6px;
+
+  @include respond-to(sm) { font-size: 1.5rem; }
+}
+
+.pageSubtitle {
+  color: $text-secondary;
+  font-size: 1rem;
+
+  strong { color: $text-primary; }
+}
+
+// ─── Top Grid (Student + Notifications) ──────────────────────────────────────
+.topGrid {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+  animation: slideUp 0.4s ease;
+
+  @include respond-to(lg) { grid-template-columns: 1fr; }
+}
+
+// ─── Cards Grid (Notes + Frequency) ──────────────────────────────────────────
+.cardsGrid {
+  @include responsive-grid(380px, 24px);
+  animation: slideUp 0.5s ease;
+}
+
+// ─── Shared Card Base ─────────────────────────────────────────────────────────
+.card {
+  @include card;
+}
+
+.cardHeader {
+  @include flex-between;
+  margin-bottom: 20px;
+}
+
+.cardTitle {
+  @include flex-center;
+  gap: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: $text-primary;
+
+  i { color: $accent-cyan; font-size: 1.1rem; }
+}
+
+.cardSubtitle {
+  font-size: 0.78rem;
+  color: $text-tertiary;
+  background: $bg-tertiary;
+  padding: 4px 10px;
+  border-radius: 99px;
+  border: 1px solid $border-color;
+}
+
+// ─── Empty State ──────────────────────────────────────────────────────────────
+.emptyState {
+  @include flex-center;
+  flex-direction: column;
+  gap: 12px;
+  padding: 48px 24px;
+  color: $text-tertiary;
+  text-align: center;
+
+  i { font-size: 2.5rem; opacity: 0.5; }
+  p { font-size: 0.9rem; }
+}
+
+// ─── Student Card ─────────────────────────────────────────────────────────────
+.studentCard {
+  @include card;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  gap: 16px;
+}
+
+.studentAvatar {
+  width: 120px;
+  height: 120px;
+  border-radius: $radius-md;
+  background: linear-gradient(135deg, $accent-cyan, $accent-purple);
+  @include flex-center;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: $shadow-glow-cyan;
+  overflow: hidden;
+
+  img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+}
+
+.studentInfo { width: 100%; }
+
+.studentName {
+  font-family: $font-display;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: $text-primary;
+  margin-bottom: 16px;
+  line-height: 1.2;
+}
+
+.statusBadge {
+  @include badge($success);
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  gap: 4px;
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+
+  @include respond-to(sm) { grid-template-columns: 1fr; }
+}
+
+.infoItem {
+  background: $bg-tertiary;
+  border: 1px solid $border-color;
+  border-radius: $radius-md;
+  padding: 12px 10px;
+  transition: border-color $transition-smooth;
+
+  &:hover { border-color: rgba($accent-cyan, 0.3); }
+}
+
+.infoLabel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: $text-tertiary;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+
+  i { font-size: 0.8rem; }
+}
+
+.infoValue {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: $text-primary;
+}
+
+// ─── Grades Table ─────────────────────────────────────────────────────────────
+.tableWrapper {
+  overflow-x: auto;
+  border-radius: $radius-md;
+  border: 1px solid $border-color;
+  margin-bottom: 16px;
+}
+
+.gradesTable {
+  width: 100%;
+  border-collapse: collapse;
+
+  thead {
+    background: $bg-tertiary;
+
+    th {
+      padding: 12px 16px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: $text-tertiary;
+      text-align: center;
+      white-space: nowrap;
+
+      &:first-child { text-align: left; }
+    }
+  }
+
+  tbody {
+    tr {
+      border-top: 1px solid $border-color;
+      transition: background $transition-smooth;
+
+      &:hover { background: rgba($accent-cyan, 0.04); }
+    }
+
+    td {
+      padding: 14px 16px;
+      text-align: center;
+      font-size: 0.9rem;
+    }
+  }
+}
+
+.disciplinaCell { text-align: left !important; }
+
+.disciplinaName {
+  display: block;
+  font-weight: 600;
+  color: $text-primary;
+}
+
+.professorName {
+  display: block;
+  font-size: 0.75rem;
+  color: $text-tertiary;
+  margin-top: 2px;
+}
+
+.gradeBadge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 0.85rem;
+  font-weight: 700;
+
+  &.excellent {
+    background: rgba($success, 0.15);
+    color: $success;
+    border: 1px solid rgba($success, 0.3);
+  }
+
+  &.good {
+    background: rgba($warning, 0.15);
+    color: $warning;
+    border: 1px solid rgba($warning, 0.3);
+  }
+
+  &.warning {
+    background: rgba($danger, 0.15);
+    color: $danger;
+    border: 1px solid rgba($danger, 0.3);
+  }
+}
+
+.mediaCell { font-size: 0.95rem; }
+
+// Legend
+.legend {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+
+  .legendItem {
+    font-size: 0.75rem;
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-weight: 600;
+
+    &.excellent { background: rgba($success, 0.15); color: $success; }
+    &.good      { background: rgba($warning, 0.15); color: $warning; }
+    &.warning   { background: rgba($danger, 0.15);  color: $danger;  }
+  }
+}
+
+// ─── Frequency Card ───────────────────────────────────────────────────────────
+.frequencyGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.frequencyItem {
+  background: $bg-tertiary;
+  border: 1px solid $border-color;
+  border-radius: $radius-md;
+  padding: 20px 16px;
+  text-align: center;
+  transition: all $transition-smooth;
+  cursor: default;
+
+  &:hover {
+    transform: translateY(-2px);
+    border-color: currentColor;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  }
+
+  &.metricSuccess { color: $success; }
+  &.metricDanger  { color: $danger; }
+  &.metricWarning { color: $warning; }
+  &.metricCyan    { color: $accent-cyan; }
+}
+
+.frequencyIcon {
+  font-size: 1.8rem;
+  margin-bottom: 8px;
+}
+
+.frequencyValue {
+  font-size: 1.8rem;
+  font-weight: 700;
+  @include gradient-text;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.frequencyLabel {
+  font-size: 0.78rem;
+  color: $text-tertiary;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.progressBar {
+  height: 8px;
+  background: $bg-tertiary;
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, $accent-cyan, $accent-purple);
+  border-radius: 99px;
+  transition: width 1s ease;
+}
+
+.progressLabel {
+  font-size: 0.78rem;
+  color: $text-tertiary;
+}
+
+// ─── Notifications Panel ──────────────────────────────────────────────────────
+.notificationsPanel {
+  @include card;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+
+  &:hover { transform: none; box-shadow: $shadow-card; border-color: $border-color; }
+}
+
+.panelHeader {
+  @include flex-between;
+  margin-bottom: 16px;
+}
+
+.unreadCounter {
+  @include badge($danger);
+}
+
+.notificationsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 480px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.notificationCard {
+  background: $bg-tertiary;
+  border: 1px solid $border-color;
+  border-radius: $radius-md;
+  overflow: hidden;
+  transition: all $transition-smooth;
+  position: relative;
+
+  // Left coloured border (type colours set via modifier classes below)
+  border-left: 3px solid transparent;
+
+  &:hover {
+    border-color: rgba($accent-cyan, 0.2);
+    border-left-color: inherit;
+
+    .notifActions { opacity: 1; max-height: 48px; }
+  }
+
+  &.unread { background: rgba($accent-cyan, 0.04); }
+}
+
+// Type border colours
+.borderInfo       { border-left-color: #60a5fa !important; }
+.borderAviso      { border-left-color: $warning !important; }
+.borderEvento     { border-left-color: $accent-cyan !important; }
+.borderFinanceiro { border-left-color: $success !important; }
+.borderAcademico  { border-left-color: $accent-purple !important; }
+.borderSaude      { border-left-color: #f472b6 !important; }
+.borderFalta      { border-left-color: $danger !important; }
+
+.notifClickArea {
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 14px 16px;
+  cursor: pointer;
+  color: inherit;
+}
+
+.notificationHeader {
+  @include flex-between;
+  gap: 12px;
+}
+
+.notifLeft {
+  @include flex-center;
+  gap: 12px;
+  align-items: flex-start;
+  flex: 1;
+  min-width: 0;
+}
+
+.notifIcon { font-size: 1.4rem; flex-shrink: 0; }
+
+.notificationTitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: $text-primary;
+  margin-bottom: 4px;
+  @include truncate;
+}
+
+.notificationPreview {
+  font-size: 0.8rem;
+  color: $text-tertiary;
+  @include line-clamp(2);
+}
+
+.notifRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.newBadge {
+  @include badge($danger);
+  animation: pulse 2s ease infinite;
+}
+
+.notificationDate {
+  font-size: 0.72rem;
+  color: $text-tertiary;
+  white-space: nowrap;
+}
+
+// Action buttons row
+.notifActions {
+  display: flex;
+  gap: 8px;
+  padding: 0 16px 12px;
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition: opacity $transition-smooth, max-height $transition-smooth;
+}
+
+.actionBtn {
+  @include button-ghost;
+  font-size: 0.78rem;
+  padding: 5px 12px;
+  border: 1px solid $border-color;
+  border-radius: $radius-sm;
+  gap: 4px;
+
+  i { font-size: 0.85rem; }
+}
+
+.deleteBtn {
+  color: $danger;
+  &:hover { background: rgba($danger, 0.1); border-color: $danger; }
+}
+
+// ─── No notifications placeholder ────────────────────────────────────────────
+.noNotifCard {
+  @include card;
+  @include flex-center;
+  flex-direction: column;
+  gap: 12px;
+  color: $text-tertiary;
+
+  i { font-size: 2rem; }
+  p { font-size: 0.9rem; }
+}
+
+.showAllBtn {
+  @include button-secondary;
+  font-size: 0.8rem;
+  padding: 8px 16px;
+}
+
+// ─── Card Skeleton ────────────────────────────────────────────────────────────
+.cardSkeleton {
+  @include card;
+  min-height: 200px;
+  background: linear-gradient(90deg, $bg-secondary 25%, $bg-tertiary 50%, $bg-secondary 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite;
+
+  &:hover { transform: none; }
+}
+
+// ─── Modal ────────────────────────────────────────────────────────────────────
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 200;
+  @include flex-center;
+  padding: 24px;
+  animation: fadeIn 0.2s ease;
+}
+
+.modalContent {
+  background: $bg-secondary;
+  border: 1px solid $border-color;
+  border-radius: $radius-xl;
+  padding: 32px;
+  max-width: 560px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s ease;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+
+  @include respond-to(sm) { padding: 24px 20px; border-radius: $radius-lg; }
+}
+
+.modalHeader {
+  @include flex-between;
+  margin-bottom: 16px;
+}
+
+.modalMeta {
+  @include flex-center;
+  gap: 10px;
+}
+
+.modalIcon { font-size: 1.8rem; }
+
+// Type badge inside modal
+.notificationTypeBadge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+
+  &.info       { @include badge(#60a5fa); }
+  &.aviso      { @include badge($warning); }
+  &.evento     { @include badge($accent-cyan); }
+  &.financeiro { @include badge($success); }
+  &.academico  { @include badge($accent-purple); }
+  &.saude      { @include badge(#f472b6); }
+  &.falta      { @include badge($danger); }
+}
+
+.modalClose {
+  @include button-ghost;
+  padding: 8px;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  color: $text-tertiary;
+  flex-shrink: 0;
+
+  &:hover { color: $text-primary; background: rgba(255,255,255,0.08); }
+}
+
+.modalTitle {
+  font-family: $font-display;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: $text-primary;
+  line-height: 1.3;
+  margin-bottom: 8px;
+}
+
+.modalDate {
+  @include flex-center;
+  justify-content: flex-start;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: $text-tertiary;
+  margin-bottom: 20px;
+
+  i { font-size: 0.85rem; }
+}
+
+.modalMessage {
+  background: $bg-tertiary;
+  border: 1px solid $border-color;
+  border-radius: $radius-md;
+  padding: 20px;
+  color: $text-secondary;
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+// ─── Login Page ───────────────────────────────────────────────────────────────
+.loginPage {
+  min-height: 100vh;
+  @include flex-center;
+  background: $bg-primary;
+  padding: 24px;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(0, 212, 255, 0.06) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(124, 58, 237, 0.06) 0%, transparent 50%);
+}
+
+.loginCard {
+  @include glass-morphism;
+  border-radius: $radius-xl;
+  padding: 48px 40px;
+  max-width: 440px;
+  width: 100%;
+  text-align: center;
+  animation: slideUp 0.5s ease;
+  box-shadow: $shadow-card;
+
+  @include respond-to(sm) { padding: 32px 24px; }
+}
+
+.loginLogo {
+  width: 80px;
+  height: 80px;
+  border-radius: $radius-lg;
+  background: linear-gradient(135deg, $accent-cyan, $accent-purple);
+  @include flex-center;
+  margin: 0 auto 20px;
+  box-shadow: $shadow-glow-cyan;
+
+  i { font-size: 2.4rem; color: #fff; }
+}
+
+.loginTitle {
+  font-family: $font-display;
+  font-size: 2rem;
+  font-weight: 700;
+  @include gradient-text;
+  margin-bottom: 4px;
+}
+
+.loginSubtitle {
+  font-size: 0.9rem;
+  color: $text-tertiary;
+  margin-bottom: 20px;
+}
+
+.loginDescription {
+  font-size: 0.9rem;
+  color: $text-secondary;
+  line-height: 1.6;
+  margin-bottom: 32px;
+}
+
+.gmailBtn {
+  @include button-base;
+  width: 100%;
+  background: #fff;
+  color: #1f1f1f;
+  font-size: 0.95rem;
+  padding: 14px 24px;
+  border-radius: $radius-md;
+  gap: 12px;
+  margin-bottom: 20px;
+  transition: all $transition-smooth;
+
+  &:hover {
+    background: #f1f3f4;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    transform: translateY(-1px);
+  }
+}
+
+.errorAlert {
+  @include flex-center;
+  gap: 8px;
+  background: rgba($danger, 0.12);
+  border: 1px solid rgba($danger, 0.3);
+  color: $danger;
+  border-radius: $radius-md;
+  padding: 12px 16px;
+  font-size: 0.875rem;
+  margin-bottom: 20px;
+  text-align: left;
+
+  i { flex-shrink: 0; }
+}
+
+.loginDisclaimer {
+  font-size: 0.75rem;
+  color: $text-tertiary;
+  line-height: 1.5;
+}
+
+// ─── Loading / Fullscreen center ──────────────────────────────────────────────
+.fullscreenCenter {
+  min-height: 100vh;
+  @include flex-center;
+  flex-direction: column;
+  gap: 16px;
+  background: $bg-primary;
+}
+
+.spinner {
+  display: block;
+  width: 48px;
+  height: 48px;
+  border: 3px solid $border-color;
+  border-top-color: $accent-cyan;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.loadingText {
+  color: $text-tertiary;
+  font-size: 0.9rem;
+}
+
+// ─── Footer ───────────────────────────────────────────────────────────────────
+.footer {
+  border-top: 1px solid $border-color;
+  padding: 20px 24px;
+  text-align: center;
+  color: $text-tertiary;
+  font-size: 0.8rem;
+
+  a { color: $accent-cyan; }
+}
+
+// ─── Vincular Filho ────────────────────────────────────────────────────────
+.vincularContainer {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+  padding: 40px 20px;
+}
+
+.vincularCard {
+  @include glass-morphism;
+  @include card;
+  max-width: 600px;
+  width: 100%;
+  padding: 30px;
+  
+  h2 {
+    font-size: 1.5rem;
+    color: $text-primary;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  p {
+    color: $text-secondary;
+    font-size: 0.95rem;
+    margin-bottom: 20px;
+  }
+}
+
+.searchBox {
+  position: relative;
+  margin-bottom: 20px;
+
+  i {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: $text-tertiary;
+    font-size: 1.2rem;
+  }
+
+  input {
+    @include input-base;
+    padding-left: 45px;
+    height: 50px;
+    font-size: 1.05rem;
+  }
+}
+
+.resultsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.resultItem {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: $radius-md;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+}
+
+.resultInfo {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+
+  h4 {
+    margin: 0;
+    color: $text-primary;
+    font-size: 1.05rem;
+  }
+
+  p {
+    margin: 4px 0 0;
+    color: $text-tertiary;
+    font-size: 0.85rem;
+  }
+}
+
+.resultAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, $accent-cyan, $accent-purple);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.btnVincular {
+  @include button-primary;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+}
+
+.badgeVinculado {
+  background: rgba(255, 255, 255, 0.1);
+  color: $text-secondary;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btnCancel {
+  @include button-secondary;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.modalStudentCard {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: $radius-md;
+  padding: 15px;
+  margin: 15px 0;
+  text-align: center;
+
+  h3 {
+    margin: 0 0 5px;
+    color: $text-primary;
+  }
+
+  p {
+    margin: 0;
+    color: $text-tertiary;
+    font-size: 0.9rem;
+  }
+}
+
+.warningText {
+  color: #fbbf24 !important;
+  font-size: 0.9rem;
+  background: rgba(251, 191, 36, 0.1);
+  padding: 15px;
+  border-radius: $radius-sm;
+  border: 1px solid rgba(251, 191, 36, 0.2);
+}
+
+.modalActions {
+  display: flex;
+  gap: 15px;
+  margin-top: 25px;
+
+  button {
+    flex: 1;
+  }
+}
+
+.btnConfirm {
+  @include button-primary;
+}
+
+// LGPD Warning
+.lgpdWarning {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  padding: 12px 16px;
+  border-radius: $radius-sm;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  width: 100%;
+
+  i {
+    font-size: 1.2rem;
+  }
+}
+
+.topBarSelectors {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 15px 25px;
+  border-radius: $radius-lg;
+}
+
+.studentTabs {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 5px; // for scrollbar if needed
+  
+  button {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: $text-secondary;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: $text-primary;
+    }
+
+    &.active {
+      background: linear-gradient(135deg, $accent-cyan, $accent-purple);
+      border-color: $accent-cyan;
+      color: $bg-primary;
+    }
+  }
+}
+
+.btnAddChild {
+  @include button-secondary;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}

@@ -1,0 +1,430 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Primeiro Acesso - Sistema Escolar</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components-new.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <style>
+        body {
+            background: var(--bg-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .primeiro-acesso-container {
+            width: 100%;
+            max-width: 480px;
+            padding: 2rem;
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .auth-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-xl);
+            padding: 3rem;
+            box-shadow: var(--shadow-xl);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .auth-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .auth-header i {
+            font-size: 3.5rem;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .auth-header h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.5px;
+        }
+
+        .auth-header p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .input-group {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 1.2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            transition: color 0.3s ease;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.9rem 1rem 0.9rem 3.2rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .form-input:focus {
+            background: rgba(255, 255, 255, 0.07);
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(var(--primary-rgb), 0.15);
+            outline: none;
+        }
+
+        .form-input:focus + .input-icon {
+            color: var(--primary-color);
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 1.2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            font-size: 1.1rem;
+            transition: color 0.3s ease;
+        }
+
+        .password-toggle:hover {
+            color: var(--text-primary);
+        }
+
+        .password-requirements {
+            margin-top: 1.2rem;
+            padding: 1.2rem;
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .requirement {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.6rem;
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            transition: all 0.3s ease;
+        }
+
+        .requirement:last-child {
+            margin-bottom: 0;
+        }
+
+        .requirement i {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            transition: all 0.3s ease;
+        }
+
+        .requirement.valid {
+            color: var(--success);
+            transform: translateX(2px);
+        }
+
+        .requirement.valid i {
+            color: var(--success);
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 1rem;
+            font-weight: 600;
+            font-size: 1rem;
+            margin-top: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 15px rgba(var(--primary-rgb), 0.3);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(var(--primary-rgb), 0.4);
+        }
+
+        .footer-link {
+            text-align: center;
+            margin-top: 2rem;
+        }
+
+        .footer-link a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .footer-link a:hover {
+            color: var(--primary-color);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Mobile Fixes */
+        @media (max-width: 480px) {
+            .auth-card {
+                padding: 2rem;
+            }
+        }
+    </style>
+    <!-- Tailwind CSS Play CDN — preflight desabilitado para nao conflitar com CSS existente -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      if (window.tailwind) {
+        tailwind.config = { corePlugins: { preflight: false } };
+      }
+    </script></head>
+
+<body>
+    <div class="primeiro-acesso-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <i class="bi bi-person-check-fill"></i>
+                <h1>Ative sua Conta</h1>
+                <p>Olá, Professor! Use os dados fornecidos à direção para criar sua senha de acesso.</p>
+            </div>
+
+            <form id="firstAccessForm">
+                <div class="form-group">
+                    <label class="form-label" for="emailOrCpf">Identificação</label>
+                    <div class="input-group">
+                        <i class="bi bi-person input-icon"></i>
+                        <input type="text" id="emailOrCpf" class="form-input" placeholder="CPF ou E-mail Institucional" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="newPassword">Nova Senha</label>
+                    <div class="input-group">
+                        <i class="bi bi-shield-lock input-icon"></i>
+                        <input type="password" id="newPassword" class="form-input" placeholder="Crie uma senha forte" required>
+                        <button type="button" class="password-toggle" id="btn-toggle-new-pass">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="password-requirements">
+                        <div id="req-length" class="requirement"><i class="bi bi-circle"></i> Mínimo 8 caracteres</div>
+                        <div id="req-upper" class="requirement"><i class="bi bi-circle"></i> Uma letra maiúscula</div>
+                        <div id="req-number" class="requirement"><i class="bi bi-circle"></i> Um número</div>
+                        <div id="req-special" class="requirement"><i class="bi bi-circle"></i> Um caractere especial</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="confirmPassword">Confirmar Senha</label>
+                    <div class="input-group">
+                        <i class="bi bi-shield-check input-icon"></i>
+                        <input type="password" id="confirmPassword" class="form-input" placeholder="Repita a nova senha" required>
+                        <button type="button" class="password-toggle" id="btn-toggle-confirm-pass">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 1.5rem; display: flex; align-items: flex-start; gap: 0.8rem; cursor: pointer;">
+                    <input type="checkbox" id="privacyConsent" required style="width: 18px; height: 18px; cursor: pointer; margin-top: 2px;">
+                    <label for="privacyConsent" style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4; cursor: pointer;">
+                        Li e aceito as <a href="politica-privacidade.html" target="_blank" style="color: var(--primary-color); text-decoration: underline;">Políticas de Privacidade</a> e autorizo o tratamento dos meus dados.
+                    </label>
+                </div>
+
+                <button type="submit" id="btnSubmit" class="btn btn-primary" disabled>
+                    <i class="bi bi-lightning-fill"></i> Ativar Minha Conta
+                </button>
+
+                <div class="footer-link">
+                    <a href="index.html">
+                        <i class="bi bi-arrow-left"></i> Voltar para o Login
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="js/api-config.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('firstAccessForm');
+            const passInput = document.getElementById('newPassword');
+            const confirmInput = document.getElementById('confirmPassword');
+            const btnSubmit = document.getElementById('btnSubmit');
+
+            // Lógica do Olhinho (usa o utils.js se disponível, senão fallback local)
+            window.togglePass = (id, btn) => {
+                const input = document.getElementById(id);
+                const icon = btn.querySelector('i');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.replace('bi-eye', 'bi-eye-slash');
+                } else {
+                    input.type = 'password';
+                    icon.classList.replace('bi-eye-slash', 'bi-eye');
+                }
+            };
+
+            // Validação em tempo real com feedback visual
+            passInput.addEventListener('input', () => {
+                const val = passInput.value;
+                const reqs = {
+                    length: val.length >= 8,
+                    upper: /[A-Z]/.test(val),
+                    number: /[0-9]/.test(val),
+                    special: /[^A-Za-z0-9]/.test(val)
+                };
+
+                Object.keys(reqs).forEach(key => {
+                    const el = document.getElementById(`req-${key}`);
+                    if (reqs[key]) {
+                        el.classList.add('valid');
+                        el.querySelector('i').className = 'bi bi-check-circle-fill';
+                    } else {
+                        el.classList.remove('valid');
+                        el.querySelector('i').className = 'bi bi-circle';
+                    }
+                });
+
+                validateForm();
+            });
+
+            confirmInput.addEventListener('input', validateForm);
+
+            function validateForm() {
+                const val = passInput.value;
+                const privacyAccepted = document.getElementById('privacyConsent').checked;
+                const isValid = val.length >= 8 && 
+                              /[A-Z]/.test(val) && 
+                              /[0-9]/.test(val) && 
+                              /[^A-Za-z0-9]/.test(val) &&
+                              val === confirmInput.value &&
+                              val !== "" &&
+                              privacyAccepted;
+                
+                btnSubmit.disabled = !isValid;
+            }
+
+            document.getElementById('privacyConsent').addEventListener('change', validateForm);
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                if (btnSubmit.disabled) return;
+
+                try {
+                    btnSubmit.disabled = true;
+                    btnSubmit.innerHTML = '<i class="bi bi-hourglass-split"></i> Ativando...';
+
+                    const response = await fetch(`${window.API_BASE_URL}/auth/first-access`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            emailOrCpf: document.getElementById('emailOrCpf').value,
+                            password: passInput.value
+                        })
+                    });
+
+                    const json = await response.json();
+
+                    if (json.success) {
+                        showToast('🎉 Conta ativada com sucesso!', 'success');
+                        setTimeout(() => {
+                            window.location.href = 'index.html?activated=true';
+                        }, 2000);
+                    } else {
+                        showToast(json.error || 'Erro ao validar dados', 'error');
+                        btnSubmit.disabled = false;
+                        btnSubmit.innerHTML = '<i class="bi bi-lightning-fill"></i> Ativar Minha Conta';
+                    }
+                } catch (err) {
+                    showToast('📡 Falha na conexão com o servidor', 'error');
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = '<i class="bi bi-lightning-fill"></i> Ativar Minha Conta';
+                }
+            });
+        });
+    </script>
+    <script src="js/vendor.js"></script>
+    <script defer src="js/events/primeiro-acesso-events.js"></script>
+</body>
+
+</html>
+

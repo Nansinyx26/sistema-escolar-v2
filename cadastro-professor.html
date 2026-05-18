@@ -1,0 +1,380 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Cadastro de Professor - Sistema Escolar">
+    <title>Cadastro de Professor - Sistema Escolar</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/favicon/favicon.png">    <link rel="apple-touch-icon" href="/favicon/favicon.png">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components-new.css">
+    <link rel="stylesheet" href="css/cadastro.css">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="css/parallax-glass.css">
+    <link rel="stylesheet" href="css/neo-brutal.css">
+    <!-- Tailwind CSS Play CDN — preflight desabilitado para nao conflitar com CSS existente -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      if (window.tailwind) {
+        tailwind.config = { corePlugins: { preflight: false } };
+      }
+    </script></head>
+
+<body>
+    <div class="cadastro-page">
+        <!-- Background -->
+        <div class="cadastro-background">
+            <div class="gradient-orb orb-1"></div>
+            <div class="gradient-orb orb-2"></div>
+        </div>
+
+        <!-- Container -->
+        <div class="cadastro-container">
+            <!-- Header -->
+            <div class="cadastro-header">
+                <div class="cadastro-logo">
+                    <i class="bi bi-person-workspace"></i>
+                </div>
+                <h1>Cadastro de Professor</h1>
+                <p>Complete seu perfil para começar a usar o sistema</p>
+            </div>
+
+            <!-- Formulário -->
+            <div class="cadastro-card">
+                <form id="cadastroProfessorForm" class="cadastro-form">
+                    <!-- Foto -->
+                    <div class="form-section">
+                        <div class="photo-upload">
+                            <div class="photo-preview" id="photoPreview">
+                                <i class="bi bi-person-circle"></i>
+                            </div>
+                            <div class="photo-upload-actions">
+                                <label for="fotoInput" class="btn btn-secondary btn-sm">
+                                    <i class="bi bi-camera"></i>
+                                    Adicionar Foto
+                                </label>
+                                <input type="file" id="fotoInput" accept="image/*" hidden>
+                                <button type="button" class="btn btn-outline btn-sm hidden" id="removeFotoBtn">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                            <small class="text-secondary">JPG, PNG ou GIF - Máx. 2MB</small>
+                        </div>
+                    </div>
+
+                    <!-- Informações Básicas -->
+                    <div class="form-section">
+                        <h3 class="section-title">
+                            <i class="bi bi-person-badge"></i>
+                            Informações Básicas
+                        </h3>
+
+                        <div class="form-group">
+                            <label class="form-label required" for="professorKey">Identificação no Sistema</label>
+                            <select id="professorKey" class="form-select" required>
+                                <option value="">Quem é você no sistema?</option>
+                                <optgroup label="Professores Especialistas">
+                                    <option value="MARJORIE">Marjorie (Ed. Física)</option>
+                                    <option value="MARCOS">Marcos (Ed. Física)</option>
+                                    <option value="INGLS">Marcelo (Inglês)</option>
+                                    <option value="ARTES1ANO">Bianca (Artes 1º Ano)</option>
+                                    <option value="MIRIAN">Mirian (Artes)</option>
+                                    <option value="OFMAKER">Sirlene (Of. Maker)</option>
+                                    <option value="OFLEITURA">Raquel Castelaneli (Of. Leitura)</option>
+                                    <option value="OFSEBRAE">Cherlane (Sebrae / DSE)</option>
+                                    <option value="LIMA">Lima (PROERD)</option>
+                                </optgroup>
+                                <optgroup label="Professores Regentes">
+                                    <option value="PEB1">Professor Regente (PEB1)</option>
+                                </optgroup>
+                                <option value="OUTRO">Outro / Novo Professor</option>
+                            </select>
+                            <small class="text-secondary mt-sm block">Para vincular corretamente seus horários com a grade da escola.</small>
+                        </div>
+
+                        <div class="form-group mt-md">
+                            <label class="form-label required" for="nome">Nome Completo</label>
+                            <input type="text" id="nome" class="form-input" placeholder="Digite seu nome completo"
+                                required>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-md">
+                            <div class="form-group">
+                                <label class="form-label" for="telefone">Telefone</label>
+                                <input type="tel" id="telefone" class="form-input" placeholder="(00) 00000-0000">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="idade">Idade</label>
+                                <input type="number" id="idade" class="form-input" placeholder="30" min="18" max="100">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="biografia">Biografia</label>
+                            <textarea id="biografia" class="form-textarea" placeholder="Conte um pouco sobre você..."
+                                rows="3"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Escola e Disciplina -->
+                    <div class="form-section">
+                        <h3 class="section-title">
+                            <i class="bi bi-briefcase"></i>
+                            Dados Profissionais
+                        </h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label required" for="escola">Nome da Escola</label>
+                                <div class="input-group">
+                                    <i class="input-icon bi bi-building"></i>
+                                    <input type="text" id="escola" class="form-input"
+                                        placeholder="Ex: Escola Estadual..." required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label required" for="disciplina">Disciplina / Cargo</label>
+                                <div class="input-group">
+                                    <i class="input-icon bi bi-book"></i>
+                                    <input type="text" id="disciplina" class="form-input"
+                                        placeholder="Ex: PEB I, Matemática, etc." required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tipo de Professor (NOVO) -->
+                    <div class="form-section">
+                        <h3 class="section-title">
+                            <i class="bi bi-person-check-fill"></i>
+                            Tipo de Atuação
+                        </h3>
+                        <p class="text-secondary mb-md">Como você atua na sala de aula?</p>
+                        
+                        <div class="role-selection-grid">
+                            <label class="role-card">
+                                <input type="radio" name="tipoAtuacao" value="principal" checked>
+                                <div class="role-card-content">
+                                    <div class="role-icon"><i class="bi bi-mortarboard-fill"></i></div>
+                                    <div class="role-info">
+                                        <strong>Professor(a) Principal</strong>
+                                        <span>Responsável regente pela sala de aula</span>
+                                    </div>
+                                    <div class="role-check"><i class="bi bi-check-circle-fill"></i></div>
+                                </div>
+                            </label>
+
+                            <label class="role-card">
+                                <input type="radio" name="tipoAtuacao" value="materia">
+                                <div class="role-card-content">
+                                    <div class="role-icon"><i class="bi bi-journal-bookmark-fill"></i></div>
+                                    <div class="role-info">
+                                        <strong>Professor(a) de Matéria</strong>
+                                        <span>Especialista (Artes, Inglês, Ed. Física, etc)</span>
+                                    </div>
+                                    <div class="role-check"><i class="bi bi-check-circle-fill"></i></div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Turmas e Matérias -->
+                    <div class="form-section" id="sectionTurmasMaterias">
+                        <h3 class="section-title">
+                            <i class="bi bi-book"></i>
+                            Turmas e Matérias
+                        </h3>
+
+                        <!-- Container para Professor Principal -->
+                        <div id="containerProfessorPrincipal">
+                            <div class="form-group">
+                                <label class="form-label required" for="salaPrincipal">Sua Sala Principal</label>
+                                <select id="salaPrincipal" class="form-select">
+                                    <option value="">Selecione sua sala</option>
+                                    <option value="1ºA">1º Ano A</option>
+                                    <option value="1ºB">1º Ano B</option>
+                                    <option value="1ºC">1º Ano C</option>
+                                    <option value="1ºD">1º Ano D</option>
+                                    <option value="2ºA">2º Ano A</option>
+                                    <option value="2ºB">2º Ano B</option>
+                                    <option value="2ºC">2º Ano C</option>
+                                    <option value="2ºD">2º Ano D</option>
+                                    <option value="3ºA">3º Ano A</option>
+                                    <option value="3ºB">3º Ano B</option>
+                                    <option value="3ºC">3º Ano C</option>
+                                    <option value="3ºD">3º Ano D</option>
+                                    <option value="4ºA">4º Ano A</option>
+                                    <option value="4ºB">4º Ano B</option>
+                                    <option value="4ºC">4º Ano C</option>
+                                    <option value="4ºD">4º Ano D</option>
+                                    <option value="5ºA">5º Ano A</option>
+                                    <option value="5ºB">5º Ano B</option>
+                                    <option value="5ºC">5º Ano C</option>
+                                    <option value="5ºD">5º Ano D</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Container para Professor de Matéria (Oculto inicialmente) -->
+                        <div id="containerProfessorMateria" class="hidden">
+                            <div class="form-group">
+                                <label class="form-label required">Qual matéria você leciona?</label>
+                                <div class="checkbox-grid" id="materiasGrid">
+                                <label class="checkbox-card">
+                                    <input type="checkbox" name="materia" value="Português">
+                                    <span class="checkbox-card-content">
+                                        <i class="bi bi-book-fill"></i>
+                                        <span>Português</span>
+                                    </span>
+                                </label>
+                                <label class="checkbox-card">
+                                    <input type="checkbox" name="materia" value="Matemática">
+                                    <span class="checkbox-card-content">
+                                        <i class="bi bi-calculator-fill"></i>
+                                        <span>Matemática</span>
+                                    </span>
+                                </label>
+                                <label class="checkbox-card">
+                                    <input type="checkbox" name="materia" value="Ciências">
+                                    <span class="checkbox-card-content">
+                                        <i class="bi bi-flask"></i>
+                                        <span>Ciências</span>
+                                    </span>
+                                </label>
+                                <label class="checkbox-card">
+                                    <input type="checkbox" name="materia" value="História">
+                                    <span class="checkbox-card-content">
+                                        <i class="bi bi-clock-history"></i>
+                                        <span>História</span>
+                                    </span>
+                                </label>
+                                <label class="checkbox-card">
+                                    <input type="checkbox" name="materia" value="Geografia">
+                                    <span class="checkbox-card-content">
+                                        <i class="bi bi-globe"></i>
+                                        <span>Geografia</span>
+                                    </span>
+                                </label>
+                                <label class="checkbox-card">
+                                    <input type="checkbox" name="materia" value="Inglês">
+                                    <span class="checkbox-card-content">
+                                        <i class="bi bi-translate"></i>
+                                        <span>Inglês</span>
+                                    </span>
+                                </label>
+                                <label class="checkbox-card">
+                                    <input type="checkbox" name="materia" value="Educação Física">
+                                    <span class="checkbox-card-content">
+                                        <i class="bi bi-trophy"></i>
+                                        <span>Ed. Física</span>
+                                    </span>
+                                </label>
+                                <label class="checkbox-card">
+                                    <input type="checkbox" name="materia" value="Artes">
+                                    <span class="checkbox-card-content">
+                                        <i class="bi bi-palette"></i>
+                                        <span>Artes</span>
+                                    </span>
+                                </label>
+                                <label class="checkbox-card">
+                                    <input type="checkbox" name="materia" value="SEBRAE">
+                                    <span class="checkbox-card-content">
+                                        <i class="bi bi-lightbulb-fill"></i>
+                                        <span>SEBRAE</span>
+                                    </span>
+                                </label>
+                                <label class="checkbox-card">
+                                    <input type="checkbox" name="materia" value="Oficina de Leitura">
+                                    <span class="checkbox-card-content">
+                                        <i class="bi bi-book-half"></i>
+                                        <span>Oficina de Leitura</span>
+                                    </span>
+                                </label>
+                            </div>
+                            <small class="form-error hidden" id="materiasError">Selecione pelo menos uma matéria</small>
+                        </div>
+
+                        <!-- Salas Adicionais (aparece apenas se Inglês ou Ed. Física) -->
+                        <div class="form-group hidden" id="salasAdicionaisGroup">
+                            <label class="form-label">Salas Adicionais</label>
+                            <p class="text-sm text-secondary mb-md">
+                                Como você leciona uma matéria especial (Inglês, Educação Física, Artes ou SEBRAE), pode selecionar as turmas onde dará aula
+                            </p>
+                            <div class="select-multiple" id="salasAdicionaisContainer">
+                                <!-- Será preenchido dinamicamente -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Informações Adicionais -->
+                    <div class="form-section">
+                        <h3 class="section-title">
+                            <i class="bi bi-chat-dots"></i>
+                            Informações Adicionais (Opcional)
+                        </h3>
+
+                        <div class="form-group">
+                            <label class="form-label" for="atividadesPessoais">Atividades Pessoais / Hobbies</label>
+                            <textarea id="atividadesPessoais" class="form-textarea"
+                                placeholder="Seus hobbies, interesses..." rows="3"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="ideiasParaAno">Ideias para o Ano Letivo</label>
+                            <textarea id="ideiasParaAno" class="form-textarea"
+                                placeholder="Projetos, atividades que gostaria de implementar..." rows="3"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Consentimento -->
+                    <div class="form-group" style="margin-bottom: 2rem; display: flex; align-items: flex-start; gap: 0.8rem; cursor: pointer;">
+                        <input type="checkbox" id="privacyConsent" required style="width: 18px; height: 18px; cursor: pointer; margin-top: 2px;">
+                        <label for="privacyConsent" style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4; cursor: pointer;">
+                            Li e aceito as <a href="politica-privacidade.html" target="_blank" style="color: var(--primary-color); text-decoration: underline;">Políticas de Privacidade</a> e autorizo o tratamento dos meus dados profissionais.
+                        </label>
+                    </div>
+
+                    <!-- Botões -->
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i>
+                            Voltar
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <span>Salvar e Continuar</span>
+                            <i class="bi bi-check-lg"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script defer src="js/database.js"></script>
+    <script defer src="js/auth.js"></script>
+    <script defer src="js/utils.js"></script>
+    <script defer src="js/cadastro-professor.js"></script>
+    <script defer src="js/parallax.js"></script>
+    <script src="js/vendor.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,825 @@
+/* horario-jaguari.css */
+#horario-jaguari {
+    padding: var(--spacing-md);
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-xl);
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+}
+
+.page-header h1 {
+    font-size: var(--font-size-2xl);
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.page-header p {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.filtros-card {
+    margin-bottom: var(--spacing-xl);
+    padding: var(--spacing-lg);
+}
+
+.filtros-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto;
+    gap: var(--spacing-md);
+    align-items: center;
+}
+
+@media (max-width: 768px) {
+    .filtros-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .filtro-divider {
+        text-align: center;
+    }
+}
+
+.filtro-group label {
+    display: block;
+    margin-bottom: var(--spacing-xs);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+}
+
+.filtro-divider {
+    color: var(--text-tertiary);
+    font-weight: var(--font-weight-medium);
+    padding: 0 var(--spacing-sm);
+}
+
+/* ===================================================
+   HORÁRIO POR TURMA — Moldura cinza + cores vivas
+   =================================================== */
+.tabela-horario {
+    background: #1a1a2e;
+    border-radius: 12px;
+    border: 4px solid #6b7280;
+    /* moldura cinza */
+    box-shadow: 0 0 0 1px #374151, 0 8px 32px rgba(0, 0, 0, 0.5);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+    animation: fadeIn var(--transition-base);
+}
+
+.tabela-horario h2 {
+    font-size: var(--font-size-xl);
+    color: #f9fafb;
+    text-align: center;
+    margin-bottom: var(--spacing-xs);
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.tabela-horario h3 {
+    font-size: var(--font-size-md);
+    color: #9ca3af;
+    text-align: center;
+    margin-bottom: var(--spacing-sm);
+    font-style: italic;
+}
+
+.tabela-horario h4 {
+    font-size: var(--font-size-lg);
+    color: var(--primary);
+    text-align: center;
+    margin-bottom: var(--spacing-lg);
+}
+
+.tabela-horario table {
+    width: 100%;
+    table-layout: fixed;
+    /* colunas com tamanho controlado */
+    border-collapse: separate;
+    border-spacing: 2px;
+    font-size: var(--font-size-sm);
+    text-align: center;
+}
+
+/* Coluna HORÁRIO — estreita */
+.tabela-horario table th:first-child,
+.tabela-horario table td:first-child {
+    width: 110px;
+    min-width: 110px;
+    max-width: 110px;
+}
+
+/* Colunas dos dias — dividem o espaço restante igualmente */
+.tabela-horario table th:not(:first-child),
+.tabela-horario table td:not(:first-child) {
+    width: calc((100% - 110px) / 5);
+}
+
+
+.tabela-horario th {
+    background: #374151;
+    color: #e5e7eb;
+    font-weight: 700;
+    padding: 10px 14px;
+    border: 1px solid #4b5563;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 12px;
+}
+
+.tabela-horario td {
+    padding: 10px 12px;
+    border: 1px solid #374151;
+    background: #111827;
+    color: #e5e7eb;
+    vertical-align: middle;
+    transition: filter 0.15s;
+}
+
+.tabela-horario td:hover {
+    filter: brightness(1.15);
+}
+
+/* Coluna de hora */
+td.hora-col {
+    font-weight: 700;
+    color: rgb(156, 163, 175);
+    white-space: normal;
+    /* permite quebra de linha se necessário */
+    word-break: break-word;
+    text-align: center;
+    background: rgb(31, 41, 55) !important;
+    border-right: 2px solid rgb(75, 85, 99) !important;
+    font-size: 11px;
+    padding: 8px 6px;
+}
+
+
+/* ── CORES VIVAS DAS DISCIPLINAS — rgb() ── */
+
+/* PEB 1: fundo escuro neutro */
+.tabela-horario td.peb1 {
+    background: rgb(15, 23, 42) !important;
+    color: rgb(148, 163, 184) !important;
+}
+
+/* Ed. Física – Marjorie: Magenta puro */
+.tabela-horario td.ef-marjorie {
+    background-color: rgb(255, 0, 255) !important;
+    color: rgb(0, 0, 0) !important;
+    font-weight: bold;
+    border: 2px solid rgb(180, 0, 180) !important;
+}
+
+/* Ed. Física – Marcos: Azul Royal */
+.tabela-horario td.ef-marcos {
+    background-color: rgb(0, 112, 192) !important;
+    color: rgb(255, 255, 255) !important;
+    font-weight: bold;
+    border: 2px solid rgb(0, 80, 140) !important;
+}
+
+/* Inglês: Verde Neon */
+.tabela-horario td.ingles {
+    background-color: rgb(57, 255, 20) !important;
+    color: rgb(0, 0, 0) !important;
+    font-weight: bold;
+    border: 2px solid rgb(30, 185, 0) !important;
+}
+
+/* Artes – Mirian (2º–5º): Laranja */
+.tabela-horario td.artes-mirian {
+    background-color: rgb(255, 165, 0) !important;
+    color: rgb(0, 0, 0) !important;
+    font-weight: bold;
+    border: 2px solid rgb(200, 120, 0) !important;
+}
+
+/* Artes – Bianca (1º ano): Amarelo */
+.tabela-horario td.artes-bianca {
+    background-color: rgb(255, 255, 0) !important;
+    color: rgb(0, 0, 0) !important;
+    font-weight: bold;
+    border: 2px solid rgb(200, 200, 0) !important;
+}
+
+/* Of. Leitura: Vermelho */
+.tabela-horario td.leitura {
+    background-color: rgb(255, 0, 0) !important;
+    color: rgb(255, 255, 255) !important;
+    font-weight: bold;
+    border: 2px solid rgb(180, 0, 0) !important;
+}
+
+/* Of. Maker: Roxo */
+.tabela-horario td.maker {
+    background-color: rgb(155, 89, 182) !important;
+    color: rgb(255, 255, 255) !important;
+    font-weight: bold;
+    border: 2px solid rgb(110, 55, 140) !important;
+}
+
+/* Sebrae / DSE: Ciano */
+.tabela-horario td.sebrae {
+    background-color: rgb(0, 255, 255) !important;
+    color: rgb(0, 0, 0) !important;
+    font-weight: bold;
+    border: 2px solid rgb(0, 185, 185) !important;
+}
+
+/* PROERD: Branco */
+.tabela-horario td.proerd {
+    background-color: rgb(255, 255, 255) !important;
+    color: rgb(0, 0, 0) !important;
+    font-weight: bold;
+    border: 2px solid rgb(180, 180, 180) !important;
+}
+
+/* Reunião: Cinza escuro */
+.tabela-horario td.reuniao {
+    background: rgb(31, 41, 55) !important;
+    color: rgb(107, 114, 128) !important;
+    font-style: italic;
+}
+
+/* Apoio / P.A.: Teal */
+.tabela-horario td.apoio-pa {
+    background-color: rgb(20, 184, 166) !important;
+    color: rgb(0, 0, 0) !important;
+    font-weight: bold;
+    border: 2px solid rgb(13, 148, 136) !important;
+}
+
+/* Textos internos herdam cor */
+.tabela-horario td.ef-marjorie span,
+.tabela-horario td.ef-marcos span,
+.tabela-horario td.ingles span,
+.tabela-horario td.artes-mirian span,
+.tabela-horario td.artes-bianca span,
+.tabela-horario td.leitura span,
+.tabela-horario td.maker span,
+.tabela-horario td.sebrae span,
+.tabela-horario td.proerd span,
+.tabela-horario td.apoio-pa span {
+    color: inherit !important;
+}
+
+.tabela-horario span.tipo.ha {
+    font-size: 10px;
+    font-weight: 700;
+    background: rgba(0, 0, 0, 0.25);
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-top: 4px;
+    display: inline-block;
+    letter-spacing: 0.04em;
+}
+
+.tabela-horario span.disciplina {
+    font-weight: 700;
+    display: block;
+}
+
+/* Intervalo / Almoço */
+.linha-intervalo td,
+.linha-almoco td {
+    background: #1f2937 !important;
+    color: #6b7280 !important;
+    font-style: italic;
+    font-weight: 600;
+    padding: 6px;
+    border: 1px solid #374151 !important;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+}
+
+/* Empty state */
+.empty-state {
+    text-align: center;
+    padding: var(--spacing-2xl);
+    background: var(--bg-elevated);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-primary);
+}
+
+.empty-state i {
+    font-size: 3rem;
+    color: var(--text-tertiary);
+    margin-bottom: var(--spacing-md);
+}
+
+.empty-state h3 {
+    font-size: var(--font-size-xl);
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+}
+
+.empty-state p {
+    color: var(--text-secondary);
+}
+
+.aviso-geral,
+.aviso-prof {
+    text-align: center;
+    padding: var(--spacing-2xl);
+    background: var(--bg-elevated);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-primary);
+}
+
+.prof-header h2 {
+    margin-bottom: var(--spacing-lg);
+    color: var(--primary);
+}
+
+/* ===================================================
+   HORÁRIO GERAL — Tema escuro (dark)
+   =================================================== */
+
+.consolidado-container {
+    background: rgb(15, 23, 42);
+    padding: var(--spacing-xl);
+    border-radius: 10px;
+    border: 2px solid rgb(55, 65, 81);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    color: rgb(229, 231, 235);
+    overflow-x: auto;
+}
+
+.consolidado-header {
+    text-align: center;
+    position: relative;
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 2px solid rgb(55, 65, 81);
+}
+
+.consolidado-header h1 {
+    font-size: 18px;
+    margin: 0;
+    color: rgb(241, 245, 249);
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.consolidado-header .data-ref {
+    position: absolute;
+    right: 0;
+    bottom: -8px;
+    color: rgb(248, 113, 113);
+    font-weight: 700;
+    font-size: 11px;
+}
+
+/* Tabela Consolidada (Geral) — dark */
+.tabela-consolidada {
+    width: 100%;
+    border-collapse: collapse;
+    background: rgb(17, 24, 39);
+    font-size: 11px;
+}
+
+.tabela-consolidada th,
+.tabela-consolidada td {
+    border: 1px solid rgb(55, 65, 81) !important;
+    text-align: center;
+    padding: 3px 4px !important;
+    font-size: 11px !important;
+    color: rgb(209, 213, 219);
+    background: rgb(17, 24, 39);
+}
+
+.tabela-consolidada th {
+    background: rgb(31, 41, 55) !important;
+    color: rgb(229, 231, 235) !important;
+    font-weight: 700;
+    border: 1px solid rgb(75, 85, 99) !important;
+}
+
+/* Separador entre dias */
+.tabela-consolidada .spacer-col {
+    background: rgb(31, 41, 55) !important;
+    border: none !important;
+    border-left: 2px solid rgb(75, 85, 99) !important;
+    border-right: 2px solid rgb(75, 85, 99) !important;
+    width: 6px;
+    min-width: 6px;
+    padding: 0 !important;
+}
+
+/* Coluna fixa (turmas) */
+.tabela-consolidada .col-fixa {
+    background: rgb(30, 41, 59) !important;
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    border-right: 2px solid rgb(75, 85, 99) !important;
+    font-weight: 700;
+    color: rgb(226, 232, 240);
+    white-space: nowrap;
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+}
+
+.tabela-consolidada .turma-label {
+    font-weight: 700;
+}
+
+/* Células de aula na visão geral — cores Excel */
+.aula-cell {
+    width: 22px;
+    min-width: 22px;
+    height: 22px;
+    font-weight: 700;
+    font-size: 10px !important;
+    padding: 2px !important;
+}
+
+/* Aplicar cores nas células do geral — igual ao Excel */
+/* ── CORES GERAL (Visão Consolidada) — rgb() ── */
+.tabela-consolidada td.ef-marjorie {
+    background-color: rgb(255, 0, 255) !important;
+    color: rgb(0, 0, 0) !important;
+    font-weight: bold;
+}
+
+.tabela-consolidada td.ef-marcos {
+    background-color: rgb(0, 112, 192) !important;
+    color: rgb(255, 255, 255) !important;
+    font-weight: bold;
+}
+
+.tabela-consolidada td.ingles {
+    background-color: rgb(57, 255, 20) !important;
+    color: rgb(0, 0, 0) !important;
+    font-weight: bold;
+}
+
+.tabela-consolidada td.artes-mirian {
+    background-color: rgb(255, 165, 0) !important;
+    color: rgb(0, 0, 0) !important;
+    font-weight: bold;
+}
+
+.tabela-consolidada td.artes-bianca {
+    background-color: rgb(255, 255, 0) !important;
+    color: rgb(0, 0, 0) !important;
+    font-weight: bold;
+}
+
+.tabela-consolidada td.leitura {
+    background-color: rgb(255, 0, 0) !important;
+    color: rgb(255, 255, 255) !important;
+    font-weight: bold;
+}
+
+.tabela-consolidada td.maker {
+    background-color: rgb(155, 89, 182) !important;
+    color: rgb(255, 255, 255) !important;
+    font-weight: bold;
+}
+
+.tabela-consolidada td.sebrae {
+    background-color: rgb(0, 255, 255) !important;
+    color: rgb(0, 0, 0) !important;
+    font-weight: bold;
+}
+
+.tabela-consolidada td.proerd {
+    background-color: rgb(255, 255, 255) !important;
+    color: rgb(0, 0, 0) !important;
+    font-weight: bold;
+}
+
+.tabela-consolidada td.apoio-pa {
+    background-color: rgb(20, 184, 166) !important;
+    color: rgb(0, 0, 0) !important;
+    font-weight: bold;
+}
+
+/* Reuniões especiais */
+.reuni-pef {
+    background: #f3f4f6 !important;
+    border: 1px dashed #6b7280 !important;
+    font-weight: 700 !important;
+    color: #374151 !important;
+}
+
+.reuni-par {
+    background: #f3f4f6 !important;
+    border: 1px dashed #6b7280 !important;
+    font-weight: 700 !important;
+    color: #374151 !important;
+}
+
+.proerd-lima {
+    background: #dbeafe !important;
+    border: 1px solid #93c5fd !important;
+    color: #1e3a8a !important;
+    font-weight: 700 !important;
+}
+
+/* Linha de turma zebra (opcional, claridade) */
+.tabela-consolidada tbody tr:nth-child(even) td:not([class*="ef-"]):not([class*="ingles"]):not([class*="artes"]):not([class*="leitura"]):not([class*="maker"]):not([class*="sebrae"]):not([class*="proerd"]):not(.reuni-pef):not(.reuni-par):not(.proerd-lima):not(.spacer-col):not(.col-fixa) {
+    background: #1f2937 !important;
+}
+
+/* Cabeçalho de dia */
+.tabela-consolidada .dia-header {
+    background: #374151 !important;
+    color: #f9fafb !important;
+    font-weight: 700;
+    font-size: 11px !important;
+    letter-spacing: 0.06em;
+    border: 1px solid #6b7280 !important;
+}
+
+/* Legenda Section */
+.legenda-section {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-xl);
+    flex-wrap: wrap;
+    font-size: var(--font-size-sm);
+    color: rgb(209, 213, 219);
+}
+
+.legenda-box {
+    flex: 1;
+    min-width: 220px;
+    background: rgb(31, 41, 55);
+    padding: var(--spacing-md);
+    border-radius: 8px;
+    border: 1px solid rgb(75, 85, 99);
+}
+
+.legenda-title {
+    font-weight: 700;
+    font-size: 12px;
+    margin-bottom: var(--spacing-sm);
+    color: rgb(243, 244, 246);
+    text-transform: uppercase;
+    border-bottom: 1px solid rgb(75, 85, 99);
+    padding-bottom: var(--spacing-xs);
+    letter-spacing: 0.05em;
+}
+
+.legenda-box p {
+    margin: 4px 0;
+    color: rgb(156, 163, 175);
+    font-size: 12px;
+}
+
+.leg-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: 5px;
+    color: rgb(209, 213, 219);
+    font-size: 12px;
+}
+
+.color-box {
+    display: inline-block;
+    width: 28px;
+    height: 18px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 9px;
+    line-height: 18px;
+    border-radius: 3px;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    flex-shrink: 0;
+}
+
+/* Aplicar as cores também nos color-box da legenda */
+/* ── LEGENDA color-box — rgb() ── */
+.color-box.ef-marjorie {
+    background: rgb(255, 0, 255);
+    color: rgb(0, 0, 0);
+}
+
+.color-box.ef-marcos {
+    background: rgb(0, 112, 192);
+    color: rgb(255, 255, 255);
+}
+
+.color-box.ingles {
+    background: rgb(57, 255, 20);
+    color: rgb(0, 0, 0);
+}
+
+.color-box.artes-mirian {
+    background: rgb(255, 165, 0);
+    color: rgb(0, 0, 0);
+}
+
+.color-box.artes-bianca {
+    background: rgb(255, 255, 0);
+    color: rgb(0, 0, 0);
+}
+
+.color-box.leitura {
+    background: rgb(255, 0, 0);
+    color: rgb(255, 255, 255);
+}
+
+.color-box.maker {
+    background: rgb(155, 89, 182);
+    color: rgb(255, 255, 255);
+}
+
+.color-box.sebrae {
+    background: rgb(0, 255, 255);
+    color: rgb(0, 0, 0);
+}
+
+.color-box.proerd {
+    background: rgb(255, 255, 255);
+    color: rgb(0, 0, 0);
+    border: 1px solid rgb(180, 180, 180);
+}
+
+.color-box.reuni-pef {
+    background: rgb(243, 244, 246);
+    color: rgb(55, 65, 81);
+    border: 1px dashed rgb(107, 114, 128);
+}
+
+.color-box.reuni-par {
+    background: rgb(243, 244, 246);
+    color: rgb(55, 65, 81);
+    border: 1px dashed rgb(107, 114, 128);
+}
+
+.color-box.proerd-lima {
+    background: rgb(219, 234, 254);
+    color: rgb(30, 58, 138);
+    border: 1px solid rgb(147, 197, 253);
+}
+
+.grid-2cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-sm);
+}
+
+@media (max-width: 768px) {
+    .legenda-section {
+        flex-direction: column;
+    }
+}
+
+/* EDITOR STYLES */
+.editable-cell {
+    cursor: text;
+    transition: background 0.2s;
+    min-width: 50px;
+}
+
+.editable-cell:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.editable-cell:focus {
+    background: rgba(255, 255, 255, 0.1) !important;
+    outline: 2px solid var(--primary);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    z-index: 5;
+}
+
+.palette-btn {
+    padding: 4px 8px;
+    font-size: 10px;
+    text-transform: uppercase;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.palette-btn:hover {
+    filter: brightness(1.2);
+}
+
+.spin {
+    animation: fa-spin 2s infinite linear;
+}
+
+@keyframes fa-spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(359deg);
+    }
+}
+
+/* ===================================================
+   RESPONSIVIDADE (Tabelas)
+   =================================================== */
+@media (max-width: 768px) {
+    .page-header h1 {
+        font-size: 20px;
+    }
+
+    .tabela-horario {
+        padding: 10px;
+    }
+
+    .table-responsive {
+        -webkit-overflow-scrolling: touch;
+        margin-left: -10px;
+        margin-right: -10px;
+        width: calc(100% + 20px);
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+    }
+
+    /* Tabela Individual (Professores/Turmas) */
+    .tabela-horario table {
+        min-width: 480px;
+    }
+
+    .tabela-horario th,
+    .tabela-horario td {
+        padding: 6px 4px;
+        font-size: 11px;
+    }
+
+    /* Coluna de horário fixa na esquerda ao rolar */
+    .tabela-horario th:first-child,
+    .tabela-horario td.hora-col {
+        position: sticky;
+        left: 0;
+        z-index: 10;
+        box-shadow: 3px 0 6px rgba(0, 0, 0, 0.4);
+    }
+
+    .tabela-horario th:first-child {
+        z-index: 11;
+    }
+
+    /* Tabela Consolidada (Geral) */
+    .tabela-consolidada thead th {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+    }
+
+    .tabela-consolidada thead th.col-fixa {
+        z-index: 10;
+        /* Topo e Esquerda fixos */
+    }
+
+    .aula-cell {
+        font-size: 9px !important;
+        padding: 1px !important;
+    }
+}
+
+/* ── Toast Notification ───────────────────────────────────────── */
+.toast-notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #10b981;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 10000;
+    transform: translateY(100px);
+    opacity: 0;
+    transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55), opacity 0.3s ease;
+    font-weight: 600;
+}
+
+.toast-notification.show {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.toast-notification.error {
+    background: #ef4444;
+}
+
+.toast-notification i {
+    font-size: 1.2rem;
+}

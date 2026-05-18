@@ -1,0 +1,570 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Sistema de Cadastro Escolar - Ferramentas de Manutenção">
+    <title>Ferramentas - Sistema Escolar</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/favicon/favicon.png">    <link rel="apple-touch-icon" href="/favicon/favicon.png">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/watermark.css">
+
+    <style>
+        .tools-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .tools-header {
+            margin-bottom: var(--spacing-xl);
+        }
+
+        .tool-card {
+            background-color: var(--bg-white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            padding: var(--spacing-xl);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .tool-card h3 {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .tool-card p {
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .tool-actions {
+            display: flex;
+            gap: var(--spacing-sm);
+            flex-wrap: wrap;
+        }
+
+        .stats-info {
+            background-color: var(--bg-color);
+            border-radius: var(--radius);
+            padding: var(--spacing-md);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .stats-info h4 {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: var(--spacing-md);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-item .value {
+            font-size: var(--font-size-2xl);
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .stat-item .label {
+            font-size: var(--font-size-xs);
+            color: var(--text-muted);
+        }
+
+        .danger-zone {
+            border: 2px solid var(--danger-color);
+            background-color: var(--danger-bg);
+        }
+
+        .danger-zone h3 {
+            color: var(--danger-color);
+        }
+
+        .log-area {
+            background-color: var(--bg-dark);
+            color: #22c55e;
+            font-family: var(--font-mono);
+            font-size: var(--font-size-sm);
+            padding: var(--spacing-md);
+            border-radius: var(--radius);
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: var(--spacing-md);
+        }
+
+        .log-area:empty::before {
+            content: 'Aguardando ação...';
+            color: var(--text-muted);
+        }
+    </style>
+    <link rel="stylesheet" href="../css/parallax-glass.css">
+    <link rel="stylesheet" href="../css/neo-brutal.css">
+    <!-- Tailwind CSS Play CDN — preflight desabilitado para nao conflitar com CSS existente -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      if (window.tailwind) {
+        tailwind.config = { corePlugins: { preflight: false } };
+      }
+    </script></head>
+
+<body>
+    <div class="page">
+        <!-- Navbar -->
+        <nav class="navbar">
+            <div class="navbar-content">
+                <div class="navbar-brand">
+                    <span class="logo"><i class="bi bi-mortarboard-fill"></i></span>
+                    <span>Sistema Escolar</span>
+                </div>
+                <div class="navbar-nav">
+                    <a href="../selecionar.html" class="btn btn-ghost"><i class="bi bi-arrow-left"></i> Voltar</a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="container tools-container">
+                <!-- Header -->
+                <div class="tools-header">
+                    <h1><i class="bi bi-tools"></i> Ferramentas de Manutenção</h1>
+                    <p>Gerencie os dados e configurações do sistema</p>
+                </div>
+
+                <!-- Estatísticas -->
+                <div class="tool-card">
+                    <div class="tool-card">
+                        <h3><i class="bi bi-bar-chart-fill"></i> Estatísticas do Banco de Dados</h3>
+                        <div class="stats-info">
+                            <h4>Dados Armazenados</h4>
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <div class="value" id="statAlunos">0</div>
+                                    <div class="label">Alunos</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="value" id="statNotas">0</div>
+                                    <div class="label">Notas</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="value" id="statAtas">0</div>
+                                    <div class="label">ATAs</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="value" id="statStorage">0 KB</div>
+                                    <div class="label">localStorage</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tool-actions">
+                            <button class="btn btn-outline" id="btnRefreshStats"><i class="bi bi-arrow-clockwise"></i>
+                                Atualizar</button>
+                        </div>
+                    </div>
+
+                    <!-- Backup -->
+                    <div class="tool-card">
+                        <h3><i class="bi bi-floppy-fill"></i> Backup e Restauração</h3>
+                        <p>Faça backup dos dados ou restaure de um backup anterior.</p>
+                        <div class="tool-actions">
+                            <button class="btn btn-primary" id="btnBackup"><i class="bi bi-download"></i> Fazer
+                                Backup</button>
+                            <label class="btn btn-outline">
+                                <i class="bi bi-upload"></i> Restaurar Backup
+                                <input type="file" id="inputRestore" accept=".json" style="display: none;">
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Recarregar Dados Iniciais -->
+                    <div class="tool-card">
+                        <h3><i class="bi bi-folder-fill"></i> Arquivos de Dados (JSON)</h3>
+                        <p>Baixe os arquivos atualizados para substituir na pasta <code>data/</code> do projeto.</p>
+                        <div class="tool-actions">
+                            <button class="btn btn-outline" id="btnExportAlunosJSON"><i class="bi bi-download"></i>
+                                Baixar alunos.json</button>
+                            <button class="btn btn-outline" id="btnExportNotasJSON"><i class="bi bi-download"></i>
+                                Baixar notas.json</button>
+                        </div>
+                    </div>
+
+                    <!-- Recarregar Dados Iniciais -->
+                    <div class="tool-card">
+                        <h3><i class="bi bi-arrow-clockwise"></i> Recarregar Dados Iniciais</h3>
+                        <p>Recarrega os dados de exemplo dos arquivos JSON. Use com cuidado, pois pode sobrescrever
+                            dados
+                            existentes.</p>
+                        <div class="tool-actions">
+                            <button class="btn btn-warning" id="btnReloadData"><i class="bi bi-arrow-clockwise"></i>
+                                Recarregar Dados</button>
+                        </div>
+                    </div>
+
+                    <!-- Zona de Perigo -->
+                    <div class="tool-card danger-zone">
+                        <h3><i class="bi bi-exclamation-triangle-fill"></i> Zona de Perigo</h3>
+                        <p>Ações irreversíveis. Use com extrema cautela!</p>
+                        <div class="tool-actions">
+                            <button class="btn btn-danger" id="btnLimparNotas"><i class="bi bi-trash-fill"></i> Limpar
+                                Notas</button>
+                            <button class="btn btn-danger" id="btnLimparAlunos"><i class="bi bi-trash-fill"></i> Limpar
+                                Alunos</button>
+                            <button class="btn btn-danger" id="btnLimparTudo"><i class="bi bi-trash-fill"></i> Limpar
+                                TUDO</button>
+                        </div>
+                    </div>
+
+                    <!-- Log de Operações -->
+                    <div class="tool-card">
+                        <h3><i class="bi bi-terminal-fill"></i> Log de Operações</h3>
+                        <div class="log-area" id="logArea"></div>
+                    </div>
+                </div>
+        </main>
+
+        <!-- Watermark -->
+        <div class="watermark">
+            <span class="watermark-icon"><i class="bi bi-laptop"></i></span>
+            <span class="watermark-text">Desenvolvido por NanDev</span>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script>
+        const DB_NAME = 'escolaDB';  // Unificado com sistema novo
+        const DB_VERSION = 2;
+        let db = null;
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', async () => {
+            await openDatabase();
+            await refreshStats();
+        });
+
+        // Abrir banco
+        function openDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onerror = () => reject(request.error);
+                request.onsuccess = (e) => {
+                    db = e.target.result;
+                    resolve();
+                };
+                request.onupgradeneeded = (e) => {
+                    const database = e.target.result;
+                    if (!database.objectStoreNames.contains('alunos')) {
+                        database.createObjectStore('alunos', { keyPath: 'id', autoIncrement: true });
+                    }
+                    if (!database.objectStoreNames.contains('notas')) {
+                        database.createObjectStore('notas', { keyPath: 'id', autoIncrement: true });
+                    }
+                };
+            });
+        }
+
+        // Contar registros
+        async function count(storeName) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction([storeName], 'readonly');
+                const store = tx.objectStore(storeName);
+                const request = store.count();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // Obter todos os registros
+        async function getAll(storeName) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction([storeName], 'readonly');
+                const store = tx.objectStore(storeName);
+                const request = store.getAll();
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // Limpar store
+        async function clearStore(storeName) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction([storeName], 'readwrite');
+                const store = tx.objectStore(storeName);
+                const request = store.clear();
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // Log
+        function log(message) {
+            const logArea = document.getElementById('logArea');
+            const time = new Date().toLocaleTimeString('pt-BR');
+            logArea.innerHTML += `[${time}] ${message}\n`;
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        // Atualizar estatísticas
+        async function refreshStats() {
+            try {
+                const alunos = await count('alunos');
+                const notas = await count('notas');
+                const atas = JSON.parse(localStorage.getItem('atas') || '[]').length;
+
+                document.getElementById('statAlunos').textContent = alunos;
+                document.getElementById('statNotas').textContent = notas;
+                document.getElementById('statAtas').textContent = atas;
+
+                // Tamanho do localStorage
+                let total = 0;
+                for (let key in localStorage) {
+                    if (localStorage.hasOwnProperty(key)) {
+                        total += localStorage[key].length * 2; // UTF-16
+                    }
+                }
+                document.getElementById('statStorage').textContent = (total / 1024).toFixed(1) + ' KB';
+
+                log('Estatísticas atualizadas');
+            } catch (error) {
+                log('Erro ao atualizar estatísticas: ' + error.message);
+            }
+        }
+
+        // Event Listeners
+        document.getElementById('btnRefreshStats')?.addEventListener('click', refreshStats);
+
+        // Exportar alunos.json (Formato Nativo)
+        document.getElementById('btnExportAlunosJSON')?.addEventListener('click', async () => {
+            try {
+                const alunos = await getAll('alunos');
+                // Formato esperado pelo sistema: { alunos: [...] }
+                const exportData = { alunos: alunos };
+
+                const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'alunos.json';
+                a.click();
+                URL.revokeObjectURL(url);
+                log('alunos.json gerado com sucesso');
+            } catch (error) {
+                log('Erro ao exportar alunos.json: ' + error.message);
+            }
+        });
+
+        // Exportar notas.json (Formato Nativo)
+        document.getElementById('btnExportNotasJSON')?.addEventListener('click', async () => {
+            try {
+                const notas = await getAll('notas');
+                // Formato esperado pelo sistema: { notas: [...] }
+                const exportData = { notas: notas };
+
+                const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'notas.json';
+                a.click();
+                URL.revokeObjectURL(url);
+                log('notas.json gerado com sucesso');
+            } catch (error) {
+                log('Erro ao exportar notas.json: ' + error.message);
+            }
+        });
+
+        // Backup
+        document.getElementById('btnBackup')?.addEventListener('click', async () => {
+            try {
+                const backup = {
+                    version: '2.0',
+                    date: new Date().toISOString(),
+                    data: {
+                        alunos: await getAll('alunos'),
+                        notas: await getAll('notas'),
+                        atas: JSON.parse(localStorage.getItem('atas') || '[]'),
+                        session: localStorage.getItem('escola_session')
+                    }
+                };
+
+                const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `backup_escola_${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+
+                log('Backup realizado com sucesso');
+            } catch (error) {
+                log('Erro ao fazer backup: ' + error.message);
+            }
+        });
+
+        // Restaurar
+        document.getElementById('inputRestore')?.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                const text = await file.text();
+                const backup = JSON.parse(text);
+
+                if (!backup.version || !backup.data) {
+                    throw new Error('Arquivo de backup inválido');
+                }
+
+                if (!confirm('Isso irá substituir todos os dados atuais. Continuar?')) {
+                    return;
+                }
+
+                // Restaurar IndexedDB
+                await clearStore('alunos');
+                await clearStore('notas');
+
+                const txAlunos = db.transaction(['alunos'], 'readwrite');
+                const storeAlunos = txAlunos.objectStore('alunos');
+                for (const aluno of backup.data.alunos) {
+                    storeAlunos.add(aluno);
+                }
+
+                const txNotas = db.transaction(['notas'], 'readwrite');
+                const storeNotas = txNotas.objectStore('notas');
+                for (const nota of backup.data.notas) {
+                    storeNotas.add(nota);
+                }
+
+                // Restaurar localStorage
+                if (backup.data.atas) {
+                    localStorage.setItem('atas', JSON.stringify(backup.data.atas));
+                }
+
+                log('Backup restaurado com sucesso');
+                await refreshStats();
+                alert('Backup restaurado com sucesso!');
+            } catch (error) {
+                log('Erro ao restaurar: ' + error.message);
+                alert('Erro ao restaurar backup: ' + error.message);
+            }
+        });
+
+        // Recarregar dados iniciais
+        document.getElementById('btnReloadData')?.addEventListener('click', async () => {
+            if (!confirm('Isso irá recarregar os dados de exemplo. Dados existentes serão mantidos. Continuar?')) {
+                return;
+            }
+
+            try {
+                // Carregar alunos
+                const alunosResponse = await fetch('../data/alunos.json');
+                const alunosData = await alunosResponse.json();
+
+                const tx = db.transaction(['alunos'], 'readwrite');
+                const store = tx.objectStore('alunos');
+
+                for (const aluno of alunosData.alunos) {
+                    store.put(aluno);
+                }
+
+                // Carregar notas
+                const notasResponse = await fetch('../data/notas.json');
+                const notasData = await notasResponse.json();
+
+                const txNotas = db.transaction(['notas'], 'readwrite');
+                const storeNotas = txNotas.objectStore('notas');
+
+                for (const nota of notasData.notas) {
+                    storeNotas.put(nota);
+                }
+
+                log('Dados iniciais recarregados');
+                await refreshStats();
+                alert('Dados recarregados com sucesso!');
+            } catch (error) {
+                log('Erro ao recarregar: ' + error.message);
+            }
+        });
+
+        // Limpar notas
+        document.getElementById('btnLimparNotas')?.addEventListener('click', async () => {
+            if (!confirm('ATENÇÍO: Isso irá apagar TODAS as notas. Esta ação é IRREVERSÍVEL. Continuar?')) {
+                return;
+            }
+
+            try {
+                await clearStore('notas');
+                log('Todas as notas foram apagadas');
+                await refreshStats();
+                alert('Notas apagadas com sucesso!');
+            } catch (error) {
+                log('Erro: ' + error.message);
+            }
+        });
+
+        // Limpar alunos
+        document.getElementById('btnLimparAlunos')?.addEventListener('click', async () => {
+            if (!confirm('ATENÇÍO: Isso irá apagar TODOS os alunos e suas notas. Esta ação é IRREVERSÍVEL. Continuar?')) {
+                return;
+            }
+
+            try {
+                await clearStore('alunos');
+                await clearStore('notas');
+                log('Todos os alunos e notas foram apagados');
+                await refreshStats();
+                alert('Alunos e notas apagados com sucesso!');
+            } catch (error) {
+                log('Erro: ' + error.message);
+            }
+        });
+
+        // Limpar tudo
+        document.getElementById('btnLimparTudo')?.addEventListener('click', async () => {
+            if (!confirm('ATENÇÍO MÁXIMA: Isso irá apagar TODOS os dados do sistema. Esta ação é COMPLETAMENTE IRREVERSÍVEL. Tem certeza absoluta?')) {
+                return;
+            }
+
+            if (!confirm('ÚLTIMA CHANCE: Realmente deseja apagar TUDO?')) {
+                return;
+            }
+
+            try {
+                await clearStore('alunos');
+                await clearStore('notas');
+                localStorage.removeItem('atas');
+                localStorage.removeItem('escola_session');
+
+                log('TODOS os dados foram apagados');
+                await refreshStats();
+                alert('Todos os dados foram apagados. Você será redirecionado para o login.');
+                window.location.href = '../index.html';
+            } catch (error) {
+                log('Erro: ' + error.message);
+            }
+        });
+    </script>
+    <script defer src="../js/parallax.js"></script>
+    <script src="../js/vendor.js"></script>
+</body>
+
+</html>

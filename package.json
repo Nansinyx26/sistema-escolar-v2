@@ -1,0 +1,24 @@
+{
+    "name": "sistema-escolar-v2-root",
+    "version": "1.0.0",
+    "description": "Root package for school management system",
+    "scripts": {
+        "install-backend": "cd backend && npm install --legacy-peer-deps",
+        "build": "npm run install-backend && npm run build:css",
+        "start": "cd backend && npm start",
+        "dev": "cd backend && npm run dev",
+        "build:css": "sass scss/main.scss css/main-compiled.css --style=compressed",
+        "watch:css": "sass scss/main.scss css/main-compiled.css --watch --style=expanded"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "devDependencies": {
+        "sass": "^1.99.0"
+    },
+    "dependencies": {
+        "animejs": "^4.4.1",
+        "gsap": "^3.15.0",
+        "three": "^0.134.0"
+    }
+}

@@ -1,0 +1,249 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Sistema de Cadastro Escolar - Painel de Direção">
+    <title>Painel de Direção - Sistema Escolar</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/favicon/favicon.png">    <link rel="apple-touch-icon" href="/favicon/favicon.png">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="direcao.css">
+    <link rel="stylesheet" href="../css/watermark.css">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- Chart.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="../css/parallax-glass.css">
+    <link rel="stylesheet" href="../css/neo-brutal.css">
+    <!-- Tailwind CSS Play CDN — preflight desabilitado para nao conflitar com CSS existente -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      if (window.tailwind) {
+        tailwind.config = { corePlugins: { preflight: false } };
+      }
+    </script></head>
+
+<body>
+    <div class="page">
+        <!-- Navbar -->
+        <nav class="navbar">
+            <div class="navbar-content">
+                <div class="navbar-brand">
+                    <span class="logo"><i class="bi bi-mortarboard-fill"></i></span>
+                    <span>Sistema Escolar</span>
+                </div>
+                <div class="navbar-nav">
+                    <a href="../selecionar.html" class="btn btn-ghost"><i class="bi bi-arrow-left"></i> Voltar</a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="container">
+                <!-- Header -->
+                <div class="direcao-header">
+                    <div>
+                        <h1><i class="bi bi-bar-chart-fill"></i> Painel de Direção</h1>
+                        <p>Visão geral do desempenho escolar</p>
+                    </div>
+                    <div class="direcao-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end;">
+                        <a href="horario-jaguari.html" class="btn btn-primary">
+                            <i class="bi bi-calendar3"></i> Horários 2026
+                        </a>
+                        <button class="btn btn-outline" id="btnExportRelatorio">
+                            <i class="bi bi-download"></i> Exportar Relatório
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filtros -->
+                <div class="filtros-container">
+                    <div class="filtro-group">
+                        <label>Turma:</label>
+                        <select id="filtroTurma" class="form-input">
+                            <option value="">Todas as turmas</option>
+                        </select>
+                    </div>
+                    <div class="filtro-group">
+                        <label>Bimestre:</label>
+                        <select id="filtroBimestre" class="form-input">
+                            <option value="">Todos</option>
+                            <option value="1">1º Bimestre</option>
+                            <option value="2">2º Bimestre</option>
+                            <option value="3">3º Bimestre</option>
+                            <option value="4">4º Bimestre</option>
+                        </select>
+                    </div>
+                    <div class="filtro-group">
+                        <label>Matéria:</label>
+                        <select id="filtroMateria" class="form-input">
+                            <option value="">Todas</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" id="btnAplicarFiltros">
+                        Aplicar Filtros
+                    </button>
+                </div>
+
+                <!-- Cards de Estatísticas -->
+                <div class="stats-grid">
+                    <div class="stat-card primary">
+                        <div class="stat-card-header">
+                            <div class="stat-card-icon"><i class="bi bi-people-fill"></i></div>
+                        </div>
+                        <div class="stat-card-value" id="totalAlunos">0</div>
+                        <div class="stat-card-label">Total de Alunos</div>
+                    </div>
+
+                    <div class="stat-card success">
+                        <div class="stat-card-header">
+                            <div class="stat-card-icon"><i class="bi bi-bar-chart-fill"></i></div>
+                        </div>
+                        <div class="stat-card-value" id="mediaGeral">-</div>
+                        <div class="stat-card-label">Média Geral</div>
+                    </div>
+
+                    <div class="stat-card warning">
+                        <div class="stat-card-header">
+                            <div class="stat-card-icon"><i class="bi bi-file-earmark-text-fill"></i></div>
+                        </div>
+                        <div class="stat-card-value" id="totalAvaliacoes">0</div>
+                        <div class="stat-card-label">Total de Avaliações</div>
+                    </div>
+
+                    <div class="stat-card danger">
+                        <div class="stat-card-header">
+                            <div class="stat-card-icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
+                        </div>
+                        <div class="stat-card-value" id="alunosRisco">0</div>
+                        <div class="stat-card-label">Alunos em Risco</div>
+                    </div>
+                </div>
+
+                <!-- Gráficos -->
+                <div class="graficos-grid">
+                    <div class="grafico-card">
+                        <h3><i class="bi bi-bar-chart-fill"></i> Desempenho por Turma</h3>
+                        <div class="grafico-card-body">
+                            <canvas id="chartTurmas"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="grafico-card">
+                        <h3><i class="bi bi-collection-fill"></i> Desempenho por Matéria</h3>
+                        <div class="grafico-card-body">
+                            <canvas id="chartMaterias"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="grafico-card full-width">
+                        <h3><i class="bi bi-calendar-event"></i> Evolução por Bimestre</h3>
+                        <div class="grafico-card-body">
+                            <canvas id="chartEvolucao"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabela de Rankings -->
+                <div class="ranking-section">
+                    <h3><i class="bi bi-trophy-fill"></i> Ranking de Alunos por Média</h3>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Posição</th>
+                                    <th>Aluno</th>
+                                    <th>Turma</th>
+                                    <th>Média</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rankingTableBody">
+                                <tr>
+                                    <td colspan="4" class="empty-message">Carregando...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Horários Quick Access (Rodapé) -->
+                <div class="horarios-quick-access" style="margin-top: 3rem; background: var(--bg-elevated); padding: 2rem; border-radius: var(--radius-lg); border: 1px solid var(--border-primary);">
+                    <h3 style="margin-bottom: 1rem; color: var(--text-primary); font-size: var(--font-size-lg); display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="bi bi-calendar3"></i> Acesso Rápido - Horários por Turma
+                    </h3>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                        <a href="horario-jaguari.html?tab=geral" class="btn btn-primary" style="margin-right: 1rem;"><i class="bi bi-table"></i> Visão Geral</a>
+                        <a href="horario-jaguari.html?turma=1A" class="btn btn-outline">1º A</a>
+                        <a href="horario-jaguari.html?turma=1B" class="btn btn-outline">1º B</a>
+                        <a href="horario-jaguari.html?turma=1C" class="btn btn-outline">1º C</a>
+                        <a href="horario-jaguari.html?turma=2A" class="btn btn-outline">2º A</a>
+                        <a href="horario-jaguari.html?turma=2B" class="btn btn-outline">2º B</a>
+                        <a href="horario-jaguari.html?turma=2C" class="btn btn-outline">2º C</a>
+                        <a href="horario-jaguari.html?turma=3A" class="btn btn-outline">3º A</a>
+                        <a href="horario-jaguari.html?turma=3B" class="btn btn-outline">3º B</a>
+                        <a href="horario-jaguari.html?turma=3C" class="btn btn-outline">3º C</a>
+                        <a href="horario-jaguari.html?turma=4A" class="btn btn-outline">4º A</a>
+                        <a href="horario-jaguari.html?turma=4B" class="btn btn-outline">4º B</a>
+                        <a href="horario-jaguari.html?turma=4C" class="btn btn-outline">4º C</a>
+                        <a href="horario-jaguari.html?turma=5A" class="btn btn-outline">5º A</a>
+                        <a href="horario-jaguari.html?turma=5B" class="btn btn-outline">5º B</a>
+                        <a href="horario-jaguari.html?turma=5C" class="btn btn-outline">5º C</a>
+                        <a href="horario-jaguari.html?turma=5D" class="btn btn-outline">5º D</a>
+                    </div>
+                    
+                    <h3 style="margin-top: 2rem; margin-bottom: 1rem; color: var(--text-primary); font-size: var(--font-size-lg); display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="bi bi-person-badge"></i> Horários por Professor / Especialista
+                    </h3>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                        <a href="horario-jaguari.html?prof=EDILENE" class="btn btn-outline">Edilene (PA Aux. Dir)</a>
+                        <a href="horario-jaguari.html?prof=MARCOS" class="btn btn-outline">Marcos (Ed. Física)</a>
+                        <a href="horario-jaguari.html?prof=MARJORIE" class="btn btn-outline">Marjorie (Ed. Física)</a>
+                        <a href="horario-jaguari.html?prof=MIRIAN" class="btn btn-outline">Mirian (Artes)</a>
+                        <a href="horario-jaguari.html?prof=ARTES1ANO" class="btn btn-outline">Bianca (Artes 1º)</a>
+                        <a href="horario-jaguari.html?prof=INGLS" class="btn btn-outline">Marcelo (Inglês)</a>
+                        <a href="horario-jaguari.html?prof=OFLEITURA" class="btn btn-outline">Raquel (Leitura)</a>
+                        <a href="horario-jaguari.html?prof=OFMAKER" class="btn btn-outline">Sirlene (Maker)</a>
+                        <a href="horario-jaguari.html?prof=OFSEBRAE" class="btn btn-outline">Cherlane (Sebrae)</a>
+                        <a href="horario-jaguari.html?prof=PAMARCIA" class="btn btn-outline">Marcia (PA)</a>
+                        <a href="horario-jaguari.html?prof=PADIRCEU" class="btn btn-outline">Dirceu (PA)</a>
+                        <a href="horario-jaguari.html?prof=PALOURDES" class="btn btn-outline">Lourdes (PA)</a>
+                        <a href="horario-jaguari.html?prof=PAPIPOCA" class="btn btn-outline">Pipoca (PA)</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Watermark -->
+        <div class="watermark">
+            <span class="watermark-icon"><i class="bi bi-laptop"></i></span>
+            <span class="watermark-text">Desenvolvido por NanDev</span>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="../js/api-config.js"></script>
+    <script defer src="../js/database.js"></script>
+    <script defer src="../js/auth.js"></script>
+    <script type="module" src="direcao.js"></script>
+    <script defer src="../js/watermark.js"></script>
+    <script defer src="../js/parallax.js"></script>
+    <script src="../js/vendor.js"></script>
+</body>
+
+</html>

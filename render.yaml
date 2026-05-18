@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: sistema-escolar-backend
+    runtime: node
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false # Configure no painel do Render
+      - key: PASSWORD_RESET_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        sync: false # Configure no painel do Render com a URL real do frontend
+      - key: EMAIL_HOST
+        sync: false
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      - key: JWT_SECRET
+        sync: false

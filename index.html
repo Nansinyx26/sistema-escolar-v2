@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Sistema de Gerenciamento Escolar - Login">
+    <title>Sistema Escolar — Login</title>
+
+    <!-- PWA e Ícones -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#1a56db">
+    <link rel="icon" type="image/png" href="/favicon/favicon.png">    <link rel="apple-touch-icon" href="/favicon/favicon.png">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/variables.css?v=2.0">
+    <link rel="stylesheet" href="css/base.css?v=2.0">
+    <link rel="stylesheet" href="css/components-new.css?v=2.0">
+    <link rel="stylesheet" href="css/login-new.css?v=2.0">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="css/watermark.css">
+
+    <!-- DOMPurify: Sanitização XSS client-side (Roadmap #3) -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
+</head>
+
+<body>
+    <!-- Development Notice -->
+    <div class="dev-notice">
+        <i class="bi bi-exclamation-triangle"></i>
+        Sistema em desenvolvimento. Pode haver bugs.
+    </div>
+
+    <div class="login-page">
+        <!-- Background Animado (Premium) -->
+        <div class="login-background">
+            <div class="gradient-orb orb-1"></div>
+            <div class="gradient-orb orb-2"></div>
+            <div class="gradient-orb orb-3"></div>
+            <div class="glass-overlay"></div>
+        </div>
+
+        <!-- Container de Login -->
+        <div class="login-container">
+            <div class="login-card">
+                <!-- Header -->
+                <div class="login-header">
+                    <div class="login-logo">
+                        <i class="bi bi-mortarboard-fill"></i>
+                    </div>
+                    <h1>Portal do Docente</h1>
+                    <p>Sua jornada educacional começa aqui. Entre para acessar seu painel.</p>
+                </div>
+
+                <!-- Body -->
+                <div class="login-body">
+                    <!-- Tabs -->
+                    <div class="login-tabs">
+                        <button class="login-tab active" data-tab="login">
+                            <i class="bi bi-box-arrow-in-right"></i>
+                            Entrar
+                        </button>
+                        <button class="login-tab" data-tab="register">
+                            <i class="bi bi-person-plus"></i>
+                            Criar Conta
+                        </button>
+                    </div>
+
+                    <!-- Tab Login -->
+                    <div class="login-tab-content active" id="login-tab">
+                        <form id="loginForm" class="login-form">
+                            <div class="form-group">
+                                <label class="form-label" for="loginEmail">Email</label>
+                                <div class="input-group">
+                                    <i class="input-icon bi bi-envelope"></i>
+                                    <input type="email" id="loginEmail" class="form-input" placeholder="seu@email.com"
+                                        required>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="loginPassword">Senha</label>
+                                <div class="input-group">
+                                    <i class="input-icon bi bi-lock"></i>
+                                    <input type="password" id="loginPassword" class="form-input" placeholder="••••••••"
+                                        required>
+                                    <button type="button" class="password-toggle" id="toggleLoginPassword">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="login-options">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="rememberMe">
+                                    <span>Lembrar-me</span>
+                                </label>
+                                <a href="#" class="link-primary" id="forgotPasswordLink">Esqueceu a
+                                    senha?</a>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-block btn-lg">
+                                <span>Entrar</span>
+                                <i class="bi bi-arrow-right"></i>
+                            </button>
+
+                            <div style="text-align: center; margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.8rem;">
+                                <a href="primeiro-acesso.html" class="link-secondary text-sm">
+                                    <i class="bi bi-shield-check"></i> Primeiro Acesso? Ative sua conta aqui.
+                                </a>
+                                <div style="height: 1px; background: var(--border-color); margin: 0.5rem 0;"></div>
+                                <a href="/portal-responsavel/dist/index.html" class="btn btn-secondary" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-primary); text-decoration: none;">
+                                    <i class="bi bi-people"></i> Portal do Responsável
+                                </a>
+                            </div>
+                        </form>
+
+                        <!-- Google Login removido por segurança (simulação offline desativada) -->
+                    </div>
+
+                    <!-- Tab Registro -->
+                    <div class="login-tab-content" id="register-tab">
+                        <div class="modal-body" style="padding: 1.5rem;">
+                            <div class="auth-header" style="text-align: center; margin-bottom: 2rem;">
+                                <i class="bi bi-person-plus-fill"
+                                    style="font-size: 3rem; color: var(--primary-color); display: block; margin-bottom: 0.5rem;"></i>
+                                <h2 style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary);">Criar sua
+                                    Conta</h2>
+                                <p class="text-secondary">Professor, preencha os dados abaixo e use seu código secreto.
+                                </p>
+                            </div>
+
+                            <form id="registerForm">
+                                <div class="form-group" style="margin-bottom: 1.2rem;">
+                                    <label class="form-label required" for="registerNome">Nome Completo</label>
+                                    <div class="input-group">
+                                        <i class="input-icon bi bi-person"></i>
+                                        <input type="text" id="registerNome" class="form-input"
+                                            placeholder="Seu nome completo" required>
+                                    </div>
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 1.2rem;">
+                                    <label class="form-label required" for="registerEmail">E-mail</label>
+                                    <div class="input-group">
+                                        <i class="input-icon bi bi-envelope"></i>
+                                        <input type="email" id="registerEmail" class="form-input"
+                                            placeholder="seu@email.com" required>
+                                    </div>
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 1.2rem;">
+                                    <label class="form-label required" for="registerCPF">CPF</label>
+                                    <div class="input-group">
+                                        <i class="input-icon bi bi-person-badge"></i>
+                                        <input type="text" id="registerCPF" class="form-input"
+                                            placeholder="000.000.000-00" required maxlength="14">
+                                    </div>
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 1.2rem;">
+                                    <label class="form-label required" for="registerTelefone">Telefone</label>
+                                    <div class="input-group">
+                                        <i class="input-icon bi bi-phone"></i>
+                                        <input type="tel" id="registerTelefone" class="form-input"
+                                            placeholder="(00) 00000-0000" required maxlength="15">
+                                    </div>
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 1.2rem;">
+                                    <label class="form-label required" for="registerCode">Código Secreto da
+                                        Escola</label>
+                                    <div class="input-group">
+                                        <i class="input-icon bi bi-shield-lock"></i>
+                                        <input type="text" id="registerCode" class="form-input"
+                                            placeholder="Digite o código da direção" required>
+                                    </div>
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 1.2rem;">
+                                    <label class="form-label required" for="registerPassword">Senha</label>
+                                    <div class="input-group">
+                                        <i class="input-icon bi bi-lock"></i>
+                                        <input type="password" id="registerPassword" class="form-input"
+                                            placeholder="Mínimo 6 caracteres" required minlength="6">
+                                    </div>
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 2rem;">
+                                <label class="form-label required" for="registerPasswordConfirm">Confirmar Senha</label>
+                                <div class="input-group">
+                                    <i class="input-icon bi bi-lock-fill"></i>
+                                    <input type="password" id="registerPasswordConfirm" class="form-input"
+                                        placeholder="Repita a senha" required minlength="6">
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom: 1.5rem; display: flex; align-items: flex-start; gap: 0.8rem; cursor: pointer;">
+                                <input type="checkbox" id="registerConsent" required style="width: 18px; height: 18px; cursor: pointer; margin-top: 2px;">
+                                <label for="registerConsent" style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4; cursor: pointer;">
+                                    Li e aceito as <a href="politica-privacidade.html" target="_blank" id="link-privacy-policy" style="color: var(--primary-color); text-decoration: underline;">Políticas de Privacidade</a> e autorizo o processamento dos meus dados para fins educacionais.
+                                </label>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-block btn-lg" style="width: 100%;">
+                                    <span>Criar Minha Conta</span>
+                                    <i class="bi bi-arrow-right-short"></i>
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Google Register removido por segurança -->
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="login-footer">
+                    <p>Sistema de Gerenciamento Escolar v3.0</p>
+                    <p class="text-xs text-tertiary">Desenvolvido com ❤️ para educação</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Google Removido -->
+
+    <!-- Modal Esqueci Senha -->
+    <div id="forgotPasswordModal" class="modal hidden">
+        <div class="backdrop" id="backdrop-forgot"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <i class="bi bi-key"></i>
+                    Recuperar Senha
+                </h3>
+                <button class="modal-close" id="btn-close-forgot">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Step 1: Request Code -->
+                <div id="step1" class="password-recovery-step">
+                    <p class="text-secondary mb-md">
+                        Para sua segurança, precisamos validar suas informações cadastradas.
+                    </p>
+                    <form id="requestCodeForm">
+                        <div class="form-group">
+                            <label class="form-label required" for="forgotEmail">Email</label>
+                            <div class="input-group">
+                                <i class="input-icon bi bi-envelope"></i>
+                                <input type="email" id="forgotEmail" class="form-input" placeholder="seu@email.com"
+                                    required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label required" for="forgotCPF">CPF</label>
+                            <div class="input-group">
+                                <i class="input-icon bi bi-person-badge"></i>
+                                <input type="text" id="forgotCPF" class="form-input" placeholder="000.000.000-00"
+                                    required maxlength="14">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label required" for="forgotTelefone">Telefone</label>
+                            <div class="input-group">
+                                <i class="input-icon bi bi-phone"></i>
+                                <input type="tel" id="forgotTelefone" class="form-input" placeholder="(00) 00000-0000"
+                                    required maxlength="15">
+                            </div>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" id="btn-cancelar-forgot">Cancelar</button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i>
+                                Validar Dados
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Step 2: Set Password -->
+                <div id="step2" class="password-recovery-step" style="display: none;">
+                    <p class="text-secondary mb-md">
+                        Dados validados para <strong id="emailDisplay"></strong>. Defina sua nova senha abaixo.
+                    </p>
+                    <form id="resetPasswordForm">
+                        <!-- Código de verificação removido -->
+
+
+                        <div class="form-group">
+                            <label class="form-label required" for="newPassword">Nova Senha</label>
+                            <div class="input-group">
+                                <i class="input-icon bi bi-lock"></i>
+                                <input type="password" id="newPassword" class="form-input" placeholder="••••••••"
+                                    required minlength="6">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label required" for="confirmPassword">Confirmar Senha</label>
+                            <div class="input-group">
+                                <i class="input-icon bi bi-lock-fill"></i>
+                                <input type="password" id="confirmPassword" class="form-input" placeholder="••••••••"
+                                    required minlength="6">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" id="btn-voltar-step1">Voltar</button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg"></i>
+                                Alterar Senha
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Política de Privacidade -->
+    <div id="privacyModal" class="modal hidden">
+        <div class="backdrop" id="backdrop-privacy"></div>
+        <div class="modal-content" style="max-width: 800px; max-height: 80vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <i class="bi bi-shield-lock"></i>
+                    Política de Privacidade
+                </h3>
+                <button class="modal-close" id="btn-close-privacy">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: 2rem; font-size: 0.95rem; line-height: 1.6;">
+                <div style="background: rgba(var(--primary-rgb), 0.1); padding: 1rem; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid rgba(var(--primary-rgb), 0.2);">
+                    <i class="bi bi-check-circle-fill" style="color: var(--primary-color);"></i>
+                    <strong style="color: var(--primary-color);">Conformidade LGPD:</strong> Este sistema trata seus dados conforme a Lei 13.709/2018.
+                </div>
+
+                <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">1. Coleta de Dados</h4>
+                <p class="text-secondary mb-md">Coletamos nome, e-mail, CPF, telefone e cargo para fins de autenticação e gestão administrativa escolar.</p>
+
+                <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">2. Finalidade</h4>
+                <p class="text-secondary mb-md">Seus dados são usados exclusivamente para acesso ao portal, registros de aula, gestão de turmas e comunicações institucionais.</p>
+
+                <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">3. Seus Direitos</h4>
+                <p class="text-secondary mb-md">Você tem direito ao acesso, correção e exclusão de seus dados, bem como à revogação do consentimento, conforme o Art. 18 da LGPD.</p>
+
+                <p class="text-secondary" style="margin-top: 2rem; font-size: 0.85rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                    Para ler a política completa, acesse: <a href="politica-privacidade.html" target="_blank" style="color: var(--primary-color);">Página de Privacidade</a>
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="btn-aceitar-privacy">
+                    Entendi e Aceito
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Modal 2FA — Verificação de Dois Fatores (Roadmap #1) -->
+    <div id="modal2FA" class="modal hidden">
+        <div class="backdrop" id="backdrop2FA"></div>
+        <div class="modal-content" style="max-width: 420px;">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <i class="bi bi-shield-lock-fill" style="color: var(--primary-color);"></i>
+                    Verificação em Dois Fatores
+                </h3>
+            </div>
+            <div class="modal-body" style="padding: 2rem; text-align: center;">
+                <div style="font-size: 3.5rem; margin-bottom: 1rem;">🔐</div>
+                <p class="text-secondary" style="margin-bottom: 0.5rem;">
+                    Um código de 6 dígitos foi enviado para:
+                </p>
+                <p id="twofa-email-display" style="font-weight: 600; color: var(--text-primary); margin-bottom: 1.5rem; font-size: 0.95rem;"></p>
+
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label class="form-label" for="twofa-code-input">Código de Verificação</label>
+                    <div class="input-group">
+                        <i class="input-icon bi bi-key"></i>
+                        <input
+                            type="text"
+                            id="twofa-code-input"
+                            class="form-input"
+                            placeholder="000000"
+                            maxlength="6"
+                            pattern="[0-9]{6}"
+                            inputmode="numeric"
+                            autocomplete="one-time-code"
+                            style="text-align: center; font-size: 1.5rem; letter-spacing: 0.5rem; font-weight: 700;"
+                        >
+                    </div>
+                </div>
+
+                <p id="twofa-timer" style="font-size: 0.8rem; color: var(--text-tertiary); margin-bottom: 1.5rem;">⏱️ Expira em <span id="twofa-countdown">5:00</span></p>
+
+                <button id="twofa-submit-btn" class="btn btn-primary btn-block btn-lg" style="margin-bottom: 1rem;">
+                    <i class="bi bi-check-lg"></i>
+                    <span>Verificar Código</span>
+                </button>
+
+                <button id="twofa-resend-btn" class="btn btn-secondary btn-block" style="font-size: 0.85rem;">
+                    <i class="bi bi-arrow-repeat"></i>
+                    Reenviar código
+                </button>
+
+                <p id="twofa-error-msg" style="color: #ef4444; font-size: 0.85rem; margin-top: 1rem; display: none;"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Watermark -->
+    <a href="https://www.linkedin.com/in/renan-de-oliveira-farias-66a9b412b/" target="_blank" class="nandev-watermark">
+        <div class="cube-container">
+            <div class="wireframe-cube">
+                <div class="cube-face front"></div>
+                <div class="cube-face back"></div>
+                <div class="cube-face right"></div>
+                <div class="cube-face left"></div>
+                <div class="cube-face top"></div>
+                <div class="cube-face bottom"></div>
+            </div>
+        </div>
+        <div class="watermark-text">
+            <span>Desenvolvido por </span>
+            <span class="watermark-highlight">NanDev</span>
+            <span class="code-symbol">&lt;/&gt;</span>
+        </div>
+        <div class="geometric-particles">
+            <div class="particle" style="top: 20%; left: 10%;"></div>
+            <div class="particle" style="top: 60%; left: 80%;"></div>
+            <div class="particle" style="top: 40%; left: 50%;"></div>
+        </div>
+        <div class="holographic-overlay"></div>
+    </a>
+
+    <!-- Scripts -->
+    <script defer src="js/api-config.js"></script>
+    <script defer src="js/database.js"></script>
+    <script defer src="js/auth.js"></script>
+    <script defer src="js/utils.js"></script>
+    <script defer src="js/login.js"></script>
+    <script defer src="js/parallax.js"></script>
+
+    <!-- Script: Lógica do Modal 2FA (Roadmap #1) -->
+    <script>
+    // Estado global do 2FA
+    window._2fa = { userId: null, countdownTimer: null };
+
+    // Abre o modal 2FA após o backend retornar requires2FA=true
+    window.abrirModal2FA = function(userId, emailMascarado) {
+        window._2fa.userId = userId;
+        const modal = document.getElementById('modal2FA');
+        const emailDisplay = document.getElementById('twofa-email-display');
+        const codeInput = document.getElementById('twofa-code-input');
+        const errorMsg = document.getElementById('twofa-error-msg');
+
+        // Usa DOMPurify para sanitizar o e-mail antes de injetar no DOM
+        emailDisplay.textContent = DOMPurify.sanitize(emailMascarado);
+        codeInput.value = '';
+        errorMsg.style.display = 'none';
+        modal.classList.remove('hidden');
+        codeInput.focus();
+        iniciarContagem2FA();
+    };
+
+    // Fecha o modal 2FA
+    window.fecharModal2FA = function() {
+        const modal = document.getElementById('modal2FA');
+        modal.classList.add('hidden');
+        clearInterval(window._2fa.countdownTimer);
+        window._2fa.userId = null;
+    };
+
+    // Contador regressivo de 5 minutos
+    function iniciarContagem2FA() {
+        clearInterval(window._2fa.countdownTimer);
+        let segundos = 5 * 60;
+        const countdownEl = document.getElementById('twofa-countdown');
+
+        window._2fa.countdownTimer = setInterval(() => {
+            segundos--;
+            const m = Math.floor(segundos / 60);
+            const s = segundos % 60;
+            if (countdownEl) countdownEl.textContent = `${m}:${s.toString().padStart(2,'0')}`;
+            if (segundos <= 0) {
+                clearInterval(window._2fa.countdownTimer);
+                if (countdownEl) countdownEl.textContent = 'Expirado';
+                document.getElementById('twofa-submit-btn').disabled = true;
+            }
+        }, 1000);
+    }
+
+    // Verifica o código 2FA
+    async function verificarCodigo2FA() {
+        const userId = window._2fa.userId;
+        const code = document.getElementById('twofa-code-input').value.trim();
+        const errorMsg = document.getElementById('twofa-error-msg');
+        const btn = document.getElementById('twofa-submit-btn');
+
+        if (!code || code.length !== 6) {
+            errorMsg.textContent = 'Digite o código de 6 dígitos.';
+            errorMsg.style.display = 'block';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Verificando...';
+        errorMsg.style.display = 'none';
+
+        try {
+            const baseUrl = window.API_BASE_URL || (
+                (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+                    ? 'http://localhost:3001/api'
+                    : 'https://sistema-escolar-bfty.onrender.com/api'
+            );
+
+            const res = await fetch(`${baseUrl}/auth/2fa/verify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ userId, codigo: code })
+            });
+
+            const data = await res.json();
+
+            if (!data.success) {
+                // Usa DOMPurify para sanitizar a mensagem de erro antes de exibir
+                errorMsg.textContent = DOMPurify.sanitize(data.error || 'Código inválido.');
+                errorMsg.style.display = 'block';
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-lg"></i> Verificar Código';
+                return;
+            }
+
+            // Sucesso: fecha modal e redireciona
+            fecharModal2FA();
+            clearInterval(window._2fa.countdownTimer);
+
+            const usuario = data.usuario;
+            sessionStorage.setItem('currentUser', JSON.stringify(usuario));
+            if (usuario.deveMudarSenha) sessionStorage.setItem('forcePasswordChange', 'true');
+
+            // Mesmo redirecionamento do login normal
+            window.location.href = usuario.deveMudarSenha ? 'mudar-senha.html' : 'escolher-perfil.html';
+
+        } catch (err) {
+            errorMsg.textContent = 'Erro de conexão. Tente novamente.';
+            errorMsg.style.display = 'block';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg"></i> Verificar Código';
+        }
+    }
+
+    // Reenviar código
+    async function reenviarCodigo2FA() {
+        const userId = window._2fa.userId;
+        if (!userId) return;
+
+        try {
+            const baseUrl = window.API_BASE_URL || (
+                (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+                    ? 'http://localhost:3001/api'
+                    : 'https://sistema-escolar-bfty.onrender.com/api'
+            );
+            await fetch(`${baseUrl}/auth/2fa/send`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId })
+            });
+            iniciarContagem2FA();
+            document.getElementById('twofa-submit-btn').disabled = false;
+            document.getElementById('twofa-submit-btn').innerHTML = '<i class="bi bi-check-lg"></i> Verificar Código';
+        } catch(e) { /* silent */ }
+    }
+
+    // Listeners configurados após DOM carregar
+    document.addEventListener('DOMContentLoaded', function() {
+        const submitBtn = document.getElementById('twofa-submit-btn');
+        const resendBtn = document.getElementById('twofa-resend-btn');
+        const codeInput = document.getElementById('twofa-code-input');
+
+        if (submitBtn) submitBtn.addEventListener('click', verificarCodigo2FA);
+        if (resendBtn) resendBtn.addEventListener('click', reenviarCodigo2FA);
+
+        // Submete ao pressionar Enter ou ao completar 6 dígitos
+        if (codeInput) {
+            codeInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') verificarCodigo2FA();
+            });
+            codeInput.addEventListener('input', (e) => {
+                // Remove caracteres não numéricos
+                e.target.value = e.target.value.replace(/\D/g, '');
+                if (e.target.value.length === 6) verificarCodigo2FA();
+            });
+        }
+    });
+
+    // PWA: Registro do Service Worker
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(reg => console.log('✅ PWA Service Worker registrado', reg.scope))
+                .catch(err => console.log('⚠️ Erro ao registrar Service Worker:', err));
+        });
+    }
+    </script>
+    <script src="js/gsap.min.js"></script>
+    <script src="js/anime.min.js"></script>
+    <script src="js/three.min.js"></script>
+    <script src="js/gsap-login.js"></script>
+    <script defer src="js/events/login-events.js"></script>
+</body>
+</html>
