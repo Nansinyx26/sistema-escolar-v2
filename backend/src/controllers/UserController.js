@@ -437,14 +437,16 @@ exports.googleLogin = async (req, res) => {
         if (!user) {
             // Senha fantasma que não será usada, pois ele loga com Google
             const bcrypt = require('bcryptjs');
-            const randomPass = require('crypto').randomBytes(16).toString('hex');
+            const crypto = require('crypto');
+            const randomPass = crypto.randomBytes(16).toString('hex');
             const senhaHash = await bcrypt.hash(randomPass, 10);
+            const tempCpf = `temp_cpf_${crypto.randomBytes(6).toString('hex')}`;
             
             user = await Usuario.create({
                 nome,
                 email,
                 senha: senhaHash,
-                cpf: '000.000.000-00',
+                cpf: tempCpf,
                 telefone: '(00) 00000-0000',
                 perfil: 'responsavel',
                 ativo: true,
@@ -774,6 +776,45 @@ exports.registerResponsavel = async (req, res) => {
         });
 
         res.status(201).json({ success: true, message: 'Conta criada com sucesso! Você já pode fazer login.' });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+};
+
+/**
+ * Permite ao próprio usuário atualizar seus dados cadastrais (ex: CPF e Telefone após login social)
+ */
+exports.updateProfile = async (req, res) => {
+    const { nome, cpf, telefone } = req.body;
+    const userId = req.user.id || req.user._id;
+
+    try {
+        if (!nome) {
+            return res.status(400).json({ success: false, error: 'Nome é obrigatório.' });
+        }
+        if (!cpf || !/^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(cpf)) {
+            return res.status(400).json({ success: false, error: 'CPF inválido. Use o formato 000.000.000-00.' });
+        }
+        if (!telefone || !/^\(\d{2}\) \d{4,5}-\d{4}$/.test(telefone)) {
+            return res.status(400).json({ success: false, error: 'Telefone inválido. Use o formato (00) 00000-0000.' });
+        }
+
+        // Verifica duplicidade de CPF em outro usuário
+        const existingCpf = await Usuario.findOne({ cpf, _id: { $ne: userId } });
+        if (existingCpf) {
+            return res.status(400).json({ success: false, error: 'Este CPF já está cadastrado por outro usuário.' });
+        }
+
+        const user = await Usuario.findByIdAndUpdate(userId, {
+            $set: { nome, cpf, telefone }
+        }, { new: true }).lean();
+
+        if (!user) return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
+
+        const { senha, loginAttempts, __v, ...safeUser } = user;
+        if (!safeUser.id) safeUser.id = String(user._id);
+
+        res.json({ success: true, user: safeUser });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }

@@ -98,6 +98,8 @@ router.get('/auth/me', authJWT, async (req, res) => {
     }
 });
 
+router.put('/auth/profile', authJWT, UserController.updateProfile);
+
 // --- 2FA (Autenticação de Dois Fatores) — MELHORIA Roadmap #1 ---
 // Enviar código: não requer JWT (usuário acabou de validar senha, ainda sem cookie)
 router.post('/auth/2fa/send', TwoFactorController.sendCode);

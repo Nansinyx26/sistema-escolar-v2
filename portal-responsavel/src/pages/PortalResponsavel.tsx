@@ -26,6 +26,7 @@ import NotesCard from '../components/NotesCard';
 import FrequencyCard from '../components/FrequencyCard';
 import NotificationsPanel from '../components/NotificationsPanel';
 import VincularFilho from '../components/VincularFilho';
+import CompletarCadastro from '../components/CompletarCadastro';
 import type { Student, Grade, Attendance, Notification, GmailUser } from '../types';
 import styles from '../styles/portal.module.scss';
 
@@ -458,6 +459,36 @@ const PortalResponsavel: React.FC = () => {
 
   // ─── Dashboard ─────────────────────────────────────────────────────────────
   const gmailUser = toGmailUser(authUser);
+
+  // Check if profile details are incomplete
+  const isProfileIncomplete = authUser && (
+    !authUser.cpf ||
+    authUser.cpf.startsWith('temp_cpf') ||
+    authUser.cpf === '000.000.000-00' ||
+    !authUser.telefone ||
+    authUser.telefone === '(00) 00000-0000'
+  );
+
+  // If profile is incomplete, render the complete registration view
+  if (authUser && isProfileIncomplete) {
+    return (
+      <div className={styles.portal}>
+        <Header 
+          user={gmailUser} 
+          notifications={notifications}
+          onLogout={handleLogout} 
+          onBellClick={() => setShowNotifications((v) => !v)}
+        />
+        <CompletarCadastro 
+          user={authUser}
+          onSuccess={(updatedUser) => {
+            setAuthUser(updatedUser);
+            setToast({ message: 'Cadastro completado com sucesso!', type: 'success' });
+          }}
+        />
+      </div>
+    );
+  }
 
   // ─── Link child screen ───────────────────────────────────────────────────
   if (students.length === 0 || isLinking) {
