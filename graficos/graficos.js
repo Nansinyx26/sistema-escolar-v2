@@ -93,6 +93,13 @@ class GraficosPage {
                 return myTurmasIds.some(myId => normalize(myId) === tIdNorm);
             });
 
+            // Ordenação alfabética natural (1A, 1B, 2A...)
+            turmasFiltradas.sort((a, b) => {
+                const idA = String(a.id || a._id || '');
+                const idB = String(b.id || b._id || '');
+                return idA.localeCompare(idB, undefined, { numeric: true, sensitivity: 'base' });
+            });
+
             select.innerHTML = '<option value="">Selecione uma turma...</option>';
             if (turmasFiltradas.length === 0) {
                 const opt = document.createElement('option');

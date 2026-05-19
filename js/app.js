@@ -276,6 +276,13 @@ class App {
             turmas = filtered ? myTurmas : [];
         }
 
+        // Ordenação alfabética natural (1A, 1B, 2A...)
+        turmas.sort((a, b) => {
+            const idA = String(a.id || '').toUpperCase();
+            const idB = String(b.id || '').toUpperCase();
+            return idA.localeCompare(idB, undefined, { numeric: true, sensitivity: 'base' });
+        });
+
         const professoresCadastrados = await this.getProfessoresPorTurma();
         const turmasPorAno = {};
         for (const turma of turmas) {

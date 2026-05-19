@@ -70,6 +70,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Turmas
             allTurmas = await db.getAll('turmas');
+            allTurmas.sort((a, b) => {
+                const idA = String(a.id || a.nome || a._id || '');
+                const idB = String(b.id || b.nome || b._id || '');
+                return idA.localeCompare(idB, undefined, { numeric: true, sensitivity: 'base' });
+            });
             selTurma.innerHTML = '<option value="">Selecione a Turma...</option>';
             allTurmas.forEach(t => {
                 const opt = document.createElement('option');
