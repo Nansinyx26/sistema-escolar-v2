@@ -425,10 +425,21 @@
 
 .infoGrid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
 
   @include respond-to(sm) { grid-template-columns: 1fr; }
+}
+
+.infoItemFull {
+  grid-column: 1 / -1;
+  background: $bg-tertiary;
+  border: 1px solid $border-color;
+  border-radius: $radius-md;
+  padding: 12px 10px;
+  transition: border-color $transition-smooth;
+
+  &:hover { border-color: rgba($accent-cyan, 0.3); }
 }
 
 .infoItem {

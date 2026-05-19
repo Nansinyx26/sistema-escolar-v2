@@ -92,6 +92,46 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, lgpdAccepted = true 
             </dt>
             <dd className={styles.infoValue}>{formatDate(student.dataNascimento)}</dd>
           </div>
+
+          <div className={styles.infoItem}>
+            <dt className={styles.infoLabel}>
+              <i className="ti ti-id-badge" aria-hidden="true" /> CPF
+            </dt>
+            <dd className={styles.infoValue}>{lgpdAccepted ? (student.cpfAluno || 'N/A') : '***'}</dd>
+          </div>
+
+          <div className={styles.infoItem}>
+            <dt className={styles.infoLabel}>
+              <i className="ti ti-phone" aria-hidden="true" /> Telefone
+            </dt>
+            <dd className={styles.infoValue}>{lgpdAccepted ? (student.telefone || 'N/A') : '***'}</dd>
+          </div>
+
+          <div className={styles.infoItemFull}>
+            <dt className={styles.infoLabel}>
+              <i className="ti ti-ambulance" aria-hidden="true" /> Alergias
+            </dt>
+            <dd className={styles.infoValue}>
+              {lgpdAccepted 
+                ? ((student.alergiasAlimentos || student.alergiasRemedio) 
+                    ? `${student.alergiasAlimentos || ''} ${student.alergiasRemedio ? `(Remédios: ${student.alergiasRemedio})` : ''}`.trim() 
+                    : 'Nenhuma') 
+                : '***'}
+            </dd>
+          </div>
+          
+          <div className={styles.infoItemFull}>
+            <dt className={styles.infoLabel}>
+              <i className="ti ti-heartbeat" aria-hidden="true" /> Condição / Saúde
+            </dt>
+            <dd className={styles.infoValue}>
+              {lgpdAccepted 
+                ? ((student.pcd || student.deficiencia || student.condicao) 
+                    ? `${student.deficiencia || ''} ${student.condicao || ''}`.trim() || 'Sim' 
+                    : 'Nenhuma') 
+                : '***'}
+            </dd>
+          </div>
         </dl>
       </div>
     </article>

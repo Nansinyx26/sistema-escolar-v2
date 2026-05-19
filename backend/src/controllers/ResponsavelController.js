@@ -54,7 +54,7 @@ exports.getAlunos = async (req, res) => {
         const query = { $or: [{ responsavel: email }, { responsavel: new RegExp(`^${email}$`, 'i') }] };
         const alunos = await Aluno.find(query).lean();
 
-        // Retorna apenas campos seguros
+        // Retorna todos os dados para o frontend usar (dados pessoais, médicos, etc)
         const safeAlunos = alunos.map(aluno => ({
             id:             aluno._id,
             nome:           aluno.nome,
@@ -64,6 +64,21 @@ exports.getAlunos = async (req, res) => {
             dataNascimento: aluno.nascimento,
             ativo:          aluno.ativo,
             foto:           aluno.foto || null,
+            cpfAluno:       aluno.cpfAluno || '',
+            telefone:       aluno.telefone || '',
+            endereco:       aluno.endereco || null,
+            nacionalidade:  aluno.nacionalidade || '',
+            etnia:          aluno.etnia || '',
+            religiao:       aluno.religiao || '',
+            responsavelDados: aluno.responsavelDados || null,
+            alergiasAlimentos: aluno.alergiasAlimentos || '',
+            alergiasRemedio: aluno.alergiasRemedio || '',
+            planoSaude:     aluno.planoSaude || '',
+            deficiencia:    aluno.deficiencia || '',
+            pcd:            aluno.pcd || false,
+            nivel:          aluno.nivel || '',
+            condicao:       aluno.condicao || '',
+            observacoes:    aluno.observacoes || ''
         }));
 
         res.json({ success: true, data: safeAlunos });

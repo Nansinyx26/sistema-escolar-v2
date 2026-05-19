@@ -13,6 +13,21 @@ export interface Student {
   dataNascimento: string; // ISO 8601
   foto?: string;
   responsavelId: string;
+  cpfAluno?: string;
+  telefone?: string;
+  endereco?: any;
+  nacionalidade?: string;
+  etnia?: string;
+  religiao?: string;
+  responsavelDados?: any;
+  alergiasAlimentos?: string;
+  alergiasRemedio?: string;
+  planoSaude?: string;
+  deficiencia?: string;
+  pcd?: boolean;
+  nivel?: string;
+  condicao?: string;
+  observacoes?: string;
 }
 
 export interface Grade {

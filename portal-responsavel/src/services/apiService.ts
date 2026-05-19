@@ -129,6 +129,21 @@ interface RawAluno {
   dataNascimento: string;
   foto: string | null;
   ativo: boolean;
+  cpfAluno?: string;
+  telefone?: string;
+  endereco?: any;
+  nacionalidade?: string;
+  etnia?: string;
+  religiao?: string;
+  responsavelDados?: any;
+  alergiasAlimentos?: string;
+  alergiasRemedio?: string;
+  planoSaude?: string;
+  deficiencia?: string;
+  pcd?: boolean;
+  nivel?: string;
+  condicao?: string;
+  observacoes?: string;
 }
 
 /** Fetch the students linked to the authenticated guardian's email. */
@@ -143,6 +158,21 @@ export async function getAlunosDoResponsavel(): Promise<Student[]> {
     dataNascimento:  r.dataNascimento,
     foto:            r.foto ?? undefined,
     responsavelId:   '',   // not needed on the client
+    cpfAluno:        r.cpfAluno,
+    telefone:        r.telefone,
+    endereco:        r.endereco,
+    nacionalidade:   r.nacionalidade,
+    etnia:           r.etnia,
+    religiao:        r.religiao,
+    responsavelDados: r.responsavelDados,
+    alergiasAlimentos: r.alergiasAlimentos,
+    alergiasRemedio: r.alergiasRemedio,
+    planoSaude:      r.planoSaude,
+    deficiencia:     r.deficiencia,
+    pcd:             r.pcd,
+    nivel:           r.nivel,
+    condicao:        r.condicao,
+    observacoes:     r.observacoes
   }));
 }
 
