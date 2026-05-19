@@ -13,6 +13,7 @@
 const Aluno = require('../models/Aluno');
 const Nota  = require('../models/Nota');
 const Falta = require('../models/Falta');
+const FrequenciaProfessor = require('../models/FrequenciaProfessor');
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -254,29 +255,59 @@ exports.getFrequencia = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
         }
 
-        const faltas = await Falta.find({
+        // Buscar registros na coleção de faltas
+        const queryFaltas = {
             $or: [
                 { aluno: String(aluno._id) },
                 { aluno: aluno._id },
                 { aluno: aluno.id },
+                { alunoId: String(aluno._id) },
+                { alunoId: aluno._id },
+                { alunoId: aluno.id },
                 { matriculaId: aluno.matricula }
             ]
+        };
+        const faltas = await Falta.find(queryFaltas).lean();
+
+        // 1. Filtrar ausências efetivas (presente === false ou ausente no sistema legacy sem o campo 'presente')
+        const faltasEfetivas = faltas.filter((f) => f.presente === false || f.presente === undefined);
+        const ausencia = faltasEfetivas.filter((f) => !f.justificada).length;
+        const atraso   = faltasEfetivas.filter((f) => f.justificada).length;
+
+        // 2. Determinar a quantidade total de aulas ministradas para a turma deste aluno
+        const turmasBusca = [aluno.turma, aluno.turmaId].filter(Boolean);
+        const aulasProfessor = await FrequenciaProfessor.find({
+            classe: { $in: turmasBusca }
         }).lean();
 
-        if (!faltas.length) {
-            return res.json({
-                success: true,
-                data: { presenca: 0, ausencia: 0, atraso: 0, percentual: 0 },
+        let totalAulas = 0;
+        if (aulasProfessor.length > 0) {
+            totalAulas = aulasProfessor.reduce((sum, aula) => sum + (aula.quantidadeAulas || 1), 0);
+        } else {
+            // Caso não tenha registros em FrequenciaProfessor, tenta pegar dias distintos de chamadas da turma
+            const totalDiasDistintos = await Falta.distinct('data', {
+                turma: { $in: turmasBusca }
             });
+            totalAulas = totalDiasDistintos.length;
         }
 
-        const total    = faltas.length;
-        const ausencia = faltas.filter((f) => f.presente === false && !f.justificada).length;
-        const atraso   = faltas.filter((f) => f.presente === false && f.justificada).length;
-        const presenca = total - ausencia - atraso;
+        // Garante que o total de aulas é pelo menos o total de registros do próprio aluno
+        const totalRegistrosDoAluno = faltas.length;
+        if (totalAulas < totalRegistrosDoAluno) {
+            totalAulas = totalRegistrosDoAluno;
+        }
 
-        const percentual = total > 0
-            ? Math.round(((presenca) / total) * 100)
+        // Se total de aulas ainda for zero, usa um padrão seguro
+        if (totalAulas === 0) {
+            totalAulas = 50; 
+        }
+
+        // A presença do aluno é o total de aulas ministradas menos suas ausências e atrasos
+        let presenca = totalAulas - ausencia - atraso;
+        if (presenca < 0) presenca = 0;
+
+        const percentual = totalAulas > 0
+            ? Math.round((presenca / totalAulas) * 100)
             : 100;
 
         res.json({
