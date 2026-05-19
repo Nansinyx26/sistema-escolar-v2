@@ -361,7 +361,16 @@ exports.login = async (req, res) => {
         res.json({
             success: true,
             requires2FA: false,
-            user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email, deveMudarSenha: user.deveMudarSenha }
+            user: { 
+                id: user._id, 
+                nome: user.nome, 
+                perfil: user.perfil, 
+                email: user.email, 
+                deveMudarSenha: user.deveMudarSenha,
+                cpf: user.cpf,
+                telefone: user.telefone,
+                consentimentoAceiteEm: user.consentimentoAceiteEm
+            }
         });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
@@ -383,7 +392,10 @@ exports.mockGoogleLogin = async (req, res) => {
             id: user._id, 
             perfil: user.perfil, 
             email: user.email, 
-            nome: user.nome 
+            nome: user.nome,
+            cpf: user.cpf,
+            telefone: user.telefone,
+            consentimentoAceiteEm: user.consentimentoAceiteEm
         } : { 
             id: 'mock-google-id', 
             perfil: 'responsavel', 
@@ -478,7 +490,10 @@ exports.googleLogin = async (req, res) => {
             id: user._id, 
             perfil: user.perfil, 
             email: user.email, 
-            nome: user.nome 
+            nome: user.nome,
+            cpf: user.cpf,
+            telefone: user.telefone,
+            consentimentoAceiteEm: user.consentimentoAceiteEm
         };
 
         const sessionToken = jwt.sign(jwtPayload, ACTUAL_JWT_SECRET, { expiresIn: '8h' });

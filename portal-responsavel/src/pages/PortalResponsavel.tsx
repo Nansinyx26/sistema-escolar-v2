@@ -470,7 +470,8 @@ const PortalResponsavel: React.FC = () => {
     authUser.cpf.startsWith('temp_cpf') ||
     authUser.cpf === '000.000.000-00' ||
     !authUser.telefone ||
-    authUser.telefone === '(00) 00000-0000'
+    authUser.telefone === '(00) 00000-0000' ||
+    !(authUser as any).consentimentoAceiteEm
   );
 
   // If profile is incomplete, render the complete registration view
