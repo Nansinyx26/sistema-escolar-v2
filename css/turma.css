@@ -963,3 +963,27 @@ input:checked + .slider:before {
         justify-content: center;
     }
 }
+
+/* Níveis de Leitura - Cores */
+.level-circle {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 8px;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.level-red { background-color: #ff4d4d !important; }
+.level-orange { background-color: #ff9900 !important; }
+.level-yellow { background-color: #ffcc00 !important; }
+.level-blue { background-color: #3399ff !important; }
+.level-green { background-color: #2eb82e !important; }
+
+.level-badge-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
