@@ -29,7 +29,17 @@ const AlunoSchema = new mongoose.Schema({
     nascimento: Date,
     responsavel: String,
     telefone: String,
-    endereco: String,
+    endereco: mongoose.Schema.Types.Mixed,
+    cpfAluno: String,
+    nacionalidade: String,
+    etnia: String,
+    religiao: String,
+    responsavelDados: mongoose.Schema.Types.Mixed,
+    alergiasAlimentos: String,
+    alergiasRemedio: String,
+    planoSaude: String,
+    documentos: mongoose.Schema.Types.Mixed,
+    lgpdConsentimento: mongoose.Schema.Types.Mixed,
 
     // Dados acadêmicos
     nivel: String, // Nível do aluno

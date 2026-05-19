@@ -1,10 +1,4 @@
-/**
- * components/StudentCard.tsx
- * Displays the enrolled student's personal information with avatar,
- * info grid and an "Ativo" status badge.
- */
-
-import React from 'react';
+import React, { useState } from 'react';
 import type { Student } from '../types';
 import styles from '../styles/portal.module.scss';
 
@@ -14,11 +8,17 @@ interface StudentCardProps {
 }
 
 function getInitials(nome: string, sobrenome: string): string {
-  return `${nome[0] ?? ''}${sobrenome[0] ?? ''}`.toUpperCase();
+  const n = (nome || '').trim();
+  const s = (sobrenome || '').trim();
+  if (!n) return 'A';
+  return `${n[0] ?? ''}${s[0] ?? ''}`.toUpperCase();
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('pt-BR', {
+  if (!iso) return 'Não informado';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return 'Não informado';
+  return d.toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -26,6 +26,14 @@ function formatDate(iso: string): string {
 }
 
 const StudentCard: React.FC<StudentCardProps> = ({ student, lgpdAccepted = true }) => {
+  const [imgError, setImgError] = useState(false);
+
+  const showFoto = student.foto && 
+                    student.foto !== 'null' && 
+                    student.foto !== 'undefined' && 
+                    !imgError && 
+                    lgpdAccepted;
+
   return (
     <article className={styles.studentCard} aria-label={`Dados do aluno ${student.nome}`}>
       {!lgpdAccepted && (
@@ -43,8 +51,12 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, lgpdAccepted = true 
 
       {/* Avatar */}
       <div className={styles.studentAvatar} aria-hidden="true">
-        {student.foto && lgpdAccepted ? (
-          <img src={student.foto} alt={`${student.nome} ${student.sobrenome}`} />
+        {showFoto ? (
+          <img 
+            src={student.foto} 
+            alt={`${student.nome} ${student.sobrenome}`} 
+            onError={() => setImgError(true)}
+          />
         ) : (
           <span>
             {!lgpdAccepted ? <i className="ti ti-lock" /> : getInitials(student.nome, student.sobrenome)}
@@ -64,14 +76,14 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, lgpdAccepted = true 
             <dt className={styles.infoLabel}>
               <i className="ti ti-users" aria-hidden="true" /> Turma
             </dt>
-            <dd className={styles.infoValue}>{student.turma}</dd>
+            <dd className={styles.infoValue}>{student.turma || 'Não enturmado'}</dd>
           </div>
 
           <div className={styles.infoItem}>
             <dt className={styles.infoLabel}>
               <i className="ti ti-id-badge" aria-hidden="true" /> Matrícula
             </dt>
-            <dd className={styles.infoValue}>{student.matricula}</dd>
+            <dd className={styles.infoValue}>{student.matricula || 'N/A'}</dd>
           </div>
 
           <div className={styles.infoItem}>

@@ -257,7 +257,7 @@ export default function ProfileSidebar({
                 onNavigate('profile');
                 onClose();
               }}>
-                <i className="ti ti-user-edit" /> Página de Cadastro (Perfil)
+                <i className="ti ti-signature" /> {user.consentimentoAceiteEm ? 'Alterar Cadastro / Termo LGPD' : 'Assinar Termo LGPD e Cadastro'}
               </button>
 
               <hr className={styles.sidebarSeparator} />
@@ -281,14 +281,15 @@ export default function ProfileSidebar({
                 >
                   <i className="ti ti-user-plus" /> Vincular Novo Filho
                 </button>
-                <a
-                  href="/meus-dados.html"
-                  target="_blank"
-                  rel="noreferrer"
+                <button
+                  onClick={() => {
+                    onNavigate('profile');
+                    onClose();
+                  }}
                   className={styles.sidebarNavLink}
                 >
-                  <i className="ti ti-shield-lock" /> Privacidade e Dados (LGPD)
-                </a>
+                  <i className="ti ti-shield-lock" /> {user.consentimentoAceiteEm ? 'Visualizar Termo LGPD' : 'Assinar Termo LGPD e Cadastro'}
+                </button>
                 <a
                   href="/mudar-senha.html"
                   target="_blank"

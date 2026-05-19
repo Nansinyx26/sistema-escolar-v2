@@ -1,15 +1,31 @@
-/**
- * components/NotesCard.tsx
- * Grade table showing each subject's bimester scores and auto-calculated
- * average. Badges are colour-coded by performance.
- */
-
 import React from 'react';
 import type { Grade } from '../types';
 import styles from '../styles/portal.module.scss';
 
 interface NotesCardProps {
   grades: Grade[];
+}
+
+function formatSubject(code: string): string {
+  if (!code) return 'Geral';
+  const cleanCode = code.trim().toLowerCase();
+  
+  const map: Record<string, string> = {
+    m001: 'Língua Portuguesa',
+    m002: 'Matemática',
+    m003: 'História',
+    m004: 'Geografia',
+    m005: 'Ciências',
+    m006: 'Arte',
+    m007: 'Educação Física',
+    m008: 'Inglês',
+    lp: 'Língua Portuguesa',
+    mat: 'Matemática',
+    portugues: 'Língua Portuguesa',
+    matematica: 'Matemática',
+  };
+  
+  return map[cleanCode] || code;
 }
 
 function calcMedia(bimestres: readonly number[]): number {
@@ -32,7 +48,7 @@ const NotesCard: React.FC<NotesCardProps> = ({ grades }) => {
           <i className="ti ti-book" aria-hidden="true" />
           Notas por Disciplina
         </h3>
-        <span className={styles.cardSubtitle}>2º Bimestre 2026</span>
+        <span className={styles.cardSubtitle}>Ano letivo 2026</span>
       </div>
 
       {grades.length === 0 ? (
@@ -59,7 +75,7 @@ const NotesCard: React.FC<NotesCardProps> = ({ grades }) => {
                 return (
                   <tr key={grade.id}>
                     <td className={styles.disciplinaCell}>
-                      <span className={styles.disciplinaName}>{grade.disciplina}</span>
+                      <span className={styles.disciplinaName}>{formatSubject(grade.disciplina)}</span>
                       {grade.professor && (
                         <span className={styles.professorName}>{grade.professor}</span>
                       )}

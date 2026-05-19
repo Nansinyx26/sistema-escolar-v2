@@ -590,7 +590,7 @@ const PortalResponsavel: React.FC = () => {
               onClick={() => setCurrentTab('profile')}
               className={`${styles.desktopSidebarNavLink} ${currentTab === 'profile' ? styles.active : ''}`}
             >
-              <i className="ti ti-user-edit" /> Cadastro do Perfil
+              <i className="ti ti-signature" /> {authUser?.consentimentoAceiteEm ? 'Alterar Cadastro / Termo LGPD' : 'Assinar Termo LGPD e Cadastro'}
             </button>
             <button
               onClick={() => setCurrentTab('linking')}
@@ -598,14 +598,6 @@ const PortalResponsavel: React.FC = () => {
             >
               <i className="ti ti-user-plus" /> Vincular Novo Filho
             </button>
-            <a
-              href="/meus-dados.html"
-              target="_blank"
-              rel="noreferrer"
-              className={styles.desktopSidebarNavLink}
-            >
-              <i className="ti ti-shield-lock" /> Privacidade e Dados (LGPD)
-            </a>
             <a
               href="/mudar-senha.html"
               target="_blank"
@@ -637,8 +629,10 @@ const PortalResponsavel: React.FC = () => {
           {currentTab === 'profile' && (
             <EditarPerfil
               user={authUser}
+              activeStudent={activeStudent}
               onSuccess={(updated) => {
                 setAuthUser(updated);
+                loadData();
               }}
             />
           )}

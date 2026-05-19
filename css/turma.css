@@ -987,3 +987,17 @@ input:checked + .slider:before {
     justify-content: center;
     gap: 4px;
 }
+
+/* MELHORIA: Forçar cor branca para descrições, cabeçalhos, metadados e colunas que não sejam notas */
+.turma-details .meta,
+.turma-details .meta span,
+.alunos-count,
+.alunos-table th,
+.observacoes,
+.col-nome,
+.col-condicao,
+.col-matricula,
+.col-faltas,
+.col-recuperacao {
+    color: #ffffff !important;
+}

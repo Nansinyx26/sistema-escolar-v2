@@ -10,7 +10,10 @@ const studentWhitelist = [
     'responsavelNome', 'responsavelTelefone', 'responsavel',
     'nivel', 'nivelBimestre', 'condicao', 'condicaoOutro',
     'observacoesBimestre', 'recuperacaoBimestre', 'faltasBimestre',
-    'deficiencia', 'pcd'
+    'deficiencia', 'pcd',
+    'endereco', 'cpfAluno', 'nacionalidade', 'etnia', 'religiao', 
+    'responsavelDados', 'alergiasAlimentos', 'alergiasRemedio', 'planoSaude', 
+    'documentos', 'lgpdConsentimento'
 ];
 
 exports.list = async (req, res) => {

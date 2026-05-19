@@ -762,7 +762,8 @@ class App {
                     const niv = (aluno.nivelBimestre && aluno.nivelBimestre[bimestre]) ? aluno.nivelBimestre[bimestre] : '-';
                     let circleClass = '';
                     if (niv === 'PS' || niv === '1') circleClass = 'level-red';
-                    else if (['S', 'SCV', 'S/V/S', '2'].includes(niv)) circleClass = 'level-yellow';
+                    else if (niv === 'SSV' || niv === 'S' || niv === 'S/V/S') circleClass = 'level-orange';
+                    else if (niv === 'SCV' || niv === '2') circleClass = 'level-yellow';
                     else if (niv === 'SA' || niv === '3') circleClass = 'level-blue';
                     else if (niv === 'A' || niv === '4') circleClass = 'level-green';
 

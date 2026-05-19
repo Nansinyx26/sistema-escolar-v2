@@ -1865,4 +1865,106 @@
   }
 }
 
+.consentItem {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: $radius-lg;
+  margin-bottom: 12px;
+  transition: all 0.2s;
+  cursor: pointer;
+  text-align: left;
+
+  &:hover {
+    border-color: rgba($accent-cyan, 0.3);
+    background: rgba($accent-cyan, 0.02);
+  }
+
+  &.checked {
+    border-color: rgba($accent-cyan, 0.45);
+    background: rgba($accent-cyan, 0.05);
+  }
+
+  input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: $accent-cyan;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+}
+
+.consentItemBody {
+  flex: 1;
+}
+
+.consentItemTitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: $text-primary;
+  margin-bottom: 4px;
+}
+
+.consentItemDesc {
+  font-size: 0.8rem;
+  color: $text-secondary;
+  line-height: 1.5;
+}
+
+.consentArt {
+  display: inline-block;
+  background: rgba($accent-cyan, 0.12);
+  border: 1px solid rgba($accent-cyan, 0.3);
+  color: $accent-cyan;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.dpoBox {
+  background: rgba($accent-purple, 0.08);
+  border: 1px solid rgba($accent-purple, 0.25);
+  border-radius: $radius-lg;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+  text-align: left;
+
+  i {
+    font-size: 1.6rem;
+    color: #c4b5fd;
+    flex-shrink: 0;
+  }
+}
+
+.dpoBoxBody {
+  flex: 1;
+}
+
+.dpoBoxTitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #c4b5fd;
+  margin-bottom: 2px;
+}
+
+.dpoBoxDesc {
+  font-size: 0.78rem;
+  color: $text-secondary;
+
+  a {
+    color: $accent-purple;
+    text-decoration: underline;
+    font-weight: 600;
+  }
+}
+
 

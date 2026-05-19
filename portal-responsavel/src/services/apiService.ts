@@ -187,3 +187,48 @@ export async function getFrequenciaDoAluno(alunoId: string): Promise<Attendance>
 export async function getNotificacoesDoAluno(alunoId: string): Promise<Notification[]> {
   return apiFetch<Notification[]>(`/responsavel/notificacoes/${alunoId}`);
 }
+
+/** Fetch full details of a student by ID. */
+export async function getStudentDetails(alunoId: string): Promise<any> {
+  return apiFetch<any>(`/alunos/${alunoId}`);
+}
+
+/** Update a student's profile details. */
+export async function updateStudent(alunoId: string, payload: any): Promise<any> {
+  return apiFetch<any>(`/alunos/${alunoId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
+/** Upload a document file to GridFS. */
+export async function uploadDocument(file: File): Promise<{ id: string; filename: string }> {
+  const formData = new FormData();
+  formData.append('foto', file); // The backend expects 'foto' field name
+
+  // CSRF Token if present
+  const headers: Record<string, string> = {};
+  const csrf = getCsrfToken();
+  if (csrf) {
+    headers['X-CSRF-Token'] = csrf;
+  }
+
+  const isLocal = typeof window !== 'undefined' && 
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const BASE_URL = isLocal 
+    ? (import.meta.env.VITE_API_URL || 'http://localhost:3001/api')
+    : `${window.location.origin}/api`;
+
+  const res = await fetch(`${BASE_URL}/upload/photo`, {
+    method: 'POST',
+    credentials: 'include',
+    headers,
+    body: formData,
+  });
+
+  const body = await res.json() as { success: boolean; data?: { id: string; filename: string }; error?: string };
+  if (!res.ok || !body.success || !body.data) {
+    throw new ApiError(body.error ?? `HTTP ${res.status}`, res.status);
+  }
+  return body.data;
+}
