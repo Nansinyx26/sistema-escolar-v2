@@ -150,7 +150,7 @@
 .alunos-table td {
     padding: 1rem;
     border-bottom: 1px solid var(--border-color);
-    color: var(--text-secondary);
+    color: #ffffff;
     vertical-align: middle;
 }
 
@@ -166,7 +166,7 @@
 .col-num {
     width: 50px;
     text-align: center;
-    color: var(--text-muted);
+    color: #ffffff;
 }
 
 .col-foto {
@@ -260,7 +260,7 @@
 .observacoes {
     display: block;
     font-size: 0.75rem;
-    color: var(--text-muted);
+    color: rgba(255, 255, 255, 0.85);
     margin-top: 0.25rem;
 }
 
