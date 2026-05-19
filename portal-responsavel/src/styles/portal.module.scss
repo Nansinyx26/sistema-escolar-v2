@@ -425,10 +425,12 @@
 
 .infoGrid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   gap: 12px;
+  width: 100%;
 
-  @include respond-to(sm) { grid-template-columns: 1fr; }
+  @include respond-to(sm) { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 400px) { grid-template-columns: 1fr; }
 }
 
 .infoItemFull {
@@ -436,7 +438,7 @@
   background: $bg-tertiary;
   border: 1px solid $border-color;
   border-radius: $radius-md;
-  padding: 12px 10px;
+  padding: 10px 8px;
   transition: border-color $transition-smooth;
 
   &:hover { border-color: rgba($accent-cyan, 0.3); }
@@ -446,8 +448,13 @@
   background: $bg-tertiary;
   border: 1px solid $border-color;
   border-radius: $radius-md;
-  padding: 12px 10px;
+  padding: 10px 8px;
   transition: border-color $transition-smooth;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
 
   &:hover { border-color: rgba($accent-cyan, 0.3); }
 }
@@ -457,19 +464,27 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  font-size: 0.72rem;
+  font-size: 0.65rem;
   color: $text-tertiary;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   margin-bottom: 4px;
+  text-align: center;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 
-  i { font-size: 0.8rem; }
+  i { font-size: 0.75rem; flex-shrink: 0; }
 }
 
 .infoValue {
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: $text-primary;
+  text-align: center;
+  width: 100%;
+  word-break: break-word;
 }
 
 // ─── Grades Table ─────────────────────────────────────────────────────────────
