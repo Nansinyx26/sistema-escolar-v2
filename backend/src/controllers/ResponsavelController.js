@@ -57,31 +57,40 @@ exports.getAlunos = async (req, res) => {
         const alunos = await Aluno.find(query).lean();
 
         // Retorna todos os dados para o frontend usar (dados pessoais, médicos, etc)
-        const safeAlunos = alunos.map(aluno => ({
-            id:             aluno._id,
-            nome:           aluno.nome,
-            sobrenome:      aluno.sobrenome || '',
-            matricula:      aluno.matricula,
-            turma:          aluno.turma || aluno.turmaId,
-            dataNascimento: aluno.nascimento,
-            ativo:          aluno.ativo,
-            foto:           aluno.foto || null,
-            cpfAluno:       aluno.cpfAluno || '',
-            telefone:       aluno.telefone || '',
-            endereco:       aluno.endereco || null,
-            nacionalidade:  aluno.nacionalidade || '',
-            etnia:          aluno.etnia || '',
-            religiao:       aluno.religiao || '',
-            responsavelDados: aluno.responsavelDados || null,
-            alergiasAlimentos: aluno.alergiasAlimentos || '',
-            alergiasRemedio: aluno.alergiasRemedio || '',
-            planoSaude:     aluno.planoSaude || '',
-            deficiencia:    aluno.deficiencia || '',
-            pcd:            aluno.pcd || false,
-            nivel:          aluno.nivel || '',
-            condicao:       aluno.condicao || '',
-            observacoes:    aluno.observacoes || ''
-        }));
+        const safeAlunos = alunos.map(aluno => {
+            const safe = {
+                ...aluno,
+                id:             aluno._id,
+                nome:           aluno.nome,
+                sobrenome:      aluno.sobrenome || '',
+                matricula:      aluno.matricula,
+                turma:          aluno.turma || aluno.turmaId,
+                dataNascimento: aluno.nascimento,
+                ativo:          aluno.ativo,
+                foto:           aluno.foto || null,
+                cpfAluno:       aluno.cpfAluno || '',
+                telefone:       aluno.telefone || '',
+                endereco:       aluno.endereco || null,
+                nacionalidade:  aluno.nacionalidade || '',
+                etnia:          aluno.etnia || '',
+                religiao:       aluno.religiao || '',
+                responsavelDados: aluno.responsavelDados || null,
+                alergiasAlimentos: aluno.alergiasAlimentos || '',
+                alergiasRemedio: aluno.alergiasRemedio || '',
+                planoSaude:     aluno.planoSaude || '',
+                deficiencia:    aluno.deficiencia || '',
+                pcd:            aluno.pcd || false,
+                nivel:          aluno.nivel || '',
+                condicao:       aluno.condicao || '',
+                observacoes:    aluno.observacoes || '',
+                documentos:     aluno.documentos || [],
+                lgpdConsentimento: aluno.lgpdConsentimento || null
+            };
+            if (safe.foto && safe.foto.length > 20 && !safe.foto.startsWith('data:') && !safe.foto.startsWith('/api')) {
+                safe.foto = `/api/upload/photo/${safe.foto}`;
+            }
+            return safe;
+        });
 
         res.json({ success: true, data: safeAlunos });
     } catch (e) {
@@ -304,7 +313,8 @@ exports.getNotificacoes = async (req, res) => {
 
         // Buscando notificações onde destinatarios é 'todos', ou turmaId, ou alunoId
         const notificacoes = await Notificacao.find({
-            destinatarios: { $in: ['todos', turmaId, String(alunoId), String(aluno._id)] }
+            destinatarios: { $in: ['todos', turmaId, String(alunoId), String(aluno._id)] },
+            ocultadoPor: { $ne: String(alunoId) }
         }).sort({ dataCriacao: -1 }).lean();
 
         const iconMap = {
@@ -329,6 +339,77 @@ exports.getNotificacoes = async (req, res) => {
         }));
 
         res.json({ success: true, data: formatted });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+};
+
+// ─── PUT /api/responsavel/notificacoes/:id/ler ──────────────────────────────
+exports.marcarComoLida = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { alunoId } = req.body;
+        const email = req.user?.email;
+
+        if (!alunoId) {
+            return res.status(400).json({ success: false, error: 'ID do aluno obrigatório.' });
+        }
+
+        const isOwner = await verifyOwnership(alunoId, email);
+        if (!isOwner) {
+            return res.status(403).json({ success: false, error: 'Acesso negado. Aluno não vinculado à sua conta.' });
+        }
+
+        const Notificacao = require('../models/Notificacao');
+        const notificacao = await Notificacao.findOne({ $or: [{ _id: id }, { id: id }] });
+        if (!notificacao) {
+            return res.status(404).json({ success: false, error: 'Notificação não encontrada.' });
+        }
+
+        // Adiciona o alunoId ao array lido se não estiver lá
+        if (!notificacao.lido.includes(alunoId)) {
+            notificacao.lido.push(alunoId);
+            await notificacao.save();
+        }
+
+        res.json({ success: true, message: 'Notificação marcada como lida.' });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+};
+
+// ─── PUT /api/responsavel/notificacoes/:id/ocultar ──────────────────────────
+exports.ocultarNotificacao = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { alunoId } = req.body;
+        const email = req.user?.email;
+
+        if (!alunoId) {
+            return res.status(400).json({ success: false, error: 'ID do aluno obrigatório.' });
+        }
+
+        const isOwner = await verifyOwnership(alunoId, email);
+        if (!isOwner) {
+            return res.status(403).json({ success: false, error: 'Acesso negado. Aluno não vinculado à sua conta.' });
+        }
+
+        const Notificacao = require('../models/Notificacao');
+        const notificacao = await Notificacao.findOne({ $or: [{ _id: id }, { id: id }] });
+        if (!notificacao) {
+            return res.status(404).json({ success: false, error: 'Notificação não encontrada.' });
+        }
+
+        // Adiciona o alunoId ao array ocultadoPor se não estiver lá
+        if (!notificacao.ocultadoPor) {
+            notificacao.ocultadoPor = [];
+        }
+        if (!notificacao.ocultadoPor.includes(alunoId)) {
+            notificacao.ocultadoPor.push(alunoId);
+            await notificacao.save();
+        }
+
+        res.json({ success: true, message: 'Notificação ocultada para o usuário.' });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }

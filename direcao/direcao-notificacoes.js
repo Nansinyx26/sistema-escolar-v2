@@ -557,3 +557,14 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// Exposição explícita para o escopo global (evita erros com atributos inline HTML)
+window.mudarTipoDestinatario = mudarTipoDestinatario;
+window.aoSelecionarTurma = aoSelecionarTurma;
+window.atualizarBadgeResponsavel = atualizarBadgeResponsavel;
+window.atualizarPreview = atualizarPreview;
+window.salvarNotificacao = salvarNotificacao;
+window.abrirNovaNotificacao = abrirNovaNotificacao;
+window.fecharModal = fecharModal;
+window.confirmarEnvio = confirmarEnvio;
+

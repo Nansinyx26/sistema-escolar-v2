@@ -28,6 +28,8 @@ export interface Student {
   nivel?: string;
   condicao?: string;
   observacoes?: string;
+  documentos?: any[];
+  lgpdConsentimento?: any;
 }
 
 export interface Grade {

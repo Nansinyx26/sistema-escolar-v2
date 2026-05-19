@@ -63,6 +63,8 @@ router.post('/responsavel/vincular',           authJWT, ResponsavelController.vi
 router.get('/responsavel/notas/:alunoId',      authJWT, ResponsavelController.getNotas);
 router.get('/responsavel/frequencia/:alunoId', authJWT, ResponsavelController.getFrequencia);
 router.get('/responsavel/notificacoes/:alunoId', authJWT, ResponsavelController.getNotificacoes);
+router.put('/responsavel/notificacoes/:id/ler',     authJWT, ResponsavelController.marcarComoLida);
+router.put('/responsavel/notificacoes/:id/ocultar', authJWT, ResponsavelController.ocultarNotificacao);
 
 // --- Central de Notificações ---
 router.get('/notificacoes', authJWT, NotificacaoController.getAll);

@@ -17,6 +17,8 @@ import {
   getNotasDoAluno,
   getFrequenciaDoAluno,
   getNotificacoesDoAluno,
+  marcarNotificacaoLida,
+  ocultarNotificacao,
   updateProfile,
   ApiError,
   type AuthUser,
@@ -217,16 +219,23 @@ const PortalResponsavel: React.FC = () => {
 
   // ─── Notification handlers ─────────────────────────────────────────────────
   const handleMarkAsRead = async (id: string) => {
-    // Optionally hit backend to mark as read here (e.g. POST /api/notificacoes/:id/read)
-    // For now we just update state locally to clear the 'NOVA' badge
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, lido: true } : n)));
+    if (!activeId) return;
+    try {
+      await marcarNotificacaoLida(id, activeId);
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, lido: true } : n)));
+    } catch (err) {
+      console.error('Erro ao marcar notificação como lida:', err);
+    }
   };
 
   const handleDeleteNotification = async (id: string) => {
-    // Optionally hit backend to delete/hide it for the user
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, lido: true } : n)));
-    // We keep it in the list but marked as read, or actually remove it from UI:
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    if (!activeId) return;
+    try {
+      await ocultarNotificacao(id, activeId);
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+    } catch (err) {
+      console.error('Erro ao ocultar notificação:', err);
+    }
   };
 
   // ─── Auth loading spinner ──────────────────────────────────────────────────

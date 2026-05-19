@@ -11,6 +11,7 @@ const NotificacaoSchema = new mongoose.Schema({
     status: { type: String, enum: ['enviado', 'agendado'], default: 'enviado' },
     lido: [{ type: String }],
     confirmacao: [{ type: String }],
+    ocultadoPor: [{ type: String }],
     escolaId: { type: String, required: true, default: 'default' }
 });
 

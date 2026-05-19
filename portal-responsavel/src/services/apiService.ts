@@ -144,12 +144,15 @@ interface RawAluno {
   nivel?: string;
   condicao?: string;
   observacoes?: string;
+  documentos?: any[];
+  lgpdConsentimento?: any;
 }
 
 /** Fetch the students linked to the authenticated guardian's email. */
 export async function getAlunosDoResponsavel(): Promise<Student[]> {
   const raw = await apiFetch<RawAluno[]>('/responsavel/alunos');
   return raw.map(r => ({
+    ...r,
     id:              r.id,
     nome:            r.nome,
     sobrenome:       r.sobrenome ?? '',
@@ -172,7 +175,9 @@ export async function getAlunosDoResponsavel(): Promise<Student[]> {
     pcd:             r.pcd,
     nivel:           r.nivel,
     condicao:        r.condicao,
-    observacoes:     r.observacoes
+    observacoes:     r.observacoes,
+    documentos:      r.documentos ?? [],
+    lgpdConsentimento: r.lgpdConsentimento ?? null
   }));
 }
 
@@ -216,6 +221,22 @@ export async function getFrequenciaDoAluno(alunoId: string): Promise<Attendance>
 /** Fetch notifications for a given student/guardian. */
 export async function getNotificacoesDoAluno(alunoId: string): Promise<Notification[]> {
   return apiFetch<Notification[]>(`/responsavel/notificacoes/${alunoId}`);
+}
+
+/** Mark a notification as read. */
+export async function marcarNotificacaoLida(notifId: string, alunoId: string): Promise<void> {
+  await apiFetch<void>(`/responsavel/notificacoes/${notifId}/ler`, {
+    method: 'PUT',
+    body: JSON.stringify({ alunoId })
+  });
+}
+
+/** Hide/delete a notification for a specific student. */
+export async function ocultarNotificacao(notifId: string, alunoId: string): Promise<void> {
+  await apiFetch<void>(`/responsavel/notificacoes/${notifId}/ocultar`, {
+    method: 'PUT',
+    body: JSON.stringify({ alunoId })
+  });
 }
 
 /** Fetch full details of a student by ID. */

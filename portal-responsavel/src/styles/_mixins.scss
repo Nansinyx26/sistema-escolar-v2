@@ -105,6 +105,16 @@
     border-color: $accent-cyan;
     box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.12);
   }
+
+  &:disabled,
+  &[disabled] {
+    background: rgba(255, 255, 255, 0.02) !important;
+    color: $text-secondary !important;
+    -webkit-text-fill-color: $text-secondary !important;
+    border-color: rgba(255, 255, 255, 0.05) !important;
+    opacity: 0.85 !important;
+    cursor: not-allowed;
+  }
 }
 
 // ─── Gradient Text ────────────────────────────────────────────────────────────

@@ -1995,4 +1995,41 @@
   }
 }
 
+// ─── Profile Tabs ─────────────────────────────────────────────────────────────
+.profileTabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.tabBtn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: $text-tertiary;
+  padding: 8px 16px;
+  border-radius: $radius-md;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all $transition-smooth;
+
+  &:hover {
+    background: rgba($accent-cyan, 0.08);
+    color: $accent-cyan;
+  }
+
+  &.active {
+    background: rgba($accent-cyan, 0.15);
+    border-color: rgba($accent-cyan, 0.3);
+    color: $accent-cyan;
+  }
+}
+
+
 

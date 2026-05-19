@@ -392,12 +392,11 @@ export default function EditarPerfil({ user, activeStudent, onSuccess }: EditarP
       </p>
 
       {/* Interactive Tabs */}
-      <div className={styles.profileTabs} style={{ display: 'flex', gap: '8px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
+      <div className={styles.profileTabs}>
         <button 
           type="button"
           onClick={() => setActiveTab('responsavel')}
           className={`${styles.tabBtn} ${activeTab === 'responsavel' ? styles.active : ''}`}
-          style={{ background: activeTab === 'responsavel' ? 'rgba(6, 182, 212, 0.15)' : 'transparent', border: '1px solid rgba(255,255,255,0.08)', color: activeTab === 'responsavel' ? '#06b6d4' : '#94a3b8', padding: '8px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s' }}
         >
           <i className="ti ti-user" /> Responsável Legal
         </button>
@@ -405,7 +404,6 @@ export default function EditarPerfil({ user, activeStudent, onSuccess }: EditarP
           type="button"
           onClick={() => setActiveTab('filho')}
           className={`${styles.tabBtn} ${activeTab === 'filho' ? styles.active : ''}`}
-          style={{ background: activeTab === 'filho' ? 'rgba(6, 182, 212, 0.15)' : 'transparent', border: '1px solid rgba(255,255,255,0.08)', color: activeTab === 'filho' ? '#06b6d4' : '#94a3b8', padding: '8px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s' }}
         >
           <i className="ti ti-users" /> Dados do Filho & Endereço
         </button>
@@ -413,7 +411,6 @@ export default function EditarPerfil({ user, activeStudent, onSuccess }: EditarP
           type="button"
           onClick={() => setActiveTab('saude')}
           className={`${styles.tabBtn} ${activeTab === 'saude' ? styles.active : ''}`}
-          style={{ background: activeTab === 'saude' ? 'rgba(6, 182, 212, 0.15)' : 'transparent', border: '1px solid rgba(255,255,255,0.08)', color: activeTab === 'saude' ? '#06b6d4' : '#94a3b8', padding: '8px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s' }}
         >
           <i className="ti ti-heart-handshake" /> Saúde & Laudos Médicos
         </button>
@@ -421,7 +418,6 @@ export default function EditarPerfil({ user, activeStudent, onSuccess }: EditarP
           type="button"
           onClick={() => setActiveTab('lgpd')}
           className={`${styles.tabBtn} ${activeTab === 'lgpd' ? styles.active : ''}`}
-          style={{ background: activeTab === 'lgpd' ? 'rgba(6, 182, 212, 0.15)' : 'transparent', border: '1px solid rgba(255,255,255,0.08)', color: activeTab === 'lgpd' ? '#06b6d4' : '#94a3b8', padding: '8px 16px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s' }}
         >
           <i className="ti ti-shield-lock" /> Termos LGPD e Retenção
         </button>
