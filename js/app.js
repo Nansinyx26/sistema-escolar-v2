@@ -718,16 +718,19 @@ class App {
             return;
         }
 
+        // Preload notes for the entire class to prevent making an HTTP request for every single student!
+        const preloadedNotas = await notes.getByTurma(turmaId);
+
         let html = '';
 
         for (const [index, aluno] of alunos.entries()) {
             let media, mediaGeral = null;
 
             if (materia === 'Sala Principal') {
-                media = await notes.getMediaSalaPrincipal(aluno.id, bimestre);
-                mediaGeral = await notes.getMediaGeralAluno(aluno.id, bimestre);
+                media = await notes.getMediaSalaPrincipal(aluno.id, bimestre, preloadedNotas);
+                mediaGeral = await notes.getMediaGeralAluno(aluno.id, bimestre, preloadedNotas);
             } else {
-                media = await notes.getMediaAlunoMateria(aluno.id, materia, bimestre);
+                media = await notes.getMediaAlunoMateria(aluno.id, materia, bimestre, preloadedNotas);
             }
 
             const mediaClass = media !== null ? ui.getNotaClass(media) : '';
