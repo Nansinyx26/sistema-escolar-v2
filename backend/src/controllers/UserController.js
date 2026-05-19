@@ -200,13 +200,33 @@ exports.registerWithCode = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
-    const { email, senha } = req.body;
+    const { email, senha, portal } = req.body;
 
     try {
         const user = await Usuario.findOne({ email: email.toLowerCase() });
         if (!user || !user.ativo) {
             return res.status(401).json({ success: false, error: 'Credenciais inválidas ou conta inativa' });
         }
+
+        // ── Separação de portais por perfil ──────────────────────────────────
+        // portal === 'responsavel' → apenas contas com perfil 'responsavel'
+        // portal === 'docente'    → apenas professor, diretor, admin
+        if (portal === 'responsavel') {
+            if (user.perfil !== 'responsavel') {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Esta conta não é de responsável. Use a página de login do docente.'
+                });
+            }
+        } else if (portal === 'docente') {
+            if (user.perfil === 'responsavel') {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Contas de responsável não podem acessar o sistema escolar. Use o Portal do Responsável.'
+                });
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────────
 
         // Verifica se a conta está bloqueada
         if (user.lockUntil && user.lockUntil > Date.now()) {

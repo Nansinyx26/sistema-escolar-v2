@@ -55,7 +55,7 @@ class AuthManager {
             const res = await fetch(`${baseUrl}/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, senha }),
+                body: JSON.stringify({ email, senha, portal: 'docente' }),
                 credentials: 'include' // IMPORTANTE: Para receber o cookie HttpOnly
             });
 

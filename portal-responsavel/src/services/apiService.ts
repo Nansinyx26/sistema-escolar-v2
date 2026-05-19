@@ -87,7 +87,7 @@ export interface AuthUser {
 export async function login(payload: LoginPayload): Promise<AuthUser> {
   return apiFetch<AuthUser>('/auth/login', {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, portal: 'responsavel' }),
   });
 }
 
