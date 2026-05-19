@@ -184,7 +184,7 @@
             accent-color: var(--accent-primary);
         }
 
-        .nd-checkbox-item label {
+        .nd-checkbox-item span {
             margin: 0;
             cursor: pointer;
             font-size: 0.95rem;
@@ -481,18 +481,18 @@
                     <div class="nd-form-group">
                         <label>Enviar para:</label>
                         <div class="nd-checkbox-group">
-                            <div class="nd-checkbox-item">
+                            <label class="nd-checkbox-item" for="todos">
                                 <input type="radio" name="tipoDest" id="todos" value="todos" onchange="mudarTipoDestinatario()" checked>
-                                <label for="todos">✓ Todos os responsáveis</label>
-                            </div>
-                            <div class="nd-checkbox-item">
+                                <span>✓ Todos os responsáveis</span>
+                            </label>
+                            <label class="nd-checkbox-item" for="turma">
                                 <input type="radio" name="tipoDest" id="turma" value="turma" onchange="mudarTipoDestinatario()">
-                                <label for="turma">Turma específica</label>
-                            </div>
-                            <div class="nd-checkbox-item">
+                                <span>Turma específica</span>
+                            </label>
+                            <label class="nd-checkbox-item" for="aluno">
                                 <input type="radio" name="tipoDest" id="aluno" value="aluno" onchange="mudarTipoDestinatario()">
-                                <label for="aluno">Responsável específico (Por Aluno)</label>
-                            </div>
+                                <span>Responsável específico (Por Aluno)</span>
+                            </label>
                         </div>
                         <div id="turmaSelectContainer" style="display: none; margin-top: 1rem;">
                             <label for="selectTurma" style="font-size: 0.85rem; margin-bottom: 0.3rem;">Selecione a Turma:</label>
