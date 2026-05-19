@@ -13,6 +13,7 @@ interface HeaderProps {
   notifications: Notification[];
   onLogout: () => void;
   onBellClick: () => void;
+  onProfileClick: () => void;
 }
 
 function getInitials(name: string): string {
@@ -24,7 +25,7 @@ function getInitials(name: string): string {
     .toUpperCase();
 }
 
-const Header: React.FC<HeaderProps> = ({ user, notifications, onLogout, onBellClick }) => {
+const Header: React.FC<HeaderProps> = ({ user, notifications, onLogout, onBellClick, onProfileClick }) => {
   const unreadCount = notifications.filter((n) => !n.lido).length;
 
   return (
@@ -60,8 +61,15 @@ const Header: React.FC<HeaderProps> = ({ user, notifications, onLogout, onBellCl
             )}
           </button>
 
-          {/* User profile */}
-          <div className={styles.userProfile}>
+          {/* User profile (clickable to open sidebar) */}
+          <div
+            className={styles.userProfile}
+            onClick={onProfileClick}
+            style={{ cursor: 'pointer' }}
+            role="button"
+            aria-label="Opções do perfil"
+            title="Clique para ver as opções do perfil"
+          >
             <div className={styles.avatar} aria-hidden="true">
               {user.picture ? (
                 <img src={user.picture} alt={user.name} referrerPolicy="no-referrer" />

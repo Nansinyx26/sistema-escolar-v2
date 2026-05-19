@@ -27,6 +27,7 @@ import FrequencyCard from '../components/FrequencyCard';
 import NotificationsPanel from '../components/NotificationsPanel';
 import VincularFilho from '../components/VincularFilho';
 import CompletarCadastro from '../components/CompletarCadastro';
+import ProfileSidebar from '../components/ProfileSidebar';
 import type { Student, Grade, Attendance, Notification, GmailUser } from '../types';
 import styles from '../styles/portal.module.scss';
 
@@ -71,6 +72,7 @@ const PortalResponsavel: React.FC = () => {
 
   // Check initial session
   const [isLinking,  setIsLinking]  = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
   
   const activeStudent = students.find(s => s.id === activeId) || null;
 
@@ -478,6 +480,7 @@ const PortalResponsavel: React.FC = () => {
           notifications={notifications}
           onLogout={handleLogout} 
           onBellClick={() => setShowNotifications((v) => !v)}
+          onProfileClick={() => {}}
         />
         <CompletarCadastro 
           user={authUser}
@@ -491,7 +494,7 @@ const PortalResponsavel: React.FC = () => {
   }
 
   // ─── Link child screen ───────────────────────────────────────────────────
-  if (students.length === 0 || isLinking) {
+  if (isLinking) {
     return (
       <div className={styles.portal}>
         <Header 
@@ -499,6 +502,7 @@ const PortalResponsavel: React.FC = () => {
           notifications={notifications}
           onLogout={handleLogout} 
           onBellClick={() => setShowNotifications((v) => !v)}
+          onProfileClick={() => setShowSidebar(true)}
         />
         <VincularFilho 
           onSuccess={() => {
@@ -507,6 +511,14 @@ const PortalResponsavel: React.FC = () => {
           }} 
           canCancel={students.length > 0}
           onCancel={() => setIsLinking(false)}
+        />
+        <ProfileSidebar 
+          isOpen={showSidebar}
+          onClose={() => setShowSidebar(false)}
+          user={authUser}
+          onUpdateUser={(updated) => setAuthUser(updated)}
+          onLogout={handleLogout}
+          onLinkChildClick={() => setIsLinking(true)}
         />
       </div>
     );
@@ -522,90 +534,106 @@ const PortalResponsavel: React.FC = () => {
         notifications={notifications}
         onLogout={handleLogout}
         onBellClick={() => setShowNotifications((v) => !v)}
+        onProfileClick={() => setShowSidebar(true)}
       />
 
       <main className={styles.container} id="main-content">
-        <div className={styles.topBarSelectors}>
-          <div className={styles.studentTabs}>
-            {students.map((s) => (
-              <button 
-                key={s.id} 
-                className={s.id === activeId ? styles.active : ''}
-                onClick={() => setActiveId(s.id)}
-              >
-                {s.nome} {s.sobrenome}
-              </button>
-            ))}
-          </div>
-          <button className={styles.btnAddChild} onClick={() => setIsLinking(true)}>
-            <i className="ti ti-plus" /> Adicionar outro filho
-          </button>
-        </div>
-
-        <div className={styles.pageHeader}>
-          <h1 className={styles.pageTitle}>
-            Olá, {authUser.nome.split(' ')[0]}! <span aria-hidden="true">👋</span>
-          </h1>
-          <p className={styles.pageSubtitle}>
-            {activeStudent
-              ? <>Acompanhe o desempenho de <strong>{activeStudent.nome} {activeStudent.sobrenome}</strong></>
-              : 'Carregando dados do aluno…'}
-          </p>
-        </div>
-
-        {/* Global data error */}
-        {dataError && (
-          <div className={styles.errorAlert} role="alert" style={{ marginBottom: '24px' }}>
-            <i className="ti ti-alert-circle" aria-hidden="true" />
-            {dataError}
-            <button
-              className={styles.retryBtn}
-              onClick={() => loadData()}
-              aria-label="Tentar novamente"
-            >
-              Tentar novamente
+        {students.length === 0 ? (
+          <div className={styles.emptyDashboardCard}>
+            <i className="ti ti-users" style={{ fontSize: '3.5rem', color: '#60a5fa', marginBottom: '16px' }} />
+            <h3>Nenhum filho vinculado</h3>
+            <p style={{ margin: '8px 0 24px', color: '#94a3b8' }}>
+              Para começar a acompanhar o desempenho escolar, notas, faltas e notificações, vincule seu filho(a) ao portal.
+            </p>
+            <button className={styles.btnAddChild} onClick={() => setIsLinking(true)} style={{ margin: '0 auto' }}>
+              <i className="ti ti-plus" /> Vincular Meu Filho
             </button>
-          </div>
-        )}
-
-        {/* Data loading spinner */}
-        {dataLoading ? (
-          <div className={styles.fullscreenCenter} style={{ minHeight: '300px' }} aria-busy="true">
-            <span className={styles.spinner} aria-label="Carregando dados…" />
-            <p className={styles.loadingText}>Buscando dados do banco de dados…</p>
           </div>
         ) : (
           <>
-            {/* Top: student + notifications */}
-            <div className={styles.topGrid}>
-              {activeStudent && <StudentCard student={activeStudent} lgpdAccepted={lgpdAccepted} />}
-
-              {showNotifications || notifications.some((n) => !n.lido) ? (
-                <NotificationsPanel
-                  notifications={notifications}
-                  onMarkAsRead={handleMarkAsRead}
-                  onDelete={handleDeleteNotification}
-                />
-              ) : (
-                <div className={styles.noNotifCard}>
-                  <i className="ti ti-bell-off" aria-hidden="true" />
-                  <p>Sem novas notificações</p>
-                  <button
-                    className={styles.showAllBtn}
-                    onClick={() => setShowNotifications(true)}
-                    aria-label="Ver todas as notificações"
+            <div className={styles.topBarSelectors}>
+              <div className={styles.studentTabs}>
+                {students.map((s) => (
+                  <button 
+                    key={s.id} 
+                    className={s.id === activeId ? styles.active : ''}
+                    onClick={() => setActiveId(s.id)}
                   >
-                    Ver todas
+                    {s.nome} {s.sobrenome}
                   </button>
-                </div>
-              )}
+                ))}
+              </div>
+              <button className={styles.btnAddChild} onClick={() => setIsLinking(true)}>
+                <i className="ti ti-plus" /> Adicionar outro filho
+              </button>
             </div>
 
-            {/* Bottom: grades + attendance */}
-            <div className={styles.cardsGrid}>
-              <NotesCard grades={grades} />
-              {attendance && <FrequencyCard attendance={attendance} />}
+            <div className={styles.pageHeader}>
+              <h1 className={styles.pageTitle}>
+                Olá, {authUser.nome.split(' ')[0]}! <span aria-hidden="true">👋</span>
+              </h1>
+              <p className={styles.pageSubtitle}>
+                {activeStudent
+                  ? <>Acompanhe o desempenho de <strong>{activeStudent.nome} {activeStudent.sobrenome}</strong></>
+                  : 'Carregando dados do aluno…'}
+              </p>
             </div>
+
+            {/* Global data error */}
+            {dataError && (
+              <div className={styles.errorAlert} role="alert" style={{ marginBottom: '24px' }}>
+                <i className="ti ti-alert-circle" aria-hidden="true" />
+                {dataError}
+                <button
+                  className={styles.retryBtn}
+                  onClick={() => loadData()}
+                  aria-label="Tentar novamente"
+                >
+                  Tentar novamente
+                </button>
+              </div>
+            )}
+
+            {/* Data loading spinner */}
+            {dataLoading ? (
+              <div className={styles.fullscreenCenter} style={{ minHeight: '300px' }} aria-busy="true">
+                <span className={styles.spinner} aria-label="Carregando dados…" />
+                <p className={styles.loadingText}>Buscando dados do banco de dados…</p>
+              </div>
+            ) : (
+              <>
+                {/* Top: student + notifications */}
+                <div className={styles.topGrid}>
+                  {activeStudent && <StudentCard student={activeStudent} lgpdAccepted={lgpdAccepted} />}
+
+                  {showNotifications || notifications.some((n) => !n.lido) ? (
+                    <NotificationsPanel
+                      notifications={notifications}
+                      onMarkAsRead={handleMarkAsRead}
+                      onDelete={handleDeleteNotification}
+                    />
+                  ) : (
+                    <div className={styles.noNotifCard}>
+                      <i className="ti ti-bell-off" aria-hidden="true" />
+                      <p>Sem novas notificações</p>
+                      <button
+                        className={styles.showAllBtn}
+                        onClick={() => setShowNotifications(true)}
+                        aria-label="Ver todas as notificações"
+                      >
+                        Ver todas
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Bottom: grades + attendance */}
+                <div className={styles.cardsGrid}>
+                  <NotesCard grades={grades} />
+                  {attendance && <FrequencyCard attendance={attendance} />}
+                </div>
+              </>
+            )}
           </>
         )}
       </main>
@@ -618,6 +646,15 @@ const PortalResponsavel: React.FC = () => {
           </a>
         </p>
       </footer>
+
+      <ProfileSidebar 
+        isOpen={showSidebar}
+        onClose={() => setShowSidebar(false)}
+        user={authUser}
+        onUpdateUser={(updated) => setAuthUser(updated)}
+        onLogout={handleLogout}
+        onLinkChildClick={() => setIsLinking(true)}
+      />
     </div>
   );
 };
