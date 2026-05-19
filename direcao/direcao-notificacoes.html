@@ -434,11 +434,11 @@
 </head>
 <body>
     <div class="nd-header" style="margin: 0; padding: 1.5rem 2rem;">
-        <button onclick="window.location.href='../dashboard.html'" class="nd-btn nd-btn-secondary" style="margin-right: 1rem;">
+        <button id="btnVoltar" class="nd-btn nd-btn-secondary" style="margin-right: 1rem;">
             <i class="bi bi-arrow-left"></i> Voltar
         </button>
         <h1 style="flex: 1;"><i class="bi bi-megaphone-fill"></i> Central de Notificações</h1>
-        <button class="nd-header-btn" onclick="abrirNovaNotificacao()">
+        <button id="btnNovaNotificacao" class="nd-header-btn">
             <i class="bi bi-plus-lg"></i> Enviar Notificação
         </button>
     </div>
@@ -449,12 +449,12 @@
             <!-- Formulário -->
             <div class="nd-form-card">
                 <h2>Criar Notificação</h2>
-                <form id="formNotificacao" onsubmit="salvarNotificacao(event)">
+                <form id="formNotificacao">
                     
                     <!-- Tipo de Notificação -->
                     <div class="nd-form-group">
                         <label for="tipoNotif">Tipo de Notificação</label>
-                        <select class="nd-form-select" id="tipoNotif" onchange="atualizarPreview()">
+                        <select class="nd-form-select" id="tipoNotif">
                             <option value="info">📢 Informativo Geral</option>
                             <option value="aviso">⚠️ Aviso Importante</option>
                             <option value="evento">🎉 Evento da Escola</option>
@@ -468,13 +468,13 @@
                     <!-- Título -->
                     <div class="nd-form-group">
                         <label for="tituloNotif">Título</label>
-                        <input type="text" class="nd-form-input" id="tituloNotif" placeholder="Resumo da notificação" onkeyup="atualizarPreview()" required>
+                        <input type="text" class="nd-form-input" id="tituloNotif" placeholder="Resumo da notificação" required>
                     </div>
 
                     <!-- Mensagem -->
                     <div class="nd-form-group">
                         <label for="mensagemNotif">Mensagem</label>
-                        <textarea class="nd-form-textarea" id="mensagemNotif" placeholder="Descreva o comunicado em detalhes..." onkeyup="atualizarPreview()"></textarea>
+                        <textarea class="nd-form-textarea" id="mensagemNotif" placeholder="Descreva o comunicado em detalhes..."></textarea>
                     </div>
 
                     <!-- Destinatários -->
@@ -482,27 +482,27 @@
                         <label>Enviar para:</label>
                         <div class="nd-checkbox-group">
                             <label class="nd-checkbox-item" for="todos">
-                                <input type="radio" name="tipoDest" id="todos" value="todos" onchange="mudarTipoDestinatario()" checked>
+                                <input type="radio" name="tipoDest" id="todos" value="todos" checked>
                                 <span>✓ Todos os responsáveis</span>
                             </label>
                             <label class="nd-checkbox-item" for="turma">
-                                <input type="radio" name="tipoDest" id="turma" value="turma" onchange="mudarTipoDestinatario()">
+                                <input type="radio" name="tipoDest" id="turma" value="turma">
                                 <span>Turma específica</span>
                             </label>
                             <label class="nd-checkbox-item" for="aluno">
-                                <input type="radio" name="tipoDest" id="aluno" value="aluno" onchange="mudarTipoDestinatario()">
+                                <input type="radio" name="tipoDest" id="aluno" value="aluno">
                                 <span>Responsável específico (Por Aluno)</span>
                             </label>
                         </div>
                         <div id="turmaSelectContainer" style="display: none; margin-top: 1rem;">
                             <label for="selectTurma" style="font-size: 0.85rem; margin-bottom: 0.3rem;">Selecione a Turma:</label>
-                            <select class="nd-form-select" id="selectTurma" onchange="aoSelecionarTurma()">
+                            <select class="nd-form-select" id="selectTurma">
                                 <option value="">Carregando turmas...</option>
                             </select>
                         </div>
                         <div id="alunoSelectContainer" style="display: none; margin-top: 1rem;">
                             <label for="selectAluno" style="font-size: 0.85rem; margin-bottom: 0.3rem;">Selecione o Aluno:</label>
-                            <select class="nd-form-select" id="selectAluno" onchange="atualizarPreview(); atualizarBadgeResponsavel()" disabled>
+                            <select class="nd-form-select" id="selectAluno" disabled>
                                 <option value="">Primeiro selecione a turma acima...</option>
                             </select>
                             <div id="badgeResponsavel" style="margin-top: 0.5rem; font-size: 0.82rem; display: none;"></div>
@@ -513,8 +513,8 @@
                     <div class="nd-form-group">
                         <label for="agendamento">Agendar envio</label>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <input type="date" class="nd-form-input" id="dataAgend" onchange="atualizarPreview()">
-                            <input type="time" class="nd-form-input" id="horaAgend" onchange="atualizarPreview()">
+                            <input type="date" class="nd-form-input" id="dataAgend">
+                            <input type="time" class="nd-form-input" id="horaAgend">
                         </div>
                         <small style="color: var(--text-tertiary); margin-top: 0.5rem; display: block;">
                             Deixe vazio para enviar imediatamente
@@ -580,10 +580,10 @@
             <h3>Confirmar Envio</h3>
             <p id="confirmText" style="color: var(--text-secondary); margin-bottom: 2rem; line-height: 1.6;"></p>
             <div style="display: flex; gap: 1rem;">
-                <button class="nd-btn nd-btn-primary" onclick="confirmarEnvio()" style="flex: 1;">
+                <button id="btnConfirmarEnvio" class="nd-btn nd-btn-primary" style="flex: 1;">
                     <i class="bi bi-check-lg"></i> Confirmar
                 </button>
-                <button class="nd-btn nd-btn-secondary" onclick="fecharModal()" style="flex: 1;">
+                <button id="btnFecharModal" class="nd-btn nd-btn-secondary" style="flex: 1;">
                     <i class="bi bi-x-lg"></i> Cancelar
                 </button>
             </div>

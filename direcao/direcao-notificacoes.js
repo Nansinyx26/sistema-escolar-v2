@@ -26,6 +26,50 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
+        // Registrar Event Listeners do formulário e cabeçalho para conformidade com CSP
+        document.getElementById('btnVoltar')?.addEventListener('click', () => {
+            window.location.href = '../dashboard.html';
+        });
+        document.getElementById('btnNovaNotificacao')?.addEventListener('click', abrirNovaNotificacao);
+        document.getElementById('formNotificacao')?.addEventListener('submit', salvarNotificacao);
+
+        // Inputs e Textareas
+        document.getElementById('tipoNotif')?.addEventListener('change', atualizarPreview);
+        document.getElementById('tituloNotif')?.addEventListener('input', atualizarPreview);
+        document.getElementById('mensagemNotif')?.addEventListener('input', atualizarPreview);
+        document.getElementById('dataAgend')?.addEventListener('change', atualizarPreview);
+        document.getElementById('horaAgend')?.addEventListener('change', atualizarPreview);
+
+        // Radios de Destinatário
+        document.querySelectorAll('input[name="tipoDest"]').forEach(radio => {
+            radio.addEventListener('change', mudarTipoDestinatario);
+        });
+
+        // Dropdowns de Seleção
+        document.getElementById('selectTurma')?.addEventListener('change', aoSelecionarTurma);
+        document.getElementById('selectAluno')?.addEventListener('change', () => {
+            atualizarPreview();
+            atualizarBadgeResponsavel();
+        });
+
+        // Eventos do Modal
+        document.getElementById('btnConfirmarEnvio')?.addEventListener('click', confirmarEnvio);
+        document.getElementById('btnFecharModal')?.addEventListener('click', fecharModal);
+
+        // Delegação de Eventos para tabela de histórico (Botões Ver e Deletar)
+        document.getElementById('historico')?.addEventListener('click', (event) => {
+            const btnVer = event.target.closest('.nd-btn-ver');
+            const btnDeletar = event.target.closest('.nd-btn-deletar');
+            
+            if (btnVer) {
+                const notifId = btnVer.dataset.id;
+                verDetalhes(notifId);
+            } else if (btnDeletar) {
+                const notifId = btnDeletar.dataset.id;
+                deletarNotificacao(notifId);
+            }
+        });
+
         await carregarListaTurmas();
         carregarNotificacoes();
     } catch (error) {
@@ -62,6 +106,7 @@ async function carregarNotificacoes() {
 function abrirNovaNotificacao() {
     document.getElementById('formNotificacao').reset();
     document.getElementById('tipoNotif').value = 'info';
+    mudarTipoDestinatario();
     document.getElementById('tituloNotif').focus();
     atualizarPreview();
 }
@@ -399,10 +444,10 @@ function renderizarHistorico() {
                 </td>
                 <td>
                     <div style="display: flex; gap: 0.5rem;">
-                        <button type="button" class="nd-btn nd-btn-secondary nd-btn-sm" onclick="verDetalhes('${n.id}')">
+                        <button type="button" class="nd-btn nd-btn-secondary nd-btn-sm nd-btn-ver" data-id="${n.id}">
                             <i class="bi bi-eye"></i> Ver
                         </button>
-                        <button type="button" class="nd-btn nd-btn-danger nd-btn-sm" onclick="deletarNotificacao('${n.id}')">
+                        <button type="button" class="nd-btn nd-btn-danger nd-btn-sm nd-btn-deletar" data-id="${n.id}">
                             <i class="bi bi-trash"></i>
                         </button>
                     </div>
