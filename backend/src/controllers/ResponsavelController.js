@@ -271,8 +271,21 @@ exports.getFrequencia = async (req, res) => {
 
         // 1. Filtrar ausências efetivas (presente === false ou ausente no sistema legacy sem o campo 'presente')
         const faltasEfetivas = faltas.filter((f) => f.presente === false || f.presente === undefined);
-        const ausencia = faltasEfetivas.filter((f) => !f.justificada).length;
+        let ausencia = faltasEfetivas.filter((f) => !f.justificada).length;
         const atraso   = faltasEfetivas.filter((f) => f.justificada).length;
+
+        // Se o professor lançou faltas manualmente no boletim/cadastro do aluno (faltasBimestre),
+        // isso deve ser considerado (geralmente como o total de ausências do aluno).
+        if (aluno.faltasBimestre) {
+            const values = aluno.faltasBimestre instanceof Map
+                ? Array.from(aluno.faltasBimestre.values())
+                : Object.values(aluno.faltasBimestre || {});
+            
+            const manualAbsences = values.reduce((sum, val) => sum + (Number(val) || 0), 0);
+            if (manualAbsences > ausencia) {
+                ausencia = manualAbsences;
+            }
+        }
 
         // 2. Determinar a quantidade total de aulas ministradas para a turma deste aluno
         const turmasBusca = [aluno.turma, aluno.turmaId].filter(Boolean);
@@ -291,10 +304,19 @@ exports.getFrequencia = async (req, res) => {
             totalAulas = totalDiasDistintos.length;
         }
 
+        // Conta as presenças reais/efetivas no sistema (chamadas diárias onde presente === true)
+        const presencasEfetivas = faltas.filter((f) => f.presente === true).length;
+
         // Garante que o total de aulas é pelo menos o total de registros do próprio aluno
+        // e pelo menos a soma das ausências (manuais ou calculadas), atrasos e presenças reais.
         const totalRegistrosDoAluno = faltas.length;
+        const minAulas = ausencia + atraso + presencasEfetivas;
+
         if (totalAulas < totalRegistrosDoAluno) {
             totalAulas = totalRegistrosDoAluno;
+        }
+        if (totalAulas < minAulas) {
+            totalAulas = minAulas;
         }
 
         // Se total de aulas ainda for zero, usa um padrão seguro
