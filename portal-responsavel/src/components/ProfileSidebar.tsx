@@ -8,7 +8,7 @@ interface ProfileSidebarProps {
   user: AuthUser;
   onUpdateUser: (updatedUser: AuthUser) => void;
   onLogout: () => void;
-  onLinkChildClick: () => void;
+  onNavigate: (tab: 'dashboard' | 'linking' | 'profile') => void;
 }
 
 function getInitials(name: string): string {
@@ -27,7 +27,7 @@ export default function ProfileSidebar({
   user,
   onUpdateUser,
   onLogout,
-  onLinkChildClick,
+  onNavigate,
 }: ProfileSidebarProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [nome, setNome] = useState(user.nome || '');
@@ -204,7 +204,7 @@ export default function ProfileSidebar({
               </div>
             </form>
           ) : (
-            <div className={styles.sidebarDetailsList}>
+             <div className={styles.sidebarDetailsList}>
               <div className={styles.sidebarDetailItem}>
                 <label>CPF</label>
                 <span>{hasTempCpf ? 'Não informado' : user.cpf}</span>
@@ -213,9 +213,51 @@ export default function ProfileSidebar({
                 <label>Telefone</label>
                 <span>{user.telefone === '(00) 00000-0000' ? 'Não informado' : user.telefone}</span>
               </div>
+              <div className={styles.sidebarDetailItem}>
+                <label>LGPD</label>
+                {user.consentimentoAceiteEm ? (
+                  <span style={{ color: '#22c55e', fontWeight: 600 }}>✓ Assinado</span>
+                ) : (
+                  <button
+                    onClick={async () => {
+                      try {
+                        setLoading(true);
+                        const updated = await updateProfile({
+                          nome: user.nome || '',
+                          cpf: user.cpf || '',
+                          telefone: user.telefone || '',
+                          consentimentoAceiteEm: true
+                        });
+                        onUpdateUser(updated);
+                        alert('Termo LGPD assinado com sucesso!');
+                      } catch (err) {
+                        alert(err instanceof Error ? err.message : 'Erro ao assinar LGPD.');
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    style={{
+                      background: 'linear-gradient(135deg, #06b6d4, #8b5cf6)',
+                      border: 'none',
+                      color: '#fff',
+                      padding: '6px 12px',
+                      borderRadius: '4px',
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                      fontWeight: 700
+                    }}
+                    disabled={loading}
+                  >
+                    Assinar LGPD
+                  </button>
+                )}
+              </div>
 
-              <button className={styles.sidebarEditBtn} onClick={() => setIsEditing(true)}>
-                <i className="ti ti-edit" /> Editar Dados do Perfil
+              <button className={styles.sidebarEditBtn} onClick={() => {
+                onNavigate('profile');
+                onClose();
+              }}>
+                <i className="ti ti-user-edit" /> Página de Cadastro (Perfil)
               </button>
 
               <hr className={styles.sidebarSeparator} />
@@ -223,7 +265,16 @@ export default function ProfileSidebar({
               <div className={styles.sidebarNav}>
                 <button
                   onClick={() => {
-                    onLinkChildClick();
+                    onNavigate('dashboard');
+                    onClose();
+                  }}
+                  className={styles.sidebarNavLink}
+                >
+                  <i className="ti ti-home" /> Ir para o Painel (Home)
+                </button>
+                <button
+                  onClick={() => {
+                    onNavigate('linking');
                     onClose();
                   }}
                   className={styles.sidebarNavLink}

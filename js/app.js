@@ -1689,6 +1689,12 @@ class App {
             nivelVal = aluno.nivelBimestre[currentBimestre] || 'Nenhum';
         }
 
+        // Get Faltas for current bimester
+        let faltasVal = 0;
+        if (aluno.faltasBimestre) {
+            faltasVal = aluno.faltasBimestre[currentBimestre] || 0;
+        }
+
         const content = `
             <form id="formEditAluno" class="form-aluno">
                 <div class="form-group">
@@ -1733,6 +1739,10 @@ class App {
                                 <option value="SA" ${nivelVal === 'SA' ? 'selected' : ''}>🔵 SA (Silábico-Alfabético)</option>
                                 <option value="A" ${nivelVal === 'A' ? 'selected' : ''}>🟢 A (Alfabética)</option>
                             </select>
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="font-size: 0.8rem; color: #aaa; margin-bottom: 2px; display: block;">Faltas</label>
+                            <input type="number" id="editAlunoFaltas" class="form-input" min="0" value="${faltasVal}" placeholder="Faltas no bimestre...">
                         </div>
                         <div style="flex: 1;">
                             <label style="font-size: 0.8rem; color: #aaa; margin-bottom: 2px; display: block;">Condição</label>
@@ -1806,6 +1816,7 @@ class App {
 
         const newObs = document.getElementById('editAlunoObservacoes').value;
         const newNivel = document.getElementById('editAlunoNivel').value;
+        const newFaltas = parseInt(document.getElementById('editAlunoFaltas').value) || 0;
         let newCondicao = document.getElementById('editAlunoCondicao').value;
         const newCondicaoOutro = document.getElementById('editAlunoCondicaoOutro').value;
         const newRecupLP = document.getElementById('editAlunoRecupLP').checked;
@@ -1819,10 +1830,12 @@ class App {
         if (!aluno.observacoesBimestre) aluno.observacoesBimestre = {};
         if (!aluno.nivelBimestre) aluno.nivelBimestre = {};
         if (!aluno.recuperacaoBimestre) aluno.recuperacaoBimestre = {};
+        if (!aluno.faltasBimestre) aluno.faltasBimestre = {};
 
         aluno.observacoesBimestre[bimestre] = newObs;
         aluno.nivelBimestre[bimestre] = newNivel;
         aluno.recuperacaoBimestre[bimestre] = { lp: newRecupLP, mat: newRecupMat };
+        aluno.faltasBimestre[bimestre] = newFaltas;
 
         // Save Condition Globally
         if (newCondicao) {

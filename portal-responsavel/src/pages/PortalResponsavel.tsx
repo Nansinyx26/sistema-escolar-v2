@@ -17,6 +17,7 @@ import {
   getNotasDoAluno,
   getFrequenciaDoAluno,
   getNotificacoesDoAluno,
+  updateProfile,
   ApiError,
   type AuthUser,
 } from '../services/apiService';
@@ -28,6 +29,7 @@ import NotificationsPanel from '../components/NotificationsPanel';
 import VincularFilho from '../components/VincularFilho';
 import CompletarCadastro from '../components/CompletarCadastro';
 import ProfileSidebar from '../components/ProfileSidebar';
+import EditarPerfil from '../components/EditarPerfil';
 import type { Student, Grade, Attendance, Notification, GmailUser } from '../types';
 import styles from '../styles/portal.module.scss';
 
@@ -71,7 +73,7 @@ const PortalResponsavel: React.FC = () => {
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
 
   // Check initial session
-  const [isLinking,  setIsLinking]  = useState(false);
+  const [currentTab, setCurrentTab] = useState<'dashboard' | 'linking' | 'profile'>('dashboard');
   const [showSidebar, setShowSidebar] = useState(false);
   
   const activeStudent = students.find(s => s.id === activeId) || null;
@@ -493,42 +495,52 @@ const PortalResponsavel: React.FC = () => {
     );
   }
 
-  // ─── Link child screen ───────────────────────────────────────────────────
-  if (isLinking) {
-    return (
-      <div className={styles.portal}>
-        <Header 
-          user={gmailUser} 
-          notifications={notifications}
-          onLogout={handleLogout} 
-          onBellClick={() => setShowNotifications((v) => !v)}
-          onProfileClick={() => setShowSidebar(true)}
-        />
-        <VincularFilho 
-          onSuccess={() => {
-            setIsLinking(false);
-            if (authUser) loadData();
-          }} 
-          canCancel={students.length > 0}
-          onCancel={() => setIsLinking(false)}
-        />
-        <ProfileSidebar 
-          isOpen={showSidebar}
-          onClose={() => setShowSidebar(false)}
-          user={authUser}
-          onUpdateUser={(updated) => setAuthUser(updated)}
-          onLogout={handleLogout}
-          onLinkChildClick={() => setIsLinking(true)}
-        />
-      </div>
-    );
-  }
-
   // LGPD Check
   const lgpdAccepted = !!(authUser as any).consentimentoAceiteEm;
 
+  const handleSignLgpd = async () => {
+    try {
+      const updated = await updateProfile({
+        nome: authUser.nome || '',
+        cpf: authUser.cpf || '',
+        telefone: authUser.telefone || '',
+        consentimentoAceiteEm: true
+      });
+      setAuthUser(updated);
+      setToast({ message: 'Termo LGPD assinado com sucesso!', type: 'success' });
+    } catch (err) {
+      setToast({ message: err instanceof Error ? err.message : 'Erro ao assinar LGPD.', type: 'error' });
+    }
+  };
+
+  const getInitials = (name: string) => {
+    if (!name) return 'U';
+    return name
+      .split(' ')
+      .slice(0, 2)
+      .map((w) => w[0])
+      .join('')
+      .toUpperCase();
+  };
+
   return (
     <div className={styles.portal}>
+      {/* Toast Notification */}
+      {toast && (
+        <div style={{
+          position: 'fixed', top: '20px', right: '20px', zIndex: 9999,
+          padding: '12px 24px', borderRadius: '8px', color: '#fff',
+          fontWeight: 500, boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          background: toast.type === 'success' ? '#10b981' : '#ef4444',
+          display: 'flex', alignItems: 'center', gap: '8px',
+          animation: 'slideIn 0.3s ease-out'
+        }}>
+          <i className={`ti ${toast.type === 'success' ? 'ti-check' : 'ti-alert-circle'}`} />
+          {toast.message}
+          <button onClick={() => setToast(null)} style={{background:'transparent', border:'none', color:'#fff', cursor:'pointer', marginLeft:'12px'}}>×</button>
+        </div>
+      )}
+
       <Header
         user={gmailUser}
         notifications={notifications}
@@ -537,106 +549,206 @@ const PortalResponsavel: React.FC = () => {
         onProfileClick={() => setShowSidebar(true)}
       />
 
-      <main className={styles.container} id="main-content">
-        {students.length === 0 ? (
-          <div className={styles.emptyDashboardCard}>
-            <i className="ti ti-users" style={{ fontSize: '3.5rem', color: '#60a5fa', marginBottom: '16px' }} />
-            <h3>Nenhum filho vinculado</h3>
-            <p style={{ margin: '8px 0 24px', color: '#94a3b8' }}>
-              Para começar a acompanhar o desempenho escolar, notas, faltas e notificações, vincule seu filho(a) ao portal.
-            </p>
-            <button className={styles.btnAddChild} onClick={() => setIsLinking(true)} style={{ margin: '0 auto' }}>
-              <i className="ti ti-plus" /> Vincular Meu Filho
-            </button>
+      <div className={styles.portalBody}>
+        {/* Left Sidebar on Desktop */}
+        <aside className={styles.desktopSidebar}>
+          <div className={styles.desktopSidebarUserCard}>
+            <div className={styles.desktopSidebarAvatar}>
+              <span>{getInitials(authUser.nome)}</span>
+            </div>
+            <h4>{authUser.nome}</h4>
+            <p>{authUser.email}</p>
           </div>
-        ) : (
-          <>
-            <div className={styles.topBarSelectors}>
-              <div className={styles.studentTabs}>
-                {students.map((s) => (
-                  <button 
-                    key={s.id} 
-                    className={s.id === activeId ? styles.active : ''}
-                    onClick={() => setActiveId(s.id)}
-                  >
-                    {s.nome} {s.sobrenome}
-                  </button>
-                ))}
-              </div>
-              <button className={styles.btnAddChild} onClick={() => setIsLinking(true)}>
-                <i className="ti ti-plus" /> Adicionar outro filho
-              </button>
-            </div>
 
-            <div className={styles.pageHeader}>
-              <h1 className={styles.pageTitle}>
-                Olá, {authUser.nome.split(' ')[0]}! <span aria-hidden="true">👋</span>
-              </h1>
-              <p className={styles.pageSubtitle}>
-                {activeStudent
-                  ? <>Acompanhe o desempenho de <strong>{activeStudent.nome} {activeStudent.sobrenome}</strong></>
-                  : 'Carregando dados do aluno…'}
-              </p>
-            </div>
-
-            {/* Global data error */}
-            {dataError && (
-              <div className={styles.errorAlert} role="alert" style={{ marginBottom: '24px' }}>
-                <i className="ti ti-alert-circle" aria-hidden="true" />
-                {dataError}
-                <button
-                  className={styles.retryBtn}
-                  onClick={() => loadData()}
-                  aria-label="Tentar novamente"
-                >
-                  Tentar novamente
-                </button>
-              </div>
-            )}
-
-            {/* Data loading spinner */}
-            {dataLoading ? (
-              <div className={styles.fullscreenCenter} style={{ minHeight: '300px' }} aria-busy="true">
-                <span className={styles.spinner} aria-label="Carregando dados…" />
-                <p className={styles.loadingText}>Buscando dados do banco de dados…</p>
-              </div>
+          {/* LGPD Consent Widget */}
+          <div className={`${styles.lgpdConsentBox} ${lgpdAccepted ? styles.accepted : ''}`}>
+            <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <i className={lgpdAccepted ? "ti ti-shield-check" : "ti ti-shield-alert"} style={{ fontSize: '1.1rem' }} />
+              Políticas de Privacidade
+            </span>
+            {lgpdAccepted ? (
+              <span style={{ fontSize: '0.75rem' }}>✓ Termo LGPD assinado. Seus dados estão protegidos.</span>
             ) : (
               <>
-                {/* Top: student + notifications */}
-                <div className={styles.topGrid}>
-                  {activeStudent && <StudentCard student={activeStudent} lgpdAccepted={lgpdAccepted} />}
+                <span style={{ fontSize: '0.75rem' }}>Você ainda não assinou o consentimento de privacidade.</span>
+                <button className={styles.btnSignLgpd} onClick={handleSignLgpd}>
+                  Assinar LGPD
+                </button>
+              </>
+            )}
+          </div>
 
-                  {showNotifications || notifications.some((n) => !n.lido) ? (
-                    <NotificationsPanel
-                      notifications={notifications}
-                      onMarkAsRead={handleMarkAsRead}
-                      onDelete={handleDeleteNotification}
-                    />
-                  ) : (
-                    <div className={styles.noNotifCard}>
-                      <i className="ti ti-bell-off" aria-hidden="true" />
-                      <p>Sem novas notificações</p>
+          {/* Navigation Links */}
+          <nav className={styles.desktopSidebarNav} aria-label="Menu principal">
+            <button
+              onClick={() => setCurrentTab('dashboard')}
+              className={`${styles.desktopSidebarNavLink} ${currentTab === 'dashboard' ? styles.active : ''}`}
+            >
+              <i className="ti ti-home" /> Painel Geral
+            </button>
+            <button
+              onClick={() => setCurrentTab('profile')}
+              className={`${styles.desktopSidebarNavLink} ${currentTab === 'profile' ? styles.active : ''}`}
+            >
+              <i className="ti ti-user-edit" /> Cadastro do Perfil
+            </button>
+            <button
+              onClick={() => setCurrentTab('linking')}
+              className={`${styles.desktopSidebarNavLink} ${currentTab === 'linking' ? styles.active : ''}`}
+            >
+              <i className="ti ti-user-plus" /> Vincular Novo Filho
+            </button>
+            <a
+              href="/meus-dados.html"
+              target="_blank"
+              rel="noreferrer"
+              className={styles.desktopSidebarNavLink}
+            >
+              <i className="ti ti-shield-lock" /> Privacidade e Dados (LGPD)
+            </a>
+            <a
+              href="/mudar-senha.html"
+              target="_blank"
+              rel="noreferrer"
+              className={styles.desktopSidebarNavLink}
+            >
+              <i className="ti ti-lock" /> Alterar Senha
+            </a>
+          </nav>
+
+          <button className={styles.desktopSidebarLogoutBtn} onClick={handleLogout}>
+            <i className="ti ti-logout" /> Sair da Conta
+          </button>
+        </aside>
+
+        {/* Main Content Area */}
+        <main className={styles.container} id="main-content" style={{ flex: 1, padding: '24px' }}>
+          {currentTab === 'linking' && (
+            <VincularFilho
+              onSuccess={() => {
+                setCurrentTab('dashboard');
+                loadData();
+              }}
+              canCancel={students.length > 0}
+              onCancel={() => setCurrentTab('dashboard')}
+            />
+          )}
+
+          {currentTab === 'profile' && (
+            <EditarPerfil
+              user={authUser}
+              onSuccess={(updated) => {
+                setAuthUser(updated);
+              }}
+            />
+          )}
+
+          {currentTab === 'dashboard' && (
+            <>
+              {students.length === 0 ? (
+                <div className={styles.emptyDashboardCard}>
+                  <i className="ti ti-users" style={{ fontSize: '3.5rem', color: '#60a5fa', marginBottom: '16px' }} />
+                  <h3>Nenhum filho vinculado</h3>
+                  <p style={{ margin: '8px 0 24px', color: '#94a3b8' }}>
+                    Para começar a acompanhar o desempenho escolar, notas, faltas e notificações, vincule seu filho(a) ao portal.
+                  </p>
+                  <button className={styles.btnAddChild} onClick={() => setCurrentTab('linking')} style={{ margin: '0 auto' }}>
+                    <i className="ti ti-plus" /> Vincular Meu Filho
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className={styles.topBarSelectors}>
+                    <div className={styles.studentTabs}>
+                      {students.map((s) => (
+                        <button
+                          key={s.id}
+                          className={s.id === activeId ? styles.active : ''}
+                          onClick={() => setActiveId(s.id)}
+                        >
+                          {s.nome} {s.sobrenome}
+                        </button>
+                      ))}
+                    </div>
+                    <button className={styles.btnAddChild} onClick={() => setCurrentTab('linking')}>
+                      <i className="ti ti-plus" /> Adicionar outro filho
+                    </button>
+                  </div>
+
+                  <div className={styles.pageHeader}>
+                    <h1 className={styles.pageTitle}>
+                      Olá, {authUser.nome.split(' ')[0]}! <span aria-hidden="true">👋</span>
+                    </h1>
+                    <p className={styles.pageSubtitle}>
+                      {activeStudent ? (
+                        <>Acompanhe o desempenho de <strong>{activeStudent.nome} {activeStudent.sobrenome}</strong></>
+                      ) : (
+                        'Carregando dados do aluno…'
+                      )}
+                    </p>
+                  </div>
+
+                  {/* Global data error */}
+                  {dataError && (
+                    <div className={styles.errorAlert} role="alert" style={{ marginBottom: '24px' }}>
+                      <i className="ti ti-alert-circle" aria-hidden="true" />
+                      {dataError}
                       <button
-                        className={styles.showAllBtn}
-                        onClick={() => setShowNotifications(true)}
-                        aria-label="Ver todas as notificações"
+                        className={styles.retryBtn}
+                        onClick={() => loadData()}
+                        aria-label="Tentar novamente"
                       >
-                        Ver todas
+                        Tentar novamente
                       </button>
                     </div>
                   )}
-                </div>
 
-                {/* Bottom: grades + attendance */}
-                <div className={styles.cardsGrid}>
-                  <NotesCard grades={grades} />
-                  {attendance && <FrequencyCard attendance={attendance} />}
-                </div>
-              </>
-            )}
-          </>
-        )}
-      </main>
+                  {/* Data loading spinner */}
+                  {dataLoading ? (
+                    <div className={styles.fullscreenCenter} style={{ minHeight: '300px' }} aria-busy="true">
+                      <span className={styles.spinner} aria-label="Carregando dados…" />
+                      <p className={styles.loadingText}>Buscando dados do banco de dados…</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Top: student + notifications */}
+                      <div className={styles.topGrid}>
+                        {activeStudent && <StudentCard student={activeStudent} lgpdAccepted={lgpdAccepted} />}
+
+                        {showNotifications || notifications.some((n) => !n.lido) ? (
+                          <NotificationsPanel
+                            notifications={notifications}
+                            onMarkAsRead={handleMarkAsRead}
+                            onDelete={handleDeleteNotification}
+                          />
+                        ) : (
+                          <div className={styles.noNotifCard}>
+                            <i className="ti ti-bell-off" aria-hidden="true" />
+                            <p>Sem novas notificações</p>
+                            <button
+                              className={styles.showAllBtn}
+                              onClick={() => setShowNotifications(true)}
+                              aria-label="Ver todas as notificações"
+                            >
+                              Ver todas
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Bottom: grades + attendance */}
+                      <div className={styles.cardsGrid}>
+                        <NotesCard grades={grades} />
+                        {attendance && <FrequencyCard attendance={attendance} />}
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+            </>
+          )}
+        </main>
+      </div>
 
       <footer className={styles.footer}>
         <p>
@@ -647,13 +759,13 @@ const PortalResponsavel: React.FC = () => {
         </p>
       </footer>
 
-      <ProfileSidebar 
+      <ProfileSidebar
         isOpen={showSidebar}
         onClose={() => setShowSidebar(false)}
         user={authUser}
         onUpdateUser={(updated) => setAuthUser(updated)}
         onLogout={handleLogout}
-        onLinkChildClick={() => setIsLinking(true)}
+        onNavigate={setCurrentTab}
       />
     </div>
   );

@@ -6,7 +6,11 @@ const escapeRegex = require('../utils/escapeRegex');
 // Whitelist de campos permitidos para o Aluno (Prevenção de Injeção de Parâmetros)
 const studentWhitelist = [
     'nome', 'matricula', 'turma', 'turmaId', 'email', 'telefone', 
-    'dataNascimento', 'sexo', 'foto', 'ativo', 'observacoes', 'responsavelNome', 'responsavelTelefone'
+    'dataNascimento', 'nascimento', 'sexo', 'foto', 'ativo', 'observacoes', 
+    'responsavelNome', 'responsavelTelefone', 'responsavel',
+    'nivel', 'nivelBimestre', 'condicao', 'condicaoOutro',
+    'observacoesBimestre', 'recuperacaoBimestre', 'faltasBimestre',
+    'deficiencia', 'pcd'
 ];
 
 exports.list = async (req, res) => {

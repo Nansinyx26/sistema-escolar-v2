@@ -80,6 +80,7 @@ export interface AuthUser {
   perfil: string;
   cpf?: string;
   telefone?: string;
+  consentimentoAceiteEm?: string;
 }
 
 /** Login with email + password – sets JWT cookie on the browser. */
@@ -109,7 +110,7 @@ export async function getMe(): Promise<AuthUser> {
 }
 
 /** Updates user's own profile (such as name, cpf, and telephone). */
-export async function updateProfile(payload: { nome: string; cpf: string; telefone: string }): Promise<AuthUser> {
+export async function updateProfile(payload: { nome: string; cpf: string; telefone: string; consentimentoAceiteEm?: boolean }): Promise<AuthUser> {
   return apiFetch<AuthUser>('/auth/profile', {
     method: 'PUT',
     body: JSON.stringify(payload),

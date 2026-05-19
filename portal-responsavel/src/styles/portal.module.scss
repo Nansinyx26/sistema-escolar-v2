@@ -1594,3 +1594,275 @@
   }
 }
 
+// ─── Desktop Left Sidebar Layout ─────────────────────────────────────────────
+.portalBody {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.desktopSidebar {
+  display: none; // Hidden by default on mobile/tablet
+  
+  @media (min-width: 1024px) {
+    display: flex;
+    flex-direction: column;
+    width: 280px;
+    background: $bg-secondary;
+    border-right: 1px solid $border-color;
+    padding: 24px;
+    height: calc(100vh - 72px);
+    position: sticky;
+    top: 72px;
+    overflow-y: auto;
+    gap: 20px;
+    flex-shrink: 0;
+  }
+}
+
+.desktopSidebarUserCard {
+  text-align: center;
+  padding: 16px;
+  border-radius: $radius-md;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid $border-color;
+  margin-bottom: 8px;
+
+  h4 {
+    margin: 8px 0 2px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: $text-primary;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  p {
+    font-size: 0.78rem;
+    color: $text-tertiary;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.desktopSidebarAvatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, $accent-cyan, $accent-purple);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  span {
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+}
+
+.desktopSidebarNav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.desktopSidebarNavLink {
+  background: none;
+  border: none;
+  color: $text-secondary;
+  padding: 10px 14px;
+  border-radius: $radius-sm;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  text-align: left;
+  transition: all 0.2s;
+
+  i {
+    font-size: 1.1rem;
+    color: $text-tertiary;
+    transition: color 0.2s;
+  }
+
+  &:hover, &.active {
+    background: rgba($accent-cyan, 0.08);
+    color: $text-primary;
+    
+    i {
+      color: $accent-cyan;
+    }
+  }
+}
+
+.desktopSidebarLogoutBtn {
+  margin-top: auto;
+  background: rgba($danger, 0.06);
+  border: 1px solid rgba($danger, 0.1);
+  color: $danger;
+  padding: 10px;
+  border-radius: $radius-sm;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+
+  &:hover {
+    background: rgba($danger, 0.12);
+  }
+}
+
+.lgpdConsentBox {
+  padding: 12px;
+  border-radius: $radius-md;
+  background: rgba(26, 86, 219, 0.06);
+  border: 1px dashed rgba(26, 86, 219, 0.3);
+  font-size: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: $text-secondary;
+  text-align: left;
+
+  &.accepted {
+    background: rgba(34, 197, 94, 0.06);
+    border-color: rgba(34, 197, 94, 0.3);
+    color: #22c55e;
+  }
+
+  .btnSignLgpd {
+    @include button-primary;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    border-radius: $radius-sm;
+    background: linear-gradient(135deg, $accent-cyan, $accent-purple);
+  }
+}
+
+// ─── Full-page Profile View ───
+.profileViewCard {
+  @include card;
+  width: 100%;
+  max-width: 720px;
+  margin: 40px auto;
+  padding: 32px;
+  box-shadow: $shadow-card;
+  background: rgba(26, 29, 43, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  
+  h2 {
+    font-family: $font-display;
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: $text-primary;
+    
+    i {
+      color: $accent-cyan;
+    }
+  }
+}
+
+.profileFormSection {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid $border-color;
+  border-radius: $radius-lg;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.profileSectionTitle {
+  font-family: $font-display;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: $text-primary;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid $border-color;
+  padding-bottom: 10px;
+  
+  i {
+    color: $accent-purple;
+  }
+}
+
+.avatarSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.avatarUploadPreview {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, $accent-cyan, $accent-purple);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #fff;
+  overflow: hidden;
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.lgpdConsentSection {
+  border: 1px dashed rgba($accent-cyan, 0.3);
+  background: rgba($accent-cyan, 0.04);
+  padding: 20px;
+  border-radius: $radius-lg;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+
+  input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: $accent-cyan;
+    margin-top: 2px;
+  }
+
+  label {
+    font-size: 0.88rem;
+    color: $text-secondary;
+    line-height: 1.5;
+    cursor: pointer;
+    
+    a {
+      color: $accent-cyan;
+      text-decoration: underline;
+      font-weight: 500;
+    }
+  }
+}
+
+

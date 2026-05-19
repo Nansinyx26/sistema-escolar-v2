@@ -785,7 +785,7 @@ exports.registerResponsavel = async (req, res) => {
  * Permite ao próprio usuário atualizar seus dados cadastrais (ex: CPF e Telefone após login social)
  */
 exports.updateProfile = async (req, res) => {
-    const { nome, cpf, telefone } = req.body;
+    const { nome, cpf, telefone, consentimentoAceiteEm } = req.body;
     const userId = req.user.id || req.user._id;
 
     try {
@@ -805,8 +805,13 @@ exports.updateProfile = async (req, res) => {
             return res.status(400).json({ success: false, error: 'Este CPF já está cadastrado por outro usuário.' });
         }
 
+        const updateData = { nome, cpf, telefone };
+        if (consentimentoAceiteEm) {
+            updateData.consentimentoAceiteEm = new Date();
+        }
+
         const user = await Usuario.findByIdAndUpdate(userId, {
-            $set: { nome, cpf, telefone }
+            $set: updateData
         }, { new: true }).lean();
 
         if (!user) return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
