@@ -52,13 +52,13 @@ async function apiFetch<T>(
     headers,
   });
 
-  const body = await res.json() as { success: boolean; data?: T; error?: string };
+  const body = await res.json() as { success: boolean; data?: T; user?: T; error?: string };
 
   if (!res.ok || !body.success) {
     throw new ApiError(body.error ?? `HTTP ${res.status}`, res.status);
   }
 
-  return body.data as T;
+  return (body.data !== undefined ? body.data : body.user) as T;
 }
 
 function getCsrfToken(): string | null {
