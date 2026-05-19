@@ -707,7 +707,7 @@ class App {
         if (alunos.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="${materia === 'Sala Principal' ? 10 : 9}" class="empty-message">
+                    <td colspan="${materia === 'Sala Principal' ? 11 : 10}" class="empty-message">
                         Nenhum aluno cadastrado nesta turma.
                         <button class="btn btn-primary btn-sm" id="btnAddFirstStudent">
                             Adicionar Aluno
@@ -772,6 +772,7 @@ class App {
                     </td>
                     <td class="col-condicao">${aluno.condicao || aluno.deficiencia || '-'}</td>
                     <td class="col-matricula">${aluno.matricula || '-'}</td>
+                    <td class="col-faltas" style="font-weight: 500; text-align: center;">${(aluno.faltasBimestre && aluno.faltasBimestre[bimestre]) !== undefined ? aluno.faltasBimestre[bimestre] : '0'}</td>
                     <td class="col-recuperacao">
                         ${(() => {
                     if (aluno.recuperacaoBimestre && aluno.recuperacaoBimestre[bimestre]) {
