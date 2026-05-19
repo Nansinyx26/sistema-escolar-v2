@@ -5,6 +5,7 @@
 
 let notificacoes = [];
 let notificacaoEditando = null;
+let alunosMap = {};
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', async () => {
@@ -36,6 +37,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Carregar notificações do banco
 async function carregarNotificacoes() {
     try {
+        // Carrega alunos para mapear nomes no historico
+        try {
+            const alunosList = await db.getAll('alunos') || [];
+            alunosMap = {};
+            alunosList.forEach(a => {
+                const key = String(a.id || a._id);
+                alunosMap[key] = `${a.nome} ${a.sobrenome || ''}`.trim();
+            });
+        } catch (err) {
+            console.error('Erro ao carregar mapa de alunos:', err);
+        }
+
         const notifs = await db.getAll('notificacoes') || [];
         notificacoes = notifs.sort((a, b) => new Date(b.dataCriacao) - new Date(a.dataCriacao));
     } catch (e) {
@@ -361,8 +374,10 @@ function renderizarHistorico() {
     tbody.innerHTML = notificacoes.map(n => {
         let destLabel = 'Todos';
         if (n.destinatarios !== 'todos') {
-            // Check if it's an objectId-like or student-like ID versus a short class code like 5A
-            if (n.destinatarios.length > 5) {
+            const destKey = String(n.destinatarios);
+            if (alunosMap[destKey]) {
+                destLabel = `Aluno: ${alunosMap[destKey]}`;
+            } else if (n.destinatarios.length > 5) {
                 destLabel = `Aluno ID: ${n.destinatarios.substring(0, 6)}...`;
             } else {
                 destLabel = `Turma ${n.destinatarios}`;
@@ -404,7 +419,10 @@ window.verDetalhes = function(notifId) {
     
     let destLabel = 'Todos os responsáveis';
     if (notif.destinatarios !== 'todos') {
-        if (notif.destinatarios.length > 5) {
+        const destKey = String(notif.destinatarios);
+        if (alunosMap[destKey]) {
+            destLabel = `Aluno: ${alunosMap[destKey]}`;
+        } else if (notif.destinatarios.length > 5) {
             destLabel = `Responsável do Aluno (ID: ${notif.destinatarios})`;
         } else {
             destLabel = `Turma ${notif.destinatarios}`;

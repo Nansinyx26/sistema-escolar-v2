@@ -311,10 +311,32 @@ exports.getNotificacoes = async (req, res) => {
 
         const turmaId = aluno.turma || aluno.turmaId;
 
+        // Monta lista de destinatários possíveis para evitar type-mismatches do MongoDB (String vs Number)
+        const destinatariosList = ['todos', turmaId];
+        if (alunoId) {
+            destinatariosList.push(String(alunoId));
+            if (!isNaN(Number(alunoId))) {
+                destinatariosList.push(Number(alunoId));
+            }
+        }
+        if (aluno._id) {
+            destinatariosList.push(String(aluno._id));
+        }
+        if (aluno.id) {
+            destinatariosList.push(String(aluno.id));
+            if (!isNaN(Number(aluno.id))) {
+                destinatariosList.push(Number(aluno.id));
+            }
+        }
+
+        const ocultadosList = [String(alunoId)];
+        if (aluno._id) ocultadosList.push(String(aluno._id));
+        if (aluno.id) ocultadosList.push(String(aluno.id));
+
         // Buscando notificações onde destinatarios é 'todos', ou turmaId, ou alunoId
         const notificacoes = await Notificacao.find({
-            destinatarios: { $in: ['todos', turmaId, String(alunoId), String(aluno._id)] },
-            ocultadoPor: { $ne: String(alunoId) }
+            destinatarios: { $in: destinatariosList },
+            ocultadoPor: { $nin: ocultadosList }
         }).sort({ dataCriacao: -1 }).lean();
 
         const iconMap = {
