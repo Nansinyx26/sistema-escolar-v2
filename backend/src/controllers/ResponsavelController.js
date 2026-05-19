@@ -244,6 +244,8 @@ exports.getFrequencia = async (req, res) => {
     try {
         const { alunoId } = req.params;
         const email = req.user?.email;
+        // Permite passar dataAtual via query param para testes determinísticos
+        const dataReferencia = req.query.dataAtual ? new Date(req.query.dataAtual) : new Date();
 
         const isOwner = await verifyOwnership(alunoId, email);
         if (!isOwner) {
@@ -287,7 +289,49 @@ exports.getFrequencia = async (req, res) => {
             }
         }
 
-        // 2. Determinar a quantidade total de aulas ministradas para a turma deste aluno
+        // 2. Calcular dias letivos decorridos em 2026 até a data de referência
+        const getElapsedSchoolDays = (dateObj) => {
+            // Normaliza tudo em UTC para evitar distorções de fuso horário local
+            const todayUTC = Date.UTC(dateObj.getUTCFullYear(), dateObj.getUTCMonth(), dateObj.getUTCDate());
+            const startUTC = Date.UTC(2026, 1, 9); // 09/02/2026 (fevereiro é 1)
+            
+            if (todayUTC < startUTC) return 0;
+            
+            let count = 0;
+            let temp = new Date(startUTC);
+            while (temp.getTime() <= todayUTC) {
+                const day = temp.getUTCDay();
+                if (day !== 0 && day !== 6) { // Ignora Sábado e Domingo
+                    count++;
+                }
+                temp.setUTCDate(temp.getUTCDate() + 1);
+            }
+            
+            // Feriados e recessos nacionais em dias de semana ocorridos em 2026 (em UTC)
+            const holidays = [
+                Date.UTC(2026, 1, 16), // Carnaval Segunda-feira
+                Date.UTC(2026, 1, 17), // Carnaval Terça-feira
+                Date.UTC(2026, 3, 3),  // Sexta-feira Santa
+                Date.UTC(2026, 3, 21), // Tiradentes
+                Date.UTC(2026, 4, 1)   // Dia do Trabalho
+            ];
+            
+            holidays.forEach(hTime => {
+                if (hTime >= startUTC && hTime <= todayUTC) {
+                    const hDate = new Date(hTime);
+                    const day = hDate.getUTCDay();
+                    if (day !== 0 && day !== 6) {
+                        count--;
+                    }
+                }
+            });
+            
+            return Math.min(count, 200);
+        };
+
+        const elapsedDays = getElapsedSchoolDays(dataReferencia);
+
+        // 3. Determinar a quantidade total de aulas/dias letivos a serem considerados
         const turmasBusca = [aluno.turma, aluno.turmaId].filter(Boolean);
         const aulasProfessor = await FrequenciaProfessor.find({
             classe: { $in: turmasBusca }
@@ -307,11 +351,16 @@ exports.getFrequencia = async (req, res) => {
         // Conta as presenças reais/efetivas no sistema (chamadas diárias onde presente === true)
         const presencasEfetivas = faltas.filter((f) => f.presente === true).length;
 
-        // Garante que o total de aulas é pelo menos o total de registros do próprio aluno
-        // e pelo menos a soma das ausências (manuais ou calculadas), atrasos e presenças reais.
+        // Garante que o total de aulas é pelo menos o maior valor entre:
+        // - Dias letivos decorridos até hoje no calendário de 2026
+        // - Aulas registradas em banco pelos professores
+        // - Soma das ausências (manuais ou calculadas), atrasos e presenças reais.
         const totalRegistrosDoAluno = faltas.length;
         const minAulas = ausencia + atraso + presencasEfetivas;
 
+        if (totalAulas < elapsedDays) {
+            totalAulas = elapsedDays;
+        }
         if (totalAulas < totalRegistrosDoAluno) {
             totalAulas = totalRegistrosDoAluno;
         }

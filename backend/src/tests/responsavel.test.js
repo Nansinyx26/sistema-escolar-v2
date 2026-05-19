@@ -69,16 +69,21 @@ describe('GET /api/responsavel/frequencia/:alunoId', () => {
         });
 
         const res = await request(app)
-            .get(`/api/responsavel/frequencia/${aluno._id}`)
+            .get(`/api/responsavel/frequencia/${aluno._id}?dataAtual=2026-05-19`)
             .set('Cookie', cookie);
+
+        if (res.status !== 200) {
+            console.error('TEST ERROR BODY 1:', res.body);
+        }
 
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
-        // presence = 2 total classes - 1 absence = 1
-        expect(res.body.data.presenca).toBe(1);
+        // On 19/05/2026, 67 school days have elapsed.
+        // presence = 67 total classes - 1 absence = 66
+        expect(res.body.data.presenca).toBe(66);
         expect(res.body.data.ausencia).toBe(1);
         expect(res.body.data.atraso).toBe(0);
-        expect(res.body.data.percentual).toBe(50);
+        expect(res.body.data.percentual).toBe(99); // Math.round((66/67)*100) = 99
     });
 
     it('should correctly use manual/bimestral absences override (faltasBimestre)', async () => {
@@ -123,18 +128,20 @@ describe('GET /api/responsavel/frequencia/:alunoId', () => {
         });
 
         const res = await request(app)
-            .get(`/api/responsavel/frequencia/${aluno._id}`)
+            .get(`/api/responsavel/frequencia/${aluno._id}?dataAtual=2026-05-19`)
             .set('Cookie', cookie);
+
+        if (res.status !== 200) {
+            console.error('TEST ERROR BODY 2:', res.body);
+        }
 
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
         // Manual absences = 11.
-        // calculated presence = 1.
-        // minAulas = 11 (manual absences) + 0 (delays) + 1 (presence) = 12.
-        // totalAulas becomes 12 (since FrequenciaProfessor only has 2, it adjusts to minAulas).
-        // presenca = totalAulas - ausencia = 12 - 11 = 1.
+        // On 19/05/2026, 67 school days have elapsed.
+        // presence = 67 total classes - 11 absences = 56
         expect(res.body.data.ausencia).toBe(11);
-        expect(res.body.data.presenca).toBe(1);
-        expect(res.body.data.percentual).toBe(8); // Math.round((1/12)*100) = 8
+        expect(res.body.data.presenca).toBe(56);
+        expect(res.body.data.percentual).toBe(84); // Math.round((56/67)*100) = 84
     });
 });
