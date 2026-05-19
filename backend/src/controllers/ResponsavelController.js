@@ -36,8 +36,10 @@ async function findAlunoByResponsavel(email, matricula) {
 async function verifyOwnership(alunoId, email) {
     if (!email) return false;
     const aluno = await Aluno.findOne({
-        $or: [{ _id: alunoId }, { id: alunoId }],
-        $or: [{ responsavel: email }, { responsavel: new RegExp(`^${email}$`, 'i') }]
+        $and: [
+            { $or: [{ _id: alunoId }, { id: alunoId }] },
+            { $or: [{ responsavel: email }, { responsavel: new RegExp(`^${email}$`, 'i') }] }
+        ]
     }).lean();
     return !!aluno;
 }

@@ -55,28 +55,42 @@ function abrirNovaNotificacao() {
 
 // Alterar a seleção de destinatário
 function mudarTipoDestinatario() {
-    const tipoDest = document.querySelector('input[name="tipoDest"]:checked').value;
+    const checked = document.querySelector('input[name="tipoDest"]:checked');
+    if (!checked) return;
+    const tipoDest = checked.value;
+
     const turmaContainer = document.getElementById('turmaSelectContainer');
-    const alunoContainer = document.getElementById('alunoSelectContainer');
-    const selectTurma = document.getElementById('selectTurma');
-    const selectAluno = document.getElementById('selectAluno');
-    
+    const alunoContainer  = document.getElementById('alunoSelectContainer');
+    const selectTurma     = document.getElementById('selectTurma');
+    const selectAluno     = document.getElementById('selectAluno');
+
+    if (!turmaContainer || !alunoContainer || !selectTurma || !selectAluno) {
+        console.error('[mudarTipoDestinatario] Elementos não encontrados no DOM');
+        return;
+    }
+
     if (tipoDest === 'todos') {
         turmaContainer.style.display = 'none';
-        alunoContainer.style.display = 'none';
+        alunoContainer.style.display  = 'none';
         selectTurma.value = '';
         selectAluno.innerHTML = '<option value="">Primeiro selecione a turma acima...</option>';
         selectAluno.disabled = true;
+
     } else if (tipoDest === 'turma') {
         turmaContainer.style.display = 'block';
-        alunoContainer.style.display = 'none';
+        alunoContainer.style.display  = 'none';
         selectAluno.innerHTML = '<option value="">Primeiro selecione a turma acima...</option>';
         selectAluno.disabled = true;
+
     } else if (tipoDest === 'aluno') {
         turmaContainer.style.display = 'block';
-        alunoContainer.style.display = 'block';
+        alunoContainer.style.display  = 'block';
+        // Se já há uma turma selecionada, carrega os alunos imediatamente
         if (selectTurma.value) {
             aoSelecionarTurma();
+        } else {
+            selectAluno.innerHTML = '<option value="">Selecione uma turma acima...</option>';
+            selectAluno.disabled = true;
         }
     }
     atualizarPreview();
@@ -189,11 +203,15 @@ async function carregarListaTurmas() {
         });
         
         turmas.forEach(t => {
-            if (!t.id) return;
+            // Use nome or id (short code like "1A") — must match Aluno.turma field
+            const turmaCode = t.nome || t.id;
+            if (!turmaCode) return;
             const option = document.createElement('option');
-            option.value = t.id;
+            option.value = turmaCode;
             
-            const label = (t.ano && t.sala) ? `${t.ano}º Ano ${t.sala}` : `Turma ${t.id}`;
+            const label = (t.ano && t.sala) 
+                ? `${t.ano}º Ano ${t.sala} (${turmaCode})` 
+                : turmaCode;
             option.textContent = label;
             
             select.appendChild(option);
@@ -283,6 +301,7 @@ async function salvarNotificacao(event) {
         titulo,
         mensagem,
         destinatarios,
+        escolaId: 'default',
         dataCriacao: new Date().toISOString(),
         dataEnvio: dataAgend && horaAgend ? new Date(`${dataAgend}T${horaAgend}`).toISOString() : new Date().toISOString(),
         status: dataAgend && horaAgend ? 'agendado' : 'enviado',
