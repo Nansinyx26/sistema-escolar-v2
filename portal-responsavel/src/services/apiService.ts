@@ -10,10 +10,12 @@
 import type { Student, Grade, Attendance, Notification } from '../types';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const BASE_URL = import.meta.env.VITE_API_URL || 
-  (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://localhost:3001/api' 
-    : `${typeof window !== 'undefined' ? window.location.origin : ''}/api`);
+const isLocal = typeof window !== 'undefined' && 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+const BASE_URL = isLocal 
+  ? (import.meta.env.VITE_API_URL || 'http://localhost:3001/api')
+  : `${window.location.origin}/api`;
 
 // ─── Error class ──────────────────────────────────────────────────────────────
 export class ApiError extends Error {
