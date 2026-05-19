@@ -155,14 +155,23 @@ exports.getNotas = async (req, res) => {
         const { alunoId } = req.params;
         const email = req.user?.email;
 
-        // Proteção IDOR: Garante que o responsável logado seja dono deste aluno
         const isOwner = await verifyOwnership(alunoId, email);
         if (!isOwner) {
             return res.status(403).json({ success: false, error: 'Acesso negado. Aluno não vinculado à sua conta.' });
         }
 
+        const aluno = await Aluno.findOne({ $or: [{ _id: alunoId }, { id: alunoId }] }).lean();
+        if (!aluno) {
+            return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
+        }
+
         const notas = await Nota.find({
-            $or: [{ alunoId }, { alunoId: alunoId }],
+            $or: [
+                { alunoId: String(aluno._id) },
+                { alunoId: aluno._id },
+                { alunoId: aluno.id },
+                { matriculaId: aluno.matricula }
+            ]
         })
             .sort({ materiaId: 1, bimestre: 1 })
             .lean();
@@ -226,14 +235,23 @@ exports.getFrequencia = async (req, res) => {
         const { alunoId } = req.params;
         const email = req.user?.email;
 
-        // Proteção IDOR: Garante que o responsável logado seja dono deste aluno
         const isOwner = await verifyOwnership(alunoId, email);
         if (!isOwner) {
             return res.status(403).json({ success: false, error: 'Acesso negado. Aluno não vinculado à sua conta.' });
         }
 
+        const aluno = await Aluno.findOne({ $or: [{ _id: alunoId }, { id: alunoId }] }).lean();
+        if (!aluno) {
+            return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
+        }
+
         const faltas = await Falta.find({
-            $or: [{ aluno: alunoId }, { aluno: alunoId }],
+            $or: [
+                { aluno: String(aluno._id) },
+                { aluno: aluno._id },
+                { aluno: aluno.id },
+                { matriculaId: aluno.matricula }
+            ]
         }).lean();
 
         if (!faltas.length) {
