@@ -187,7 +187,7 @@ exports.verifyCode = async (req, res) => {
         res.cookie('escola_jwt', token, {
             httpOnly: true,
             secure: isProduction,
-            sameSite: 'Strict',
+            sameSite: 'Lax',
             maxAge: 8 * 60 * 60 * 1000
         });
 

@@ -54,7 +54,7 @@ exports.create = async (req, res) => {
 
         // Normaliza campo de senha (suporta 'senha' ou 'password')
         const senhaBruta = req.body.senha || req.body.password;
-        
+
         if (!senhaBruta && !req.body.loginGoogle) {
             return res.status(400).json({ success: false, error: 'O campo senha é obrigatório.' });
         }
@@ -67,7 +67,7 @@ exports.create = async (req, res) => {
         req.body.deveMudarSenha = true;
 
         const user = await Usuario.create(req.body);
-        
+
         await logAction(req, 'CREATE_USER', 'Usuarios', {
             recursoId: user._id,
             valorNovo: { email: user.email, perfil: user.perfil },
@@ -231,9 +231,9 @@ exports.login = async (req, res) => {
         // Verifica se a conta está bloqueada
         if (user.lockUntil && user.lockUntil > Date.now()) {
             const minutosRestantes = Math.ceil((user.lockUntil - Date.now()) / (60 * 1000));
-            return res.status(403).json({ 
-                success: false, 
-                error: `Conta bloqueada temporariamente devido a múltiplas tentativas falhas. Tente novamente em ${minutosRestantes} minutos.` 
+            return res.status(403).json({
+                success: false,
+                error: `Conta bloqueada temporariamente devido a múltiplas tentativas falhas. Tente novamente em ${minutosRestantes} minutos.`
             });
         }
 
@@ -252,7 +252,7 @@ exports.login = async (req, res) => {
                 // Migração automática: atualiza para bcrypt hash via updateOne para evitar ValidationError
                 const senhaBcrypt = await bcrypt.hash(senha, SALT_ROUNDS);
                 await Usuario.updateOne({ _id: user._id }, { $set: { senha: senhaBcrypt } });
-                
+
                 console.log(`🔐 [SECURITY] Senha legada de ${user.email} migrada para bcrypt automaticamente.`);
                 await logAction(req, 'AUTO_MIGRATE_PASSWORD', 'Segurança', {
                     recursoId: user._id,
@@ -265,12 +265,12 @@ exports.login = async (req, res) => {
             // Incrementa tentativas de login via updateOne (bypass validation)
             const attempts = (user.loginAttempts || 0) + 1;
             const updateData = { loginAttempts: attempts };
-            
+
             if (attempts >= 5) {
                 updateData.lockUntil = Date.now() + 15 * 60 * 1000;
                 updateData.loginAttempts = 0;
                 await Usuario.updateOne({ _id: user._id }, { $set: updateData });
-                
+
                 // Dispara notificação de brute force para admins
                 try {
                     const admins = await Usuario.find({ perfil: 'admin', ativo: true }).select('email').lean();
@@ -282,7 +282,7 @@ exports.login = async (req, res) => {
 
                 return res.status(403).json({ success: false, error: 'Múltiplas tentativas falhas. Conta bloqueada por 15 minutos.' });
             }
-            
+
             await Usuario.updateOne({ _id: user._id }, { $set: updateData });
             await logAction(req, 'LOGIN_FAILED', 'Auth', { descricao: `Tentativa de login falha para: ${email}` });
             return res.status(401).json({ success: false, error: 'Credenciais inválidas' });
@@ -351,7 +351,7 @@ exports.login = async (req, res) => {
         res.cookie('escola_jwt', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'Strict',
+            sameSite: 'Lax',
             maxAge: 8 * 60 * 60 * 1000 // 8h
         });
 
@@ -361,11 +361,11 @@ exports.login = async (req, res) => {
         res.json({
             success: true,
             requires2FA: false,
-            user: { 
-                id: user._id, 
-                nome: user.nome, 
-                perfil: user.perfil, 
-                email: user.email, 
+            user: {
+                id: user._id,
+                nome: user.nome,
+                perfil: user.perfil,
+                email: user.email,
                 deveMudarSenha: user.deveMudarSenha,
                 cpf: user.cpf,
                 telefone: user.telefone,
@@ -384,23 +384,23 @@ exports.login = async (req, res) => {
  */
 exports.mockGoogleLogin = async (req, res) => {
     const { email } = req.body;
-    
+
     try {
         let user = await Usuario.findOne({ email: email.toLowerCase() });
-        
-        const payload = user ? { 
-            id: user._id, 
-            perfil: user.perfil, 
-            email: user.email, 
+
+        const payload = user ? {
+            id: user._id,
+            perfil: user.perfil,
+            email: user.email,
             nome: user.nome,
             cpf: user.cpf,
             telefone: user.telefone,
             consentimentoAceiteEm: user.consentimentoAceiteEm
-        } : { 
-            id: 'mock-google-id', 
-            perfil: 'responsavel', 
-            email: email, 
-            nome: email.split('@')[0] 
+        } : {
+            id: 'mock-google-id',
+            perfil: 'responsavel',
+            email: email,
+            nome: email.split('@')[0]
         };
 
         const token = jwt.sign(payload, ACTUAL_JWT_SECRET, { expiresIn: '8h' });
@@ -408,7 +408,7 @@ exports.mockGoogleLogin = async (req, res) => {
         res.cookie('escola_jwt', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'Strict',
+            sameSite: 'Lax',
             maxAge: 8 * 60 * 60 * 1000
         });
 
@@ -424,7 +424,7 @@ exports.mockGoogleLogin = async (req, res) => {
  */
 exports.googleLogin = async (req, res) => {
     const { token } = req.body;
-    
+
     if (!token) {
         return res.status(400).json({ success: false, error: 'Token Google não fornecido.' });
     }
@@ -438,13 +438,13 @@ exports.googleLogin = async (req, res) => {
         if (token.startsWith('eyJ')) {
             const { OAuth2Client } = require('google-auth-library');
             const client = new OAuth2Client(clientId);
-            
+
             const ticket = await client.verifyIdToken({
                 idToken: token,
                 audience: clientId,
             });
             const googlePayload = ticket.getPayload();
-            
+
             email = googlePayload.email.toLowerCase();
             nome = googlePayload.name;
             picture = googlePayload.picture || '';
@@ -454,19 +454,19 @@ exports.googleLogin = async (req, res) => {
             const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            
+
             if (!response.ok) {
                 throw new Error('Falha ao validar o Access Token do Google.');
             }
-            
+
             const googlePayload = await response.json();
             email = googlePayload.email.toLowerCase();
             nome = googlePayload.name || googlePayload.given_name || email.split('@')[0];
             picture = googlePayload.picture || '';
         }
-        
+
         let user = await Usuario.findOne({ email });
-        
+
         // Se não existe, cria um Responsável automaticamente (SSO onboarding)
         if (!user) {
             // Senha fantasma que não será usada, pois ele loga com Google
@@ -475,7 +475,7 @@ exports.googleLogin = async (req, res) => {
             const randomPass = crypto.randomBytes(16).toString('hex');
             const senhaHash = await bcrypt.hash(randomPass, 10);
             const tempCpf = `temp_cpf_${crypto.randomBytes(6).toString('hex')}`;
-            
+
             user = await Usuario.create({
                 nome,
                 email,
@@ -489,11 +489,11 @@ exports.googleLogin = async (req, res) => {
                 consentimentoAceiteEm: new Date()
             });
         }
-        
-        const jwtPayload = { 
-            id: user._id, 
-            perfil: user.perfil, 
-            email: user.email, 
+
+        const jwtPayload = {
+            id: user._id,
+            perfil: user.perfil,
+            email: user.email,
             nome: user.nome,
             cpf: user.cpf,
             telefone: user.telefone,
@@ -505,7 +505,7 @@ exports.googleLogin = async (req, res) => {
         res.cookie('escola_jwt', sessionToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'Strict',
+            sameSite: 'Lax',
             maxAge: 8 * 60 * 60 * 1000
         });
 
@@ -550,7 +550,7 @@ exports.update = async (req, res) => {
         }
 
         const user = await Usuario.findByIdAndUpdate(targetId, filteredBody, { new: true }).select('-senha');
-        
+
         await logAction(req, 'UPDATE_USER', 'Usuarios', {
             recursoId: targetId,
             valorAnterior: { perfil: oldData.perfil, ativo: oldData.ativo },
@@ -623,7 +623,7 @@ exports.forgotPassword = async (req, res) => {
 
         // 1. Gerar Token UUID v4 (seguro)
         const token = crypto.randomUUID();
-        
+
         // 2. Salvar no banco com TTL de 15 minutos
         user.resetToken = token;
         user.resetTokenExpiry = Date.now() + 15 * 60 * 1000; // 15 min
@@ -631,7 +631,7 @@ exports.forgotPassword = async (req, res) => {
 
         // 3. Enviar link por e-mail
         const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3001'}/reset-password.html?token=${token}`;
-        
+
         const mailOptions = {
             from: `"Sistema Escolar" <${process.env.EMAIL_USER}>`,
             to: user.email,
@@ -650,10 +650,10 @@ exports.forgotPassword = async (req, res) => {
         // Envia o e-mail (em background para não travar a resposta)
         transporter.sendMail(mailOptions).catch(err => console.error('Erro ao enviar e-mail:', err));
 
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             message: 'Se os dados estiverem corretos, um link de recuperação será enviado para seu e-mail.',
-            token_debug: process.env.NODE_ENV === 'development' ? token : undefined 
+            token_debug: process.env.NODE_ENV === 'development' ? token : undefined
         });
 
     } catch (e) {
@@ -678,15 +678,15 @@ exports.resetPassword = async (req, res) => {
         const senhaHash = await bcrypt.hash(password, SALT_ROUNDS);
         await Usuario.updateOne(
             { _id: user._id },
-            { 
+            {
                 $set: { senha: senhaHash },
                 $unset: { resetToken: "", resetTokenExpiry: "" }
             }
         );
 
-        await logAction(req, 'RESET_PASSWORD_SUCCESS', 'Usuarios', { 
-            recursoId: user._id, 
-            descricao: `Senha redefinida via token para ${user.email}` 
+        await logAction(req, 'RESET_PASSWORD_SUCCESS', 'Usuarios', {
+            recursoId: user._id,
+            descricao: `Senha redefinida via token para ${user.email}`
         });
 
         res.json({ success: true, message: 'Sua senha foi alterada com sucesso!' });
@@ -709,9 +709,9 @@ exports.updatePasswordForce = async (req, res) => {
         }
 
         const senhaHash = await bcrypt.hash(password, SALT_ROUNDS);
-        
+
         await Usuario.findByIdAndUpdate(userId, {
-            $set: { 
+            $set: {
                 senha: senhaHash,
                 deveMudarSenha: false // Libera o acesso
             }
@@ -735,9 +735,9 @@ exports.updatePasswordForce = async (req, res) => {
 exports.verifyEmail = async (req, res) => {
     try {
         const { token } = req.params;
-        
+
         // Retorna o documento incluindo os campos select: false
-        const user = await Usuario.findOne({ 
+        const user = await Usuario.findOne({
             emailVerificacaoToken: token,
             emailVerificacaoExpiry: { $gt: Date.now() }
         }).select('+emailVerificacaoToken +emailVerificacaoExpiry');
@@ -788,7 +788,7 @@ exports.verifyEmail = async (req, res) => {
  */
 exports.registerResponsavel = async (req, res) => {
     const { nome, email, senha, cpf, telefone } = req.body;
-    
+
     try {
         if (!nome || !email || !senha) {
             return res.status(400).json({ success: false, error: 'Nome, e-mail e senha são obrigatórios.' });

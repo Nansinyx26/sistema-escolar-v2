@@ -506,3 +506,28 @@
     background: var(--bg-tertiary);
     border-color: var(--text-tertiary);
 }
+
+/* Código secreto válido */
+.form-input.code-valid {
+    border-color: #10b981 !important;
+    color: #10b981 !important;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1) !important;
+}
+.form-input.code-valid + .input-icon {
+    color: #10b981 !important;
+}
+
+/* Código secreto inválido */
+.form-input.code-invalid {
+    border-color: #ef4444 !important;
+    color: #ef4444 !important;
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1) !important;
+}
+.form-input.code-invalid + .input-icon {
+    color: #ef4444 !important;
+}
+
+/* Estilo para barra de força da senha */
+.password-strength-wrapper {
+    width: 100%;
+}

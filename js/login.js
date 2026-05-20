@@ -102,11 +102,127 @@ function setupLoginForm() {
 // === REGISTER FORM ===
 function setupRegisterForm() {
     const form = document.getElementById('registerForm');
-    const nameInput = document.getElementById('registerName');
+    const nameInput = document.getElementById('registerNome');
     const emailInput = document.getElementById('registerEmail');
     const codeInput = document.getElementById('registerCode');
     const passwordInput = document.getElementById('registerPassword');
     const confirmInput = document.getElementById('registerPasswordConfirm');
+
+    // Elementos da força da senha
+    const strengthWrapper = document.querySelector('.password-strength-wrapper');
+    const strengthProgress = document.getElementById('strengthProgress');
+    const strengthText = document.getElementById('strengthText');
+
+    // Elementos do código secreto
+    const validationIcon = document.getElementById('codeValidationIcon');
+    let debounceTimer;
+
+    // Monitora a força da senha
+    if (passwordInput && strengthWrapper && strengthProgress && strengthText) {
+        passwordInput.addEventListener('input', () => {
+            const val = passwordInput.value;
+            if (!val) {
+                strengthWrapper.style.display = 'none';
+                return;
+            }
+            
+            strengthWrapper.style.display = 'block';
+            
+            let score = 0;
+            
+            // Critério 1: Comprimento
+            if (val.length >= 8) score++;
+            
+            // Critério 2: Letra maiúscula
+            if (/[A-Z]/.test(val)) score++;
+            
+            // Critério 3: Número
+            if (/[0-9]/.test(val)) score++;
+            
+            // Critério 4: Caractere especial
+            if (/[^A-Za-z0-9]/.test(val)) score++;
+            
+            // Atualiza UI
+            let width = '0%';
+            let color = '#ef4444'; // Vermelho
+            let text = 'Senha muito fraca';
+            
+            if (val.length < 6) {
+                width = '20%';
+                color = '#ef4444';
+                text = 'Muito curta (mín. 6 caracteres)';
+            } else {
+                switch (score) {
+                    case 0:
+                    case 1:
+                        width = '25%';
+                        color = '#ef4444';
+                        text = 'Fraca';
+                        break;
+                    case 2:
+                        width = '50%';
+                        color = '#f59e0b'; // Amarelo/Laranja
+                        text = 'Média';
+                        break;
+                    case 3:
+                        width = '75%';
+                        color = '#3b82f6'; // Azul
+                        text = 'Boa';
+                        break;
+                    case 4:
+                        width = '100%';
+                        color = '#10b981'; // Verde
+                        text = 'Forte';
+                        break;
+                }
+            }
+            
+            strengthProgress.style.width = width;
+            strengthProgress.style.backgroundColor = color;
+            strengthText.innerText = `Força da Senha: ${text}`;
+            strengthText.style.color = color;
+        });
+    }
+
+    // Validação ao vivo do código secreto
+    if (codeInput && validationIcon) {
+        codeInput.addEventListener('input', () => {
+            const codigo = codeInput.value.trim();
+            
+            // Limpa classes e esconde ícone temporariamente
+            codeInput.classList.remove('code-valid', 'code-invalid');
+            validationIcon.style.display = 'none';
+            validationIcon.className = 'bi';
+            
+            if (!codigo) return;
+            
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(async () => {
+                try {
+                    const response = await fetch(`${window.API_BASE_URL}/auth/validate-code`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ codigo })
+                    });
+                    const data = await response.json();
+                    
+                    if (data.success && data.valid) {
+                        codeInput.classList.add('code-valid');
+                        validationIcon.className = 'bi bi-check-circle-fill code-valid-icon';
+                        validationIcon.style.color = '#10b981';
+                        validationIcon.style.display = 'block';
+                    } else {
+                        codeInput.classList.add('code-invalid');
+                        validationIcon.className = 'bi bi-x-circle-fill';
+                        validationIcon.style.color = '#ef4444';
+                        validationIcon.style.display = 'block';
+                    }
+                } catch (err) {
+                    console.error('Erro ao validar código:', err);
+                }
+            }, 400);
+        });
+    }
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -157,6 +273,13 @@ function setupRegisterForm() {
 
             // Limpa e muda para aba de login
             form.reset();
+            if (strengthWrapper) strengthWrapper.style.display = 'none';
+            if (codeInput) codeInput.classList.remove('code-valid', 'code-invalid');
+            if (validationIcon) {
+                validationIcon.style.display = 'none';
+                validationIcon.className = 'bi';
+            }
+            
             const loginTab = document.querySelector('.login-tab[data-tab="login"]');
             if (loginTab) loginTab.click();
             

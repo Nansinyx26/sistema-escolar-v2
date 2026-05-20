@@ -180,7 +180,8 @@
                                     <div class="input-group">
                                         <i class="input-icon bi bi-shield-lock"></i>
                                         <input type="text" id="registerCode" class="form-input"
-                                            placeholder="Digite o código da direção" required>
+                                            placeholder="Digite o código da direção" required style="padding-right: 40px;">
+                                        <i id="codeValidationIcon" class="bi" style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 1.1rem; pointer-events: none; display: none;"></i>
                                     </div>
                                 </div>
 
@@ -191,6 +192,13 @@
                                         <input type="password" id="registerPassword" class="form-input"
                                             placeholder="Mínimo 6 caracteres" required minlength="6">
                                     </div>
+                                </div>
+
+                                <div class="password-strength-wrapper" style="margin-top: -0.8rem; margin-bottom: 1.2rem; display: none;">
+                                    <div class="password-strength-bar" style="height: 6px; width: 100%; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; margin-bottom: 0.4rem;">
+                                        <div id="strengthProgress" style="height: 100%; width: 0%; transition: width 0.3s ease, background-color 0.3s ease;"></div>
+                                    </div>
+                                    <span id="strengthText" style="font-size: 0.75rem; color: var(--text-tertiary);"></span>
                                 </div>
 
                                 <div class="form-group" style="margin-bottom: 2rem;">

@@ -98,6 +98,22 @@ class SecurityController {
         if (!config) return false;
         return config.codigoSecretoEscola === String(code).toUpperCase();
     }
+
+    /**
+     * Valida o código enviado via POST público
+     */
+    async validateCodePublic(req, res) {
+        try {
+            const { codigo } = req.body;
+            if (!codigo) {
+                return res.status(400).json({ success: false, error: 'Código não fornecido.' });
+            }
+            const isValid = await this.validateCode(codigo);
+            res.json({ success: true, valid: isValid });
+        } catch (e) {
+            res.status(500).json({ success: false, error: e.message });
+        }
+    }
 }
 
 module.exports = new SecurityController();

@@ -79,6 +79,7 @@ router.post('/auth/logout', UserController.logout);
 router.post('/auth/register-responsavel', UserController.registerResponsavel);
 router.post('/auth/forgot-password', UserController.forgotPassword);
 router.post('/auth/reset-password', UserController.resetPassword);
+router.post('/auth/validate-code', (req, res) => SecurityController.validateCodePublic(req, res));
 
 // --- Verificar sessão atual (JWT cookie) ---
 router.get('/auth/me', authJWT, async (req, res) => {

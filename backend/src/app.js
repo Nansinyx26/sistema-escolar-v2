@@ -43,7 +43,7 @@ app.use(helmet({
             "img-src": ["'self'", "data:", "blob:", "https://lh3.googleusercontent.com", "https://lh4.googleusercontent.com", "https://lh5.googleusercontent.com", "https://lh6.googleusercontent.com"],
             // CRÍTICO: www.googleapis.com é necessário para o fluxo OAuth do Google
             // (useGoogleLogin chama /oauth2/v3/userinfo após o popup fechar)
-            "connect-src": ["'self'", "https://sistema-escolar-bfty.onrender.com", "http://localhost:3001", "cdn.jsdelivr.net", "unpkg.com", "https://accounts.google.com", "https://www.googleapis.com", "https://oauth2.googleapis.com"],
+            "connect-src": ["'self'", "https://sistema-escolar-bfty.onrender.com", "http://localhost:3001", "cdn.jsdelivr.net", "unpkg.com", "https://accounts.google.com", "https://www.googleapis.com", "https://oauth2.googleapis.com", "https://fonts.googleapis.com", "https://fonts.gstatic.com"],
             "frame-src": ["'self'", "https://accounts.google.com"], // Necessário para o Iframe de login do Google
             "frame-ancestors": ["'none'"], // Proteção extra contra Clickjacking
             "base-uri": ["'self'"],         // Previne ataques de base tag injection

@@ -120,3 +120,40 @@ describe('POST /api/auth/reset-password', () => {
         expect(usuario.resetToken).toBeUndefined();
     });
 });
+
+// ─────────────────────────────────────────────────────────
+// Validação do Código Secreto
+// ─────────────────────────────────────────────────────────
+describe('POST /api/auth/validate-code', () => {
+    it('deve retornar valid=false para código incorreto', async () => {
+        const res = await request(app)
+            .post('/api/auth/validate-code')
+            .send({ codigo: 'CODIGO_ERRADO' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.valid).toBe(false);
+    });
+
+    it('deve retornar valid=true para o código atual', async () => {
+        const SecurityConfig = require('../models/SecurityConfig');
+        let config = await SecurityConfig.findOne({ chave: 'CONFIG_GERAL' });
+        if (!config) {
+            config = await SecurityConfig.create({
+                codigoSecretoEscola: 'XYZ123',
+                dataUltimaRotacao: new Date()
+            });
+        } else {
+            config.codigoSecretoEscola = 'XYZ123';
+            await config.save();
+        }
+
+        const res = await request(app)
+            .post('/api/auth/validate-code')
+            .send({ codigo: 'xyz123' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.valid).toBe(true);
+    });
+});

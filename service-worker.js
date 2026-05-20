@@ -50,19 +50,21 @@ self.addEventListener('fetch', event => {
     event.respondWith(
         caches.match(event.request).then(cachedResponse => {
             const fetchPromise = fetch(event.request).then(networkResponse => {
-                // Atualiza o cache com a versão mais nova da rede
-                if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+                // Atualiza o cache com a versão mais nova da rede (suporta basic e cors)
+                if (networkResponse && networkResponse.status === 200 && (networkResponse.type === 'basic' || networkResponse.type === 'cors')) {
                     const responseToCache = networkResponse.clone();
                     caches.open(CACHE_NAME).then(cache => {
                         cache.put(event.request, responseToCache);
                     });
                 }
                 return networkResponse;
-            }).catch(() => {
+            }).catch(err => {
                 // Se falhar a rede e não tiver no cache, tenta retornar o index se for navegação
                 if (event.request.mode === 'navigate') {
                     return caches.match('/index.html');
                 }
+                // Propaga o erro para que a promessa seja rejeitada de forma correta e tratada como falha de rede padrão
+                throw err;
             });
 
             // Retorna do cache se tiver, caso contrário espera a rede
