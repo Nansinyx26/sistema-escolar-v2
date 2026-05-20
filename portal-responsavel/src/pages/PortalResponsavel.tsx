@@ -258,10 +258,12 @@ const PortalResponsavel: React.FC = () => {
       });
       const data = await response.json();
       if (!response.ok || !data.success) throw new Error(data.error || 'Erro ao criar conta');
-
-      setToast({ message: 'Conta criada com sucesso! Você já pode fazer login.', type: 'success' });
-      setIsRegistering(false); // Volta para a tela de login
-      setEmail(registerForm.email); // Preenche o e-mail para o usuário
+      
+      setToast({ message: 'Conta criada com sucesso! Entrando...', type: 'success' });
+      
+      // Realiza o login automático imediatamente
+      const user = await login({ email: registerForm.email, senha: registerForm.senha });
+      setAuthUser(user);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Erro ao criar conta.';
       setAuthError(msg);
