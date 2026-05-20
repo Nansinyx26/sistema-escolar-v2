@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR" data-theme="dark">
 
 <head>
@@ -692,6 +692,21 @@
             return idx >= 0 && DIA_JS[idx] === hoje;
         }
 
+        // Helper: fetch com timeout de 15 segundos
+        async function fetchComTimeout(url, timeoutMs = 15000) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                const res = await fetch(url, { signal: controller.signal, credentials: 'include' });
+                clearTimeout(timer);
+                return res;
+            } catch (err) {
+                clearTimeout(timer);
+                if (err.name === 'AbortError') throw new Error('O servidor demorou muito para responder. Tente novamente.');
+                throw err;
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             const params = new URLSearchParams(window.location.search);
             const profKey = params.get('prof');
@@ -720,12 +735,16 @@
                     document.getElementById('totalTurmas').parentElement.style.display = 'none';
 
                     try {
-                        const res = await fetch(`${BASE_URL}/tabela-geral/sala/${encodeURIComponent(salaVinculada)}?t=${Date.now()}`);
+                        const res = await fetchComTimeout(`${BASE_URL}/tabela-geral/sala/${encodeURIComponent(salaVinculada)}?t=${Date.now()}`);
                         const json = await res.json();
                         if (!json.success) throw new Error(json.error || 'Resposta inválida');
                         renderModoSala(json.data.horarios, salaVinculada);
                         return; // Interrompe para não seguir no modo professor comum
-                    } catch (err) { console.error(err); }
+                    } catch (err) {
+                        console.error(err);
+                        showError(`Não foi possível carregar o horário da turma. (${err.message})`);
+                        return;
+                    }
                 }
 
                 const nome = NOMES_PROF[profKey] || profKey;
@@ -739,7 +758,7 @@
                 document.getElementById('profBanner').style.display = 'flex';
 
                 try {
-                    const res = await fetch(`${BASE_URL}/tabela-geral/prof/${encodeURIComponent(profKey)}?t=${Date.now()}`);
+                    const res = await fetchComTimeout(`${BASE_URL}/tabela-geral/prof/${encodeURIComponent(profKey)}?t=${Date.now()}`);
                     const json = await res.json();
                     if (!json.success) throw new Error(json.error || 'Resposta inválida');
                     renderModoProfessor(json.data.horarios, profKey);
@@ -760,7 +779,7 @@
                 document.getElementById('totalTurmas').parentElement.style.display = 'none';
 
                 try {
-                    const res = await fetch(`${BASE_URL}/tabela-geral/sala/${encodeURIComponent(salaId)}?t=${Date.now()}`);
+                    const res = await fetchComTimeout(`${BASE_URL}/tabela-geral/sala/${encodeURIComponent(salaId)}?t=${Date.now()}`);
                     const json = await res.json();
                     if (!json.success) throw new Error(json.error || 'Resposta inválida');
                     renderModoSala(json.data.horarios, salaId);
