@@ -855,6 +855,13 @@ exports.updateProfile = async (req, res) => {
 
         if (!user) return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
 
+        // GRAVA A ALTERAÇÃO NO HISTÓRICO DE AUDITORIA (LGPD Art. 18)
+        await logAction(req, 'UPDATE_PROFILE', 'Usuarios', {
+            recursoId: userId,
+            valorNovo: { nome: user.nome, cpf: user.cpf, telefone: user.telefone },
+            descricao: `Usuário ${user.email} atualizou seus dados cadastrais de perfil.`
+        });
+
         const { senha, loginAttempts, __v, ...safeUser } = user;
         if (!safeUser.id) safeUser.id = String(user._id);
 
