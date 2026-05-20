@@ -10,12 +10,8 @@
 import type { Student, Grade, Attendance, Notification } from '../types';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const isLocal = typeof window !== 'undefined' && 
-  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-
-const BASE_URL = isLocal 
-  ? (import.meta.env.VITE_API_URL || 'http://localhost:3001/api')
-  : `${window.location.origin}/api`;
+const BASE_URL = import.meta.env.VITE_API_URL || 
+  (typeof window !== 'undefined' ? `${window.location.origin}/api` : 'http://localhost:3001/api');
 
 // ─── Error class ──────────────────────────────────────────────────────────────
 export class ApiError extends Error {
@@ -264,11 +260,8 @@ export async function uploadDocument(file: File): Promise<{ id: string; filename
     headers['X-CSRF-Token'] = csrf;
   }
 
-  const isLocal = typeof window !== 'undefined' && 
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  const BASE_URL = isLocal 
-    ? (import.meta.env.VITE_API_URL || 'http://localhost:3001/api')
-    : `${window.location.origin}/api`;
+  const BASE_URL = import.meta.env.VITE_API_URL || 
+    (typeof window !== 'undefined' ? `${window.location.origin}/api` : 'http://localhost:3001/api');
 
   const res = await fetch(`${BASE_URL}/upload/photo`, {
     method: 'POST',

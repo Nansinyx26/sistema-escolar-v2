@@ -430,7 +430,7 @@ exports.googleLogin = async (req, res) => {
     }
 
     try {
-        let email, nome;
+        let email, nome, picture = '';
         const DEFAULT_CLIENT_ID = '372860477730-co8eq29vbsafmffmfm2v2ot5givurar1.apps.googleusercontent.com';
         const clientId = process.env.GOOGLE_CLIENT_ID || DEFAULT_CLIENT_ID;
 
@@ -447,6 +447,7 @@ exports.googleLogin = async (req, res) => {
             
             email = googlePayload.email.toLowerCase();
             nome = googlePayload.name;
+            picture = googlePayload.picture || '';
         } else {
             // Caso contrário, é um Access Token (fluxo popup de botão customizado)
             // Buscamos as informações do usuário diretamente na API oficial do Google
@@ -461,6 +462,7 @@ exports.googleLogin = async (req, res) => {
             const googlePayload = await response.json();
             email = googlePayload.email.toLowerCase();
             nome = googlePayload.name || googlePayload.given_name || email.split('@')[0];
+            picture = googlePayload.picture || '';
         }
         
         let user = await Usuario.findOne({ email });
@@ -481,6 +483,8 @@ exports.googleLogin = async (req, res) => {
                 cpf: tempCpf,
                 telefone: '(00) 00000-0000',
                 perfil: 'responsavel',
+                loginGoogle: true,
+                fotoGoogle: picture,
                 ativo: true,
                 consentimentoAceiteEm: new Date()
             });
