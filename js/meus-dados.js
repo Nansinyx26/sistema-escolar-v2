@@ -99,14 +99,39 @@ function loadDados() {
 }
 
 // --- Load audit ---
-function loadAudit() {
-    // Audit is embedded in the export — show placeholder for now
-    document.getElementById('auditBody').innerHTML = `
-        <tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-secondary);">
-            <i class="bi bi-info-circle" style="display:block; font-size:1.5rem; margin-bottom:0.5rem;"></i>
-            Histórico detalhado disponível no arquivo de exportação JSON.
-        </td></tr>
-    `;
+async function loadAudit() {
+    try {
+        const r = await fetch(`${API()}/meus-dados`, { credentials: 'include' });
+        if (!r.ok) throw new Error();
+        const d = await r.json();
+        const acoes = d.historicoAcoes || [];
+
+        if (acoes.length === 0) {
+            document.getElementById('auditBody').innerHTML = `
+                <tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-secondary);">
+                    <i class="bi bi-info-circle" style="display:block; font-size:1.5rem; margin-bottom:0.5rem;"></i>
+                    Nenhuma ação registrada no histórico até o momento.
+                </td></tr>
+            `;
+            return;
+        }
+
+        document.getElementById('auditBody').innerHTML = acoes.map(act => `
+            <tr>
+                <td><span class="badge badge-blue">${act.acao || '—'}</span></td>
+                <td>${act.recurso || '—'}</td>
+                <td>${act.descricao || '—'}</td>
+                <td>${fmtDate(act.data)}</td>
+            </tr>
+        `).join('');
+    } catch {
+        document.getElementById('auditBody').innerHTML = `
+            <tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-secondary);">
+                <i class="bi bi-exclamation-triangle" style="display:block; font-size:1.5rem; margin-bottom:0.5rem; color:var(--danger);"></i>
+                Erro ao carregar o histórico de atividades do servidor.
+            </td></tr>
+        `;
+    }
 }
 
 // --- Exportar ---
