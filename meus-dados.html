@@ -343,11 +343,8 @@ async function loadStatus() {
 }
 
 // --- Load dados ---
-async function loadDados() {
+function loadDados() {
     try {
-        const r = await fetch(`${API()}/meus-dados`, { credentials: 'include' });
-        // This endpoint returns file download — we call status endpoint for display
-        // Use sessionStorage data for display, API call triggers the download
         const u = user;
         document.getElementById('dadosGrid').innerHTML = `
             <div class="info-item"><label>Nome Completo</label><span>${u.nome || '—'}</span></div>
@@ -365,17 +362,14 @@ async function loadDados() {
 }
 
 // --- Load audit ---
-async function loadAudit() {
-    try {
-        const r = await fetch(`${API()}/meus-dados/status-consentimento`, { credentials: 'include' });
-        // Audit is embedded in the export — show placeholder for now
-        document.getElementById('auditBody').innerHTML = `
-            <tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-secondary);">
-                <i class="bi bi-info-circle" style="display:block; font-size:1.5rem; margin-bottom:0.5rem;"></i>
-                Histórico detalhado disponível no arquivo de exportação JSON.
-            </td></tr>
-        `;
-    } catch {}
+function loadAudit() {
+    // Audit is embedded in the export — show placeholder for now
+    document.getElementById('auditBody').innerHTML = `
+        <tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-secondary);">
+            <i class="bi bi-info-circle" style="display:block; font-size:1.5rem; margin-bottom:0.5rem;"></i>
+            Histórico detalhado disponível no arquivo de exportação JSON.
+        </td></tr>
+    `;
 }
 
 // --- Exportar ---
