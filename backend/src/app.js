@@ -34,9 +34,9 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             "default-src": ["'self'"],
-            // SEM 'unsafe-inline': onclick= foi removido de todos os HTMLs
-            "script-src": ["'self'", "cdn.jsdelivr.net", "unpkg.com", "cdnjs.cloudflare.com", "cdn.tailwindcss.com", "https://accounts.google.com"],
-            "script-src-attr": ["'none'"], // Bloqueia onclick inline — todos foram migrados para .js
+            // Adicionado 'unsafe-inline' para permitir funcionamento correto do Google Identity e scripts do portal em produção
+            "script-src": ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "unpkg.com", "cdnjs.cloudflare.com", "cdn.tailwindcss.com", "https://accounts.google.com"],
+            "script-src-attr": ["'unsafe-inline'"], // Permite atributos inline de forma compatível
             "style-src": ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "fonts.googleapis.com", "unpkg.com", "cdnjs.cloudflare.com", "https://accounts.google.com"],
             "font-src": ["'self'", "cdn.jsdelivr.net", "fonts.gstatic.com", "data:"],
             // Google profile photos (lh3.googleusercontent.com) + blobs/data URIs

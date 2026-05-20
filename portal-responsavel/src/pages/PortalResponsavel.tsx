@@ -93,6 +93,7 @@ const PortalResponsavel: React.FC = () => {
       const response = await fetch(`${cleanApiUrl}/api/auth/google-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ token: tokenResponse.access_token })
       });
       const data = await response.json();
@@ -254,6 +255,7 @@ const PortalResponsavel: React.FC = () => {
       const response = await fetch(`${cleanApiUrl}/api/auth/register-responsavel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(registerForm)
       });
       const data = await response.json();
