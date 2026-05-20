@@ -229,6 +229,7 @@ function renderModoProfessor(horarios, profKey) {
     document.getElementById('stateLoading').style.display = 'none';
 
     const grid = document.getElementById('weekGrid');
+    grid.innerHTML = ''; // Limpa o grid para evitar duplicações
     let totalAulas = 0;
     const turmasSet = new Set();
     let diasComAula = 0;
@@ -318,6 +319,7 @@ function renderModoSala(horarios, salaId) {
     });
 
     const grid = document.getElementById('weekGrid');
+    grid.innerHTML = ''; // Limpa o grid para evitar duplicações
     let totalEspecialistas = 0;
     let diasComEsp = 0;
 
