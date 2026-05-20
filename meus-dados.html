@@ -312,7 +312,9 @@ function maskTel(t) {
 // --- Load status ---
 async function loadStatus() {
     try {
-        const r = await fetch(`${API()}/meus-dados/status-consentimento`, { credentials: 'include' });
+        const ctrl = new AbortController();
+        setTimeout(() => ctrl.abort(), 8000);
+        const r = await fetch(`${API()}/meus-dados/status-consentimento`, { credentials: 'include', signal: ctrl.signal });
         const d = await r.json();
         const c = d.consentimento || {};
         document.getElementById('statusBody').innerHTML = `

@@ -692,101 +692,143 @@
             return idx >= 0 && DIA_JS[idx] === hoje;
         }
 
-        // Helper: fetch com timeout de 15 segundos
-        async function fetchComTimeout(url, timeoutMs = 15000) {
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), timeoutMs);
-            try {
-                const res = await fetch(url, { signal: controller.signal, credentials: 'include' });
-                clearTimeout(timer);
-                return res;
-            } catch (err) {
-                clearTimeout(timer);
-                if (err.name === 'AbortError') throw new Error('O servidor demorou muito para responder. Tente novamente.');
-                throw err;
-            }
+        // ── Mapeia abrev+sala → chave de professor (espelha o backend) ────────────
+        function calcProfKey(abrev, salaId) {
+            if (!abrev) return '';
+            const u = abrev.toUpperCase();
+            if (u === 'EF')  return /^[123]/.test(salaId) ? 'MARJORIE' : 'MARCOS';
+            if (u === 'I')   return 'INGLS';
+            if (u === 'A')   return /^1/.test(salaId) ? 'ARTES1ANO' : 'MIRIAN';
+            if (u === 'MK')  return 'OFMAKER';
+            if (u === 'OL')  return 'OFLEITURA';
+            if (u === 'DSE') return 'OFSEBRAE';
+            if (u === 'LIMA' || abrev === 'Lima') return 'LIMA';
+            if (u === 'PEF') return 'EF_PARES';
+            if (u === 'PAR') return 'ARTES_PARES';
+            return '';
         }
 
-        document.addEventListener('DOMContentLoaded', async () => {
-            const params = new URLSearchParams(window.location.search);
-            const profKey = params.get('prof');
-            const salaId = params.get('sala');
+        // Nomes das turmas no formato do banco (1ºA, 2ºB …)
+        const TURMAS_NOMES_DB = {
+            '1A':'1ºA','1B':'1ºB','1C':'1ºC',
+            '2A':'2ºA','2B':'2ºB','2C':'2ºC',
+            '3A':'3ºA','3B':'3ºB','3C':'3ºC',
+            '4A':'4ºA','4B':'4ºB','4C':'4ºC',
+            '5A':'5ºA','5B':'5ºB','5C':'5ºC','5D':'5ºD'
+        };
 
-            if (!profKey && !salaId) {
-                showError('Nenhum professor ou sala especificado na URL.');
-                return;
-            }
+        // Constrói horário de sala a partir dos dados já embutidos no HTML
+        function buildFallbackSala(salaId) {
+            const norm = salaId.toUpperCase().replace(/º/g,'').replace(/ANO/g,'').replace(/\s/g,'');
+            const sIdx = SALAS_IDX.indexOf(norm);
+            const horarios = {};
+            DIAS.forEach(d => {
+                if (sIdx >= 0) horarios[d] = JSON.parse(JSON.stringify(FALLBACK_DADOS[d][sIdx]));
+            });
+            return horarios;
+        }
+
+        // Constrói horário de professor especialista a partir dos dados embutidos
+        function buildFallbackProfessor(profKey) {
+            const byDia = {};
+            DIAS.forEach(dia => {
+                const diaData = FALLBACK_DADOS[dia];
+                SALAS_IDX.forEach((salaId, salaIdx) => {
+                    (diaData[salaIdx] || []).forEach((abrev, aulaIdx) => {
+                        if (!abrev || calcProfKey(abrev, salaId) !== profKey) return;
+                        if (!byDia[dia]) byDia[dia] = {};
+                        byDia[dia][aulaIdx] = {
+                            turmaId: salaId,
+                            turmaNome: TURMAS_NOMES_DB[salaId] || salaId,
+                            abrev,
+                            horarioLabel: HORARIOS[aulaIdx]
+                        };
+                    });
+                });
+            });
+            return byDia;
+        }
+
+        // Fetch silencioso em background para sincronizar com o banco
+        function fetchBackground(url, callback) {
+            const ctrl = new AbortController();
+            setTimeout(() => ctrl.abort(), 12000);
+            fetch(url, { signal: ctrl.signal, credentials: 'include' })
+                .then(r => r.json())
+                .then(json => { if (json && json.success) callback(json); })
+                .catch(() => {}); // falha silenciosa — dados embutidos já estão visíveis
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const params   = new URLSearchParams(window.location.search);
+            const profKey  = params.get('prof');
+            const salaId   = params.get('sala');
+
+            if (!profKey && !salaId) { showError('Nenhum professor ou sala especificado na URL.'); return; }
 
             if (profKey) {
-                // Normaliza o nome para busca (remove underscores e espaços extras)
-                const profKeyNorm = profKey.toUpperCase().replace(/_/g, ' ').trim();
-
-                // Se for um professor PEB 1, redireciona para a visão de sala
+                const profKeyNorm   = profKey.toUpperCase().replace(/_/g, ' ').trim();
                 const salaVinculada = PROF_PARA_SALA[profKeyNorm];
-                if (salaVinculada) {
-                    const salaLabel = SALA_NOMES[salaVinculada] || salaVinculada;
-                    const nomeReal = NOMES_PROF[profKeyNorm] || profKey;
 
-                    document.getElementById('profName').textContent = `${nomeReal}`;
-                    document.getElementById('profDisc').textContent = `PEB 1 — Turma ${salaLabel}`;
-                    document.getElementById('profAvatar').textContent = '👩‍🏫';
-                    document.getElementById('pageTitle').textContent = `Horário — ${nomeReal}`;
+                if (salaVinculada) {
+                    // ── PEB1 via ?prof=NOME ──────────────────────────────────────
+                    const salaLabel = SALA_NOMES[salaVinculada] || salaVinculada;
+                    const nomeReal  = NOMES_PROF[profKeyNorm] || profKey;
+                    document.getElementById('profName').textContent   = nomeReal;
+                    document.getElementById('profDisc').textContent   = `PEB 1 — Turma ${salaLabel}`;
+                    document.getElementById('profAvatar').textContent  = '👩‍🏫';
+                    document.getElementById('pageTitle').textContent   = `Horário — ${nomeReal}`;
                     document.getElementById('profBanner').style.display = 'flex';
                     document.getElementById('totalTurmas').parentElement.style.display = 'none';
 
-                    try {
-                        const res = await fetchComTimeout(`${BASE_URL}/tabela-geral/sala/${encodeURIComponent(salaVinculada)}?t=${Date.now()}`);
-                        const json = await res.json();
-                        if (!json.success) throw new Error(json.error || 'Resposta inválida');
-                        renderModoSala(json.data.horarios, salaVinculada);
-                        return; // Interrompe para não seguir no modo professor comum
-                    } catch (err) {
-                        console.error(err);
-                        showError(`Não foi possível carregar o horário da turma. (${err.message})`);
-                        return;
-                    }
+                    // Renderiza IMEDIATAMENTE com dados já embutidos no HTML
+                    renderModoSala(buildFallbackSala(salaVinculada), salaVinculada);
+
+                    // Atualiza em background com dados do banco (sem bloquear a tela)
+                    fetchBackground(
+                        `${BASE_URL}/tabela-geral/sala/${encodeURIComponent(salaVinculada)}?t=${Date.now()}`,
+                        json => renderModoSala(json.data.horarios, salaVinculada)
+                    );
+                    return;
                 }
 
-                const nome = NOMES_PROF[profKey] || profKey;
-                const disc = DISC_PROF[profKey] || 'Especialista';
+                // ── Professor especialista via ?prof=KEY ────────────────────────
+                const nome  = NOMES_PROF[profKey] || profKey;
+                const disc  = DISC_PROF[profKey]  || 'Especialista';
                 const emoji = EMOJI_PROF[profKey] || '👩‍🏫';
-
-                document.getElementById('profName').textContent = nome;
-                document.getElementById('profDisc').textContent = disc;
-                document.getElementById('profAvatar').textContent = emoji;
-                document.getElementById('pageTitle').textContent = `Horário — ${nome}`;
+                document.getElementById('profName').textContent   = nome;
+                document.getElementById('profDisc').textContent   = disc;
+                document.getElementById('profAvatar').textContent  = emoji;
+                document.getElementById('pageTitle').textContent   = `Horário — ${nome}`;
                 document.getElementById('profBanner').style.display = 'flex';
 
-                try {
-                    const res = await fetchComTimeout(`${BASE_URL}/tabela-geral/prof/${encodeURIComponent(profKey)}?t=${Date.now()}`);
-                    const json = await res.json();
-                    if (!json.success) throw new Error(json.error || 'Resposta inválida');
-                    renderModoProfessor(json.data.horarios, profKey);
-                } catch (err) {
-                    console.error(err);
-                    showError(`Não foi possível carregar o horário do servidor. (${err.message})`);
-                }
+                // Renderiza IMEDIATAMENTE com dados embutidos
+                renderModoProfessor(buildFallbackProfessor(profKey), profKey);
+
+                // Atualiza em background com dados do banco
+                fetchBackground(
+                    `${BASE_URL}/tabela-geral/prof/${encodeURIComponent(profKey)}?t=${Date.now()}`,
+                    json => renderModoProfessor(json.data.horarios, profKey)
+                );
 
             } else {
+                // ── Sala direta via ?sala=ID ───────────────────────────────────────
                 const salaLabel = SALA_NOMES[salaId] || salaId;
-
-                document.getElementById('profName').textContent = `Turma ${salaLabel}`;
-                document.getElementById('profDisc').textContent = 'PEB1 — Horário completo da sala';
-                document.getElementById('profAvatar').textContent = '🏫';
-                document.getElementById('pageTitle').textContent = `Horário — Turma ${salaLabel}`;
+                document.getElementById('profName').textContent   = `Turma ${salaLabel}`;
+                document.getElementById('profDisc').textContent   = 'PEB1 — Horário completo da sala';
+                document.getElementById('profAvatar').textContent  = '🏫';
+                document.getElementById('pageTitle').textContent   = `Horário — Turma ${salaLabel}`;
                 document.getElementById('profBanner').style.display = 'flex';
-
                 document.getElementById('totalTurmas').parentElement.style.display = 'none';
 
-                try {
-                    const res = await fetchComTimeout(`${BASE_URL}/tabela-geral/sala/${encodeURIComponent(salaId)}?t=${Date.now()}`);
-                    const json = await res.json();
-                    if (!json.success) throw new Error(json.error || 'Resposta inválida');
-                    renderModoSala(json.data.horarios, salaId);
-                } catch (err) {
-                    console.error(err);
-                    showError(`Não foi possível carregar o horário da sala. (${err.message})`);
-                }
+                // Renderiza IMEDIATAMENTE com dados embutidos
+                renderModoSala(buildFallbackSala(salaId), salaId);
+
+                // Atualiza em background com dados do banco
+                fetchBackground(
+                    `${BASE_URL}/tabela-geral/sala/${encodeURIComponent(salaId)}?t=${Date.now()}`,
+                    json => renderModoSala(json.data.horarios, salaId)
+                );
             }
         });
 
