@@ -19,5 +19,6 @@ Thumbs.db
 
 # Pastas de build/temporárias
 dist/
+!portal-responsavel/dist/
 .cache/
 scratch/
