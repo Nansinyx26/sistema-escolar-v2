@@ -432,7 +432,7 @@ exports.googleLogin = async (req, res) => {
     try {
         let email, nome, picture = '';
         const DEFAULT_CLIENT_ID = '372860477730-co8eq29vbsafmffmfm2v2ot5givurar1.apps.googleusercontent.com';
-        const clientId = process.env.GOOGLE_CLIENT_ID || DEFAULT_CLIENT_ID;
+        const clientId = process.env.GOOGLE_CLIENT_ID ? process.env.GOOGLE_CLIENT_ID.trim() : DEFAULT_CLIENT_ID;
 
         // Se o token for um ID Token (JWT), ele começa com "eyJ" (cabeçalho padrão de JWT)
         if (token.startsWith('eyJ')) {
@@ -512,7 +512,7 @@ exports.googleLogin = async (req, res) => {
         res.json({ success: true, user: jwtPayload });
     } catch (e) {
         console.error('Erro na validação do Google Token:', e);
-        res.status(401).json({ success: false, error: 'Autenticação Google falhou ou token é inválido.' });
+        res.status(401).json({ success: false, error: `Autenticação Google falhou: ${e.message}` });
     }
 };
 
