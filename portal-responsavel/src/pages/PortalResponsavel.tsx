@@ -39,23 +39,23 @@ import styles from '../styles/portal.module.scss';
 /** Convert backend AuthUser to the GmailUser shape the Header expects. */
 function toGmailUser(u: AuthUser): GmailUser {
   return {
-    email:       u.email,
-    name:        u.nome,
-    picture:     '',
+    email: u.email,
+    name: u.nome,
+    picture: '',
     accessToken: '',
   };
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 const PortalResponsavel: React.FC = () => {
-  const rawApiUrl = import.meta.env.VITE_API_URL || 
+  const rawApiUrl = import.meta.env.VITE_API_URL ||
     (typeof window !== 'undefined' ? `${window.location.origin}/api` : 'http://localhost:3001/api');
   const cleanApiUrl = rawApiUrl.replace(/\/api$/, '');
 
   // ── Auth state ─────────────────────────────────────────────────────────────
-  const [authUser,  setAuthUser]  = useState<AuthUser | null>(null);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [authError,   setAuthError]   = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // ── Login form ─────────────────────────────────────────────────────────────
   const [email, setEmail] = useState('');
@@ -63,25 +63,25 @@ const PortalResponsavel: React.FC = () => {
   const [loginLoading, setLoginLoading] = useState(false);
 
   // ── Data state ─────────────────────────────────────────────────────────────
-  const [students,   setStudents]   = useState<Student[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
 
   // Auth UI states
   const [isRegistering, setIsRegistering] = useState(false);
   const [registerForm, setRegisterForm] = useState({ nome: '', email: '', senha: '', cpf: '', telefone: '' });
-  const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
 
   // Check initial session
   const [currentTab, setCurrentTab] = useState<'dashboard' | 'linking' | 'profile'>('dashboard');
   const [showSidebar, setShowSidebar] = useState(false);
-  
+
   const activeStudent = students.find(s => s.id === activeId) || null;
 
-  const [grades,     setGrades]     = useState<Grade[]>([]);
+  const [grades, setGrades] = useState<Grade[]>([]);
   const [attendance, setAttendance] = useState<Attendance | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
-  const [dataError,   setDataError]   = useState<string | null>(null);
+  const [dataError, setDataError] = useState<string | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
 
   // Real Google login callback using useGoogleLogin hook
@@ -89,7 +89,7 @@ const PortalResponsavel: React.FC = () => {
     try {
       setLoginLoading(true);
       setAuthError(null);
-      
+
       const response = await fetch(`${cleanApiUrl}/api/auth/google-login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -97,7 +97,7 @@ const PortalResponsavel: React.FC = () => {
       });
       const data = await response.json();
       if (!response.ok || !data.success) throw new Error(data.error || 'Erro no login Google');
-      
+
       setAuthUser(data.user);
       setToast({ message: 'Login Google realizado com sucesso!', type: 'success' });
     } catch (err) {
@@ -132,7 +132,7 @@ const PortalResponsavel: React.FC = () => {
     try {
       const alunos = await getAlunosDoResponsavel();
       setStudents(alunos);
-      
+
       if (alunos.length > 0) {
         if (!activeId || !alunos.find(a => a.id === activeId)) {
           setActiveId(alunos[0].id);
@@ -258,7 +258,7 @@ const PortalResponsavel: React.FC = () => {
       });
       const data = await response.json();
       if (!response.ok || !data.success) throw new Error(data.error || 'Erro ao criar conta');
-      
+
       setToast({ message: 'Conta criada com sucesso! Você já pode fazer login.', type: 'success' });
       setIsRegistering(false); // Volta para a tela de login
       setEmail(registerForm.email); // Preenche o e-mail para o usuário
@@ -287,7 +287,7 @@ const PortalResponsavel: React.FC = () => {
           }}>
             <i className={`ti ${toast.type === 'success' ? 'ti-check' : 'ti-alert-circle'}`} />
             {toast.message}
-            <button onClick={() => setToast(null)} style={{background:'transparent', border:'none', color:'#fff', cursor:'pointer', marginLeft:'12px'}}>×</button>
+            <button onClick={() => setToast(null)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', marginLeft: '12px' }}>×</button>
           </div>
         )}
 
@@ -315,7 +315,7 @@ const PortalResponsavel: React.FC = () => {
                 <div className={styles.inputWrapper}>
                   <i className="ti ti-user" aria-hidden="true" />
                   <input type="text" className={styles.formInput} placeholder="Seu nome"
-                    value={registerForm.nome} onChange={(e) => setRegisterForm({...registerForm, nome: e.target.value})} required />
+                    value={registerForm.nome} onChange={(e) => setRegisterForm({ ...registerForm, nome: e.target.value })} required />
                 </div>
               </div>
               <div className={styles.formGroup}>
@@ -323,7 +323,7 @@ const PortalResponsavel: React.FC = () => {
                 <div className={styles.inputWrapper}>
                   <i className="ti ti-mail" aria-hidden="true" />
                   <input type="email" className={styles.formInput} placeholder="seu@email.com"
-                    value={registerForm.email} onChange={(e) => setRegisterForm({...registerForm, email: e.target.value})} required />
+                    value={registerForm.email} onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })} required />
                 </div>
               </div>
               <div className={styles.formGroup}>
@@ -331,7 +331,7 @@ const PortalResponsavel: React.FC = () => {
                 <div className={styles.inputWrapper}>
                   <i className="ti ti-lock" aria-hidden="true" />
                   <input type="password" className={styles.formInput} placeholder="Crie uma senha forte"
-                    value={registerForm.senha} onChange={(e) => setRegisterForm({...registerForm, senha: e.target.value})} required />
+                    value={registerForm.senha} onChange={(e) => setRegisterForm({ ...registerForm, senha: e.target.value })} required />
                 </div>
               </div>
               <button type="submit" className={styles.submitBtn} disabled={loginLoading}>
@@ -357,7 +357,7 @@ const PortalResponsavel: React.FC = () => {
               </div>
               <div className={styles.registerSection}>
                 <p>Já tem uma conta?</p>
-                <button type="button" onClick={() => { setIsRegistering(false); setAuthError(null); }} className={styles.registerLink} style={{background: 'none', border: 'none', padding: 0, cursor: 'pointer'}}>
+                <button type="button" onClick={() => { setIsRegistering(false); setAuthError(null); }} className={styles.registerLink} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
                   Fazer Login
                 </button>
               </div>
@@ -447,11 +447,11 @@ const PortalResponsavel: React.FC = () => {
 
               <div className={styles.registerSection}>
                 <p>Novo por aqui?</p>
-                <button 
-                  type="button" 
-                  onClick={() => setIsRegistering(true)} 
+                <button
+                  type="button"
+                  onClick={() => setIsRegistering(true)}
                   className={styles.registerLink}
-                  style={{background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-block'}}
+                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'inline-block' }}
                 >
                   Criar perfil
                 </button>
@@ -484,14 +484,14 @@ const PortalResponsavel: React.FC = () => {
   if (authUser && isProfileIncomplete) {
     return (
       <div className={styles.portal}>
-        <Header 
-          user={gmailUser} 
+        <Header
+          user={gmailUser}
           notifications={notifications}
-          onLogout={handleLogout} 
+          onLogout={handleLogout}
           onBellClick={() => setShowNotifications((v) => !v)}
-          onProfileClick={() => {}}
+          onProfileClick={() => { }}
         />
-        <CompletarCadastro 
+        <CompletarCadastro
           user={authUser}
           onSuccess={(updatedUser) => {
             setAuthUser(updatedUser);
@@ -544,7 +544,7 @@ const PortalResponsavel: React.FC = () => {
         }}>
           <i className={`ti ${toast.type === 'success' ? 'ti-check' : 'ti-alert-circle'}`} />
           {toast.message}
-          <button onClick={() => setToast(null)} style={{background:'transparent', border:'none', color:'#fff', cursor:'pointer', marginLeft:'12px'}}>×</button>
+          <button onClick={() => setToast(null)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', marginLeft: '12px' }}>×</button>
         </div>
       )}
 
