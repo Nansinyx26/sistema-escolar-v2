@@ -8,7 +8,8 @@
     <title>Meu Horário — CIEP Jaguari</title>
 
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="/favicon/favicon.png">    <link rel="apple-touch-icon" href="/favicon/favicon.png">
+    <link rel="icon" type="image/png" href="/favicon/favicon.png">
+    <link rel="apple-touch-icon" href="/favicon/favicon.png">
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -524,10 +525,11 @@
     <!-- Tailwind CSS Play CDN — preflight desabilitado para nao conflitar com CSS existente -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      if (window.tailwind) {
-        tailwind.config = { corePlugins: { preflight: false } };
-      }
-    </script></head>
+        if (window.tailwind) {
+            tailwind.config = { corePlugins: { preflight: false } };
+        }
+    </script>
+</head>
 
 <body>
     <div class="page-bg">
@@ -696,11 +698,11 @@
         function calcProfKey(abrev, salaId) {
             if (!abrev) return '';
             const u = abrev.toUpperCase();
-            if (u === 'EF')  return /^[123]/.test(salaId) ? 'MARJORIE' : 'MARCOS';
-            if (u === 'I')   return 'INGLS';
-            if (u === 'A')   return /^1/.test(salaId) ? 'ARTES1ANO' : 'MIRIAN';
-            if (u === 'MK')  return 'OFMAKER';
-            if (u === 'OL')  return 'OFLEITURA';
+            if (u === 'EF') return /^[123]/.test(salaId) ? 'MARJORIE' : 'MARCOS';
+            if (u === 'I') return 'INGLS';
+            if (u === 'A') return /^1/.test(salaId) ? 'ARTES1ANO' : 'MIRIAN';
+            if (u === 'MK') return 'OFMAKER';
+            if (u === 'OL') return 'OFLEITURA';
             if (u === 'DSE') return 'OFSEBRAE';
             if (u === 'LIMA' || abrev === 'Lima') return 'LIMA';
             if (u === 'PEF') return 'EF_PARES';
@@ -710,16 +712,16 @@
 
         // Nomes das turmas no formato do banco (1ºA, 2ºB …)
         const TURMAS_NOMES_DB = {
-            '1A':'1ºA','1B':'1ºB','1C':'1ºC',
-            '2A':'2ºA','2B':'2ºB','2C':'2ºC',
-            '3A':'3ºA','3B':'3ºB','3C':'3ºC',
-            '4A':'4ºA','4B':'4ºB','4C':'4ºC',
-            '5A':'5ºA','5B':'5ºB','5C':'5ºC','5D':'5ºD'
+            '1A': '1ºA', '1B': '1ºB', '1C': '1ºC',
+            '2A': '2ºA', '2B': '2ºB', '2C': '2ºC',
+            '3A': '3ºA', '3B': '3ºB', '3C': '3ºC',
+            '4A': '4ºA', '4B': '4ºB', '4C': '4ºC',
+            '5A': '5ºA', '5B': '5ºB', '5C': '5ºC', '5D': '5ºD'
         };
 
         // Constrói horário de sala a partir dos dados já embutidos no HTML
         function buildFallbackSala(salaId) {
-            const norm = salaId.toUpperCase().replace(/º/g,'').replace(/ANO/g,'').replace(/\s/g,'');
+            const norm = salaId.toUpperCase().replace(/º/g, '').replace(/ANO/g, '').replace(/\s/g, '');
             const sIdx = SALAS_IDX.indexOf(norm);
             const horarios = {};
             DIAS.forEach(d => {
@@ -756,28 +758,28 @@
             fetch(url, { signal: ctrl.signal, credentials: 'include' })
                 .then(r => r.json())
                 .then(json => { if (json && json.success) callback(json); })
-                .catch(() => {}); // falha silenciosa — dados embutidos já estão visíveis
+                .catch(() => { }); // falha silenciosa — dados embutidos já estão visíveis
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            const params   = new URLSearchParams(window.location.search);
-            const profKey  = params.get('prof');
-            const salaId   = params.get('sala');
+            const params = new URLSearchParams(window.location.search);
+            const profKey = params.get('prof');
+            const salaId = params.get('sala');
 
             if (!profKey && !salaId) { showError('Nenhum professor ou sala especificado na URL.'); return; }
 
             if (profKey) {
-                const profKeyNorm   = profKey.toUpperCase().replace(/_/g, ' ').trim();
+                const profKeyNorm = profKey.toUpperCase().replace(/_/g, ' ').trim();
                 const salaVinculada = PROF_PARA_SALA[profKeyNorm];
 
                 if (salaVinculada) {
                     // ── PEB1 via ?prof=NOME ──────────────────────────────────────
                     const salaLabel = SALA_NOMES[salaVinculada] || salaVinculada;
-                    const nomeReal  = NOMES_PROF[profKeyNorm] || profKey;
-                    document.getElementById('profName').textContent   = nomeReal;
-                    document.getElementById('profDisc').textContent   = `PEB 1 — Turma ${salaLabel}`;
-                    document.getElementById('profAvatar').textContent  = '👩‍🏫';
-                    document.getElementById('pageTitle').textContent   = `Horário — ${nomeReal}`;
+                    const nomeReal = NOMES_PROF[profKeyNorm] || profKey;
+                    document.getElementById('profName').textContent = nomeReal;
+                    document.getElementById('profDisc').textContent = `PEB 1 — Turma ${salaLabel}`;
+                    document.getElementById('profAvatar').textContent = '👩‍🏫';
+                    document.getElementById('pageTitle').textContent = `Horário — ${nomeReal}`;
                     document.getElementById('profBanner').style.display = 'flex';
                     document.getElementById('totalTurmas').parentElement.style.display = 'none';
 
@@ -793,13 +795,13 @@
                 }
 
                 // ── Professor especialista via ?prof=KEY ────────────────────────
-                const nome  = NOMES_PROF[profKey] || profKey;
-                const disc  = DISC_PROF[profKey]  || 'Especialista';
+                const nome = NOMES_PROF[profKey] || profKey;
+                const disc = DISC_PROF[profKey] || 'Especialista';
                 const emoji = EMOJI_PROF[profKey] || '👩‍🏫';
-                document.getElementById('profName').textContent   = nome;
-                document.getElementById('profDisc').textContent   = disc;
-                document.getElementById('profAvatar').textContent  = emoji;
-                document.getElementById('pageTitle').textContent   = `Horário — ${nome}`;
+                document.getElementById('profName').textContent = nome;
+                document.getElementById('profDisc').textContent = disc;
+                document.getElementById('profAvatar').textContent = emoji;
+                document.getElementById('pageTitle').textContent = `Horário — ${nome}`;
                 document.getElementById('profBanner').style.display = 'flex';
 
                 // Renderiza IMEDIATAMENTE com dados embutidos
@@ -814,10 +816,10 @@
             } else {
                 // ── Sala direta via ?sala=ID ───────────────────────────────────────
                 const salaLabel = SALA_NOMES[salaId] || salaId;
-                document.getElementById('profName').textContent   = `Turma ${salaLabel}`;
-                document.getElementById('profDisc').textContent   = 'PEB1 — Horário completo da sala';
-                document.getElementById('profAvatar').textContent  = '🏫';
-                document.getElementById('pageTitle').textContent   = `Horário — Turma ${salaLabel}`;
+                document.getElementById('profName').textContent = `Turma ${salaLabel}`;
+                document.getElementById('profDisc').textContent = 'PEB1 — Horário completo da sala';
+                document.getElementById('profAvatar').textContent = '🏫';
+                document.getElementById('pageTitle').textContent = `Horário — Turma ${salaLabel}`;
                 document.getElementById('profBanner').style.display = 'flex';
                 document.getElementById('totalTurmas').parentElement.style.display = 'none';
 
