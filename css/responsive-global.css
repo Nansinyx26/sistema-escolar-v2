@@ -1,0 +1,917 @@
+/**
+ * responsive-global.css
+ * Sistema Escolar — Global Responsive & Mobile PWA Overrides
+ * Ensures 100% responsiveness on all devices, orientations, and PWA mode
+ */
+
+/* =========================================================
+   0. SAFE-AREA + PWA VIEWPORT FIX
+   ========================================================= */
+html {
+    /* Ensure PWA fills the entire screen including notch areas */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* Force no horizontal overflow on any page */
+html, body {
+    max-width: 100vw;
+    overflow-x: hidden;
+}
+
+/* Prevent text resize on orientation change (iOS) */
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+/* =========================================================
+   1. TOUCH-FRIENDLY DEFAULTS
+   ========================================================= */
+@media (pointer: coarse) {
+    /* Minimum tap target size for touch devices (48px WCAG) */
+    button, a, input[type="submit"], input[type="button"],
+    .btn, .login-tab, .nav-links a, .nav-actions a,
+    .dashboard-card, select, .nd-btn {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    /* Disable hover lift on touch devices to avoid stuck states */
+    .dashboard-card:hover,
+    .card:hover,
+    .portal-card:hover,
+    .test-card:hover,
+    .feat-card:hover {
+        transform: none;
+    }
+
+    /* Larger scrollbar for touch */
+    ::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+    }
+}
+
+/* =========================================================
+   2. MOBILE BREAKPOINT — max-width: 480px (Small Phones)
+   ========================================================= */
+@media (max-width: 480px) {
+    /* === BASE === */
+    html {
+        font-size: 14px;
+    }
+
+    body {
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* === CONTAINERS === */
+    .container,
+    .dashboard-container,
+    .nd-container {
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+    }
+
+    /* === NAVIGATION (Landing Page) === */
+    nav {
+        padding: 0.6rem 3vw !important;
+    }
+
+    .nav-brand {
+        font-size: 0.65rem !important;
+    }
+
+    .nav-logo {
+        width: 28px !important;
+        height: 28px !important;
+        font-size: 0.8rem !important;
+    }
+
+    .nav-actions {
+        gap: 0.35rem !important;
+    }
+
+    .nav-actions .btn-g,
+    .nav-actions .btn-p {
+        padding: 0.4rem 0.7rem !important;
+        font-size: 0.7rem !important;
+    }
+
+    /* Hide "Sou Responsável" text on very small screens */
+    .nav-actions .btn-g {
+        font-size: 0 !important;
+    }
+    .nav-actions .btn-g i {
+        font-size: 1rem !important;
+    }
+
+    /* === HERO === */
+    .hero {
+        padding: 6rem 4vw 3rem !important;
+        min-height: auto !important;
+        gap: 2rem !important;
+    }
+
+    .hero-h1 {
+        font-size: clamp(2rem, 8vw, 3rem) !important;
+    }
+
+    .hero-p {
+        font-size: 0.88rem !important;
+    }
+
+    .hero-ctas {
+        flex-direction: column !important;
+        gap: 0.6rem !important;
+    }
+
+    .hero-ctas .btn-hero {
+        width: 100% !important;
+        justify-content: center !important;
+        font-size: 0.82rem !important;
+        padding: 0.75rem 1rem !important;
+    }
+
+    .hero-trust {
+        gap: 0.8rem !important;
+    }
+
+    .hero-trust-item {
+        font-size: 0.68rem !important;
+    }
+
+    /* === STATS BAR (Landing) === */
+    .stats-inner {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    .stat-cell {
+        padding: 1.25rem 1rem !important;
+    }
+
+    .stat-n {
+        font-size: 2rem !important;
+    }
+
+    .stat-l {
+        font-size: 0.58rem !important;
+    }
+
+    /* === FEATURES GRID === */
+    .feat-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .feat-card {
+        padding: 1.75rem !important;
+    }
+
+    /* === PORTALS GRID === */
+    .portals-grid {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }
+
+    .portal-card {
+        padding: 1.75rem !important;
+    }
+
+    .pt {
+        font-size: 1.35rem !important;
+    }
+
+    /* === HOW SECTION === */
+    .how-grid {
+        grid-template-columns: 1fr !important;
+        gap: 2rem !important;
+    }
+
+    .step {
+        gap: 1rem !important;
+        padding: 1.25rem 0 !important;
+    }
+
+    .step-n {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 0.95rem !important;
+    }
+
+    /* === TESTIMONIALS === */
+    .test-grid {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }
+
+    .test-card {
+        padding: 1.5rem !important;
+    }
+
+    /* === CTA === */
+    .cta-inner {
+        padding: 3rem 1.5rem !important;
+    }
+
+    .cta-h {
+        font-size: clamp(1.4rem, 6vw, 2rem) !important;
+    }
+
+    .cta-btns {
+        flex-direction: column !important;
+    }
+
+    .cta-btns .btn-hero {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    /* === FOOTER === */
+    .footer-grid {
+        grid-template-columns: 1fr !important;
+        gap: 1.5rem !important;
+    }
+
+    .footer-bottom {
+        flex-direction: column !important;
+        gap: 0.4rem !important;
+        text-align: center !important;
+    }
+
+    /* === DASHBOARD HEADER === */
+    .header-content {
+        padding: 0.6rem 0.75rem !important;
+        gap: 0.5rem !important;
+    }
+
+    .header-logo span {
+        display: none; /* Hide text, keep icon */
+    }
+
+    .header-right {
+        gap: 0.5rem !important;
+    }
+
+    .user-info {
+        display: none; /* Save space on small phones */
+    }
+
+    .header-right .btn-sm span {
+        display: none; /* Icon only on mobile */
+    }
+
+    /* === DASHBOARD MAIN === */
+    .dashboard-main {
+        padding: 1rem 0.75rem !important;
+    }
+
+    .welcome-content h1 {
+        font-size: 1.35rem !important;
+    }
+
+    .welcome-content p {
+        font-size: 0.85rem !important;
+    }
+
+    /* === DASHBOARD CARDS === */
+    .dashboard-grid {
+        grid-template-columns: 1fr !important;
+        gap: 0.75rem !important;
+    }
+
+    .dashboard-card {
+        padding: 1rem !important;
+        gap: 0.6rem !important;
+    }
+
+    /* === SECURITY PANEL (Dashboard) === */
+    #securityPanel {
+        padding: 1rem !important;
+        flex-direction: column !important;
+    }
+
+    #securityPanel > div {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.75rem !important;
+    }
+
+    /* === REVIEW CARD (Dashboard) === */
+    .review-card {
+        padding: 1rem !important;
+    }
+
+    .review-card > div:first-child > div > p {
+        font-size: 0.75rem !important;
+    }
+
+    #reviewCardContent > div {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }
+
+    /* === NOTIFICATION PANEL === */
+    #notif-panel {
+        width: calc(100vw - 1.5rem) !important;
+        right: 0 !important;
+        left: auto !important;
+        max-height: 70vh !important;
+    }
+
+    /* === LOGIN PAGE === */
+    .login-page {
+        padding: 0.75rem !important;
+    }
+
+    .login-container {
+        max-width: 100% !important;
+    }
+
+    .login-card {
+        padding: 1.25rem !important;
+        border-radius: 12px !important;
+    }
+
+    .login-header h1 {
+        font-size: 1.35rem !important;
+    }
+
+    .login-tabs {
+        gap: 2px !important;
+    }
+
+    .login-tab {
+        padding: 8px 4px !important;
+        font-size: 0.75rem !important;
+    }
+
+    .login-tab i {
+        display: none; /* Save space */
+    }
+
+    /* === MODALS === */
+    .modal {
+        padding: 0.5rem !important;
+    }
+
+    .modal-content {
+        max-width: 100% !important;
+        max-height: 95vh !important;
+        border-radius: 12px !important;
+    }
+
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding: 1rem !important;
+    }
+
+    .modal-title {
+        font-size: 1rem !important;
+    }
+
+    /* === DIREÇÃO PAGES === */
+    .direcao-header {
+        flex-direction: column !important;
+        gap: 1rem !important;
+        text-align: center;
+    }
+
+    .direcao-header h1 {
+        font-size: 1.25rem !important;
+    }
+
+    .direcao-actions {
+        justify-content: center !important;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr 1fr !important;
+    }
+
+    .graficos-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .filtros-container {
+        flex-direction: column !important;
+        gap: 0.75rem !important;
+    }
+
+    .ranking-section .table-responsive {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    /* === NOTIFICAÇÕES (Direção) === */
+    .nd-header {
+        flex-direction: column !important;
+        gap: 0.75rem !important;
+        padding: 1rem !important;
+    }
+
+    .nd-header h1 {
+        font-size: 1.25rem !important;
+        text-align: center;
+    }
+
+    .nd-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .nd-actions {
+        flex-direction: column !important;
+    }
+
+    .nd-actions .nd-btn {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    .nd-history-table th:nth-child(3),
+    .nd-history-table td:nth-child(3),
+    .nd-history-table th:nth-child(4),
+    .nd-history-table td:nth-child(4) {
+        display: none;
+    }
+
+    /* === DEV NOTICE === */
+    .dev-notice {
+        font-size: 0.7rem !important;
+        padding: 8px 0.5rem !important;
+    }
+
+    /* === TABLES (General mobile) === */
+    .table-responsive, .nd-form-card {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    table {
+        min-width: 500px;
+    }
+
+    /* === WATERMARK === */
+    .nandev-watermark {
+        transform: scale(0.8) !important;
+        bottom: 0.5rem !important;
+        right: 0.5rem !important;
+    }
+
+    /* === TEACHER PANEL === */
+    .how-visual,
+    .director-notices-card {
+        margin-left: -0.25rem !important;
+        margin-right: -0.25rem !important;
+    }
+
+    .hv-mini-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .hv-n {
+        font-size: 1.8rem !important;
+    }
+
+    .hv-row {
+        padding: 0.5rem 0.6rem !important;
+    }
+
+    .hv-rname {
+        font-size: 0.8rem !important;
+    }
+
+    .hv-rmeta {
+        font-size: 0.62rem !important;
+    }
+}
+
+/* =========================================================
+   3. TABLET BREAKPOINT — 481px to 768px
+   ========================================================= */
+@media (min-width: 481px) and (max-width: 768px) {
+    html {
+        font-size: 15px;
+    }
+
+    .hero {
+        padding: 7rem 4vw 4rem !important;
+    }
+
+    .hero-h1 {
+        font-size: clamp(2.5rem, 6vw, 3.5rem) !important;
+    }
+
+    .hero-ctas {
+        flex-direction: column !important;
+        align-items: center !important;
+    }
+
+    .hero-ctas .btn-hero {
+        width: 100% !important;
+        max-width: 360px !important;
+        justify-content: center !important;
+    }
+
+    .dashboard-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    .stats-inner {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    .feat-grid,
+    .portals-grid,
+    .test-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .nd-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .how-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .footer-grid {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 2rem !important;
+    }
+
+    #notif-panel {
+        width: 340px !important;
+    }
+
+    .cta-inner {
+        padding: 4rem 2rem !important;
+    }
+
+    .hv-mini-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+
+    #securityPanel > div {
+        flex-wrap: wrap !important;
+    }
+}
+
+/* =========================================================
+   4. TABLET LANDSCAPE — 769px to 1024px
+   ========================================================= */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .dashboard-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    .how-grid {
+        grid-template-columns: 1fr !important;
+        gap: 3rem !important;
+    }
+
+    .how-visual {
+        position: static !important;
+    }
+
+    .mod-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .footer-grid {
+        grid-template-columns: 2fr 1fr 1fr !important;
+    }
+}
+
+/* =========================================================
+   5. LANDSCAPE ORIENTATION FIX (Mobile)
+   ========================================================= */
+@media (max-height: 500px) and (orientation: landscape) {
+    .hero {
+        min-height: auto !important;
+        padding-top: 5rem !important;
+        padding-bottom: 2rem !important;
+    }
+
+    .login-page {
+        padding: 0.5rem !important;
+    }
+
+    .login-card {
+        max-height: 85vh !important;
+        overflow-y: auto !important;
+    }
+
+    .cta-inner {
+        padding: 2.5rem 2rem !important;
+    }
+
+    /* Stack header items to save vertical space */
+    .dashboard-header .header-content {
+        padding: 0.4rem 1rem !important;
+    }
+}
+
+/* =========================================================
+   6. PWA STANDALONE MODE FIXES
+   ========================================================= */
+@media (display-mode: standalone) {
+    /* Remove dev-notice top margin since no URL bar */
+    .dev-notice {
+        padding-top: calc(8px + env(safe-area-inset-top, 0px));
+    }
+
+    /* Sticky header must account for safe-area */
+    .dashboard-header {
+        top: calc(45px + env(safe-area-inset-top, 0px));
+    }
+
+    nav {
+        padding-top: calc(1rem + env(safe-area-inset-top, 0px)) !important;
+    }
+
+    /* Ensure bottom nav/watermark doesn't overlap home indicator */
+    .nandev-watermark,
+    .watermark {
+        bottom: calc(1rem + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    body {
+        /* Prevent rubber-banding on iOS */
+        overscroll-behavior-y: contain;
+    }
+
+    /* Toast notifications avoid safe area */
+    .toast-container {
+        top: calc(1.5rem + env(safe-area-inset-top, 0px)) !important;
+        right: calc(1.5rem + env(safe-area-inset-right, 0px)) !important;
+    }
+}
+
+/* =========================================================
+   7. DARK/LIGHT MODE SPLASH & PWA CONSISTENCY
+   ========================================================= */
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+        color-scheme: light;
+    }
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        color-scheme: dark;
+    }
+}
+
+/* =========================================================
+   8. PRINT STYLES (bonus)
+   ========================================================= */
+@media print {
+    .dev-notice,
+    .nandev-watermark,
+    .watermark,
+    .dashboard-bg,
+    .login-background,
+    nav,
+    #bg-canvas {
+        display: none !important;
+    }
+
+    body {
+        background: white !important;
+        color: black !important;
+    }
+}
+
+/* =========================================================
+   9. HIGH-DPI / RETINA ADJUSTMENTS
+   ========================================================= */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .nav-logo,
+    .login-logo,
+    .card-icon {
+        image-rendering: -webkit-optimize-contrast;
+    }
+}
+
+/* =========================================================
+   10. ACCESSIBILITY — REDUCED MOTION
+   ========================================================= */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    .marquee-inner {
+        animation: none !important;
+    }
+
+    .reveal {
+        opacity: 1 !important;
+        transform: none !important;
+    }
+}
+
+/* =========================================================
+   11. DISPLAY MODE PREFERENCES (Texto / Áudio / Texto+Áudio)
+   Applied via body class from sidebar-voice.js
+   ========================================================= */
+
+/* Default: texto_audio — show everything */
+body.preference-texto-audio .listen-content-btn {
+    display: inline-flex;
+}
+
+/* Modo Texto: esconde botões de áudio */
+body.preference-texto .listen-content-btn,
+body.preference-texto .voice-wave-container,
+body.preference-texto .voice-selector-wrapper,
+body.preference-texto #sidebar-voice-btn {
+    display: none !important;
+}
+
+/* Modo Áudio: esconde textos longos, mantém títulos e botões de ouvir */
+body.preference-audio .card-description,
+body.preference-audio .notif-desc,
+body.preference-audio .welcome-content p,
+body.preference-audio .announcement-content p,
+body.preference-audio .feed-body-text {
+    display: none !important;
+}
+
+body.preference-audio .listen-content-btn {
+    display: inline-flex !important;
+}
+
+/* =========================================================
+   12. "OUVIR CONTEÚDO" BUTTON (🎧)
+   ========================================================= */
+.listen-content-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    margin-top: 8px;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    border-radius: 8px;
+    color: #10b981;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.listen-content-btn:hover {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: rgba(16, 185, 129, 0.4);
+    transform: translateY(-1px);
+}
+
+.listen-content-btn:active {
+    transform: translateY(0);
+}
+
+.listen-content-btn i {
+    font-size: 1rem;
+}
+
+/* Playing state */
+.listen-content-btn.playing {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.25);
+    color: #ef4444;
+}
+
+/* =========================================================
+   13. MOBILE HAMBURGER BUTTON
+   ========================================================= */
+#mobileHamburger {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    #mobileHamburger {
+        display: flex !important;
+    }
+}
+
+/* =========================================================
+   14. VOICE SETTINGS PANEL — MOBILE FIX
+   ========================================================= */
+@media (max-width: 480px) {
+    #voice-settings-panel {
+        position: fixed !important;
+        top: auto !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: 85vh !important;
+        border-radius: 16px 16px 0 0 !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        z-index: 1060 !important;
+        padding-bottom: calc(1.2rem + env(safe-area-inset-bottom, 0px)) !important;
+        box-sizing: border-box !important;
+    }
+
+    #voice-settings-panel select {
+        width: 100%;
+        min-width: 0;
+    }
+
+    #voice-settings-panel > div[style*="grid"] {
+        grid-template-columns: 1fr 1fr !important;
+    }
+
+    .voice-selector-wrapper {
+        position: static !important;
+    }
+
+    .nandev-watermark {
+        opacity: 0.85;
+        pointer-events: auto;
+    }
+
+    .dashboard-main {
+        padding-bottom: calc(1rem + 80px) !important;
+    }
+}
+
+/* =========================================================
+   15. SIDEBAR — ADDITIONAL MOBILE FIXES
+   ========================================================= */
+@media (max-width: 768px) {
+    /* Ensure sidebar items don't overflow */
+    .sidebar-item span {
+        font-size: 0.9rem;
+    }
+
+    /* Ensure sidebar profile wraps nicely */
+    .sidebar-profile {
+        padding: 10px 1rem !important;
+    }
+
+    .sidebar-avatar {
+        width: 36px !important;
+        height: 36px !important;
+    }
+
+    .user-fullname {
+        font-size: 0.82rem !important;
+    }
+
+    .user-role-tag {
+        font-size: 0.68rem !important;
+    }
+}
+
+/* =========================================================
+   16. EXTRA SMALL DEVICES (320px)
+   ========================================================= */
+@media (max-width: 360px) {
+    .header-content {
+        padding: 0.4rem 0.5rem !important;
+    }
+
+    .header-right {
+        gap: 0.3rem !important;
+    }
+
+    .header-right .btn-sm {
+        padding: 0.3rem 0.5rem !important;
+        font-size: 0.7rem !important;
+    }
+
+    /* Prevent button overflow */
+    .direcao-actions {
+        flex-direction: column !important;
+        width: 100% !important;
+    }
+
+    .direcao-actions .btn {
+        width: 100% !important;
+        justify-content: center !important;
+        font-size: 0.8rem !important;
+    }
+
+    /* Stat cards single column */
+    .stats-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Fix code display overflow */
+    #dashboardDailyCode,
+    #diretorSecretCode {
+        font-size: 1.1rem !important;
+        letter-spacing: 1px !important;
+    }
+}

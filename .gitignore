@@ -1,0 +1,38 @@
+# Dependências
+node_modules/
+backend/node_modules/
+
+# Configurações sensíveis — NUNCA versionar
+.env
+*.env
+.env.local
+*.env.local
+backend/.env
+
+# Dados locais (NUNCA versionar - credenciais migradas para o banco/env)
+data/
+
+# Sistema e Logs
+*.log
+.DS_Store
+Thumbs.db
+
+# Pastas de build/temporárias
+dist/
+!portal-responsavel/dist/
+.cache/
+scratch/
+
+# Documentação local e credenciais
+docs/
+
+# Scripts de Reset e Credenciais Sensíveis (NUNCA versionar)
+backend/scripts/reset_user_password.js
+backend/scripts/reset_admin.js
+backend/scripts/reset_admin_password.js
+backend/scripts/temp_reset_pai.js
+backend/scripts/create_test_user.js
+backend/scripts/inspect_students.js
+
+# Códigos de recuperação temporários (debug)
+backend/latest_code.txt

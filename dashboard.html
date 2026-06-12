@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+    <meta name="description" content="Dashboard - Sistema Escolar">
+    <title>Dashboard - Sistema Escolar</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#10b981">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/favicon/favicon.png">
+    <link rel="apple-touch-icon" href="/favicon/favicon.png">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/variables.css?v=2.0">
+    <link rel="stylesheet" href="css/base.css?v=2.0">
+    <link rel="stylesheet" href="css/components-new.css?v=2.0">
+    <link rel="stylesheet" href="css/dashboard.css?v=2.1">
+    <link rel="stylesheet" href="css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="css/reactions.css?v=1.0">
+    <link rel="stylesheet" href="css/responsive-global.css?v=1.1">
+    <link rel="stylesheet" href="css/sidebar.css?v=1.1">
+    <link rel="stylesheet" href="css/dashboard-premium.css?v=1.0">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="css/watermark.css">
+    <link rel="stylesheet" href="css/realtime.css">
+
+    <style>
+    /* ===== SINO DE NOTIFICAÇÕES ===== */
+    .notif-wrapper { position: relative; }
+    #notif-btn {
+        position: relative;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 10px;
+        width: 40px; height: 40px;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer;
+        font-size: 1.2rem;
+        color: var(--text-secondary, #94a3b8);
+        transition: background .2s, color .2s;
+        flex-shrink: 0;
+    }
+    #notif-btn:hover { background: rgba(26,86,219,0.2); color: #60a5fa; }
+    #notif-badge {
+        position: absolute;
+        top: -5px; right: -5px;
+        background: #ef4444;
+        color: #fff;
+        font-size: 0.65rem;
+        font-weight: 700;
+        min-width: 18px; height: 18px;
+        border-radius: 99px;
+        display: flex; align-items: center; justify-content: center;
+        padding: 0 4px;
+        border: 2px solid var(--surface, #1a1d27);
+        animation: pulse-badge 2s infinite;
+    }
+    @keyframes pulse-badge {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.15); }
+    }
+    #notif-panel {
+        position: absolute;
+        top: calc(100% + 10px);
+        right: 0;
+        width: 380px;
+        max-height: 520px;
+        background: #1a1d27;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        overflow: hidden;
+        display: flex; flex-direction: column;
+        opacity: 0; pointer-events: none;
+        transform: translateY(-8px) scale(0.97);
+        transition: opacity .2s, transform .2s;
+        z-index: 9999;
+    }
+    #notif-panel.open { opacity: 1; pointer-events: all; transform: translateY(0) scale(1); }
+    .notif-header {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .notif-header h4 { font-size: 0.95rem; font-weight: 700; margin: 0; }
+    .notif-header button {
+        font-size: 0.75rem;
+        background: none; border: none;
+        color: #60a5fa; cursor: pointer;
+        padding: 0.3rem 0.6rem;
+        border-radius: 6px;
+        transition: background .15s;
+    }
+    .notif-header button:hover { background: rgba(26,86,219,0.15); }
+    #notif-list { overflow-y: auto; flex: 1; }
+    .notif-item {
+        display: flex; gap: 0.9rem;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        cursor: pointer;
+        transition: background .15s;
+        position: relative;
+    }
+    .notif-item:hover { background: rgba(255,255,255,0.04); }
+    .notif-item.lida { opacity: 0.82; }
+    .notif-icon-wrap {
+        width: 36px; height: 36px;
+        border-radius: 10px;
+        background: rgba(255,255,255,0.06);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+        color: var(--text-secondary, #94a3b8);
+    }
+    .notif-body { flex: 1; min-width: 0; }
+    .notif-top { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem; flex-wrap: wrap; }
+    .notif-tag {
+        font-size: 0.7rem; font-weight: 700;
+        padding: 0.15rem 0.5rem;
+        border-radius: 99px;
+    }
+    .notif-data { font-size: 0.72rem; color: #64748b; margin-left: auto; }
+    .notif-titulo { font-size: 0.88rem; font-weight: 600; display: block; margin-bottom: 0.3rem; color: #f1f5f9; }
+    .notif-desc-wrap { display: flex; flex-direction: column; gap: 0.35rem; align-items: flex-start; }
+    .notif-desc { font-size: 0.8rem; color: #cbd5e1; line-height: 1.45; margin: 0; word-break: break-word; }
+    .notif-desc-clamped {
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .notif-item.notif-expanded .notif-desc-clamped {
+        display: block;
+        -webkit-line-clamp: unset;
+        line-clamp: unset;
+        overflow: visible;
+    }
+    .notif-mais-btn {
+        background: none;
+        border: none;
+        color: #60a5fa;
+        font-size: 0.75rem;
+        font-weight: 700;
+        cursor: pointer;
+        padding: 0;
+    }
+    .notif-mais-btn:hover { text-decoration: underline; }
+    .notif-comentar-btn {
+        margin-top: 0.45rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        background: rgba(16, 185, 129, 0.12);
+        border: 1px solid rgba(16, 185, 129, 0.25);
+        color: #6ee7b7;
+        font-size: 0.72rem;
+        font-weight: 700;
+        border-radius: 999px;
+        padding: 0.25rem 0.65rem;
+        cursor: pointer;
+    }
+    .notif-comentar-btn:hover { background: rgba(16, 185, 129, 0.2); }
+    .notif-dot {
+        width: 8px; height: 8px;
+        background: #1a56db;
+        border-radius: 50%;
+        flex-shrink: 0;
+        align-self: center;
+    }
+    .notif-footer {
+        padding: 0.75rem 1.25rem;
+        text-align: center;
+        border-top: 1px solid rgba(255,255,255,0.06);
+        font-size: 0.78rem;
+        color: #94a3b8;
+    }
+    @media (max-width: 480px) {
+        #notif-panel {
+            width: calc(100vw - 1.5rem);
+            right: 0;
+            left: auto;
+        }
+    }
+
+    /* ===== MURAL DA COMUNIDADE — DASHBOARD ===== */
+    @keyframes pulseLiveMural {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.65; box-shadow: 0 0 8px rgba(16,185,129,0.3); }
+    }
+    .comunicado-card-premium {
+        background: rgba(30,41,59,0.45); border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 18px; padding: 1.5rem; margin-bottom: 1.25rem;
+        backdrop-filter: blur(12px); transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .comunicado-card-premium:hover { border-color: rgba(16,185,129,0.2); box-shadow: 0 8px 30px rgba(0,0,0,0.25); }
+    .comunicado-card-premium.card-priority-importante { border-left: 3px solid #f59e0b; }
+    .comunicado-card-premium.card-priority-urgente { border-left: 3px solid #ef4444; }
+    .card-header-premium { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+    .card-avatar-premium { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(16,185,129,0.3); flex-shrink: 0; }
+    .author-info-mural { flex: 1; min-width: 0; }
+    .card-author-premium { font-size: 0.92rem; font-weight: 700; color: #fff; }
+    .card-date-premium { font-size: 0.75rem; color: #a1a1aa; margin-top: 2px; display: block; }
+    .category-pill-card { font-size: 0.68rem; font-weight: 700; padding: 2px 10px; border-radius: 20px; background: rgba(16,185,129,0.12); color: #10b981; border: 1px solid rgba(16,185,129,0.25); }
+    .category-pill-card.cat-acadêmico { background: rgba(59,130,246,0.12); color: #60a5fa; border-color: rgba(59,130,246,0.25); }
+    .category-pill-card.cat-financeiro { background: rgba(245,158,11,0.12); color: #fbbf24; border-color: rgba(245,158,11,0.25); }
+    .category-pill-card.cat-geral { background: rgba(139,92,246,0.12); color: #a78bfa; border-color: rgba(139,92,246,0.25); }
+    .priority-badge { font-size: 0.7rem; font-weight: 700; padding: 4px 10px; border-radius: 20px; display: flex; align-items: center; gap: 4px; margin-left: auto; flex-shrink: 0; }
+    .pulse-importante { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+    .pulse-urgente { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); animation: pulseLiveMural 1.5s infinite; }
+    .card-body-premium { margin-bottom: 1rem; }
+    .card-title-premium { font-size: 1.05rem; font-weight: 700; color: #fff; margin: 0 0 0.5rem; }
+    .card-text-premium { font-size: 0.88rem; color: #cbd5e1; line-height: 1.6; }
+    .card-media-grid-premium { display: grid; gap: 6px; margin-top: 0.75rem; border-radius: 10px; overflow: hidden; }
+    .card-media-grid-premium.grid-1 { grid-template-columns: 1fr; }
+    .card-media-grid-premium.grid-2 { grid-template-columns: 1fr 1fr; }
+    .card-media-grid-premium.grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .media-item-premium { width: 100%; height: 160px; object-fit: cover; cursor: pointer; border-radius: 6px; }
+    .card-files-container { margin-top: 0.75rem; display: flex; flex-wrap: wrap; gap: 8px; }
+    .file-attachment-card { display: flex; align-items: center; gap: 6px; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); color: #fca5a5; font-size: 0.78rem; padding: 6px 12px; border-radius: 8px; text-decoration: none; transition: background 0.2s; }
+    .file-attachment-card:hover { background: rgba(239,68,68,0.15); }
+    .card-actions-premium { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.06); }
+    .action-btn-legacy { display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #a1a1aa; font-size: 0.8rem; padding: 5px 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+    .action-btn-legacy:hover { background: rgba(16,185,129,0.12); color: #10b981; border-color: rgba(16,185,129,0.3); }
+    .action-btn-legacy.active { background: rgba(16,185,129,0.15); color: #10b981; border-color: rgba(16,185,129,0.35); }
+    .count-badge-legacy { background: rgba(255,255,255,0.1); color: #fff; font-size: 0.7rem; font-weight: 700; padding: 1px 7px; border-radius: 20px; margin-left: 2px; }
+    .reaction-container-premium { position: relative; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .emoji-picker-premium { position: absolute; bottom: calc(100% + 8px); left: 0; background: rgba(15,23,42,0.97); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 8px; display: flex; gap: 4px; flex-wrap: wrap; backdrop-filter: blur(20px); box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 100; }
+    .emoji-btn-premium { font-size: 1.3rem; background: transparent; border: none; cursor: pointer; padding: 4px 6px; border-radius: 8px; transition: background 0.15s; }
+    .emoji-btn-premium:hover { background: rgba(255,255,255,0.1); }
+    .social-status-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+    .reaction-pill-premium { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 3px 10px; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.15s; }
+    .reaction-pill-premium.active { background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.35); }
+    .reaction-pill-premium span { font-size: 0.72rem; color: #a1a1aa; font-weight: 600; }
+    .comments-wrapper-premium { margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 1rem; }
+    .comments-section-legacy { display: flex; flex-direction: column; gap: 1rem; }
+    .comments-list-premium { display: flex; flex-direction: column; gap: 0.75rem; }
+    .comment-container-node { display: flex; flex-direction: column; }
+    .comment-item-premium { display: flex; gap: 0.75rem; align-items: flex-start; }
+    .comment-avatar-premium { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1.5px solid rgba(255,255,255,0.1); }
+    .comment-content-premium { flex: 1; background: rgba(255,255,255,0.04); border-radius: 10px; padding: 0.65rem 0.85rem; }
+    .comment-meta-premium { display: flex; align-items: center; gap: 6px; margin-bottom: 0.3rem; flex-wrap: wrap; }
+    .comment-author-premium { font-size: 0.82rem; font-weight: 700; color: #e2e8f0; }
+    .comment-text-premium { font-size: 0.83rem; color: #cbd5e1; margin: 0; line-height: 1.5; }
+    .comment-date-legacy { font-size: 0.72rem; color: #64748b; }
+    .profile-badge-premium { font-size: 0.65rem; font-weight: 700; padding: 1px 7px; border-radius: 20px; }
+    .badge-diretor { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3); }
+    .badge-professor { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+    .badge-responsavel { background: rgba(139,92,246,0.15); color: #a78bfa; border: 1px solid rgba(139,92,246,0.3); }
+    .comment-actions-premium { display: flex; align-items: center; gap: 6px; margin-top: 0.5rem; flex-wrap: wrap; }
+    .comment-action-btn { background: transparent; border: none; color: #64748b; font-size: 0.75rem; cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: color 0.15s; }
+    .comment-action-btn:hover { color: #10b981; }
+    .comment-action-btn.delete:hover { color: #f87171; }
+    .replies-thread { margin-left: 42px; margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; border-left: 2px solid rgba(255,255,255,0.06); padding-left: 0.75rem; }
+    .reply-input-wrapper { display: flex; gap: 6px; align-items: center; margin-left: 42px; margin-top: 0.4rem; }
+    .comment-form-legacy { display: flex; gap: 8px; align-items: flex-end; margin-top: 0.5rem; }
+    .comment-input-legacy { flex: 1; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: #f1f5f9; border-radius: 10px; padding: 0.5rem 0.75rem; font-size: 0.83rem; resize: none; font-family: inherit; outline: none; transition: border-color 0.2s; }
+    .comment-input-legacy:focus { border-color: rgba(16,185,129,0.4); }
+    .comment-submit-legacy { background: #10b981; border: none; color: #fff; width: 36px; height: 36px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1rem; transition: background 0.2s; flex-shrink: 0; }
+    .comment-submit-legacy:hover { background: #059669; }
+    .comment-submit-legacy:disabled { background: #374151; cursor: not-allowed; }
+    .comments-empty-text { text-align: center; color: #64748b; font-size: 0.83rem; padding: 0.5rem 0; }
+    .comments-loading-text { text-align: center; color: #64748b; font-size: 0.83rem; }
+    .comment-feedback { padding: 6px 12px; border-radius: 8px; font-size: 0.8rem; margin-bottom: 6px; }
+    .comment-feedback-success { background: rgba(16,185,129,0.12); color: #6ee7b7; }
+    .comment-feedback-error { background: rgba(239,68,68,0.12); color: #fca5a5; }
+    .announcement-feed-premium { width: 100%; }
+    .feed-header-social { margin-bottom: 1.5rem; }
+    .feed-header-top { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; }
+    .feed-title-wrapper h2.feed-main-title { font-size: 1.15rem; font-weight: 700; color: #fff; margin: 0 0 0.2rem; }
+    .feed-subtitle { font-size: 0.8rem; color: #a1a1aa; margin: 0; }
+    .feed-search-wrapper { position: relative; display: flex; align-items: center; }
+    .feed-search-wrapper .search-icon { position: absolute; left: 10px; color: #64748b; font-size: 0.9rem; pointer-events: none; }
+    .feed-search-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); color: #f1f5f9; padding: 0.45rem 0.75rem 0.45rem 2rem; border-radius: 10px; font-size: 0.83rem; outline: none; width: 220px; transition: border-color 0.2s; }
+    .feed-search-input:focus { border-color: rgba(16,185,129,0.4); }
+    .feed-filters-bar { display: flex; gap: 6px; flex-wrap: wrap; }
+    .feed-filter-tab { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); color: #a1a1aa; padding: 4px 14px; border-radius: 20px; font-size: 0.78rem; cursor: pointer; font-weight: 600; transition: all 0.15s; }
+    .feed-filter-tab:hover { background: rgba(16,185,129,0.08); color: #10b981; }
+    .feed-filter-tab.active { background: rgba(16,185,129,0.15); color: #10b981; border-color: rgba(16,185,129,0.3); }
+    .feed-loading-premium { display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 3rem 1rem; color: #a1a1aa; }
+    .spinner-premium { width: 36px; height: 36px; border-radius: 50%; border: 3px solid rgba(16,185,129,0.2); border-top-color: #10b981; animation: spinMural 0.8s linear infinite; }
+    @keyframes spinMural { to { transform: rotate(360deg); } }
+    .feed-error-premium { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; padding: 2.5rem 1rem; color: #f87171; text-align: center; }
+    .feed-error-premium i { font-size: 2rem; }
+    .btn-retry { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #f87171; padding: 6px 18px; border-radius: 8px; cursor: pointer; font-size: 0.83rem; }
+    .feed-empty-social { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; padding: 3rem 1rem; color: #a1a1aa; text-align: center; }
+    .empty-artwork i { font-size: 3rem; opacity: 0.4; }
+    .feed-empty-social h3 { font-size: 1rem; color: #e2e8f0; margin: 0; }
+    .feed-empty-social p { font-size: 0.83rem; margin: 0; }
+    .feed-list-premium { display: flex; flex-direction: column; }
+    @media (max-width: 640px) {
+        .card-media-grid-premium.grid-3 { grid-template-columns: 1fr 1fr; }
+        .feed-search-input { width: 160px; }
+        .replies-thread { margin-left: 20px; }
+    }
+
+    /* ── RESPONSIVO GERAL — Mural + Feed ─────────────────────── */
+
+    /* Tablet (≤ 768px) */
+    @media (max-width: 768px) {
+        /* Seção do mural */
+        .mural-section-header { flex-direction: column !important; align-items: flex-start !important; }
+
+        /* Feed: busca ocupa 100% */
+        .feed-header-top { flex-direction: column; gap: 0.75rem; }
+        .feed-search-wrapper { width: 100%; max-width: 100%; }
+        .feed-search-input { width: 100% !important; }
+
+        /* Cards de comunicado */
+        .card-header-premium { flex-wrap: wrap; gap: 0.5rem; }
+        .card-media-grid-premium.grid-2,
+        .card-media-grid-premium.grid-3 { grid-template-columns: 1fr; }
+        .media-item-premium { height: 200px; }
+
+        /* Reações: picker alinhado à direita para não sair da tela */
+        .emoji-picker-premium { left: auto !important; right: 0; }
+
+        /* Tabela histórico do dashboard — stacking em cards */
+        #muralHistoricoWrap table thead { display: none; }
+        #muralHistoricoWrap table,
+        #muralHistoricoWrap tbody,
+        #muralHistoricoWrap tr,
+        #muralHistoricoWrap td { display: block; width: 100%; }
+        #muralHistoricoWrap tr {
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            padding: 0.85rem 1rem;
+        }
+        #muralHistoricoWrap td {
+            padding: 0.3rem 0;
+            border: none;
+            text-align: left !important;
+        }
+        #muralHistoricoWrap td::before {
+            content: attr(data-label) " ";
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: #52525b;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        /* Comentários: replies menos recuados */
+        .replies-thread { margin-left: 14px !important; }
+        .reply-input-wrapper { margin-left: 14px !important; }
+    }
+
+    /* Mobile pequeno (≤ 480px) */
+    @media (max-width: 480px) {
+        /* Mural cabeçalho */
+        .mural-section-header h2 { font-size: 1rem !important; }
+
+        /* Cards do comunicado mais compactos */
+        .comunicado-card-premium { padding: 1rem; }
+        .card-avatar-premium { width: 36px; height: 36px; }
+        .card-title-premium { font-size: 0.95rem; }
+        .card-text-premium { font-size: 0.82rem; }
+
+        /* Ações do card em coluna */
+        .card-actions-premium { flex-wrap: wrap; gap: 0.4rem; }
+        .action-btn-legacy { font-size: 0.75rem; padding: 4px 10px; }
+
+        /* Painel de notificações */
+        #notif-panel { width: calc(100vw - 1rem); right: -0.5rem; }
+
+        /* voice-settings-panel */
+        #voice-settings-panel { width: calc(100vw - 2rem) !important; right: 0 !important; }
+
+        /* Feed filtros em scroll horizontal */
+        .feed-filters-bar { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+        .feed-filter-tab { flex-shrink: 0; }
+    }
+    </style>
+    <!-- Offline Compiled Tailwind CSS -->
+    <link rel="stylesheet" href="css/tailwind-built.css">
+    <!-- React 18 + Framer Motion via CDN (ilhas isoladas) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/framer-motion@11/dist/framer-motion.js"></script></head>
+
+<body>
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Sistema Escolar</h2>
+            <p class="splash-subtitle">Portal do Docente</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="js/splash-screen.js"></script>
+
+
+    <!-- Global Sidebar -->
+    <aside class="sidebar" id="mainSidebar">
+        <div class="sidebar-logo">
+            <i class="bi bi-mortarboard-fill"></i>
+            <span>Sistema Escolar</span>
+        </div>
+        
+        <!-- Sidebar User Profile -->
+        <div class="sidebar-profile">
+            <div class="sidebar-avatar-wrapper">
+                <img src="/img/default-avatar.png" alt="Foto do Usuário" class="sidebar-avatar" id="sidebarAvatar">
+                <div class="sidebar-status-online"></div>
+            </div>
+            <div class="sidebar-info">
+                <span class="user-fullname" id="sidebarUserName">...</span>
+                <span class="user-role-tag" id="sidebarUserRole">...</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <!-- GRUPO: DASHBOARD -->
+            <div class="sidebar-group-label">DASHBOARD</div>
+            <a href="dashboard.html" class="sidebar-item active" data-page="home">
+                <i class="bi bi-grid-1x2-fill"></i>
+                <span>Início</span>
+            </a>
+
+            <!-- GRUPO: ADMINISTRAÇÃO ESCOLAR (Diretor/Admin Only) -->
+            <div class="sidebar-group-label director-only" style="display: none;">ADMINISTRAÇÃO ESCOLAR</div>
+            <a href="detalhes/alunos.html" class="sidebar-item director-only" style="display: none;">
+                <i class="bi bi-people"></i>
+                <span>Lista de Alunos</span>
+            </a>
+            <a href="lista-professores.html" class="sidebar-item director-only" style="display: none;">
+                <i class="bi bi-person-lines-fill"></i>
+                <span>Lista de Professores</span>
+            </a>
+            <a href="gerenciar-salas.html" class="sidebar-item director-only" style="display: none;">
+                <i class="bi bi-door-open-fill"></i>
+                <span>Gerenciar Salas</span>
+            </a>
+            <a href="direcao/horario-jaguari.html" class="sidebar-item director-only" style="display: none;">
+                <i class="bi bi-calendar3"></i>
+                <span>Horários</span>
+            </a>
+            <a href="direcao/codigos-secretos.html" class="sidebar-item director-only" style="display: none;">
+                <i class="bi bi-key-fill"></i>
+                <span>Códigos Secretos</span>
+            </a>
+
+            <!-- GRUPO: COMUNICAÇÃO E GESTÃO (Diretor/Admin Only) -->
+            <div class="sidebar-group-label director-only" style="display: none;">COMUNICAÇÃO E GESTÃO</div>
+            <a href="direcao/direcao-notificacoes.html" class="sidebar-item director-only" style="display: none;">
+                <i class="bi bi-megaphone"></i>
+                <span>Avisos aos Pais</span>
+            </a>
+            <a href="#" class="sidebar-item director-only" style="display: none;" onclick="if(window.verRelatorios) window.verRelatorios(); return false;">
+                <i class="bi bi-graph-up"></i>
+                <span>Relatórios</span>
+            </a>
+
+            <!-- GRUPO: PROFESSOR (Professor Only) -->
+            <div class="sidebar-group-label teacher-only" style="display: none;">PROFESSOR</div>
+            <a href="selecionar.html" class="sidebar-item teacher-only" style="display: none;">
+                <i class="bi bi-people-fill"></i>
+                <span>Minhas Turmas</span>
+            </a>
+            <a href="frequencia-professores.html" class="sidebar-item teacher-only" style="display: none;">
+                <i class="bi bi-calendar-check-fill"></i>
+                <span>Frequência</span>
+            </a>
+            <a href="meu-horario.html" class="sidebar-item teacher-only" id="sidebar-horario" style="display: none;">
+                <i class="bi bi-clock-fill"></i>
+                <span>Meu Horário</span>
+            </a>
+
+            <!-- GRUPO: SISTEMA -->
+            <div class="sidebar-group-label">SISTEMA</div>
+            <a href="#" class="sidebar-item" id="sidebar-voice-btn" onclick="document.getElementById('btn-voice-settings').click(); return false;">
+                <i class="bi bi-volume-up-fill"></i>
+                <span>Voz & Acessibilidade</span>
+            </a>
+            <a href="#" class="sidebar-item" id="sidebar-notif-btn" onclick="document.getElementById('notif-btn').click(); return false;">
+                <i class="bi bi-bell-fill"></i>
+                <span>Notificações</span>
+            </a>
+            <a href="perfil.html" class="sidebar-item" data-page="perfil">
+                <i class="bi bi-person-badge"></i>
+                <span>Meu Perfil</span>
+            </a>
+            <a href="meus-dados.html" class="sidebar-item" data-page="dados">
+                <i class="bi bi-shield-check"></i>
+                <span>Privacidade LGPD</span>
+            </a>
+            <a href="#" class="sidebar-item" onclick="if(window.sair) window.sair(); return false;" style="color: #ef4444;">
+                <i class="bi bi-box-arrow-right"></i>
+                <span>Sair</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <i class="bi bi-chevron-left"></i>
+            </button>
+        </div>
+    </aside>
+
+    <div class="dashboard-page page-with-sidebar" id="pageWrapper">
+        <!-- Background Decorativo -->
+        <div class="dashboard-bg">
+            <div class="orb orb-primary"></div>
+            <div class="orb orb-secondary"></div>
+        </div>
+
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <div class="header-logo">
+                        <i class="bi bi-mortarboard-fill"></i>
+                        <span>Portal do Docente</span>
+                    </div>
+                </div>
+
+                <div class="header-right">
+                    <!-- User Profile removed from header - centralized in Sidebar -->
+
+                    <!-- Botão Ver Tour Guiado -->
+                    <button class="notif-btn-secondary" id="btn-restart-tour" title="Ver Tour Guiado" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.2rem; color: #94a3b8; transition: all .2s; flex-shrink: 0;" onmouseover="this.style.background='rgba(52, 211, 153, 0.15)'; this.style.color='#10b981'; this.style.borderColor='rgba(16, 185, 129, 0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.06)'; this.style.color='#94a3b8'; this.style.borderColor='rgba(255,255,255,0.1)'" onclick="if(window.OnboardingTour) window.OnboardingTour.restart()">
+                        <i class="bi bi-patch-question"></i>
+                    </button>
+
+                    <!-- Sino de Notificações -->
+                    <div class="notif-wrapper">
+                        <button id="notif-btn" title="Notificações">
+                            <i class="bi bi-bell"></i>
+                            <span id="notif-badge" style="display:none;">0</span>
+                        </button>
+                        <div id="notif-panel">
+                            <div class="notif-header">
+                                <h4><i class="bi bi-bell-fill" style="color:#60a5fa;"></i> Notificações</h4>
+                                <button id="btn-marcar-lidas"><i class="bi bi-check2-all"></i> Marcar tudo lido</button>
+                            </div>
+                            <div id="notif-list"></div>
+                            <div class="notif-footer"><i class="bi bi-hand-index"></i> Clique em cada item para marcar como lido</div>
+                        </div>
+                    </div>
+
+                    <!-- Seletor de Voz (Eleven Labs) -->
+                    <div class="voice-selector-wrapper" style="position: relative;">
+                        <button class="notif-btn-secondary" id="btn-voice-settings" title="Preferências de Voz & Leitura" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.2rem; color: #94a3b8; transition: all 0.2s;">
+                            <i class="bi bi-volume-up"></i>
+                        </button>
+                        <div id="voice-settings-panel" class="glass-strong" style="position: absolute; top: calc(100% + 10px); right: 0; width: 280px; padding: 1.2rem; border-radius: 14px; display: none; flex-direction: column; gap: 1rem; z-index: 1000; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.5); background: rgba(15, 23, 42, 0.98); backdrop-filter: blur(20px);">
+                            <h5 style="margin: 0; font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Voz & Acessibilidade</h5>
+                            
+                            <!-- Grupo: Narração -->
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <label style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Narração Premium</label>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                    <button class="voice-opt-btn" data-voice="male" style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.2); color: #c4b5fd; padding: 0.4rem; border-radius: 8px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                        <i class="bi bi-person-standing"></i> Ele
+                                    </button>
+                                    <button class="voice-opt-btn" data-voice="female" style="background: rgba(236, 72, 153, 0.1); border: 1px solid rgba(236, 72, 153, 0.2); color: #f9a8d4; padding: 0.4rem; border-radius: 8px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                        <i class="bi bi-person-standing-dress"></i> Ela
+                                    </button>
+                                </div>
+                                
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <select id="voice-speed-select" title="Velocidade" style="flex: 1;">
+                                        <option value="0.75">0.75x</option>
+                                        <option value="1.0" selected>1.0x (Normal)</option>
+                                        <option value="1.25">1.25x</option>
+                                        <option value="1.5">1.5x</option>
+                                        <option value="2.0">2.0x</option>
+                                    </select>
+                                    <select id="voice-mode-select" title="Modo" style="flex: 1.5;">
+                                        <option value="texto_audio" selected>Texto + Áudio</option>
+                                        <option value="texto">Apenas Texto</option>
+                                        <option value="audio">Apenas Áudio</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <hr style="border:0; border-top: 1px solid rgba(255,255,255,0.06); margin: 0;">
+
+                            <!-- Grupo: Visual -->
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <label style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Ajustes Visuais</label>
+                                
+                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                                    <span style="font-size: 0.8rem; color: #cbd5e1;">Tamanho da Fonte</span>
+                                    <div style="display: flex; gap: 4px;">
+                                        <button id="btn-font-decrease" class="acc-btn-sm" title="Diminuir Fonte"><i class="bi bi-dash"></i></button>
+                                        <button id="btn-font-increase" class="acc-btn-sm" title="Aumentar Fonte"><i class="bi bi-plus"></i></button>
+                                    </div>
+                                </div>
+
+                                <button id="btn-toggle-reading" class="acc-toggle-btn" style="width: 100%; text-align: left; display: flex; justify-content: space-between; align-items: center;">
+                                    <span><i class="bi bi-book"></i> Modo Leitura</span>
+                                    <div class="toggle-indicator"></div>
+                                </button>
+                            </div>
+
+                            <hr style="border:0; border-top: 1px solid rgba(255,255,255,0.06); margin: 0;">
+
+                            <div style="display: flex; gap: 8px;">
+                                <button id="btn-reset-accessibility" style="flex: 1; background: rgba(255,255,255,0.05); color: #94a3b8; border: 1px solid rgba(255,255,255,0.1); padding: 0.5rem; border-radius: 8px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                    <i class="bi bi-arrow-counterclockwise"></i> Resetar
+                                </button>
+                                <button id="btn-activate-voice" style="flex: 2; background: #10b981; color: white; border: none; padding: 0.5rem; border-radius: 8px; font-weight: 600; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                                    <i class="bi bi-play-circle-fill"></i> Ativar Voz
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <a href="meus-dados.html" class="btn btn-secondary btn-sm" style="text-decoration:none;" title="Portal de Privacidade LGPD">
+                        <i class="bi bi-shield-lock"></i>
+                        <span>Privacidade</span>
+                    </a>
+
+                    <button class="btn btn-secondary btn-sm" data-action="sair">
+                        <i class="bi bi-box-arrow-right"></i>
+                        <span>Sair</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="dashboard-main">
+            <div class="dashboard-container">
+                <!-- Welcome Section -->
+                <div class="welcome-section">
+                    <div class="welcome-content">
+                        <h1 id="welcomeTitle">Bem-vindo ao Sistema Escolar! 🎉</h1>
+                        <p id="welcomeMessage">Seu perfil foi cadastrado com sucesso!</p>
+                    </div>
+                </div>
+
+                <!-- SEÇÃO DE RESUMO DO DIRETOR (Nova) -->
+                <div id="directorDashboardSummary" class="dashboard-stats-grid" style="display: none;">
+                    <div class="stat-card-premium glass-strong">
+                        <div class="stat-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
+                            <i class="bi bi-people"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Total Alunos</span>
+                            <h3 class="stat-value" id="stat-total-alunos">...</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card-premium glass-strong">
+                        <div class="stat-icon" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">
+                            <i class="bi bi-person-badge"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Professores</span>
+                            <h3 class="stat-value" id="stat-total-professores">...</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card-premium glass-strong">
+                        <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                            <i class="bi bi-door-open"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Turmas Ativas</span>
+                            <h3 class="stat-value" id="stat-total-turmas">...</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Grid de Atividades e Avisos -->
+                <div id="directorActivityGrid" class="dashboard-split-grid" style="display: none;">
+                    <div class="activity-panel glass-strong">
+                        <div class="panel-header">
+                            <h4><i class="bi bi-activity"></i> Atividade Recente</h4>
+                        </div>
+                        <div id="recentActivityList" class="activity-list">
+                            <div class="activity-placeholder">Carregando atividades...</div>
+                        </div>
+                    </div>
+                    <div class="notices-panel glass-strong">
+                        <div class="panel-header">
+                            <h4><i class="bi bi-megaphone"></i> Últimos Avisos</h4>
+                        </div>
+                        <div id="latestNoticesList" class="notices-mini-list">
+                            <div class="activity-placeholder">Buscando avisos...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Painel de Segurança (Direção/Admin) -->
+                <div id="securityPanel" class="glass-strong" style="display: none; margin-bottom: 2rem; padding: 1.25rem; border-radius: var(--radius-lg); border-left: 4px solid var(--primary-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <div style="background: var(--primary-color); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white;">
+                                <i class="bi bi-shield-lock-fill"></i>
+                            </div>
+                            <div>
+                                <h3 style="margin: 0; font-size: 1rem; color: var(--text-primary);">Código Secreto da Escola</h3>
+                                <p class="text-secondary text-xs" style="margin: 0;">Válido apenas para hoje. Forneça aos novos professores.</p>
+                            </div>
+                        </div>
+                        <div style="background: rgba(0,0,0,0.2); padding: 0.5rem 1.5rem; border-radius: var(--radius-md); border: 1px dashed var(--primary-color); display: flex; align-items: center; gap: 1rem;">
+                            <span id="dashboardDailyCode" data-code="------" style="font-family: monospace; font-size: 1.5rem; font-weight: bold; color: var(--primary-color); letter-spacing: 2px;">••••••</span>
+                            <button type="button" id="btn-toggle-secret" style="background: none; border: none; color: var(--primary-color); cursor: pointer; padding: 0; display: flex; align-items: center;">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-secondary btn-sm" data-href="admin/usuarios.html">
+                                <i class="bi bi-people-fill"></i> Usuários
+                            </button>
+                            <button class="btn btn-secondary btn-sm" data-href="admin/auditoria.html" id="btnAuditoriaDash" style="display: none;">
+                                <i class="bi bi-shield-shaded"></i> Auditoria
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cards Grid - Simplified -->
+                <div class="dashboard-grid">
+                    <!-- Cards de Navegação removidos daqui e movidos para a Sidebar -->
+
+                    <!-- Card Lista de Alunos (Diretor/Admin) - NOVO -->
+                    <div class="dashboard-card" id="cardListaAlunos" style="display: none;">
+                        <div class="card-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
+                            <i class="bi bi-people"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Lista de Alunos</h3>
+                            <p class="card-description">Gerenciar e transferir alunos</p>
+                        </div>
+                        <button class="btn btn-outline btn-sm" data-href="detalhes/alunos.html">
+                            Acessar Lista
+                            <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+
+
+                    <!-- Card Lista de Professores (Diretor/Admin) -->
+                    <div class="dashboard-card" id="cardListaProfessores" style="display: none;">
+                        <div class="card-icon" style="background: linear-gradient(135deg, #6366f1, #a855f7);">
+                            <i class="bi bi-person-lines-fill"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Lista de Professores</h3>
+                            <p class="card-description">Atribuições e controle de carga horária</p>
+                        </div>
+                        <button class="btn btn-outline btn-sm" data-href="lista-professores.html">
+                            Acessar
+                            <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- Card Gerenciar Salas (Diretor/Admin) - NOVO -->
+                    <div class="dashboard-card" id="cardGerenciarSalas" style="display: none;">
+                        <div class="card-icon" style="background: linear-gradient(135deg, #10b981, #34d399);">
+                            <i class="bi bi-door-open-fill"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Gerenciar Salas</h3>
+                            <p class="card-description">Remover professores de turmas</p>
+                        </div>
+                        <button class="btn btn-outline btn-sm" data-href="gerenciar-salas.html">
+                            Gerenciar
+                            <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- Card Notificações para Responsáveis (Diretor/Admin) - NOVO -->
+                    <div class="dashboard-card" id="cardNotificacoesResp" style="display: none;">
+                        <div class="card-icon" style="background: linear-gradient(135deg, #0ea5e9, #38bdf8);">
+                            <i class="bi bi-megaphone-fill"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Avisos aos Pais</h3>
+                            <p class="card-description">Enviar notificações para responsáveis</p>
+                        </div>
+                        <button class="btn btn-outline btn-sm" data-href="direcao/direcao-notificacoes.html">
+                            Acessar Central
+                            <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- Card 3 (Diretor) -->
+                    <div class="dashboard-card" id="cardGerencial" style="display: none;">
+                        <div class="card-icon" style="background: var(--gradient-accent);">
+                            <i class="bi bi-graph-up"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Relatórios</h3>
+                            <p class="card-description">Análises e estatísticas da escola</p>
+                        </div>
+                        <button class="btn btn-outline btn-sm" data-action="verRelatorios">
+                            Ver Relatórios
+                            <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- Card Horários 2026 (Diretor/Admin) -->
+                    <div class="dashboard-card" id="cardHorariosDir" style="display: none;">
+                        <div class="card-icon" style="background: linear-gradient(135deg, #0ea5e9, #0284c7);">
+                            <i class="bi bi-calendar3"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Horários</h3>
+                            <p class="card-description">Grade horária de todas as turmas</p>
+                        </div>
+                        <button class="btn btn-outline btn-sm" data-href="direcao/horario-jaguari.html">
+                            Acessar
+                            <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+
+
+
+                    <!-- Card 4 (Admin - Ferramentas) -->
+                    <div class="dashboard-card" id="cardFerramentas" style="display: none;">
+                        <div class="card-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                            <i class="bi bi-gear-fill"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Ferramentas</h3>
+                            <p class="card-description">Gerenciamento do sistema e dados</p>
+                        </div>
+                        <button class="btn btn-outline btn-sm" data-action="abrirFerramentas">
+                            Acessar
+                            <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- Card Admin - Gerenciar Contas -->
+                    <div class="dashboard-card" id="cardContasAdmin" style="display: none;">
+                        <div class="card-icon" style="background: linear-gradient(135deg, #6366f1, #4f46e5);">
+                            <i class="bi bi-person-x-fill"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Gestão de Contas</h3>
+                            <p class="card-description">Excluir contas de email e senha</p>
+                        </div>
+                        <button class="btn btn-outline btn-sm" data-href="admin/usuarios.html">
+                            Gerenciar
+                            <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- Card Admin - Gestão de Grade -->
+                    <div class="dashboard-card" id="cardGestaoGrade" style="display: none;">
+                        <div class="card-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                            <i class="bi bi-calendar-range"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Gestão de Grades</h3>
+                            <p class="card-description">Definir horários dos professores</p>
+                        </div>
+                        <button class="btn btn-outline btn-sm" data-href="grade-horaria-admin.html">
+                            Gerenciar
+                            <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- Card Alunos — Códigos Secretos (Diretor/Admin) -->
+                    <div class="dashboard-card" id="cardSecretCodes" style="display: none;">
+                        <div class="card-icon" style="background: linear-gradient(135deg, #a855f7, #7c3aed);">
+                            <i class="bi bi-key-fill"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Códigos Secretos</h3>
+                            <p class="card-description">Códigos de vinculação dos alunos</p>
+                        </div>
+                        <a href="direcao/codigos-secretos.html" class="btn btn-outline btn-sm" style="text-decoration: none;">
+                            Ver Códigos
+                            <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+
+
+                <!-- ===== MURAL DA COMUNIDADE ===== -->
+                <div class="mural-dashboard-section" id="muralSection" style="margin-bottom: 2.5rem;">
+                    <div class="mural-section-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1.5rem;">
+                        <div style="display:flex; align-items:center; gap:0.75rem;">
+                            <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#10b981,#0ea5e9);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.2rem;flex-shrink:0;">
+                                <i class="bi bi-newspaper"></i>
+                            </div>
+                            <div>
+                                <h2 style="margin:0;font-size:1.2rem;font-weight:700;color:#fff;">Mural da Comunidade</h2>
+                                <p style="margin:0;font-size:0.8rem;color:#a1a1aa;">Avisos, comunicados e interações da escola</p>
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+                            <span style="background:rgba(16,185,129,0.1);color:#10b981;font-size:0.7rem;font-weight:700;padding:4px 12px;border-radius:20px;border:1px solid rgba(16,185,129,0.25);animation:pulseLiveMural 2s infinite;">● AO VIVO</span>
+                            <a href="direcao/direcao-notificacoes.html" class="btn btn-outline btn-sm director-only" id="btnAcessarMuralCompleto" style="display:none;text-decoration:none;">
+                                <i class="bi bi-megaphone"></i> Gerenciar Mural
+                            </a>
+                        </div>
+                    </div>
+                    <div id="announcement-feed-container"></div>
+                    <div id="muralHistoricoWrap" class="director-only" style="display:none; margin-top:2rem;">
+                        <div style="background:rgba(30,41,59,0.4);border:1px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden;backdrop-filter:blur(12px);">
+                            <div style="padding:1.25rem 1.5rem;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
+                                <h3 style="margin:0;font-size:1rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:0.5rem;">
+                                    <i class="bi bi-clock-history" style="color:#10b981;"></i> Histórico de Envios
+                                </h3>
+                                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                                    <span style="font-size:0.75rem;color:#a1a1aa;align-self:center;">Filtrar:</span>
+                                    <button class="hist-filter-btn active" data-status="todos" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);padding:3px 12px;border-radius:20px;font-size:0.75rem;cursor:pointer;font-weight:600;">Todos</button>
+                                    <button class="hist-filter-btn" data-status="ativo" style="background:rgba(255,255,255,0.05);color:#a1a1aa;border:1px solid rgba(255,255,255,0.1);padding:3px 12px;border-radius:20px;font-size:0.75rem;cursor:pointer;">Ativos</button>
+                                </div>
+                            </div>
+                            <div style="overflow-x:auto;">
+                                <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+                                    <thead>
+                                        <tr style="background:rgba(0,0,0,0.2);">
+                                            <th style="padding:0.75rem 1.25rem;text-align:left;color:#a1a1aa;font-weight:600;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">Título</th>
+                                            <th style="padding:0.75rem 1rem;text-align:left;color:#a1a1aa;font-weight:600;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">Público</th>
+                                            <th style="padding:0.75rem 1rem;text-align:left;color:#a1a1aa;font-weight:600;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">Data</th>
+                                            <th style="padding:0.75rem 1rem;text-align:center;color:#a1a1aa;font-weight:600;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">Status</th>
+                                            <th style="padding:0.75rem 1rem;text-align:center;color:#a1a1aa;font-weight:600;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="muralHistoricoBody">
+                                        <tr><td colspan="5" style="text-align:center;padding:2rem;color:#a1a1aa;">Carregando histórico...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção de Avaliação do Sistema Premium -->
+                <div class="dashboard-section-premium review-section" id="reviewSection">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <div class="icon-box-premium gold">
+                                <i class="bi bi-star-fill"></i>
+                            </div>
+                            <div>
+                                <h2>Avaliar Sistema</h2>
+                                <p>Sua opinião nos ajuda a melhorar nossa plataforma</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="reviewCardContent" class="review-grid-premium">
+                        <div id="reviewForm" class="review-form-container"></div>
+                        <div class="review-stats-column">
+                            <div id="reviewStats"></div>
+                            <h4 class="recent-reviews-title">Avaliações Recentes</h4>
+                            <div id="reviewList" class="review-list-premium"></div>
+                        </div>
+                    </div>
+                </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Watermark -->
+    <a href="https://www.linkedin.com/in/renan-de-oliveira-farias-66a9b412b/" target="_blank" class="nandev-watermark">
+        <div class="cube-container">
+            <div class="wireframe-cube">
+                <div class="cube-face front"></div>
+                <div class="cube-face back"></div>
+                <div class="cube-face right"></div>
+                <div class="cube-face left"></div>
+                <div class="cube-face top"></div>
+                <div class="cube-face bottom"></div>
+            </div>
+        </div>
+        <div class="watermark-text">
+            <span>Desenvolvido por </span>
+            <span class="watermark-highlight">NanDev</span>
+            <span class="code-symbol">&lt;/&gt;</span>
+        </div>
+        <div class="geometric-particles">
+            <div class="particle" style="top: 20%; left: 10%;"></div>
+            <div class="particle" style="top: 60%; left: 80%;"></div>
+            <div class="particle" style="top: 40%; left: 50%;"></div>
+        </div>
+        <div class="holographic-overlay"></div>
+    </a>
+
+    <!-- Scripts -->
+    <script src="js/api-config.js"></script>
+    <!-- Three.js local (deve carregar antes de threejs-dashboard.js) -->
+    <script src="js/three.min.js"></script>
+    <script src="js/gsap.min.js"></script>
+    <script src="js/anime.min.js"></script>
+    <script defer src="js/database.js?v=3"></script>
+    <script defer src="js/auth.js?v=3"></script>
+    <script defer src="js/utils.js?v=3"></script>
+    <script src="js/sidebar-voice.js?v=1.2"></script>
+    <script defer src="js/dashboard.js?v=3"></script>
+    <script defer src="js/parallax.js"></script>
+    <script defer src="js/changelog.js"></script>
+    <script defer src="js/threejs-dashboard.js"></script>
+    <script defer src="js/notifications.js"></script>
+    <script defer src="js/events/dashboard-events.js"></script>
+    <script defer src="js/realtime.js"></script>
+    <script defer src="js/reactions.js"></script>
+    <script defer src="js/onboarding-tour.js?v=2.1"></script>
+    <!-- Mural da Comunidade -->
+    <script defer src="js/announcement-feed-react.js?v=3.1"></script>
+    <script defer src="js/mural-dashboard.js?v=1.0"></script>
+</body>
+
+</html>

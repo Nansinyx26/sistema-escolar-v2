@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Configurações Globais - Admin</title>
+    <!-- CSS -->
+    <link rel="stylesheet" href="../css/variables.css">
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components-new.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../css/parallax-glass.css">
+    <link rel="stylesheet" href="../css/neo-brutal.css">
+    <!-- Tailwind CSS Play CDN — preflight desabilitado para nao conflitar com CSS existente -->
+    <!-- Offline Compiled Tailwind CSS -->
+    <link rel="stylesheet" href="../css/tailwind-built.css">    <link rel="stylesheet" href="../css/responsive-global.css?v=1.0">
+    <link rel="stylesheet" href="../css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="../css/reactions.css?v=1.0">
+</head>
+
+<body>
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Sistema Escolar</h2>
+            <p class="splash-subtitle">Configurações Globais</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="../js/splash-screen.js"></script>
+
+    <div class="dashboard-page">
+        <header class="dashboard-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <button class="btn btn-secondary btn-sm" onclick="window.location.href='../dashboard.html'">
+                        <i class="bi bi-arrow-left"></i> Voltar
+                    </button>
+
+                    <div class="header-logo">
+                        <i class="bi bi-gear-fill"></i>
+                        <span>Configurações do Sistema</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <button class="btn btn-primary" id="btnExportarDB" onclick="ExportDB.exportar()">
+                        <i class="bi bi-cloud-download"></i> Exportar Banco Completo
+                    </button>
+                </div>
+
+            </div>
+        </header>
+
+        <main class="container">
+            <div class="settings-card">
+                <h2 style="margin-bottom: 1.5rem;">Segurança e Validação</h2>
+
+                <div class="setting-item" style="border-left: 4px solid var(--primary); background: rgba(59, 130, 246, 0.05);">
+                    <div class="setting-info">
+                        <h4>Código Secreto da Instituição</h4>
+                        <p>Forneça este código aos novos professores e diretores durante o cadastro. Ele rotaciona diariamente à meia-noite (horário de Brasília) por segurança.</p>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
+                        <div style="background: rgba(0,0,0,0.2); padding: 0.5rem 1rem; border-radius: var(--radius-md); border: 1px dashed var(--primary); display: flex; align-items: center; gap: 1rem;">
+                            <span id="adminSecretCode" style="font-family: monospace; font-size: 1.5rem; font-weight: bold; color: var(--primary); letter-spacing: 2px;">••••••</span>
+                        </div>
+                        <button class="btn btn-outline btn-sm" id="btnRotateCode" style="font-size: 0.75rem; padding: 4px 8px;">
+                            <i class="bi bi-arrow-repeat"></i> Forçar Rotação
+                        </button>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <h4>Trava de Frequência</h4>
+                        <p>Exigir que o professor faça a chamada dos alunos antes de registrar o conteúdo da aula.</p>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
+                        <label class="switch">
+                            <input type="checkbox" id="toggleExigirChamada">
+                            <span class="slider"></span>
+                        </label>
+                        <span id="statusLabel" class="status-badge status-off">Desativado</span>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <h4>Modo Estrito de Grade</h4>
+                        <p>Impedir lançamentos fora do horário exato da grade (desativado permite retroativos no mesmo
+                            dia).</p>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
+                        <label class="switch">
+                            <input type="checkbox" id="toggleGradeEstrita" disabled>
+                            <span class="slider"></span>
+                        </label>
+                        <span class="status-badge status-off" style="opacity: 0.5;">Desativado</span>
+                    </div>
+                </div>
+
+                <div class="footer-actions">
+                    <button class="btn btn-primary" id="btnSalvar">
+                        <i class="bi bi-save"></i> Salvar Configurações
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script defer src="../js/database.js"></script>
+    <script defer src="../js/auth.js"></script>
+    <script defer src="../js/utils.js"></script>
+    <script defer src="../js/export-full-db.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            await db.init();
+            await auth.init();
+
+            const user = auth.getCurrentUser();
+            if (!user || user.perfil !== 'admin') {
+                window.location.href = '../login.html';
+                return;
+            }
+
+            const toggleExigirChamada = document.getElementById('toggleExigirChamada');
+            const statusLabel = document.getElementById('statusLabel');
+            const btnSalvar = document.getElementById('btnSalvar');
+
+            const updateStatusUI = (isChecked) => {
+                if (isChecked) {
+                    statusLabel.textContent = 'Ativado';
+                    statusLabel.className = 'status-badge status-on';
+                } else {
+                    statusLabel.textContent = 'Desativado';
+                    statusLabel.className = 'status-badge status-off';
+                }
+            };
+
+            // Listener para mudança visual em tempo real
+            toggleExigirChamada.addEventListener('change', (e) => {
+                updateStatusUI(e.target.checked);
+            });
+
+            let currentConfigId = null;
+
+            // Carregar configurações atuais
+            try {
+                const res = await fetch(`${db.baseUrl}/config`);
+                const json = await res.json();
+
+                if (json.success && json.data) {
+                    currentConfigId = json.data._id || json.data.id;
+                    const isActive = json.data.exigirChamadaAntesDeAula || false;
+                    toggleExigirChamada.checked = isActive;
+                    updateStatusUI(isActive);
+                }
+            } catch (e) {
+                console.error('Erro ao carregar config:', e);
+                showToast('Erro ao carregar configurações', 'error');
+            }
+
+            // Carregar Código Secreto
+            const loadSecretCode = async () => {
+                try {
+                    const res = await fetch(`${db.baseUrl}/security/status`, { credentials: 'include' });
+                    const json = await res.json();
+                    if (json.success && json.data) {
+                        document.getElementById('adminSecretCode').textContent = json.data.codigo;
+                    } else {
+                        document.getElementById('adminSecretCode').textContent = 'Erro';
+                    }
+                } catch (e) {
+                    console.error('Erro ao buscar código secreto:', e);
+                    document.getElementById('adminSecretCode').textContent = 'Erro';
+                }
+            };
+            await loadSecretCode();
+
+            // Rotacionar Código Secreto
+            document.getElementById('btnRotateCode').addEventListener('click', async () => {
+                if(!confirm('Tem certeza? Isso invalidará o código atual imediatamente.')) return;
+                try {
+                    const res = await fetch(`${db.baseUrl}/security/rotate`, { method: 'POST', credentials: 'include' });
+                    const json = await res.json();
+                    if (json.success) {
+                        showToast('Código atualizado com sucesso!', 'success');
+                        await loadSecretCode();
+                    } else {
+                        showToast(json.error || 'Erro ao rotacionar código', 'error');
+                    }
+                } catch (e) {
+                    showToast('Erro de conexão', 'error');
+                }
+            });
+
+            // Salvar ao clicar
+            btnSalvar.addEventListener('click', async () => {
+                if (!currentConfigId) {
+                    showToast('Configuração não identificada no banco', 'error');
+                    return;
+                }
+
+                btnSalvar.disabled = true;
+                btnSalvar.innerHTML = '<i class="bi bi-hourglass-split"></i> Salvando...';
+
+                try {
+                    const res = await fetch(`${db.baseUrl}/config/${currentConfigId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            exigirChamadaAntesDeAula: toggleExigirChamada.checked
+                        })
+                    });
+
+                    const json = await res.json();
+                    if (json.success) {
+                        showToast('Configurações atualizadas com sucesso!', 'success');
+                    } else {
+                        throw new Error(json.error || 'Erro ao salvar');
+                    }
+                } catch (e) {
+                    console.error(e);
+                    showToast('Erro ao salvar: ' + e.message, 'error');
+                } finally {
+                    btnSalvar.disabled = false;
+                    btnSalvar.innerHTML = '<i class="bi bi-save"></i> Salvar Configurações';
+                }
+            });
+        });
+    </script>
+    <script defer src="../js/parallax.js"></script>
+    <script src="../js/vendor.js"></script>
+    <script defer src="../js/reactions.js"></script>
+</body>
+
+</html>

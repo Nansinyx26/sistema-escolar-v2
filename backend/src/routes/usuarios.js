@@ -1,0 +1,12 @@
+const express = require('express');
+const router = express.Router();
+const UserController = require('../controllers/UserController');
+const authorize = require('../middleware/authorize');
+
+router.get('/', authorize('admin', 'diretor'), UserController.list);
+router.post('/', authorize('admin'), UserController.create);
+router.put('/:id', UserController.update);
+router.delete('/:id', authorize('admin'), UserController.delete);
+router.put('/:id/anonymize', authorize('admin'), UserController.anonymize);
+
+module.exports = router;

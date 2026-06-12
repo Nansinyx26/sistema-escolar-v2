@@ -1,0 +1,74 @@
+{
+  "name": "Sistema Escolar — Portal Educacional",
+  "short_name": "Escola",
+  "description": "Portal de Gestão Escolar para Professores, Diretores e Responsáveis",
+  "start_url": "/login.html",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "background_color": "#09090b",
+  "theme_color": "#10b981",
+  "orientation": "any",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "categories": ["education", "productivity"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/favicon/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/favicon/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/favicon/favicon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Lançar Frequência",
+      "short_name": "Frequência",
+      "url": "/frequencia-professores.html",
+      "icons": [{ "src": "/favicon/favicon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Ver Alunos",
+      "short_name": "Alunos",
+      "url": "/detalhes/alunos.html",
+      "icons": [{ "src": "/favicon/favicon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Meu Horário",
+      "short_name": "Horário",
+      "url": "/meu-horario.html",
+      "icons": [{ "src": "/favicon/favicon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "url": "/dashboard.html",
+      "icons": [{ "src": "/favicon/favicon.png", "sizes": "192x192" }]
+    }
+  ]
+}

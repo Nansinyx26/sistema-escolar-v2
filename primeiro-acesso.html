@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Primeiro Acesso - Sistema Escolar</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components-new.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <style>
+        body {
+            background: var(--bg-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            position: relative;
+        }
+
+        /* === BACKGROUND (ANIMATED ORBS) === */
+        .login-background {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            background: radial-gradient(circle at 50% 50%, var(--bg-primary) 0%, #030305 100%);
+            overflow: hidden;
+        }
+
+        .gradient-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.12;
+            mix-blend-mode: screen;
+            animation: floatOrb 25s infinite alternate ease-in-out;
+        }
+
+        .orb-1 {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, var(--primary) 0%, transparent 70%);
+            top: -10%;
+            left: -10%;
+            animation-duration: 30s;
+        }
+
+        .orb-2 {
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--secondary) 0%, transparent 70%);
+            bottom: -15%;
+            right: -10%;
+            animation-duration: 35s;
+            animation-delay: -7s;
+        }
+
+        @keyframes floatOrb {
+            0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+            50% { transform: translate(80px, -50px) scale(1.15) rotate(180deg); }
+            100% { transform: translate(-40px, 60px) scale(0.9) rotate(360deg); }
+        }
+
+        .primeiro-acesso-container {
+            width: 100%;
+            max-width: 480px;
+            padding: 1.5rem;
+            position: relative;
+            z-index: 1;
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .auth-card {
+            background: rgba(15, 15, 18, 0.65);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 3rem 2.5rem;
+            box-shadow: 
+                0 4px 30px rgba(0, 0, 0, 0.4),
+                0 24px 70px rgba(0, 0, 0, 0.6),
+                inset 0 1px 1px rgba(255, 255, 255, 0.15);
+            position: relative;
+            overflow: hidden;
+            transition: all var(--transition-base);
+        }
+
+        .auth-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 2.2rem;
+        }
+
+        .auth-header i {
+            font-size: 3rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.8rem;
+            display: inline-block;
+            transition: transform 0.3s ease;
+        }
+
+        .auth-card:hover .auth-header i {
+            transform: scale(1.08) rotate(5deg);
+        }
+
+        .auth-header h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.5px;
+        }
+
+        .auth-header p {
+            color: var(--text-tertiary);
+            font-size: 0.925rem;
+            line-height: 1.5;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.6rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-left: 2px;
+        }
+
+        .input-group {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 1.1rem;
+            color: var(--text-tertiary);
+            font-size: 1.15rem;
+            transition: color 0.3s ease, transform 0.3s ease;
+            pointer-events: none;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.95rem 1rem 0.95rem 3.2rem;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .form-input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .form-input:focus {
+            background: rgba(0, 0, 0, 0.3);
+            border-color: var(--primary);
+            box-shadow: 
+                0 0 0 4px rgba(16, 185, 129, 0.15),
+                0 8px 24px rgba(16, 185, 129, 0.08);
+            outline: none;
+        }
+
+        .form-input:focus + .input-icon {
+            color: var(--primary);
+            transform: scale(1.05);
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 1.1rem;
+            background: none;
+            border: none;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            padding: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.15rem;
+            transition: color 0.3s ease, transform 0.3s ease;
+        }
+
+        .password-toggle:hover {
+            color: var(--text-primary);
+            transform: scale(1.1);
+        }
+
+        .password-requirements {
+            margin-top: 1rem;
+            padding: 1.2rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        @media (max-width: 400px) {
+            .password-requirements {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .requirement {
+            font-size: 0.8rem;
+            color: var(--text-tertiary);
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            transition: all 0.3s ease;
+        }
+
+        .requirement i {
+            font-size: 0.9rem;
+            color: var(--text-tertiary);
+            transition: all 0.3s ease;
+        }
+
+        .requirement.valid {
+            color: var(--success);
+        }
+
+        .requirement.valid i {
+            color: var(--success);
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 1rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-top: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            border: none;
+            border-radius: 12px;
+            color: #fff;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.2);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 
+                0 8px 25px rgba(16, 185, 129, 0.35),
+                0 0 15px rgba(14, 165, 233, 0.2);
+            filter: brightness(1.05);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .footer-link {
+            text-align: center;
+            margin-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 1.5rem;
+        }
+
+        .footer-link a {
+            color: var(--text-tertiary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: color 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .footer-link a:hover {
+            color: var(--primary);
+            text-decoration: underline;
+        }
+
+        /* === LIGHT MODE OVERRIDES === */
+        [data-theme="light"] body {
+            background-color: var(--bg-primary);
+        }
+
+        [data-theme="light"] .login-background {
+            background: radial-gradient(circle at 50% 50%, var(--bg-primary) 0%, #edf2f7 100%);
+        }
+
+        [data-theme="light"] .auth-card {
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            box-shadow: 
+                0 4px 20px rgba(0, 0, 0, 0.04),
+                0 20px 50px rgba(0, 0, 0, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        }
+
+        [data-theme="light"] .auth-header h1 {
+            color: var(--text-primary);
+        }
+
+        [data-theme="light"] .form-input {
+            background: rgba(255, 255, 255, 0.8);
+            border-color: rgba(0, 0, 0, 0.12);
+            color: var(--text-primary);
+        }
+
+        [data-theme="light"] .form-input::placeholder {
+            color: rgba(0, 0, 0, 0.4);
+        }
+
+        [data-theme="light"] .form-input:focus {
+            background: #fff;
+            box-shadow: 
+                0 0 0 4px rgba(16, 185, 129, 0.12),
+                0 4px 12px rgba(16, 185, 129, 0.05);
+        }
+
+        [data-theme="light"] .password-requirements {
+            background: rgba(0, 0, 0, 0.03);
+            border-color: rgba(0, 0, 0, 0.05);
+        }
+
+        [data-theme="light"] .footer-link {
+            border-color: rgba(0, 0, 0, 0.06);
+        }
+
+        /* Mobile Fixes */
+        @media (max-width: 480px) {
+            .auth-card {
+                padding: 2.5rem 1.5rem;
+                border-radius: 20px;
+            }
+        }
+    </style>
+    <!-- Tailwind CSS Play CDN — preflight desabilitado para nao conflitar com CSS existente -->
+    <!-- Offline Compiled Tailwind CSS -->
+    <link rel="stylesheet" href="css/tailwind-built.css">    <link rel="stylesheet" href="css/responsive-global.css?v=1.0">
+    <link rel="stylesheet" href="css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="css/reactions.css?v=1.0">
+</head>
+
+<body>
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Sistema Escolar</h2>
+            <p class="splash-subtitle">Primeiro Acesso</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="js/splash-screen.js"></script>
+
+    <!-- Background Animated Orbs -->
+    <div class="login-background">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+    </div>
+    <!-- Smart routing: redireciona automaticamente conforme o tipo de usuário selecionado -->
+    <script>
+    (function() {
+        try {
+            var tipo = sessionStorage.getItem('primeiroAcessoTipo');
+            if (tipo === 'responsavel') {
+                // Responsável → redireciona para a página de cadastro de responsáveis
+                sessionStorage.removeItem('primeiroAcessoTipo');
+                window.location.replace('pages/cadastro-responsavel.html');
+                return;
+            }
+            // tipo=docente ou sem tipo: permanece nesta página (ativação de conta docente)
+            if (tipo === 'docente') {
+                sessionStorage.removeItem('primeiroAcessoTipo');
+            }
+        } catch(e) {}
+    })();
+    </script>
+
+    <div class="primeiro-acesso-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <i class="bi bi-person-check-fill"></i>
+                <h1>Ative sua Conta</h1>
+                <p>Olá, Professor! Use os dados fornecidos à direção para criar sua senha de acesso.</p>
+            </div>
+
+            <form id="firstAccessForm">
+                <div class="form-group">
+                    <label class="form-label" for="emailOrCpf">Identificação</label>
+                    <div class="input-group">
+                        <i class="bi bi-person input-icon"></i>
+                        <input type="text" id="emailOrCpf" class="form-input" placeholder="CPF ou E-mail Institucional" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="newPassword">Nova Senha</label>
+                    <div class="input-group">
+                        <i class="bi bi-shield-lock input-icon"></i>
+                        <input type="password" id="newPassword" class="form-input" placeholder="Crie uma senha forte" required>
+                        <button type="button" class="password-toggle" id="btn-toggle-new-pass">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="password-requirements">
+                        <div id="req-length" class="requirement"><i class="bi bi-circle"></i> Mínimo 8 caracteres</div>
+                        <div id="req-upper" class="requirement"><i class="bi bi-circle"></i> Uma letra maiúscula</div>
+                        <div id="req-number" class="requirement"><i class="bi bi-circle"></i> Um número</div>
+                        <div id="req-special" class="requirement"><i class="bi bi-circle"></i> Um caractere especial</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="confirmPassword">Confirmar Senha</label>
+                    <div class="input-group">
+                        <i class="bi bi-shield-check input-icon"></i>
+                        <input type="password" id="confirmPassword" class="form-input" placeholder="Repita a nova senha" required>
+                        <button type="button" class="password-toggle" id="btn-toggle-confirm-pass">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 1.5rem; display: flex; align-items: flex-start; gap: 0.8rem; cursor: pointer;">
+                    <input type="checkbox" id="privacyConsent" required style="width: 18px; height: 18px; cursor: pointer; margin-top: 2px;">
+                    <label for="privacyConsent" style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4; cursor: pointer;">
+                        Li e aceito as <a href="politica-privacidade.html" target="_blank" style="color: var(--primary-color); text-decoration: underline;">Políticas de Privacidade</a> e autorizo o tratamento dos meus dados.
+                    </label>
+                </div>
+
+                <button type="submit" id="btnSubmit" class="btn btn-primary" disabled>
+                    <i class="bi bi-lightning-fill"></i> Ativar Minha Conta
+                </button>
+
+                <div class="footer-link">
+                    <a href="login.html">
+                        <i class="bi bi-arrow-left"></i> Voltar para o Login
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="js/api-config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/vendor.js"></script>
+    <script defer src="js/events/primeiro-acesso-events.js"></script>
+    <script defer src="js/reactions.js"></script>
+</body>
+
+</html>
+

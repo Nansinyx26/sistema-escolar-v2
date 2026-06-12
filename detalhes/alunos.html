@@ -1,0 +1,238 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Sistema de Cadastro Escolar - Lista de Alunos">
+    <title>Alunos - Sistema Escolar</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/favicon/favicon.png">    <link rel="apple-touch-icon" href="/favicon/favicon.png">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- Theme Init -->
+    <script defer src="../js/theme.js"></script>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="detalhes.css">
+    <link rel="stylesheet" href="../css/watermark.css">
+    <link rel="stylesheet" href="../css/parallax-glass.css">
+    <link rel="stylesheet" href="../css/neo-brutal.css">
+    <!-- Tailwind CSS Play CDN — preflight desabilitado para nao conflitar com CSS existente -->
+    <!-- Offline Compiled Tailwind CSS -->
+    <link rel="stylesheet" href="../css/tailwind-built.css">    <link rel="stylesheet" href="../css/responsive-global.css?v=1.0">
+    <link rel="stylesheet" href="../css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="../css/reactions.css?v=1.0">
+</head>
+
+<body>
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Sistema Escolar</h2>
+            <p class="splash-subtitle">Alunos</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="../js/splash-screen.js"></script>
+
+    <div class="page">
+        <!-- Navbar -->
+        <nav class="navbar">
+            <div class="navbar-content">
+                <div class="navbar-brand">
+                    <span class="logo"><i class="bi bi-mortarboard-fill"></i></span>
+                    <span>Sistema Escolar</span>
+                </div>
+                <div class="navbar-nav">
+                    <a href="../selecionar.html" class="btn btn-ghost"><i class="bi bi-arrow-left"></i> Voltar</a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="container">
+                <!-- Header -->
+                <div class="detalhes-header">
+                    <div class="detalhes-title">
+                        <h1><i class="bi bi-people-fill"></i> Todos os Alunos</h1>
+                        <p>Gerencie e visualize a lista completa de estudantes</p>
+                    </div>
+                    <div class="detalhes-actions">
+                        <a href="../cadastro-aluno.html" class="btn btn-primary" style="display:flex;align-items:center;gap:8px;font-weight:600;">
+                            <i class="bi bi-person-plus-fill"></i> Cadastrar Aluno
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Lista de Alunos -->
+                <div class="lista-container">
+                    <!-- Toolbar -->
+                    <div class="toolbar">
+                        <div class="filters">
+                            <select id="filtroTurma" class="form-input" style="width: auto;">
+                                <option value="">Todas as Turmas</option>
+                                <!-- Renderizado JS -->
+                            </select>
+
+                            <label class="btn btn-outline" style="height: auto; font-weight: normal;">
+                                <input type="checkbox" id="filtroPCD"> Alunos PCD
+                            </label>
+                        </div>
+                        <div class="search-box">
+                            <span class="search-icon"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-input" placeholder="Buscar aluno..." id="searchAluno">
+                        </div>
+                    </div>
+
+                    <!-- Barra de Ações em Massa (Inicialmente Oculta) -->
+                    <div id="bulkActionsBar" class="bulk-actions-bar hidden" style="background: var(--primary); color: #fff; padding: 15px 20px; border-radius: 12px; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; animation: slideInDown 0.3s ease;">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <i class="bi bi-check-all" style="font-size: 1.5rem;"></i>
+                            <span id="bulkSelectedCount" style="font-weight: 600;">0 alunos selecionados</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 0.9rem;">Transferir para:</span>
+                            <select id="bulkTransferTurma" class="form-input" style="width: auto; height: 38px; color: #000 !important; background-color: #fff !important; border: 1px solid #ccc; font-weight: 600; padding: 0 10px;">
+                                <option value="" style="color: #666;">Escolha a sala...</option>
+                                <!-- Populado via JS -->
+                            </select>
+                            <button onclick="executarTransferenciaMassa()" class="btn" style="background: #fff; color: #000; border: none; font-weight: 700; height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 15px; border-radius: 8px; cursor: pointer;">
+                                <i class="bi bi-arrow-right-circle-fill"></i> Transferir Agora
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tabela -->
+                    <div class="table-responsive">
+                        <table class="detalhes-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;"><input type="checkbox" id="selectAll"></th>
+                                    <th>Nome</th>
+                                    <th>Matrícula</th>
+                                    <th>Turma</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="alunosTableBody">
+                                <tr class="loading-row">
+                                    <td colspan="5">
+                                        <div class="spinner spinner-sm" style="margin: 0 auto; margin-bottom: 10px;">
+                                        </div>
+                                        Carregando alunos...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="empty-state hidden" id="emptyState">
+                        <div class="empty-state-icon"><i class="bi bi-person-x"></i></div>
+                        <h3>Nenhum aluno encontrado</h3>
+                        <p>Tente ajustar os filtros de busca.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Watermark -->
+        <div class="watermark">
+            <span class="watermark-icon"><i class="bi bi-laptop"></i></span>
+            <span class="watermark-text">Desenvolvido por NanDev</span>
+        </div>
+    </div>
+
+    <!-- Modal Editar Aluno -->
+    <div id="modalEditAluno" class="modal-overlay hidden">
+        <div class="modal-content glass-strong" style="max-width: 500px; width: 90%; padding: 2rem; border-radius: 20px;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="margin: 0; color: var(--text-primary);"><i class="bi bi-pencil-square"></i> Editar Aluno</h2>
+                <button class="btn-close" onclick="fecharModal()">&times;</button>
+            </div>
+            
+            <form id="formEditAluno">
+                <input type="hidden" id="editAlunoId">
+                
+                <div class="form-group mb-md">
+                    <label class="form-label">Nome Completo</label>
+                    <input type="text" id="editAlunoNome" class="form-input" required>
+                </div>
+
+                <div class="form-group mb-md">
+                    <label class="form-label">Matrícula (Opcional)</label>
+                    <input type="text" id="editAlunoMatricula" class="form-input">
+                </div>
+
+                <div class="form-group mb-md">
+                    <label class="form-label">Turma / Transferência</label>
+                    <select id="editAlunoTurma" class="form-input" required>
+                        <!-- Populado via JS -->
+                    </select>
+                </div>
+
+                <div class="form-group mb-md">
+                    <label class="form-label">Deficiência / PCD (Deixe vazio se não tiver)</label>
+                    <input type="text" id="editAlunoDeficiencia" class="form-input" placeholder="Ex: Autismo, TDAH...">
+                </div>
+
+                <div class="form-group mb-lg">
+                    <label class="form-label">Observações</label>
+                    <textarea id="editAlunoObs" class="form-input" rows="3"></textarea>
+                </div>
+
+                <div class="form-group mb-lg" id="secaoDocumentosAluno" style="display:none">
+                    <label class="form-label"><i class="bi bi-file-earmark-check"></i> Ficha Assinada</label>
+                    <div id="docStatusBadge" style="margin-bottom:0.5rem"></div>
+                    <div id="docViewerList"></div>
+                    <div style="display:flex;gap:0.5rem;margin-top:0.75rem;flex-wrap:wrap">
+                        <button type="button" class="btn btn-outline btn-sm" onclick="marcarDocStatus('enviado')">Marcar Enviado</button>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="marcarDocStatus('conferido')">Marcar Conferido</button>
+                    </div>
+                </div>
+
+                <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 2rem;">
+                    <button type="button" class="btn btn-ghost" onclick="fecharModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="../js/api-config.js"></script>
+    <script src="../js/database.js"></script>
+    <script type="module" src="alunos.js"></script>
+    <script defer src="../js/watermark.js"></script>
+    <script defer src="../js/parallax.js"></script>
+    <script src="../js/vendor.js"></script>
+    <script defer src="../js/reactions.js"></script>
+</body>
+
+</html>

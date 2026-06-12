@@ -1,0 +1,1410 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Cadastro de Aluno LGPD - Sistema Escolar">
+    <title>Cadastro de Aluno - Sistema Escolar</title>
+
+    <link rel="icon" type="image/png" href="/favicon/favicon.png">    <link rel="apple-touch-icon" href="/favicon/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components-new.css">
+    <link rel="stylesheet" href="css/parallax-glass.css">
+
+    <style>
+        /* ============================================
+           CADASTRO ALUNO — BLACK GLASSMORPHISM LGPD
+           ============================================ */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            min-height: 100vh;
+            background: #000;
+            font-family: var(--font-primary, 'Inter', sans-serif);
+            color: var(--text-primary, #fafafa);
+            overflow-x: hidden;
+        }
+
+        /* ── Fundo com orbs animados ── */
+        .ca-bg {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 0;
+            overflow: hidden;
+        }
+        .ca-bg::before {
+            content: '';
+            position: absolute;
+            width: 600px; height: 600px;
+            top: -150px; left: -150px;
+            background: radial-gradient(circle, rgba(16,185,129,.18) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: orbFloat 12s ease-in-out infinite alternate;
+        }
+        .ca-bg::after {
+            content: '';
+            position: absolute;
+            width: 500px; height: 500px;
+            bottom: -100px; right: -100px;
+            background: radial-gradient(circle, rgba(14,165,233,.14) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: orbFloat 16s ease-in-out infinite alternate-reverse;
+        }
+        .ca-bg-orb3 {
+            position: absolute;
+            width: 350px; height: 350px;
+            top: 50%; left: 50%;
+            transform: translate(-50%,-50%);
+            background: radial-gradient(circle, rgba(139,92,246,.08) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: orbFloat 20s ease-in-out infinite;
+        }
+        @keyframes orbFloat {
+            0%   { transform: translate(0,0) scale(1); }
+            50%  { transform: translate(40px, 30px) scale(1.08); }
+            100% { transform: translate(-20px, 60px) scale(0.95); }
+        }
+
+        /* ── Layout principal ── */
+        .ca-wrap {
+            position: relative;
+            z-index: 1;
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 2rem 1.25rem 4rem;
+        }
+
+        /* ── Header ── */
+        .ca-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+        .ca-header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: .75rem;
+        }
+        .ca-back-btn {
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+            background: rgba(255,255,255,.06);
+            border: 1px solid rgba(255,255,255,.1);
+            color: var(--text-primary);
+            padding: .45rem .9rem;
+            border-radius: 8px;
+            font-size: .85rem;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all .2s;
+        }
+        .ca-back-btn:hover { background: rgba(255,255,255,.1); }
+
+        .lgpd-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            background: rgba(16,185,129,.12);
+            border: 1px solid rgba(16,185,129,.3);
+            color: #10b981;
+            padding: .35rem .8rem;
+            border-radius: 20px;
+            font-size: .78rem;
+            font-weight: 600;
+            letter-spacing: .02em;
+        }
+        .lgpd-badge i { font-size: .9rem; }
+
+        .ca-icon {
+            width: 72px; height: 72px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, #10b981, #0ea5e9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin: 0 auto 1rem;
+            box-shadow: 0 0 40px rgba(16,185,129,.3);
+        }
+        .ca-title {
+            font-size: 1.85rem;
+            font-weight: 700;
+            letter-spacing: -.03em;
+            color: #fff;
+        }
+        .ca-subtitle {
+            font-size: .9rem;
+            color: rgba(255,255,255,.5);
+            margin-top: .35rem;
+        }
+
+        /* ── Barra de Progresso ── */
+        .ca-progress {
+            background: rgba(255,255,255,.06);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,.08);
+            border-radius: 16px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.75rem;
+        }
+        .ca-steps {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            margin-bottom: 1rem;
+        }
+        .ca-step {
+            flex: 1;
+            text-align: center;
+            font-size: .72rem;
+            font-weight: 500;
+            color: rgba(255,255,255,.35);
+            position: relative;
+        }
+        .ca-step.active { color: #10b981; font-weight: 600; }
+        .ca-step.done { color: rgba(16,185,129,.7); }
+        .ca-step-dot {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,.15);
+            background: rgba(0,0,0,.4);
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto .4rem;
+            font-size: .75rem;
+            font-weight: 700;
+            transition: all .3s;
+        }
+        .ca-step.active .ca-step-dot {
+            border-color: #10b981;
+            background: rgba(16,185,129,.15);
+            color: #10b981;
+            box-shadow: 0 0 12px rgba(16,185,129,.4);
+        }
+        .ca-step.done .ca-step-dot {
+            border-color: #10b981;
+            background: #10b981;
+            color: #000;
+        }
+        .ca-step-line {
+            position: absolute;
+            top: 14px; right: -50%; width: 100%;
+            height: 2px;
+            background: rgba(255,255,255,.08);
+            z-index: -1;
+        }
+        .ca-step.done .ca-step-line { background: rgba(16,185,129,.35); }
+
+        .ca-progress-bar-track {
+            height: 4px;
+            background: rgba(255,255,255,.08);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .ca-progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #0ea5e9);
+            border-radius: 2px;
+            width: 0%;
+            transition: width .5s cubic-bezier(.4,0,.2,1);
+        }
+
+        /* ── Seções / Cards ── */
+        .ca-section {
+            background: rgba(255,255,255,.04);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            backdrop-filter: blur(24px) saturate(180%);
+            border: 1px solid rgba(255,255,255,.08);
+            border-radius: 20px;
+            padding: 1.75rem;
+            margin-bottom: 1.25rem;
+            transition: border-color .2s;
+        }
+        .ca-section:hover { border-color: rgba(255,255,255,.12); }
+
+        .ca-section-title {
+            display: flex;
+            align-items: center;
+            gap: .6rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 1.25rem;
+            padding-bottom: .85rem;
+            border-bottom: 1px solid rgba(255,255,255,.07);
+        }
+        .ca-section-title i {
+            width: 32px; height: 32px;
+            border-radius: 8px;
+            background: rgba(16,185,129,.12);
+            color: #10b981;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem;
+        }
+
+        /* ── Campos ── */
+        .ca-grid { display: grid; gap: 1rem; }
+        .ca-grid-2 { grid-template-columns: 1fr 1fr; }
+        .ca-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+        .ca-grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+        @media (max-width: 640px) {
+            .ca-grid-2, .ca-grid-3, .ca-grid-4 { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 768px) {
+            .ca-grid-3 { grid-template-columns: 1fr 1fr; }
+            .ca-grid-4 { grid-template-columns: 1fr 1fr; }
+        }
+
+        .ca-field { display: flex; flex-direction: column; gap: .45rem; }
+        .ca-field label {
+            font-size: .8rem;
+            font-weight: 500;
+            color: rgba(255,255,255,.6);
+            letter-spacing: .02em;
+            display: flex;
+            align-items: center;
+            gap: .35rem;
+        }
+        .ca-field input,
+        .ca-field select,
+        .ca-field textarea {
+            width: 100%;
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.1);
+            border-radius: 10px;
+            padding: .65rem .9rem;
+            font-size: .9rem;
+            color: #fff;
+            font-family: inherit;
+            transition: all .2s;
+            outline: none;
+        }
+        .ca-field input:focus,
+        .ca-field select:focus,
+        .ca-field textarea:focus {
+            border-color: rgba(16,185,129,.5);
+            background: rgba(16,185,129,.05);
+            box-shadow: 0 0 0 3px rgba(16,185,129,.1);
+        }
+        .ca-field input[readonly] {
+            background: rgba(255,255,255,.02);
+            color: rgba(255,255,255,.4);
+            cursor: default;
+        }
+        .ca-field select option { background: #1a1a2e; color: #fff; }
+        .ca-field textarea { resize: vertical; min-height: 90px; }
+        .ca-field input::placeholder,
+        .ca-field textarea::placeholder { color: rgba(255,255,255,.25); }
+
+        /* ── Tags sensíveis e required ── */
+        .sensitive-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: .2rem;
+            background: rgba(239,68,68,.12);
+            border: 1px solid rgba(239,68,68,.25);
+            color: #f87171;
+            padding: .1rem .4rem;
+            border-radius: 4px;
+            font-size: .65rem;
+            font-weight: 600;
+            letter-spacing: .04em;
+            text-transform: uppercase;
+        }
+        .req-mark { color: #ef4444; margin-left: 2px; }
+
+        /* ── Caixa LGPD ── */
+        .lgpd-box {
+            background: rgba(16,185,129,.06);
+            border: 1px solid rgba(16,185,129,.2);
+            border-radius: 10px;
+            padding: .85rem 1rem;
+            font-size: .8rem;
+            color: rgba(255,255,255,.65);
+            display: flex;
+            gap: .6rem;
+            margin-top: .5rem;
+        }
+        .lgpd-box i { color: #10b981; flex-shrink: 0; margin-top: 2px; }
+        .lgpd-box a { color: #34d399; text-decoration: underline; }
+
+        /* ── Caixa info ── */
+        .info-box {
+            background: rgba(14,165,233,.07);
+            border: 1px solid rgba(14,165,233,.2);
+            border-radius: 10px;
+            padding: .85rem 1rem;
+            font-size: .8rem;
+            color: rgba(255,255,255,.6);
+            display: flex;
+            gap: .6rem;
+            margin-bottom: 1rem;
+        }
+        .info-box i { color: #0ea5e9; flex-shrink: 0; margin-top: 2px; }
+
+        /* ── Upload de documentos ── */
+        .doc-upload-zone {
+            border: 2px dashed rgba(255,255,255,.12);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all .2s;
+            background: rgba(255,255,255,.02);
+        }
+        .doc-upload-zone:hover {
+            border-color: rgba(16,185,129,.4);
+            background: rgba(16,185,129,.04);
+        }
+        .doc-upload-zone i { font-size: 2rem; color: rgba(255,255,255,.25); display: block; margin-bottom: .5rem; }
+        .doc-upload-zone p { font-size: .83rem; color: rgba(255,255,255,.4); }
+        .doc-upload-zone span { font-size: .72rem; color: rgba(255,255,255,.25); }
+        #docInput { display: none; }
+
+        .doc-list { margin-top: 1rem; display: flex; flex-direction: column; gap: .5rem; }
+        .doc-item {
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.08);
+            border-radius: 10px;
+            padding: .65rem .9rem;
+            font-size: .83rem;
+        }
+        .doc-item i { color: #0ea5e9; }
+        .doc-item-name { flex: 1; color: rgba(255,255,255,.75); }
+        .doc-item-size { font-size: .72rem; color: rgba(255,255,255,.35); }
+        .doc-item-remove {
+            cursor: pointer;
+            color: rgba(239,68,68,.6);
+            background: none;
+            border: none;
+            font-size: 1rem;
+            padding: .1rem .3rem;
+            border-radius: 4px;
+            transition: all .2s;
+        }
+        .doc-item-remove:hover { color: #ef4444; background: rgba(239,68,68,.1); }
+
+        /* ── Retenção de dados ── */
+        .retention-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: .82rem;
+        }
+        .retention-table th {
+            background: rgba(255,255,255,.05);
+            padding: .6rem .9rem;
+            text-align: left;
+            font-weight: 600;
+            color: rgba(255,255,255,.6);
+            font-size: .75rem;
+            letter-spacing: .05em;
+            text-transform: uppercase;
+        }
+        .retention-table td {
+            padding: .65rem .9rem;
+            border-top: 1px solid rgba(255,255,255,.05);
+            color: rgba(255,255,255,.65);
+        }
+        .retention-table tr:hover td { background: rgba(255,255,255,.02); }
+        .retention-badge {
+            display: inline-block;
+            background: rgba(16,185,129,.12);
+            border: 1px solid rgba(16,185,129,.25);
+            color: #34d399;
+            padding: .15rem .55rem;
+            border-radius: 6px;
+            font-size: .72rem;
+            font-weight: 600;
+        }
+
+        /* ── Consentimento ── */
+        .consent-item {
+            display: flex;
+            gap: .85rem;
+            padding: 1rem;
+            background: rgba(255,255,255,.03);
+            border: 1px solid rgba(255,255,255,.07);
+            border-radius: 12px;
+            margin-bottom: .75rem;
+            transition: all .2s;
+            cursor: pointer;
+        }
+        .consent-item:hover { border-color: rgba(16,185,129,.25); background: rgba(16,185,129,.03); }
+        .consent-item.checked {
+            border-color: rgba(16,185,129,.35);
+            background: rgba(16,185,129,.05);
+        }
+        .consent-item input[type="checkbox"] {
+            width: 18px; height: 18px;
+            accent-color: #10b981;
+            flex-shrink: 0;
+            margin-top: 2px;
+            cursor: pointer;
+        }
+        .consent-item-body { flex: 1; }
+        .consent-item-title {
+            font-size: .88rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: .2rem;
+        }
+        .consent-item-desc {
+            font-size: .78rem;
+            color: rgba(255,255,255,.5);
+            line-height: 1.5;
+        }
+        .consent-art {
+            display: inline-block;
+            background: rgba(14,165,233,.1);
+            border: 1px solid rgba(14,165,233,.2);
+            color: #38bdf8;
+            padding: .1rem .4rem;
+            border-radius: 4px;
+            font-size: .68rem;
+            font-weight: 600;
+            margin-left: .35rem;
+        }
+
+        /* ── DPO Contact ── */
+        .dpo-box {
+            background: rgba(139,92,246,.07);
+            border: 1px solid rgba(139,92,246,.2);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: .85rem;
+            margin-top: 1rem;
+        }
+        .dpo-box i { font-size: 1.5rem; color: #a78bfa; flex-shrink: 0; }
+        .dpo-box-body {}
+        .dpo-box-title { font-size: .85rem; font-weight: 600; color: #c4b5fd; margin-bottom: .15rem; }
+        .dpo-box-desc { font-size: .78rem; color: rgba(255,255,255,.5); }
+        .dpo-box-desc a { color: #a78bfa; }
+
+        /* ── Log de Auditoria ── */
+        .audit-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: .5rem;
+        }
+        .audit-count {
+            background: rgba(16,185,129,.12);
+            border: 1px solid rgba(16,185,129,.25);
+            color: #34d399;
+            padding: .2rem .6rem;
+            border-radius: 6px;
+            font-size: .75rem;
+            font-weight: 600;
+        }
+        .audit-table-wrap {
+            max-height: 220px;
+            overflow-y: auto;
+            margin-top: .75rem;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,.07);
+        }
+        .audit-table-wrap::-webkit-scrollbar { width: 4px; }
+        .audit-table-wrap::-webkit-scrollbar-track { background: rgba(255,255,255,.03); }
+        .audit-table-wrap::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 2px; }
+        .audit-table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+        .audit-table th {
+            background: rgba(255,255,255,.05);
+            padding: .5rem .75rem;
+            text-align: left;
+            color: rgba(255,255,255,.45);
+            font-weight: 600;
+            font-size: .7rem;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            position: sticky;
+            top: 0;
+        }
+        .audit-table td {
+            padding: .5rem .75rem;
+            border-top: 1px solid rgba(255,255,255,.04);
+            color: rgba(255,255,255,.55);
+        }
+        .audit-table tr:hover td { background: rgba(255,255,255,.02); }
+        .audit-new { animation: auditFadeIn .4s ease; }
+        @keyframes auditFadeIn {
+            from { background: rgba(16,185,129,.1); }
+            to { background: transparent; }
+        }
+        .audit-action-edit { color: #38bdf8; }
+        .audit-action-consent { color: #34d399; }
+        .audit-action-nav { color: #a78bfa; }
+        .audit-action-open { color: #f59e0b; }
+
+        /* ── Footer de ação ── */
+        .ca-footer {
+            background: rgba(255,255,255,.04);
+            -webkit-backdrop-filter: blur(24px);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255,255,255,.08);
+            border-radius: 16px;
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        .ca-footer-security {
+            display: flex;
+            gap: .5rem;
+            flex-wrap: wrap;
+        }
+        .security-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+            background: rgba(255,255,255,.05);
+            border: 1px solid rgba(255,255,255,.08);
+            color: rgba(255,255,255,.4);
+            padding: .25rem .6rem;
+            border-radius: 6px;
+            font-size: .7rem;
+        }
+        .security-pill i { color: #10b981; }
+
+        .ca-footer-actions { display: flex; gap: .75rem; align-items: center; }
+
+        .btn-cancel {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,.12);
+            color: rgba(255,255,255,.6);
+            padding: .65rem 1.25rem;
+            border-radius: 10px;
+            font-size: .88rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all .2s;
+            font-family: inherit;
+        }
+        .btn-cancel:hover { border-color: rgba(255,255,255,.25); color: #fff; }
+
+        .btn-save {
+            background: linear-gradient(135deg, #10b981, #0ea5e9);
+            border: none;
+            color: #000;
+            padding: .65rem 1.75rem;
+            border-radius: 10px;
+            font-size: .88rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .2s;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            box-shadow: 0 4px 16px rgba(16,185,129,.3);
+        }
+        .btn-save:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16,185,129,.4); }
+        .btn-save:disabled {
+            opacity: .4;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* ── Toast ── */
+        .ca-toast {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            background: rgba(22,24,29,.95);
+            -webkit-backdrop-filter: blur(16px);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,.12);
+            border-radius: 12px;
+            padding: .85rem 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: .65rem;
+            font-size: .87rem;
+            color: #fff;
+            box-shadow: 0 8px 32px rgba(0,0,0,.5);
+            z-index: 9999;
+            transform: translateY(80px);
+            opacity: 0;
+            transition: all .35s cubic-bezier(.4,0,.2,1);
+            max-width: 360px;
+        }
+        .ca-toast.show { transform: translateY(0); opacity: 1; }
+        .ca-toast.success i { color: #10b981; }
+        .ca-toast.error i { color: #ef4444; }
+        .ca-toast.info i { color: #0ea5e9; }
+
+        /* ── Toggle PCD ── */
+        .pcd-toggle-section { display: none; }
+        .pcd-toggle-section.visible { display: block; }
+
+        /* ── Responsivo ── */
+        @media (max-width: 480px) {
+            .ca-wrap { padding: 1.25rem .85rem 3rem; }
+            .ca-section { padding: 1.25rem; }
+            .ca-footer { flex-direction: column; align-items: stretch; }
+            .ca-footer-actions { justify-content: flex-end; }
+        }
+    </style>
+    <!-- Tailwind CSS Play CDN — preflight desabilitado para nao conflitar com CSS existente -->
+    <!-- Offline Compiled Tailwind CSS -->
+    <link rel="stylesheet" href="css/tailwind-built.css">    <link rel="stylesheet" href="css/responsive-global.css?v=1.0">
+    <link rel="stylesheet" href="css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="css/reactions.css?v=1.0">
+</head>
+
+<body>
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Sistema Escolar</h2>
+            <p class="splash-subtitle">Cadastro de Aluno</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="js/splash-screen.js"></script>
+
+    <!-- Fundo -->
+    <div class="ca-bg">
+        <div class="ca-bg-orb3"></div>
+    </div>
+
+    <!-- Toast de feedback -->
+    <div class="ca-toast" id="caToast">
+        <i class="bi bi-check-circle-fill" id="caToastIcon"></i>
+        <span id="caToastMsg">Mensagem</span>
+    </div>
+
+    <div class="ca-wrap">
+
+        <!-- ── Header ── -->
+        <div class="ca-header">
+            <div class="ca-header-top">
+                <a href="javascript:history.back()" class="ca-back-btn">
+                    <i class="bi bi-arrow-left"></i> Voltar
+                </a>
+                <div class="lgpd-badge">
+                    <i class="bi bi-shield-check"></i>
+                    Em conformidade com a LGPD
+                </div>
+            </div>
+            <div class="ca-icon"><i class="bi bi-person-plus"></i></div>
+            <h1 class="ca-title">Cadastro de Aluno</h1>
+            <p class="ca-subtitle">Formulário seguro — todos os dados tratados conforme a LGPD (Lei 13.709/2018)</p>
+        </div>
+
+        <!-- ── Barra de Progresso ── -->
+        <div class="ca-progress">
+            <div class="ca-steps" id="caSteps">
+                <div class="ca-step active" id="step1">
+                    <div class="ca-step-dot">1<span class="ca-step-line"></span></div>
+                    Dados Básicos
+                </div>
+                <div class="ca-step" id="step2">
+                    <div class="ca-step-dot">2<span class="ca-step-line"></span></div>
+                    Endereço
+                </div>
+                <div class="ca-step" id="step3">
+                    <div class="ca-step-dot">3<span class="ca-step-line"></span></div>
+                    Responsável
+                </div>
+                <div class="ca-step" id="step4">
+                    <div class="ca-step-dot">4<span class="ca-step-line"></span></div>
+                    Saúde
+                </div>
+                <div class="ca-step" id="step5">
+                    <div class="ca-step-dot">5</div>
+                    Consentimento
+                </div>
+            </div>
+            <div class="ca-progress-bar-track">
+                <div class="ca-progress-bar-fill" id="caProgressBar"></div>
+            </div>
+        </div>
+
+        <!-- ============================================================
+             SEÇÍO 1 — DADOS BÁSICOS
+        ============================================================ -->
+        <div class="ca-section">
+            <div class="ca-section-title">
+                <i class="bi bi-person-fill"></i>
+                Dados Básicos
+            </div>
+
+            <div class="ca-grid ca-grid-2" style="margin-bottom:1rem">
+                <div class="ca-field">
+                    <label>Nome<span class="req-mark">*</span></label>
+                    <input type="text" id="nome" placeholder="Nome completo do aluno"
+                        oninput="onFieldEdit('dados-basicos','nome')" required>
+                </div>
+                <div class="ca-field">
+                    <label>RA / Matrícula</label>
+                    <input type="text" id="matricula" placeholder="Gerado automaticamente" readonly>
+                </div>
+            </div>
+
+            <div class="ca-grid ca-grid-3" style="margin-bottom:1rem">
+                <div class="ca-field">
+                    <label>Data de Nascimento<span class="req-mark">*</span></label>
+                    <input type="date" id="nascimento"
+                        onchange="onFieldEdit('dados-basicos','nascimento')" required>
+                </div>
+                <div class="ca-field">
+                    <label>Turma<span class="req-mark">*</span></label>
+                    <select id="turmaId" onchange="onFieldEdit('dados-basicos','turma')" required>
+                        <option value="">Selecionar turma</option>
+                    </select>
+                </div>
+                <div class="ca-field">
+                    <label>Nível</label>
+                    <select id="nivel" onchange="onFieldEdit('dados-basicos','nivel')">
+                        <option value="">Selecionar</option>
+                        <option value="Básico">Básico</option>
+                        <option value="Intermediário">Intermediário</option>
+                        <option value="Avançado">Avançado</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="ca-grid ca-grid-2" style="margin-bottom:1rem">
+                <div class="ca-field">
+                    <label>CPF do Aluno</label>
+                    <input type="text" id="cpfAluno" placeholder="000.000.000-00"
+                        oninput="onFieldEdit('dados-basicos','cpf');maskCPF(this)">
+                </div>
+                <div class="ca-field">
+                    <label>Nacionalidade</label>
+                    <input type="text" id="nacionalidade" value="Brasileira"
+                        oninput="onFieldEdit('dados-basicos','nacionalidade')">
+                </div>
+            </div>
+
+            <div class="ca-grid ca-grid-2">
+                <div class="ca-field">
+                    <label>
+                        Cor/Etnia
+                        <span class="sensitive-tag"><i class="bi bi-lock-fill"></i> Sensível</span>
+                    </label>
+                    <select id="etnia" onchange="onFieldEdit('dados-basicos','etnia')">
+                        <option value="">Prefere não informar</option>
+                        <option value="Branca">Branca</option>
+                        <option value="Preta">Preta</option>
+                        <option value="Parda">Parda</option>
+                        <option value="Amarela">Amarela</option>
+                        <option value="Indígena">Indígena</option>
+                    </select>
+                </div>
+                <div class="ca-field">
+                    <label>
+                        Religião
+                        <span class="sensitive-tag"><i class="bi bi-lock-fill"></i> Sensível</span>
+                    </label>
+                    <input type="text" id="religiao" placeholder="Opcional"
+                        oninput="onFieldEdit('dados-basicos','religiao')">
+                </div>
+            </div>
+            <div class="lgpd-box">
+                <i class="bi bi-info-circle-fill"></i>
+                <span>
+                    Cor/etnia e religião são dados sensíveis conforme
+                    <strong>Art. 11 da LGPD</strong>. Seu fornecimento é <em>voluntário</em> e
+                    será usado exclusivamente para fins de políticas inclusivas.
+                    <a href="#">Ver base legal →</a>
+                </span>
+            </div>
+        </div>
+
+        <!-- ============================================================
+             SEÇÍO 2 — ENDEREÇO
+        ============================================================ -->
+        <div class="ca-section">
+            <div class="ca-section-title">
+                <i class="bi bi-geo-alt-fill"></i>
+                Endereço
+            </div>
+
+            <div class="ca-grid ca-grid-3" style="margin-bottom:1rem">
+                <div class="ca-field">
+                    <label>CEP<span class="req-mark">*</span></label>
+                    <input type="text" id="cep" placeholder="00000-000"
+                        oninput="onFieldEdit('endereco','cep');maskCEP(this)"
+                        onblur="buscarCEP(this.value)">
+                </div>
+                <div class="ca-field" style="grid-column: span 2">
+                    <label>Logradouro<span class="req-mark">*</span></label>
+                    <input type="text" id="logradouro" placeholder="Rua, Avenida..."
+                        oninput="onFieldEdit('endereco','logradouro')">
+                </div>
+            </div>
+            <div class="ca-grid ca-grid-4">
+                <div class="ca-field">
+                    <label>Número</label>
+                    <input type="text" id="numero" placeholder="Nº"
+                        oninput="onFieldEdit('endereco','numero')">
+                </div>
+                <div class="ca-field" style="grid-column: span 2">
+                    <label>Complemento</label>
+                    <input type="text" id="complemento" placeholder="Apto, Bloco..."
+                        oninput="onFieldEdit('endereco','complemento')">
+                </div>
+                <div class="ca-field">
+                    <label>Bairro</label>
+                    <input type="text" id="bairro" placeholder="Bairro"
+                        oninput="onFieldEdit('endereco','bairro')">
+                </div>
+            </div>
+            <div class="ca-grid ca-grid-2" style="margin-top:1rem">
+                <div class="ca-field">
+                    <label>Cidade<span class="req-mark">*</span></label>
+                    <input type="text" id="cidade" placeholder="Cidade"
+                        oninput="onFieldEdit('endereco','cidade')">
+                </div>
+                <div class="ca-field">
+                    <label>Estado</label>
+                    <select id="estado" onchange="onFieldEdit('endereco','estado')">
+                        <option value="">UF</option>
+                        <option>AC</option><option>AL</option><option>AM</option><option>AP</option>
+                        <option>BA</option><option>CE</option><option>DF</option><option>ES</option>
+                        <option>GO</option><option>MA</option><option>MG</option><option>MS</option>
+                        <option>MT</option><option>PA</option><option>PB</option><option>PE</option>
+                        <option>PI</option><option>PR</option><option>RJ</option><option>RN</option>
+                        <option>RO</option><option>RR</option><option>RS</option><option>SC</option>
+                        <option>SE</option><option selected>SP</option><option>TO</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================
+             SEÇÍO 3 — RESPONSÁVEL LEGAL
+        ============================================================ -->
+        <div class="ca-section">
+            <div class="ca-section-title">
+                <i class="bi bi-people-fill"></i>
+                Responsável Legal
+            </div>
+
+            <div class="ca-grid ca-grid-2" style="margin-bottom:1rem">
+                <div class="ca-field">
+                    <label>Nome do Responsável<span class="req-mark">*</span></label>
+                    <input type="text" id="respNome" placeholder="Nome completo"
+                        oninput="onFieldEdit('responsavel','nome')">
+                </div>
+                <div class="ca-field">
+                    <label>Parentesco / Tipo</label>
+                    <select id="respParentesco" onchange="onFieldEdit('responsavel','parentesco')">
+                        <option value="Mãe">Mãe</option>
+                        <option value="Pai">Pai</option>
+                        <option value="Responsável Legal">Responsável Legal</option>
+                        <option value="Avó">Avó</option>
+                        <option value="Avô">Avô</option>
+                        <option value="Tutor(a)">Tutor(a)</option>
+                        <option value="Outro">Outro</option>
+                    </select>
+                </div>
+            </div>
+            <div class="ca-grid ca-grid-3" style="margin-bottom:1rem">
+                <div class="ca-field">
+                    <label>CPF do Responsável<span class="req-mark">*</span></label>
+                    <input type="text" id="respCPF" placeholder="000.000.000-00"
+                        oninput="onFieldEdit('responsavel','cpf');maskCPF(this)">
+                </div>
+                <div class="ca-field">
+                    <label>Telefone<span class="req-mark">*</span></label>
+                    <input type="tel" id="respTelefone" placeholder="(11) 99999-9999"
+                        oninput="onFieldEdit('responsavel','telefone');maskTel(this)">
+                </div>
+                <div class="ca-field">
+                    <label>E-mail</label>
+                    <input type="email" id="respEmail" placeholder="email@exemplo.com"
+                        oninput="onFieldEdit('responsavel','email')">
+                </div>
+            </div>
+            <div class="ca-grid ca-grid-2">
+                <div class="ca-field">
+                    <label>Responsabilidade Financeira</label>
+                    <select id="respFinanceiro" onchange="onFieldEdit('responsavel','financeiro')">
+                        <option value="Sim">Sim</option>
+                        <option value="Não">Não</option>
+                        <option value="Parcial">Parcial</option>
+                    </select>
+                </div>
+                <div class="ca-field">
+                    <label>Autorizado a Buscar</label>
+                    <select id="respBusca" onchange="onFieldEdit('responsavel','busca')">
+                        <option value="Sim">Sim</option>
+                        <option value="Não">Não</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================
+             SEÇÃO 3B — SEGUNDO RESPONSÁVEL (opcional)
+        ============================================================ -->
+        <div class="ca-section">
+            <div class="ca-section-title">
+                <i class="bi bi-person-plus-fill"></i>
+                Segundo Responsável <span style="font-weight:400;font-size:.8rem;color:rgba(255,255,255,.4)">(opcional — máx. 2)</span>
+            </div>
+            <div class="ca-grid ca-grid-2" style="margin-bottom:1rem">
+                <div class="ca-field">
+                    <label>Nome</label>
+                    <input type="text" id="resp2Nome" placeholder="Nome completo">
+                </div>
+                <div class="ca-field">
+                    <label>Tipo de Responsável</label>
+                    <select id="resp2Tipo">
+                        <option value="">— Selecione —</option>
+                        <option value="Mãe">Mãe</option>
+                        <option value="Pai">Pai</option>
+                        <option value="Responsável Legal">Responsável Legal</option>
+                        <option value="Avó">Avó</option>
+                        <option value="Avô">Avô</option>
+                        <option value="Tutor(a)">Tutor(a)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="ca-grid ca-grid-3">
+                <div class="ca-field">
+                    <label>CPF</label>
+                    <input type="text" id="resp2CPF" placeholder="000.000.000-00" oninput="maskCPF(this)">
+                </div>
+                <div class="ca-field">
+                    <label>Telefone</label>
+                    <input type="tel" id="resp2Telefone" placeholder="(11) 99999-9999" oninput="maskTel(this)">
+                </div>
+                <div class="ca-field">
+                    <label>WhatsApp</label>
+                    <input type="tel" id="resp2Whatsapp" placeholder="(11) 99999-9999" oninput="maskTel(this)">
+                </div>
+            </div>
+            <div class="ca-grid ca-grid-2" style="margin-top:1rem">
+                <div class="ca-field">
+                    <label>E-mail</label>
+                    <input type="email" id="resp2Email" placeholder="email@exemplo.com">
+                </div>
+                <div class="ca-field">
+                    <label>Responsabilidade Financeira</label>
+                    <select id="resp2Financeiro">
+                        <option value="Não">Não</option>
+                        <option value="Sim">Sim</option>
+                        <option value="Parcial">Parcial</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Guarda Legal + WhatsApp responsável 1 -->
+        <div class="ca-section">
+            <div class="ca-section-title">
+                <i class="bi bi-shield-check"></i>
+                Guarda Legal &amp; Contatos
+            </div>
+            <div class="ca-grid ca-grid-2" style="margin-bottom:1rem">
+                <div class="ca-field">
+                    <label>WhatsApp do Responsável 1</label>
+                    <input type="tel" id="respWhatsapp" placeholder="(11) 99999-9999"
+                        oninput="onFieldEdit('responsavel','whatsapp');maskTel(this)">
+                </div>
+                <div class="ca-field">
+                    <label>Quem possui a guarda legal?</label>
+                    <select id="guardaLegal" onchange="onFieldEdit('responsavel','guardaLegal')">
+                        <option value="">— Selecione —</option>
+                        <option value="Mãe">Mãe</option>
+                        <option value="Pai">Pai</option>
+                        <option value="Responsável 1">Responsável 1</option>
+                        <option value="Responsável 2">Responsável 2</option>
+                        <option value="Ambos">Ambos os responsáveis</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pessoas autorizadas a retirar -->
+        <div class="ca-section">
+            <div class="ca-section-title">
+                <i class="bi bi-person-check-fill"></i>
+                Pessoas Autorizadas a Retirar o Aluno
+            </div>
+            <div id="listaAutorizadosRetirada"></div>
+            <button type="button" class="btn btn-outline btn-sm" style="margin-top:.75rem" onclick="addPessoaAutorizada()">
+                <i class="bi bi-plus-lg"></i> Adicionar Pessoa
+            </button>
+        </div>
+
+        <!-- ============================================================
+             SEÇÍO 4 — SAÚDE & PCD
+        ============================================================ -->
+        <div class="ca-section">
+            <div class="ca-section-title">
+                <i class="bi bi-heart-pulse-fill"></i>
+                Saúde &amp; Necessidades Especiais
+                <span class="sensitive-tag" style="margin-left:.5rem"><i class="bi bi-lock-fill"></i> Art.11</span>
+            </div>
+
+            <div class="lgpd-box" style="margin-bottom:1rem">
+                <i class="bi bi-shield-lock-fill"></i>
+                <span>
+                    Dados de saúde são <strong>dados sensíveis (Art. 11 LGPD)</strong>.
+                    Serão tratados apenas pela equipe pedagógica e de saúde escolar,
+                    com acesso restrito por perfil de usuário.
+                    <a href="politica-privacidade.html" target="_blank">Ver política de privacidade →</a>
+                </span>
+            </div>
+
+            <div class="ca-grid ca-grid-2" style="margin-bottom:1rem">
+                <div class="ca-field">
+                    <label>Possui Deficiência (PCD)?</label>
+                    <select id="pcd" onchange="onFieldEdit('saude','pcd');togglePcd(this.value)">
+                        <option value="Não">Não</option>
+                        <option value="Sim">Sim</option>
+                    </select>
+                </div>
+                <div class="ca-field pcd-toggle-section" id="pcdTipoSection">
+                    <label>Tipo de Deficiência</label>
+                    <input type="text" id="pcdTipo" placeholder="Ex: Visual, Auditiva, Física..."
+                        oninput="onFieldEdit('saude','pcd-tipo')">
+                </div>
+            </div>
+
+            <div class="ca-grid ca-grid-2" style="margin-bottom:1rem">
+                <div class="ca-field">
+                    <label>Alergias Alimentares</label>
+                    <input type="text" id="alergiasAlimentos" placeholder="Ex: Lactose, Glúten..."
+                        oninput="onFieldEdit('saude','alergia-alimentos')">
+                </div>
+                <div class="ca-field">
+                    <label>Alergias Medicamentosas</label>
+                    <input type="text" id="alergiasRemedio" placeholder="Ex: Penicilina..."
+                        oninput="onFieldEdit('saude','alergia-remedio')">
+                </div>
+            </div>
+
+            <div class="ca-grid ca-grid-2" style="margin-bottom:1rem">
+                <div class="ca-field">
+                    <label>Plano de Saúde</label>
+                    <input type="text" id="planoSaude" placeholder="Nome do plano ou 'Nenhum'"
+                        oninput="onFieldEdit('saude','plano')">
+                </div>
+                <div class="ca-field">
+                    <label>Condição Especial</label>
+                    <select id="condicao" onchange="onFieldEdit('saude','condicao')">
+                        <option value="">Nenhuma</option>
+                        <option value="Recuperação">Recuperação</option>
+                        <option value="Transferido">Transferido</option>
+                        <option value="Reclassificado">Reclassificado</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="ca-field">
+                <label>Observações Pedagógicas</label>
+                <textarea id="observacoes" placeholder="Informações relevantes para educadores..."
+                    oninput="onFieldEdit('saude','observacoes')"></textarea>
+            </div>
+        </div>
+
+        <!-- ============================================================
+             SEÇÃO 4B — AUTORIZAÇÕES ESCOLARES
+        ============================================================ -->
+        <div class="ca-section">
+            <div class="ca-section-title">
+                <i class="bi bi-clipboard-check-fill"></i>
+                Autorizações do Responsável
+            </div>
+            <p style="font-size:.82rem;color:rgba(255,255,255,.5);margin-bottom:1rem">Responda SIM ou NÃO para cada item:</p>
+
+            <h4 style="font-size:.85rem;color:#10b981;margin:1rem 0 .5rem">Serviços de Atendimento ao Aluno</h4>
+            <div class="ca-grid ca-grid-2" style="margin-bottom:.75rem">
+                <div class="ca-field"><label>Tratamento odontológico</label>
+                    <select id="authOdontologico"><option value="">—</option><option value="sim">SIM</option><option value="nao">NÃO</option></select></div>
+                <div class="ca-field"><label>Tratamento médico emergencial</label>
+                    <select id="authMedico"><option value="">—</option><option value="sim">SIM</option><option value="nao">NÃO</option></select></div>
+                <div class="ca-field"><label>Testagem acuidade visual/auditiva</label>
+                    <select id="authAcuidade"><option value="">—</option><option value="sim">SIM</option><option value="nao">NÃO</option></select></div>
+            </div>
+
+            <h4 style="font-size:.85rem;color:#10b981;margin:1rem 0 .5rem">Atividades</h4>
+            <div class="ca-grid ca-grid-2" style="margin-bottom:.75rem">
+                <div class="ca-field"><label>Atividades físicas (sem restrição)</label>
+                    <select id="authAtivFisicas"><option value="">—</option><option value="sim">SIM</option><option value="nao">NÃO</option></select></div>
+                <div class="ca-field"><label>Atividades extraclasse / excursões</label>
+                    <select id="authExtraclasse"><option value="">—</option><option value="sim">SIM</option><option value="nao">NÃO</option></select></div>
+            </div>
+
+            <h4 style="font-size:.85rem;color:#10b981;margin:1rem 0 .5rem">Condução Escolar</h4>
+            <div class="ca-grid ca-grid-2" style="margin-bottom:.75rem">
+                <div class="ca-field"><label>Autoriza condução escolar contratada?</label>
+                    <select id="authConducao" onchange="toggleConducaoFields()"><option value="">—</option><option value="sim">SIM</option><option value="nao">NÃO</option></select></div>
+            </div>
+            <div id="conducaoFields" class="ca-grid ca-grid-2" style="display:none;margin-bottom:.75rem">
+                <div class="ca-field"><label>Nome do Motorista</label><input type="text" id="motoristaNome" placeholder="Nome completo"></div>
+                <div class="ca-field"><label>Telefone do Motorista</label><input type="tel" id="motoristaTelefone" placeholder="(11) 99999-9999" oninput="maskTel(this)"></div>
+            </div>
+
+            <h4 style="font-size:.85rem;color:#10b981;margin:1rem 0 .5rem">Autorização de Antitérmico</h4>
+            <div class="ca-grid ca-grid-2" style="margin-bottom:.75rem">
+                <div class="ca-field"><label>Autoriza administrar antitérmico?</label>
+                    <select id="authAntitermico" onchange="toggleAntitermicoFields()"><option value="">—</option><option value="sim">SIM</option><option value="nao">NÃO</option></select></div>
+            </div>
+            <div id="antitermicoFields" class="ca-grid ca-grid-2" style="display:none">
+                <div class="ca-field"><label>Nome do Medicamento</label><input type="text" id="medicamentoNome" placeholder="Ex: Dipirona"></div>
+                <div class="ca-field"><label>Quantidade / Dose</label><input type="text" id="medicamentoDose" placeholder="Ex: 1 comprimido 500mg"></div>
+            </div>
+        </div>
+
+        <!-- ============================================================
+             SEÇÍO 5 — DOCUMENTOS
+        ============================================================ -->
+        <div class="ca-section">
+            <div class="ca-section-title">
+                <i class="bi bi-folder2-open"></i>
+                Documentos
+            </div>
+
+            <div class="info-box">
+                <i class="bi bi-info-circle-fill"></i>
+                <span>Formatos aceitos: PDF, JPG, PNG. Tamanho máximo: 10 MB por arquivo.
+                    Os documentos são armazenados com criptografia e acesso restrito.</span>
+            </div>
+
+            <div class="doc-upload-zone" onclick="document.getElementById('docInput').click()">
+                <input type="file" id="docInput" accept=".pdf,.jpg,.jpeg,.png"
+                    multiple onchange="addDocs(this.files)" style="display:none">
+                <i class="bi bi-cloud-upload"></i>
+                <p>Clique ou arraste arquivos aqui</p>
+                <span>PDF, JPG ou PNG — máx. 10 MB cada</span>
+            </div>
+
+            <div class="doc-list" id="docList"></div>
+        </div>
+
+        <!-- ============================================================
+             SEÇÍO 6 — RETENÇÍO DE DADOS
+        ============================================================ -->
+        <div class="ca-section">
+            <div class="ca-section-title">
+                <i class="bi bi-clock-history"></i>
+                Política de Retenção de Dados
+            </div>
+            <p style="font-size:.82rem;color:rgba(255,255,255,.5);margin-bottom:1rem">
+                Conforme as diretrizes da <strong>ANPD</strong> e o Art. 15 da LGPD, os dados são mantidos pelo prazo mínimo necessário.
+            </p>
+            <table class="retention-table">
+                <thead>
+                    <tr>
+                        <th>Categoria</th>
+                        <th>Prazo de Retenção</th>
+                        <th>Base Legal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Dados acadêmicos (notas, frequência)</td>
+                        <td><span class="retention-badge">5 anos</span> após desligamento</td>
+                        <td>Obrigação legal — LDB</td>
+                    </tr>
+                    <tr>
+                        <td>Dados de saúde e PCD</td>
+                        <td><span class="retention-badge">5 anos</span> após desligamento</td>
+                        <td>Art. 11 LGPD — interesse público</td>
+                    </tr>
+                    <tr>
+                        <td>Documentos digitalizados</td>
+                        <td><span class="retention-badge">2 anos</span> após desligamento</td>
+                        <td>Consentimento (Art. 7, I)</td>
+                    </tr>
+                    <tr>
+                        <td>Dados do responsável legal</td>
+                        <td><span class="retention-badge">5 anos</span> após desligamento</td>
+                        <td>Obrigação legal — ECA</td>
+                    </tr>
+                    <tr>
+                        <td>Log de auditoria</td>
+                        <td><span class="retention-badge">Permanente</span></td>
+                        <td>ANPD — imutabilidade de registros</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ============================================================
+             SEÇÍO 7 — CONSENTIMENTO E PRIVACIDADE
+        ============================================================ -->
+        <div class="ca-section">
+            <div class="ca-section-title">
+                <i class="bi bi-check-circle-fill"></i>
+                Consentimento e Privacidade
+            </div>
+
+            <div class="info-box">
+                <i class="bi bi-exclamation-circle-fill"></i>
+                <span>Todos os consentimentos abaixo são <strong>obrigatórios</strong> para finalizar o cadastro. O responsável legal deve estar presente ou ter autorizado previamente.</span>
+            </div>
+
+            <!-- Consentimento 1 — Dados do menor -->
+            <div class="consent-item" id="ci1">
+                <input type="checkbox" id="c1" onchange="checkConsents()">
+                <div class="consent-item-body">
+                    <div class="consent-item-title">
+                        Autorização para tratamento de dados do menor
+                        <span class="consent-art">Art. 14 LGPD</span>
+                    </div>
+                    <div class="consent-item-desc">
+                        O responsável legal autoriza a escola a coletar, armazenar e tratar os dados pessoais
+                        do aluno para fins educacionais, incluindo gestão acadêmica, comunicação institucional
+                        e cumprimento de obrigações legais.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Consentimento 2 — Dados sensíveis -->
+            <div class="consent-item" id="ci2">
+                <input type="checkbox" id="c2" onchange="checkConsents()">
+                <div class="consent-item-body">
+                    <div class="consent-item-title">
+                        Autorização para dados sensíveis de saúde e identidade
+                        <span class="consent-art">Art. 11 LGPD</span>
+                    </div>
+                    <div class="consent-item-desc">
+                        Autoriza o tratamento de dados de saúde, deficiência (PCD), cor/etnia e religião
+                        exclusivamente para políticas de inclusão, atendimento pedagógico especializado
+                        e obrigações legais junto ao MEC/INEP.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Consentimento 3 — Comunicações -->
+            <div class="consent-item" id="ci3">
+                <input type="checkbox" id="c3" onchange="checkConsents()">
+                <div class="consent-item-body">
+                    <div class="consent-item-title">
+                        Autorização para comunicações institucionais
+                    </div>
+                    <div class="consent-item-desc">
+                        Autoriza o envio de comunicados, boletins, avisos de reunião e informações sobre
+                        o desempenho do aluno para o e-mail e telefone do responsável cadastrado.
+                        Você pode revogar este consentimento a qualquer momento.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Consentimento 4 — Política e direitos -->
+            <div class="consent-item" id="ci4">
+                <input type="checkbox" id="c4" onchange="checkConsents()">
+                <div class="consent-item-body">
+                    <div class="consent-item-title">
+                        Ciência da Política de Privacidade e direitos LGPD
+                        <span class="consent-art">Art. 18 LGPD</span>
+                    </div>
+                    <div class="consent-item-desc">
+                        Declaro ter lido e compreendido a
+                        <a href="politica-privacidade.html" target="_blank" style="color:#34d399">Política de Privacidade</a>
+                        desta instituição. Ciente dos direitos de acesso, correção, portabilidade,
+                        eliminação e revogação de consentimento garantidos pelo Art. 18 da LGPD.
+                    </div>
+                </div>
+            </div>
+
+            <!-- DPO -->
+            <div class="dpo-box">
+                <i class="bi bi-person-badge-fill"></i>
+                <div class="dpo-box-body">
+                    <div class="dpo-box-title">Encarregado de Proteção de Dados (DPO)</div>
+                    <div class="dpo-box-desc">
+                        Para exercer seus direitos ou tirar dúvidas sobre o tratamento de dados:
+                        <a href="mailto:dpo@escola.edu.br">dpo@escola.edu.br</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================
+             SEÇÍO 8 — LOG DE AUDITORIA
+        ============================================================ -->
+        <div class="ca-section">
+            <div class="audit-header">
+                <div class="ca-section-title" style="margin-bottom:0;border-bottom:none;padding-bottom:0">
+                    <i class="bi bi-journal-text"></i>
+                    Log de Auditoria
+                </div>
+                <span class="audit-count" id="auditCount">0 registros</span>
+            </div>
+            <p style="font-size:.78rem;color:rgba(255,255,255,.4);margin:.5rem 0 0">
+                Registro imutável de todas as interações com este formulário, conforme exigências da ANPD.
+            </p>
+            <div class="audit-table-wrap">
+                <table class="audit-table">
+                    <thead>
+                        <tr>
+                            <th>Horário</th>
+                            <th>Ação</th>
+                            <th>Campo / Seção</th>
+                            <th>IP</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auditBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ============================================================
+             FOOTER DE AÇÍO
+        ============================================================ -->
+        <div class="ca-footer">
+            <div class="ca-footer-security">
+                <span class="security-pill"><i class="bi bi-lock-fill"></i> TLS 1.3</span>
+                <span class="security-pill"><i class="bi bi-shield-fill"></i> AES-256</span>
+                <span class="security-pill"><i class="bi bi-person-check-fill"></i> Sessão autenticada</span>
+            </div>
+            <div class="ca-footer-actions">
+                <button class="btn-cancel">Cancelar</button>
+                <button class="btn-save" id="btnSave" disabled>
+                    <i class="bi bi-check-lg"></i>
+                    Salvar Cadastro
+                </button>
+            </div>
+        </div>
+
+    </div><!-- /ca-wrap -->
+
+    <script src="js/api-config.js"></script>
+    <script src="js/cadastro-aluno.js"></script>
+    <script src="js/vendor.js"></script>
+    <script defer src="js/events/cadastro-aluno-events.js"></script>
+    <script defer src="js/reactions.js"></script>
+</body>
+</html>
+

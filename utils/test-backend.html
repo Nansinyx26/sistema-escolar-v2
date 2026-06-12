@@ -1,0 +1,76 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Teste Login Backend</title>
+    <link rel="stylesheet" href="css/parallax-glass.css">
+    <link rel="stylesheet" href="css/neo-brutal.css">
+    <!-- Tailwind CSS Play CDN — preflight desabilitado para nao conflitar com CSS existente -->
+    <!-- Offline Compiled Tailwind CSS -->
+    <link rel="stylesheet" href="../css/tailwind-built.css">    <link rel="stylesheet" href="../css/responsive-global.css?v=1.0">
+    <link rel="stylesheet" href="../css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="../css/reactions.css?v=1.0">
+</head>
+
+<body>
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Sistema Escolar</h2>
+            <p class="splash-subtitle">Teste Login Backend</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="../js/splash-screen.js"></script>
+
+    <h1>Teste de Login</h1>
+    <div id="result"></div>
+
+    <script type="module">
+        const baseUrl = 'http://localhost:3001/api';
+        const resultDiv = document.getElementById('result');
+
+        async function testLogin() {
+            try {
+                resultDiv.innerHTML = '<p>🔍 Buscando usuário renan@escola.com...</p>';
+
+                // Busca usuário por email
+                const res = await fetch(`${baseUrl}/usuarios?email=renan@escola.com`);
+                const json = await res.json();
+
+                if (json.success && json.data.length > 0) {
+                    const user = json.data[0];
+                    resultDiv.innerHTML = `
+                        <h2>✅ Usuário encontrado!</h2>
+                        <pre>${JSON.stringify(user, null, 2)}</pre>
+                        <p><strong>O backend está funcionando!</strong></p>
+                        <p>O problema é que o arquivo js/db.js não está sendo carregado corretamente no navegador.</p>
+                    `;
+                } else {
+                    resultDiv.innerHTML = '<p>❌ Usuário não encontrado</p>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p>❌ Erro: ${error.message}</p>`;
+            }
+        }
+
+        testLogin();
+    </script>
+    <script defer src="js/parallax.js"></script>
+    <script src="../js/vendor.js"></script>
+    <script defer src="../js/reactions.js"></script>
+</body>
+
+</html>

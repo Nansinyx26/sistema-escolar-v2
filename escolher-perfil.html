@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Escolha seu perfil - Sistema Escolar">
+    <title>Escolher Perfil - Sistema Escolar</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/favicon/favicon.png">    <link rel="apple-touch-icon" href="/favicon/favicon.png">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components-new.css">
+    <link rel="stylesheet" href="css/perfil.css">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="css/parallax-glass.css">
+    <link rel="stylesheet" href="css/neo-brutal.css">
+    <!-- Tailwind CSS Play CDN — preflight desabilitado para nao conflitar com CSS existente -->
+    <!-- Offline Compiled Tailwind CSS -->
+    <link rel="stylesheet" href="css/tailwind-built.css">    <link rel="stylesheet" href="css/responsive-global.css?v=1.0">
+    <link rel="stylesheet" href="css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="css/reactions.css?v=1.0">
+</head>
+
+<body>
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Sistema Escolar</h2>
+            <p class="splash-subtitle">Escolher Perfil</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="js/splash-screen.js"></script>
+
+    <div class="perfil-page">
+        <!-- Background -->
+        <div class="perfil-background">
+            <div class="gradient-orb orb-1"></div>
+            <div class="gradient-orb orb-2"></div>
+        </div>
+
+        <!-- Container -->
+        <div class="perfil-container">
+            <!-- Header -->
+            <div class="perfil-header">
+                <div class="perfil-logo">
+                    <i class="bi bi-person-badge"></i>
+                </div>
+                <h1>Escolha seu Perfil</h1>
+                <p>Selecione como você vai usar o sistema</p>
+            </div>
+
+            <!-- Cards de Perfil -->
+            <div class="perfil-cards">
+                <!-- Professor -->
+                <div class="perfil-card" data-perfil="professor">
+                    <div class="perfil-card-icon">
+                        <i class="bi bi-person-workspace"></i>
+                    </div>
+                    <h3>Professor</h3>
+                    <p>Gerencie suas turmas, atividades e acompanhe o desempenho dos alunos</p>
+                    <ul class="perfil-features">
+                        <li><i class="bi bi-check-circle-fill"></i> Minhas turmas</li>
+                        <li><i class="bi bi-check-circle-fill"></i> Cadastro de atividades</li>
+                        <li><i class="bi bi-check-circle-fill"></i> Controle de notas</li>
+                        <li><i class="bi bi-check-circle-fill"></i> Relatórios de turma</li>
+                    </ul>
+                    <button class="btn btn-primary btn-block" data-action="professor">
+                        <span>Sou Professor</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </button>
+                </div>
+
+                <!-- Diretor -->
+                <div class="perfil-card" data-perfil="diretor">
+                    <div class="perfil-card-icon">
+                        <i class="bi bi-briefcase"></i>
+                    </div>
+                    <h3>Diretor</h3>
+                    <p>Tenha visão completa da escola com ferramentas administrativas avançadas</p>
+                    <ul class="perfil-features">
+                        <li><i class="bi bi-check-circle-fill"></i> Todas as turmas</li>
+                        <li><i class="bi bi-check-circle-fill"></i> Gerenciar professores</li>
+                        <li><i class="bi bi-check-circle-fill"></i> Gráficos e estatísticas</li>
+                        <li><i class="bi bi-check-circle-fill"></i> Relatórios gerenciais</li>
+                    </ul>
+                    <button class="btn btn-primary btn-block" data-action="diretor">
+                        <span>Sou Diretor</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="perfil-footer">
+                <button class="btn btn-secondary" id="btn-logout-perfil">
+                    <i class="bi bi-box-arrow-left"></i>
+                    <span>Sair</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script defer src="js/api-config.js"></script>
+    <script defer src="js/database.js"></script>
+    <script defer src="js/auth.js"></script>
+    <script defer src="js/utils.js"></script>
+    <script defer src="js/escolher-perfil.js"></script>
+    <script defer src="js/parallax.js"></script>
+    <script src="js/vendor.js"></script>
+    <script defer src="js/events/escolher-perfil-events.js"></script>
+    <script defer src="js/reactions.js"></script>
+</body>
+
+</html>

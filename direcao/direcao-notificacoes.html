@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+    <title>Mural Escolar | Direção</title>
+    <link rel="stylesheet" href="../css/variables.css">
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components-new.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <link rel="stylesheet" href="../css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="../css/reactions.css?v=1.0">
+    <link rel="stylesheet" href="../css/social-feed.css?v=1.0">
+    <link rel="stylesheet" href="../css/responsive-global.css?v=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/framer-motion@11/dist/framer-motion.js"></script>
+    <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { background: var(--bg-primary, #09090b); color: var(--text-primary, #fafafa); font-family: 'Inter', system-ui, sans-serif; margin: 0; min-height: 100vh; }
+    :root {
+        --mn-bg: rgba(24,24,27,0.8); --mn-card: rgba(30,30,36,0.85); --mn-border: rgba(255,255,255,0.07);
+        --mn-green: #10b981; --mn-green-soft: rgba(16,185,129,0.12); --mn-green-border: rgba(16,185,129,0.25);
+        --mn-red: #ef4444; --mn-yellow: #f59e0b; --mn-blue: #3b82f6;
+        --mn-radius: 14px; --mn-radius-sm: 8px;
+    }
+    .mn-header { position: sticky; top: 0; z-index: 200; background: rgba(9,9,11,0.92); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-bottom: 1px solid var(--mn-border); padding: 0.875rem 1.75rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .mn-header-brand { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; }
+    .mn-header-brand img { width: 38px; height: 38px; object-fit: contain; filter: drop-shadow(0 0 8px rgba(16,185,129,0.4)); }
+    .mn-header-brand h1 { font-size: 1.05rem; font-weight: 700; margin: 0; color: #fff; display: flex; align-items: center; gap: 8px; }
+    .mn-live-badge { font-size: 0.62rem; font-weight: 800; letter-spacing: 0.06em; background: rgba(16,185,129,0.12); color: var(--mn-green); border: 1px solid var(--mn-green-border); padding: 2px 10px; border-radius: 20px; animation: liveGlow 2s infinite; }
+    @keyframes liveGlow { 0%,100%{opacity:1} 50%{opacity:.65;box-shadow:0 0 8px rgba(16,185,129,.3)} }
+    .mn-header-count { font-size: 0.72rem; color: #71717a; margin: 0; }
+    .mn-search { display: flex; align-items: center; gap: 0.5rem; background: rgba(255,255,255,0.05); border: 1px solid var(--mn-border); border-radius: 10px; padding: 0.45rem 0.85rem; flex: 1; min-width: 160px; max-width: 360px; transition: border-color .2s; }
+    .mn-search:focus-within { border-color: var(--mn-green-border); }
+    .mn-search i { color: #52525b; font-size: 0.85rem; flex-shrink: 0; }
+    .mn-search input { background: transparent; border: none; color: #fff; font-size: 0.85rem; outline: none; width: 100%; }
+    .mn-cat-filters { display: flex; gap: 5px; flex-wrap: wrap; }
+    .mn-cat-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--mn-border); color: #71717a; font-size: 0.75rem; font-weight: 600; padding: 5px 14px; border-radius: 20px; cursor: pointer; transition: all .18s; white-space: nowrap; }
+    .mn-cat-btn:hover, .mn-cat-btn.active { background: var(--mn-green-soft); color: var(--mn-green); border-color: var(--mn-green-border); }
+    .mn-btn-back { display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; background: rgba(255,255,255,0.05); border: 1px solid var(--mn-border); border-radius: 10px; color: #a1a1aa; cursor: pointer; transition: all .18s; text-decoration: none; flex-shrink: 0; }
+    .mn-btn-back:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    .mn-btn-primary { display: inline-flex; align-items: center; gap: 6px; background: var(--mn-green); color: #fff; font-size: 0.85rem; font-weight: 700; padding: 9px 20px; border: none; border-radius: 10px; cursor: pointer; transition: background .18s, transform .15s; white-space: nowrap; flex-shrink: 0; }
+    .mn-btn-primary:hover { background: #059669; transform: translateY(-1px); }
+    .mn-btn-primary:disabled { background: #374151; cursor: not-allowed; transform: none; }
+    .mn-btn-secondary { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.06); color: #a1a1aa; font-size: 0.82rem; font-weight: 600; padding: 8px 16px; border: 1px solid var(--mn-border); border-radius: 10px; cursor: pointer; transition: all .18s; white-space: nowrap; }
+    .mn-btn-secondary:hover { background: rgba(255,255,255,0.1); color: #fff; border-color: rgba(255,255,255,0.15); }
+    .mn-layout { max-width: 1380px; margin: 0 auto; padding: 1.75rem; display: grid; grid-template-columns: 1fr 320px; gap: 1.5rem; align-items: start; }
+    @media (max-width: 1100px) { .mn-layout { grid-template-columns: 1fr; } .mn-sidebar { order: -1; } }
+    .mn-card { background: var(--mn-card); border: 1px solid var(--mn-border); border-radius: var(--mn-radius); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+    .mn-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+    .mn-stat-card { padding: 1.1rem 1.25rem; border-radius: var(--mn-radius); background: var(--mn-card); border: 1px solid var(--mn-border); text-align: center; backdrop-filter: blur(10px); }
+    .mn-stat-card .mn-stat-label { display: block; font-size: 0.68rem; color: #71717a; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; }
+    .mn-stat-card .mn-stat-value { font-size: 1.6rem; font-weight: 800; color: #fff; line-height: 1; }
+    .mn-stat-card.mn-stat-urgent .mn-stat-value { color: var(--mn-red); text-shadow: 0 0 12px rgba(239,68,68,.3); }
+    .mn-form-card { padding: 1.75rem; margin-bottom: 1.5rem; }
+    .mn-form-author { display: flex; align-items: center; gap: 0.85rem; margin-bottom: 1.5rem; }
+    .mn-form-author img { width: 48px; height: 48px; border-radius: 12px; object-fit: cover; border: 2px solid var(--mn-green-border); }
+    .mn-form-author h2 { font-size: 1.05rem; font-weight: 700; margin: 0 0 2px; color: #fff; }
+    .mn-form-author p { font-size: 0.75rem; color: #71717a; margin: 0; }
+    .mn-input { width: 100%; background: rgba(255,255,255,0.04); border: 1px solid var(--mn-border); color: #f1f5f9; border-radius: var(--mn-radius-sm); padding: 0.6rem 0.85rem; font-size: 0.88rem; font-family: 'Inter', sans-serif; outline: none; transition: border-color .2s; height: 44px; }
+    .mn-input:focus { border-color: var(--mn-green-border); background: rgba(16,185,129,.03); }
+    .mn-input::placeholder { color: #52525b; }
+    .mn-select { width: 100%; background: rgba(255,255,255,0.04); border: 1px solid var(--mn-border); color: #f1f5f9; border-radius: var(--mn-radius-sm); padding: 0.6rem 0.85rem; font-size: 0.85rem; font-family: 'Inter', sans-serif; outline: none; cursor: pointer; height: 44px; transition: border-color .2s; -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%2371717a' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 12px; padding-right: 2rem; }
+    .mn-select:focus { border-color: var(--mn-green-border); }
+    .mn-select option { background: #18181b; color: #f1f5f9; }
+    .mn-editor-wrap { border: 1px solid var(--mn-border); border-radius: var(--mn-radius-sm); overflow: hidden; background: rgba(10,10,12,.3); margin-bottom: 1rem; }
+    .mn-editor-toolbar { display: flex; align-items: center; gap: 4px; padding: 6px 8px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--mn-border); flex-wrap: wrap; }
+    .mn-editor-toolbar button { width: 30px; height: 30px; background: transparent; border: 1px solid transparent; color: #71717a; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; transition: all .15s; }
+    .mn-editor-toolbar button:hover { background: rgba(255,255,255,0.08); color: var(--mn-green); border-color: var(--mn-border); }
+    .mn-editor-char-count { margin-left: auto; font-size: 0.68rem; color: #52525b; padding-right: 4px; }
+    #editorComunicado { padding: 1rem 1.1rem; min-height: 160px; color: #f1f5f9; font-size: 0.9rem; line-height: 1.65; outline: none; font-family: 'Inter', sans-serif; }
+    #editorComunicado:empty::before { content: attr(placeholder); color: #52525b; }
+    .mn-upload-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem; }
+    .mn-upload-box { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0.75rem; border: 2px dashed var(--mn-border); border-radius: var(--mn-radius-sm); color: #71717a; font-size: 0.83rem; font-weight: 600; cursor: pointer; transition: all .2s; background: rgba(255,255,255,0.02); }
+    .mn-upload-box:hover { border-color: var(--mn-green-border); color: var(--mn-green); background: var(--mn-green-soft); }
+    .mn-upload-box i { font-size: 1rem; }
+    .mn-preview-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1rem; min-height: 0; }
+    .mn-preview-item { position: relative; width: 72px; height: 72px; border-radius: 8px; overflow: hidden; border: 1px solid var(--mn-border); }
+    .mn-preview-item img { width: 100%; height: 100%; object-fit: cover; }
+    .mn-preview-item button { position: absolute; top: 2px; right: 2px; background: rgba(239,68,68,.85); color: #fff; border: none; width: 18px; height: 18px; border-radius: 50%; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; }
+    .mn-file-pill { display: inline-flex; align-items: center; gap: 6px; background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); color: #fca5a5; font-size: 0.75rem; padding: 4px 10px; border-radius: 6px; margin: 2px; }
+    .mn-file-pill button { background: none; border: none; color: #fca5a5; cursor: pointer; padding: 0; font-size: 0.9rem; line-height: 1; }
+    #previewArquivos { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 0.75rem; }
+    .mn-form-footer { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; padding-top: 0.75rem; border-top: 1px solid var(--mn-border); }
+    .mn-form-footer-left { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .mn-dest-panel { background: rgba(0,0,0,.25); border: 1px solid var(--mn-border); border-radius: var(--mn-radius-sm); padding: 1.1rem 1.25rem; margin-top: 0.85rem; display: none; }
+    .mn-dest-panel.open { display: block; }
+    .mn-checkbox-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.85rem; }
+    .mn-checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 0.83rem; color: #cbd5e1; cursor: pointer; }
+    .mn-checkbox-label input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--mn-green); cursor: pointer; }
+    .mn-dest-row { display: flex; gap: 0.75rem; }
+    .mn-sidebar-card { padding: 1.5rem; position: sticky; top: 90px; }
+    .mn-sidebar-card h3 { font-size: 0.9rem; font-weight: 700; color: #fff; margin: 0 0 1.25rem; display: flex; align-items: center; gap: 8px; }
+    .mn-sidebar-card h3 i { color: var(--mn-green); }
+    .mn-sidebar-card p { font-size: 0.78rem; color: #71717a; line-height: 1.55; margin: 0; }
+    .mn-tip { background: rgba(16,185,129,.07); border: 1px solid rgba(16,185,129,.15); border-radius: var(--mn-radius-sm); padding: 0.85rem 1rem; margin-top: 1.25rem; }
+    .mn-tip h4 { font-size: 0.78rem; font-weight: 700; color: var(--mn-green); margin: 0 0 5px; }
+    .mn-tip p { font-size: 0.75rem; color: #a1a1aa; margin: 0; line-height: 1.5; }
+    .mn-divider { border: none; border-top: 1px solid var(--mn-border); margin: 1.25rem 0; }
+    .mn-history-section { padding: 1.75rem; margin-bottom: 2rem; }
+    .mn-history-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem; }
+    .mn-history-header h2 { font-size: 1rem; font-weight: 700; color: #fff; margin: 0; display: flex; align-items: center; gap: 8px; }
+    .mn-history-header h2 i { color: var(--mn-green); }
+    .mn-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+    .mn-table th { padding: 0.65rem 1rem; text-align: left; font-size: 0.7rem; font-weight: 700; color: #52525b; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--mn-border); background: rgba(0,0,0,.15); }
+    .mn-table td { padding: 0.85rem 1rem; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle; color: #e2e8f0; }
+    .mn-table tr:last-child td { border-bottom: none; }
+    .mn-table tbody tr { transition: background .15s; }
+    .mn-table tbody tr:hover { background: rgba(255,255,255,.025); }
+    .mn-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 5px; font-size: 0.67rem; font-weight: 600; border: 1px solid; white-space: nowrap; }
+    .mn-badge.green { background: rgba(16,185,129,.1); color: #10b981; border-color: rgba(16,185,129,.2); }
+    .mn-badge.red { background: rgba(239,68,68,.1); color: #f87171; border-color: rgba(239,68,68,.2); }
+    .mn-badge.blue { background: rgba(59,130,246,.1); color: #60a5fa; border-color: rgba(59,130,246,.2); }
+    .mn-badge.yellow { background: rgba(245,158,11,.1); color: #fbbf24; border-color: rgba(245,158,11,.2); }
+    .mn-badge.gray { background: rgba(255,255,255,.05); color: #a1a1aa; border-color: rgba(255,255,255,.1); }
+    .mn-dest-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+    .mn-dest-tag { font-size: 0.65rem; padding: 2px 8px; border-radius: 5px; background: rgba(255,255,255,.06); color: #a1a1aa; border: 1px solid var(--mn-border); }
+    .mn-btn-icon { width: 32px; height: 32px; background: transparent; border: 1px solid transparent; color: #52525b; border-radius: 7px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 0.95rem; transition: all .15s; }
+    .mn-btn-icon:hover { background: rgba(239,68,68,.1); color: var(--mn-red); border-color: rgba(239,68,68,.2); }
+    .mn-btn-icon.view:hover { background: rgba(59,130,246,.1); color: var(--mn-blue); border-color: rgba(59,130,246,.2); }
+    @media (max-width: 768px) { .mn-table thead{display:none} .mn-table,.mn-table tbody,.mn-table tr,.mn-table td{display:block;width:100%} .mn-table td{padding:.5rem 1rem;text-align:left;border-bottom:none} .mn-table td::before{content:attr(data-label) ": ";font-weight:700;color:#52525b;font-size:.7rem;text-transform:uppercase;margin-right:6px} .mn-table tr{border-bottom:1px solid var(--mn-border);padding:.5rem 0} }
+
+    /* ── RESPONSIVO COMPLETO ─────────────────────────────────── */
+
+    /* Tablet (≤ 1024px) — header quebra em 2 linhas */
+    @media (max-width: 1024px) {
+        .mn-header { padding: 0.75rem 1.25rem; }
+        .mn-cat-filters { order: 3; width: 100%; }
+        .mn-search { max-width: 280px; }
+        #btnNovaNotificacao { margin-left: auto; }
+    }
+
+    /* Tablet (≤ 768px) */
+    @media (max-width: 768px) {
+        /* Header empilha brand + busca, depois filtros */
+        .mn-header { flex-wrap: wrap; gap: 0.5rem; padding: 0.75rem 1rem; }
+        .mn-header-brand { flex: 1; min-width: 0; }
+        .mn-search { order: 2; flex: 1 1 calc(100% - 50px); max-width: 100%; }
+        .mn-cat-filters { order: 3; width: 100%; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+        .mn-cat-btn { flex-shrink: 0; }
+        #btnNovaNotificacao { order: 1; }
+
+        /* Layout principal: 1 coluna */
+        .mn-layout { grid-template-columns: 1fr; padding: 1rem; gap: 1rem; }
+        .mn-sidebar { order: -1; }
+        .mn-sidebar-card { position: static; }
+
+        /* Stats: ajuste de fonte */
+        .mn-stats { gap: 0.5rem; }
+        .mn-stat-card .mn-stat-value { font-size: 1.3rem; }
+
+        /* Formulário */
+        .mn-form-card { padding: 1.25rem; }
+        .mn-upload-row { grid-template-columns: 1fr; }
+        .mn-checkbox-row { grid-template-columns: 1fr; }
+        .mn-dest-row { flex-direction: column; }
+        .mn-form-footer { flex-direction: column; align-items: stretch; }
+        .mn-form-footer-left { flex-wrap: wrap; }
+        #btnPublicar { width: 100%; justify-content: center; }
+        /* inputs com width fixo no inline style */
+        #prioridadeNotif { width: 100% !important; }
+        #dataAgend { width: 100% !important; }
+
+        /* Título+categoria em coluna */
+        .mn-form-card form > div:first-of-type {
+            grid-template-columns: 1fr !important;
+        }
+
+        /* Tabela histórico — stacking em cards */
+        .mn-table thead { display: none; }
+        .mn-table,
+        .mn-table tbody,
+        .mn-table tr,
+        .mn-table td { display: block; width: 100%; }
+        .mn-table tr {
+            border-bottom: 1px solid var(--mn-border);
+            padding: 0.75rem 0;
+        }
+        .mn-table td {
+            padding: 0.25rem 1rem;
+            border-bottom: none;
+            text-align: left !important;
+        }
+        .mn-table td::before {
+            content: attr(data-label) ": ";
+            font-weight: 700;
+            color: #52525b;
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            margin-right: 6px;
+        }
+
+        /* Histórico: padding reduzido */
+        .mn-history-section { padding: 1rem; }
+    }
+
+    /* Mobile pequeno (≤ 480px) */
+    @media (max-width: 480px) {
+        /* Stats em uma linha de 3 com texto menor */
+        .mn-stats { grid-template-columns: repeat(3, 1fr); }
+        .mn-stat-card { padding: 0.75rem 0.5rem; }
+        .mn-stat-card .mn-stat-value { font-size: 1.1rem; }
+        .mn-stat-card .mn-stat-label { font-size: 0.6rem; }
+
+        /* Toast fullwidth no mobile */
+        .mn-toast {
+            left: 0.75rem;
+            right: 0.75rem;
+            bottom: 0.75rem;
+            max-width: 100%;
+        }
+
+        /* Modal ocupa mais tela */
+        .mn-modal { padding: 1.25rem; }
+
+        /* Header: oculta imagem da escola no mobile */
+        .mn-header-brand img { display: none; }
+        .mn-header-brand h1 { font-size: 0.95rem; }
+    }
+    .mn-modal-overlay.open { opacity: 1; pointer-events: all; }
+    .mn-modal { background: #18181b; border: 1px solid var(--mn-border); border-radius: 18px; padding: 2rem; max-width: 440px; width: 90%; box-shadow: 0 24px 64px rgba(0,0,0,.6); transform: scale(.95); transition: transform .2s; }
+    .mn-modal-overlay.open .mn-modal { transform: scale(1); }
+    .mn-modal h3 { font-size: 1.1rem; font-weight: 700; color: #fff; margin: 0 0 0.75rem; }
+    .mn-modal p { font-size: 0.88rem; color: #a1a1aa; line-height: 1.6; margin: 0 0 1.5rem; }
+    .mn-modal-actions { display: flex; gap: 0.75rem; }
+    .mn-feed-wrap { background: transparent; }
+    .mn-toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #18181b; border: 1px solid var(--mn-border); color: #fff; padding: 0.75rem 1.25rem; border-radius: 12px; display: flex; align-items: center; gap: 10px; font-size: 0.85rem; z-index: 9999; box-shadow: 0 12px 32px rgba(0,0,0,.5); animation: toastIn .25s ease-out; max-width: 340px; }
+    @keyframes toastIn { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
+    .mn-toast.fade-out { opacity: 0; transform: translateY(10px); transition: .4s; }
+    .mn-toast.success i { color: var(--mn-green); }
+    .mn-toast.error i { color: var(--mn-red); }
+    .mn-toast.warning i { color: var(--mn-yellow); }
+    .mn-toast.info i { color: var(--mn-blue); }
+    ::-webkit-scrollbar{width:5px} ::-webkit-scrollbar-track{background:transparent} ::-webkit-scrollbar-thumb{background:#3f3f46;border-radius:4px} ::-webkit-scrollbar-thumb:hover{background:var(--mn-green)}
+    @media (max-width: 640px) { .mn-layout{padding:1rem;gap:1rem} .mn-stats{gap:.5rem} .mn-header{padding:.75rem 1rem;gap:.5rem} .mn-form-card,.mn-history-section,.mn-sidebar-card{padding:1.25rem} .mn-upload-row{grid-template-columns:1fr} .mn-checkbox-row{grid-template-columns:1fr} .mn-dest-row{flex-direction:column} }
+    </style>
+</head>
+<body>
+<div id="splashScreen">
+    <div class="splash-logo-container"><div class="splash-logo"><i class="bi bi-mortarboard-fill"></i></div><div class="splash-logo-ring"></div></div>
+    <div class="splash-text"><h2 class="splash-title">Sistema Escolar</h2><p class="splash-subtitle">Mural Escolar — Direção</p></div>
+    <div class="splash-progress-container"><div class="splash-progress-track"><div class="splash-progress-bar"></div></div><div class="splash-progress-text">Carregando...</div></div>
+    <div class="splash-version">v3.0</div>
+</div>
+<script src="../js/splash-screen.js"></script>
+
+<header class="mn-header">
+    <div class="mn-header-brand">
+        <button id="btnVoltar" class="mn-btn-back" title="Voltar ao Dashboard"><i class="bi bi-arrow-left"></i></button>
+        <img src="../img/logo-jaguari.png" alt="Logo" onerror="this.style.display='none'">
+        <div>
+            <h1>Mural Escolar <span id="liveBadge" class="mn-live-badge">● AO VIVO</span></h1>
+            <p id="notifCount" class="mn-header-count">Carregando avisos...</p>
+        </div>
+    </div>
+    <div class="mn-search"><i class="bi bi-search"></i><input type="text" id="searchMural" placeholder="Buscar avisos..."></div>
+    <div class="mn-cat-filters">
+        <button class="mn-cat-btn active" data-cat="Todos">Todos</button>
+        <button class="mn-cat-btn" data-cat="Direção">Direção</button>
+        <button class="mn-cat-btn" data-cat="Professores">Professores</button>
+        <button class="mn-cat-btn" data-cat="Responsáveis">Responsáveis</button>
+    </div>
+    <button id="btnNovaNotificacao" class="mn-btn-primary" style="margin-left:auto;"><i class="bi bi-plus-lg"></i> Novo Aviso</button>
+</header>
+
+<div class="mn-layout">
+    <div>
+        <div class="mn-stats">
+            <div class="mn-stat-card"><span class="mn-stat-label">Total</span><span class="mn-stat-value" id="statsTotal">0</span></div>
+            <div class="mn-stat-card"><span class="mn-stat-label">Vistos</span><span class="mn-stat-value" id="statsLidos">0</span></div>
+            <div class="mn-stat-card mn-stat-urgent"><span class="mn-stat-label">Críticos</span><span class="mn-stat-value" id="statsImportantes">0</span></div>
+        </div>
+
+        <div class="mn-card mn-form-card" id="cardPostar">
+            <div class="mn-form-author">
+                <img src="../img/default-avatar.png" id="userPhotoPreview" alt="Foto">
+                <div><h2>Publicar novo aviso</h2><p>Comunique-se com toda a comunidade escolar</p></div>
+            </div>
+            <form id="formNotificacao" novalidate>
+                <div style="display:grid;grid-template-columns:2fr 1fr;gap:.75rem;margin-bottom:.85rem;">
+                    <input type="text" class="mn-input" id="tituloNotif" placeholder="Título do comunicado..." required>
+                    <select class="mn-select" id="categoriaNotif">
+                        <option value="Direção">🏫 Direção</option>
+                        <option value="Professores">👨‍🏫 Professores</option>
+                        <option value="Responsáveis">👨‍👩‍👧 Responsáveis</option>
+                        <option value="Sistema">⚙️ Sistema</option>
+                    </select>
+                </div>
+                <div class="mn-editor-wrap">
+                    <div class="mn-editor-toolbar">
+                        <button type="button" onclick="formatDoc('bold')" title="Negrito"><i class="bi bi-type-bold"></i></button>
+                        <button type="button" onclick="formatDoc('italic')" title="Itálico"><i class="bi bi-type-italic"></i></button>
+                        <button type="button" onclick="formatDoc('underline')" title="Sublinhado"><i class="bi bi-type-underline"></i></button>
+                        <button type="button" onclick="formatDoc('insertUnorderedList')" title="Lista"><i class="bi bi-list-ul"></i></button>
+                        <button type="button" onclick="inserirEmoji('📢')" title="Megafone">📢</button>
+                        <button type="button" onclick="inserirEmoji('⚠️')" title="Atenção">⚠️</button>
+                        <button type="button" onclick="inserirEmoji('✅')" title="OK">✅</button>
+                        <span class="mn-editor-char-count"><span id="charCount">0</span>/2000</span>
+                    </div>
+                    <div id="editorComunicado" contenteditable="true" placeholder="Escreva o conteúdo do aviso aqui..."></div>
+                </div>
+                <div class="mn-upload-row">
+                    <div class="mn-upload-box" onclick="document.getElementById('inputImagens').click()"><i class="bi bi-camera"></i> Adicionar Fotos<input type="file" id="inputImagens" multiple accept="image/*" style="display:none;"></div>
+                    <div class="mn-upload-box" onclick="document.getElementById('inputArquivos').click()"><i class="bi bi-paperclip"></i> Adicionar Anexos<input type="file" id="inputArquivos" multiple accept=".pdf,.doc,.docx" style="display:none;"></div>
+                </div>
+                <div id="previewImagens" class="mn-preview-grid"></div>
+                <div id="previewArquivos"></div>
+                <div class="mn-form-footer">
+                    <div class="mn-form-footer-left">
+                        <select id="prioridadeNotif" class="mn-select" style="width:155px;height:38px;font-size:.8rem;">
+                            <option value="Normal">⚪ Normal</option>
+                            <option value="Importante">🟡 Importante</option>
+                            <option value="Urgente">🔴 Urgente</option>
+                        </select>
+                        <button type="button" id="btnConfigDest" class="mn-btn-secondary"><i class="bi bi-people"></i> Público</button>
+                        <input type="datetime-local" id="dataAgend" class="mn-input" style="width:195px;height:38px;font-size:.78rem;" title="Agendar publicação">
+                    </div>
+                    <button type="submit" class="mn-btn-primary" id="btnPublicar" style="padding:10px 26px;"><i class="bi bi-send-fill"></i> Publicar Agora</button>
+                </div>
+                <div id="quickDestSetup" class="mn-dest-panel">
+                    <p style="font-size:.75rem;color:#71717a;margin:0 0 .85rem;text-transform:uppercase;letter-spacing:.06em;font-weight:700;">Selecionar destinatários</p>
+                    <div class="mn-checkbox-row">
+                        <label class="mn-checkbox-label"><input type="checkbox" id="destTodosProfs" checked> 👨‍🏫 Todos os Professores</label>
+                        <label class="mn-checkbox-label"><input type="checkbox" id="destTodosResps" checked> 👨‍👩‍👧 Pais e Responsáveis</label>
+                    </div>
+                    <div class="mn-dest-row">
+                        <select id="selectTurma" class="mn-select" style="flex:1;"><option value="">Todas as turmas</option></select>
+                        <select id="selectAluno" class="mn-select" style="flex:1;display:none;"><option value="">Aluno específico...</option></select>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div id="announcement-feed-container" class="mn-feed-wrap"></div>
+
+        <div class="mn-card mn-history-section" style="margin-top:1.5rem;">
+            <div class="mn-history-header">
+                <h2><i class="bi bi-clock-history"></i> Histórico de Envios</h2>
+                <div style="display:flex;gap:6px;">
+                    <span style="font-size:.75rem;color:#52525b;align-self:center;">Filtrar:</span>
+                    <button class="mn-cat-btn active" data-hist="todos">Todos</button>
+                    <button class="mn-cat-btn" data-hist="ativos">Ativos</button>
+                </div>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="mn-table">
+                    <thead><tr><th>Título</th><th>Público</th><th>Data</th><th style="text-align:center;">Status</th><th style="text-align:center;">Ações</th></tr></thead>
+                    <tbody id="historico"><tr><td colspan="5" style="text-align:center;color:#52525b;padding:2rem;">Carregando histórico...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="mn-sidebar">
+        <div class="mn-card mn-sidebar-card">
+            <h3><i class="bi bi-info-circle"></i> Informações</h3>
+            <div id="recentActionsList"><p>Aguardando novas ações no sistema...</p></div>
+            <hr class="mn-divider">
+            <div class="mn-tip"><h4>💡 Dica da Direção</h4><p>Use avisos <strong style="color:#fbbf24;">Urgentes</strong> para comunicados que precisam de atenção imediata dos pais e responsáveis.</p></div>
+            <hr class="mn-divider">
+            <h3 style="margin-bottom:.85rem;"><i class="bi bi-bar-chart-line"></i> Resumo</h3>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;justify-content:space-between;font-size:.82rem;"><span style="color:#71717a;">Total de avisos</span><span id="resumoTotal" style="font-weight:700;color:#fff;">—</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:.82rem;"><span style="color:#71717a;">Urgentes</span><span id="resumoUrgentes" style="font-weight:700;color:#f87171;">—</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:.82rem;"><span style="color:#71717a;">Esta semana</span><span id="resumoSemana" style="font-weight:700;color:#10b981;">—</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mn-modal-overlay" id="modalConfirm">
+    <div class="mn-modal">
+        <h3 id="modalTitle">Confirmação</h3>
+        <p id="confirmText"></p>
+        <div class="mn-modal-actions">
+            <button id="btnConfirmarEnvio" class="mn-btn-primary" style="flex:1;display:none;justify-content:center;"><i class="bi bi-check-lg"></i> Confirmar</button>
+            <button id="btnFecharModal" class="mn-btn-secondary" style="flex:1;justify-content:center;"><i class="bi bi-x-lg"></i> Fechar</button>
+        </div>
+    </div>
+</div>
+
+<script src="../js/api-config.js"></script>
+<script src="../js/database.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/announcement-feed-react.js?v=3.1"></script>
+<script src="direcao-notificacoes.js?v=4"></script>
+<script defer src="../js/reactions.js"></script>
+</body>
+</html>
