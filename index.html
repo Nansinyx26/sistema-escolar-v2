@@ -1,0 +1,869 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Sistema Escolar — Portal Educacional</title>
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <link rel="icon" type="image/png" href="img/logo-jaguari.png" />
+    <link rel="apple-touch-icon" href="img/logo-jaguari.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="css/splash-screen.css?v=1.0" />
+    <link rel="stylesheet" href="css/index-landing.css" />
+    <link rel="stylesheet" href="css/responsive-global.css?v=1.0" />
+    <link rel="stylesheet" href="css/reactions.css?v=1.0" />
+    <link rel="stylesheet" href="css/portal-responsavel-modern.css?v=1.0" />
+</head>
+
+<body>
+    <!-- Splash Screen -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <img src="img/logo-jaguari.png" alt="Logo" class="splash-logo-img" />
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Escola Jaguari</h2>
+            <p class="splash-subtitle">Portal Educacional</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="js/splash-screen.js"></script>
+
+    <canvas id="bg-canvas"></canvas>
+
+    <!-- Mobile Nav Overlay -->
+    <div class="mobile-nav-overlay" id="mobileNav">
+        <button class="mobile-nav-close" id="mobileNavClose" aria-label="Fechar menu">
+        <i class="bi bi-x-lg" aria-hidden="true"></i>
+        <span class="sr-only">Fechar menu</span>
+      </button>
+        <a href="#funcionalidades" onclick="document.getElementById('mobileNav').classList.remove('open')">Funcionalidades</a
+      >
+      <a
+        href="#portais"
+        onclick="document.getElementById('mobileNav').classList.remove('open')"
+        >Portais</a
+      >
+      <a
+        href="#como-funciona"
+        onclick="document.getElementById('mobileNav').classList.remove('open')"
+        >Como funciona</a
+      >
+      <a
+        href="#depoimentos"
+        onclick="document.getElementById('mobileNav').classList.remove('open')"
+        >Depoimentos</a
+      >
+      <a href="html/login.html" class="mobile-nav-cta">Sou Docente</a>
+        <a href="/portal-responsavel/dist/index.html" class="btn-g btn-g-alt">Sou Responsável</a>
+    </div>
+
+    <!-- NAV -->
+    <nav id="nav">
+        <a href="#" class="nav-brand">
+            <div class="nav-logo">
+                <img src="img/logo-jaguari.png" alt="Logo" />
+            </div>
+            ESCOLA JAGUARI
+        </a>
+        <div class="nav-links">
+            <a href="#funcionalidades">Funcionalidades</a>
+            <a href="#portais">Portais</a>
+            <a href="#como-funciona">Como funciona</a>
+            <a href="#depoimentos">Depoimentos</a>
+        </div>
+        <div class="nav-actions">
+            <button class="nav-mobile-toggle" id="mobileNavToggle" aria-label="Menu">
+          <i class="bi bi-list"></i>
+        </button>
+            <a href="/portal-responsavel/dist/index.html" class="btn-g"><i class="bi bi-house-heart"></i>
+          <span class="btn-text-hide">Sou Responsável</span></a
+        >
+        <a href="html/login.html" class="btn-p"
+          ><i class="bi bi-person-workspace"></i> Sou Docente</a
+        >
+      </div>
+    </nav>
+
+    <div class="school-switcher">
+      <input type="checkbox" id="schoolSwitcherToggle" class="school-switcher-toggle" aria-label="Abrir painel de escolas" title="Abrir painel de escolas" />
+      <input type="radio" name="schoolFilter" id="filter-all" class="school-switcher-filter" checked />
+      <input type="radio" name="schoolFilter" id="filter-emef" class="school-switcher-filter" />
+      <input type="radio" name="schoolFilter" id="filter-ciep" class="school-switcher-filter" />
+      <label for="schoolSwitcherToggle" class="school-switcher-button" title="Outras escolas">
+        <span class="sr-only">Alternar seleção de escolas</span>
+        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+      </label>
+      <div class="school-switcher-panel">
+        <div class="school-switcher-header">
+          <span>Escolas em Americana</span>
+          <i class="bi bi-lock-fill lock-icon"></i>
+        </div>
+        <div class="school-switcher-tabs">
+          <label for="filter-all" class="school-tab">Todas</label>
+          <label for="filter-emef" class="school-tab">EMEFs</label>
+          <label for="filter-ciep" class="school-tab">CIEPs</label>
+        </div>
+        <div class="school-switcher-list">
+          <a class="school-list-item emef">
+            <i class="bi bi-book"></i> EMEF Darcy Ribeiro — Rua da Igualdade, 65 - Jardim da Paz
+            <i class="bi bi-lock-fill lock-icon-item"></i>
+          </a>
+            <a class="school-list-item emef">
+                <i class="bi bi-book"></i> EMEF Profª Florestan Fernandes — Rua Japão, 701 - Morada do Sol
+                <i class="bi bi-lock-fill lock-icon-item"></i>
+            </a>
+            <a class="school-list-item emef">
+                <i class="bi bi-book"></i> EMEF Profº Jonas Corrêa de Arruda Filho — Rua João Bernestein, 601 - Vila Margarida
+                <i class="bi bi-lock-fill lock-icon-item"></i>
+            </a>
+            <a class="school-list-item emef">
+                <i class="bi bi-book"></i> EMEF Paulo Freire — Rua Jales, 61 - Parque Novo Mundo
+                <i class="bi bi-lock-fill lock-icon-item"></i>
+            </a>
+            <a class="school-list-item ciep">
+                <i class="bi bi-mortarboard"></i> CIEP Prof. Octávio Cesar Borghi — Cidade Jardim
+                <i class="bi bi-lock-fill lock-icon-item"></i>
+            </a>
+            <a class="school-list-item ciep">
+                <i class="bi bi-mortarboard"></i> CIEP Profª Oniva de Moura Brizola — Antônio Zanaga
+                <i class="bi bi-lock-fill lock-icon-item"></i>
+            </a>
+            <a class="school-list-item ciep">
+                <i class="bi bi-mortarboard"></i> CIEP Profª Maria Nilde Mascellani — Residencial Jaguari
+            </a>
+            <a class="school-list-item ciep">
+                <i class="bi bi-mortarboard"></i> CIEP Prof. Anísio Spínola Teixeira — Parque São Jerônimo
+                <i class="bi bi-lock-fill lock-icon-item"></i>
+            </a>
+            <a class="school-list-item ciep">
+                <i class="bi bi-mortarboard"></i> CIEP Profª Philomena Magaly Makluf Rossetti — Americana/SP
+                <i class="bi bi-lock-fill lock-icon-item"></i>
+            </a>
+        </div>
+        <div class="school-footer">
+            Lista de escolas públicas de Americana/SP com EMEFs e CIEPs. Os itens bloqueados ainda não estão disponíveis.
+        </div>
+        </div>
+        </div>
+
+        <!-- HERO -->
+        <div class="hero-shell">
+            <div class="hero-bg">
+                <div class="hero-bg-glow"></div>
+                <div class="hero-grid"></div>
+            </div>
+            <div class="hero">
+                <div class="hero-left">
+                    <div class="hero-badge">
+                        <span class="badge-pulse"></span> Plataforma Educacional &nbsp;·&nbsp; v3.0
+                    </div>
+                    <h1 class="hero-h1">
+                        Gestão escolar<br />
+                        <em>que transforma</em>
+                    </h1>
+                    <p class="hero-p">
+                        Frequência, notas, turmas, horários e comunicação com responsáveis — integrados em um portal moderno, seguro e feito para quem educa.
+                    </p>
+                    <div class="hero-ctas">
+                        <a href="html/login.html" class="btn-hero btn-h-p"><i class="bi bi-person-workspace"></i> Portal do Docente</a
+            >
+            <a href="/portal-responsavel/dist/index.html" class="btn-hero btn-h-p"><i class="bi bi-house-heart"></i> Portal do Responsável</a>
+                    </div>
+                    <div class="hero-ctas spaced">
+                        <a href="html/pages/primeiro-acesso.html" class="btn-hero btn-h-o" id="btn-primeiro-acesso-docente" onclick="try { sessionStorage.setItem('primeiroAcessoTipo', 'docente'); } catch (e) {}">
+                            <i class="bi bi-person-plus"></i> Primeiro Acesso — Docente
+                        </a>
+                        <a href="html/pages/primeiro-acesso.html" class="btn-hero btn-h-o" id="btn-primeiro-acesso-responsavel" onclick="try { sessionStorage.setItem('primeiroAcessoTipo', 'responsavel'); } catch (e) {}">
+                            <i class="bi bi-people"></i> Primeiro Acesso — Responsável
+                        </a>
+                    </div>
+                    <div class="hero-trust">
+                        <span class="hero-trust-item"><i class="bi bi-shield-check"></i> LGPD</span
+            >
+            <span class="hero-trust-item"><i class="bi bi-lock"></i> 2FA</span>
+                        <span class="hero-trust-item"><i class="bi bi-cloud-check"></i> Nuvem</span
+            >
+            <span class="hero-trust-item"
+              ><i class="bi bi-phone"></i> Responsivo</span
+            >
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MARQUEE -->
+    <div class="marquee-wrap">
+      <div class="marquee-inner">
+        <span class="marquee-item"
+          ><span class="mdot"></span>Gestão de Turmas</span>
+                        <span class="marquee-item"><span class="mdot"></span>Frequência Digital</span>
+                        <span class="marquee-item"><span class="mdot"></span>Avaliações e Notas</span>
+                        <span class="marquee-item"><span class="mdot"></span>Grade Horária</span>
+                        <span class="marquee-item"><span class="mdot"></span>Notificações em Tempo Real</span>
+                        <span class="marquee-item"><span class="mdot"></span>Portal do Responsável</span>
+                        <span class="marquee-item"><span class="mdot"></span>Conformidade LGPD</span>
+                        <span class="marquee-item"><span class="mdot"></span>Painel Administrativo</span>
+                        <span class="marquee-item"><span class="mdot"></span>Gestão de Turmas</span>
+                        <span class="marquee-item"><span class="mdot"></span>Frequência Digital</span>
+                        <span class="marquee-item"><span class="mdot"></span>Avaliações e Notas</span>
+                        <span class="marquee-item"><span class="mdot"></span>Grade Horária</span>
+                        <span class="marquee-item"><span class="mdot"></span>Notificações em Tempo Real</span>
+                        <span class="marquee-item"><span class="mdot"></span>Portal do Responsável</span>
+                        <span class="marquee-item"><span class="mdot"></span>Conformidade LGPD</span>
+                        <span class="marquee-item"><span class="mdot"></span>Painel Administrativo</span>
+                    </div>
+                </div>
+
+                <!-- STATS -->
+                <div class="stats-wrap">
+                    <div class="stats-inner">
+                        <div class="stat-cell">
+                            <div class="stat-n">
+                                <span data-target="1200">0</span><span class="acc">+</span>
+                            </div>
+                            <div class="stat-l">Alunos cadastrados</div>
+                        </div>
+                        <div class="stat-cell">
+                            <div class="stat-n">
+                                <span data-target="84">0</span><span class="acc">+</span>
+                            </div>
+                            <div class="stat-l">Professores ativos</div>
+                        </div>
+                        <div class="stat-cell">
+                            <div class="stat-n">
+                                <span data-target="62">0</span><span class="acc">+</span>
+                            </div>
+                            <div class="stat-l">Turmas gerenciadas</div>
+                        </div>
+                        <div class="stat-cell">
+                            <div class="stat-n">
+                                <span data-target="99">0</span><span class="acc">%</span>
+                            </div>
+                            <div class="stat-l">Disponibilidade</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FEATURES -->
+                <section class="sec feat-section" id="funcionalidades">
+                    <div class="section-inner">
+                        <div class="sc reveal">
+                            <span class="stag">Funcionalidades</span>
+                            <h2 class="sh">Tudo que sua escola precisa</h2>
+                            <p class="sp">
+                                Ferramentas completas para professores, coordenadores e direção — projetadas para o cotidiano escolar.
+                            </p>
+                        </div>
+                        <div class="feat-grid">
+                            <div class="feat-card">
+                                <div class="fi fi-t"><i class="bi bi-people-fill"></i></div>
+                                <div class="ft">Gestão de Turmas</div>
+                                <p class="fd">
+                                    Crie e organize turmas, vincule alunos, professores e disciplinas de forma simples e centralizada.
+                                </p>
+                            </div>
+                            <div class="feat-card">
+                                <div class="fi fi-b"><i class="bi bi-check2-all"></i></div>
+                                <div class="ft">Frequência Digital</div>
+                                <p class="fd">
+                                    Registro de presença em tempo real, relatórios automáticos e alertas para responsáveis via portal.
+                                </p>
+                            </div>
+                            <div class="feat-card">
+                                <div class="fi fi-g"><i class="bi bi-clipboard2-data"></i></div>
+                                <div class="ft">Avaliações e Notas</div>
+                                <p class="fd">
+                                    Lance, edite e acompanhe notas por bimestre. Boletins gerados e disponibilizados automaticamente.
+                                </p>
+                            </div>
+                            <div class="feat-card">
+                                <div class="fi fi-p"><i class="bi bi-calendar3"></i></div>
+                                <div class="ft">Grade Horária</div>
+                                <p class="fd">
+                                    Monte horários sem conflitos com o editor inteligente, exportável para professores e turmas.
+                                </p>
+                            </div>
+                            <div class="feat-card">
+                                <div class="fi fi-r"><i class="bi bi-bell"></i></div>
+                                <div class="ft">Notificações</div>
+                                <p class="fd">
+                                    Comunicados, alertas de falta e avisos institucionais chegam em tempo real para todos os perfis.
+                                </p>
+                            </div>
+                            <div class="feat-card">
+                                <div class="fi fi-s"><i class="bi bi-shield-lock"></i></div>
+                                <div class="ft">Segurança LGPD</div>
+                                <p class="fd">
+                                    Autenticação com 2FA, auditoria completa de ações e conformidade total com a legislação vigente.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- PORTALS -->
+                <section class="sec portals-section" id="portais">
+                    <div class="section-inner">
+                        <div class="sc reveal">
+                            <span class="stag">Portais de acesso</span>
+                            <h2 class="sh">Um sistema, três perspectivas</h2>
+                            <p class="sp">
+                                Cada perfil tem uma experiência dedicada, com as ferramentas certas para o seu papel na escola.
+                            </p>
+                        </div>
+                        <div class="portals-grid">
+                            <a href="html/login.html" class="portal-card pc-t">
+                                <span class="portal-num">01</span>
+                                <div class="pi-wrap"><i class="bi bi-person-workspace"></i></div>
+                                <div class="p-badge">Acesso rápido</div>
+                                <div class="pt">Portal do Docente</div>
+                                <p class="pd">
+                                    Registre frequência, lance notas, consulte sua grade horária e acesse atas de aula a qualquer momento.
+                                </p>
+                                <span class="pl">Entrar no portal <i class="bi bi-arrow-right"></i
+            ></span>
+                            </a>
+                            <a href="/portal-responsavel/dist/index.html" class="portal-card pc-b">
+                                <span class="portal-num">02</span>
+                                <div class="pi-wrap"><i class="bi bi-house-heart"></i></div>
+                                <div class="p-badge">Para famílias</div>
+                                <div class="pt">Portal do Responsável</div>
+                                <p class="pd">
+                                    Acompanhe as notas, frequência e comunicados do seu filho em tempo real, de qualquer dispositivo.
+                                </p>
+                                <span class="pl">Acessar portal <i class="bi bi-arrow-right"></i
+            ></span>
+                            </a>
+                            <a href="html/login.html" class="portal-card pc-p">
+                                <span class="portal-num">03</span>
+                                <div class="pi-wrap"><i class="bi bi-shield-check"></i></div>
+                                <div class="p-badge">Área restrita</div>
+                                <div class="pt">Painel Administrativo</div>
+                                <p class="pd">
+                                    Gerencie usuários, visualize auditorias, configure o sistema e supervisione toda a instituição.
+                                </p>
+                                <span class="pl">Área restrita <i class="bi bi-arrow-right"></i
+            ></span>
+                            </a>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- HOW -->
+                <section class="sec how-section" id="como-funciona">
+                    <div class="how-grid">
+                        <div>
+                            <span class="stag reveal">Como funciona</span>
+                            <h2 class="sh reveal delay-08">
+                                Simples de usar,<br />poderoso por dentro
+                            </h2>
+                            <p class="sp reveal delay-16">
+                                Em poucos passos, professores e gestores têm tudo o que precisam para o dia a dia escolar.
+                            </p>
+                            <div class="steps">
+                                <div class="step">
+                                    <div class="step-n">1</div>
+                                    <div>
+                                        <div class="step-title">Ative sua conta</div>
+                                        <p class="step-desc">
+                                            Professores recebem convite da direção e ativam o acesso com o código secreto institucional e dados pessoais.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <div class="step-n">2</div>
+                                    <div>
+                                        <div class="step-title">Acesse seu painel</div>
+                                        <p class="step-desc">
+                                            Após login com verificação em dois fatores, o dashboard exibe turmas, horários e avisos pendentes.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <div class="step-n">3</div>
+                                    <div>
+                                        <div class="step-title">Registre as aulas</div>
+                                        <p class="step-desc">
+                                            Marque presença, lance notas e preencha atas digitalmente — dados salvos em tempo real na nuvem.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <div class="step-n">4</div>
+                                    <div>
+                                        <div class="step-title">Responsáveis acompanham</div>
+                                        <p class="step-desc">
+                                            Pais recebem notificações e acessam o portal dedicado para acompanhar o desempenho dos filhos.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- TESTIMONIALS -->
+                <section class="sec test-section" id="depoimentos">
+                    <div class="section-inner">
+                        <div class="sc reveal">
+                            <span class="stag">Depoimentos</span>
+                            <h2 class="sh">O que dizem sobre o sistema</h2>
+                            <p class="sp">
+                                Professores, coordenadores e gestores que já transformaram sua rotina com a plataforma.
+                            </p>
+                        </div>
+                        <div class="test-grid" id="avaliacoesContainer">
+                            <!-- Loading placeholder -->
+                            <div class="test-loading-row">
+                                <div class="loading-spinner"></div>
+                                <p class="loading-text">
+                                    Carregando depoimentos...
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- CTA -->
+                <section class="sec cta-section">
+                    <div class="cta-inner reveal">
+                        <div class="cta-deco">→</div>
+                        <div class="cta-eyebrow">Pronto para começar?</div>
+                        <h2 class="cta-h">Modernize a gestão<br />da sua escola hoje</h2>
+                        <p class="cta-p">
+                            Acesse agora mesmo e experimente uma gestão escolar mais inteligente, eficiente e conectada.
+                        </p>
+                        <div class="cta-btns">
+                            <a href="html/login.html" class="btn-hero btn-h-p"><i class="bi bi-box-arrow-in-right"></i> Acessar Portal do
+            Docente</a
+          >
+          <a href="html/pages/primeiro-acesso.html" class="btn-hero btn-h-o"
+            ><i class="bi bi-person-plus"></i> Primeiro Acesso</a
+          >
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+      <div class="footer-grid">
+        <div>
+          <div class="footer-brand">SISTEMA ESCOLAR</div>
+          <p class="footer-tagline">
+            Plataforma de gestão educacional desenvolvida com atenção à
+            experiência de professores, gestores e famílias.
+          </p>
+          <div class="footer-social">
+            <a href="#" aria-label="Enviar e-mail"><i class="bi bi-envelope" aria-hidden="true"></i></a>
+                            <a href="#" aria-label="LinkedIn"><i class="bi bi-linkedin" aria-hidden="true"></i></a>
+                            <a href="#" aria-label="GitHub"><i class="bi bi-github" aria-hidden="true"></i></a>
+                            <a href="#" aria-label="Instagram"><i class="bi bi-instagram" aria-hidden="true"></i></a>
+                        </div>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Portais</h4>
+                        <a href="html/login.html">Portal do Docente</a>
+                        <a href="/portal-responsavel/dist/index.html">Portal do Responsável</a
+          >
+          <a href="html/login.html">Painel Admin</a>
+                        <a href="html/dashboard.html">Dashboard</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Sistema</h4>
+                        <a href="html/primeiro-acesso.html">Primeiro Acesso</a>
+                        <a href="html/politica-privacidade.html">Política de Privacidade</a>
+                        <a href="html/mudar-senha.html">Alterar Senha</a>
+                        <a href="html/perfil.html">Meu Perfil</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Suporte</h4>
+                        <a href="#">Central de Ajuda</a>
+                        <a href="#">Documentação</a>
+                        <a href="#">Status do Sistema</a>
+                        <a href="#">Contato</a>
+                    </div>
+            </div>
+            <div class="footer-bottom">
+                <span>© 2025 Sistema Escolar — Todos os direitos reservados</span>
+                <a href="https://www.linkedin.com/in/renan-de-oliveira-farias-66a9b412b/" target="_blank" rel="noreferrer noopener" class="f-author">Desenvolvido por <strong>NanDev</strong> para a educação</a
+        >
+      </div>
+    </footer>
+
+    <script>
+      /* CONFIG E API */
+      window.API_BASE_URL =
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1" ||
+        window.location.hostname === "" ||
+        window.location.protocol === "file:"
+          ? "http://localhost:3001/api"
+          : "https://sistema-escolar-bfty.onrender.com/api";
+
+      /* FETCH DYNAMIC STATS */
+      async function fetchStats() {
+        try {
+          const response = await fetch(
+            `${window.API_BASE_URL}/dashboard/public-summary`,
+          );
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.data) {
+              const stats = data.data;
+              const alu = document.querySelector(
+                ".stat-cell:nth-child(1) .stat-n span[data-target]",
+              );
+              if (alu && stats.totalAlunos)
+                alu.setAttribute("data-target", stats.totalAlunos);
+
+              const prof = document.querySelector(
+                ".stat-cell:nth-child(2) .stat-n span[data-target]",
+              );
+              if (prof && stats.professoresAtivos)
+                prof.setAttribute("data-target", stats.professoresAtivos);
+
+              const tur = document.querySelector(
+                ".stat-cell:nth-child(3) .stat-n span[data-target]",
+              );
+              if (tur && stats.totalTurmas)
+                tur.setAttribute("data-target", stats.totalTurmas);
+            }
+          }
+        } catch (err) {
+          // Silently fail — landing page still works with fallback numbers
+        }
+      }
+
+      /* INIT STATS FETCH BEFORE INTERSECTION OBSERVER */
+      fetchStats();
+
+      /* PARTICLES */
+      (function () {
+        const c = document.getElementById("bg-canvas");
+        const ctx = c.getContext("2d");
+        let W,
+          H,
+          ps = [];
+        function resize() {
+          W = c.width = window.innerWidth;
+          H = c.height = window.innerHeight;
+        }
+        resize();
+        window.addEventListener("resize", resize);
+        class P {
+          constructor() {
+            this.reset();
+          }
+          reset() {
+            this.x = Math.random() * W;
+            this.y = Math.random() * H;
+            this.r = Math.random() * 0.9 + 0.2;
+            this.vx = (Math.random() - 0.5) * 0.22;
+            this.vy = (Math.random() - 0.5) * 0.22;
+            this.a = Math.random() * 0.35 + 0.05;
+            const roll = Math.random();
+            this.col =
+              roll > 0.7 ? "#10b8a8" : roll > 0.4 ? "#3d74c7" : "#2d3d60";
+          }
+          update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            if (this.x < 0 || this.x > W || this.y < 0 || this.y > H)
+              this.reset();
+          }
+          draw() {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+            ctx.fillStyle = this.col;
+            ctx.globalAlpha = this.a;
+            ctx.fill();
+          }
+        }
+        for (let i = 0; i < 90; i++) ps.push(new P());
+        function loop() {
+          ctx.clearRect(0, 0, W, H);
+          ps.forEach((p) => {
+            p.update();
+            p.draw();
+          });
+          ctx.globalAlpha = 1;
+          for (let i = 0; i < ps.length; i++)
+            for (let j = i + 1; j < ps.length; j++) {
+              const dx = ps[i].x - ps[j].x,
+                dy = ps[i].y - ps[j].y,
+                d = Math.sqrt(dx * dx + dy * dy);
+              if (d < 85) {
+                ctx.beginPath();
+                ctx.moveTo(ps[i].x, ps[i].y);
+                ctx.lineTo(ps[j].x, ps[j].y);
+                ctx.strokeStyle =
+                  "rgba(16,184,168," + 0.06 * (1 - d / 85) + ")";
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+              }
+            }
+          requestAnimationFrame(loop);
+        }
+        loop();
+      })();
+
+      /* NAV SCROLL */
+      const nav = document.getElementById("nav");
+      window.addEventListener("scroll", () =>
+        nav.classList.toggle("scrolled", scrollY > 30),
+      );
+
+      /* STAGGER OBSERVER */
+      const so = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((e) => {
+            if (e.isIntersecting) {
+              const siblings = Array.from(e.target.parentElement.children);
+              const idx = siblings.indexOf(e.target);
+              setTimeout(() => e.target.classList.add("in"), idx * 80);
+              so.unobserve(e.target);
+            }
+          });
+        },
+        { threshold: 0.07 },
+      );
+      document
+        .querySelectorAll(
+          ".feat-card,.portal-card,.step,.stat-cell,.test-card,.mod-item",
+        )
+        .forEach((el) => so.observe(el));
+
+      /* REVEAL */
+      const ro = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((e) => {
+            if (e.isIntersecting) {
+              e.target.classList.add("in");
+              ro.unobserve(e.target);
+            }
+          });
+        },
+        { threshold: 0.08 },
+      );
+      document.querySelectorAll(".reveal").forEach((el) => ro.observe(el));
+
+      /* COUNTERS */
+      function animCounter(el, target) {
+        const dur = 1800;
+        const t0 = performance.now();
+        const tick = (now) => {
+          const t = Math.min((now - t0) / dur, 1);
+          const ease = 1 - Math.pow(1 - t, 3);
+          el.textContent = Math.round(ease * target);
+          if (t < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }
+
+      // Set observer after a small delay to allow fetchStats to complete if fast enough
+      setTimeout(() => {
+        const co = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((e) => {
+              if (e.isIntersecting) {
+                e.target
+                  .querySelectorAll("[data-target]")
+                  .forEach((n) =>
+                    animCounter(n, parseInt(n.dataset.target) || 0),
+                  );
+                co.unobserve(e.target);
+              }
+            });
+          },
+          { threshold: 0.3 },
+        );
+        const sb = document.querySelector(".stats-wrap");
+        if (sb) co.observe(sb);
+      }, 100);
+
+      /* PROGRESS BARS animation */
+      const pbo = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((e) => {
+            if (e.isIntersecting) {
+              e.target.querySelectorAll(".m-prog-fill[style]").forEach((b) => {
+                const w = b.style.width;
+                b.style.width = "0";
+                setTimeout(() => (b.style.width = w), 100);
+              });
+              pbo.unobserve(e.target);
+            }
+          });
+        },
+        { threshold: 0.2 },
+      );
+      const mshell = document.querySelector(".mockup-shell");
+      if (mshell) pbo.observe(mshell);
+
+      /* MOBILE NAV TOGGLE */
+      const mobileToggle = document.getElementById("mobileNavToggle");
+      const mobileNavOverlay = document.getElementById("mobileNav");
+      const mobileNavClose = document.getElementById("mobileNavClose");
+      function checkMobileNav() {
+        if (mobileToggle)
+          mobileToggle.style.display =
+            window.innerWidth <= 768 ? "flex" : "none";
+      }
+      checkMobileNav();
+      window.addEventListener("resize", checkMobileNav);
+      if (mobileToggle)
+        mobileToggle.addEventListener("click", () =>
+          mobileNavOverlay.classList.add("open"),
+        );
+      if (mobileNavClose)
+        mobileNavClose.addEventListener("click", () =>
+          mobileNavOverlay.classList.remove("open"),
+        );
+
+      /* SPIN ANIMATION for loading spinner */
+      if (!document.getElementById("spinKeyframe")) {
+        const style = document.createElement("style");
+        style.id = "spinKeyframe";
+        style.textContent =
+          "@keyframes spin { to { transform: rotate(360deg); } }";
+        document.head.appendChild(style);
+      }
+    </script>
+    <script>
+      async function carregarAvaliacoesPublicas() {
+        const avaliacoesContainer = document.getElementById(
+          "avaliacoesContainer",
+        );
+        if (!avaliacoesContainer) return;
+
+        try {
+          const baseUrl =
+            window.API_BASE_URL ||
+            (window.location.hostname === "localhost" ||
+            window.location.hostname === "" ||
+            window.location.protocol === "file:"
+              ? "http://localhost:3001/api"
+              : "https://sistema-escolar-bfty.onrender.com/api");
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+
+          const res = await fetch(`${baseUrl}/avaliacoes/public`, {
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+          const data = await res.json();
+
+          if (data.success && dat            function escapeHTML(str) {
+              if (!str) return "";
+              return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+            }
+
+            data.data.forEach((av, index) => {
+              const name = av.nome || "Usuário";
+              const initials = name
+                .split(" ")
+                .filter(n => n.length > 0)
+                .map((n) => n[0])
+                .join("")
+                .substring(0, 2)
+                .toUpperCase() || "U";
+              const avatarClass = avClasses[index % avClasses.length];
+
+              let starsHtml = "";
+              const estrelas = typeof av.estrelas === 'number' ? av.estrelas : 5;
+              for (let i = 1; i <= 5; i++) {
+                starsHtml += `<i class="bi bi-star${i <= estrelas ? "-fill" : ""}"></i>`;
+              }
+
+              // Lógica de formatação de URL de foto (inline — landing sem utils.js)
+              let photoUrl = null;
+              if (av.foto && av.foto !== 'default-avatar.png' && av.foto.trim() !== '') {
+                if (av.foto.startsWith('http') || av.foto.startsWith('data:image')) {
+                  photoUrl = av.foto;
+                } else if (av.foto.startsWith('/')) {
+                  // Se já for um path absoluto da API, prefixa com a origem se necessário
+                  photoUrl = av.foto.includes('://') ? av.foto : (baseUrl.replace('/api', '') + av.foto);
+                } else {
+                  // ID de arquivo (GridFS) ou nome de arquivo local
+                  photoUrl = `${baseUrl}/files/${av.foto}`;
+                }
+              }
+
+              const avatarContent = photoUrl
+                ? `<img src="${photoUrl}" alt="${name.replace(/'/g, "")}" onerror="this.style.display='none'; this.parentElement.innerText='${initials}'">`
+                : initials;
+
+              const cleanText = escapeHTML(av.texto || "");
+              const cleanName = escapeHTML(name);
+              const cleanRole = escapeHTML(av.perfil || "Usuário").toUpperCase();
+
+              const card = `
+                    <div class="test-card">
+                      <div class="test-stars">${starsHtml}</div>
+                      <div class="test-quote">"</div>
+                      <p class="test-text">${cleanText}</p>
+                      <div class="test-person">
+                        <div class="test-avatar ${avatarClass}">${avatarContent}</div>
+                        <div>
+                          <div class="test-name">${cleanName}</div>
+                          <div class="test-role">${cleanRole}</div>
+                        </div>
+                      </div>
+                    </div>`;
+              avaliacoesContainer.innerHTML += card;
+            });                      </div>
+                      </div>
+                    </div>`;
+              avaliacoesContainer.innerHTML += card;
+            });
+
+            // Re-observe new cards for stagger animation
+            avaliacoesContainer
+              .querySelectorAll(".test-card")
+              .forEach((el) => so.observe(el));
+          } else {
+            avaliacoesContainer.innerHTML =
+              '<p class="empty-message">Nenhuma avaliação encontrada ainda. Seja o primeiro a avaliar no seu perfil!</p>';
+          }
+        } catch (error) {
+          // Graceful fallback — show friendly message, no blank screen
+          avaliacoesContainer.innerHTML =
+            '<p class="empty-message">Depoimentos indisponíveis no momento. Tente novamente mais tarde.</p>';
+        }
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener(
+          "DOMContentLoaded",
+          carregarAvaliacoesPublicas,
+        );
+      } else {
+        carregarAvaliacoesPublicas();
+      }
+    </script>
+    <script defer src="js/reactions.js"></script>
+  </body>
+</html>

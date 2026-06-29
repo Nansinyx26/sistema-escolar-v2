@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Sistema de Cadastro Escolar - Horários">
+    <title>Horários 2026 - CIEP Jaguari</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="../../favicon/favicon.png">    <link rel="apple-touch-icon" href="../../favicon/favicon.png">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="../../css/main.css">
+    <link rel="stylesheet" href="../../css/components.css">
+    <link rel="stylesheet" href="../../css/watermark.css">
+    <link rel="stylesheet" href="../../direcao/horario-jaguari.css">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- SheetJS para ler Excel no Navegador -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Tailwind CSS Play CDN — preflight desabilitado para nao conflitar com CSS existente -->
+    <!-- Offline Compiled Tailwind CSS -->
+    <link rel="stylesheet" href="../../css/tailwind-built.css">    <link rel="stylesheet" href="../../css/responsive-global.css?v=1.0">
+    <link rel="stylesheet" href="../../css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="../../css/reactions.css?v=1.0">
+</head>
+
+<body>
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <img src="../../img/logo-jaguari.png" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; filter: brightness(1.2) saturate(1.1) drop-shadow(0 0 15px rgba(0, 212, 255, 0.6)) drop-shadow(0 0 30px rgba(0, 212, 255, 0.3));">
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Escola Jaguari</h2>
+            <p class="splash-subtitle">Horários 2026</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="../../js/splash-screen.js"></script>
+
+    <div class="page">
+        <!-- Navbar -->
+        <nav class="navbar">
+            <div class="navbar-content">
+                <div class="navbar-brand">
+                    <span class="logo"><img src="../../img/logo-jaguari.png" alt="Logo" style="height: 32px; vertical-align: middle; margin-right: 8px; filter: brightness(1.15) saturate(1.1) drop-shadow(0 0 8px rgba(0, 212, 255, 0.4));"></span>
+                    <span>Escola Jaguari</span>
+                </div>
+                <div class="navbar-nav">
+                    <a href="index.html" class="btn btn-ghost"><i class="bi bi-arrow-left"></i> Voltar</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <section id="horario-jaguari" class="container">
+                <div class="page-header page-header-horarios">
+                    <div class="page-header-info">
+                        <h1><img src="../../img/logo-jaguari.png" alt="" style="height: 48px; vertical-align: middle; margin-right: 12px; filter: brightness(1.15) saturate(1.1) drop-shadow(0 0 12px rgba(0,212,255,0.4)) drop-shadow(0 0 25px rgba(0,212,255,0.2));"> Horários 2026</h1>
+                        <p class="page-header-sub">CIEP Jaguari</p>
+                        <p class="page-header-ref">Ref: 25/02/2026</p>
+                    </div>
+                    <div class="header-actions header-actions-grid">
+                        <button class="btn btn-primary btn-mobile-full" onclick="mostrarTabela('GERAL', 'geral')">
+                            <i class="bi bi-table"></i> Visão Geral
+                        </button>
+                        <label for="input-excel-header" class="btn btn-outline btn-mobile-full" style="cursor:pointer;margin:0;">
+                            <i class="bi bi-file-earmark-excel"></i> Importar Excel
+                            <input type="file" id="input-excel-header" accept=".xlsx,.xls" style="display:none" onchange="handleExcelImport(this)">
+                        </label>
+                        <button id="btn-seed-db-header" class="btn btn-outline btn-mobile-full" title="Sincronizar banco" style="display:none;"
+                            onclick="HorarioSync.seed().then(r => alert(r.data ? r.data.message : 'Erro no seed'))">
+                            <i class="bi bi-cloud-upload"></i> Sincronizar
+                        </button>
+                        <a href="../Horario Jaguari 2026/HORARIO_JAGUARI_2026_CONSOLIDADO.xlsx" download class="btn btn-outline btn-mobile-full">
+                            <i class="bi bi-download"></i> Baixar Excel
+                        </a>
+                    </div>
+                </div>
+
+                <div class="filtros-card card">
+                    <div class="filtros-grid">
+                        <div class="filtro-group">
+                            <label><i class="bi bi-people"></i> Por Turma:</label>
+                            <select id="sel-turma" class="form-input" onchange="mostrarTabela(this.value, 'turma')">
+                                <option value="">Selecione a turma...</option>
+                                <option value="1A">1º Ano A</option>
+                                <option value="1B">1º Ano B</option>
+                                <option value="1C">1º Ano C</option>
+                                <option value="2A">2º Ano A</option>
+                                <option value="2B">2º Ano B</option>
+                                <option value="2C">2º Ano C</option>
+                                <option value="3A">3º Ano A</option>
+                                <option value="3B">3º Ano B</option>
+                                <option value="3C">3º Ano C</option>
+                                <option value="4A">4º Ano A</option>
+                                <option value="4B">4º Ano B</option>
+                                <option value="4C">4º Ano C</option>
+                                <option value="5A">5º Ano A</option>
+                                <option value="5B">5º Ano B</option>
+                                <option value="5C">5º Ano C</option>
+                                <option value="5D">5º Ano D</option>
+                            </select>
+                        </div>
+                        <div class="filtro-divider">ou</div>
+                        <div class="filtro-group">
+                            <label><i class="bi bi-person-badge"></i> Por Professor:</label>
+                            <select id="sel-prof" class="form-input" onchange="mostrarTabela(this.value, 'prof')">
+                                <option value="">Selecione o professor...</option>
+                                <option value="EDILENE">Edilene (P.A. Aux. Dir.)</option>
+                                <option value="MARCOS">Marcos (Ed. Física)</option>
+                                <option value="MARJORIE">Marjorie (Ed. Física)</option>
+                                <option value="MIRIAN">Mirian (Artes)</option>
+                                <option value="ARTES1ANO">Bianca (Artes 1º Ano)</option>
+                                <option value="INGLS">Marcelo (Inglês)</option>
+                                <option value="OFLEITURA">Raquel Castelaneli (Of. Leitura)</option>
+                                <option value="OFMAKER">Sirlene (Of. Maker)</option>
+                                <option value="OFSEBRAE">Cherlane (Of. Sebrae)</option>
+                                <option value="PAMARCIA">Marcia Caldeira (P.A.)</option>
+                                <option value="PADIRCEU">Dirceu (P.A.)</option>
+                                <option value="PALOURDES">Lourdes (P.A.)</option>
+                                <option value="PAPIPOCA">Raquel Pipoca (P.A.)</option>
+                            </select>
+                        </div>
+                        <div class="filtro-group filtro-actions">
+                            <button class="btn btn-primary btn-mobile-full" onclick="mostrarTabela('GERAL', 'geral')">
+                                <i class="bi bi-table"></i> Visão Geral
+                            </button>
+                            <label for="input-excel" class="btn btn-outline btn-mobile-full" style="cursor: pointer; margin: 0;">
+                                <i class="bi bi-file-earmark-excel"></i> Importar Excel
+                                <input type="file" id="input-excel" accept=".xlsx, .xls" style="display: none;" onchange="handleExcelImport(this)">
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Editor Toolbar (Hidden by default, shown when clicking a cell in Geral) -->
+                <div id="editor-toolbar" style="display: none; background: var(--bg-elevated); padding: 10px; border-radius: 8px; border: 1px solid var(--border-secondary); margin-bottom: 20px; align-items: center; gap: 15px; box-shadow: var(--shadow-md);">
+                    <div style="font-weight: bold; color: var(--text-primary);"><i class="bi bi-palette"></i> Pintar Célula:</div>
+                    <div id="color-palette" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <!-- Buttons will be generated by JS -->
+                    </div>
+                    <div style="margin-left: auto; display: flex; align-items: center; gap: 10px;">
+                        <span id="save-status" style="color: var(--text-secondary); font-size: 12px;"><i class="bi bi-cloud-check"></i> Salvo automaticamente</span>
+                    </div>
+                </div>
+
+                <div id="tabelas-container">
+                    <div id="tabela-placeholder" class="empty-state" style="padding: 2rem; max-width: 900px; margin: 0 auto;">
+                        <i class="bi bi-calendar3" style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem; display: block;"></i>
+                        <h3 style="margin-bottom: 0.5rem; font-size: 1.25rem;">Consulte a Grade de Horários</h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 2rem; font-size: 0.9rem;">Escolha uma turma ou professor nos filtros acima, ou use o Acesso Rápido abaixo:</p>
+
+                        <!-- Quick Access Section -->
+                        <div style="text-align: left; background: rgba(255, 255, 255, 0.02); padding: 2rem; border-radius: var(--radius-lg); border: 1px solid rgba(255, 255, 255, 0.05); margin-top: 1.5rem; box-shadow: var(--shadow-sm);">
+                            <h4 style="margin-bottom: 1rem; color: var(--text-primary); font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="bi bi-grid-3x3-gap-fill" style="color: var(--primary);"></i> Horários por Turma
+                            </h4>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 2rem;">
+                                <button onclick="mostrarTabela('1A', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">1º A</button>
+                                <button onclick="mostrarTabela('1B', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">1º B</button>
+                                <button onclick="mostrarTabela('1C', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">1º C</button>
+                                <button onclick="mostrarTabela('2A', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">2º A</button>
+                                <button onclick="mostrarTabela('2B', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">2º B</button>
+                                <button onclick="mostrarTabela('2C', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">2º C</button>
+                                <button onclick="mostrarTabela('3A', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">3º A</button>
+                                <button onclick="mostrarTabela('3B', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">3º B</button>
+                                <button onclick="mostrarTabela('3C', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">3º C</button>
+                                <button onclick="mostrarTabela('4A', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">4º A</button>
+                                <button onclick="mostrarTabela('4B', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">4º B</button>
+                                <button onclick="mostrarTabela('4C', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">4º C</button>
+                                <button onclick="mostrarTabela('5A', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">5º A</button>
+                                <button onclick="mostrarTabela('5B', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">5º B</button>
+                                <button onclick="mostrarTabela('5C', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">5º C</button>
+                                <button onclick="mostrarTabela('5D', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">5º D</button>
+                            </div>
+                            
+                            <h4 style="margin-bottom: 1rem; color: var(--text-primary); font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="bi bi-person-badge-fill" style="color: var(--primary);"></i> Horários por Professor / Especialista
+                            </h4>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                                <button onclick="mostrarTabela('EDILENE', 'prof')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Edilene (PA Aux. Dir)</button>
+                                <button onclick="mostrarTabela('MARCOS', 'prof')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Marcos (Ed. Física)</button>
+                                <button onclick="mostrarTabela('MARJORIE', 'prof')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Marjorie (Ed. Física)</button>
+                                <button onclick="mostrarTabela('MIRIAN', 'prof')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Mirian (Artes)</button>
+                                <button onclick="mostrarTabela('ARTES1ANO', 'prof')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Bianca (Artes 1º)</button>
+                                <button onclick="mostrarTabela('INGLS', 'prof')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Marcelo (Inglês)</button>
+                                <button onclick="mostrarTabela('OFLEITURA', 'prof')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Raquel (Leitura)</button>
+                                <button onclick="mostrarTabela('OFMAKER', 'prof')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Sirlene (Maker)</button>
+                                <button onclick="mostrarTabela('OFSEBRAE', 'prof')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Cherlane (Sebrae)</button>
+                                <button onclick="mostrarTabela('PAMARCIA', 'prof')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Marcia (PA)</button>
+                                <button onclick="mostrarTabela('PADIRCEU', 'prof')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Dirceu (PA)</button>
+                                <button onclick="mostrarTabela('PALOURDES', 'prof')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Lourdes (PA)</button>
+                                <button onclick="mostrarTabela('PAPIPOCA', 'prof')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Pipoca (PA)</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <nav class="horario-bottom-nav" aria-label="Navegação principal">
+            <a href="../dashboard.html" class="bottom-nav-item"><i class="bi bi-house-fill"></i><span>Início</span></a>
+            <a href="horario-jaguari.html" class="bottom-nav-item active"><i class="bi bi-calendar-week-fill"></i><span>Horários</span></a>
+            <a href="../lista-professores.html" class="bottom-nav-item"><i class="bi bi-person-badge-fill"></i><span>Professores</span></a>
+            <a href="../perfil.html" class="bottom-nav-item"><i class="bi bi-gear-fill"></i><span>Configurações</span></a>
+        </nav>
+    </div>
+
+    <script src="../../js/api-config.js"></script>
+    <script src="../../js/database.js"></script>
+    <script src="../../js/auth.js"></script>
+    <script src="../../direcao/horario-jaguari.js"></script>
+    <script src="../../direcao/horario-sync.js"></script>
+    <script src="../../direcao/horario-editor.js"></script>
+    <script src="../../js/vendor.js"></script>
+    <script defer src="../../js/reactions.js"></script>
+</body>
+</html>

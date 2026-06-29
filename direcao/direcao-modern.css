@@ -1,0 +1,94 @@
+/* html/direcao/direcao-modern.css */
+:root {
+    --primary-neon: #6d28d9;
+    --secondary-neon: #10b981;
+    --bg-dark: #0f172a;
+    --card-bg: #1e293b;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --border-glass: rgba(255, 255, 255, 0.1);
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+}
+
+.main-content {
+    padding: 2rem;
+}
+
+.direcao-header h1 {
+    font-size: 2.25rem;
+    font-weight: 800;
+    background: linear-gradient(to right, var(--text-main), var(--primary-neon));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+}
+
+.stat-card-bi {
+    background: var(--card-bg);
+    border: 1px solid var(--border-glass);
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    transition: transform 0.3s ease, border-color 0.3s ease;
+}
+
+.stat-card-bi:hover {
+    transform: translateY(-5px);
+    border-color: var(--primary-neon);
+}
+
+.bi-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--secondary-neon);
+}
+
+.bi-main-chart-wrapper {
+    background: var(--card-bg);
+    border: 1px solid var(--border-glass);
+    border-radius: 20px;
+    padding: 2rem;
+    margin-top: 2rem;
+}
+
+.sidebar {
+    background: #09090b !important;
+    border-right: 1px solid var(--border-glass) !important;
+}
+
+.sidebar-avatar-wrapper {
+    width: 48px !important;
+    height: 48px !important;
+    flex-shrink: 0;
+}
+
+.sidebar-avatar {
+    width: 48px !important;
+    height: 48px !important;
+    max-width: 48px !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+    border: 2px solid var(--primary-neon);
+}
+
+.sidebar-item.active {
+    background: rgba(109, 40, 217, 0.15) !important;
+    color: var(--primary-neon) !important;
+    border-left: 4px solid var(--primary-neon) !important;
+}
+
+.btn-primary {
+    background: var(--primary-neon) !important;
+    border: none !important;
+    box-shadow: 0 0 15px rgba(109, 40, 217, 0.4);
+}
+
+.btn-primary:hover {
+    background: #5b21b6 !important;
+    box-shadow: 0 0 25px rgba(109, 40, 217, 0.6);
+}

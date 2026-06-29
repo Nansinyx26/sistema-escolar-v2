@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auditoria | Sistema Escolar</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../../css/dashboard.css">
+    <link rel="stylesheet" href="../../css/glass-premium.css">
+    <style>
+        :root {
+            --audit-bg: #0f172a;
+            --card-glass: rgba(30, 41, 59, 0.7);
+            --accent-primary: #3b82f6;
+        }
+
+        body {
+            background: radial-gradient(circle at top right, #1e293b, #0f172a);
+            color: #f8fafc;
+            min-height: 100vh;
+        }
+
+        .audit-container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+
+        .glass-header {
+            background: var(--card-glass);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1.5rem 2rem;
+            border-radius: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .audit-filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            background: var(--card-glass);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .audit-input {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 0.6rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .audit-table-container {
+            background: var(--card-glass);
+            border-radius: 1.5rem;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: rgba(15, 23, 42, 0.8);
+            text-align: left;
+            padding: 1rem;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+
+        td {
+            padding: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            color: #e2e8f0;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .badge {
+            padding: 0.25rem 0.6rem;
+            border-radius: 2rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .badge-create { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+        .badge-update { background: rgba(234, 179, 8, 0.2); color: #facc15; }
+        .badge-delete { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+        .badge-info { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+
+        .details-btn {
+            background: transparent;
+            border: none;
+            color: var(--accent-primary);
+            cursor: pointer;
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="audit-container">
+        <header class="glass-header">
+            <div>
+                <h1 style="margin: 0; font-size: 1.5rem;">Logs de Auditoria</h1>
+                <p style="color: #94a3b8; font-size: 0.85rem; margin: 0.2rem 0 0 0;">Rastreamento avançado de ações administrativas</p>
+            </div>
+            <a href="index.html" class="audit-input" style="text-decoration: none; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </header>
+
+        <section class="audit-filters">
+            <input type="text" id="filterUser" placeholder="Filtrar por Usuário/Email" class="audit-input">
+            <select id="filterAction" class="audit-input">
+                <option value="">Todas as Ações</option>
+                <option value="CREATE_NOTE">Lançamento de Notas</option>
+                <option value="UPDATE_NOTE">Edição de Notas</option>
+                <option value="DELETE_NOTE">Exclusão de Notas</option>
+                <option value="CREATE_CLASS">Criação de Turma</option>
+                <option value="SYNC_ATTENDANCE">Sincronização de Frequência</option>
+                <option value="LOGIN">Login de Usuário</option>
+            </select>
+            <input type="date" id="filterDate" class="audit-input">
+            <button id="btnSearch" class="audit-input" style="background: var(--accent-primary); border: none; cursor: pointer;">
+                <i class="bi bi-search"></i> Buscar
+            </button>
+        </section>
+
+        <div class="audit-table-container">
+            <table id="auditTable">
+                <thead>
+                    <tr>
+                        <th>Data/Hora</th>
+                        <th>Usuário</th>
+                        <th>Perfil</th>
+                        <th>Ação</th>
+                        <th>Recurso</th>
+                        <th>IP</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Inserido via JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        async function fetchLogs() {
+            const user = document.getElementById('filterUser').value;
+            const action = document.getElementById('filterAction').value;
+            const date = document.getElementById('filterDate').value;
+
+            let url = `/api/audit/logs?`;
+            if (user) url += `usuario=${user}&`;
+            if (action) url += `acao=${action}&`;
+            if (date) url += `de=${date}&`;
+
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                if (data.success) {
+                    renderLogs(data.data);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function renderLogs(logs) {
+            const tbody = document.querySelector('#auditTable tbody');
+            tbody.innerHTML = logs.map(log => {
+                const date = new Date(log.data).toLocaleString('pt-BR');
+                const actionClass = log.acao.includes('CREATE') ? 'badge-create' : 
+                                  log.acao.includes('DELETE') ? 'badge-delete' :
+                                  log.acao.includes('UPDATE') ? 'badge-update' : 'badge-info';
+
+                return `
+                    <tr>
+                        <td style="font-size: 0.8rem; color: #94a3b8;">${date}</td>
+                        <td>
+                            <div style="font-weight: 500;">${log.usuarioNome}</div>
+                            <div style="font-size: 0.75rem; color: #64748b;">${log.usuarioEmail || ''}</div>
+                        </td>
+                        <td style="text-transform: capitalize;">${log.perfil}</td>
+                        <td><span class="badge ${actionClass}">${log.acao}</span></td>
+                        <td style="font-size: 0.85rem;">${log.recurso}</td>
+                        <td style="font-size: 0.8rem; color: #64748b;">${log.ip || 'Local'}</td>
+                        <td>
+                            <button class="details-btn" onclick='showDetails(${JSON.stringify(log.detalhes)})'>
+                                <i class="bi bi-info-circle"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function showDetails(detalhes) {
+            Swal.fire({
+                title: 'Detalhes da Ação',
+                html: `<pre style="text-align: left; font-size: 0.8rem; background: #f1f5f9; padding: 1rem; border-radius: 0.5rem; overflow: auto; max-height: 400px;">${JSON.stringify(detalhes, null, 2)}</pre>`,
+                confirmButtonText: 'Fechar',
+                confirmButtonColor: '#3b82f6',
+                background: '#ffffff',
+                color: '#1e293b'
+            });
+        }
+
+        document.getElementById('btnSearch').addEventListener('click', fetchLogs);
+        window.addEventListener('load', fetchLogs);
+    </script>
+</body>
+</html>

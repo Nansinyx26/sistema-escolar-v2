@@ -1,0 +1,448 @@
+/**
+ * CSS Principal - Variáveis e Estilos Base
+ * Sistema de Cadastro Escolar v2.0
+ */
+
+:root {
+    /* Cores Premium (Arte Gráficos) */
+    --primary: #7c3aed;
+    /* Roxo Premium */
+    --primary-dark: #6d28d9;
+    --primary-light: #a78bfa;
+    /* Lilás */
+
+    --secondary: #2dd4bf;
+    /* Verde Contraste (Accent 3) */
+    --secondary-dark: #14b8a6;
+
+    --accent-purple: #7c3aed;
+    --accent-lilac: #a78bfa;
+    --accent-teal: #2dd4bf;
+    --accent-gold: #d4af37;
+
+    --success: #2dd4bf;
+    --warning: #d4af37;
+    --danger: #ef4444;
+    --info: #06b6d4;
+
+    /* Mapeamento Legacy */
+    --primary-color: var(--primary);
+    --secondary-color: var(--secondary);
+    --success-color: var(--success);
+    --warning-color: var(--warning);
+    --danger-color: var(--danger);
+    --info-color: var(--info);
+
+    /* Cores de Fundo Premium */
+    --bg-dark: #0b0b10;
+    /* Fundo muito escuro */
+    --bg-medium: #151028;
+    /* Painel/Card */
+    --bg-light: #1e1b33;
+    /* Hover/Input */
+
+    --bg-color: var(--bg-dark);
+    --bg-white: var(--bg-medium);
+    --text-color: #e6eef6;
+    --text-secondary: #9aa3b2;
+    --text-muted: #6b7280;
+    --text-white: #ffffff;
+
+    --border-color: rgba(124, 58, 237, 0.2);
+    /* Borda sutil roxa */
+
+    /* Cores de Feedback Específicas */
+    --primary-bg: rgba(124, 58, 237, 0.1);
+    --success-bg: rgba(45, 212, 191, 0.1);
+    --success-dark: #10b981;
+    --warning-bg: rgba(212, 175, 55, 0.1);
+    --warning-dark: #f59e0b;
+    --danger-bg: rgba(239, 68, 68, 0.1);
+    --danger-dark: #ef4444;
+    --info-bg: rgba(6, 182, 212, 0.1);
+    --info-dark: #06b6d4;
+
+    /* Sombras Premium */
+    --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 10px 15px rgba(2, 2, 8, 0.4);
+    --shadow-lg: 0 20px 40px rgba(2, 2, 8, 0.6);
+    --shadow: var(--shadow-md);
+
+    /* Transições */
+    --transition-fast: 150ms ease;
+    --transition-base: 300ms ease;
+    --transition-slow: 500ms ease;
+    --transition: var(--transition-base);
+
+    /* Radius */
+    --radius-sm: 0.25rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    --radius-2xl: 18px;
+    --radius-full: 9999px;
+    --radius: var(--radius-lg);
+
+    /* Spacing */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    --spacing-2xl: 3rem;
+
+    --font-family: 'Inter', system-ui, sans-serif;
+    --font-mono: 'Fira Code', monospace;
+
+    /* Font Sizes */
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
+    --font-size-base: 1rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem;
+    --font-size-2xl: 1.5rem;
+    --font-size-3xl: 1.875rem;
+    --font-size-4xl: 2.25rem;
+
+    /* Z-index */
+    --z-dropdown: 100;
+    --z-sticky: 200;
+    --z-fixed: 300;
+    --z-modal-backdrop: 400;
+    --z-modal: 500;
+    --z-popover: 600;
+    --z-tooltip: 700;
+    --z-toast: 800;
+
+    /* Glassmorphism System */
+    --glass-bg: rgba(21, 16, 40, 0.6);
+    --glass-bg-light: rgba(255, 255, 255, 0.05);
+    --glass-bg-hover: rgba(255, 255, 255, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-border-light: rgba(255, 255, 255, 0.2);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    --glass-blur: 12px;
+}
+
+/* Glass Utility */
+.glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+}
+
+/* Base Overrides */
+*,
+*:before,
+*:after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-family);
+    background: linear-gradient(180deg, #06060a 0%, #0b0b10 60%);
+    color: var(--text-color);
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+/* ==========================================================================
+   TIPOGRAFIA
+   ========================================================================== */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    color: var(--text-white);
+    margin-bottom: var(--spacing-sm);
+    font-weight: 700;
+}
+
+a {
+    color: var(--primary-light);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+a:hover {
+    color: var(--primary);
+}
+
+/* ==========================================================================
+   LAYOUT
+   ========================================================================== */
+
+.container {
+    width: 100%;
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-md);
+}
+
+.page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.main-content {
+    flex: 1;
+    padding: var(--spacing-xl) 0;
+}
+
+.flex {
+    display: flex;
+}
+
+.flex-col {
+    flex-direction: column;
+}
+
+.items-center {
+    align-items: center;
+}
+
+.justify-center {
+    justify-content: center;
+}
+
+.justify-between {
+    justify-content: space-between;
+}
+
+.gap-sm {
+    gap: var(--spacing-sm);
+}
+
+.gap-md {
+    gap: var(--spacing-md);
+}
+
+/* Grid */
+.grid {
+    display: grid;
+    gap: var(--spacing-md);
+}
+
+/* ==========================================================================
+   BOTÕES
+   ========================================================================== */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    gap: 0.5rem;
+}
+
+.btn-primary {
+    background: linear-gradient(90deg, var(--primary), var(--primary-light));
+    color: #000;
+    box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(124, 58, 237, 0.4);
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+.btn-outline:hover {
+    border-color: var(--primary);
+    color: var(--primary-light);
+}
+
+.btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+}
+
+.btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-white);
+}
+
+/* ==========================================================================
+   FORMULÁRIOS
+   ========================================================================== */
+
+.form-input {
+    width: 100%;
+    padding: 1rem;
+    background: var(--glass-bg-light);
+    backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    color: var(--text-color);
+    font-family: inherit;
+    transition: all 0.2s;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+}
+
+/* Fix para Select Options no Windows */
+.form-input option {
+    background-color: var(--bg-dark);
+    color: var(--text-white);
+    padding: 10px;
+}
+
+/* ==========================================================================
+   UTILITÁRIOS
+   ========================================================================== */
+
+.hidden {
+    display: none !important;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.w-full {
+    width: 100%;
+}
+
+/* Navbar Overrides baseados no tema */
+.navbar {
+    background: rgba(11, 11, 16, 0.8);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border-color);
+    padding: 1rem 0;
+}
+
+/* ==========================================================================
+   RESPONSIVE - MEDIA QUERIES
+   ========================================================================== */
+
+/* Tablets e disposit ivos menores */
+@media (max-width: 1024px) {
+    .container {
+        max-width: 100%;
+        padding: 0 1rem;
+    }
+
+    .main-content {
+        padding: 1rem 0;
+    }
+
+    h1 {
+        font-size: var(--font-size-3xl);
+    }
+
+    h2 {
+        font-size: var(--font-size-2xl);
+    }
+
+    h3 {
+        font-size: var(--font-size-xl);
+    }
+}
+
+/* Mobile landscape e tablets pequenos */
+@media (max-width: 768px) {
+    :root {
+        --spacing-xl: 1.5rem;
+        --spacing-2xl: 2rem;
+    }
+
+    .container {
+        padding: 0 0.75rem;
+    }
+
+    .btn {
+        padding: 0.625rem 1.25rem;
+        font-size: var(--font-size-sm);
+    }
+
+    .form-input {
+        padding: 0.875rem;
+        font-size: var(--font-size-sm);
+    }
+
+    h1 {
+        font-size: var(--font-size-2xl);
+    }
+
+    h2 {
+        font-size: var(--font-size-xl);
+    }
+
+    h3 {
+        font-size: var(--font-size-lg);
+    }
+}
+
+/* Mobile portrait */
+@media (max-width: 480px) {
+    :root {
+        --spacing-md: 0.75rem;
+        --spacing-lg: 1rem;
+        --spacing-xl: 1.25rem;
+    }
+
+    .btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+        width: 100%;
+    }
+
+    .btn-lg {
+        padding: 0.75rem 1rem;
+    }
+
+    .flex {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    h1 {
+        font-size: var(--font-size-xl);
+    }
+
+    h2 {
+        font-size: var(--font-size-lg);
+    }
+
+    h3 {
+        font-size: var(--font-size-base);
+    }
+}
+
+/* Extra small devices */
+@media (max-width: 360px) {
+    .container {
+        padding: 0 0.5rem;
+    }
+
+    .btn {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8125rem;
+    }
+}

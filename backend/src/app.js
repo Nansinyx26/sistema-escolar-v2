@@ -1,0 +1,273 @@
+const express = require('express');
+const path = require('path');
+const cookieParser = require('cookie-parser');
+const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const compression = require('compression');
+const apiRoutes = require('./routes/api');
+const { sanitizeObject } = require('./utils/sanitize');
+const { csrfCookieSetter, csrfValidator } = require('./middleware/csrfProtection');
+const logger = require('./utils/logger');
+const { requestLogger } = require('./middleware/requestLogger');
+
+const app = express();
+
+// Otimização de Performance: Compressão Gzip/Brotli
+app.use(compression());
+
+// Monitoramento e Observabilidade: Métricas HTTP (Roadmap #6)
+app.use(requestLogger);
+
+// Configurar Trust Proxy para o Render (Necessário para express-rate-limit)
+app.set('trust proxy', 1);
+
+// NOTA: O redirecionamento HTTP -> HTTPS já é feito pelo próprio Render na
+// borda da rede, antes da requisição chegar a este app (toda requisição que
+// chega aqui internamente já passou por HTTPS na entrada do Render).
+// Um middleware adicional aqui que dependa do header 'x-forwarded-proto'
+// pode disparar redirects indevidos sempre que esse header vier ausente ou
+// inconsistente em alguma requisição — inclusive na navegação principal da
+// página, o que recarregava o site inteiro de forma intermitente e
+// aparentemente aleatória. Por isso esse middleware foi removido.
+
+// Middleware de Segurança (Helmet)
+// ============================================
+// NOTA DE SEGURANÇA (Atualizado — Roadmap Backlog #1):
+// - 'unsafe-inline' REMOVIDO de script-src e script-src-attr.
+//   Todos os atributos onclick= foram migrados para addEventListener em
+//   arquivos separados (js/events/*.js), viabilizando esta CSP estrita.
+// - 'unsafe-inline' é mantido em style-src pois o frontend usa estilos inline
+// - 'unsafe-eval' não existe — foi mantido removido
+// ============================================
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            "default-src": ["'self'"],
+            // Adicionado 'unsafe-inline' para permitir funcionamento correto do Google Identity e scripts do portal em produção
+            "script-src": ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "unpkg.com", "cdnjs.cloudflare.com", "cdn.tailwindcss.com", "https://accounts.google.com"],
+            "script-src-attr": ["'unsafe-inline'"], // Permite atributos inline de forma compatível
+            "style-src": ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "fonts.googleapis.com", "unpkg.com", "cdnjs.cloudflare.com", "https://accounts.google.com"],
+            "font-src": ["'self'", "cdn.jsdelivr.net", "fonts.gstatic.com", "data:"],
+            // Google profile photos (lh3.googleusercontent.com) + blobs/data URIs
+            "img-src": ["'self'", "data:", "blob:", "https://lh3.googleusercontent.com", "https://lh4.googleusercontent.com", "https://lh5.googleusercontent.com", "https://lh6.googleusercontent.com"],
+            // CRÍTICO: www.googleapis.com é necessário para o fluxo OAuth do Google
+            "media-src": ["'self'", "blob:"],
+            // (useGoogleLogin chama /oauth2/v3/userinfo após o popup fechar)
+            "connect-src": [
+                "'self'", 
+                "https://sistema-escolar-bfty.onrender.com", 
+                "http://localhost:*", 
+                "http://127.0.0.1:*",
+                "ws://localhost:*",
+                "ws://127.0.0.1:*",
+                "wss://sistema-escolar-bfty.onrender.com",
+                "cdn.tailwindcss.com",
+                "https:",
+                "http:",
+                "ws:",
+                "wss:",
+                "data:",
+                "blob:"
+            ],
+            "frame-src": ["'self'", "https://accounts.google.com"], // Necessário para o Iframe de login do Google
+            "frame-ancestors": ["'none'"], // Proteção extra contra Clickjacking
+            "base-uri": ["'self'"],         // Previne ataques de base tag injection
+            "form-action": ["'self'"]       // Previne submissão de formulários para domínios externos
+        }
+    },
+    // Necessário para o popup do Google OAuth comunicar de volta com a página pai
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+    crossOriginEmbedderPolicy: false, // Desabilitado para compatibilidade com CDNs
+}));
+
+// Rate Limiter Global (Protecao contra DoS generico)
+// DESABILITADO em desenvolvimento/testes para nao interferir
+const isProduction = process.env.NODE_ENV === 'production';
+const globalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: isProduction ? 500 : 0, // 0 = desabilita completamente em dev
+    message: { success: false, error: 'Muitas requisicoes vindas deste IP. Tente novamente mais tarde.' },
+    skip: () => !isProduction // Skip sempre em desenvolvimento
+});
+
+if (isProduction) {
+    app.use(globalLimiter);
+}
+
+// Rate Limiter Especifico para Autenticacao (Brute Force)
+// DESABILITADO em desenvolvimento/testes
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: isProduction ? 15 : 0,
+    skip: () => !isProduction,
+    message: { 
+        success: false, 
+        error: 'Muitas tentativas de login ou recuperacao. Tente novamente em 15 minutos.' 
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// CORS - Configurado para desenvolvimento e produção
+const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:5500',
+    'http://127.0.0.1:3001',
+    'http://127.0.0.1:5500',
+    'https://sistema-escolar-bfty.onrender.com',
+    process.env.FRONTEND_URL
+].filter(Boolean); // Remove undefined/null
+
+app.use(cors({
+    origin: function (origin, callback) {
+        // Permitir requisições sem origin (ex: Postman, mobile apps)
+        if (!origin) return callback(null, true);
+
+        // Em desenvolvimento, permite todos
+        if (process.env.NODE_ENV !== 'production') {
+            return callback(null, true);
+        }
+
+        // Em produção, checa lista de permitidos (exata, sem wildcard)
+        if (allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            console.error(`❌ Bloqueado por CORS: ${origin}`);
+            callback(new Error(`Not allowed by CORS (Origin: ${origin})`));
+        }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-migration-key', 'X-API-Key', 'X-CSRF-Token']
+}));
+
+app.use(cookieParser());
+
+// Body Parser - Limite reduzido para 1MB para prevenir DoS
+app.use(express.json({ limit: '1mb' })); 
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// Middlewares locais para uploads de fotos (permitem até 10MB)
+const photoLimit = express.json({ limit: '10mb' });
+app.use('/api/alunos', (req, res, next) => req.method === 'POST' ? photoLimit(req, res, next) : next());
+app.use('/api/upload/photo', photoLimit);
+// Upload de foto de perfil via base64 — precisa do limite estendido
+app.use('/api/usuarios/foto', (req, res, next) => req.method === 'PUT' ? photoLimit(req, res, next) : next());
+// Comunicados podem include imagens base64 — precisa do limite estendido
+app.use('/api/comunicados', (req, res, next) => (req.method === 'POST' || req.method === 'PUT') ? photoLimit(req, res, next) : next());
+
+// Sanitização Global de Inputs (XSS e NoSQL Injection Protection)
+app.use((req, res, next) => {
+    if (req.body) {
+        sanitizeObject(req.body);
+    }
+    next();
+});
+
+// ============================================
+// PROTEÇÍO CSRF (Double Submit Cookie)
+// ============================================
+// 1. Define o cookie CSRF em toda resposta
+app.use(csrfCookieSetter);
+// 2. Valida o token CSRF em rotas que mudam estado (POST/PUT/DELETE)
+app.use('/api', csrfValidator);
+
+// Aplicar limiters específicos antes das rotas gerais
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
+app.use('/api/auth/reset-password', authLimiter);
+
+// Rotas
+app.use('/api', apiRoutes);
+
+// ============================================
+// SERVIR ARQUIVOS ESTÁTICOS — RESTRITO
+// ============================================
+// SEGURANÇA: Serve apenas arquivos públicos do frontend.
+// Antes servia toda a raiz do projeto, expondo .env.example, README, etc.
+// Agora usa uma lista explícita de extensões e pastas permitidas.
+const frontendPath = path.join(__dirname, '../../');
+
+// Bloqueia acesso a arquivos sensíveis
+app.use((req, res, next) => {
+    const blockedPatterns = [
+        /\.env/i,
+        /\.git/i,
+        /\.npmrc/i,
+        /node_modules/i,
+        /package\.json/i,
+        /package-lock\.json/i,
+        /\.md$/i,
+        /\.py$/i,
+        /\.yml$/i,
+        /\.yaml$/i,
+        /backend\//i,
+        /scratch\//i,
+        /\.claude\//i,
+        /scripts\//i
+    ];
+
+    if (blockedPatterns.some(pattern => pattern.test(req.path))) {
+        return res.status(403).json({ success: false, error: 'Acesso negado' });
+    }
+    next();
+});
+
+app.use(express.static(frontendPath, {
+  setHeaders: (res, path) => {
+    if (path.endsWith('.woff2')) res.setHeader('Content-Type', 'font/woff2');
+    if (path.endsWith('.woff'))  res.setHeader('Content-Type', 'font/woff');
+  }
+}));
+
+// Catch-all para SPA: Qualquer rota não-API retorna o index.html
+app.get('*', (req, res) => {
+    if (req.path.startsWith('/api')) {
+        return res.status(404).json({ success: false, error: 'Endpoint não encontrado' });
+    }
+    res.sendFile(path.join(frontendPath, 'index.html'));
+});
+
+// Tratamento de Erro (Opaco em Produção — não vaza stack traces)
+app.use((err, req, res, next) => {
+    // Payload Too Large — imagens muito grandes
+    if (err.type === 'entity.too.large' || err.status === 413) {
+        return res.status(413).json({
+            success: false,
+            error: 'O tamanho total das imagens excede o limite permitido (10MB). Reduza o tamanho ou quantidade das imagens.'
+        });
+    }
+
+    const statusCode = err.status || 500;
+
+    logger.error(`[Error Handler] ${err.message}`, {
+        requestId: req.requestId,
+        method: req.method,
+        path: req.originalUrl,
+        status: statusCode,
+        stack: process.env.NODE_ENV !== 'production' ? err.stack : undefined,
+    });
+
+    // Alerta automático para erros 5xx no handler global
+    if (statusCode >= 500) {
+        logger.alert('UNHANDLED_ERROR', err.message, {
+            requestId: req.requestId,
+            path: req.originalUrl,
+        });
+    }
+    
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    res.status(statusCode).json({
+        success: false,
+        message: isProduction ? 'Erro interno do servidor.' : err.message,
+        // Detalhes extras apenas em dev
+        error: isProduction ? {} : err
+    });
+});
+
+module.exports = app;

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Gerenciar Salas - Sistema Escolar">
+    <title>Gerenciar Salas - Sistema Escolar</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="../favicon/favicon.png">    <link rel="apple-touch-icon" href="../favicon/favicon.png">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="../css/variables.css">
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components-new.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <link rel="stylesheet" href="../css/gerenciar-salas.css">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../css/watermark.css">
+    <!-- Tailwind CSS Play CDN — preflight desabilitado para nao conflitar com CSS existente -->
+    <!-- Offline Compiled Tailwind CSS -->
+    <link rel="stylesheet" href="../css/tailwind-built.css">    <link rel="stylesheet" href="../css/responsive-global.css?v=1.0">
+    <link rel="stylesheet" href="../css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="../css/reactions.css?v=1.0">
+</head>
+
+<body>
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Sistema Escolar</h2>
+            <p class="splash-subtitle">Gerenciar Salas</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="../js/splash-screen.js"></script>
+
+    <!-- Development Notice -->
+    <div class="dev-notice">
+        <i class="bi bi-exclamation-triangle"></i>
+        Sistema em desenvolvimento. Pode haver bugs.
+    </div>
+
+    <div class="dashboard-page">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <button class="btn btn-secondary btn-sm" data-href="dashboard.html">
+                        <i class="bi bi-arrow-left"></i>
+                        <span>Voltar</span>
+                    </button>
+                    <div class="header-logo" style="margin-left: 20px;">
+                        <i class="bi bi-door-open-fill"></i>
+                        <span>Gerenciar Salas</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="dashboard-main">
+            <div class="dashboard-container">
+                <div class="welcome-section">
+                    <div class="welcome-content">
+                        <h1>Controle de Professores por Sala</h1>
+                        <p>Remova ou adicione atribuições de professores em cada turma.</p>
+                    </div>
+                </div>
+
+                <!-- Filtros -->
+                <div class="filters-section glass-card mb-xl">
+                    <div class="search-box">
+                        <i class="bi bi-search"></i>
+                        <input type="text" id="searchSala" placeholder="Buscar sala (ex: 1ºA)...">
+                    </div>
+                </div>
+
+                <!-- Grid de Salas -->
+                <div id="salasGrid" class="salas-management-grid">
+                    <div class="loading-state">
+                        <div class="spinner"></div>
+                        <p>Carregando salas e professores...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Atribuir Professor -->
+    <div id="modalAtribuicao" class="modal">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h2><i class="bi bi-person-plus-fill"></i> Atribuir Professor</h2>
+                <button class="btn-close" id="btn-fechar-modal-salas">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="modalSalaNome" class="text-secondary mb-lg">Sala: <strong>-</strong></p>
+                
+                <div class="form-group mb-md">
+                    <label class="form-label">Selecione o Professor</label>
+                    <select id="selectProfessor" class="form-select">
+                        <option value="">Carregando professores...</option>
+                    </select>
+                </div>
+
+                 <div class="form-group">
+                    <label class="form-label">Tipo de Atribuição</label>
+                    <div class="radio-group">
+                        <label class="radio-item">
+                            <input type="radio" name="tipoAtribuicao" value="principal" checked>
+                            <span><i class="bi bi-star-fill text-warning"></i> Professor Regente</span>
+                        </label>
+                        <label class="radio-item">
+                            <input type="radio" name="tipoAtribuicao" value="adicional">
+                            <span><i class="bi bi-journal-bookmark-fill"></i> Professor de Matéria</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Bloco de Seleção Dinâmica para Professor de Matéria -->
+                <div id="subGrupoMateria" class="hidden mt-4 p-3 rounded-lg border border-slate-700 bg-slate-800/50" style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; margin-top: 15px; padding: 12px;">
+                    <label class="form-label text-sm font-semibold mb-2 block" style="font-size: 0.9rem; font-weight: 600; margin-bottom: 8px; display: block; color: var(--text);">Categoria da Matéria</label>
+                    <div class="radio-group mb-3" style="display: flex; gap: 15px; margin-bottom: 12px;">
+                        <label class="radio-item" style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text);">
+                            <input type="radio" name="categoriaMateria" value="peb2" checked>
+                            <span>PEB II</span>
+                        </label>
+                        <label class="radio-item" style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text);">
+                            <input type="radio" name="categoriaMateria" value="oficina">
+                            <span>Oficina / Após Escola</span>
+                        </label>
+                    </div>
+
+                    <!-- Opções PEB II -->
+                    <div id="grupoPeb2" class="form-group mb-2">
+                        <label class="form-label text-xs mb-1 block" style="font-size: 0.8rem; margin-bottom: 4px; display: block; color: var(--text-muted, #94a3b8);">Selecione a Matéria PEB II</label>
+                        <select id="selectPeb2" class="form-select text-sm" style="width: 100%; padding: 8px; border-radius: 6px; background: var(--bg-dark, #0f172a); border: 1px solid var(--border-color, #334155); color: #fff;">
+                            <option value="Artes">Artes</option>
+                            <option value="Inglês">Inglês</option>
+                            <option value="Educação Física">Educação Física</option>
+                        </select>
+                    </div>
+
+                    <!-- Opções Oficina / Após Escola -->
+                    <div id="grupoOficina" class="form-group mb-2 hidden" style="display: none;">
+                        <label class="form-label text-xs mb-1 block" style="font-size: 0.8rem; margin-bottom: 4px; display: block; color: var(--text-muted, #94a3b8);">Selecione a Oficina</label>
+                        <select id="selectOficina" class="form-select text-sm" style="width: 100%; padding: 8px; border-radius: 6px; background: var(--bg-dark, #0f172a); border: 1px solid var(--border-color, #334155); color: #fff;">
+                            <option value="SEBRAE">SEBRAE</option>
+                            <option value="Oficina de Leitura">Oficina de Leitura</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btn-fechar-modal-salas">Cancelar</button>
+                <button class="btn btn-primary" id="btn-salvar-atribuicao">Salvar Atribuição</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="../js/api-config.js"></script>
+    <script defer src="../js/database.js"></script>
+    <script defer src="../js/auth.js"></script>
+    <script defer src="../js/utils.js"></script>
+    <script defer src="../js/gerenciar-salas.js"></script>
+    <script src="../js/vendor.js"></script>
+    <script defer src="../js/events/gerenciar-salas-events.js"></script>
+    <script defer src="../js/reactions.js"></script>
+</body>
+
+</html>
+

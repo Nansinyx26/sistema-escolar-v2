@@ -1,0 +1,44 @@
+services:
+  - type: web
+    name: sistema-escolar-backend
+    runtime: node
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # ── Banco de dados ──────────────────────────────────────────────────────
+      - key: MONGODB_URI
+        sync: false   # Configure no painel do Render → Environment
+      - key: MONGODB_DB_NAME
+        value: escola_db
+
+      # ── Segurança ───────────────────────────────────────────────────────────
+      - key: JWT_SECRET
+        sync: false   # Gere com: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+
+      # ── URLs ────────────────────────────────────────────────────────────────
+      - key: FRONTEND_URL
+        value: https://sistema-escolar-bfty.onrender.com
+
+      # ── Google OAuth (login com Google) ─────────────────────────────────────
+      - key: GOOGLE_CLIENT_ID
+        sync: false   # Console do Google Cloud → APIs & Services → Credentials
+
+      # ── E-mail (Recuperação de senha via Resend) ─────────────────────────────
+      - key: EMAIL_USER
+        value: resend
+      - key: EMAIL_PASS
+        sync: false   # Chave da API do Resend: https://resend.com/api-keys
+
+      # ── TTS: Google Gemini ───────────────────────────────────────────────────
+      - key: GOOGLE_TTS_API_KEY
+        sync: false   # Google AI Studio: https://aistudio.google.com/app/apikey
+
+      # ── TTS: ElevenLabs (opcional — fallback do Gemini) ──────────────────────
+      - key: ELEVENLABS_API_KEY
+        sync: false   # ElevenLabs: https://elevenlabs.io/app/settings/api-keys

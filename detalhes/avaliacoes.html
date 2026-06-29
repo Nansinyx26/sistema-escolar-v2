@@ -1,0 +1,156 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Sistema de Cadastro Escolar - Lista de Avaliações">
+    <title>Avaliações - Sistema Escolar</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="../../favicon/favicon.png">    <link rel="apple-touch-icon" href="../../favicon/favicon.png">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- Theme Init -->
+    <script defer src="../../js/theme.js"></script>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="../../css/main.css">
+    <link rel="stylesheet" href="../../css/components.css">
+    <link rel="stylesheet" href="../../detalhes/detalhes.css">
+    <link rel="stylesheet" href="../../css/watermark.css">
+    <link rel="stylesheet" href="../../css/parallax-glass.css">
+    <link rel="stylesheet" href="../../css/neo-brutal.css">
+    <!-- Tailwind CSS Play CDN — preflight desabilitado para nao conflitar com CSS existente -->
+    <!-- Offline Compiled Tailwind CSS -->
+    <link rel="stylesheet" href="../../css/tailwind-built.css">    <link rel="stylesheet" href="../../css/responsive-global.css?v=1.0">
+    <link rel="stylesheet" href="../../css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="../../css/reactions.css?v=1.0">
+</head>
+
+<body>
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Sistema Escolar</h2>
+            <p class="splash-subtitle">Avaliações</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="../../js/splash-screen.js"></script>
+
+    <div class="page">
+        <!-- Navbar -->
+        <nav class="navbar">
+            <div class="navbar-content">
+                <div class="navbar-brand">
+                    <span class="logo"><i class="bi bi-mortarboard-fill"></i></span>
+                    <span>Sistema Escolar</span>
+                </div>
+                <div class="navbar-nav">
+                    <a href="../../selecionar.html" class="btn btn-ghost"><i class="bi bi-arrow-left"></i> Voltar</a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="container">
+                <!-- Header -->
+                <div class="detalhes-header">
+                    <div class="detalhes-title">
+                        <h1><i class="bi bi-file-earmark-text-fill"></i> Todas as Avaliações</h1>
+                        <p>Histórico completo de notas lançadas no sistema</p>
+                    </div>
+                </div>
+
+                <!-- Lista -->
+                <div class="lista-container">
+                    <div class="toolbar">
+                        <div class="filters">
+                            <select id="filtroMateria" class="form-input" style="width: auto;">
+                                <option value="">Todas as Matérias</option>
+                            </select>
+                            <select id="filtroBimestre" class="form-input" style="width: auto;">
+                                <option value="">Todos os Bimestres</option>
+                                <option value="1">1º Bimestre</option>
+                                <option value="2">2º Bimestre</option>
+                                <option value="3">3º Bimestre</option>
+                                <option value="4">4º Bimestre</option>
+                            </select>
+                        </div>
+                        <div class="search-box">
+                            <span class="search-icon"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-input" placeholder="Buscar aluno..." id="searchAluno">
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="detalhes-table">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Aluno</th>
+                                    <th>Turma</th>
+                                    <th>Matéria</th>
+                                    <th>Avaliação</th>
+                                    <th>Nota</th>
+                                </tr>
+                            </thead>
+                            <tbody id="avaliacoesTableBody">
+                                <tr class="loading-row">
+                                    <td colspan="6">
+                                        <div class="spinner spinner-sm" style="margin: 0 auto; margin-bottom: 10px;">
+                                        </div>
+                                        Carregando avaliações...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="empty-state hidden" id="emptyState">
+                        <div class="empty-state-icon"><i class="bi bi-inbox"></i></div>
+                        <h3>Nenhuma avaliação encontrada</h3>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Watermark -->
+        <div class="watermark">
+            <span class="watermark-icon"><i class="bi bi-laptop"></i></span>
+            <span class="watermark-text">Desenvolvido por NanDev</span>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script defer src="../../js/database.js"></script>
+    <script defer src="../../js/auth.js"></script>
+    <script defer src="../../js/utils.js"></script>
+    <script defer src="../../detalhes/avaliacoes.js"></script>
+    <script defer src="../../js/watermark.js"></script>
+    <script defer src="../../js/parallax.js"></script>
+    <script src="../../js/vendor.js"></script>
+    <script defer src="../../js/reactions.js"></script>
+</body>
+
+</html>
