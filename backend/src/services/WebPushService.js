@@ -25,6 +25,10 @@ try {
     logger.error('❌ [WebPush] Erro crítico ao configurar chaves VAPID:', err.message);
 }
 
+exports.getPublicKey = () => {
+    return vapidKeys.publicKey;
+};
+
 /**
  * Envia uma notificação push para uma inscrição específica.
  */

@@ -95,3 +95,12 @@ exports.subscribe = async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 };
+
+exports.getVapidPublicKey = async (req, res) => {
+    try {
+        const WebPushService = require('../services/WebPushService');
+        res.json({ success: true, publicKey: WebPushService.getPublicKey() });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};

@@ -7,9 +7,9 @@
  */
 
 const cron = require('node-cron');
-const Comunicado  = require('../models/Comunicado');
+const Comunicado = require('../models/Comunicado');
 const Notificacao = require('../models/Notificacao');
-const logger      = require('../utils/logger');
+const logger = require('../utils/logger');
 
 /**
  * Gera o texto do resumo diário com base nos comunicados publicados hoje.
@@ -17,7 +17,7 @@ const logger      = require('../utils/logger');
 async function gerarResumo() {
     const hoje = new Date();
     const inicioDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 0, 0, 0);
-    const fimDia    = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59);
+    const fimDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59);
 
     // Comunicados publicados hoje
     const comunicados = await Comunicado.find({
@@ -71,17 +71,17 @@ async function enviarDigest() {
         }
 
         await Notificacao.create({
-            id:           `digest_${Date.now()}`,
-            tipo:         'resumo_diario',
-            categoria:    'direcao',
-            prioridade:   'normal',
-            titulo:       resumo.titulo,
-            mensagem:     resumo.mensagem,
+            id: `digest_${Date.now()}`,
+            tipo: 'resumo_diario',
+            categoria: 'direcao',
+            prioridade: 'normal',
+            titulo: resumo.titulo,
+            mensagem: resumo.mensagem,
             destinatarios: 'todos',   // Todos os usuários
             paraResponsavel: true,    // Visível também para responsáveis
-            criadoPor:    'Sistema',
-            escolaId:     'default',
-            status:       'enviado',
+            criadoPor: 'Sistema',
+            escolaId: 'default',
+            status: 'enviado',
         });
 
         logger.info(`[DailyDigest] Resumo diário enviado com ${resumo.total} comunicado(s).`);

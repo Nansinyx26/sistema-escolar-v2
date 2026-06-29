@@ -449,6 +449,64 @@ const PortalResponsavel: React.FC = () => {
     if (authUser) loadData();
   }, [authUser, loadData]);
 
+  // Helper to convert VAPID public key
+  const urlBase64ToUint8Array = (base64String: string) => {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+      .replace(/\-/g, '+')
+      .replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  };
+
+  // --- Push Notifications Setup ---
+  useEffect(() => {
+    if (!authUser) return;
+
+    const initPush = async () => {
+      if ('serviceWorker' in navigator && 'PushManager' in window && window.Notification) {
+        try {
+          if (Notification.permission === 'denied') return;
+
+          const { getVapidPublicKey, subscribePush } = await import('../services/apiService');
+          
+          // 1. Get VAPID public key
+          const keyData = await getVapidPublicKey();
+          if (!keyData || !keyData.publicKey) return;
+
+          // 2. Request permission if not yet decided
+          if (Notification.permission !== 'granted') {
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') return;
+          }
+
+          // 3. Register push
+          const registration = await navigator.serviceWorker.ready;
+          let subscription = await registration.pushManager.getSubscription();
+
+          if (!subscription) {
+            subscription = await registration.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(keyData.publicKey)
+            });
+          }
+
+          // 4. Save subscription in profile
+          await subscribePush(subscription);
+          console.log('📢 [Push] Inscrição de notificações Push ativa.');
+        } catch (err: any) {
+          console.warn('⚠️ [Push] Falha ao configurar Push no portal:', err.message);
+        }
+      }
+    };
+
+    initPush();
+  }, [authUser]);
+
   // ─── Login handler ─────────────────────────────────────────────────────────
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

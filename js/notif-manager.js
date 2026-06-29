@@ -14,10 +14,73 @@ window.NotifManager = (function() {
         return match ? decodeURIComponent(match[1]) : null;
     };
 
+    function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding)
+            .replace(/\-/g, '+')
+            .replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    }
+
+    async function setupPushNotifications() {
+        try {
+            if (Notification.permission === 'denied') return;
+            
+            // 1. Busca chave pública VAPID
+            const keyRes = await fetch('/api/notifications/realtime/vapid-public-key', { credentials: 'include' });
+            const keyJson = await keyRes.json();
+            if (!keyJson.success || !keyJson.publicKey) {
+                console.warn('[Push] VAPID Key não encontrada no backend.');
+                return;
+            }
+
+            // 2. Garante permissão
+            if (Notification.permission !== 'granted') {
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') return;
+            }
+
+            // 3. Registra/Inscreve
+            const registration = await navigator.serviceWorker.ready;
+            let subscription = await registration.pushManager.getSubscription();
+            
+            if (!subscription) {
+                subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(keyJson.publicKey)
+                });
+            }
+
+            // 4. Salva a inscrição no perfil do usuário
+            await fetch('/api/notifications/realtime/subscribe', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': getCsrfToken()
+                },
+                credentials: 'include',
+                body: JSON.stringify(subscription)
+            });
+            console.log('📢 [Push] Inscrição de notificações Push configurada com sucesso.');
+        } catch (err) {
+            console.warn('⚠️ [Push] Erro ao registrar notificações Push:', err.message);
+        }
+    }
+
     async function init() {
         const btn = document.getElementById('notif-btn');
         const panel = document.getElementById('notif-panel');
         const markAllBtn = document.getElementById('btn-marcar-lidas');
+
+        // Configura Push Notifications em segundo plano se suportado pelo dispositivo
+        if ('serviceWorker' in navigator && 'PushManager' in window && window.Notification) {
+            setupPushNotifications().catch(e => console.error(e));
+        }
 
         if (!btn || !panel) return;
 

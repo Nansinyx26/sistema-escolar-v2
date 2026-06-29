@@ -93,3 +93,47 @@ self.addEventListener('fetch', event => {
         })
     );
 });
+
+// Escuta eventos push de notificações
+self.addEventListener('push', function(event) {
+    let data = { title: 'Escola Jaguari', body: 'Você tem uma nova atualização.' };
+    if (event.data) {
+        try {
+            data = event.data.json();
+        } catch (e) {
+            data.body = event.data.text();
+        }
+    }
+
+    const options = {
+        body: data.body,
+        icon: '/icon-512.png',
+        badge: '/icon-512.png',
+        vibrate: [100, 50, 100],
+        data: {
+            url: data.url || '/'
+        }
+    };
+
+    event.waitUntil(
+        self.registration.showNotification(data.title, options)
+    );
+});
+
+// Ação ao clicar na notificação
+self.addEventListener('notificationclick', function(event) {
+    event.notification.close();
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+            const targetUrl = event.notification.data.url;
+            for (const client of clientList) {
+                if (client.url === targetUrl && 'focus' in client) {
+                    return client.focus();
+                }
+            }
+            if (clients.openWindow) {
+                return clients.openWindow(targetUrl);
+            }
+        })
+    );
+});

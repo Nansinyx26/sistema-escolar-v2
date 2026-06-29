@@ -520,3 +520,16 @@ export async function getHeatmapData(): Promise<HeatmapEntry[]> {
 export async function getBIInsights(): Promise<BIInsights> {
   return apiFetch<BIInsights>('/ia/insights-global');
 }
+
+/** Get VAPID public key for push notifications. */
+export async function getVapidPublicKey(): Promise<{ publicKey: string }> {
+  return apiFetch<{ publicKey: string }>('/notifications/realtime/vapid-public-key');
+}
+
+/** Subscribe to push notifications. */
+export async function subscribePush(subscription: any): Promise<void> {
+  await apiFetch<void>('/notifications/realtime/subscribe', {
+    method: 'POST',
+    body: JSON.stringify(subscription),
+  });
+}
