@@ -63,8 +63,6 @@ const checkDuplicateClass = async (req, res, next) => {
                 $or: turmaConditions.length > 0 ? turmaConditions : [{ turmaId: "NENHUMA" }]
             };
 
-            console.log('[Middleware Duplicate] Query Grade:', JSON.stringify(queryGrade));
-
             const grades = await GradeHoraria.find(queryGrade);
 
             const slotAtual = grades.find(g => {

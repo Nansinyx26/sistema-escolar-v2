@@ -4,7 +4,7 @@ const logger = require('./logger');
 const connectDB = async () => {
   try {
     let uri = process.env.MONGODB_URI;
-    const dbName = process.env.MONGODB_DB_NAME || 'test';
+    const dbName = 'test'; // Enforce 'test' database name globally
     
     if (!uri) {
         if (process.env.NODE_ENV !== 'production') {
@@ -19,6 +19,32 @@ const connectDB = async () => {
         }
     }
 
+    // Programmatically ensure that the URI path points to '/test'
+    if (uri && !global.__MONGOD__) {
+        const protocolEndIndex = uri.indexOf('://');
+        if (protocolEndIndex !== -1) {
+            const afterProtocol = uri.slice(protocolEndIndex + 3);
+            const slashIndex = afterProtocol.indexOf('/');
+            if (slashIndex !== -1) {
+                const absoluteSlashIndex = protocolEndIndex + 3 + slashIndex;
+                const queryIndex = uri.indexOf('?', absoluteSlashIndex);
+                if (queryIndex !== -1) {
+                    uri = uri.slice(0, absoluteSlashIndex) + '/test' + uri.slice(queryIndex);
+                } else {
+                    uri = uri.slice(0, absoluteSlashIndex) + '/test';
+                }
+            } else {
+                const queryIndex = afterProtocol.indexOf('?');
+                if (queryIndex !== -1) {
+                    const absoluteQueryIndex = protocolEndIndex + 3 + queryIndex;
+                    uri = uri.slice(0, absoluteQueryIndex) + '/test' + uri.slice(absoluteQueryIndex);
+                } else {
+                    uri = uri + '/test';
+                }
+            }
+        }
+    }
+
     // Log para conferência (seguro — credenciais mascaradas)
     const maskedUri = uri.replace(/:([^@]+)@/, ':****@');
     logger.info('🔌 Conectando ao banco de dados', { dbName, uri: maskedUri });
@@ -29,8 +55,10 @@ const connectDB = async () => {
           serverSelectionTimeoutMS: 5000 // Limite de 5 segundos para falha
         });
         logger.info('✅ MongoDB conectado com sucesso', { dbName });
+        // Auto-criação de todas as coleções esperadas no startup
+        await _ensureCollectionsExist();
     } catch (err) {
-        if (process.env.NODE_ENV !== 'production' && !global.__MONGOD__) {
+        if (process.env.NODE_ENV === 'development' && !global.__MONGOD__) {
             logger.warn('Falha ao conectar ao MongoDB local — iniciando MongoDB em memória', { error: err.message });
             const { MongoMemoryServer } = require('mongodb-memory-server');
             const mongod = await MongoMemoryServer.create();
@@ -43,8 +71,8 @@ const connectDB = async () => {
         }
     }
 
-    // Se estiver em dev e conectado com sucesso (mesmo com URI externa), tenta seed
-    if (process.env.NODE_ENV !== 'production') {
+    // Se estiver explicitamente em dev e conectado com sucesso, tenta seed
+    if (process.env.NODE_ENV === 'development') {
         await _seedDevData();
     }
 
@@ -139,6 +167,43 @@ async function _seedDevData() {
         await Nota.create(notasData);
         logger.info('✅ [SEED] Turmas, Alunos e Notas criados com sucesso.');
     }
+}
+
+/**
+ * Garante que todas as coleções esperadas pelos modelos Mongoose sejam criadas no boot
+ */
+async function _ensureCollectionsExist() {
+    const fs = require('fs');
+    const path = require('path');
+    
+    logger.info('🔧 Verificando/Criando coleções do sistema no banco...');
+    
+    // 1. Carregar todos os arquivos de models para garantir registro
+    const modelsDir = path.join(__dirname, '../models');
+    if (fs.existsSync(modelsDir)) {
+        fs.readdirSync(modelsDir).forEach(file => {
+            if (file.endsWith('.js')) {
+                try {
+                    require(path.join(modelsDir, file));
+                } catch (e) {
+                    // Ignora silenciosamente erros de carregamento individual na importação inicial
+                }
+            }
+        });
+    }
+    
+    // 2. Chamar createCollection() para cada modelo para forçar a criação com índices no banco
+    const models = Object.values(mongoose.models);
+    let createdCount = 0;
+    for (const model of models) {
+        try {
+            await model.createCollection();
+            createdCount++;
+        } catch (err) {
+            logger.warn(`⚠️ Não foi possível criar coleção para o modelo ${model.modelName}:`, { error: err.message });
+        }
+    }
+    logger.info(`✅ Verificação concluída. ${createdCount} coleções garantidas no banco.`);
 }
 
 module.exports = connectDB;

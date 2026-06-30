@@ -15,7 +15,7 @@ require('dotenv').config();
 
 // Configuração
 const MONGODB_URI = process.env.MONGODB_URI;
-const DB_NAME = 'escola_db';
+const DB_NAME = 'test';
 const JSON_FILE = './data/escola_database.json';
 
 if (!MONGODB_URI) {

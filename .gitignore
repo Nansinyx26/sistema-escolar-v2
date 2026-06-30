@@ -1,46 +1,28 @@
-# Dependências
+# Node dependencies
 node_modules/
-backend/node_modules/
+npm-debug.log*
 
-# Configurações sensíveis — NUNCA versionar
+# Environment and secrets
 .env
-*.env
 .env.local
-*.env.local
-backend/.env
 
-# Dados locais (NUNCA versionar - credenciais migradas para o banco/env)
-data/
-
-# Sistema e Logs
-*.log
-.DS_Store
-Thumbs.db
-
-# Pastas de build/temporárias
-dist/
-!portal-responsavel/dist/
-.cache/
-scratch/
-
-# Documentação local e credenciais
-docs/
-
-# Scripts de Reset e Credenciais Sensíveis (NUNCA versionar)
-backend/scripts/reset_user_password.js
-backend/scripts/reset_admin.js
-backend/scripts/reset_admin_password.js
-backend/scripts/temp_reset_pai.js
-backend/scripts/create_test_user.js
-backend/scripts/inspect_students.js
-
-# Códigos de recuperação temporários (debug)
-backend/latest_code.txt
-backend/*.txt
+# Logs and diagnostics
 backend/*.log
-backend/crash_log*
+backend/crash_log.txt
+backend/crash_log_utf8.txt
 backend/output.log
 backend/test_output.txt
-portal-responsavel/temp.css
+backend/scripts/collections_output.txt
+backend/scripts/collections.json
+env.txt
+
+# Confidentials (LGPD) — School schedules and worksheets
+direcao/horarios_consolidado.json
+*.xlsx
 Horario Jaguari 2026/
-**/horarios_consolidado.json
+
+# System / editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

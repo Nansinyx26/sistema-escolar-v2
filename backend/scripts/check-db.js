@@ -22,14 +22,6 @@ const checkDB = async () => {
         // Check GridFS files in test
         const files = await mongoose.connection.db.collection('uploads.files').find({}).limit(5).toArray();
         console.log('GRIDFS_FILES_test:', JSON.stringify(files.map(f => ({ filename: f.filename, id: f._id })), null, 2));
-
-        // Let's also check escuela_db
-        const dbEscola = mongoose.connection.useDb('escola_db');
-        const Users2 = dbEscola.collection('usuarios');
-        const users2 = await Users2.find({}).limit(5).toArray();
-        console.log('USERS_escola_db_COUNT:', users2.length);
-        console.log('USERS_escola_db_DATA:', JSON.stringify(users2.map(u => ({ nome: u.nome, foto: u.foto })), null, 2));
-
         await mongoose.disconnect();
     } catch (err) {
         console.error('ERRO_FATAL:', err.message);

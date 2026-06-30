@@ -17,7 +17,7 @@ module.exports = async function horizontalFilter(req, res, next) {
     if (req.user.perfil === 'professor') {
         try {
             // Busca o cadastro do professor para ver suas turmas atribuídas
-            const prof = await Professor.findOne({ email: req.user.email }).lean();
+            const prof = await Professor.findOne({ idUsuario: String(req.user.id || req.user._id) }).lean();
             
             if (!prof) {
                 // Se for professor mas não tiver cadastro de professor (estranho), bloqueia tudo

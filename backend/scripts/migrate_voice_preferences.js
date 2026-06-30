@@ -33,7 +33,7 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 const mongoose = require('mongoose');
 
 const MONGODB_URI = process.env.MONGODB_URI;
-const MONGODB_DB  = process.env.MONGODB_DB_NAME || 'escola_db';
+const MONGODB_DB  = process.env.MONGODB_DB_NAME || 'test';
 
 if (!MONGODB_URI || MONGODB_URI.includes('<usuario>')) {
     console.error('❌ MONGODB_URI não configurada no backend/.env');

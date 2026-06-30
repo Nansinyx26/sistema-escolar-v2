@@ -17,7 +17,7 @@ const MONGODB_URI = process.env.MONGODB_URI;
 if (!MONGODB_URI) {
     console.error('\n❌ ERRO: MONGODB_URI não encontrada!');
     console.error('   Crie o arquivo backend/.env com a linha:');
-    console.error('   MONGODB_URI=mongodb+srv://<usuario>:<senha>@cluster0.mongodb.net/escola_db\n');
+    console.error('   MONGODB_URI=mongodb+srv://<usuario>:<senha>@cluster0.mongodb.net/test\n');
     process.exit(1);
 }
 
@@ -29,7 +29,7 @@ async function diagnosticar() {
     try {
         const maskedUri = MONGODB_URI.replace(/:([^@]+)@/, ':****@');
         console.log(`🔌 Conectando: ${maskedUri}`);
-        await mongoose.connect(MONGODB_URI, { dbName: process.env.MONGODB_DB_NAME || 'escola_db' });
+        await mongoose.connect(MONGODB_URI, { dbName: process.env.MONGODB_DB_NAME || 'test' });
         console.log('✅ Conexão estabelecida!\n');
 
         const db = mongoose.connection.db;

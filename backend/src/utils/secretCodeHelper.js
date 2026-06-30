@@ -35,7 +35,7 @@ async function generateUniqueSecretCode() {
         code = generateRandomCode(); 
     }
 
-    console.log(`🔑 [SECRET-CODES] Generated unique code: ${code} after ${attempts} attempts.`);
+    console.log(`🔑 [SECRET-CODES] Generated unique code after ${attempts} attempts.`);
     return code;
 }
 
@@ -66,7 +66,7 @@ async function initializeSecretCodes() {
             // Setting it to null will trigger the pre-save hook to generate a unique code
             student.codigoSecreto = undefined;
             await student.save();
-            console.log(`   └─ Student: ${student.nome} -> Code: ${student.codigoSecreto}`);
+            console.log(`   └─ Student: ${student.nome} -> Secret code initialized`);
             
             // Notify frontend in real-time about new student or code updates if socket.io is active
             if (global.io) {

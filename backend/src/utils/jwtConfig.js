@@ -6,12 +6,10 @@
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-// Em produção, o JWT_SECRET é OBRIGATÓRIO
-if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
-    throw new Error('CRITICAL: JWT_SECRET não definido. O servidor não pode iniciar em modo de produção por segurança.');
+if (!JWT_SECRET && process.env.NODE_ENV !== 'test') {
+    throw new Error('CRITICAL: JWT_SECRET não definido. O servidor não pode iniciar sem um JWT_SECRET definido por segurança.');
 }
 
-// Em desenvolvimento, usa um fallback (apenas para conveniência local)
-const ACTUAL_JWT_SECRET = JWT_SECRET || 'escola-secret-key-dev-only';
+const ACTUAL_JWT_SECRET = JWT_SECRET || 'escola-secret-key-jest-fallback';
 
 module.exports = ACTUAL_JWT_SECRET;
