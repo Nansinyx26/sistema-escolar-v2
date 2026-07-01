@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <tr>
                         <td style="font-weight:600;">${item.nome}</td>
                         <td>
-                            <code style="background:rgba(168,85,247,0.1);color:#c084fc;padding:4px 10px;border-radius:6px;font-weight:700;letter-spacing:1.5px;font-size:0.9rem;">${item.codigoSecreto || '------'}</code>
+                            <code style="background:rgba(16,185,129,0.1);color:#34d399;padding:4px 10px;border-radius:6px;font-weight:700;letter-spacing:1.5px;font-size:0.9rem;">${item.codigoSecreto || '------'}</code>
                         </td>
                         <td>${item.ano || '-'}</td>
                         <td>${item.turma || '-'}</td>

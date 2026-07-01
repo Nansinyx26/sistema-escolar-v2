@@ -11,9 +11,14 @@ class VoiceService {
      * Gera texto a partir de um prompt usando Google Gemini 1.5 Flash.
      */
     async generateInsightText(prompt) {
-        const apiKey = process.env.GOOGLE_TTS_API_KEY;
+        // Aceita múltiplos nomes de variável para a chave do Gemini.
+        // No Render a chave está configurada como GEMINI_KEY.
+        const apiKey = process.env.GEMINI_KEY
+            || process.env.GEMINI_API_KEY
+            || process.env.GOOGLE_TTS_API_KEY
+            || process.env.GOOGLE_API_KEY;
         if (!apiKey) {
-            const err = new Error('GOOGLE_TTS_API_KEY não configurada no servidor.');
+            const err = new Error('Chave do Gemini não configurada no servidor (GEMINI_KEY).');
             err.quotaExceeded = true;
             throw err;
         }

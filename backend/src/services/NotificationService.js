@@ -7,6 +7,40 @@ const logger = require('../utils/logger');
 /**
  * Hub central de notificações.
  */
+function normalizeCategoria(value) {
+    const normalized = String(value || '').trim().toLowerCase();
+    const aliases = {
+        'direção': 'direcao',
+        'direcao': 'direcao',
+        'academico': 'academico',
+        'acadêmico': 'academico',
+        'financeiro': 'financeiro',
+        'saude': 'saude',
+        'evento': 'evento',
+        'informativo': 'informativo',
+        'todos': 'todos',
+        'professores': 'professores',
+        'responsaveis': 'responsaveis',
+        'responsáveis': 'responsaveis',
+        'sistema': 'sistema'
+    };
+    return aliases[normalized] || 'informativo';
+}
+
+function normalizePrioridade(value) {
+    const normalized = String(value || '').trim().toLowerCase();
+    const aliases = {
+        'baixa': 'normal',
+        'media': 'normal',
+        'média': 'normal',
+        'normal': 'normal',
+        'importante': 'alta',
+        'urgente': 'alta',
+        'alta': 'alta'
+    };
+    return aliases[normalized] || 'normal';
+}
+
 exports.notify = async ({
     tipo = 'informativo',
     categoria = 'academico',
@@ -29,8 +63,8 @@ exports.notify = async ({
         // 1. Salvar no Banco de Dados
         const novaNotif = new Notificacao({
             tipo,
-            categoria,
-            prioridade,
+            categoria: normalizeCategoria(categoria),
+            prioridade: normalizePrioridade(prioridade),
             titulo,
             mensagem,
             corpoHtml,

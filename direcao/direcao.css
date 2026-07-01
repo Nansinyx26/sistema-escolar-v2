@@ -5,12 +5,12 @@
     --panel: #0f0d18;
     --card: #171226;
     --muted: #9aa3b2;
-    --accent-1: #7c3aed;
-    /* roxo premium */
-    --accent-2: #a78bfa;
-    /* lilás */
+    --accent-1: #10b981;
+    /* mint premium */
+    --accent-2: #34d399;
+    /* mint claro */
     --accent-3: #2dd4bf;
-    /* verde contraste */
+    /* teal contraste */
     --gold: #d4af37;
     --radius-2xl: 18px;
     --shadow-premium: 0 20px 40px rgba(2, 2, 8, 0.6);
@@ -23,7 +23,7 @@
     --bg-white: var(--card);
     --text-color: #e6eef6;
     --text-muted: var(--muted);
-    --border-color: rgba(124, 58, 237, 0.2);
+    --border-color: rgba(16, 185, 129, 0.2);
 }
 
 /* Base Overrides */
@@ -142,7 +142,7 @@ select.form-input {
 .form-input:focus {
     outline: none;
     border-color: var(--accent-1);
-    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.25);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
 }
 
 /* ===================== BOTÕES ===================== */
@@ -164,7 +164,7 @@ select.form-input {
 .btn-primary {
     background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
     color: #08060a;
-    box-shadow: 0 8px 26px rgba(124, 58, 237, 0.2);
+    box-shadow: 0 8px 26px rgba(16, 185, 129, 0.2);
 }
 
 .btn-primary:hover {
@@ -179,18 +179,18 @@ select.form-input {
 }
 
 .btn-outline:hover {
-    background: rgba(124, 58, 237, 0.1);
+    background: rgba(16, 185, 129, 0.1);
     transform: translateY(-2px);
 }
 
 .btn-ghost {
     background: transparent;
     color: var(--accent-2);
-    border: 1px solid rgba(124, 58, 237, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.1);
 }
 
 .btn-ghost:hover {
-    background: rgba(124, 58, 237, 0.1);
+    background: rgba(16, 185, 129, 0.1);
     transform: translateY(-2px);
 }
 
@@ -245,14 +245,14 @@ select.form-input {
 .stat-card-value {
     font-size: 1.9em;
     font-weight: 900;
-    color: #7c3aed;
-    text-shadow: 0 0 10px rgba(124, 58, 237, 0.6);
+    color: #10b981;
+    text-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
     margin: 4px 0;
 }
 
 .stat-card-label {
     font-size: 0.75em;
-    color: #b6a9ff;
+    color: #8ff0d8;
     text-transform: uppercase;
     letter-spacing: 1px;
 }
@@ -286,7 +286,7 @@ select.form-input {
     background: linear-gradient(180deg, rgba(16, 12, 28, 0.55), rgba(14, 10, 22, 0.65));
     padding: 20px;
     border-radius: 14px;
-    border: 1px solid rgba(124, 58, 237, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.08);
     min-height: 360px;
     position: relative;
     display: flex;
@@ -327,7 +327,7 @@ canvas {
     background: linear-gradient(180deg, rgba(16, 12, 28, 0.55), rgba(14, 10, 22, 0.65));
     padding: 20px;
     border-radius: 14px;
-    border: 1px solid rgba(124, 58, 237, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.08);
     margin-top: 24px;
 }
 
@@ -345,21 +345,21 @@ canvas {
 }
 
 .table th {
-    background: rgba(124, 58, 237, 0.1);
+    background: rgba(16, 185, 129, 0.1);
     color: var(--accent-2);
     font-weight: 800;
-    border-bottom: 1px solid rgba(124, 58, 237, 0.2);
+    border-bottom: 1px solid rgba(16, 185, 129, 0.2);
     padding: 12px;
     text-align: left;
 }
 
 .table td {
-    border-bottom: 1px solid rgba(124, 58, 237, 0.1);
+    border-bottom: 1px solid rgba(16, 185, 129, 0.1);
     padding: 12px;
 }
 
 .table tr:hover td {
-    background: rgba(124, 58, 237, 0.05);
+    background: rgba(16, 185, 129, 0.05);
 }
 
 /* ===================== STATUS E RANKING ===================== */
@@ -424,12 +424,12 @@ select option {
 }
 
 select option:hover {
-    background-color: #7c3aed;
+    background-color: #10b981;
     color: #000;
 }
 
 select option:checked {
-    background-color: #a78bfa;
+    background-color: #34d399;
     color: #000;
 }
 
@@ -450,7 +450,7 @@ select:focus {
 /* Navbar override for premium theme blending */
 .navbar {
     background: rgba(15, 23, 42, 0.5);
-    border-bottom: 1px solid rgba(124, 58, 237, 0.1);
+    border-bottom: 1px solid rgba(16, 185, 129, 0.1);
     backdrop-filter: blur(10px);
 }
 
@@ -636,7 +636,7 @@ select:focus {
 
 .bi-main-chart-wrapper {
     background: rgba(15, 12, 28, 0.6);
-    border: 1px solid rgba(124, 58, 237, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.1);
     border-radius: 24px;
     padding: 2rem;
     box-shadow: 0 30px 60px rgba(0,0,0,0.4);

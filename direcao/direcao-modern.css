@@ -1,6 +1,6 @@
 /* html/direcao/direcao-modern.css */
 :root {
-    --primary-neon: #6d28d9;
+    --primary-neon: #10b981;
     --secondary-neon: #10b981;
     --bg-dark: #0f172a;
     --card-bg: #1e293b;
@@ -77,7 +77,7 @@ body {
 }
 
 .sidebar-item.active {
-    background: rgba(109, 40, 217, 0.15) !important;
+    background: rgba(16, 185, 129, 0.15) !important;
     color: var(--primary-neon) !important;
     border-left: 4px solid var(--primary-neon) !important;
 }
@@ -85,10 +85,10 @@ body {
 .btn-primary {
     background: var(--primary-neon) !important;
     border: none !important;
-    box-shadow: 0 0 15px rgba(109, 40, 217, 0.4);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
 }
 
 .btn-primary:hover {
-    background: #5b21b6 !important;
-    box-shadow: 0 0 25px rgba(109, 40, 217, 0.6);
+    background: #059669 !important;
+    box-shadow: 0 0 25px rgba(16, 185, 129, 0.6);
 }

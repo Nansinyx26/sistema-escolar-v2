@@ -210,7 +210,7 @@ class DirecaoDashboard {
         const val = parseFloat(value);
         if (val < 5) return '#ef4444'; // Vermelho Vibrante
         if (val < 7) return '#f59e0b'; // Amber Premium
-        return '#8b5cf6'; // Violeta Premium
+        return '#10b981'; // Mint Premium
     }
 
     renderChartTurmas(data) {
@@ -255,9 +255,9 @@ class DirecaoDashboard {
                     label: 'Média por Matéria',
                     data: data.map(d => parseFloat(d.value)),
                     fill: true,
-                    backgroundColor: 'rgba(13, 110, 253, 0.2)',
-                    borderColor: '#0d6efd',
-                    pointBackgroundColor: '#0d6efd'
+                    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                    borderColor: '#10b981',
+                    pointBackgroundColor: '#10b981'
                 }]
             },
             options: {
@@ -274,8 +274,8 @@ class DirecaoDashboard {
         if (this.charts.evolucao) this.charts.evolucao.destroy();
 
         const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 400);
-        gradient.addColorStop(0, 'rgba(124, 58, 237, 0.2)');
-        gradient.addColorStop(1, 'rgba(124, 58, 237, 0)');
+        gradient.addColorStop(0, 'rgba(16, 185, 129, 0.2)');
+        gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
 
         this.charts.evolucao = new Chart(ctx, {
             type: 'line',
@@ -286,15 +286,15 @@ class DirecaoDashboard {
                     data: data.map(d => d.value),
                     fill: true,
                     backgroundColor: gradient,
-                    borderColor: '#8b5cf6',
+                    borderColor: '#10b981',
                     borderWidth: 4,
                     tension: 0.4,
                     pointRadius: 6,
-                    pointBackgroundColor: '#8b5cf6',
+                    pointBackgroundColor: '#10b981',
                     pointBorderColor: '#fff',
                     pointBorderWidth: 2,
                     pointHoverRadius: 10,
-                    pointHoverBackgroundColor: '#10b981',
+                    pointHoverBackgroundColor: '#34d399',
                     pointHoverBorderColor: '#fff',
                     pointHoverBorderWidth: 4
                 }]
@@ -306,7 +306,7 @@ class DirecaoDashboard {
                     legend: { display: false },
                     tooltip: {
                         backgroundColor: 'rgba(15, 12, 28, 0.9)',
-                        titleColor: '#8b5cf6',
+                        titleColor: '#10b981',
                         bodyColor: '#fff',
                         padding: 12,
                         cornerRadius: 10,
@@ -408,7 +408,7 @@ class DirecaoDashboard {
                 <tr>
                     <td style="font-weight:600;">${item.nome}</td>
                     <td>
-                        <code style="background:rgba(168,85,247,0.1);color:#c084fc;padding:4px 10px;border-radius:6px;font-weight:700;letter-spacing:1.5px;font-size:0.9rem;">${item.codigoSecreto}</code>
+                        <code style="background:rgba(16,185,129,0.1);color:#34d399;padding:4px 10px;border-radius:6px;font-weight:700;letter-spacing:1.5px;font-size:0.9rem;">${item.codigoSecreto}</code>
                     </td>
                     <td>${item.ano || '-'}</td>
                     <td>${item.turma || '-'}</td>

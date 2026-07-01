@@ -1,16 +1,50 @@
 const mongoose = require('mongoose');
 
+function normalizeCategoria(value) {
+    const normalized = String(value || '').trim().toLowerCase();
+    const aliases = {
+        'direção': 'direcao',
+        'direcao': 'direcao',
+        'academico': 'academico',
+        'acadêmico': 'academico',
+        'financeiro': 'financeiro',
+        'saude': 'saude',
+        'evento': 'evento',
+        'informativo': 'informativo',
+        'todos': 'todos',
+        'professores': 'professores',
+        'responsaveis': 'responsaveis',
+        'responsáveis': 'responsaveis',
+        'sistema': 'sistema'
+    };
+    return aliases[normalized] || 'informativo';
+}
+
+function normalizePrioridade(value) {
+    const normalized = String(value || '').trim().toLowerCase();
+    const aliases = {
+        'baixa': 'normal',
+        'media': 'normal',
+        'média': 'normal',
+        'normal': 'normal',
+        'importante': 'alta',
+        'urgente': 'alta',
+        'alta': 'alta'
+    };
+    return aliases[normalized] || 'normal';
+}
+
 const NotificacaoSchema = new mongoose.Schema({
     id: { type: String, unique: true },
     tipo: { type: String, required: true }, // 'informativo', 'alerta', etc.
     categoria: { 
         type: String, 
-        enum: ['direcao', 'academico', 'financeiro', 'saude', 'evento'], 
+        enum: ['direcao', 'academico', 'financeiro', 'saude', 'evento', 'informativo', 'todos', 'professores', 'responsaveis', 'sistema'], 
         default: 'informativo' 
     },
     prioridade: { 
         type: String, 
-        enum: ['normal', 'alta'], 
+        enum: ['normal', 'alta', 'media', 'baixa', 'urgente', 'importante'], 
         default: 'normal' 
     },
     titulo: { type: String, required: true },
@@ -30,6 +64,16 @@ const NotificacaoSchema = new mongoose.Schema({
     paraResponsavel: { type: Boolean, default: false },
     criadoPor: { type: String },
     escolaId: { type: String, required: true, default: 'default' }
+});
+
+NotificacaoSchema.pre('validate', function(next) {
+    if (this.categoria !== undefined) {
+        this.categoria = normalizeCategoria(this.categoria);
+    }
+    if (this.prioridade !== undefined) {
+        this.prioridade = normalizePrioridade(this.prioridade);
+    }
+    next();
 });
 
 module.exports = mongoose.model('Notificacao', NotificacaoSchema);

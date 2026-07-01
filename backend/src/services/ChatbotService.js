@@ -9,6 +9,8 @@ const GradeHoraria = require('../models/GradeHoraria');
 const ChatMensagem = require('../models/ChatMensagem');
 const voiceService = require('../services/voiceService');
 const logger       = require('../utils/logger');
+const { PERSONA_PROMPT_PREFIX } = require('./assistantPersona');
+const offlineResponseService    = require('./offlineResponseService');
 
 const DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
@@ -123,7 +125,9 @@ function getConversationalFallback(intent) {
     return fallbacks[intent] || fallbacks.INDEFINIDA;
 }
 
-// Sugestões de navegação retornadas junto com fallback INDEFINIDA/FORA_CONTEXTO
+// Sugestões de navegação retornadas junto com fallback INDEFINIDA/FORA_CONTEXTO.
+// Mantida como base comum; a lista final é ajustada por perfil em
+// getConversationalSuggestions().
 const CONVERSATIONAL_SUGGESTIONS = [
     { label: '📝 Notas e desempenho', alunoId: null },
     { label: '📅 Faltas e frequência', alunoId: null },
@@ -131,6 +135,34 @@ const CONVERSATIONAL_SUGGESTIONS = [
     { label: '🕐 Grade horária', alunoId: null },
     { label: '👨‍🏫 Professores da turma', alunoId: null },
 ];
+
+/**
+ * Retorna as sugestões de navegação adequadas ao perfil do usuário.
+ * - diretor/admin/coordenador/secretaria: veem também "Resumo da escola".
+ * - responsável: NÃO vê "Resumo da escola" nem "Professores da turma".
+ * @param {string} perfil
+ * @returns {Array<{ label: string, alunoId: null }>}
+ */
+function getConversationalSuggestions(perfil) {
+    const base = CONVERSATIONAL_SUGGESTIONS.map(s => ({ ...s }));
+    const perfilAdmin = ['diretor', 'admin', 'coordenador', 'secretaria'].includes(perfil);
+
+    if (perfil === 'responsavel') {
+        // Responsável só enxerga dados do próprio filho — remove itens de turma/escola.
+        return base.filter(s =>
+            !s.label.includes('Professores da turma')
+        );
+    }
+
+    if (perfilAdmin) {
+        return [
+            ...base,
+            { label: '🏫 Resumo da escola', alunoId: null },
+        ];
+    }
+
+    return base;
+}
 
 /**
  * Build the Gemini prompt for conversational (non-DB) messages.
@@ -143,7 +175,9 @@ const CONVERSATIONAL_SUGGESTIONS = [
  * @returns {string} Formatted prompt
  */
 function buildConversationalPrompt({ perfil, nomeUsuario, message }) {
-    return `Você é o assistente virtual de uma escola, integrado a um sistema de gestão escolar.
+    return `${PERSONA_PROMPT_PREFIX}
+
+Você é o assistente virtual de uma escola, integrado a um sistema de gestão escolar.
 
 CONTEXTO:
 O usuário enviou uma mensagem que NÃO requer consulta ao banco de dados (não é sobre notas, 
@@ -687,14 +721,30 @@ async function process({ message, alunoId, perfil, userId, nomeUsuario, userEmai
     // go straight to Gemini with a dedicated conversational prompt, or fall
     // back to a fixed dictionary response if Gemini is unavailable.
     if (isConversationalIntent(intencao)) {
-        const googleApiKey = process.env.GOOGLE_TTS_API_KEY;
+        const googleApiKey = process.env.GEMINI_KEY
+            || process.env.GEMINI_API_KEY
+            || process.env.GOOGLE_TTS_API_KEY
+            || process.env.GOOGLE_API_KEY;
         const showSuggestions = (intencao === 'INDEFINIDA' || intencao === 'FORA_CONTEXTO');
+        const suggestions = getConversationalSuggestions(perfil);
+
+        // Resposta offline com variação de template (persona compartilhada).
+        // Mantém getConversationalFallback (determinístico) para os demais casos.
+        const offlineResponse = () => {
+            if (intencao === 'SAUDACAO') {
+                return offlineResponseService.buildOfflineResponse({ tipo: 'chatbot_saudacao' });
+            }
+            if (showSuggestions) {
+                return offlineResponseService.buildOfflineResponse({ tipo: 'chatbot_indefinida' });
+            }
+            return getConversationalFallback(intencao);
+        };
 
         if (!googleApiKey) {
             return {
-                response: getConversationalFallback(intencao),
+                response: offlineResponse(),
                 alunoId: null,
-                options: showSuggestions ? CONVERSATIONAL_SUGGESTIONS : undefined,
+                options: showSuggestions ? suggestions : undefined,
             };
         }
         const conversationalPrompt = buildConversationalPrompt({ perfil, nomeUsuario, message });
@@ -704,12 +754,12 @@ async function process({ message, alunoId, perfil, userId, nomeUsuario, userEmai
             response = (response || '').replace(/[*_~`#]/g, '').trim();
         } catch (err) {
             logger.warn(`[ChatbotService] Gemini error (conversational): ${err.message} — usando fallback.`);
-            response = getConversationalFallback(intencao);
+            response = offlineResponse();
         }
         return {
             response,
             alunoId: null,
-            options: showSuggestions ? CONVERSATIONAL_SUGGESTIONS : undefined,
+            options: showSuggestions ? suggestions : undefined,
         };
     }
 
@@ -891,4 +941,5 @@ module.exports = {
     buildPrompt,
     buildConversationalPrompt,
     getConversationalFallback,
+    getConversationalSuggestions,
 };
