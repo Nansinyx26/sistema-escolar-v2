@@ -33,20 +33,16 @@ app.set('trust proxy', 1);
 
 // Middleware de Segurança (Helmet)
 // ============================================
-// NOTA DE SEGURANÇA (Atualizado — Roadmap Backlog #1):
-// - 'unsafe-inline' REMOVIDO de script-src e script-src-attr.
-//   Todos os atributos onclick= foram migrados para addEventListener em
-//   arquivos separados (js/events/*.js), viabilizando esta CSP estrita.
-// - 'unsafe-inline' é mantido em style-src pois o frontend usa estilos inline
-// - 'unsafe-eval' não existe — foi mantido removido
+// TODO(security): migrar os poucos <script> inline restantes do frontend
+// legado para arquivos externos ou nonces por rota, permitindo endurecer
+// ainda mais a CSP sem exceções adicionais.
 // ============================================
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             "default-src": ["'self'"],
-            // Adicionado 'unsafe-inline' para permitir funcionamento correto do Google Identity e scripts do portal em produção
-            "script-src": ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "unpkg.com", "cdnjs.cloudflare.com", "cdn.tailwindcss.com", "https://accounts.google.com"],
-            "script-src-attr": ["'unsafe-inline'"], // Permite atributos inline de forma compatível
+            "script-src": ["'self'", "cdn.jsdelivr.net", "unpkg.com", "cdnjs.cloudflare.com", "cdn.tailwindcss.com", "https://accounts.google.com"],
+            "script-src-attr": ["'none'"],
             "style-src": ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "fonts.googleapis.com", "unpkg.com", "cdnjs.cloudflare.com", "https://accounts.google.com"],
             "font-src": ["'self'", "cdn.jsdelivr.net", "fonts.gstatic.com", "data:"],
             // Google profile photos (lh3.googleusercontent.com) + blobs/data URIs
@@ -187,49 +183,47 @@ app.use('/api', apiRoutes);
 // ============================================
 // SERVIR ARQUIVOS ESTÁTICOS — RESTRITO
 // ============================================
-// SEGURANÇA: Serve apenas arquivos públicos do frontend.
-// Antes servia toda a raiz do projeto, expondo .env.example, README, etc.
-// Agora usa uma lista explícita de extensões e pastas permitidas.
-const frontendPath = path.join(__dirname, '../../');
-
-// Bloqueia acesso a arquivos sensíveis
-app.use((req, res, next) => {
-    const blockedPatterns = [
-        /\.env/i,
-        /\.git/i,
-        /\.npmrc/i,
-        /node_modules/i,
-        /package\.json/i,
-        /package-lock\.json/i,
-        /\.md$/i,
-        /\.py$/i,
-        /\.yml$/i,
-        /\.yaml$/i,
-        /backend\//i,
-        /scratch\//i,
-        /\.claude\//i,
-        /scripts\//i
-    ];
-
-    if (blockedPatterns.some(pattern => pattern.test(req.path))) {
-        return res.status(403).json({ success: false, error: 'Acesso negado' });
+const frontendRootPath = path.join(__dirname, '../../');
+const staticDirectories = [
+    'css',
+    'js',
+    'img',
+    'html',
+    'detalhes',
+    'direcao',
+    'portal-responsavel/dist'
+];
+const staticFiles = [
+    'index.html',
+    'manifest.json',
+    'sw.js',
+    'service-worker.js',
+    'favicon.ico',
+    'favicon.svg'
+];
+const staticOptions = {
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.woff2')) res.setHeader('Content-Type', 'font/woff2');
+        if (filePath.endsWith('.woff')) res.setHeader('Content-Type', 'font/woff');
     }
-    next();
+};
+
+staticDirectories.forEach((directory) => {
+    app.use(`/${directory}`, express.static(path.join(frontendRootPath, directory), staticOptions));
 });
 
-app.use(express.static(frontendPath, {
-  setHeaders: (res, path) => {
-    if (path.endsWith('.woff2')) res.setHeader('Content-Type', 'font/woff2');
-    if (path.endsWith('.woff'))  res.setHeader('Content-Type', 'font/woff');
-  }
-}));
+staticFiles.forEach((file) => {
+    app.get(`/${file}`, (req, res) => {
+        res.sendFile(path.join(frontendRootPath, file));
+    });
+});
 
 // Catch-all para SPA: Qualquer rota não-API retorna o index.html
 app.get('*', (req, res) => {
     if (req.path.startsWith('/api')) {
         return res.status(404).json({ success: false, error: 'Endpoint não encontrado' });
     }
-    res.sendFile(path.join(frontendPath, 'index.html'));
+    res.sendFile(path.join(frontendRootPath, 'index.html'));
 });
 
 // Tratamento de Erro (Opaco em Produção — não vaza stack traces)

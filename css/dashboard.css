@@ -391,7 +391,7 @@
     --purple: #9b7fe8;
     --text3: #f8f8f8;
     --b: rgba(255, 255, 255, 0.055);
-    --r: 'Instrument Serif', Georgia, serif;
+    --r: 'Inter', system-ui, sans-serif;
     --m: 'JetBrains Mono', monospace;
 
     background: var(--ink2) !important;

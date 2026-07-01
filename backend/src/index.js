@@ -11,6 +11,7 @@ require('./utils/nodemailerPatch');
 
 const app = require('./app');
 const connectDB = require('./utils/db');
+const { initializeCache } = require('./services/CacheService');
 const { startKeepAlive } = require('./utils/keepAlive');                          // MELHORIA: Previne cold start (Roadmap #5)
 const { startAnonimizacaoAutomatica } = require('./utils/anonimizacaoAutomatica'); // MELHORIA: LGPD cron (Roadmap #14)
 const cron = require('node-cron');
@@ -26,6 +27,9 @@ const startServer = async () => {
     try {
         // 1. Conectar ao Banco de Dados primeiro
         await connectDB();
+
+        // 1b. Inicializar cache virtual (Redis ou Node-cache)
+        await initializeCache();
 
         // Inicializa códigos secretos ausentes dos alunos
         await initializeSecretCodes();
@@ -46,6 +50,26 @@ const startServer = async () => {
             startAnonimizacaoAutomatica();
             // 5. Ativa health monitor periódico (Roadmap #6)
             startHealthMonitor();
+
+            // 5b. Ativa avaliação de métricas e alertas periódicos (Roadmap #6 - Observabilidade)
+            const alertService = require('./services/AlertService');
+            const monitoringService = require('./services/MonitoringService');
+            setInterval(async () => {
+                try {
+                    const health = await monitoringService.health();
+                    const metrics = {
+                        dbHealth: health.database?.ok ?? false,
+                        cacheHealth: health.cache?.ok ?? false,
+                        memoryUsage: process.memoryUsage().heapUsed / process.memoryUsage().heapTotal,
+                        errorRate: health.metrics.requests > 0 ? (health.metrics.errors / health.metrics.requests) : 0,
+                        responseTime: health.metrics.avgResponseTime || 0,
+                    };
+                    await alertService.evaluateMetrics(metrics);
+                } catch (err) {
+                    logger.error('Erro ao avaliar métricas de alerta:', err);
+                }
+            }, 60000);
+
             // 6. Ativa resumo diário às 16h (BRT)
             const { iniciarDailyDigest } = require('./jobs/DailyDigestJob');
             iniciarDailyDigest();
@@ -98,40 +122,35 @@ const startServer = async () => {
                     || socket.handshake.query?.token;
 
                 if (!token) {
-                    // Permite conexão anônima mas sem rooms privadas
-                    socket.user = null;
-                    return next();
+                    return next(new Error('Authentication required'));
                 }
 
                 const decoded = jwt.verify(token, JWT_SECRET);
                 socket.user = decoded;
                 next();
             } catch (err) {
-                // Permite conexão mas sem auth (para landing page etc)
-                socket.user = null;
-                next();
+                next(new Error('Invalid authentication token'));
             }
         });
 
         io.on('connection', (socket) => {
             const user = socket.user;
-            if (user) {
-                // Entra na sala do usuário individual
-                socket.join(`user:${user.id || user._id}`);
-                // Entra na sala do perfil (professor, diretor, admin, responsavel)
-                socket.join(`role:${user.perfil}`);
-                logger.debug(`🔌 [Socket.IO] ${user.nome || 'Usuário'} conectado`, { perfil: user.perfil, room: `user:${user.id || user._id}` });
-            }
+            // Entra na sala do usuário individual
+            socket.join(`user:${user.id || user._id}`);
+            // Entra na sala do perfil (professor, diretor, admin, responsavel)
+            socket.join(`role:${user.perfil}`);
+            logger.debug(`🔌 [Socket.IO] ${user.nome || 'Usuário'} conectado`, { perfil: user.perfil, room: `user:${user.id || user._id}` });
 
             // Evento: usuário quer entrar em sala de mensagem específica
             socket.on('join:message', (messageId) => {
+                if (!socket.user) {
+                    return;
+                }
                 socket.join(`message:${messageId}`);
             });
 
             socket.on('disconnect', () => {
-                if (user) {
-                    logger.debug(`❌ [Socket.IO] ${user.nome || 'Usuário'} desconectado`);
-                }
+                logger.debug(`❌ [Socket.IO] ${user.nome || 'Usuário'} desconectado`);
             });
         });
 

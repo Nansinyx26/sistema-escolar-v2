@@ -1,24 +1,3 @@
-@font-face {
-    font-family: 'Plus Jakarta Sans';
-    src: url('../js/libs/fonts/PlusJakartaSans-Regular.woff2') format('woff2');
-    font-weight: 400;
-    font-style: normal;
-}
-
-@font-face {
-    font-family: 'Plus Jakarta Sans';
-    src: url('../js/libs/fonts/PlusJakartaSans-Bold.woff2') format('woff2');
-    font-weight: 700;
-    font-style: normal;
-}
-
-@font-face {
-    font-family: 'Plus Jakarta Sans';
-    src: url('../js/libs/fonts/PlusJakartaSans-ExtraBold.woff2') format('woff2');
-    font-weight: 800;
-    font-style: normal;
-}
-
 :root {
     --bi-bg: #030408;
     --bi-surface: rgba(13, 14, 18, 0.7);
@@ -28,7 +7,7 @@
     --bi-warning: #f59e0b;
     --bi-danger: #ef4444;
     --bi-border: rgba(255, 255, 255, 0.08);
-    --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     --glass-blur: blur(20px);
 }
 

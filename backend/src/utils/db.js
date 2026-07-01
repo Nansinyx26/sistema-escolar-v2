@@ -4,7 +4,7 @@ const logger = require('./logger');
 const connectDB = async () => {
   try {
     let uri = process.env.MONGODB_URI;
-    const dbName = 'test'; // Enforce 'test' database name globally
+    const dbName = process.env.MONGODB_DB_NAME || undefined;
     
     if (!uri) {
         if (process.env.NODE_ENV !== 'production') {
@@ -19,41 +19,20 @@ const connectDB = async () => {
         }
     }
 
-    // Programmatically ensure that the URI path points to '/test'
-    if (uri && !global.__MONGOD__) {
-        const protocolEndIndex = uri.indexOf('://');
-        if (protocolEndIndex !== -1) {
-            const afterProtocol = uri.slice(protocolEndIndex + 3);
-            const slashIndex = afterProtocol.indexOf('/');
-            if (slashIndex !== -1) {
-                const absoluteSlashIndex = protocolEndIndex + 3 + slashIndex;
-                const queryIndex = uri.indexOf('?', absoluteSlashIndex);
-                if (queryIndex !== -1) {
-                    uri = uri.slice(0, absoluteSlashIndex) + '/test' + uri.slice(queryIndex);
-                } else {
-                    uri = uri.slice(0, absoluteSlashIndex) + '/test';
-                }
-            } else {
-                const queryIndex = afterProtocol.indexOf('?');
-                if (queryIndex !== -1) {
-                    const absoluteQueryIndex = protocolEndIndex + 3 + queryIndex;
-                    uri = uri.slice(0, absoluteQueryIndex) + '/test' + uri.slice(absoluteQueryIndex);
-                } else {
-                    uri = uri + '/test';
-                }
-            }
-        }
-    }
-
     // Log para conferência (seguro — credenciais mascaradas)
     const maskedUri = uri.replace(/:([^@]+)@/, ':****@');
     logger.info('🔌 Conectando ao banco de dados', { dbName, uri: maskedUri });
 
     try {
-        await mongoose.connect(uri, {
-          dbName: dbName,
+        const connectionOptions = {
           serverSelectionTimeoutMS: 5000 // Limite de 5 segundos para falha
-        });
+        };
+
+        if (dbName) {
+            connectionOptions.dbName = dbName;
+        }
+
+        await mongoose.connect(uri, connectionOptions);
         logger.info('✅ MongoDB conectado com sucesso', { dbName });
         // Auto-criação de todas as coleções esperadas no startup
         await _ensureCollectionsExist();

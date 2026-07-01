@@ -11,6 +11,7 @@ import ReactionArea from './ReactionArea';
 import CommentSection from './CommentSection';
 import SpeakButton from './SpeakButton';
 import styles from '../styles/portal.module.scss';
+import { sanitizeHtml } from '../utils/htmlSanitizer';
 
 interface NotificationsPanelProps {
   notifications: Notification[];
@@ -110,7 +111,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
                           {n.corpoHtml && isExpanded ? (
                             <div
                               className={styles.notificationFull}
-                              dangerouslySetInnerHTML={{ __html: n.corpoHtml }}
+                              dangerouslySetInnerHTML={{ __html: sanitizeHtml(n.corpoHtml) }}
                             />
                           ) : (
                             <p className={`${styles.notificationPreview} ${!isExpanded && isLong ? styles.notificationPreviewClamped : ''}`}>

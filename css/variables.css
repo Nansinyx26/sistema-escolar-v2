@@ -11,7 +11,8 @@
     --bg-elevated: #27272a;
     
     --text-primary: #fafafa;
-    --text-secondary: #10b981;    /* Verde Vibrante para maior visibilidade */
+    --text-body: #d4d4d8;         /* Texto de corpo legível (zinc-300) */
+    --text-secondary: #10b981;    /* Acento verde (marca) — NÃO usar em texto corrido */
     --text-tertiary: #a1a1aa;     /* Cinza mais claro para subtítulos */
     --text-inverse: #09090b;
     
@@ -148,6 +149,7 @@
     --bg-elevated: #ffffff;
     
     --text-primary: #0f1419;
+    --text-body: #1f2937;         /* Texto de corpo legível (tema claro) */
     --text-secondary: #536471;
     --text-tertiary: #8b949e;
     --text-inverse: #ffffff;

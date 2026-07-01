@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="dark">
 
 <head>
     <meta charset="UTF-8" />
@@ -14,7 +14,7 @@
     <link rel="apple-touch-icon" href="img/logo-jaguari.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="css/splash-screen.css?v=1.0" />
     <link rel="stylesheet" href="css/index-landing.css" />
@@ -749,10 +749,20 @@
     </script>
     <script>
       async function carregarAvaliacoesPublicas() {
-        const avaliacoesContainer = document.getElementById(
-          "avaliacoesContainer",
-        );
+        const avaliacoesContainer = document.getElementById("avaliacoesContainer");
         if (!avaliacoesContainer) return;
+
+        const avClasses = ["avatar-a", "avatar-b", "avatar-c", "avatar-d"];
+
+        function escapeHTML(str) {
+          if (!str) return "";
+          return str
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+        }
 
         try {
           const baseUrl =
@@ -763,51 +773,45 @@
               ? "http://localhost:3001/api"
               : "https://sistema-escolar-bfty.onrender.com/api");
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+          const timeoutId = setTimeout(() => controller.abort(), 8000);
 
           const res = await fetch(`${baseUrl}/avaliacoes/public`, {
             signal: controller.signal,
           });
           clearTimeout(timeoutId);
+
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
           const data = await res.json();
 
-          if (data.success && dat            function escapeHTML(str) {
-              if (!str) return "";
-              return str
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-            }
+          if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+            avaliacoesContainer.innerHTML = "";
 
             data.data.forEach((av, index) => {
               const name = av.nome || "Usuário";
-              const initials = name
-                .split(" ")
-                .filter(n => n.length > 0)
-                .map((n) => n[0])
-                .join("")
-                .substring(0, 2)
-                .toUpperCase() || "U";
+              const initials =
+                name
+                  .split(" ")
+                  .filter((n) => n.length > 0)
+                  .map((n) => n[0])
+                  .join("")
+                  .substring(0, 2)
+                  .toUpperCase() || "U";
               const avatarClass = avClasses[index % avClasses.length];
 
               let starsHtml = "";
-              const estrelas = typeof av.estrelas === 'number' ? av.estrelas : 5;
+              const estrelas = typeof av.estrelas === "number" ? av.estrelas : 5;
               for (let i = 1; i <= 5; i++) {
                 starsHtml += `<i class="bi bi-star${i <= estrelas ? "-fill" : ""}"></i>`;
               }
 
-              // Lógica de formatação de URL de foto (inline — landing sem utils.js)
               let photoUrl = null;
-              if (av.foto && av.foto !== 'default-avatar.png' && av.foto.trim() !== '') {
-                if (av.foto.startsWith('http') || av.foto.startsWith('data:image')) {
+              if (av.foto && av.foto !== "default-avatar.png" && av.foto.trim() !== "") {
+                if (av.foto.startsWith("http") || av.foto.startsWith("data:image")) {
                   photoUrl = av.foto;
-                } else if (av.foto.startsWith('/')) {
-                  // Se já for um path absoluto da API, prefixa com a origem se necessário
-                  photoUrl = av.foto.includes('://') ? av.foto : (baseUrl.replace('/api', '') + av.foto);
+                } else if (av.foto.startsWith("/")) {
+                  photoUrl = av.foto.includes("://") ? av.foto : baseUrl.replace("/api", "") + av.foto;
                 } else {
-                  // ID de arquivo (GridFS) ou nome de arquivo local
                   photoUrl = `${baseUrl}/files/${av.foto}`;
                 }
               }
@@ -821,26 +825,22 @@
               const cleanRole = escapeHTML(av.perfil || "Usuário").toUpperCase();
 
               const card = `
-                    <div class="test-card">
-                      <div class="test-stars">${starsHtml}</div>
-                      <div class="test-quote">"</div>
-                      <p class="test-text">${cleanText}</p>
-                      <div class="test-person">
-                        <div class="test-avatar ${avatarClass}">${avatarContent}</div>
-                        <div>
-                          <div class="test-name">${cleanName}</div>
-                          <div class="test-role">${cleanRole}</div>
-                        </div>
-                      </div>
-                    </div>`;
-              avaliacoesContainer.innerHTML += card;
-            });                      </div>
-                      </div>
-                    </div>`;
-              avaliacoesContainer.innerHTML += card;
+                <div class="test-card">
+                  <div class="test-stars">${starsHtml}</div>
+                  <div class="test-quote">"</div>
+                  <p class="test-text">${cleanText}</p>
+                  <div class="test-person">
+                    <div class="test-avatar ${avatarClass}">${avatarContent}</div>
+                    <div>
+                      <div class="test-name">${cleanName}</div>
+                      <div class="test-role">${cleanRole}</div>
+                    </div>
+                  </div>
+                </div>`;
+
+              avaliacoesContainer.insertAdjacentHTML("beforeend", card);
             });
 
-            // Re-observe new cards for stagger animation
             avaliacoesContainer
               .querySelectorAll(".test-card")
               .forEach((el) => so.observe(el));
@@ -849,17 +849,13 @@
               '<p class="empty-message">Nenhuma avaliação encontrada ainda. Seja o primeiro a avaliar no seu perfil!</p>';
           }
         } catch (error) {
-          // Graceful fallback — show friendly message, no blank screen
           avaliacoesContainer.innerHTML =
             '<p class="empty-message">Depoimentos indisponíveis no momento. Tente novamente mais tarde.</p>';
         }
       }
 
       if (document.readyState === "loading") {
-        document.addEventListener(
-          "DOMContentLoaded",
-          carregarAvaliacoesPublicas,
-        );
+        document.addEventListener("DOMContentLoaded", carregarAvaliacoesPublicas);
       } else {
         carregarAvaliacoesPublicas();
       }

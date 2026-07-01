@@ -26,6 +26,22 @@ async function cookieResponsavel(email) {
     return `escola_jwt=${token}`;
 }
 
+describe('POST /api/responsavel/vincular', () => {
+    it('deve rejeitar código secreto inválido para vínculo', async () => {
+        const email = 'responsavel3@escola.test';
+        const cookie = await cookieResponsavel(email);
+
+        const res = await request(app)
+            .post('/api/responsavel/vincular')
+            .set('Cookie', cookie)
+            .send({ codigoSecreto: 'abc' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error).toMatch(/código secreto inválido/i);
+    });
+});
+
 describe('GET /api/responsavel/frequencia/:alunoId', () => {
 
     it('should correctly calculate attendance from Falta records when no manual override exists', async () => {

@@ -4,26 +4,25 @@
  */
 
 :root {
-    /* Cores Premium (Arte Gráficos) */
-    --primary: #7c3aed;
-    /* Roxo Premium */
-    --primary-dark: #6d28d9;
-    --primary-light: #a78bfa;
-    /* Lilás */
+    /* === MARCA UNIFICADA (Emerald/Mint + Sky) — alinhado a variables.css === */
+    --primary: #10b981;
+    /* Mint/Emerald */
+    --primary-dark: #059669;
+    --primary-light: #34d399;
 
-    --secondary: #2dd4bf;
-    /* Verde Contraste (Accent 3) */
-    --secondary-dark: #14b8a6;
+    --secondary: #0ea5e9;
+    /* Sky Blue */
+    --secondary-dark: #0284c7;
 
-    --accent-purple: #7c3aed;
-    --accent-lilac: #a78bfa;
-    --accent-teal: #2dd4bf;
-    --accent-gold: #d4af37;
+    --accent-purple: #10b981;
+    --accent-lilac: #34d399;
+    --accent-teal: #0ea5e9;
+    --accent-gold: #f59e0b;
 
-    --success: #2dd4bf;
-    --warning: #d4af37;
+    --success: #10b981;
+    --warning: #f59e0b;
     --danger: #ef4444;
-    --info: #06b6d4;
+    --info: #0ea5e9;
 
     /* Mapeamento Legacy */
     --primary-color: var(--primary);
@@ -34,26 +33,26 @@
     --info-color: var(--info);
 
     /* Cores de Fundo Premium */
-    --bg-dark: #0b0b10;
+    --bg-dark: #09090b;
     /* Fundo muito escuro */
-    --bg-medium: #151028;
+    --bg-medium: #121218;
     /* Painel/Card */
-    --bg-light: #1e1b33;
+    --bg-light: #18181b;
     /* Hover/Input */
 
     --bg-color: var(--bg-dark);
     --bg-white: var(--bg-medium);
-    --text-color: #e6eef6;
-    --text-secondary: #9aa3b2;
-    --text-muted: #6b7280;
+    --text-color: #f4f4f5;
+    --text-secondary: #d4d4d8;
+    --text-muted: #a1a1aa;
     --text-white: #ffffff;
 
-    --border-color: rgba(124, 58, 237, 0.2);
-    /* Borda sutil roxa */
+    --border-color: rgba(16, 185, 129, 0.2);
+    /* Borda sutil verde */
 
     /* Cores de Feedback Específicas */
-    --primary-bg: rgba(124, 58, 237, 0.1);
-    --success-bg: rgba(45, 212, 191, 0.1);
+    --primary-bg: rgba(16, 185, 129, 0.1);
+    --success-bg: rgba(16, 185, 129, 0.1);
     --success-dark: #10b981;
     --warning-bg: rgba(212, 175, 55, 0.1);
     --warning-dark: #f59e0b;
@@ -144,7 +143,7 @@
 
 body {
     font-family: var(--font-family);
-    background: linear-gradient(180deg, #06060a 0%, #0b0b10 60%);
+    background: linear-gradient(180deg, #060608 0%, #09090b 60%);
     color: var(--text-color);
     line-height: 1.6;
     min-height: 100vh;
@@ -166,13 +165,13 @@ h6 {
 }
 
 a {
-    color: var(--primary-light);
+    color: var(--primary);
     text-decoration: none;
     transition: color 0.2s;
 }
 
 a:hover {
-    color: var(--primary);
+    color: var(--primary-hover);
 }
 
 /* ==========================================================================
@@ -251,12 +250,12 @@ a:hover {
 .btn-primary {
     background: linear-gradient(90deg, var(--primary), var(--primary-light));
     color: #000;
-    box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
 }
 
 .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(124, 58, 237, 0.4);
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
 }
 
 .btn-outline {
@@ -299,7 +298,7 @@ a:hover {
 .form-input:focus {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
 }
 
 /* Fix para Select Options no Windows */
@@ -331,7 +330,7 @@ a:hover {
 
 /* Navbar Overrides baseados no tema */
 .navbar {
-    background: rgba(11, 11, 16, 0.8);
+    background: rgba(9, 9, 11, 0.8);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--border-color);
     padding: 1rem 0;

@@ -15,6 +15,7 @@ const { convertToWebP } = require('../middleware/upload');
 const ConfigController = require('../controllers/ConfigController');
 const FileController = require('../controllers/FileController');
 const { runHealthCheck } = require('../utils/healthMonitor');
+const monitoring = require('../services/MonitoringService');
 
 // --- 1. Diagnóstico / Health Check (Públicos) ---
 router.get('/health', (req, res) => {
@@ -31,6 +32,14 @@ router.get('/health', (req, res) => {
             rssMB: health.memory.rssMB,
         },
     });
+});
+router.get('/monitoring/health', async (req, res) => {
+    const health = await monitoring.health();
+    res.status(health.ok ? 200 : 503).json(health);
+});
+router.get('/metrics', (req, res) => {
+    res.type('text/plain');
+    res.send(monitoring.getPrometheusMetrics());
 });
 router.get('/ping', (req, res) => res.json({ success: true, message: 'API is working' }));
 

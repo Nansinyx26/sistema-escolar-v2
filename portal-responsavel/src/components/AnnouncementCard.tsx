@@ -9,6 +9,7 @@ import { ptBR } from 'date-fns/locale';
 import { MessageCircle } from 'lucide-react';
 import { socket } from '../services/socket';
 import { getPhotoUrl } from '../utils/photoUtils';
+import { sanitizeHtml } from '../utils/htmlSanitizer';
 
 interface Props {
   comunicado: Comunicado;
@@ -17,6 +18,7 @@ interface Props {
 const AnnouncementCard: React.FC<Props> = ({ comunicado }) => {
   const [showComments, setShowComments] = useState(false);
   const [commentsCount, setCommentsCount] = useState(comunicado.comentariosCount || 0);
+  const sanitizedContent = sanitizeHtml(comunicado.conteudo);
 
   useEffect(() => {
     setCommentsCount(comunicado.comentariosCount || 0);
@@ -107,7 +109,7 @@ const AnnouncementCard: React.FC<Props> = ({ comunicado }) => {
         <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>{comunicado.titulo}</h2>
         <div
           style={{ color: '#d4d4d8', fontSize: '0.875rem', lineHeight: 1.625 }}
-          dangerouslySetInnerHTML={{ __html: comunicado.conteudo }}
+          dangerouslySetInnerHTML={{ __html: sanitizedContent }}
         />
       </div>
 

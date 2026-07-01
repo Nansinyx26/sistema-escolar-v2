@@ -30,7 +30,7 @@
     --ba: rgba(255, 255, 255, 0.14);
     --ga: rgba(255, 255, 255, 0.08);
     --gb: rgba(255, 255, 255, 0.05);
-    --r: "Instrument Serif", Georgia, serif;
+    --r: "Inter", system-ui, sans-serif;
     --s: "Inter", system-ui, sans-serif;
     --m: "JetBrains Mono", monospace;
 }

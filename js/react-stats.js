@@ -184,7 +184,7 @@
                     )
                 ),
                 h('div', { style: { padding: '1.5rem 1.5rem 1.25rem' } },
-                    h('h2', { style: { fontFamily: 'var(--r, "Instrument Serif")', fontSize: '2.8rem', fontWeight: '400', margin: '0 0 0.25rem 0', color: '#ffffff', letterSpacing: '-0.01em' } }, `${data.saudacao || 'Bom dia'}, Prof. ${data.nomeProfessor.split(' ')[0]}`),
+                    h('h2', { style: { fontFamily: 'var(--r, "Inter")', fontSize: '2.8rem', fontWeight: '400', margin: '0 0 0.25rem 0', color: '#ffffff', letterSpacing: '-0.01em' } }, `${data.saudacao || 'Bom dia'}, Prof. ${data.nomeProfessor.split(' ')[0]}`),
                     h('div', { style: { fontFamily: 'var(--m, "JetBrains Mono")', fontSize: '0.82rem', color: 'rgba(255,255,255,0.85)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500 } }, `${data.diaSemana.toUpperCase()}  ·  ${data.turmaLabel || 'SEM TURMAS'}`)
                 ),
                 h('div', { className: 'hv-mini-grid' },

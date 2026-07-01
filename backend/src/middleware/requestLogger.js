@@ -12,6 +12,7 @@
  */
 
 const logger = require('../utils/logger');
+const monitoring = require('../services/MonitoringService');
 
 /**
  * Calcula a duração da requisição usando process.hrtime.
@@ -41,6 +42,9 @@ function requestLogger(req, res, next) {
     res.on('finish', () => {
         const durationMs = getDurationMs(start);
         const statusCode = res.statusCode;
+
+        // Registrar métricas no serviço de monitoramento
+        monitoring.recordRequest(statusCode, durationMs);
         const contentLength = res.getHeader('content-length') || 0;
 
         // Extrai o IP real (respeitando proxy reverso do Render)

@@ -1,22 +1,23 @@
 /* 
  * Glassmorphism Premium 2026
- * Estilos otimizados para dashboards de alta fidelidade
+ * Estilos otimizados para dashboards de alta fidelidade.
+ * Os tokens de glass vêm de variables.css; aqui há apenas fallbacks locais
+ * para páginas que carregam glass-premium.css sem o design system completo.
  */
 
 :root {
-    --glass-bg: rgba(17, 24, 39, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.08);
-    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-    --accent-glow: 0 0 20px rgba(99, 102, 241, 0.3);
+    /* Fallbacks locais — não sobrescrevem variables.css quando ele está presente,
+       pois aqui usamos os mesmos nomes apenas como reforço de segurança. */
+    --accent-glow: 0 0 20px rgba(16, 185, 129, 0.3);
 }
 
 .glass-card {
-    background: var(--glass-bg);
+    background: var(--glass-bg, rgba(17, 24, 39, 0.7));
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid var(--glass-border);
+    border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
     border-radius: 1.25rem;
-    box-shadow: var(--glass-shadow);
+    box-shadow: var(--glass-shadow, 0 8px 32px 0 rgba(0, 0, 0, 0.37));
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -78,7 +79,7 @@
 
 /* Utilitários de Gradiente */
 .bg-gradient-premium {
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.15));
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(14, 165, 233, 0.15));
 }
 
 .text-gradient {

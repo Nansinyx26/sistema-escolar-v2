@@ -108,3 +108,22 @@ describe('GET /api/alunos — filtragem por turma', () => {
     });
 });
 
+describe('GET /api/alunos/codigos-secretos', () => {
+    it('deve gerar e retornar código secreto para aluno sem código', async () => {
+        const cookie = await cookieAdmin();
+        const aluno = await Aluno.create({ nome: 'Carlos', turma: '1A', ativo: true });
+
+        const res = await request(app)
+            .get('/api/alunos/codigos-secretos')
+            .set('Cookie', cookie);
+
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.data.some(item => item.nome.includes('Carlos'))).toBe(true);
+
+        const alunoAtualizado = await Aluno.findById(aluno._id);
+        expect(alunoAtualizado.codigoSecreto).toBeTruthy();
+        expect(alunoAtualizado.codigoSecreto).not.toBe('N/A');
+    });
+});
+

@@ -358,6 +358,22 @@ exports.listSecretCodes = async (req, res) => {
             .sort({ turma: 1, nome: 1 })
             .lean();
 
+        const missingCodeStudents = students.filter(student => !student.codigoSecreto || ['N/A', 'n/a', ''].includes(String(student.codigoSecreto).trim()));
+        if (missingCodeStudents.length > 0) {
+            for (const student of missingCodeStudents) {
+                const studentDoc = await Aluno.findById(student._id);
+                if (studentDoc) {
+                    studentDoc.codigoSecreto = undefined;
+                    await studentDoc.save();
+                }
+            }
+        }
+
+        const studentsWithCodes = await Aluno.find(query)
+            .select('nome sobrenome turma turmaId codigoSecreto responsavel matricula')
+            .sort({ turma: 1, nome: 1 })
+            .lean();
+
         const Turma = require('../models/Turma');
         const turmas = await Turma.find({}).lean();
         const turmaMap = {};
@@ -368,7 +384,7 @@ exports.listSecretCodes = async (req, res) => {
             }
         });
 
-        const data = students.map(s => {
+        const data = studentsWithCodes.map(s => {
             const studentTurmaKey = (s.turma || s.turmaId || '').toUpperCase();
             const tInfo = turmaMap[studentTurmaKey] || {};
             

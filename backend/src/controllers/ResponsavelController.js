@@ -129,6 +129,14 @@ exports.buscarAluno = async (req, res) => {
         }
 
         const sanitizedCode = codigo.trim().toUpperCase();
+
+        if (!/^[A-Z0-9]{4,10}$/.test(sanitizedCode)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Código secreto inválido. Use o código fornecido pela escola.'
+            });
+        }
+
         console.log(`🔍 [LINK-STUDENT] Buscando aluno pelo código: ${sanitizedCode}`);
 
         // Busca aluno pelo código secreto (deve ser único conforme o model)
@@ -180,6 +188,13 @@ exports.vincularAluno = async (req, res) => {
         }
 
         const sanitizedCode = codigoSecreto.trim().toUpperCase();
+
+        if (!/^[A-Z0-9]{4,10}$/.test(sanitizedCode)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Código secreto inválido. Use o código fornecido pela escola.'
+            });
+        }
 
         // Buscar aluno pelo código secreto
         const aluno = await Aluno.findOne({

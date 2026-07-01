@@ -10,6 +10,7 @@ import ReactionArea from './ReactionArea';
 import CommentSection from './CommentSection';
 import SpeakButton from './SpeakButton';
 import styles from '../styles/portal.module.scss';
+import { sanitizeHtml } from '../utils/htmlSanitizer';
 
 interface ModalProps {
   notification: Notification | null;
@@ -58,6 +59,7 @@ const Modal: React.FC<ModalProps> = ({ notification, onClose }) => {
     hour: '2-digit',
     minute: '2-digit',
   });
+  const sanitizedBodyHtml = sanitizeHtml(notification.corpoHtml);
 
   return (
     <div
@@ -109,8 +111,8 @@ const Modal: React.FC<ModalProps> = ({ notification, onClose }) => {
         </div>
 
         <div id="modal-message" className={styles.modalMessage} style={{ marginBottom: '1.25rem' }}>
-          {notification.corpoHtml ? (
-            <div dangerouslySetInnerHTML={{ __html: notification.corpoHtml }} />
+          {sanitizedBodyHtml ? (
+            <div dangerouslySetInnerHTML={{ __html: sanitizedBodyHtml }} />
           ) : (
             <p style={{ whiteSpace: 'pre-wrap' }}>{notification.mensagem}</p>
           )}

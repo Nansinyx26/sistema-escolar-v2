@@ -46,7 +46,7 @@ class TTSService {
     };
   }
 
-  async play(text: string, gender?: string, provider?: string) {
+  async play(text: string, _gender?: string, _provider?: string) {
     if (!this.audio) return;
 
     this.stop();

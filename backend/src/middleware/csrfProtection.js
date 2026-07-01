@@ -67,11 +67,11 @@ function csrfValidator(req, res, next) {
         return next();
     }
 
-    // ── Bypass em testes e desenvolvimento local ─────────────────────────────
-    // Em testes Jest e no desenvolvimento local (cross-origin Vite), 
-    // desabilitamos a validação CSRF para permitir a comunicação local.
-    // A proteção permanece 100% ativa em ambiente de Produção.
-    if (process.env.NODE_ENV !== 'production') {
+
+    // Em testes automatizados o CSRF pode ser desabilitado para simplificar fixtures.
+    // Em desenvolvimento e produ��o a prote��o permanece ativa.
+
+    if (process.env.NODE_ENV === 'test') {
         return next();
     }
 
@@ -91,3 +91,6 @@ function csrfValidator(req, res, next) {
 }
 
 module.exports = { csrfCookieSetter, csrfValidator };
+
+
+

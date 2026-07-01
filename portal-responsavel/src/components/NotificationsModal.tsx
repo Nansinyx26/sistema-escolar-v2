@@ -8,6 +8,7 @@ import type { Notification } from '../types';
 import styles from '../styles/portal.module.scss';
 import ReactionArea from './ReactionArea';
 import CommentSection from './CommentSection';
+import { sanitizeHtml } from '../utils/htmlSanitizer';
 
 interface NotificationsModalProps {
   isOpen: boolean;
@@ -92,7 +93,7 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({
                           <div className={styles.notifTextBlock}>
                             <p className={styles.notificationTitle} style={{ fontSize: '1.1rem' }}>{n.titulo}</p>
                             {n.corpoHtml && isExpanded ? (
-                              <div className={styles.notificationFull} dangerouslySetInnerHTML={{ __html: n.corpoHtml }} />
+                              <div className={styles.notificationFull} dangerouslySetInnerHTML={{ __html: sanitizeHtml(n.corpoHtml) }} />
                             ) : (
                               <p className={`${styles.notificationPreview} ${!isExpanded && isLong ? styles.notificationPreviewClamped : ''}`} style={isExpanded ? { whiteSpace: 'pre-wrap' } : undefined}>
                                 {previewText}

@@ -118,7 +118,7 @@
             border-radius: 14px;
             padding: 1rem 1.5rem;
             color: #ffffff;
-            font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+            font-family: 'Inter', sans-serif;
             font-size: 0.95rem;
             box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
             display: flex;

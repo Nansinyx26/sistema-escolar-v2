@@ -10,6 +10,21 @@ import styles from '../styles/portal.module.scss';
 import schoolLogo from '../assets/logo-jaguari.png';
 import { getPhotoUrl } from '../utils/photoUtils';
 
+interface TtsSettingsResponse {
+  success?: boolean;
+  user?: GmailUser;
+}
+
+interface WindowBridge {
+  apiFetch?: (input: string, init?: RequestInit) => Promise<TtsSettingsResponse>;
+  auth?: {
+    updateSession?: (user: GmailUser) => void;
+  };
+  startTourManual?: () => void | Promise<void>;
+}
+
+const windowBridge = window as Window & WindowBridge;
+
 interface HeaderProps {
   user: GmailUser;
   notifications: Notification[];
@@ -45,15 +60,15 @@ const VoiceSelector: React.FC = () => {
     { id: 'audio', label: 'Apenas Áudio', icon: 'ti-music-alt' }
   ];
 
-  const saveSettings = async (updates: any) => {
+  const saveSettings = async (updates: { voicePreference?: string; narrationMode?: string }) => {
     try {
-      if ((window as any).apiFetch) {
-        const res = await (window as any).apiFetch('/auth/settings/tts', {
+      if (windowBridge.apiFetch) {
+        const res = await windowBridge.apiFetch('/auth/settings/tts', {
           method: 'POST',
           body: JSON.stringify(updates)
         });
-        if (res.success && res.user && (window as any).auth?.updateSession) {
-          (window as any).auth.updateSession(res.user);
+        if (res.success && res.user && windowBridge.auth?.updateSession) {
+          windowBridge.auth.updateSession(res.user);
         }
       }
     } catch (e) {
@@ -175,7 +190,7 @@ const Header: React.FC<HeaderProps> = ({ user, notifications, onLogout, onBellCl
           {/* Botão Ver Tour Guiado */}
           <button
             className={styles.notificationBell}
-            onClick={() => (window as any).startTourManual && (window as any).startTourManual()}
+            onClick={() => windowBridge.startTourManual?.()}
             title="Ver Tour Guiado"
             aria-label="Ver Tour Guiado"
             style={{ marginRight: '8px' }}
