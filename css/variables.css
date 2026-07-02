@@ -12,7 +12,8 @@
     
     --text-primary: #fafafa;
     --text-body: #d4d4d8;         /* Texto de corpo legível (zinc-300) */
-    --text-secondary: #10b981;    /* Acento verde (marca) — NÃO usar em texto corrido */
+    --text-secondary: #d4d4d8;    /* Texto secundário legível (zinc-300) */
+    --text-accent: #10b981;       /* Acento verde da marca — para destaques, não texto corrido */
     --text-tertiary: #a1a1aa;     /* Cinza mais claro para subtítulos */
     --text-inverse: #09090b;
     
@@ -22,6 +23,9 @@
     
     /* === CORES DE MARCA (MINT/EMERALD) === */
     --primary: #10b981;           /* Mint/Emerald */
+    --primary-rgb: 16, 185, 129;  /* Para uso em rgba() */
+    --primary-color: var(--primary); /* Alias legado */
+    --primary-dark: #059669;
     --primary-hover: #34d399;
     --primary-active: #059669;
     --primary-light: rgba(16, 185, 129, 0.08);

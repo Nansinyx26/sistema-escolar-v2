@@ -1,0 +1,200 @@
+/**
+ * Voice Panel — Componente Compartilhado
+ * Usado em: dashboard, direcao/index, bi-pedagogico
+ * Substitui os três blocos inline/duplicados de painel de voz.
+ */
+
+/* Wrapper relativo que ancora o painel */
+.voice-wrapper-relative {
+    position: relative;
+}
+
+/* Botão de ativação do painel */
+.btn-voice-toggle {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.1rem;
+    color: #94a3b8;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    flex-shrink: 0;
+    padding: 0;
+}
+
+.btn-voice-toggle:hover {
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+/* Painel flutuante */
+.voice-panel {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 280px;
+    padding: 1.2rem;
+    border-radius: 14px;
+    display: none;
+    flex-direction: column;
+    gap: 0.9rem;
+    z-index: var(--z-popover, 1060);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    background: rgba(15, 23, 42, 0.98);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+}
+
+/* Variante: abre para cima (usado no sidebar do BI) */
+.voice-panel--above {
+    top: auto;
+    bottom: calc(100% + 10px);
+    left: 0;
+    right: auto;
+}
+
+.voice-panel.active {
+    display: flex;
+}
+
+/* Título da seção */
+.voice-panel__title {
+    margin: 0;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+/* Grupo de configuração */
+.voice-panel__group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.voice-panel__label {
+    font-size: 0.7rem;
+    color: #64748b;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+/* Select padrão */
+.voice-panel__select {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #fff;
+    padding: 6px 8px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    outline: none;
+    width: 100%;
+}
+
+.voice-panel__select:focus {
+    border-color: rgba(16, 185, 129, 0.4);
+}
+
+/* Botões de opção de voz */
+.voice-opt-btn {
+    background: rgba(139, 92, 246, 0.1);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    color: #c4b5fd;
+    padding: 0.45rem 0.6rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.voice-opt-btn:hover {
+    background: rgba(139, 92, 246, 0.2);
+    border-color: rgba(139, 92, 246, 0.4);
+}
+
+.voice-opt-btn--off {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: #94a3b8;
+}
+
+.voice-opt-btn--off:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* Pílula de velocidade */
+.voice-speed-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0.35rem 0.6rem;
+    background: rgba(16, 185, 129, 0.08);
+    border-radius: 8px;
+    border: 1px solid rgba(16, 185, 129, 0.15);
+    font-size: 0.75rem;
+    color: #10b981;
+    font-weight: 700;
+}
+
+.voice-speed-pill i {
+    font-size: 0.8rem;
+}
+
+/* Linha divisória */
+.voice-panel__divider {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    margin: 0.1rem 0;
+}
+
+/* Botões de ação no rodapé do painel */
+.voice-panel__actions {
+    display: flex;
+    gap: 8px;
+}
+
+.voice-panel__btn {
+    flex: 1;
+    padding: 0.5rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: opacity 0.15s;
+    border: none;
+}
+
+.voice-panel__btn:hover {
+    opacity: 0.85;
+}
+
+.voice-panel__btn--diag {
+    background: rgba(59, 130, 246, 0.1);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.voice-panel__btn--activate {
+    background: #8b5cf6;
+    color: #fff;
+    font-weight: 600;
+    flex: 1.5;
+}

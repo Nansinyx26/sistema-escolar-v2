@@ -4,14 +4,12 @@
  */
 
 :root {
-    /* === MARCA UNIFICADA (Emerald/Mint + Sky) — alinhado a variables.css === */
-    --primary: #10b981;
-    /* Mint/Emerald */
+    /* === ALIASES LEGACY — mantidos para compatibilidade com HTML existente === */
+    /* Os tokens canônicos estão em css/variables.css                          */
+
     --primary-dark: #059669;
     --primary-light: #34d399;
 
-    --secondary: #0ea5e9;
-    /* Sky Blue */
     --secondary-dark: #0284c7;
 
     --accent-purple: #10b981;
@@ -19,36 +17,27 @@
     --accent-teal: #0ea5e9;
     --accent-gold: #f59e0b;
 
-    --success: #10b981;
-    --warning: #f59e0b;
     --danger: #ef4444;
-    --info: #0ea5e9;
 
     /* Mapeamento Legacy */
-    --primary-color: var(--primary);
     --secondary-color: var(--secondary);
     --success-color: var(--success);
     --warning-color: var(--warning);
     --danger-color: var(--danger);
     --info-color: var(--info);
 
-    /* Cores de Fundo Premium */
-    --bg-dark: #09090b;
-    /* Fundo muito escuro */
-    --bg-medium: #121218;
-    /* Painel/Card */
-    --bg-light: #18181b;
-    /* Hover/Input */
+    /* Cores de Fundo (aliases) */
+    --bg-dark: var(--bg-primary);
+    --bg-medium: var(--bg-secondary);
+    --bg-light: var(--bg-tertiary);
 
-    --bg-color: var(--bg-dark);
-    --bg-white: var(--bg-medium);
-    --text-color: #f4f4f5;
-    --text-secondary: #d4d4d8;
-    --text-muted: #a1a1aa;
+    --bg-color: var(--bg-primary);
+    --bg-white: var(--bg-secondary);
+    --text-color: var(--text-primary);
+    --text-muted: var(--text-tertiary);
     --text-white: #ffffff;
 
     --border-color: rgba(16, 185, 129, 0.2);
-    /* Borda sutil verde */
 
     /* Cores de Feedback Específicas */
     --primary-bg: rgba(16, 185, 129, 0.1);
@@ -61,66 +50,25 @@
     --info-bg: rgba(6, 182, 212, 0.1);
     --info-dark: #06b6d4;
 
-    /* Sombras Premium */
-    --shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 10px 15px rgba(2, 2, 8, 0.4);
-    --shadow-lg: 0 20px 40px rgba(2, 2, 8, 0.6);
+    /* Alias de sombra sem o sufixo (usado em componentes legados) */
     --shadow: var(--shadow-md);
 
-    /* Transições */
-    --transition-fast: 150ms ease;
-    --transition-base: 300ms ease;
-    --transition-slow: 500ms ease;
+    /* Alias de transição simples */
     --transition: var(--transition-base);
 
-    /* Radius */
-    --radius-sm: 0.25rem;
-    --radius-md: 0.5rem;
-    --radius-lg: 0.75rem;
-    --radius-xl: 1rem;
-    --radius-2xl: 18px;
-    --radius-full: 9999px;
+    /* Alias de radius sem sufixo */
     --radius: var(--radius-lg);
+    --radius-2xl: 18px;
 
-    /* Spacing */
-    --spacing-xs: 0.25rem;
-    --spacing-sm: 0.5rem;
-    --spacing-md: 1rem;
-    --spacing-lg: 1.5rem;
-    --spacing-xl: 2rem;
-    --spacing-2xl: 3rem;
+    --font-family: var(--font-primary);
+    --font-mono: 'JetBrains Mono', monospace;
 
-    --font-family: 'Inter', system-ui, sans-serif;
-    --font-mono: 'Fira Code', monospace;
-
-    /* Font Sizes */
-    --font-size-xs: 0.75rem;
-    --font-size-sm: 0.875rem;
-    --font-size-base: 1rem;
-    --font-size-lg: 1.125rem;
-    --font-size-xl: 1.25rem;
-    --font-size-2xl: 1.5rem;
-    --font-size-3xl: 1.875rem;
-    --font-size-4xl: 2.25rem;
-
-    /* Z-index */
-    --z-dropdown: 100;
-    --z-sticky: 200;
-    --z-fixed: 300;
-    --z-modal-backdrop: 400;
-    --z-modal: 500;
-    --z-popover: 600;
-    --z-tooltip: 700;
     --z-toast: 800;
 
-    /* Glassmorphism System */
-    --glass-bg: rgba(21, 16, 40, 0.6);
+    /* Glassmorphism (variantes específicas do main.css) */
     --glass-bg-light: rgba(255, 255, 255, 0.05);
     --glass-bg-hover: rgba(255, 255, 255, 0.1);
-    --glass-border: rgba(255, 255, 255, 0.1);
     --glass-border-light: rgba(255, 255, 255, 0.2);
-    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-    --glass-blur: 12px;
 }
 
 /* Glass Utility */

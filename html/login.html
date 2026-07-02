@@ -103,7 +103,7 @@
                                 <div class="input-group">
                                     <i class="input-icon bi bi-envelope"></i>
                                     <input type="email" id="loginEmail" class="form-input" placeholder="seu@email.com"
-                                        required>
+                                        autocomplete="email" required>
                                 </div>
                             </div>
 
@@ -112,7 +112,7 @@
                                 <div class="input-group">
                                     <i class="input-icon bi bi-lock"></i>
                                     <input type="password" id="loginPassword" class="form-input" placeholder="••••••••"
-                                        required>
+                                        autocomplete="current-password" required>
                                     <button type="button" class="password-toggle" id="toggleLoginPassword">
                                          <i class="bi bi-eye-slash"></i>
                                     </button>
@@ -262,11 +262,11 @@
     <!-- Modal Google Removido -->
 
     <!-- Modal Esqueci Senha -->
-    <div id="forgotPasswordModal" class="modal hidden">
+    <div id="forgotPasswordModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-forgot-title">
         <div class="backdrop" id="backdrop-forgot"></div>
         <div class="modal-content">
             <div class="modal-header">
-                <h3 class="modal-title">
+                <h3 class="modal-title" id="modal-forgot-title">
                     <i class="bi bi-key"></i>
                     Recuperar Senha
                 </h3>
@@ -278,9 +278,9 @@
 
                 <!-- Indicador de passos -->
                 <div class="recovery-steps-indicator" style="display: flex; justify-content: center; gap: 8px; margin-bottom: 1.5rem;">
-                    <div class="step-dot active" id="stepDot1" style="width: 10px; height: 10px; border-radius: 50%; background: var(--primary-color); transition: all 0.3s;"></div>
-                    <div class="step-dot" id="stepDot2" style="width: 10px; height: 10px; border-radius: 50%; background: var(--border-color); transition: all 0.3s;"></div>
-                    <div class="step-dot" id="stepDot3" style="width: 10px; height: 10px; border-radius: 50%; background: var(--border-color); transition: all 0.3s;"></div>
+                    <div class="step-dot active" id="stepDot1" aria-current="step" aria-label="Passo 1 de 3" style="width: 10px; height: 10px; border-radius: 50%; background: var(--primary-color); transition: all 0.3s;"></div>
+                    <div class="step-dot" id="stepDot2" aria-label="Passo 2 de 3" style="width: 10px; height: 10px; border-radius: 50%; background: var(--border-color); transition: all 0.3s;"></div>
+                    <div class="step-dot" id="stepDot3" aria-label="Passo 3 de 3" style="width: 10px; height: 10px; border-radius: 50%; background: var(--border-color); transition: all 0.3s;"></div>
                 </div>
 
                 <!-- Step 1: Solicitar Código -->
@@ -414,11 +414,11 @@
     </div>
 
     <!-- Modal Política de Privacidade -->
-    <div id="privacyModal" class="modal hidden">
+    <div id="privacyModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-privacy-title">
         <div class="backdrop" id="backdrop-privacy"></div>
         <div class="modal-content" style="max-width: 800px; max-height: 80vh; overflow-y: auto;">
             <div class="modal-header">
-                <h3 class="modal-title">
+                <h3 class="modal-title" id="modal-privacy-title">
                     <i class="bi bi-shield-lock"></i>
                     Política de Privacidade
                 </h3>
@@ -457,11 +457,11 @@
     <div id="toastContainer" class="toast-container"></div>
 
     <!-- Modal 2FA — Verificação de Dois Fatores (Roadmap #1) -->
-    <div id="modal2FA" class="modal hidden">
+    <div id="modal2FA" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-2fa-title">
         <div class="backdrop" id="backdrop2FA"></div>
         <div class="modal-content" style="max-width: 420px;">
             <div class="modal-header">
-                <h3 class="modal-title">
+                <h3 class="modal-title" id="modal-2fa-title">
                     <i class="bi bi-shield-lock-fill" style="color: var(--primary-color);"></i>
                     Verificação em Dois Fatores
                 </h3>
