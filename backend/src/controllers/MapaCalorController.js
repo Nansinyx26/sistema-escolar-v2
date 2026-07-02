@@ -4,12 +4,40 @@ const logger = require('../utils/logger');
 
 exports.gerarMapaCalor = async(req, res) => {
     try {
+        // Aceita tanto "materiaId"/"turmaId" quanto "materia"/"turma" para compatibilidade
+        // com notas cadastradas antes da padronização dos campos.
         const pipeline = [
-            { $addFields: { notaNum: { $toDouble: "$nota" } } },
-            { $match: { notaNum: { $ne: null }, materiaId: { $exists: true, $ne: null }, turmaId: { $exists: true, $ne: null } } },
+            {
+                $addFields: {
+                    notaNum: { $toDouble: "$nota" },
+                    _materiaFinal: {
+                        $cond: [
+                            { $and: [{ $ifNull: ["$materiaId", false] }, { $ne: ["$materiaId", ""] }] },
+                            "$materiaId",
+                            { $cond: [
+                                { $and: [{ $ifNull: ["$materia", false] }, { $ne: ["$materia", ""] }] },
+                                "$materia",
+                                null
+                            ]}
+                        ]
+                    },
+                    _turmaFinal: {
+                        $cond: [
+                            { $and: [{ $ifNull: ["$turmaId", false] }, { $ne: ["$turmaId", ""] }] },
+                            "$turmaId",
+                            { $cond: [
+                                { $and: [{ $ifNull: ["$turma", false] }, { $ne: ["$turma", ""] }] },
+                                "$turma",
+                                null
+                            ]}
+                        ]
+                    }
+                }
+            },
+            { $match: { notaNum: { $ne: null }, _materiaFinal: { $ne: null }, _turmaFinal: { $ne: null } } },
             {
                 $group: {
-                    _id: { materia: "$materiaId", turma: "$turmaId" },
+                    _id: { materia: "$_materiaFinal", turma: "$_turmaFinal" },
                     media: { $avg: "$notaNum" },
                     totalNotas: { $sum: 1 }
                 }
