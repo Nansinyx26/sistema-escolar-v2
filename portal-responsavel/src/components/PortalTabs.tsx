@@ -1,4 +1,3 @@
-import React from 'react';
 import NotificationSettings from './NotificationSettings';
 import EditarPerfil from './EditarPerfil';
 import VincularFilho from './VincularFilho';

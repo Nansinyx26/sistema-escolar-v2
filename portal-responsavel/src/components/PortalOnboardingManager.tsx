@@ -1,6 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import OnboardingTour, { RESPONSAVEL_TOUR_STEPS } from './OnboardingTour';
-import { updateTutorial } from '../services/apiService';
 import type { AuthUser } from '../types';
 
 declare global {
@@ -13,7 +12,7 @@ interface PortalOnboardingManagerProps {
   authUser: AuthUser | null;
   authLoading: boolean;
   currentTab: 'dashboard' | 'linking' | 'profile' | 'bi';
-  onUserChange: React.Dispatch<React.SetStateAction<AuthUser | null>>;
+  onUserChange: Dispatch<SetStateAction<AuthUser | null>>;
 }
 
 export default function PortalOnboardingManager({

@@ -120,6 +120,7 @@ export interface Notification {
   lido: boolean;
   destinatarios: 'todos' | string;
   icon: string;
+  prioridade?: 'normal' | 'media' | 'alta' | 'importante' | 'urgente' | string;
   criadoPor?: string;
   comunicadoId?: string;
   notificacaoId?: string;
