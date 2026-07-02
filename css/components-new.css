@@ -233,6 +233,7 @@ select.form-select {
     background-color: var(--bg-elevated) !important;
     color: var(--text-primary) !important;
     border: 1px solid var(--border-secondary) !important;
+    color-scheme: dark !important;
 }
 
 [data-theme="light"] select.form-input,
@@ -241,6 +242,7 @@ select.form-select {
     background-color: var(--bg-primary) !important;
     color: var(--text-primary) !important;
     border: 1px solid var(--border-primary) !important;
+    color-scheme: light !important;
 }
 
 select.form-input:hover,

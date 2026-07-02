@@ -134,6 +134,15 @@ textarea {
     width: 100%;
 }
 
+/* Força dropdown nativo do select a usar tema escuro no Windows/Chrome */
+select {
+    color-scheme: dark;
+}
+
+[data-theme="light"] select {
+    color-scheme: light;
+}
+
 /* Ocultar ícone de "olhinho" padrão do Windows/Edge/Chrome para evitar duplicidade */
 input::-ms-reveal,
 input::-ms-clear {
