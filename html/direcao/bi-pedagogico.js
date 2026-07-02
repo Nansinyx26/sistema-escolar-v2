@@ -147,13 +147,7 @@ function renderHeatmap(data) {
     }
 
     const materias = [...new Set(data.map(d => d.materia))].sort();
-    const turmas = [
-        '1A', '1B', '1C', '1D',
-        '2A', '2B', '2C', '2D',
-        '3A', '3B', '3C', '3D',
-        '4A', '4B', '4C', '4D',
-        '5A', '5B', '5C', '5D'
-    ];
+    const turmas = [...new Set(data.map(d => d.turma))].sort();
 
     const dataMap = new Map();
     data.forEach(entry => {
@@ -355,6 +349,13 @@ function renderTrendsChart(evolucaoData) {
     const labels = evolucaoData.map(item => item.label);
     const dataPoints = evolucaoData.map(item => item.value !== null ? parseFloat(item.value) : null);
 
+    // Se todos os valores são nulos, não há dados para exibir
+    if (dataPoints.every(v => v === null)) {
+        const parent = ctxTrend.parentElement;
+        if (parent) parent.innerHTML = '<div style="text-align:center; padding:2rem; opacity:0.5; font-size:0.85rem; color:#94a3b8;">Sem avaliações registradas por bimestre ainda.</div>';
+        return;
+    }
+
     if (mainCharts.trend) mainCharts.trend.destroy();
     mainCharts.trend = new Chart(ctxTrend, {
         type: 'line',
@@ -369,7 +370,8 @@ function renderTrendsChart(evolucaoData) {
                 tension: 0.4,
                 borderWidth: 3,
                 pointRadius: 4,
-                pointBackgroundColor: '#fff'
+                pointBackgroundColor: '#fff',
+                spanGaps: true
             }]
         },
         options: {

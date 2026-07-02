@@ -1,4 +1,5 @@
 const Nota = require('../models/Nota');
+const Turma = require('../models/Turma');
 const logger = require('../utils/logger');
 
 exports.gerarMapaCalor = async(req, res) => {
@@ -18,9 +19,27 @@ exports.gerarMapaCalor = async(req, res) => {
 
         const aggregatedData = await Nota.aggregate(pipeline);
 
+        // Monta mapa de turmaId → nome legível a partir da coleção de turmas
+        let turmaMap = {};
+        try {
+            const turmas = await Turma.find({}).select('_id id nome').lean();
+            turmas.forEach(t => {
+                const label = t.nome || t.id || String(t._id);
+                if (t._id) turmaMap[String(t._id)] = label;
+                if (t.id)  turmaMap[String(t.id)]  = label;
+            });
+        } catch (e) {
+            logger.warn(`[MapaCalor] Não foi possível carregar nomes de turmas: ${e.message}`);
+        }
+
+        const resolveTurma = (id) => {
+            if (!id) return id;
+            return turmaMap[String(id)] || String(id);
+        };
+
         const data = aggregatedData.map(item => ({
             materia: item._id.materia,
-            turma: item._id.turma,
+            turma: resolveTurma(item._id.turma),
             media: item.media != null ? parseFloat(item.media.toFixed(2)) : 0,
             totalNotas: item.totalNotas || 0
         }));
