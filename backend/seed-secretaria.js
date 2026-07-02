@@ -2,9 +2,15 @@
  * Seed script: cria uma secretaria de teste no banco de dados
  * Uso: node seed-secretaria.js
  */
+require('dotenv').config(); // carrega variáveis do .env (uso local); no Render, as env vars já vêm do painel
 const mongoose = require('mongoose');
 
-const MONGO_URI = process.env
+const MONGO_URI = process.env.MONGO_URI;
+
+if (!MONGO_URI) {
+    console.error('❌ MONGO_URI não definida. Configure a variável de ambiente antes de rodar o seed.');
+    process.exit(1);
+}
 
 async function seed() {
     try {
