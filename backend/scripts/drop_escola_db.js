@@ -1,33 +1,63 @@
+require('dotenv').config();
 const { MongoClient } = require('mongodb');
+const readline = require('readline');
 
-const URI = 'mongodb+srv://nandev:iQcJX5e1iObrExqg@sistemaescolar.s98lpdu.mongodb.net/test?appName=SistemaEscolar';
+const URI = process.env.MONGODB_URI;
+const DB_NAME = 'escola_db';
+
+if (!URI) {
+    console.error('❌ Variável de ambiente MONGODB_URI não encontrada. Crie um arquivo .env com MONGODB_URI=...');
+    process.exit(1);
+}
+
+function confirmar(pergunta) {
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+    return new Promise((resolve) => {
+        rl.question(pergunta, (resposta) => {
+            rl.close();
+            resolve(resposta.trim());
+        });
+    });
+}
 
 async function main() {
-    console.log('🔌 Conectando ao MongoDB Atlas para remoção da base escola_db...');
+    console.log('🔌 Conectando ao MongoDB Atlas...');
+
+    const resposta = await confirmar(
+        `⚠️ Isso vai APAGAR PERMANENTEMENTE o banco "${DB_NAME}". Digite o nome do banco para confirmar: `
+    );
+
+    if (resposta !== DB_NAME) {
+        console.log('🚫 Confirmação incorreta. Operação cancelada.');
+        return;
+    }
+
     const client = new MongoClient(URI);
+
     try {
         await client.connect();
         console.log('✅ Conectado ao cluster.');
 
-        // Selecionar o banco escola_db
-        const dbEscola = client.db('escola_db');
-        
-        console.log('🗑️ Excluindo banco de dados "escola_db"...');
+        const dbEscola = client.db(DB_NAME);
+
+        console.log(`🗑️ Excluindo banco de dados "${DB_NAME}"...`);
         const dropResult = await dbEscola.dropDatabase();
         console.log('✔️ Resultado da exclusão:', dropResult);
 
-        // Listar bancos de dados para verificar exclusão
         const adminDb = client.db('test').admin();
         const dbs = await adminDb.listDatabases();
         const dbNames = dbs.databases.map(d => d.name);
-        
+
         console.log('\nBancos de dados ativos no cluster:');
         console.log(dbNames);
-        
-        if (!dbNames.includes('escola_db')) {
-            console.log('\n🎉 SUCESSO: O banco "escola_db" foi removido completamente do cluster!');
+
+        if (!dbNames.includes(DB_NAME)) {
+            console.log(`\n🎉 SUCESSO: O banco "${DB_NAME}" foi removido completamente do cluster!`);
         } else {
-            console.warn('\n⚠️ ATENÇÃO: O banco "escola_db" ainda consta na listagem.');
+            console.warn(`\n⚠️ ATENÇÃO: O banco "${DB_NAME}" ainda consta na listagem.`);
         }
 
     } catch (err) {
