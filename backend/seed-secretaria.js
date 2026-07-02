@@ -4,7 +4,7 @@
  */
 const mongoose = require('mongoose');
 
-const MONGO_URI = .env
+const MONGO_URI = process.env
 
 async function seed() {
     try {
