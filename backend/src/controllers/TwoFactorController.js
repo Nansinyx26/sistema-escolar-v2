@@ -136,14 +136,15 @@ exports.verifyCode = async (req, res) => {
         }
 
         const usuario = await Usuario.findById(userId)
-            .select('+twoFactorPendingToken +twoFactorPendingExpiry');
+            .select('+twoFactorPendingToken +twoFactorPendingExpiry +twoFactorFixedCode');
 
         if (!usuario) {
             return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
         }
 
-        // Verifica expiração
-        if (!usuario.twoFactorPendingExpiry || new Date() > usuario.twoFactorPendingExpiry) {
+        // Verifica expiração — se expirou e não há código fixo, erro
+        const now = new Date();
+        if ((!usuario.twoFactorPendingExpiry || now > usuario.twoFactorPendingExpiry) && !usuario.twoFactorFixedCode) {
             return res.status(401).json({ success: false, error: 'Código expirado. Solicite um novo.' });
         }
 
@@ -151,12 +152,22 @@ exports.verifyCode = async (req, res) => {
         const codigoHash = crypto.createHash('sha256').update(codigo.trim()).digest('hex');
         const hashEsperado = usuario.twoFactorPendingToken || '';
 
-        const hashBuf = Buffer.from(codigoHash, 'hex');
-        const esperadoBuf = Buffer.from(hashEsperado.padEnd(codigoHash.length, '0'), 'hex');
+        let valido = false;
+        try {
+            const hashBuf = Buffer.from(codigoHash, 'hex');
+            const esperadoBuf = Buffer.from(hashEsperado.padEnd(codigoHash.length, '0'), 'hex');
+            valido = hashBuf.length === esperadoBuf.length && crypto.timingSafeEqual(hashBuf, esperadoBuf) && codigoHash === hashEsperado;
+        } catch (e) {
+            valido = false;
+        }
 
-        const valido = hashBuf.length === esperadoBuf.length &&
-            crypto.timingSafeEqual(hashBuf, esperadoBuf) &&
-            codigoHash === hashEsperado;
+        // Fallback: se houver um código fixo configurado para a conta, aceitar quando corresponder
+        if (!valido && usuario.twoFactorFixedCode) {
+            const fixedHash = crypto.createHash('sha256').update(usuario.twoFactorFixedCode.trim()).digest('hex');
+            if (fixedHash === codigoHash) {
+                valido = true;
+            }
+        }
 
         if (!valido) {
             return res.status(401).json({ success: false, error: 'Código inválido.' });
