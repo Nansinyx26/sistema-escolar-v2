@@ -3,7 +3,7 @@ const { MongoClient } = require('mongodb');
 const readline = require('readline');
 
 const URI = process.env.MONGODB_URI;
-const DB_NAME = 'escola_db';
+const DB_NAME = 'test';
 
 if (!URI) {
     console.error('❌ Variável de ambiente MONGODB_URI não encontrada. Crie um arquivo .env com MONGODB_URI=...');
