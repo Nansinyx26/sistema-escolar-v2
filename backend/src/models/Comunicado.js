@@ -4,8 +4,15 @@ const ComunicadoSchema = new mongoose.Schema({
     titulo: { type: String, required: true },
     conteudo: { type: String, required: true }, // HTML formatado
     imagens: [{ type: String }], // Array de strings (Base64 ou URLs)
-    diretorId: { type: String, ref: 'Usuario', required: true },
-    diretorNome: { type: String, required: true },
+    // Autor genérico (diretor OU secretaria)
+    autorId: { type: String, ref: 'Usuario' },
+    autorNome: { type: String },
+    autorFoto: { type: String },
+    autorPerfil: { type: String }, // 'diretor', 'secretaria', 'admin'
+
+    // Campos legado (mantidos por compatibilidade)
+    diretorId: { type: String, ref: 'Usuario' },
+    diretorNome: { type: String },
     diretorFoto: { type: String },
     diretorPerfil: { type: String },
     
@@ -13,7 +20,7 @@ const ComunicadoSchema = new mongoose.Schema({
     destinatarios: [{ type: String, required: true }],
     
     // Novas propriedades Redesign 3.0
-    categoria: { type: String, default: 'Direção', enum: ['Todos', 'Direção', 'Professores', 'Responsáveis', 'Sistema'] },
+    categoria: { type: String, default: 'Direção', enum: ['Todos', 'Direção', 'Secretaria', 'Professores', 'Responsáveis', 'Sistema'] },
     prioridade: { type: String, default: 'Normal', enum: ['Normal', 'Importante', 'Urgente'] },
     arquivos: [{ 
         nome: String, 

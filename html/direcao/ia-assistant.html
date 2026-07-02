@@ -991,6 +991,10 @@
 
     <!-- Essential Scripts -->
     <script src="../../js/api-config.js"></script>
+    <script src="../../js/database.js"></script>
+    <script src="../../js/auth.js"></script>
+    <script src="../../js/utils.js"></script>
+    <script src="../../js/sidebar-voice.js?v=4.0"></script>
     <script src="../../js/ia-logic.js"></script>
 
     <script>
@@ -1276,7 +1280,16 @@
       }
 
       // ── Init ──────────────────────────────────────────────────────────
-      loadConfig();
+      (async () => {
+        // Initialize auth so API calls are authenticated
+        if (typeof db !== 'undefined') await db.init();
+        if (typeof auth !== 'undefined') await auth.init();
+        if (typeof auth !== 'undefined' && !auth.isAuthenticated()) {
+          window.location.href = '../login.html';
+          return;
+        }
+        loadConfig();
+      })();
     </script>
   </body>
 </html>

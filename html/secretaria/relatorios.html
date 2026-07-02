@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatórios - Secretaria</title>
+    <link rel="icon" type="image/png" href="../../favicon/favicon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/variables.css?v=2.0">
+    <link rel="stylesheet" href="../../css/base.css?v=2.0">
+    <link rel="stylesheet" href="../../css/components-new.css?v=2.0">
+    <link rel="stylesheet" href="../../css/dashboard.css?v=2.1">
+    <link rel="stylesheet" href="../../css/responsive-global.css?v=1.1">
+    <link rel="stylesheet" href="../../css/dashboard-premium.css?v=1.0">
+    <link rel="stylesheet" href="../../js/libs/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../../css/tailwind-built.css">
+    <style>
+        .sec-page { max-width:1100px; margin:0 auto; padding:2rem 1.5rem; }
+        .sec-header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:2rem; }
+        .sec-header h1 { font-size:1.5rem; font-weight:700; color:#fff; margin:0; display:flex; align-items:center; gap:0.75rem; }
+        .sec-form-card { background:rgba(30,41,59,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:1.5rem; margin-bottom:1.5rem; }
+        .sec-form-card h3 { color:#fff; font-size:1rem; margin:0 0 1rem; display:flex; align-items:center; gap:0.5rem; }
+        .sec-input,.sec-select { width:100%; padding:0.6rem 0.8rem; background:rgba(15,23,42,0.8); border:1px solid rgba(255,255,255,0.12); border-radius:10px; color:#fff; font-size:0.85rem; }
+        .sec-btn { padding:0.6rem 1.2rem; border-radius:10px; font-size:0.85rem; font-weight:600; cursor:pointer; border:none; transition:all 0.2s; }
+        .sec-btn-primary { background:#10b981; color:#fff; }
+        .sec-btn-primary:hover { background:#059669; }
+        .sec-btn-blue { background:#3b82f6; color:#fff; }
+        .sec-btn-outline { background:transparent; color:#10b981; border:1px solid rgba(16,185,129,0.3); text-decoration:none; }
+        .sec-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+        .sec-table th { padding:0.75rem; text-align:left; color:#94a3b8; font-weight:600; font-size:0.75rem; text-transform:uppercase; border-bottom:1px solid rgba(255,255,255,0.06); }
+        .sec-table td { padding:0.75rem; color:#cbd5e1; border-bottom:1px solid rgba(255,255,255,0.04); }
+        .sec-table tr:hover { background:rgba(255,255,255,0.02); }
+        .sec-badge { padding:3px 10px; border-radius:20px; font-size:0.7rem; font-weight:600; }
+        .sec-badge-green { background:rgba(16,185,129,0.15); color:#10b981; }
+        .sec-badge-blue { background:rgba(59,130,246,0.15); color:#3b82f6; }
+        .sec-badge-purple { background:rgba(139,92,246,0.15); color:#8b5cf6; }
+        .sec-tabs { display:flex; gap:0.5rem; margin-bottom:1.5rem; flex-wrap:wrap; }
+        .sec-tab { padding:0.5rem 1.2rem; border-radius:10px; font-size:0.85rem; cursor:pointer; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); color:#94a3b8; transition:all 0.2s; font-weight:500; }
+        .sec-tab.active { background:rgba(16,185,129,0.15); color:#10b981; border-color:rgba(16,185,129,0.3); }
+        .sec-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1rem; margin-bottom:1.5rem; }
+        .sec-summary-item { background:rgba(15,23,42,0.6); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:1rem; text-align:center; }
+        .sec-summary-value { font-size:1.5rem; font-weight:700; color:#fff; }
+        .sec-summary-label { font-size:0.75rem; color:#94a3b8; }
+        .sec-toast { position:fixed; bottom:20px; right:20px; padding:1rem 1.5rem; border-radius:12px; font-size:0.85rem; z-index:9999; animation:slideUp .3s; }
+        .sec-toast-success { background:#10b981; color:#fff; }
+        .sec-toast-error { background:#ef4444; color:#fff; }
+        @keyframes slideUp { from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1} }
+    </style>
+</head>
+<body>
+<div class="dashboard-page" id="pageWrapper">
+    <div class="dashboard-bg"><div class="orb orb-primary"></div><div class="orb orb-secondary"></div></div>
+    <main class="dashboard-main">
+        <div class="sec-page">
+            <div class="sec-header">
+                <h1><i class="bi bi-bar-chart-line" style="color:#ec4899;"></i> Relatórios</h1>
+                <a href="painel.html" class="sec-btn sec-btn-outline"><i class="bi bi-arrow-left"></i> Voltar</a>
+            </div>
+
+            <!-- Tabs -->
+            <div class="sec-tabs">
+                <button class="sec-tab active" onclick="switchTab('turma')"><i class="bi bi-people"></i> Alunos por Turma</button>
+                <button class="sec-tab" onclick="switchTab('matriculas')"><i class="bi bi-card-checklist"></i> Matrículas</button>
+            </div>
+
+            <!-- Export -->
+            <div style="display:flex;gap:0.5rem;margin-bottom:1.5rem;">
+                <button class="sec-btn sec-btn-blue" onclick="exportar('alunos')"><i class="bi bi-download"></i> Exportar Alunos (CSV)</button>
+                <button class="sec-btn sec-btn-blue" onclick="exportar('matriculas')"><i class="bi bi-download"></i> Exportar Matrículas (CSV)</button>
+            </div>
+
+            <!-- Alunos por Turma -->
+            <div id="tabTurma">
+                <div id="turmaReportContent"><div style="text-align:center;color:#94a3b8;padding:2rem;">Carregando...</div></div>
+            </div>
+
+            <!-- Matrículas -->
+            <div id="tabMatriculas" style="display:none;">
+                <div id="matResumo" class="sec-summary"></div>
+                <div class="sec-form-card">
+                    <div style="overflow-x:auto;">
+                        <table class="sec-table">
+                            <thead><tr><th>Aluno</th><th>Nº Matrícula</th><th>Ano</th><th>Status</th><th>Data</th></tr></thead>
+                            <tbody id="matBody"><tr><td colspan="5" style="text-align:center;color:#94a3b8;">Carregando...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="../../js/api-config.js"></script>
+<script defer src="../../js/database.js?v=3"></script>
+<script defer src="../../js/auth.js?v=3"></script>
+<script defer src="../../js/utils.js?v=3"></script>
+<script>
+const API = () => window.API_BASE_URL || '/api';
+function toast(m,t='success'){const d=document.createElement('div');d.className=`sec-toast sec-toast-${t}`;d.textContent=m;document.body.appendChild(d);setTimeout(()=>d.remove(),3000);}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    if (typeof db !== 'undefined') await db.init();
+    if (typeof auth !== 'undefined') await auth.init();
+    carregarAlunosPorTurma();
+    carregarMatriculas();
+});
+
+function switchTab(tab) {
+    document.querySelectorAll('.sec-tab').forEach(t => t.classList.remove('active'));
+    event.target.closest('.sec-tab').classList.add('active');
+    document.getElementById('tabTurma').style.display = tab === 'turma' ? 'block' : 'none';
+    document.getElementById('tabMatriculas').style.display = tab === 'matriculas' ? 'block' : 'none';
+}
+
+async function carregarAlunosPorTurma() {
+    try {
+        const res = await fetch(`${API()}/secretaria/relatorios/alunos-por-turma`, { credentials:'include' });
+        const json = await res.json();
+        const container = document.getElementById('turmaReportContent');
+        if (json.success) {
+            container.innerHTML = json.data.map(t => `
+                <div class="sec-form-card">
+                    <h3><i class="bi bi-people" style="color:#0ea5e9;"></i> ${t.turma} <span class="sec-badge sec-badge-blue" style="margin-left:0.5rem;">${t.totalAlunos} alunos</span></h3>
+                    ${t.alunos.length > 0 ? `<div style="overflow-x:auto;"><table class="sec-table">
+                        <thead><tr><th>#</th><th>Nome</th><th>Matrícula</th></tr></thead>
+                        <tbody>${t.alunos.map((a, i) => `<tr><td>${i+1}</td><td>${a.nome}${a.sobrenome ? ' ' + a.sobrenome : ''}</td><td>${a.matricula || '-'}</td></tr>`).join('')}</tbody>
+                    </table></div>` : '<div style="color:#94a3b8;font-size:0.85rem;padding:0.5rem;">Nenhum aluno nesta turma</div>'}
+                </div>
+            `).join('');
+        }
+    } catch(e) { console.error(e); }
+}
+
+async function carregarMatriculas() {
+    try {
+        const res = await fetch(`${API()}/secretaria/relatorios/matriculas`, { credentials:'include' });
+        const json = await res.json();
+        if (json.success) {
+            const r = json.data.resumo;
+            document.getElementById('matResumo').innerHTML = `
+                <div class="sec-summary-item"><div class="sec-summary-value">${r.total}</div><div class="sec-summary-label">Total</div></div>
+                <div class="sec-summary-item"><div class="sec-summary-value" style="color:#10b981;">${r.cursando}</div><div class="sec-summary-label">Cursando</div></div>
+                <div class="sec-summary-item"><div class="sec-summary-value" style="color:#3b82f6;">${r.aprovado}</div><div class="sec-summary-label">Aprovados</div></div>
+                <div class="sec-summary-item"><div class="sec-summary-value" style="color:#ef4444;">${r.reprovado}</div><div class="sec-summary-label">Reprovados</div></div>
+                <div class="sec-summary-item"><div class="sec-summary-value" style="color:#f59e0b;">${r.transferido}</div><div class="sec-summary-label">Transferidos</div></div>
+                <div class="sec-summary-item"><div class="sec-summary-value" style="color:#94a3b8;">${r.evadido}</div><div class="sec-summary-label">Evadidos</div></div>
+            `;
+            const body = document.getElementById('matBody');
+            if (json.data.matriculas.length > 0) {
+                const badgeMap = { cursando:'sec-badge-green', aprovado:'sec-badge-blue', reprovado:'sec-badge-red', transferido:'sec-badge-yellow', evadido:'sec-badge-gray' };
+                body.innerHTML = json.data.matriculas.map(m => `<tr>
+                    <td>${m.alunoNome}</td>
+                    <td>${m.matriculaNumero || '-'}</td>
+                    <td>${m.anoLetivo}</td>
+                    <td><span class="sec-badge ${badgeMap[m.status] || 'sec-badge-purple'}">${m.status}</span></td>
+                    <td>${m.dataMatricula ? new Date(m.dataMatricula).toLocaleDateString('pt-BR') : '-'}</td>
+                </tr>`).join('');
+            }
+        }
+    } catch(e) { console.error(e); }
+}
+
+function exportar(tipo) {
+    const url = `${API()}/secretaria/relatorios/exportar?tipo=${tipo}`;
+    window.open(url, '_blank');
+    toast('Download iniciado!');
+}
+</script>
+<script src="../../js/sidebar-voice.js?v=4.0"></script>
+<script src="../../js/chatbot-ia.js?v=4.0"></script>
+</body>
+</html>

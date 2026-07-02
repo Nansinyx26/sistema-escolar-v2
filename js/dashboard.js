@@ -100,6 +100,18 @@ async function carregarDados() {
                 console.warn('⚠️ Perfil estendido de diretor não encontrado. Usando dados do login.');
                 perfil = { nome: user.nome };
             }
+        } else if (user.perfil === 'secretaria') {
+            perfil = await db.findByIndex('secretarias', 'idUsuario', user._id || user.id);
+
+            if (!perfil && user.email) {
+                const todos = await db.getAll('secretarias');
+                perfil = todos.find(s => s.email === user.email);
+            }
+
+            if (!perfil) {
+                console.warn('⚠️ Perfil estendido de secretaria não encontrado. Usando dados do login.');
+                perfil = { nome: user.nome };
+            }
         } else if (user.perfil === 'admin') {
             // Admin não precisa buscar perfil adicional
             perfil = { nome: user.nome };
@@ -127,6 +139,7 @@ function atualizarHeader(user, perfil) {
     // Role baseada no perfil
     const roleLabel = user.perfil === 'admin' ? 'Administrador'
         : user.perfil === 'professor' ? 'Professor'
+        : user.perfil === 'secretaria' ? 'Secretária'
         : 'Diretor';
 
     const sidebarUserName = document.getElementById('sidebarUserName');
@@ -156,6 +169,8 @@ function atualizarWelcome(user, perfil) {
         welcomeMessage.textContent = 'Você tem acesso total ao sistema como Administrador.';
     } else if (user.perfil === 'professor') {
         welcomeMessage.textContent = 'Pronto para gerenciar suas turmas e atividades.';
+    } else if (user.perfil === 'secretaria') {
+        welcomeMessage.textContent = 'Gerencie matrículas, documentos e comunicados da escola.';
     } else {
         welcomeMessage.textContent = 'Acesse todas as ferramentas administrativas da escola.';
     }
@@ -231,6 +246,18 @@ async function atualizarCards(user, perfil) {
             // ... (rest of card logic if still needed, but sidebar is priority)
         }
 
+    } else if (user.perfil === 'secretaria') {
+        // Secretaria vê lista de alunos mas não vê ferramentas admin, horários, gerencial
+        if (cardGerencial) cardGerencial.style.display = 'none';
+        if (cardFerramentas) cardFerramentas.style.display = 'none';
+        if (cardHorariosDir) cardHorariosDir.style.display = 'none';
+        if (cardGestaoGrade) cardGestaoGrade.style.display = 'none';
+        if (cardListaProfessores) cardListaProfessores.style.display = 'none';
+        if (cardGerenciarSalas) cardGerenciarSalas.style.display = 'none';
+        if (cardNotificacoesResp) cardNotificacoesResp.style.display = 'none';
+        if (cardSecretCodes) cardSecretCodes.style.display = 'none';
+        if (cardListaAlunos) cardListaAlunos.style.display = 'flex'; // Secretaria acessa alunos
+
     } else if (user.perfil === 'diretor') {
         const directorSummary = document.getElementById('directorDashboardSummary');
         const directorActivity = document.getElementById('directorActivityGrid');
@@ -293,6 +320,8 @@ function atualizarVisibilidadeSidebar(perfil) {
     const teacherItems = document.querySelectorAll('.teacher-only');
     const sharedItems = document.querySelectorAll('.director-teacher-shared');
 
+    const secretariaItems = document.querySelectorAll('.secretaria-only');
+
     if (perfil === 'diretor' || perfil === 'admin') {
         directorItems.forEach(el => {
             if (el.classList.contains('sidebar-item') || el.classList.contains('btn')) {
@@ -302,12 +331,28 @@ function atualizarVisibilidadeSidebar(perfil) {
             }
         });
         teacherItems.forEach(el => el.style.display = 'none');
+        secretariaItems.forEach(el => el.style.display = 'none');
+        sharedItems.forEach(el => {
+            if (el.classList.contains('sidebar-item')) el.style.display = 'flex';
+            else el.style.display = 'block';
+        });
+    } else if (perfil === 'secretaria') {
+        directorItems.forEach(el => el.style.display = 'none');
+        teacherItems.forEach(el => el.style.display = 'none');
+        secretariaItems.forEach(el => {
+            if (el.classList.contains('sidebar-item') || el.classList.contains('btn')) {
+                el.style.display = 'flex';
+            } else {
+                el.style.display = 'block';
+            }
+        });
         sharedItems.forEach(el => {
             if (el.classList.contains('sidebar-item')) el.style.display = 'flex';
             else el.style.display = 'block';
         });
     } else if (perfil === 'professor') {
         directorItems.forEach(el => el.style.display = 'none');
+        secretariaItems.forEach(el => el.style.display = 'none');
         teacherItems.forEach(el => {
             if (el.classList.contains('sidebar-item')) {
                 el.style.display = 'flex';

@@ -58,7 +58,7 @@ class ChatbotController {
 
       logger.debug(`[ChatbotController] response="${response?.substring(0, 60)}" options=${JSON.stringify(options)}`);
 
-      const perfilParaSalvar = ['admin', 'diretor', 'professor', 'responsavel'].includes(perfil) ?
+      const perfilParaSalvar = ['admin', 'diretor', 'professor', 'responsavel', 'secretaria', 'coordenador'].includes(perfil) ?
         perfil :
         'admin';
 

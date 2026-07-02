@@ -49,55 +49,87 @@ async function initBI() {
     biAbortController = new AbortController();
     const signal = biAbortController.signal;
 
+    console.log('[BI] Iniciando carregamento de dados...');
+    console.log('[BI] API_BASE:', API_BASE);
+
+    /** Helper: loga resposta com detalhes para diagnóstico */
+    async function logResponse(label, res) {
+        if (!res) { console.warn(`[BI] ${label}: resposta nula`); return; }
+        console.log(`[BI] ${label}: status=${res.status} ok=${res.ok}`);
+        if (!res.ok) {
+            try {
+                const clone = res.clone();
+                const body = await clone.text();
+                console.warn(`[BI] ${label} corpo da resposta:`, body.substring(0, 500));
+            } catch (_) { /* ignore */ }
+        }
+    }
+
+    /** Helper: mensagem amigável baseada no status HTTP */
+    function msgFromStatus(status) {
+        if (status === 401) return 'Sessão expirada. Faça login novamente para visualizar os dados.';
+        if (status === 403) return 'Acesso não autorizado. Seu perfil não permite acessar este recurso.';
+        if (status === 503 || status === 0) return 'Servidor indisponível. Verifique se o backend está em execução.';
+        return 'Não foi possível conectar ao servidor de dados.';
+    }
+
     try {
         // Carregamento paralelo para melhor performance
         const [heatmapRes, insightsRes, chartDataRes] = await Promise.all([
-            fetch(`${API_BASE}/ia/mapa-calor`, {
-                signal,
-                credentials: 'include'
-            }),
-            fetch(`${API_BASE}/ia/insights-global`, {
-                signal,
-                credentials: 'include'
-            }).catch(() => null),
-            fetch(`${API_BASE}/dashboard/chart-data`, {
-                signal,
-                credentials: 'include'
-            }).catch(() => null)
+            fetch(`${API_BASE}/ia/mapa-calor`, { signal, credentials: 'include' }).catch(e => { console.error('[BI] Fetch mapa-calor falhou:', e.message); return null; }),
+            fetch(`${API_BASE}/ia/insights-global`, { signal, credentials: 'include' }).catch(e => { console.warn('[BI] Fetch insights-global falhou:', e.message); return null; }),
+            fetch(`${API_BASE}/dashboard/chart-data`, { signal, credentials: 'include' }).catch(e => { console.warn('[BI] Fetch chart-data falhou:', e.message); return null; })
         ]);
 
+        // 1. Mapa de Calor + Distribuição por Disciplina
+        await logResponse('mapa-calor', heatmapRes);
         if (!heatmapRes || !heatmapRes.ok) {
-            console.error('Falha ao carregar Mapa de Calor:', heatmapRes?.status);
-            showErrorState('heatmapContainer', 'Não foi possível conectar ao servidor de dados.');
+            const errMsg = msgFromStatus(heatmapRes?.status);
+            console.error('[BI] Falha ao carregar Mapa de Calor:', heatmapRes?.status, errMsg);
+            showErrorState('heatmapContainer', errMsg);
+            showChartError('subjectRadarChart', 'Sem dados disponíveis para exibir o gráfico.');
         } else {
-            const heatmapData = await heatmapRes.json().catch(() => ({ success: false, error: 'Erro ao parsear dados' }));
+            const heatmapData = await heatmapRes.json().catch(() => ({ success: false, error: 'Erro ao parsear dados do servidor.' }));
             console.log('[BI] Heatmap Data Received:', heatmapData);
 
             if (heatmapData.success && Array.isArray(heatmapData.data) && heatmapData.data.length > 0) {
                 renderHeatmap(heatmapData.data);
                 renderAnalytics(heatmapData.data);
             } else {
-                showErrorState('heatmapContainer', heatmapData.error || 'Sem dados de avaliações disponíveis para o período.');
+                const msg = heatmapData.error || 'Sem dados de avaliações disponíveis para o período.';
+                showErrorState('heatmapContainer', msg);
+                showChartError('subjectRadarChart', msg);
             }
         }
 
+        // 2. Insights IA
+        await logResponse('insights-global', insightsRes);
         if (insightsRes && insightsRes.ok) {
             const resData = await insightsRes.json().catch(() => null);
+            console.log('[BI] Insights Data Received:', resData);
             if (resData && resData.success && resData.data) {
                 renderAIPedagogicalSummary(resData.data);
             } else {
-                showSilentError('insightsContainer');
+                showSilentError('insightsContainer', resData?.error);
             }
         } else {
-            showSilentError('insightsContainer');
-            console.warn('Insights IA não disponíveis.');
+            const errMsg = insightsRes ? msgFromStatus(insightsRes.status) : 'Servidor indisponível.';
+            console.warn('[BI] Insights IA não disponíveis:', errMsg);
+            showSilentError('insightsContainer', errMsg);
         }
 
+        // 3. Evolução Temporal
+        await logResponse('chart-data', chartDataRes);
         if (chartDataRes && chartDataRes.ok) {
             const chartData = await chartDataRes.json().catch(() => null);
+            console.log('[BI] Chart Data Received:', chartData);
             if (chartData && chartData.success && chartData.data && chartData.data.evolucao) {
                 renderTrendsChart(chartData.data.evolucao);
+            } else {
+                showChartError('trendsChart', 'Sem dados de evolução temporal disponíveis.');
             }
+        } else {
+            showChartError('trendsChart', 'Evolução temporal indisponível no momento.');
         }
 
         // A animação de entrada (fade-in) só deve rodar uma vez, no primeiro
@@ -109,16 +141,29 @@ async function initBI() {
         }
 
     } catch (error) {
-        console.error('Erro ao inicializar BI:', error);
+        if (error.name === 'AbortError') { console.log('[BI] Requisição anterior cancelada.'); return; }
+        console.error('[BI] Erro ao inicializar BI:', error);
         showErrorState('heatmapContainer', `Erro de inicialização: ${error.message}`);
+        showChartError('subjectRadarChart', 'Erro ao carregar gráfico.');
+        showChartError('trendsChart', 'Erro ao carregar gráfico.');
+        showSilentError('insightsContainer', 'Erro ao carregar insights.');
     }
 }
 
-function showSilentError(containerId) {
+function showSilentError(containerId, detail) {
     const container = document.getElementById(containerId);
-    if (container) {
-        container.innerHTML = '<div style="text-align:center; padding:2rem; opacity:0.5; font-size:0.8rem;">Insights indisponíveis no momento.</div>';
-    }
+    if (!container) return;
+    const extraInfo = detail ? `<p style="font-size: 0.7rem; color: #475569; margin-top: 0.5rem;">${detail}</p>` : '';
+    container.innerHTML = `
+        <div style="text-align:center; padding:2rem; color: #94a3b8;">
+            <i class="bi bi-robot" style="font-size: 1.8rem; display: block; margin-bottom: 0.75rem; opacity: 0.5;"></i>
+            <p style="font-size: 0.85rem; margin-bottom: 0.5rem;">Insights indisponíveis no momento.</p>
+            ${extraInfo}
+            <button onclick="initBI()" style="margin-top: 1rem; padding: 6px 16px; background: rgba(99,102,241,0.2); border: 1px solid rgba(99,102,241,0.4); border-radius: 8px; color: #a5b4fc; cursor: pointer; font-size: 0.8rem;">
+                <i class="bi bi-arrow-clockwise"></i> Tentar Novamente
+            </button>
+        </div>
+    `;
 }
 
 /**
@@ -131,6 +176,25 @@ function showErrorState(containerId, message) {
         <div style="text-align: center; color: #94a3b8; padding: 3rem 0; border: 1px dashed rgba(255,255,255,0.1); border-radius: 12px;">
             <i class="bi bi-exclamation-triangle" style="font-size: 2rem; display: block; margin-bottom: 1rem; opacity: 0.5;"></i>
             <p style="font-size: 0.9rem;">${message}</p>
+            <button onclick="initBI()" style="margin-top: 1rem; padding: 8px 20px; background: rgba(99,102,241,0.2); border: 1px solid rgba(99,102,241,0.4); border-radius: 8px; color: #a5b4fc; cursor: pointer; font-size: 0.85rem;">
+                <i class="bi bi-arrow-clockwise"></i> Tentar Novamente
+            </button>
+        </div>
+    `;
+}
+
+/**
+ * Exibe estado de erro dentro de containers de gráficos (canvas)
+ */
+function showChartError(canvasId, message) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const parent = canvas.parentElement;
+    if (!parent) return;
+    parent.innerHTML = `
+        <div style="text-align: center; color: #64748b; padding: 2rem 1rem;">
+            <i class="bi bi-bar-chart" style="font-size: 1.5rem; display: block; margin-bottom: 0.5rem; opacity: 0.4;"></i>
+            <p style="font-size: 0.82rem; margin: 0;">${message}</p>
         </div>
     `;
 }

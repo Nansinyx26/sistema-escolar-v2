@@ -19,6 +19,13 @@ const MatriculaSchema = new mongoose.Schema({
     numeroChamada: Number,
     dataMatricula: { type: Date, default: Date.now },
 
+    // Campos de saída (transferência, evasão, etc.)
+    dataSaida: { type: Date, default: null },
+    motivoSaida: { type: String, default: null }, // Ex: "Transferência para outra escola", "Evasão"
+
+    // Auditoria: quem criou/alterou a matrícula
+    criadoPor: { type: String, ref: 'Usuario', default: null }, // ID do usuário que criou (secretaria, admin)
+
     observacoes: String
 }, {
     timestamps: true,

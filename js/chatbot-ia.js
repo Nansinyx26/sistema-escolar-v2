@@ -80,6 +80,8 @@
         if (perfil === 'diretor' || perfil === 'admin') return 'Diretor(a)';
         if (perfil === 'professor') return 'Professor(a)';
         if (perfil === 'responsavel') return 'Responsável';
+        if (perfil === 'secretaria') return 'Secretária';
+        if (perfil === 'coordenador') return 'Coordenador(a)';
         return perfil;
     };
 

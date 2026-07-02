@@ -135,6 +135,7 @@ router.use('/audio', require('./audio'));
 router.use('/tts', authJWT, require('./tts'));
 router.use('/ia', authJWT, require('./ia'));
 router.use('/chatbot', authJWT, require('./chatbot'));
+router.use('/secretaria', authJWT, require('./secretaria'));
 
 // --- 5. Gamificação ---
 const GamificacaoController = require('../controllers/GamificacaoController');
