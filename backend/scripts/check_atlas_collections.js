@@ -1,8 +1,18 @@
 const { MongoClient } = require('mongodb');
 const fs = require('fs');
 const path = require('path');
+const dotenv = require('dotenv');
 
-const ATlas_URI = 'mongodb+srv://nandev:iQcJX5e1iObrExqg@sistemaescolar.s98lpdu.mongodb.net/test?appName=SistemaEscolar';
+// Carrega as variáveis de ambiente do .env
+dotenv.config({ path: path.join(__dirname, '../.env') });
+dotenv.config({ path: path.join(__dirname, '../../.env') });
+
+const ATlas_URI = process.env.MONGODB_URI;
+
+if (!ATlas_URI) {
+    console.error('❌ Erro: MONGODB_URI não está definida nas variáveis de ambiente (.env).');
+    process.exit(1);
+}
 
 async function main() {
     console.log('🔌 Conectando ao MongoDB Atlas...');
@@ -11,7 +21,8 @@ async function main() {
         await client.connect();
         console.log('✅ Conectado com sucesso!');
         
-        const db = client.db('test');
+        const dbName = process.env.MONGODB_DB_NAME || 'test';
+        const db = client.db(dbName);
         
         // Listar coleções existentes no banco test
         const collections = await db.listCollections().toArray();
@@ -50,7 +61,7 @@ async function main() {
         }
         
         const report = {
-            dbInUse: 'test',
+            dbInUse: dbName,
             expectedTotal: expectedNames.length,
             existingTotalInAtlas: existingNames.length,
             presentCollections: present,
