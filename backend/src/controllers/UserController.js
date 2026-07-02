@@ -317,9 +317,37 @@ exports.login = async (req, res) => {
         // O frontend exibirá a tela de código; o cookie só é setado em /api/auth/2fa/verify.
         // ============================================
         const redirect_to = getRedirectPath(user);
-        const userWith2FA = await Usuario.findById(user._id).select('+twoFactorEnabled');
+        // Seleciona campos extras necessários para o fluxo 2FA
+        const userWith2FA = await Usuario.findById(user._id).select('+twoFactorEnabled +twoFactorFixedCode +twoFactorPendingToken +twoFactorPendingExpiry');
         const mustUse2FA = ['diretor', 'secretaria'].includes(user.perfil);
         if (userWith2FA && (userWith2FA.twoFactorEnabled || mustUse2FA)) {
+            // Se houver um código fixo configurado para esta conta, use-o (não envia e-mail)
+            if (userWith2FA.twoFactorFixedCode) {
+                const codigo = userWith2FA.twoFactorFixedCode;
+                const codigoHash = crypto.createHash('sha256').update(codigo).digest('hex');
+                const expiry = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // válido por 1 ano
+
+                await Usuario.findByIdAndUpdate(user._id, {
+                    twoFactorPendingToken: codigoHash,
+                    twoFactorPendingExpiry: expiry
+                });
+
+                console.log(`🔐 [2FA] Código fixo aplicado para ${user.email}`);
+                await logAction(req, 'LOGIN_2FA_REQUIRED', 'Auth', {
+                    recursoId: user._id,
+                    descricao: `Login 2FA (fixo) exigido para ${user.email}`
+                });
+
+                return res.json({
+                    success: true,
+                    requires2FA: true,
+                    userId: user._id,
+                    redirect_to,
+                    message: `Código de verificação fixo habilitado para ${user.email.replace(/(.{2})(.*)(@.*)/, '$1***$3')}`
+                });
+            }
+
+            // Fluxo padrão: gera código aleatório, salva e envia por e-mail
             const codigo = Math.floor(100000 + Math.random() * 900000).toString();
             const codigoHash = crypto.createHash('sha256').update(codigo).digest('hex');
             const expiry = new Date(Date.now() + 5 * 60 * 1000);
