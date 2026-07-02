@@ -4,7 +4,7 @@
  */
 const mongoose = require('mongoose');
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://nandev:iQcJX5e1iObrExqg@sistemaescolar.s98lpdu.mongodb.net/test?appName=SistemaEscolar';
+const MONGO_URI = .env
 
 async function seed() {
     try {
