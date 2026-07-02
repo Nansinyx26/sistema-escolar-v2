@@ -1,0 +1,264 @@
+name: 🚀 CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  NODE_VERSION: "18"
+  REGISTRY: ghcr.io
+  HAS_SLACK: ${{ secrets.SLACK_WEBHOOK }}
+  HAS_RENDER_DEV: ${{ secrets.RENDER_SERVICE_ID_DEV }}
+  HAS_RENDER_PROD: ${{ secrets.RENDER_SERVICE_ID_PROD }}
+  HAS_RENDER_API_TOKEN: ${{ secrets.RENDER_API_TOKEN }}
+  RENDER_SERVICE_ID_DEV: ${{ secrets.RENDER_SERVICE_ID_DEV }}
+  RENDER_SERVICE_ID_PROD: ${{ secrets.RENDER_SERVICE_ID_PROD }}
+  RENDER_API_TOKEN: ${{ secrets.RENDER_API_TOKEN }}
+  SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+
+jobs:
+  # ================================
+  # LINT & TEST
+  # ================================
+  lint-and-test:
+    name: 🧪 Lint & Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+
+      - name: 📥 Install dependencies (backend)
+        working-directory: ./backend
+        run: npm ci
+
+      - name: 🔍 ESLint
+        working-directory: ./backend
+        run: npm run lint --if-present
+        continue-on-error: true
+
+      - name: 🧪 Unit Tests
+        working-directory: ./backend
+        run: npm test --if-present
+        env:
+          NODE_ENV: test
+          MONGODB_URI: mongodb://localhost:27017/test
+
+      - name: 📊 Code Coverage
+        working-directory: ./backend
+        run: npm run coverage --if-present
+        continue-on-error: true
+
+      - name: 📤 Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./backend/coverage/lcov.info
+          fail_ci_if_error: false
+
+  # ================================
+  # SECURITY SCAN
+  # ================================
+  security:
+    name: 🔐 Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔐 Dependency Check (npm audit)
+        working-directory: ./backend
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+
+      - name: 🔐 Trivy scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "./backend"
+          format: "sarif"
+          output: "trivy-results.sarif"
+
+      - name: 📤 Upload Trivy results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: "trivy-results.sarif"
+        if: always()
+
+  # ================================
+  # BUILD & DEPLOY (DEV)
+  # ================================
+  build-dev:
+    name: 🏗️ Build & Deploy (Dev)
+    runs-on: ubuntu-latest
+    needs: [lint-and-test, security]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    env:
+      HAS_RENDER_DEV: ${{ secrets.RENDER_SERVICE_ID_DEV != '' && secrets.RENDER_API_TOKEN != '' }}
+      HAS_SLACK: ${{ secrets.SLACK_WEBHOOK != '' }}
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 📥 Install dependencies
+        working-directory: ./backend
+        run: npm ci --omit=dev
+
+      - name: 🔨 Build
+        working-directory: ./backend
+        run: npm run build --if-present
+
+      - name: 📤 Deploy to Render (Dev)
+        uses: johnbeynon/render-deploy-action@v0.0.8
+        with:
+          service-id: ${{ secrets.RENDER_SERVICE_ID_DEV }}
+          api-token: ${{ secrets.RENDER_API_TOKEN }}
+        if: env.HAS_RENDER_DEV == 'true'
+
+      - name: 📢 Notify on Deploy
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: "Dev deployment completed"
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        if: always() && env.HAS_SLACK == 'true'
+
+  # ================================
+  # BUILD & DEPLOY (PROD)
+  # ================================
+  build-prod:
+    name: 🚀 Build & Deploy (Production)
+    runs-on: ubuntu-latest
+    needs: [lint-and-test, security]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write # necessário para criar releases (evita "Resource not accessible by integration")
+    env:
+      HAS_RENDER_PROD: ${{ secrets.RENDER_SERVICE_ID_PROD != '' && secrets.RENDER_API_TOKEN != '' }}
+      HAS_SLACK: ${{ secrets.SLACK_WEBHOOK != '' }}
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 📥 Install dependencies
+        working-directory: ./backend
+        run: npm ci --omit=dev
+
+      - name: 🔨 Build
+        working-directory: ./backend
+        run: npm run build --if-present
+
+      - name: 🔐 Security audit
+        working-directory: ./backend
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: 📤 Deploy to Render (Prod)
+        uses: johnbeynon/render-deploy-action@v0.0.8
+        with:
+          service-id: ${{ secrets.RENDER_SERVICE_ID_PROD }}
+          api-token: ${{ secrets.RENDER_API_TOKEN }}
+        if: env.HAS_RENDER_PROD == 'true'
+
+      - name: 🔔 Slack notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: "Production deployment completed"
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        if: always() && env.HAS_SLACK == 'true'
+
+      - name: 📝 Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: Release v${{ github.run_number }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ================================
+  # DATABASE MIGRATIONS
+  # ================================
+  migrations:
+    name: 🗄️ Database Migrations
+    runs-on: ubuntu-latest
+    needs: build-dev
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    env:
+      HAS_SLACK: ${{ secrets.SLACK_WEBHOOK != '' }}
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 📥 Install dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: 🗄️ Run migrations
+        working-directory: ./backend
+        run: npm run migrate up
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI_DEV }}
+          NODE_ENV: development
+
+      - name: 📢 Notify migration status
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: "Database migrations completed"
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        if: always() && env.HAS_SLACK == 'true'
+
+  # ================================
+  # PERFORMANCE & LIGHTHOUSE
+  # ================================
+  performance:
+    name: ⚡ Performance Check
+    runs-on: ubuntu-latest
+    needs: [lint-and-test]
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🎨 Lighthouse check
+        uses: treosh/lighthouse-ci-action@v10
+        with:
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+        continue-on-error: true

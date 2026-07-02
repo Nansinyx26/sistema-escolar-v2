@@ -1,0 +1,142 @@
+{
+  "dbInUse": "test",
+  "expectedTotal": 31,
+  "existingTotalInAtlas": 40,
+  "presentCollections": [
+    {
+      "name": "alunos",
+      "count": 27
+    },
+    {
+      "name": "atribuicoes_professores",
+      "count": 7
+    },
+    {
+      "name": "audit_logs",
+      "count": 177
+    },
+    {
+      "name": "avaliacoes_sistema",
+      "count": 1
+    },
+    {
+      "name": "badges",
+      "count": 0
+    },
+    {
+      "name": "chat_direto",
+      "count": 0
+    },
+    {
+      "name": "chat_mensagens",
+      "count": 51
+    },
+    {
+      "name": "comentarios",
+      "count": 24
+    },
+    {
+      "name": "comunicados",
+      "count": 13
+    },
+    {
+      "name": "config",
+      "count": 1
+    },
+    {
+      "name": "diretores",
+      "count": 3
+    },
+    {
+      "name": "especiais",
+      "count": 0
+    },
+    {
+      "name": "faltas",
+      "count": 3
+    },
+    {
+      "name": "frequencia_professores",
+      "count": 3
+    },
+    {
+      "name": "gradehorarias",
+      "count": 5
+    },
+    {
+      "name": "messageReactions",
+      "count": 13
+    },
+    {
+      "name": "notas",
+      "count": 14
+    },
+    {
+      "name": "notificacaos",
+      "count": 14
+    },
+    {
+      "name": "professores",
+      "count": 6
+    },
+    {
+      "name": "realtimeNotifications",
+      "count": 0
+    },
+    {
+      "name": "recuperacoes_senha",
+      "count": 26
+    },
+    {
+      "name": "relatorios",
+      "count": 2
+    },
+    {
+      "name": "security_configs",
+      "count": 1
+    },
+    {
+      "name": "siteReviews",
+      "count": 2
+    },
+    {
+      "name": "tabela_geral",
+      "count": 560
+    },
+    {
+      "name": "ttsaudiocaches",
+      "count": 104
+    },
+    {
+      "name": "turmas",
+      "count": 20
+    },
+    {
+      "name": "uploads.chunks",
+      "count": 18
+    },
+    {
+      "name": "uploads.files",
+      "count": 18
+    },
+    {
+      "name": "usuarios",
+      "count": 15
+    }
+  ],
+  "missingCollections": [
+    "matriculas"
+  ],
+  "extraCollections": [
+    "avaliacaosistemas",
+    "configuracoes",
+    "credenciais",
+    "credentials",
+    "lessonlogs",
+    "notificacoes",
+    "perfil_diretores",
+    "perfil_professores",
+    "salas",
+    "solicitacoes_privacidade"
+  ]
+}

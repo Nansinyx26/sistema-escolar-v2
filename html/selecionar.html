@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Sistema de Cadastro Escolar - Seleção de Turmas">
+    <title>Selecionar Turma - Sistema Escolar</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="../favicon/favicon.png">    <link rel="apple-touch-icon" href="../favicon/favicon.png">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Theme Init -->
+    <script defer src="../js/theme.js"></script>
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/selecionar.css">
+    <link rel="stylesheet" href="../css/watermark.css">
+    <link rel="stylesheet" href="../css/parallax-glass.css">
+    <link rel="stylesheet" href="../css/neo-brutal.css">
+    <!-- Offline Compiled Tailwind CSS -->
+    <link rel="stylesheet" href="../css/tailwind-built.css">    <link rel="stylesheet" href="../css/responsive-global.css?v=1.0">
+    <link rel="stylesheet" href="../css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="../css/reactions.css?v=1.0">
+</head>
+
+<body>
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Sistema Escolar</h2>
+            <p class="splash-subtitle">Selecionar Turma</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="/js/splash-screen.js"></script>
+
+    <div class="selecionar-page">
+        <!-- Header -->
+        <header class="page-header" style="padding: 2.5rem 0; margin-bottom: 2rem;">
+            <!-- Efeito de varredura de luz -->
+            <div class="sweep-shine"></div>
+            <div class="container" style="display: flex; flex-direction: column; align-items: flex-start; gap: 15px;">
+                <!-- Logo & Title -->
+                <div class="navbar-brand" style="display: flex; align-items: center; gap: 12px;">
+                    <span class="logo"
+                        style="background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%); color: #fff; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 12px; box-shadow: 0 0 15px rgba(0, 210, 255, 0.6);">
+                        <i class="bi bi-mortarboard-fill" style="font-size: 1.8rem;"></i>
+                    </span>
+                    <span
+                        style="font-weight: 800; font-size: 1.6rem; letter-spacing: -0.5px; color: #fff; text-shadow: 0 0 10px rgba(0, 210, 255, 0.4);">Sistema
+                        Escolar</span>
+                </div>
+
+                <!-- Welcome Text -->
+                <div class="page-header-info">
+                    <p style="margin: 0; font-size: 1rem; color: rgba(255,255,255,0.95); font-weight: 500;">
+                        Bem-vindo(a), <span id="userName" style="color: #00d2ff; font-weight: 700;">Administrador</span>
+                    </p>
+                </div>
+
+                <!-- Actions -->
+                <div class="page-header-actions" style="display:flex; align-items:center; gap:12px;">
+                    <button class="btn" id="btnDashboard"
+                        style="background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%); color: #003366; border: none; padding: 0.7rem 1.6rem; border-radius: 12px; font-weight: 800; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; box-shadow: 0 0 20px rgba(0, 242, 254, 0.5); border: 1px solid rgba(255,255,255,0.2);">
+                        <i class="bi bi-house-fill"></i> Início
+                    </button>
+                    <button class="btn btn-ghost" id="btnLogout"
+                        style="color: #fff; opacity: 0.8; font-size: 0.9rem; padding: 0.5rem 1rem;">
+                        <i class="bi bi-box-arrow-right"></i> Sair
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Perfil do Usuário - Fixo no Canto Superior Direito -->
+        <!-- Multi-profile card removed from header. User info is now in the sidebar. -->
+
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="container">
+                <!-- Ações Rápidas -->
+                <section class="quick-actions">
+                    <a href="direcao/index.html" class="action-card direcao">
+                        <div class="action-icon"><i class="bi bi-bar-chart-fill"></i></div>
+                        <div class="action-info">
+                            <h4>Painel de Direção</h4>
+                            <p>Estatísticas e relatórios gerais</p>
+                        </div>
+                    </a>
+
+                    <a href="../graficos/index.html" class="action-card graficos">
+                        <div class="action-icon"><i class="bi bi-graph-up-arrow"></i></div>
+                        <div class="action-info">
+                            <h4>Gráficos</h4>
+                            <p>Visualização de desempenho</p>
+                        </div>
+                    </a>
+
+                    <a href="ata.html" class="action-card ata">
+                        <div class="action-icon"><i class="bi bi-file-text-fill"></i></div>
+                        <div class="action-info">
+                            <h4>ATA do Conselho</h4>
+                            <p>Registrar reuniões</p>
+                        </div>
+                    </a>
+
+                    <a href="cadastro-aluno.html" class="action-card" id="cardCadastroAluno">
+                        <div class="action-icon"><i class="bi bi-person-plus-fill"></i></div>
+                        <div class="action-info">
+                            <h4>Cadastrar Aluno</h4>
+                            <p>Novo cadastro com conformidade LGPD</p>
+                        </div>
+                    </a>
+
+                    <a href="../utils/limpar-dados.html" class="action-card ferramentas hidden"
+                        id="cardFerramentasSelecionar">
+                        <div class="action-icon"><i class="bi bi-tools"></i></div>
+                        <div class="action-info">
+                            <h4>Ferramentas</h4>
+                            <p>Configurações e manutenção</p>
+                        </div>
+                    </a>
+                </section>
+
+                <!-- Estatísticas Resumidas -->
+                <section class="stats-section">
+                    <div class="stats-grid">
+                        <a href="../detalhes/alunos.html" class="stat-card primary">
+                            <div class="stat-card-header">
+                                <div class="stat-card-icon"><i class="bi bi-people-fill"></i></div>
+                            </div>
+                            <div class="stat-card-value" id="statTotalAlunos">0</div>
+                            <div class="stat-card-label">Total de Alunos</div>
+                        </a>
+
+                        <a href="../detalhes/turmas.html" class="stat-card success">
+                            <div class="stat-card-header">
+                                <div class="stat-card-icon"><i class="bi bi-building-fill"></i></div>
+                            </div>
+                            <div class="stat-card-value" id="statTurmasAtivas">20</div>
+                            <div class="stat-card-label">Turmas Ativas</div>
+                        </a>
+
+                        <a href="../detalhes/avaliacoes.html" class="stat-card warning">
+                            <div class="stat-card-header">
+                                <div class="stat-card-icon"><i class="bi bi-file-earmark-text-fill"></i></div>
+                            </div>
+                            <div class="stat-card-value" id="statAvaliacoes">0</div>
+                            <div class="stat-card-label">Avaliações</div>
+                        </a>
+
+                        <a href="../detalhes/alunos.html?filtro=pcd" class="stat-card danger">
+                            <div class="stat-card-header">
+                                <div class="stat-card-icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
+                            </div>
+                            <div class="stat-card-value" id="statPCD">0</div>
+                            <div class="stat-card-label">Alunos PCD</div>
+                        </a>
+                    </div>
+                </section>
+
+                <!-- Grid de Turmas -->
+                <section class="turmas-section">
+                    <h2>Selecione uma Turma</h2>
+                    <div id="turmasGrid">
+                        <!-- Turmas serão renderizadas aqui pelo JavaScript -->
+                        <div class="loading-placeholder">
+                            <div class="spinner"></div>
+                            <p>Carregando turmas...</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Watermark -->
+        <div class="watermark">
+            <span class="watermark-icon"><i class="bi bi-laptop"></i></span>
+            <span class="watermark-text">Desenvolvido por NanDev</span>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+
+    <!-- Scripts -->
+    <script src="../js/api-config.js"></script>
+    <script defer src="../js/database.js?v=5"></script>
+    <script defer src="../js/auth.js?v=5"></script>
+    <script defer src="../js/utils.js?v=5"></script>
+    <script defer src="../js/watermark.js?v=5"></script>
+    <script defer src="../js/selecionar.js?v=5"></script>
+    <script defer src="../js/parallax.js"></script>
+    <script src="../js/vendor.js"></script>
+    <script defer src="/js/reactions.js"></script>
+</body>
+
+</html>

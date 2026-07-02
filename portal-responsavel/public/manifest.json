@@ -1,0 +1,18 @@
+{
+  "name": "Portal do Responsável - Escola Jaguari",
+  "short_name": "Portal Jaguari",
+  "description": "Acompanhamento acadêmico, notas e avisos em tempo real para pais e responsáveis.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

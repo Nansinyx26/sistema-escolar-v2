@@ -1,0 +1,17 @@
+Line 9: env:
+Line 10:   NODE_VERSION: "18"
+Line 11:   REGISTRY: ghcr.io
+Line 12: 
+Line 13: jobs:
+Line 14:   # ================================
+Line 15:   # LINT & TEST
+Line 16:   # ================================
+Line 17:   lint-and-test:
+Line 18:     name: 🧪 Lint & Test
+Line 19:     runs-on: ubuntu-latest
+Line 20:     strategy:
+Line 21:       matrix:
+Line 22:         node-version: [18.x, 20.x]
+Line 23: 
+Line 24:     steps:
+Line 25:       - name: 📥 Checkout code
