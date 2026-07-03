@@ -1,0 +1,446 @@
+/* ===================== TEMA PREMIUM ARTE GRÁFICOS ===================== */
+
+:root {
+    --bg-premium: #0b0b10;
+    --panel: #0f0d18;
+    --card: #171226;
+    --muted: #9aa3b2;
+    --accent-1: #10b981;
+    /* mint premium */
+    --accent-2: #34d399;
+    /* mint claro */
+    --accent-3: #2dd4bf;
+    /* teal contraste */
+    --gold: #d4af37;
+    --radius-2xl: 18px;
+    --shadow-premium: 0 20px 40px rgba(2, 2, 8, 0.6);
+
+    /* Mapeamento para componentes globais (Navbar, etc) */
+    --primary-color: var(--accent-1);
+    --primary-dark: var(--accent-1);
+    --secondary-color: var(--accent-2);
+    --bg-color: transparent;
+    /* Deixar body gradient aparecer */
+    --bg-white: var(--card);
+    --text-color: #e6eef6;
+    --text-muted: var(--muted);
+    --border-color: rgba(16, 185, 129, 0.2);
+}
+
+/* Base Overrides */
+body {
+    background: linear-gradient(180deg, #06060a 0%, #0b0b10 60%);
+    color: #e6eef6;
+    padding-bottom: 50px;
+    /* Reduced from global 120px */
+}
+
+/* ===================== CONTAINER ===================== */
+
+.container {
+    max-width: 1300px;
+    margin: 0 auto;
+    background: linear-gradient(180deg, rgba(16, 24, 22, 0.6), rgba(8, 12, 11, 0.7));
+    border-radius: var(--radius-2xl);
+    padding: 26px;
+    box-shadow: var(--shadow-premium);
+    border: 1px solid rgba(16, 185, 129, 0.08);
+}
+
+/* ===================== HEADER ===================== */
+/* Adptado de .header */
+.graficos-header {
+    text-align: center;
+    margin-bottom: 22px;
+}
+
+.graficos-header h1 {
+    font-size: 28px;
+    color: var(--accent-1);
+    margin-bottom: 6px;
+}
+
+.graficos-header p {
+    color: var(--muted);
+    font-size: 14px;
+}
+
+/* ===================== CONTROLS (SELEÇÍO) ===================== */
+/* Adaptado de .controls */
+.selecao-container {
+    margin-bottom: 20px;
+    padding: 16px;
+    background: linear-gradient(180deg, rgba(14, 20, 18, 0.45), rgba(10, 14, 13, 0.55));
+    border-radius: 14px;
+    border: 1px solid rgba(16, 185, 129, 0.06);
+}
+
+.selecao-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    align-items: end;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent-2);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 0;
+}
+
+.form-input,
+select.form-input {
+    appearance: none;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(13, 20, 18, 0.7), rgba(12, 18, 16, 0.85));
+    color: #e7eef9;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--accent-1);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+}
+
+/* ===================== BOTÕES ===================== */
+
+.btn {
+    padding: 11px 20px;
+    border-radius: 12px;
+    border: none;
+    font-weight: 800;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: transform 0.2s;
+}
+
+.btn-primary {
+    background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+    color: #08060a;
+    box-shadow: 0 8px 26px rgba(16, 185, 129, 0.2);
+}
+
+.btn-primary:hover {
+    transform: translateY(-3px);
+    background: linear-gradient(90deg, var(--accent-2), var(--accent-1));
+}
+
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.btn-ghost {
+    background: transparent;
+    color: var(--accent-2);
+    border: 1px solid rgba(16, 185, 129, 0.1);
+}
+
+.btn-ghost:hover {
+    background: rgba(16, 185, 129, 0.1);
+    transform: translateY(-2px);
+}
+
+/* ===================== INFO ALUNO ===================== */
+/* Adaptado de .student-info */
+.aluno-info-card {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(10, 20, 17, 0.8));
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    border-radius: 18px;
+    padding: 24px;
+    margin-bottom: 28px;
+    text-align: center;
+    box-shadow: 0 12px 40px rgba(16, 185, 129, 0.25);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.aluno-info-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at top, rgba(52, 211, 153, 0.15), transparent 70%);
+    pointer-events: none;
+}
+
+.aluno-avatar {
+    width: 64px;
+    height: 64px;
+    background: var(--accent-1);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: bold;
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+    z-index: 1;
+}
+
+.aluno-details h2 {
+    font-size: 1.9em;
+    font-weight: 900;
+    color: #cffaf0;
+    margin-bottom: 8px;
+    text-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+}
+
+.aluno-details p {
+    color: var(--accent-2);
+    margin: 4px 0;
+}
+
+.aluno-details strong {
+    color: white;
+}
+
+.aluno-media {
+    background: linear-gradient(180deg, rgba(25, 18, 50, 0.9), rgba(12, 10, 25, 0.95));
+    padding: 12px 24px;
+    border-radius: 14px;
+    text-align: center;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    box-shadow: 0 8px 28px rgba(2, 6, 23, 0.7);
+    z-index: 1;
+}
+
+.media-grande {
+    font-size: 1.9em;
+    font-weight: 900;
+    color: #10b981;
+    text-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+    line-height: 1;
+}
+
+.aluno-media span {
+    font-size: 0.75em;
+    color: #8ff0d8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* ===================== GRÁFICOS E CARDS ===================== */
+/* Adaptado de .charts-container e .chart-section */
+
+.graficos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 18px;
+    margin-top: 12px;
+}
+
+.grafico-card {
+    background: linear-gradient(180deg, rgba(16, 12, 28, 0.55), rgba(14, 10, 22, 0.65));
+    padding: 20px;
+    border-radius: 14px;
+    border: 1px solid rgba(16, 185, 129, 0.08);
+    min-height: 360px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.grafico-card h3 {
+    font-size: 16px;
+    color: var(--accent-2);
+    font-weight: 800;
+    text-align: center;
+    margin-bottom: 12px;
+}
+
+.grafico-card-body {
+    position: relative;
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    /* Importante para flexbox */
+    overflow: hidden;
+    /* Proteção extra contra loop de resize */
+}
+
+canvas {
+    /* Removido !important para deixar Chart.js controlar o tamanho */
+    max-width: 100%;
+}
+
+/* ===================== BOLETIM ===================== */
+.boletim-section {
+    grid-column: 1 / -1;
+    background: linear-gradient(180deg, rgba(16, 12, 28, 0.55), rgba(14, 10, 22, 0.65));
+    padding: 20px;
+    border-radius: 14px;
+    border: 1px solid rgba(16, 185, 129, 0.08);
+    margin-top: 18px;
+}
+
+.boletim-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.boletim-header h3 {
+    color: var(--accent-2);
+    font-weight: 800;
+    margin: 0;
+}
+
+.table.boletim-table {
+    width: 100%;
+    background: transparent;
+    color: #e6eef6;
+}
+
+.boletim-table th {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--accent-2);
+    font-weight: 800;
+    border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+    padding: 12px;
+}
+
+.boletim-table td {
+    border-bottom: 1px solid rgba(16, 185, 129, 0.1);
+    padding: 12px;
+}
+
+.boletim-table tr:hover td {
+    background: rgba(16, 185, 129, 0.05);
+}
+
+/* ===================== EMPTY STATE ===================== */
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: var(--muted);
+}
+
+.empty-state-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+/* ===================== CORREÇÍO SELECTS ===================== */
+select {
+    background-color: #141126;
+    color: #e6eef6;
+}
+
+select option {
+    background-color: #141126;
+    color: #e6eef6;
+}
+
+select option:hover {
+    background-color: #10b981;
+    color: #000;
+}
+
+select option:checked {
+    background-color: #34d399;
+    color: #000;
+}
+
+select:focus {
+    background-color: #141126;
+    color: #e6eef6;
+}
+
+/* ===================== STATUS E NOTAS ===================== */
+.situacao-aprovado {
+    color: var(--accent-3);
+    /* Verde contraste */
+    font-weight: 800;
+    text-shadow: 0 0 12px rgba(45, 212, 191, 0.4);
+    text-transform: uppercase;
+    font-size: 0.85em;
+    letter-spacing: 1px;
+}
+
+.situacao-reprovado {
+    color: #ef4444;
+    /* Vermelho vibrante */
+    font-weight: 800;
+    text-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+    text-transform: uppercase;
+    font-size: 0.85em;
+    letter-spacing: 1px;
+}
+
+.situacao-cursando {
+    color: var(--gold);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.85em;
+    opacity: 0.9;
+}
+
+.nota-boa {
+    color: var(--accent-3);
+    font-weight: 700;
+}
+
+.nota-media {
+    color: var(--gold);
+    font-weight: 700;
+}
+
+.nota-baixa {
+    color: #ef4444;
+    font-weight: 700;
+}
+
+.media-valor {
+    font-weight: 800;
+    font-size: 1.1em;
+}
+
+/* ===================== UTILS ===================== */
+.hidden {
+    display: none !important;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+/* Navbar override for premium theme blending */
+.navbar {
+    background: rgba(15, 23, 42, 0.5);
+    border-bottom: 1px solid rgba(16, 185, 129, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.navbar .logo {
+    filter: drop-shadow(0 0 5px var(--accent-1));
+}
+
+.navbar-user {
+    color: var(--accent-2);
+}

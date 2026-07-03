@@ -1,0 +1,272 @@
+/**
+ * CSS Variables - Design System
+ * Sistema Escolar - Modo Escuro Principal
+ */
+
+:root {
+    /* === CORES PRINCIPAIS - CLEAN MODERN (SLATE & MINT) === */
+    --bg-primary: #09090b;
+    --bg-secondary: #0f0f12;
+    --bg-tertiary: #18181b;
+    --bg-elevated: #27272a;
+    
+    --text-primary: #fafafa;
+    --text-body: #d4d4d8;         /* Texto de corpo legível (zinc-300) */
+    --text-secondary: #d4d4d8;    /* Texto secundário legível (zinc-300) */
+    --text-accent: #10b981;       /* Acento verde da marca — para destaques, não texto corrido */
+    --text-tertiary: #a1a1aa;     /* Cinza mais claro para subtítulos */
+    --text-inverse: #09090b;
+    
+    --border-primary: rgba(255, 255, 255, 0.04);
+    --border-secondary: rgba(255, 255, 255, 0.08);
+    --border-focus: #10b981;
+    
+    /* === CORES DE MARCA (MINT/EMERALD) === */
+    --primary: #10b981;           /* Mint/Emerald */
+    --primary-rgb: 16, 185, 129;  /* Para uso em rgba() */
+    --primary-color: var(--primary); /* Alias legado */
+    --primary-dark: #059669;
+    --primary-hover: #34d399;
+    --primary-active: #059669;
+    --primary-light: rgba(16, 185, 129, 0.08);
+    
+    --secondary: #0ea5e9;         /* Sky Blue */
+    --secondary-hover: #38bdf8;
+    --secondary-light: rgba(14, 165, 233, 0.08);
+    
+    /* === CORES DE STATUS === */
+    --success: #10b981;
+    --success-hover: #059669;
+    --success-light: rgba(16, 185, 129, 0.1);
+    --warning: #f59e0b;
+    --warning-hover: #d97706;
+    --warning-light: rgba(245, 158, 11, 0.1);
+    --error: #ef4444;
+    --error-hover: #dc2626;
+    --error-light: rgba(239, 68, 68, 0.1);
+    --info: #0ea5e9;
+    --info-hover: #0284c7;
+    --info-light: rgba(14, 165, 233, 0.1);
+    
+    /* === GRADIENTES (SUBTLE & CLEAN) === */
+    --gradient-primary: linear-gradient(to bottom right, #10b981, #0ea5e9);
+    --gradient-accent: linear-gradient(135deg, #8b5cf6, #6366f1);
+    --gradient-success: linear-gradient(135deg, #10b981, #059669);
+    --gradient-warning: linear-gradient(135deg, #f59e0b, #d97706);
+    --gradient-danger: linear-gradient(135deg, #ef4444, #dc2626);
+    --gradient-surface: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%);
+    --gradient-mesh: radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.05) 0, transparent 40%),
+                     radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.05) 0, transparent 40%);
+    
+    /* === SOMBRAS (PRECISE) === */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.6);
+    --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.8);
+    --shadow-xl: 0 32px 64px rgba(0, 0, 0, 0.9);
+    --shadow-2xl: 0 48px 80px rgba(0, 0, 0, 0.95);
+    --shadow-glow: 0 0 20px rgba(16, 185, 129, 0.25);
+    --shadow-glow-lg: 0 0 40px rgba(16, 185, 129, 0.3);
+    
+    /* === TIPOGRAFIA === */
+    --font-primary: 'Inter', system-ui, -apple-system, sans-serif;
+    
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
+    --font-size-base: 1rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem;
+    --font-size-2xl: 1.5rem;
+    --font-size-3xl: 2rem;
+    --font-size-4xl: 2.75rem;
+    
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+    --font-weight-black: 900;
+    
+    --line-height-tight: 1.2;
+    --line-height-normal: 1.6;
+    
+    /* === ESPAÇAMENTOS === */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    --spacing-2xl: 3.5rem;
+    
+    /* === BORDAS === */
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    --radius-2xl: 1.5rem;
+    --radius-full: 9999px;
+    --border-dark: rgba(255, 255, 255, 0.06);
+    
+    /* === TRANSIÇÕES === */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* === BACKDROP === */
+    --backdrop-blur: blur(8px);
+    --backdrop-blur-lg: blur(16px);
+    --glass-bg: rgba(255, 255, 255, 0.04);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-blur: 25px;
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+    
+    /* High Performance Gradients */
+    --vibrant-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+    --surface-gradient: radial-gradient(circle at top left, rgba(99, 102, 241, 0.15), transparent 40%),
+                        radial-gradient(circle at bottom right, rgba(236, 72, 153, 0.15), transparent 40%);
+    /* === Z-INDEX === */
+    --z-dropdown: 1000;
+    --z-sticky: 1020;
+    --z-fixed: 1030;
+    --z-modal-backdrop: 1040;
+    --z-modal: 1050;
+    --z-popover: 1060;
+    --z-tooltip: 1070;
+    
+    /* === LARGURAS === */
+    --container-sm: 640px;
+    --container-md: 768px;
+    --container-lg: 1024px;
+    --container-xl: 1280px;
+    --container-2xl: 1536px;
+
+    /* === ALTURAS === */
+    --header-height: 64px;
+    --footer-height: 60px;
+
+    --backdrop-color: rgba(9, 9, 11, 0.8);
+}
+
+/* === MODO CLARO (OPCIONAL) === */
+[data-theme="light"] {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f7f9fb;
+    --bg-tertiary: #eff3f6;
+    --bg-elevated: #ffffff;
+    
+    --text-primary: #0f1419;
+    --text-body: #1f2937;         /* Texto de corpo legível (tema claro) */
+    --text-secondary: #536471;
+    --text-tertiary: #8b949e;
+    --text-inverse: #ffffff;
+    
+    --border-primary: #e1e8ed;
+    --border-secondary: #cfd9de;
+    
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.12);
+    --shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.15);
+    --shadow-glow: 0 0 20px rgba(16, 185, 129, 0.2);
+    --shadow-glow-lg: 0 0 40px rgba(16, 185, 129, 0.25);
+    
+    --backdrop-color: rgba(255, 255, 255, 0.8);
+}
+
+/* === UTILITÁRIOS DE GLASSMORPHISM === */
+.glass {
+    background: rgba(255, 255, 255, 0.05);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-strong {
+    background: rgba(255, 255, 255, 0.1);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* === ANIMAÇÕES === */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+    }
+    to {
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        transform: translateX(-100%);
+    }
+    to {
+        transform: translateX(0);
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -1000px 0;
+    }
+    100% {
+        background-position: 1000px 0;
+    }
+}

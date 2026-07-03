@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Primeiro Acesso — Sistema Escolar</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="../../css/variables.css">
+    <link rel="stylesheet" href="../../css/base.css">
+    <link rel="stylesheet" href="../../css/components-new.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <style>
+        body {
+            background: radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            color: #f8fafc;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Ambient Glows */
+        .glow {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.14) 0%, transparent 70%);
+            filter: blur(40px);
+            z-index: 0;
+            pointer-events: none;
+        }
+        .glow-1 { top: -10%; left: -10%; }
+        .glow-2 { bottom: -10%; right: -10%; }
+
+        .container {
+            width: 100%;
+            max-width: 540px;
+            padding: 1.5rem;
+            z-index: 10;
+            animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .auth-card {
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 3rem 2.5rem;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+        }
+
+        .auth-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #10b981, #0ea5e9);
+        }
+
+        .brand-icon {
+            font-size: 3.5rem;
+            background: linear-gradient(135deg, #10b981, #0ea5e9);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1.5rem;
+            display: inline-block;
+            animation: float 4s ease-in-out infinite;
+        }
+
+        h1 {
+            font-family: 'Inter', sans-serif;
+            font-size: 2.25rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            margin-bottom: 0.75rem;
+            background: linear-gradient(to right, #ffffff, #cbd5e1);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: #94a3b8;
+            font-size: 1rem;
+            line-height: 1.6;
+            margin-bottom: 3rem;
+            font-weight: 400;
+        }
+
+        .choice-btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 1.5rem 1.75rem;
+            margin-bottom: 1.25rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px;
+            color: #ffffff;
+            text-decoration: none;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            cursor: pointer;
+            text-align: left;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .choice-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.08), rgba(168, 85, 247, 0.08));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .choice-btn:hover {
+            transform: translateY(-3px);
+            border-color: rgba(99, 102, 241, 0.4);
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.15);
+        }
+
+        .choice-btn:hover::before {
+            opacity: 1;
+        }
+
+        .btn-content {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            z-index: 2;
+        }
+
+        .btn-icon-wrapper {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: #818cf8;
+            transition: all 0.3s ease;
+        }
+
+        .choice-btn:hover .btn-icon-wrapper {
+            background: rgba(16, 185, 129, 0.15);
+            color: #a5b4fc;
+            transform: scale(1.05);
+        }
+
+        .btn-text {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .btn-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+
+        .btn-desc {
+            font-size: 0.85rem;
+            color: #64748b;
+        }
+
+        .choice-btn:hover .btn-desc {
+            color: #94a3b8;
+        }
+
+        .arrow-icon {
+            font-size: 1.25rem;
+            color: #475569;
+            transition: all 0.3s ease;
+            z-index: 2;
+        }
+
+        .choice-btn:hover .arrow-icon {
+            color: #818cf8;
+            transform: translateX(5px);
+        }
+
+        .footer-action {
+            margin-top: 2.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            padding-top: 1.75rem;
+        }
+
+        .footer-link {
+            color: #64748b;
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .footer-link:hover {
+            color: #818cf8;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        @media (max-width: 480px) {
+            .auth-card {
+                padding: 2rem 1.5rem;
+            }
+            h1 {
+                font-size: 1.85rem;
+            }
+            .choice-btn {
+                padding: 1.25rem;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="../../css/responsive-global.css?v=1.0">
+    <link rel="stylesheet" href="../../css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="../../css/reactions.css?v=1.0">
+</head>
+<body>
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Sistema Escolar</h2>
+            <p class="splash-subtitle">Primeiro Acesso</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="../../js/splash-screen.js"></script>
+
+    <div class="glow glow-1"></div>
+    <div class="glow glow-2"></div>
+
+    <div class="container">
+        <div class="auth-card">
+            <i class="bi bi-shield-lock-fill brand-icon"></i>
+            <h1>Primeiro Acesso</h1>
+            <p class="subtitle">Bem-vindo ao portal educacional. Escolha o seu perfil para ativar sua conta e cadastrar suas informações de acesso.</p>
+
+            <div class="choices-container">
+                <!-- Primeiro Acesso Responsável -->
+                <a href="cadastro-responsavel.html" class="choice-btn" id="btn-primeiro-responsavel">
+                    <div class="btn-content">
+                        <div class="btn-icon-wrapper" style="color: #3b82f6;">
+                            <i class="bi bi-people-fill"></i>
+                        </div>
+                        <div class="btn-text">
+                            <span class="btn-title">Primeiro Acesso — Responsável/Pai</span>
+                            <span class="btn-desc">Para pais, mães ou responsáveis legais de alunos.</span>
+                        </div>
+                    </div>
+                    <i class="bi bi-arrow-right-short arrow-icon"></i>
+                </a>
+
+                <!-- Primeiro Acesso Docente -->
+                <a href="cadastro-docente.html" class="choice-btn" id="btn-primeiro-docente">
+                    <div class="btn-content">
+                        <div class="btn-icon-wrapper" style="color: #8b5cf6;">
+                            <i class="bi bi-person-workspace"></i>
+                        </div>
+                        <div class="btn-text">
+                            <span class="btn-title">Primeiro Acesso — Docente</span>
+                            <span class="btn-desc">Para professores e equipe pedagógica.</span>
+                        </div>
+                    </div>
+                    <i class="bi bi-arrow-right-short arrow-icon"></i>
+                </a>
+
+                <!-- Primeiro Acesso Diretor -->
+                <a href="cadastro-diretor-publico.html" class="choice-btn" id="btn-primeiro-diretor">
+                    <div class="btn-content">
+                        <div class="btn-icon-wrapper" style="color: #10b981;">
+                            <i class="bi bi-briefcase-fill"></i>
+                        </div>
+                        <div class="btn-text">
+                            <span class="btn-title">Primeiro Acesso — Diretor</span>
+                            <span class="btn-desc">Gestão e administração escolar.</span>
+                        </div>
+                    </div>
+                    <i class="bi bi-arrow-right-short arrow-icon"></i>
+                </a>
+
+                <!-- Primeiro Acesso Secretaria -->
+                <a href="cadastro-secretaria-publico.html" class="choice-btn" id="btn-primeiro-secretaria">
+                    <div class="btn-content">
+                        <div class="btn-icon-wrapper" style="color: #ec4899;">
+                            <i class="bi bi-person-badge-fill"></i>
+                        </div>
+                        <div class="btn-text">
+                            <span class="btn-title">Primeiro Acesso — Secretaria</span>
+                            <span class="btn-desc">Atendimento e gestão administrativa.</span>
+                        </div>
+                    </div>
+                    <i class="bi bi-arrow-right-short arrow-icon"></i>
+                </a>
+            </div>
+
+            <div class="footer-action">
+                <a href="../../login.html" class="footer-link" id="link-voltar-login">
+                    <i class="bi bi-arrow-left"></i> Já possui conta? Ir para o Login
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Smart routing: auto-redireciona se o tipo de acesso já foi definido -->
+    <script>
+    (function() {
+        try {
+            var tipo = sessionStorage.getItem('primeiroAcessoTipo');
+            if (tipo === 'responsavel') {
+                sessionStorage.removeItem('primeiroAcessoTipo');
+                window.location.replace('cadastro-responsavel.html');
+                return;
+            }
+            if (tipo === 'docente') {
+                sessionStorage.removeItem('primeiroAcessoTipo');
+                window.location.replace('cadastro-docente.html');
+                return;
+            }
+        } catch(e) {}
+
+        // Salva o tipo quando o usuário clica manualmente nos botões de escolha
+        document.addEventListener('DOMContentLoaded', function() {
+            var btnResp = document.getElementById('btn-primeiro-responsavel');
+            var btnDoc = document.getElementById('btn-primeiro-docente');
+            if (btnResp) {
+                btnResp.addEventListener('click', function() {
+                    try { sessionStorage.setItem('primeiroAcessoTipo', 'responsavel'); } catch(e) {}
+                });
+            }
+            if (btnDoc) {
+                btnDoc.addEventListener('click', function() {
+                    try { sessionStorage.setItem('primeiroAcessoTipo', 'docente'); } catch(e) {}
+                });
+            }
+        });
+    })();
+    </script>
+    <script defer src="../../js/reactions.js"></script>
+</body>
+</html>

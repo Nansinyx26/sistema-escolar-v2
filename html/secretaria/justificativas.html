@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Justificativas - Secretaria</title>
+    <link rel="icon" type="image/png" href="../../favicon/favicon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/variables.css?v=2.0">
+    <link rel="stylesheet" href="../../css/base.css?v=2.0">
+    <link rel="stylesheet" href="../../css/components-new.css?v=2.0">
+    <link rel="stylesheet" href="../../css/dashboard.css?v=2.1">
+    <link rel="stylesheet" href="../../css/responsive-global.css?v=1.1">
+    <link rel="stylesheet" href="../../css/dashboard-premium.css?v=1.0">
+    <link rel="stylesheet" href="../../js/libs/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../../css/tailwind-built.css">
+    <style>
+        .sec-page { max-width:1100px; margin:0 auto; padding:2rem 1.5rem; }
+        .sec-header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:2rem; }
+        .sec-header h1 { font-size:1.5rem; font-weight:700; color:#fff; margin:0; display:flex; align-items:center; gap:0.75rem; }
+        .sec-form-card { background:rgba(30,41,59,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:1.5rem; margin-bottom:1.5rem; }
+        .sec-input,.sec-select { width:100%; padding:0.6rem 0.8rem; background:rgba(15,23,42,0.8); border:1px solid rgba(255,255,255,0.12); border-radius:10px; color:#fff; font-size:0.85rem; }
+        .sec-input:focus { outline:none; border-color:#10b981; }
+        .sec-btn { padding:0.6rem 1.2rem; border-radius:10px; font-size:0.85rem; font-weight:600; cursor:pointer; border:none; transition:all 0.2s; }
+        .sec-btn-primary { background:#10b981; color:#fff; }
+        .sec-btn-danger { background:#ef4444; color:#fff; }
+        .sec-btn-outline { background:transparent; color:#10b981; border:1px solid rgba(16,185,129,0.3); text-decoration:none; }
+        .sec-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+        .sec-table th { padding:0.75rem; text-align:left; color:#94a3b8; font-weight:600; font-size:0.75rem; text-transform:uppercase; border-bottom:1px solid rgba(255,255,255,0.06); }
+        .sec-table td { padding:0.75rem; color:#cbd5e1; border-bottom:1px solid rgba(255,255,255,0.04); }
+        .sec-table tr:hover { background:rgba(255,255,255,0.02); }
+        .sec-badge { padding:3px 10px; border-radius:20px; font-size:0.7rem; font-weight:600; }
+        .sec-badge-yellow { background:rgba(251,191,36,0.15); color:#fbbf24; }
+        .sec-badge-green { background:rgba(16,185,129,0.15); color:#10b981; }
+        .sec-badge-red { background:rgba(239,68,68,0.15); color:#ef4444; }
+        .sec-filter-bar { display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap; }
+        .sec-filter-btn { padding:0.4rem 1rem; border-radius:20px; font-size:0.8rem; cursor:pointer; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); color:#94a3b8; transition:all 0.2s; }
+        .sec-filter-btn.active { background:rgba(16,185,129,0.15); color:#10b981; border-color:rgba(16,185,129,0.3); }
+        .sec-toast { position:fixed; bottom:20px; right:20px; padding:1rem 1.5rem; border-radius:12px; font-size:0.85rem; z-index:9999; animation:slideUp .3s; }
+        .sec-toast-success { background:#10b981; color:#fff; }
+        .sec-toast-error { background:#ef4444; color:#fff; }
+        @keyframes slideUp { from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1} }
+    </style>
+</head>
+<body>
+<div class="dashboard-page" id="pageWrapper">
+    <div class="dashboard-bg"><div class="orb orb-primary"></div><div class="orb orb-secondary"></div></div>
+    <main class="dashboard-main">
+        <div class="sec-page">
+            <div class="sec-header">
+                <h1><i class="bi bi-clipboard-check" style="color:#fbbf24;"></i> Justificativas de Falta</h1>
+                <a href="painel.html" class="sec-btn sec-btn-outline"><i class="bi bi-arrow-left"></i> Voltar</a>
+            </div>
+
+            <div class="sec-form-card">
+                <div class="sec-filter-bar">
+                    <button class="sec-filter-btn active" onclick="filtrar('')">Todas</button>
+                    <button class="sec-filter-btn" onclick="filtrar('pendente')">⏳ Pendentes</button>
+                    <button class="sec-filter-btn" onclick="filtrar('aprovada')">✅ Aprovadas</button>
+                    <button class="sec-filter-btn" onclick="filtrar('rejeitada')">❌ Rejeitadas</button>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table class="sec-table">
+                        <thead><tr><th>Aluno</th><th>Período</th><th>Motivo</th><th>Categoria</th><th>Status</th><th>Ações</th></tr></thead>
+                        <tbody id="justBody"><tr><td colspan="6" style="text-align:center;color:#94a3b8;">Carregando...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="../../js/api-config.js"></script>
+<script defer src="../../js/database.js?v=3"></script>
+<script defer src="../../js/auth.js?v=3"></script>
+<script defer src="../../js/utils.js?v=3"></script>
+<script>
+const API = () => window.API_BASE_URL || '/api';
+let currentFilter = '';
+function toast(m,t='success'){const d=document.createElement('div');d.className=`sec-toast sec-toast-${t}`;d.textContent=m;document.body.appendChild(d);setTimeout(()=>d.remove(),3000);}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    if (typeof db !== 'undefined') await db.init();
+    if (typeof auth !== 'undefined') await auth.init();
+    carregarJustificativas();
+});
+
+function filtrar(status) {
+    currentFilter = status;
+    document.querySelectorAll('.sec-filter-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    carregarJustificativas();
+}
+
+async function carregarJustificativas() {
+    try {
+        const url = currentFilter ? `${API()}/secretaria/justificativas?status=${currentFilter}` : `${API()}/secretaria/justificativas`;
+        const res = await fetch(url, { credentials:'include' });
+        const json = await res.json();
+        const body = document.getElementById('justBody');
+        if (json.success && json.data.length > 0) {
+            body.innerHTML = json.data.map(j => {
+                const badgeClass = j.status === 'pendente' ? 'sec-badge-yellow' : j.status === 'aprovada' ? 'sec-badge-green' : 'sec-badge-red';
+                const acoes = j.status === 'pendente' ? `
+                    <button class="sec-btn sec-btn-primary" style="padding:0.3rem 0.8rem;font-size:0.75rem;" onclick="analisar('${j._id}','aprovada')"><i class="bi bi-check"></i></button>
+                    <button class="sec-btn sec-btn-danger" style="padding:0.3rem 0.8rem;font-size:0.75rem;" onclick="analisar('${j._id}','rejeitada')"><i class="bi bi-x"></i></button>
+                ` : `<span style="color:#64748b;font-size:0.75rem;">${j.analisadoPorNome || '-'}</span>`;
+                return `<tr>
+                    <td><strong>${j.alunoNome}</strong></td>
+                    <td style="font-size:0.8rem;">${new Date(j.dataInicio).toLocaleDateString('pt-BR')} - ${new Date(j.dataFim).toLocaleDateString('pt-BR')}</td>
+                    <td>${j.motivo}</td>
+                    <td>${j.categoria || '-'}</td>
+                    <td><span class="sec-badge ${badgeClass}">${j.status}</span></td>
+                    <td style="display:flex;gap:0.3rem;">${acoes}</td>
+                </tr>`;
+            }).join('');
+        } else body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#10b981;"><i class="bi bi-check-circle"></i> Nenhuma justificativa encontrada</td></tr>';
+    } catch(e) { console.error(e); }
+}
+
+async function analisar(id, status) {
+    const motivo = status === 'rejeitada' ? prompt('Motivo da rejeição:') : '';
+    if (status === 'rejeitada' && motivo === null) return;
+    try {
+        const res = await fetch(`${API()}/secretaria/justificativas/${id}`, {
+            method:'PUT', credentials:'include',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ status, motivoRejeicao: motivo })
+        });
+        const json = await res.json();
+        if (json.success) { toast(`Justificativa ${status}!`); carregarJustificativas(); }
+        else toast(json.error, 'error');
+    } catch(e) { toast('Erro', 'error'); }
+}
+</script>
+<script src="../../js/sidebar-voice.js?v=4.0"></script>
+<script src="../../js/chatbot-ia.js?v=4.0"></script>
+</body>
+</html>

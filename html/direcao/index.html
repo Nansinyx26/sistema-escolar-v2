@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+    <meta name="description" content="Sistema de Cadastro Escolar - Painel de Direção">
+    <title>Painel de Direção - Sistema Escolar</title>
+
+    <!-- PWA -->
+    <meta name="theme-color" content="#10b981">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="../../favicon/favicon.png">
+    <link rel="apple-touch-icon" href="../../favicon/favicon.png">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="../../css/main.css">
+    <link rel="stylesheet" href="../../css/components.css">
+    <link rel="stylesheet" href="../../direcao/direcao.css">
+    <link rel="stylesheet" href="../../direcao/direcao-modern.css">
+    <link rel="stylesheet" href="../../css/watermark.css">
+
+    <!-- Bootstrap Icons (Localized) -->
+    <link rel="stylesheet" href="../../js/libs/bootstrap-icons.min.css">
+
+    <!-- Chart.js (Localized) -->
+    <script src="../../js/libs/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="../../css/parallax-glass.css">
+    <link rel="stylesheet" href="../../css/neo-brutal.css">
+    <link rel="stylesheet" href="../../css/voice-panel.css">
+    <!-- Tailwind CSS Play CDN — preflight desabilitado para nao conflitar com CSS existente -->
+    <!-- Offline Compiled Tailwind CSS -->
+    <link rel="stylesheet" href="../../css/tailwind-built.css">
+    <link rel="stylesheet" href="../../css/responsive-global.css?v=1.0">
+    <link rel="stylesheet" href="../../css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="../../css/reactions.css?v=1.0">
+    <link rel="stylesheet" href="../../css/announcement-feed-legacy.css?v=1.0">
+    <link rel="stylesheet" href="../../css/sidebar.css?v=1.0">
+    <link rel="stylesheet" href="../../css/chatbot-ia.css?v=1.0">
+    <!-- React 18 + Framer Motion (Localized) -->
+    <script src="../../js/libs/react.min.js"></script>
+    <script src="../../js/libs/react-dom.min.js"></script>
+    <script src="../../js/libs/framer-motion.js"></script>
+</head>
+
+<body>
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Sistema Escolar</h2>
+            <p class="splash-subtitle">Painel de Direção</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="/js/splash-screen.js"></script>
+
+    <!-- Global Sidebar -->
+    <aside class="sidebar" id="mainSidebar">
+        <div class="sidebar-logo">
+            <i class="bi bi-mortarboard-fill"></i>
+            <span>Sistema Escolar</span>
+        </div>
+
+        <!-- Sidebar User Profile -->
+        <div class="sidebar-profile">
+            <div class="sidebar-avatar-wrapper">
+                <img src="/img/default-avatar.png" alt="Foto do Diretor" class="sidebar-avatar" id="sidebarAvatar">
+                <div class="sidebar-status-online"></div>
+            </div>
+            <div class="sidebar-info">
+                <span class="user-fullname" id="sidebarUserName">...</span>
+                <span class="user-role-tag" id="sidebarUserRole">...</span>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="#" class="sidebar-item active" data-page="home">
+                <i class="bi bi-grid-1x2-fill"></i>
+                <span>Portal de Direção</span>
+            </a>
+            <a href="direcao-notificacoes.html" class="sidebar-item" data-page="notificacoes">
+                <i class="bi bi-megaphone-fill"></i>
+                <span>Enviar Avisos</span>
+            </a>
+            <a href="horario-jaguari.html" class="sidebar-item" data-page="horarios">
+                <i class="bi bi-calendar3"></i>
+                <span>Horários 2026</span>
+            </a>
+            <a href="../perfil.html" class="sidebar-item" data-page="perfil">
+                <i class="bi bi-person-badge"></i>
+                <span>Meu Perfil</span>
+            </a>
+            <a href="../meus-dados.html" class="sidebar-item" data-page="dados">
+                <i class="bi bi-shield-check"></i>
+                <span>Meus Dados</span>
+            </a>
+            <a href="codigos-secretos.html" class="sidebar-item" data-page="codigos">
+                <i class="bi bi-key-fill"></i>
+                <span>Códigos Secretos</span>
+            </a>
+            <a href="auditoria.html" class="sidebar-item" data-page="auditoria">
+                <i class="bi bi-journal-text"></i>
+                <span>Auditoria</span>
+            </a>
+            <a href="bi-pedagogico.html" class="sidebar-item" data-page="bi">
+                <i class="bi bi-cpu"></i>
+                <span>BI Pedagógico</span>
+            </a>
+            <a href="ia-assistant.html" class="sidebar-item" data-page="ia-assistant">
+                <i class="bi bi-robot"></i>
+                <span>Assistente IA</span>
+            </a>
+            <a href="gerenciar-secretaria.html" class="sidebar-item" data-page="gerenciar-secretaria">
+                <i class="bi bi-people-fill"></i>
+                <span>Gerenciar Secretaria</span>
+            </a>
+            <a href="#" class="sidebar-item" id="sidebar-voice-btn" onclick="document.getElementById('btn-voice-settings').click(); return false;">
+                <i class="bi bi-volume-up-fill"></i>
+                <span>Configurações Voz</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <i class="bi bi-chevron-left"></i>
+            </button>
+        </div>
+    </aside>
+
+    <div class="page page-with-sidebar" id="pageWrapper">
+        <!-- Navbar -->
+        <nav class="navbar">
+            <div class="navbar-content">
+                <div class="navbar-brand">
+                    <span class="logo"><i class="bi bi-mortarboard-fill"></i></span>
+                    <span>Sistema Escolar</span>
+                </div>
+                <div class="navbar-nav">
+                    <a href="#" onclick="window.smartBack('../selecionar.html'); return false;" class="btn btn-ghost"><i class="bi bi-arrow-left"></i> Voltar</a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="container">
+                <!-- Header -->
+                <div class="direcao-header">
+                    <div>
+                        <h1><i class="bi bi-bar-chart-fill"></i> Painel de Direção</h1>
+                        <p>Visão geral do desempenho escolar</p>
+                    </div>
+                    <div class="direcao-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end;">
+                        <a href="direcao-notificacoes.html" class="btn btn-primary">
+                            <i class="bi bi-megaphone"></i> Nova Notificação
+                        </a>
+                        <a href="horario-jaguari.html" class="btn btn-outline">
+                            <i class="bi bi-calendar3"></i> Horários 2026
+                        </a>
+
+                        <button class="btn btn-outline" id="btnExportRelatorio">
+                            <i class="bi bi-download"></i> Relatório
+                        </button>
+                        
+                        <!-- Seletor de Voz (Eleven Labs) -->
+                        <div class="voice-selector-wrapper" style="position: relative; margin-left: 0.5rem;">
+                            <button class="btn btn-outline" id="btn-voice-settings" title="Preferências de Voz & Leitura" style="width: 44px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                                <i class="bi bi-volume-up"></i>
+                            </button>
+                            <div id="voice-settings-panel" class="glass-strong" style="position: absolute; top: calc(100% + 10px); right: 0; width: 240px; padding: 1.2rem; border-radius: 14px; display: none; flex-direction: column; gap: 0.8rem; z-index: 1000; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.5); background: rgba(15, 12, 28, 0.95); backdrop-filter: blur(20px);">
+                                <h5 style="margin: 0; font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Voz & Acessibilidade</h5>
+
+                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                    <label style="font-size: 0.75rem; color: #94a3b8;">Narrador Premium:</label>
+                                    <button class="voice-opt-btn" data-voice="male" style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.2); color: #c4b5fd; padding: 0.4rem 0.6rem; border-radius: 8px; font-size: 0.8rem; cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px; width: 100%;">
+                                        <i class="bi bi-person-standing"></i> Voz Masculina
+                                    </button>
+                                    <button class="voice-opt-btn" data-voice="off" style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); color: #94a3b8; padding: 0.4rem 0.6rem; border-radius: 8px; font-size: 0.8rem; cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px; width: 100%;">
+                                        <i class="bi bi-volume-mute"></i> Desativado
+                                    </button>
+                                </div>
+
+                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                    <label for="voice-provider-select" style="font-size: 0.75rem; color: #94a3b8;">Provedor de Voz:</label>
+                                    <select id="voice-provider-select" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px; border-radius: 8px; font-size: 0.8rem; cursor: pointer; outline: none; width: 100%;">
+                                        <option value="auto">Auto (Smart)</option>
+                                        <option value="elevenlabs">ElevenLabs (HD)</option>
+                                        <option value="google-cloud">Google Cloud (Neural2)</option>
+                                    </select>
+                                </div>
+
+                                <div style="display: flex; align-items: center; gap: 6px; padding: 0.4rem 0.6rem; background: rgba(16, 185, 129, 0.08); border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.15);">
+                                    <i class="bi bi-speedometer" style="color: #10b981; font-size: 0.8rem;"></i>
+                                    <span style="font-size: 0.75rem; color: #94a3b8;">Velocidade:</span>
+                                    <span style="font-size: 0.75rem; color: #10b981; font-weight: 700;">1.0x (Normal)</span>
+                                </div>
+
+                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                    <label for="voice-mode-select" style="font-size: 0.75rem; color: #94a3b8;">Modo de Leitura:</label>
+                                    <select id="voice-mode-select" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px; border-radius: 8px; font-size: 0.8rem; cursor: pointer; outline: none; width: 100%;">
+                                        <option value="texto_audio" selected>Texto + Áudio</option>
+                                        <option value="texto">Apenas Texto</option>
+                                        <option value="audio">Apenas Áudio</option>
+                                    </select>
+                                </div>
+
+                                <hr style="border:0; border-top: 1px solid rgba(255,255,255,0.06); margin: 0.2rem 0;">
+                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                    <button id="btn-diag-voice" style="flex: 1; background: rgba(59, 130, 246, 0.1); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.2); padding: 0.5rem; border-radius: 8px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                        <i class="bi bi-activity"></i> Diagnóstico
+                                    </button>
+                                    <button id="btn-activate-voice" style="flex: 1.5; background: #8b5cf6; color: white; border: none; padding: 0.5rem; border-radius: 8px; font-weight: 600; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                                        <i class="bi bi-play-circle-fill"></i> Ativar Voz
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cards de Estatísticas (Linha Compacta) -->
+                <div class="stats-grid-bi" style="margin-bottom: 2.5rem;">
+                    <div class="stat-card-bi">
+                        <span class="bi-label">Alunos</span>
+                        <span class="bi-value" id="totalAlunos">0</span>
+                    </div>
+                    <div class="stat-card-bi">
+                        <span class="bi-label">Média Geral</span>
+                        <span class="bi-value highlight" id="mediaGeral">-</span>
+                    </div>
+                    <div class="stat-card-bi">
+                        <span class="bi-label">Avaliações</span>
+                        <span class="bi-value" id="totalAvaliacoes">0</span>
+                    </div>
+                    <div class="stat-card-bi danger">
+                        <span class="bi-label">Em Risco</span>
+                        <span class="bi-value" id="alunosRisco">0</span>
+                    </div>
+                </div>
+
+                <!-- Dashboard de Evolução (Destaque Principal) -->
+                <div class="bi-main-chart-wrapper">
+                    <div class="bi-chart-header">
+                        <h2><i class="bi bi-graph-up-arrow"></i> Evolução de Desempenho Escolar</h2>
+                        <div class="bi-chart-filters">
+                            <select id="filtroTurma" class="bi-select">
+                                <option value="">Todas as Turmas</option>
+                            </select>
+                            <select id="filtroBimestre" class="bi-select">
+                                <option value="">Todos Bimestres</option>
+                                <option value="1">1º Bimestre</option>
+                                <option value="2">2º Bimestre</option>
+                                <option value="3">3º Bimestre</option>
+                                <option value="4">4º Bimestre</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="bi-chart-container">
+                        <canvas id="chartEvolucao"></canvas>
+                    </div>
+                </div>
+
+                <!-- Gráficos Secundários -->
+                <div class="graficos-secundarios-grid" style="margin-top: 2rem;">
+                    <div class="grafico-card-bi">
+                        <h3>Média por Turma</h3>
+                        <div class="bi-canvas-sm">
+                            <canvas id="chartTurmas"></canvas>
+                        </div>
+                    </div>
+                    <div class="grafico-card-bi">
+                        <h3>Média por Matéria</h3>
+                        <div class="bi-canvas-sm">
+                            <canvas id="chartMaterias"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Watermark -->
+        <div class="watermark">
+            <span class="watermark-icon"><i class="bi bi-laptop"></i></span>
+            <span class="watermark-text">Desenvolvido por NanDev</span>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="../../js/api-config.js"></script>
+    <script src="../../js/database.js"></script>
+    <script src="../../js/auth.js"></script>
+    <script src="../../js/utils.js"></script>
+    <script src="../../js/voice-orb.js?v=1.0"></script>
+    <script src="../../js/sidebar-voice.js?v=4.0"></script>
+    <script src="../../direcao/direcao.js"></script>
+    <script defer src="../../js/watermark.js"></script>
+    <script defer src="../../js/parallax.js"></script>
+    <script defer src="../../js/notifications.js"></script>
+    <script src="../../js/vendor.js"></script>
+    <script defer src="/js/reactions.js"></script>
+    <script src="../../js/chatbot-ia.js?v=4.0"></script>
+</body>
+
+</html>

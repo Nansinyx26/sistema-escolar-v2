@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+    <meta name="description" content="Painel da Secretaria - Sistema Escolar">
+    <title>Secretaria - Sistema Escolar</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#10b981">
+    <link rel="icon" type="image/png" href="../../favicon/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/variables.css?v=2.0">
+    <link rel="stylesheet" href="../../css/base.css?v=2.0">
+    <link rel="stylesheet" href="../../css/components-new.css?v=2.0">
+    <link rel="stylesheet" href="../../css/dashboard.css?v=2.1">
+    <link rel="stylesheet" href="../../css/responsive-global.css?v=1.1">
+    <link rel="stylesheet" href="../../css/sidebar.css?v=1.1">
+    <link rel="stylesheet" href="../../css/dashboard-premium.css?v=1.0">
+    <link rel="stylesheet" href="../../js/libs/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../../css/watermark.css">
+    <link rel="stylesheet" href="../../css/tailwind-built.css">
+    <style>
+        .sec-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.25rem; margin-bottom: 2rem; }
+        .sec-stat-card {
+            background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px; padding: 1.5rem; backdrop-filter: blur(12px);
+            display: flex; align-items: center; gap: 1rem; transition: all 0.3s;
+        }
+        .sec-stat-card:hover { border-color: rgba(16, 185, 129, 0.3); transform: translateY(-2px); }
+        .sec-stat-icon {
+            width: 48px; height: 48px; border-radius: 12px; display: flex;
+            align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0;
+        }
+        .sec-stat-value { font-size: 1.75rem; font-weight: 700; color: #fff; line-height: 1; }
+        .sec-stat-label { font-size: 0.8rem; color: #94a3b8; margin-top: 2px; }
+        .sec-quick-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; margin-bottom: 2rem; }
+        .sec-quick-card {
+            background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px; padding: 1.5rem; cursor: pointer; transition: all 0.3s;
+            text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 0.75rem;
+        }
+        .sec-quick-card:hover { border-color: rgba(16, 185, 129, 0.3); transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+        .sec-quick-card h3 { font-size: 1rem; font-weight: 600; color: #fff; margin: 0; display: flex; align-items: center; gap: 0.5rem; }
+        .sec-quick-card p { font-size: 0.8rem; color: #94a3b8; margin: 0; }
+        .sec-quick-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+        .sec-section-title {
+            display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;
+        }
+        .sec-section-title h2 { font-size: 1.2rem; font-weight: 700; color: #fff; margin: 0; }
+        .sec-section-title p { font-size: 0.8rem; color: #94a3b8; margin: 0; }
+        .sec-pending-list { display: flex; flex-direction: column; gap: 0.75rem; }
+        .sec-pending-item {
+            background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px; padding: 1rem 1.25rem; display: flex; justify-content: space-between;
+            align-items: center; transition: all 0.2s;
+        }
+        .sec-pending-item:hover { border-color: rgba(251, 191, 36, 0.3); }
+        .sec-badge { padding: 3px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; }
+        .sec-badge-warning { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); }
+        .sec-badge-success { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+    </style>
+</head>
+<body>
+    <div class="dashboard-page page-with-sidebar" id="pageWrapper">
+        <div class="dashboard-bg">
+            <div class="orb orb-primary" id="orb1"></div>
+            <div class="orb orb-secondary" id="orb2"></div>
+        </div>
+
+        <header class="dashboard-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <div class="header-logo">
+                        <i class="bi bi-building"></i>
+                        <span>Secretaria Escolar</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <a href="../dashboard.html" class="btn btn-secondary btn-sm" style="text-decoration:none;">
+                        <i class="bi bi-grid-1x2-fill"></i> <span>Dashboard</span>
+                    </a>
+                    <button class="btn btn-secondary btn-sm" onclick="if(window.sair) window.sair();">
+                        <i class="bi bi-box-arrow-right"></i> <span>Sair</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="dashboard-main">
+            <div class="dashboard-content" id="mainContent">
+
+                <!-- Welcome -->
+                <div class="welcome-section" style="margin-bottom: 2rem;">
+                    <div class="welcome-content">
+                        <h1 id="secWelcome">Bem-vinda, Secretaria! 📋</h1>
+                        <p>Gerencie matrículas, documentos, comunicados e muito mais.</p>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="sec-stats-grid" id="secStatsGrid">
+                    <div class="sec-stat-card">
+                        <div class="sec-stat-icon" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;"><i class="bi bi-people-fill"></i></div>
+                        <div><div class="sec-stat-value" id="statAlunos">...</div><div class="sec-stat-label">Alunos Ativos</div></div>
+                    </div>
+                    <div class="sec-stat-card">
+                        <div class="sec-stat-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;"><i class="bi bi-door-open"></i></div>
+                        <div><div class="sec-stat-value" id="statTurmas">...</div><div class="sec-stat-label">Turmas</div></div>
+                    </div>
+                    <div class="sec-stat-card">
+                        <div class="sec-stat-icon" style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6;"><i class="bi bi-card-checklist"></i></div>
+                        <div><div class="sec-stat-value" id="statMatriculas">...</div><div class="sec-stat-label">Matrículas Ativas</div></div>
+                    </div>
+                    <div class="sec-stat-card">
+                        <div class="sec-stat-icon" style="background: rgba(251, 191, 36, 0.15); color: #fbbf24;"><i class="bi bi-exclamation-triangle"></i></div>
+                        <div><div class="sec-stat-value" id="statPendentes">...</div><div class="sec-stat-label">Justificativas Pendentes</div></div>
+                    </div>
+                    <div class="sec-stat-card">
+                        <div class="sec-stat-icon" style="background: rgba(236, 72, 153, 0.15); color: #ec4899;"><i class="bi bi-file-earmark-text"></i></div>
+                        <div><div class="sec-stat-value" id="statDocs">...</div><div class="sec-stat-label">Documentos Emitidos</div></div>
+                    </div>
+                </div>
+
+                <!-- Quick Access -->
+                <div class="sec-section-title">
+                    <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#10b981,#0ea5e9);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.1rem;">
+                        <i class="bi bi-lightning-charge-fill"></i>
+                    </div>
+                    <div><h2>Acesso Rápido</h2><p>Suas principais ações do dia a dia</p></div>
+                </div>
+                <div class="sec-quick-grid">
+                    <a href="matriculas.html" class="sec-quick-card">
+                        <div class="sec-quick-icon" style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6;"><i class="bi bi-card-checklist"></i></div>
+                        <h3>Nova Matrícula</h3>
+                        <p>Cadastrar ou transferir alunos entre turmas</p>
+                    </a>
+                    <a href="documentos.html" class="sec-quick-card">
+                        <div class="sec-quick-icon" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;"><i class="bi bi-file-earmark-text"></i></div>
+                        <h3>Emitir Documento</h3>
+                        <p>Declarações, histórico escolar e mais</p>
+                    </a>
+                    <a href="justificativas.html" class="sec-quick-card">
+                        <div class="sec-quick-icon" style="background: rgba(251, 191, 36, 0.15); color: #fbbf24;"><i class="bi bi-clipboard-check"></i></div>
+                        <h3>Justificativas</h3>
+                        <p>Analisar justificativas de faltas pendentes</p>
+                    </a>
+                    <a href="comunicados.html" class="sec-quick-card">
+                        <div class="sec-quick-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;"><i class="bi bi-megaphone"></i></div>
+                        <h3>Comunicados</h3>
+                        <p>Enviar avisos para pais e professores</p>
+                    </a>
+                    <a href="relatorios.html" class="sec-quick-card">
+                        <div class="sec-quick-icon" style="background: rgba(236, 72, 153, 0.15); color: #ec4899;"><i class="bi bi-bar-chart-line"></i></div>
+                        <h3>Relatórios</h3>
+                        <p>Alunos por turma, matrículas, exportar CSV</p>
+                    </a>
+                    <a href="../../detalhes/alunos.html" class="sec-quick-card">
+                        <div class="sec-quick-icon" style="background: rgba(14, 165, 233, 0.15); color: #0ea5e9;"><i class="bi bi-people"></i></div>
+                        <h3>Lista de Alunos</h3>
+                        <p>Buscar, filtrar e gerenciar cadastros</p>
+                    </a>
+                </div>
+
+                <!-- Justificativas Pendentes -->
+                <div class="sec-section-title">
+                    <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#f59e0b,#ef4444);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.1rem;">
+                        <i class="bi bi-exclamation-circle-fill"></i>
+                    </div>
+                    <div><h2>Justificativas Pendentes</h2><p>Aprovação necessária</p></div>
+                </div>
+                <div class="sec-pending-list" id="secPendingList">
+                    <div class="sec-pending-item" style="justify-content: center; color: #94a3b8;">
+                        <i class="bi bi-arrow-repeat" style="animation: spin 1s linear infinite;"></i>&nbsp; Carregando...
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="../../js/api-config.js"></script>
+    <script defer src="../../js/database.js?v=3"></script>
+    <script defer src="../../js/auth.js?v=3"></script>
+    <script defer src="../../js/utils.js?v=3"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Wait for auth to be ready
+        if (typeof db !== 'undefined') await db.init();
+        if (typeof auth !== 'undefined') await auth.init();
+
+        if (typeof auth !== 'undefined' && !auth.isAuthenticated()) {
+            window.location.href = '../login.html';
+            return;
+        }
+
+        const user = typeof auth !== 'undefined' ? auth.getCurrentUser() : null;
+        if (user) {
+            const nome = user.nome ? user.nome.split(' ')[0] : 'Secretária';
+            document.getElementById('secWelcome').textContent = `Bem-vinda, ${nome}! 📋`;
+        }
+
+        // Load stats
+        try {
+            const API = window.API_BASE_URL || '/api';
+            const res = await fetch(`${API}/secretaria/dashboard/resumo`, { credentials: 'include' });
+            const json = await res.json();
+            if (json.success) {
+                const d = json.data;
+                animVal('statAlunos', d.totalAlunos);
+                animVal('statTurmas', d.totalTurmas);
+                animVal('statMatriculas', d.totalMatriculas);
+                animVal('statPendentes', d.justificativasPendentes);
+                animVal('statDocs', d.docsEmitidos);
+            }
+        } catch (e) { console.warn('Stats error:', e); }
+
+        // Load pending justificativas
+        try {
+            const API = window.API_BASE_URL || '/api';
+            const res = await fetch(`${API}/secretaria/justificativas?status=pendente`, { credentials: 'include' });
+            const json = await res.json();
+            const list = document.getElementById('secPendingList');
+            if (json.success && json.data.length > 0) {
+                list.innerHTML = json.data.slice(0, 5).map(j => `
+                    <div class="sec-pending-item">
+                        <div>
+                            <strong style="color:#fff;">${j.alunoNome}</strong>
+                            <span style="color:#94a3b8; font-size:0.8rem; margin-left:8px;">${j.motivo}</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span class="sec-badge sec-badge-warning">Pendente</span>
+                            <a href="justificativas.html" class="btn btn-outline btn-sm" style="font-size:0.75rem; text-decoration:none;">Analisar</a>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                list.innerHTML = '<div class="sec-pending-item" style="justify-content:center;color:#10b981;"><i class="bi bi-check-circle"></i>&nbsp; Nenhuma justificativa pendente!</div>';
+            }
+        } catch (e) { console.warn('Justificativas error:', e); }
+    });
+
+    function animVal(id, val) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        let start = 0;
+        const dur = 800;
+        const t0 = performance.now();
+        function step(t) {
+            const p = Math.min((t - t0) / dur, 1);
+            el.textContent = Math.floor(p * val);
+            if (p < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+    }
+    </script>
+    <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+    <script src="../../js/sidebar-voice.js?v=4.0"></script>
+    <script src="../../js/chatbot-ia.js?v=4.0"></script>
+</body>
+</html>
