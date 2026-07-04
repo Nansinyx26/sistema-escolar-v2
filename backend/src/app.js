@@ -220,12 +220,19 @@ staticFiles.forEach((file) => {
     });
 });
 
-// Catch-all para SPA: Qualquer rota não-API retorna o index.html
-app.get('*', (req, res) => {
+// Raiz do site → landing page
+app.get('/', (req, res) => {
+    res.sendFile(path.join(frontendRootPath, 'index.html'));
+});
+
+// 404 global: rota desconhecida NÃO mascara mais como landing page.
+// API → JSON; navegação → página de erro amigável (dark theme) com
+// retorno seguro ao painel do perfil logado.
+app.use((req, res) => {
     if (req.path.startsWith('/api')) {
         return res.status(404).json({ success: false, error: 'Endpoint não encontrado' });
     }
-    res.sendFile(path.join(frontendRootPath, 'index.html'));
+    res.status(404).sendFile(path.join(frontendRootPath, 'html', '404.html'));
 });
 
 // Tratamento de Erro (Opaco em Produção — não vaza stack traces)
@@ -257,7 +264,13 @@ app.use((err, req, res, next) => {
     }
     
     const isProduction = process.env.NODE_ENV === 'production';
-    
+
+    // Navegação de página (não-API, aceita HTML) → página de erro amigável
+    const wantsHtml = !req.path.startsWith('/api') && req.accepts(['json', 'html']) === 'html';
+    if (wantsHtml && statusCode >= 500) {
+        return res.status(statusCode).sendFile(path.join(frontendRootPath, 'html', '500.html'));
+    }
+
     res.status(statusCode).json({
         success: false,
         message: isProduction ? 'Erro interno do servidor.' : err.message,

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>Página não encontrada — Sistema Escolar</title>
+    <!-- Página de erro autocontida: sem CSS/JS externos, funciona mesmo com assets fora do ar -->
+    <style>
+        :root {
+            --bg-primary: #09090b;
+            --bg-elevated: #18181b;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --primary: #10b981;
+            --primary-hover: #34d399;
+            --border: rgba(255, 255, 255, 0.08);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-primary);
+            background-image: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(16, 185, 129, 0.08), transparent);
+            color: var(--text-primary);
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            padding: 24px;
+        }
+        .error-card {
+            max-width: 480px;
+            width: 100%;
+            text-align: center;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 48px 32px;
+            box-shadow: 0 24px 64px -24px rgba(0, 0, 0, 0.6);
+        }
+        .error-code {
+            font-size: 72px;
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, var(--primary), #0ea5e9);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 16px;
+        }
+        h1 { font-size: 22px; font-weight: 600; margin-bottom: 10px; }
+        p { color: var(--text-secondary); font-size: 15px; line-height: 1.6; margin-bottom: 28px; }
+        .actions { display: flex; flex-direction: column; gap: 10px; }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+            transition: background 0.2s, border-color 0.2s, transform 0.1s;
+            font-family: inherit;
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: var(--primary); color: #04140d; }
+        .btn-primary:hover, .btn-primary:focus-visible { background: var(--primary-hover); }
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+        .btn-ghost:hover, .btn-ghost:focus-visible { border-color: var(--primary); color: var(--text-primary); }
+        .btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+        @media (max-width: 480px) {
+            .error-card { padding: 36px 20px; }
+            .error-code { font-size: 56px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .btn { transition: none; }
+        }
+    </style>
+</head>
+<body>
+    <main class="error-card">
+        <div class="error-code">404</div>
+        <h1>Página não encontrada</h1>
+        <p>O endereço que você tentou acessar não existe ou foi movido. Sem problemas — use os botões abaixo para voltar ao sistema.</p>
+        <div class="actions">
+            <button type="button" class="btn btn-primary" id="btnPainel">Ir para o meu painel</button>
+            <button type="button" class="btn btn-ghost" id="btnVoltar">Voltar à página anterior</button>
+        </div>
+    </main>
+    <script>
+        // Calcula o painel do perfil logado (espelha getRedirectPath do backend)
+        function painelDoPerfil() {
+            try {
+                var user = JSON.parse(sessionStorage.getItem('currentUser') || 'null');
+                if (!user) return '/index.html';
+                if (user.perfil === 'responsavel') return '/portal-responsavel/dist/index.html';
+                if (user.perfil === 'secretaria') return '/html/secretaria/painel.html';
+                if (!user.perfil) return '/html/escolher-perfil.html';
+                return '/html/dashboard.html';
+            } catch (e) { return '/index.html'; }
+        }
+        document.getElementById('btnPainel').addEventListener('click', function () {
+            window.location.href = painelDoPerfil();
+        });
+        document.getElementById('btnVoltar').addEventListener('click', function () {
+            if (window.history.length > 1) window.history.back();
+            else window.location.href = painelDoPerfil();
+        });
+    </script>
+</body>
+</html>

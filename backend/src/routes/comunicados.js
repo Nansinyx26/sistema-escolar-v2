@@ -20,7 +20,8 @@ router.post('/:id/comentarios', authJWT, (req, res) => {
 });
 router.post('/:id/reagir', authJWT, (req, res) => {
     req.body.messageId = req.params.id;
-    return ReactionController.create(req, res);
+    // ReactionController.create não existe — o handler correto é addOrUpdate
+    return ReactionController.addOrUpdate(req, res);
 });
 
 module.exports = router;

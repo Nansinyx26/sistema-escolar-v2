@@ -38,6 +38,14 @@ router.get('/monitoring/health', async (req, res) => {
     res.status(health.ok ? 200 : 503).json(health);
 });
 router.get('/metrics', (req, res) => {
+    // Em produção, exige token (METRICS_TOKEN) — métricas internas não são públicas
+    if (process.env.NODE_ENV === 'production') {
+        const expected = process.env.METRICS_TOKEN;
+        const provided = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+        if (!expected || provided !== expected) {
+            return res.status(404).json({ success: false, error: 'Endpoint não encontrado' });
+        }
+    }
     res.type('text/plain');
     res.send(monitoring.getPrometheusMetrics());
 });
@@ -48,8 +56,9 @@ router.get('/config', ConfigController.get);
 router.put('/config/:id', authJWT, authorize('admin'), ConfigController.update);
 
 // --- 3. Uploads de Fotos ---
-router.get('/files/:id', FileController.serveFile); // Rota pública principal (usada pelo getPhotoUrl)
-router.get('/public/photo/:id', FileController.serveFile); // Rota pública legada
+// Rotas públicas servem SOMENTE imagens; documentos (PDF etc.) exigem authJWT.
+router.get('/files/:id', FileController.servePublicImage); // Rota pública principal (usada pelo getPhotoUrl)
+router.get('/public/photo/:id', FileController.servePublicImage); // Rota pública legada
 router.get('/upload/photo/:id', authJWT, FileController.serveFile);
 router.post('/upload/photo', authJWT, upload.single('foto'), convertToWebP, async (req, res) => {
     if (!req.file) return res.status(400).json({ success: false, error: 'Nenhum arquivo enviado' });
