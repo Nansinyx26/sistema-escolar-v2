@@ -14,7 +14,7 @@ const bcrypt  = require('bcryptjs');
 const app              = require('../app');
 const Usuario          = require('../models/Usuario');
 const RecuperacaoSenha = require('../models/RecuperacaoSenha');
-const { conectarBanco, limparBanco, desconectarBanco, criarUsuario } = require('./helpers');
+const { conectarBanco, limparBanco, desconectarBanco, criarUsuario, SENHA_TESTE, SENHA_TESTE_NOVA, CODIGO_ESCOLA_TESTE } = require('./helpers');
 
 beforeAll(async () => { await conectarBanco(); });
 afterEach(async () => { await limparBanco(); });
@@ -207,7 +207,7 @@ describe('POST /api/auth/reset-password', () => {
         const res = await postReset({
             email: 'resetok@escola.test',
             codigo,
-            password: 'SENHA_DE_TESTE_REMOVIDA'
+            password: SENHA_TESTE_NOVA
         });
 
         expect(res.status).toBe(200);
@@ -221,7 +221,7 @@ describe('POST /api/auth/reset-password', () => {
         // Verifica que o login funciona com a nova senha
         const loginRes = await request(app)
             .post('/api/auth/login')
-            .send({ email: 'resetok@escola.test', senha: 'SENHA_DE_TESTE_REMOVIDA' });
+            .send({ email: 'resetok@escola.test', senha: SENHA_TESTE_NOVA });
         expect(loginRes.status).toBe(200);
         expect(loginRes.body.success).toBe(true);
     });
@@ -247,7 +247,7 @@ describe('Fluxo completo E2E: esqueci senha → código → nova senha → login
 
     it('deve completar todo o ciclo de recuperação de senha', async () => {
         // 1. Cria usuário com senha original
-        const senhaOriginal = 'SENHA_DE_TESTE_REMOVIDA';
+        const senhaOriginal = SENHA_TESTE;
         const user = await criarUsuario({ email: 'e2e@escola.test' });
 
         // Confirma que login original funciona

@@ -14,7 +14,11 @@ const path = require('path');
 require('dotenv').config();
 
 // Configuração
-const MONGODB_URI = process.env.MONGODB_URI || 'MONGODB_URI_REMOVIDA_USE_ENV';
+const MONGODB_URI = process.env.MONGODB_URI;
+if (!MONGODB_URI) {
+    console.error('❌ MONGODB_URI não definida no .env — abortando. Nunca use credenciais hardcoded.');
+    process.exit(1);
+}
 const DB_NAME = 'test';
 const JSON_FILE = './data/escola_database.json';
 

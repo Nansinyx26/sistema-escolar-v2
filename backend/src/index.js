@@ -1,10 +1,8 @@
-const path = require('path');
-const dotenv = require('dotenv');
-
-// Carrega variáveis de ambiente do .env do backend ou do .env da raiz
-dotenv.config({ path: path.join(__dirname, '../.env') });
-dotenv.config({ path: path.join(__dirname, '../../.env') });
-
+// Config central: carrega .env e valida variáveis obrigatórias.
+// Se faltar MONGODB_URI/JWT_SECRET (ou SESSION_SECRET em produção),
+// loga quais faltam e encerra ANTES de qualquer conexão.
+const { validarAmbiente } = require('./config/env');
+validarAmbiente();
 
 // Patch global do nodemailer para contornar bloqueio de porta SMTP no Render
 require('./utils/nodemailerPatch');

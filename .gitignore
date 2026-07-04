@@ -2,12 +2,23 @@
 node_modules/
 npm-debug.log*
 
-# Environment and secrets
+# Environment and secrets — NUNCA versionar credenciais
 .env
 .env.local
+.env.*.local
+*.env
+!.env.example
+!backend/.env.example
+backend/.env
+credentials.json
+secrets.json
 
-# Logs and diagnostics
+# Logs and diagnostics — logs não pertencem ao repositório
 backend/*.log
+backend/logs/
+logs/
+*.log
+backend/latest_code.txt
 backend/crash_log.txt
 backend/crash_log_utf8.txt
 backend/output.log

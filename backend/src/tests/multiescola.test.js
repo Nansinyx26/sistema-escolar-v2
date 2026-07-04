@@ -6,7 +6,7 @@
  */
 const request = require('supertest');
 const app = require('../app');
-const { conectarBanco, limparBanco, desconectarBanco, criarUsuario } = require('./helpers');
+const { conectarBanco, limparBanco, desconectarBanco, criarUsuario, SENHA_TESTE, SENHA_TESTE_NOVA, CODIGO_ESCOLA_TESTE } = require('./helpers');
 
 const Escola = require('../models/Escola');
 const Professor = require('../models/Professor');
@@ -65,7 +65,7 @@ describe('GET /api/escolas', () => {
 // ─────────────────────────────────────────────────────────
 describe('POST /api/auth/register-docente (multi-escola)', () => {
     const docente = (extra = {}) => ({
-        nome: 'Prof Multi', email: `multi_${Date.now()}@escola.test`, senha: 'SENHA_DE_TESTE_REMOVIDA',
+        nome: 'Prof Multi', email: `multi_${Date.now()}@escola.test`, senha: SENHA_TESTE,
         disciplina: 'Matemática', turma: '1A', matricula: 'M123',
         telefone: '(19) 99999-0000', ...extra
     });
@@ -121,7 +121,7 @@ describe('POST /api/auth/login (multi-escola)', () => {
     it('403 quando pede escola sem vínculo', async () => {
         await criarProfessorVinculado('so_a@escola.test', [escolaA]);
         const res = await request(app).post('/api/auth/login')
-            .send({ email: 'so_a@escola.test', senha: 'SENHA_DE_TESTE_REMOVIDA', escolaId: String(escolaB._id) });
+            .send({ email: 'so_a@escola.test', senha: SENHA_TESTE, escolaId: String(escolaB._id) });
         expect(res.status).toBe(403);
         expect(res.body.error).toMatch(/vínculo/i);
     });
@@ -129,7 +129,7 @@ describe('POST /api/auth/login (multi-escola)', () => {
     it('entra normalmente na escola vinculada', async () => {
         await criarProfessorVinculado('so_a2@escola.test', [escolaA]);
         const res = await request(app).post('/api/auth/login')
-            .send({ email: 'so_a2@escola.test', senha: 'SENHA_DE_TESTE_REMOVIDA', escolaId: String(escolaA._id) });
+            .send({ email: 'so_a2@escola.test', senha: SENHA_TESTE, escolaId: String(escolaA._id) });
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
         expect(res.body.requiresEscolha).toBeUndefined();
@@ -138,7 +138,7 @@ describe('POST /api/auth/login (multi-escola)', () => {
     it('com múltiplos vínculos e sem escolaId, pede escolha com a lista', async () => {
         await criarProfessorVinculado('duplo@escola.test', [escolaA, escolaB]);
         const res = await request(app).post('/api/auth/login')
-            .send({ email: 'duplo@escola.test', senha: 'SENHA_DE_TESTE_REMOVIDA' });
+            .send({ email: 'duplo@escola.test', senha: SENHA_TESTE });
         expect(res.status).toBe(200);
         expect(res.body.requiresEscolha).toBe(true);
         expect(res.body.escolas).toHaveLength(2);
@@ -159,7 +159,7 @@ describe('Troca de escola e isolamento por escolaId', () => {
         });
         const agent = request.agent(app); // persiste cookies (JWT + sessão)
         const login = await agent.post('/api/auth/login')
-            .send({ email, senha: 'SENHA_DE_TESTE_REMOVIDA', escolaId: String(escolas[0]._id) });
+            .send({ email, senha: SENHA_TESTE, escolaId: String(escolas[0]._id) });
         expect(login.status).toBe(200);
         return agent;
     }

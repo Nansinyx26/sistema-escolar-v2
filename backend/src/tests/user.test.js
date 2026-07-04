@@ -8,7 +8,7 @@ const bcrypt    = require('bcryptjs');
 const app       = require('../app');
 const Usuario   = require('../models/Usuario');
 const Professor = require('../models/Professor');
-const { conectarBanco, limparBanco, desconectarBanco, criarUsuario } = require('./helpers');
+const { conectarBanco, limparBanco, desconectarBanco, criarUsuario, SENHA_TESTE, SENHA_TESTE_NOVA, CODIGO_ESCOLA_TESTE } = require('./helpers');
 
 beforeAll(async () => { await conectarBanco(); });
 afterEach(async () => { await limparBanco(); });
@@ -22,7 +22,7 @@ describe('POST /api/auth/first-access', () => {
     it('deve rejeitar professor nao pre-cadastrado com 404', async () => {
         const res = await request(app)
             .post('/api/auth/first-access')
-            .send({ emailOrCpf: 'naoexiste@escola.test', password: 'SENHA_DE_TESTE_REMOVIDA' });
+            .send({ emailOrCpf: 'naoexiste@escola.test', password: SENHA_TESTE });
 
         expect(res.status).toBe(404);
         expect(res.body.success).toBe(false);
@@ -88,7 +88,7 @@ describe('POST /api/auth/reset-password', () => {
     it('deve rejeitar token invalido com 400', async () => {
         const res = await request(app)
             .post('/api/auth/reset-password')
-            .send({ token: 'token-invalido-abc', password: 'SENHA_DE_TESTE_REMOVIDA' });
+            .send({ token: 'token-invalido-abc', password: SENHA_TESTE_NOVA });
 
         expect(res.status).toBe(400);
         expect(res.body.success).toBe(false);
@@ -118,7 +118,7 @@ describe('POST /api/auth/reset-password', () => {
 
         const res = await request(app)
             .post('/api/auth/reset-password')
-            .send({ email, codigo, password: 'SENHA_DE_TESTE_REMOVIDA' });
+            .send({ email, codigo, password: SENHA_TESTE_NOVA });
 
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
@@ -129,7 +129,7 @@ describe('POST /api/auth/reset-password', () => {
 
         // A senha deve ter sido alterada
         const usuarioAtualizado = await Usuario.findById(user._id);
-        const senhaCorreta = await bcrypt.compare('SENHA_DE_TESTE_REMOVIDA', usuarioAtualizado.senha);
+        const senhaCorreta = await bcrypt.compare(SENHA_TESTE_NOVA, usuarioAtualizado.senha);
         expect(senhaCorreta).toBe(true);
     });
 });

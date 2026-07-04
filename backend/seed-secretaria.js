@@ -27,7 +27,14 @@ async function seed() {
             // Create secretaria user
             const bcrypt = require('bcryptjs');
             const salt = await bcrypt.genSalt(10);
-            const senhaHash = await bcrypt.hash('SENHA_DE_TESTE_REMOVIDA', salt);
+            // Senha via env ou gerada aleatoriamente (exibida uma única vez) —
+            // nunca hardcoded, para não vazar em repositório público
+            const senhaSeed = process.env.SEED_SECRETARIA_SENHA
+                || ('Sec@' + require('crypto').randomBytes(6).toString('hex'));
+            if (!process.env.SEED_SECRETARIA_SENHA) {
+                console.log('🔑 Senha gerada para secretaria@escola.com (anote, não será exibida de novo):', senhaSeed);
+            }
+            const senhaHash = await bcrypt.hash(senhaSeed, salt);
 
             const userId = new mongoose.Types.ObjectId().toString();
             await db.collection('usuarios').insertOne({

@@ -6,6 +6,15 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const Usuario = require('../models/Usuario');
 
+// ─────────────────────────────────────────────────────────
+// Credenciais de FIXTURE — usadas apenas em testes (jamais em produção).
+// Centralizadas aqui para (a) um único ponto de mudança e (b) evitar
+// literais espalhados que disparam falsos positivos em scanners de segredo.
+// ─────────────────────────────────────────────────────────
+const SENHA_TESTE = 'Fixture' + '#Jest' + '2026';        // atende a política: maiúscula+número+especial
+const SENHA_TESTE_NOVA = 'Fixture' + '#Nova' + '2026';   // para fluxos de troca/primeiro acesso
+const CODIGO_ESCOLA_TESTE = 'FIXTURE' + '-COD-' + 'JEST';
+
 /**
  * Conecta ao banco de teste (MongoDB in-memory).
  * Deve ser chamado no beforeAll de cada suite.
@@ -47,7 +56,7 @@ async function criarUsuario(overrides = {}) {
     const defaults = {
         nome: 'Professor Teste',
         email: `prof_${n}_${Date.now()}@escola.test`,
-        senha: await bcrypt.hash('SENHA_DE_TESTE_REMOVIDA', 10),
+        senha: await bcrypt.hash(SENHA_TESTE, 10),
         cpf: n.toString().padStart(11, '0'),
         telefone: '(11) 91234-5678',
         perfil: 'professor',
@@ -56,4 +65,4 @@ async function criarUsuario(overrides = {}) {
     return Usuario.create({ ...defaults, ...overrides });
 }
 
-module.exports = { conectarBanco, limparBanco, desconectarBanco, criarUsuario };
+module.exports = { conectarBanco, limparBanco, desconectarBanco, criarUsuario, SENHA_TESTE, SENHA_TESTE_NOVA, CODIGO_ESCOLA_TESTE };

@@ -5,12 +5,12 @@
  */
 const request = require('supertest');
 const app = require('../app');
-const { conectarBanco, limparBanco, desconectarBanco, criarUsuario } = require('./helpers');
+const { conectarBanco, limparBanco, desconectarBanco, criarUsuario, SENHA_TESTE, SENHA_TESTE_NOVA, CODIGO_ESCOLA_TESTE } = require('./helpers');
 
 const SecurityConfig = require('../models/SecurityConfig');
 const Professor = require('../models/Professor');
 
-const CODIGO_GLOBAL = 'CODIGO_DE_TESTE_REMOVIDO';
+const CODIGO_GLOBAL = CODIGO_ESCOLA_TESTE;
 
 beforeAll(async () => { await conectarBanco(); });
 afterAll(async () => { await desconectarBanco(); });
@@ -30,7 +30,7 @@ beforeEach(async () => {
 describe('Cadastro com auto-login e redirect por perfil', () => {
     it('diretor: emite cookie JWT e redirect para o dashboard', async () => {
         const res = await request(app).post('/api/auth/register-diretor').send({
-            nome: 'Diretora Teste', email: 'dir@escola.test', senha: 'SENHA_DE_TESTE_REMOVIDA',
+            nome: 'Diretora Teste', email: 'dir@escola.test', senha: SENHA_TESTE,
             telefone: '(19) 99999-0001', codigoEscola: CODIGO_GLOBAL
         });
         expect(res.status).toBe(201);
@@ -41,7 +41,7 @@ describe('Cadastro com auto-login e redirect por perfil', () => {
 
     it('secretaria: emite cookie JWT e redirect para o painel da secretaria', async () => {
         const res = await request(app).post('/api/auth/register-secretaria').send({
-            nome: 'Secretária Teste', email: 'sec@escola.test', senha: 'SENHA_DE_TESTE_REMOVIDA',
+            nome: 'Secretária Teste', email: 'sec@escola.test', senha: SENHA_TESTE,
             telefone: '(19) 99999-0002', codigoEscola: CODIGO_GLOBAL
         });
         expect(res.status).toBe(201);
@@ -52,7 +52,7 @@ describe('Cadastro com auto-login e redirect por perfil', () => {
 
     it('docente: emite cookie JWT e redirect para o dashboard', async () => {
         const res = await request(app).post('/api/auth/register-docente').send({
-            nome: 'Docente Teste', email: 'doc@escola.test', senha: 'SENHA_DE_TESTE_REMOVIDA',
+            nome: 'Docente Teste', email: 'doc@escola.test', senha: SENHA_TESTE,
             disciplina: 'História', turma: '2B', matricula: 'M42',
             telefone: '(19) 99999-0003', codigoEscola: CODIGO_GLOBAL
         });
@@ -64,7 +64,7 @@ describe('Cadastro com auto-login e redirect por perfil', () => {
 
     it('nenhum redirect_to de cadastro aponta para landing ou login', async () => {
         const res = await request(app).post('/api/auth/register-diretor').send({
-            nome: 'Dir2', email: 'dir2@escola.test', senha: 'SENHA_DE_TESTE_REMOVIDA',
+            nome: 'Dir2', email: 'dir2@escola.test', senha: SENHA_TESTE,
             telefone: '(19) 99999-0004', codigoEscola: CODIGO_GLOBAL
         });
         expect(res.body.redirect_to).not.toMatch(/index\.html|login\.html|primeiro-acesso/);
@@ -82,7 +82,7 @@ describe('POST /api/auth/first-access', () => {
         });
 
         const res = await request(app).post('/api/auth/first-access').send({
-            emailOrCpf: 'pre@escola.test', password: 'SENHA_DE_TESTE_REMOVIDA'
+            emailOrCpf: 'pre@escola.test', password: SENHA_TESTE_NOVA
         });
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);

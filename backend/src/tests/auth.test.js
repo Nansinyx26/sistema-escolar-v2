@@ -9,7 +9,7 @@ const crypto  = require('crypto');
 
 const app     = require('../app');
 const Usuario = require('../models/Usuario');
-const { conectarBanco, limparBanco, desconectarBanco, criarUsuario } = require('./helpers');
+const { conectarBanco, limparBanco, desconectarBanco, criarUsuario, SENHA_TESTE, SENHA_TESTE_NOVA, CODIGO_ESCOLA_TESTE } = require('./helpers');
 
 beforeAll(async () => { await conectarBanco(); });
 afterEach(async () => { await limparBanco(); });
@@ -41,13 +41,13 @@ describe('POST /api/auth/login', () => {
 
     it('deve retornar 401 para conta inativa', async () => {
         await criarUsuario({ email: 'inativo@escola.test', ativo: false });
-        const res = await postLogin({ email: 'inativo@escola.test', senha: 'SENHA_DE_TESTE_REMOVIDA' });
+        const res = await postLogin({ email: 'inativo@escola.test', senha: SENHA_TESTE });
         expect(res.status).toBe(401);
     });
 
     it('deve emitir cookie JWT para credenciais validas (sem 2FA)', async () => {
         await criarUsuario({ email: 'valido@escola.test' });
-        const res = await postLogin({ email: 'valido@escola.test', senha: 'SENHA_DE_TESTE_REMOVIDA' });
+        const res = await postLogin({ email: 'valido@escola.test', senha: SENHA_TESTE });
 
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
@@ -58,7 +58,7 @@ describe('POST /api/auth/login', () => {
 
     it('deve conter nome e perfil do usuario na resposta', async () => {
         await criarUsuario({ email: 'info@escola.test', nome: 'Prof Tester', perfil: 'professor' });
-        const res = await postLogin({ email: 'info@escola.test', senha: 'SENHA_DE_TESTE_REMOVIDA' });
+        const res = await postLogin({ email: 'info@escola.test', senha: SENHA_TESTE });
 
         expect(res.body.user.nome).toBe('Prof Tester');
         expect(res.body.user.perfil).toBe('professor');
@@ -68,7 +68,7 @@ describe('POST /api/auth/login', () => {
 
     it('deve retornar redirect_to para professor sem 2FA', async () => {
         await criarUsuario({ email: 'redirect@escola.test', perfil: 'professor' });
-        const res = await postLogin({ email: 'redirect@escola.test', senha: 'SENHA_DE_TESTE_REMOVIDA' });
+        const res = await postLogin({ email: 'redirect@escola.test', senha: SENHA_TESTE });
 
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
@@ -78,7 +78,7 @@ describe('POST /api/auth/login', () => {
 
     it('deve exigir 2FA para secretaria e retornar redirect_to no login', async () => {
         await criarUsuario({ email: 'secretaria@escola.test', perfil: 'secretaria' });
-        const res = await postLogin({ email: 'secretaria@escola.test', senha: 'SENHA_DE_TESTE_REMOVIDA' });
+        const res = await postLogin({ email: 'secretaria@escola.test', senha: SENHA_TESTE });
 
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
@@ -124,7 +124,7 @@ describe('Brute-Force: bloqueio de conta', () => {
             loginAttempts: 0
         });
 
-        const res = await postLogin({ email: 'bloqueado@escola.test', senha: 'SENHA_DE_TESTE_REMOVIDA' });
+        const res = await postLogin({ email: 'bloqueado@escola.test', senha: SENHA_TESTE });
         expect(res.status).toBe(403);
     });
 });
@@ -142,7 +142,7 @@ describe('2FA: fluxo de dois fatores', () => {
         const salvo = await Usuario.findById(usuario._id);
         expect(salvo.twoFactorEnabled).toBe(true);
 
-        const res = await postLogin({ email: '2fa@escola.test', senha: 'SENHA_DE_TESTE_REMOVIDA' });
+        const res = await postLogin({ email: '2fa@escola.test', senha: SENHA_TESTE });
 
         expect(res.status).toBe(200);
         expect(res.body.requires2FA).toBe(true);
