@@ -241,7 +241,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     turma:      document.getElementById('turma').value.trim(),
                     matricula:  document.getElementById('matricula').value.trim(),
                     telefone:   document.getElementById('telefone').value.trim(),
-                    codigoEscola: document.getElementById('codigoEscola').value.trim()
+                    codigoEscola: document.getElementById('codigoEscola').value.trim(),
+                    // Multi-escola: escola pré-selecionada no modal da landing
+                    escolaId: (window.EscolaContexto && window.EscolaContexto.id) || undefined
                 };
             } else {
                 endpoint = `${API_BASE}/auth/register-responsavel`;

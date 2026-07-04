@@ -205,6 +205,15 @@ exports.verifyCode = async (req, res) => {
             maxAge: 8 * 60 * 60 * 1000
         });
 
+        // Sessão multi-escola: confirma a escola resolvida no passo de senha
+        if (req.session) {
+            req.session.usuarioId = String(usuario._id);
+            if (req.session.escolaPendenteId) {
+                req.session.escolaAtivaId = req.session.escolaPendenteId;
+                delete req.session.escolaPendenteId;
+            }
+        }
+
         await logAction(req, 'LOGIN_2FA_SUCCESS', 'Auth', {
             recursoId: usuario._id,
             descricao: `Login 2FA concluído para ${usuario.email}`

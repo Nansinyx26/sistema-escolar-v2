@@ -42,7 +42,8 @@ function setupTabs() {
                     sessionStorage.setItem('primeiroAcessoTipo', 'docente');
                 } catch (e) { }
 
-                window.location.href = 'pages/cadastro-docente.html';
+                const ctxEscola = getEscolaIdFromUrl();
+                window.location.href = 'pages/cadastro-docente.html' + (ctxEscola ? ('?escolaId=' + encodeURIComponent(ctxEscola)) : '');
                 return;
             }
 
@@ -58,11 +59,107 @@ function setupTabs() {
 }
 
 
+// === MULTI-ESCOLA: contexto vindo do modal da landing (?escolaId=...) ===
+function getEscolaIdFromUrl() {
+    try {
+        return new URLSearchParams(window.location.search).get('escolaId') || null;
+    } catch (e) { return null; }
+}
+
+/**
+ * Seletor de escola para usuários com múltiplos vínculos.
+ * Renderiza um modal simples (dark theme) com as escolas retornadas pelo
+ * backend; ao escolher, refaz o login com a escolaId selecionada.
+ */
+function mostrarSeletorEscolas(escolas, onEscolha) {
+    const antigo = document.getElementById('modalSeletorEscolas');
+    if (antigo) antigo.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'modalSeletorEscolas';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;';
+
+    const card = document.createElement('div');
+    card.style.cssText = 'background:var(--bg-elevated,#18181b);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:28px;max-width:420px;width:100%;';
+
+    const titulo = document.createElement('h3');
+    titulo.textContent = 'Em qual escola você quer entrar?';
+    titulo.style.cssText = 'margin:0 0 6px;color:var(--text-primary,#fafafa);font-size:18px;';
+    card.appendChild(titulo);
+
+    const sub = document.createElement('p');
+    sub.textContent = 'Sua conta possui vínculo com mais de uma escola.';
+    sub.style.cssText = 'margin:0 0 18px;color:var(--text-tertiary,#a1a1aa);font-size:13.5px;';
+    card.appendChild(sub);
+
+    escolas.forEach((e) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.style.cssText = 'display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 14px;margin-bottom:8px;color:var(--text-primary,#fafafa);cursor:pointer;font-size:14.5px;font-family:inherit;';
+        btn.innerHTML = `<i class="bi ${e.tipo === 'CIEP' ? 'bi-mortarboard' : 'bi-book'}" style="color:var(--primary,#10b981)"></i>`;
+        btn.appendChild(document.createTextNode(e.nome + (e.bairro ? ' — ' + e.bairro : '')));
+        btn.addEventListener('mouseenter', () => { btn.style.borderColor = 'var(--primary,#10b981)'; });
+        btn.addEventListener('mouseleave', () => { btn.style.borderColor = 'rgba(255,255,255,.1)'; });
+        btn.addEventListener('click', () => {
+            overlay.remove();
+            onEscolha(e._id);
+        });
+        card.appendChild(btn);
+    });
+
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+}
+
 // === LOGIN FORM ===
 function setupLoginForm() {
     const form = document.getElementById('loginForm');
     const emailInput = document.getElementById('loginEmail');
     const passwordInput = document.getElementById('loginPassword');
+
+    async function fazerLogin(email, password, escolaId, submitBtn) {
+        try {
+            // Tenta fazer login
+            const usuario = await auth.loginWithEmail(email, password, escolaId);
+
+            // Multi-escola: múltiplos vínculos → seletor, depois refaz com a escolha
+            if (usuario && usuario.requiresEscolha) {
+                hideLoading(submitBtn);
+                mostrarSeletorEscolas(usuario.escolas, (escolhida) => {
+                    showLoading(submitBtn);
+                    fazerLogin(email, password, escolhida, submitBtn);
+                });
+                return;
+            }
+
+            // Se necessitar de 2FA, interrompe e não redireciona (o modal de 2FA já foi aberto)
+            if (usuario && usuario.requires2FA) {
+                hideLoading(submitBtn);
+                return;
+            }
+
+            showToast('Login realizado com sucesso!', 'success');
+            await sleep(500);
+
+            if (usuario && usuario.redirect_to) {
+                window.location.href = usuario.redirect_to;
+                return;
+            }
+
+            // Fallback raso caso o backend não retorne redirect_to
+            if (usuario.perfil && (usuario.perfil === 'admin' || usuario.perfil === 'professor' || usuario.perfil === 'diretor')) {
+                window.location.href = 'dashboard.html';
+            } else if (usuario.perfilDefinidoEm) {
+                window.location.href = 'dashboard.html';
+            } else {
+                window.location.href = 'escolher-perfil.html';
+            }
+        } catch (error) {
+            console.error('Erro no login:', error);
+            showToast(error.message || 'Erro ao fazer login', 'error');
+            hideLoading(submitBtn);
+        }
+    }
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -87,39 +184,7 @@ function setupLoginForm() {
         const submitBtn = form.querySelector('button[type="submit"]');
         showLoading(submitBtn);
 
-        try {
-            // Tenta fazer login
-            const usuario = await auth.loginWithEmail(email, password);
-
-            // Se necessitar de 2FA, interrompe e não redireciona (o modal de 2FA já foi aberto)
-            if (usuario && usuario.requires2FA) {
-                hideLoading(submitBtn);
-                return;
-            }
-
-            showToast('Login realizado com sucesso!', 'success');
-
-            // Aguarda um pouco para mostrar o toast
-            await sleep(500);
-
-            if (usuario && usuario.redirect_to) {
-                window.location.href = usuario.redirect_to;
-                return;
-            }
-
-            // Fallback raso caso o backend não retorne redirect_to
-            if (usuario.perfil && (usuario.perfil === 'admin' || usuario.perfil === 'professor' || usuario.perfil === 'diretor')) {
-                window.location.href = 'dashboard.html';
-            } else if (usuario.perfilDefinidoEm) {
-                window.location.href = 'dashboard.html';
-            } else {
-                window.location.href = 'escolher-perfil.html';
-            }
-        } catch (error) {
-            console.error('Erro no login:', error);
-            showToast(error.message || 'Erro ao fazer login', 'error');
-            hideLoading(submitBtn);
-        }
+        await fazerLogin(email, password, getEscolaIdFromUrl(), submitBtn);
     });
 }
 

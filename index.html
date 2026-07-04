@@ -172,7 +172,13 @@
           <label for="filter-emef" class="school-tab">EMEFs</label>
           <label for="filter-ciep" class="school-tab">CIEPs</label>
         </div>
-        <div class="school-switcher-list">
+        <!-- Lista carregada dinamicamente de GET /api/escolas (js/escolas-modal.js).
+             O conteúdo abaixo é o fallback estático exibido se a API estiver fora do ar. -->
+        <div class="school-switcher-list" id="schoolSwitcherList">
+          <a class="school-list-item ciep">
+            <i class="bi bi-mortarboard"></i> CIEP Profª Maria Nilde Mascellani
+            — Residencial Jaguari
+          </a>
           <a class="school-list-item emef">
             <i class="bi bi-book"></i> EMEF Darcy Ribeiro — Rua da Igualdade, 65
             - Jardim da Paz
@@ -202,10 +208,6 @@
             <i class="bi bi-mortarboard"></i> CIEP Profª Oniva de Moura Brizola
             — Antônio Zanaga
             <i class="bi bi-lock-fill lock-icon-item"></i>
-          </a>
-          <a class="school-list-item ciep">
-            <i class="bi bi-mortarboard"></i> CIEP Profª Maria Nilde Mascellani
-            — Residencial Jaguari
           </a>
           <a class="school-list-item ciep">
             <i class="bi bi-mortarboard"></i> CIEP Prof. Anísio Spínola Teixeira
@@ -1147,5 +1149,6 @@
       }
     </script>
     <script defer src="js/reactions.js"></script>
+    <script defer src="js/escolas-modal.js"></script>
   </body>
 </html>

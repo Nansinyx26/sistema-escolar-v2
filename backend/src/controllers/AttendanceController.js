@@ -5,6 +5,8 @@ exports.list = async (req, res) => {
     try {
         const { turma, data } = req.query;
         const query = {};
+        // Multi-escola: isola por tenant quando o contexto está resolvido
+        if (req.escolaId) query.escolaId = req.escolaId;
         if (turma) query.turma = turma;
         if (data) query.data = data; // Atenção com datas exatas vs ranges
 
@@ -40,7 +42,8 @@ exports.create = async (req, res) => {
         }
         // -------------------------------------------------------------------------
 
-        const doc = await Falta.create(req.body); 
+        if (req.escolaId && !req.body.escolaId) req.body.escolaId = req.escolaId;
+        const doc = await Falta.create(req.body);
         res.status(201).json({ success: true, data: doc }); 
     }
     catch (e) { res.status(400).json({ success: false, error: e.message }); }
@@ -142,7 +145,8 @@ exports.sync = async (req, res) => {
             turma,
             data: dataBusca,
             materia,
-            presente: p.presente
+            presente: p.presente,
+            escolaId: req.escolaId || undefined
         }));
 
         // 3. Insere em massa

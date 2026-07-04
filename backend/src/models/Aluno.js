@@ -58,6 +58,7 @@ const DocumentoArquivoSchema = new mongoose.Schema({
 
 const AlunoSchema = new mongoose.Schema({
     _id: { type: mongoose.Schema.Types.Mixed, default: () => new mongoose.Types.ObjectId().toString() },
+    escolaId: { type: String, index: true }, // Multi-escola: discriminador de tenant
     id: { type: mongoose.Schema.Types.Mixed, index: true }, // Pode ser numero (legacy) ou string/uuid
     nome: { type: String, required: true },
     sobrenome: String,

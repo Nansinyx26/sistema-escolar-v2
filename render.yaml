@@ -20,6 +20,10 @@ services:
       # ── Segurança ───────────────────────────────────────────────────────────
       - key: JWT_SECRET
         sync: false # Gere com: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+      - key: SESSION_SECRET
+        sync: false # Sessão multi-escola (express-session) — gere como o JWT_SECRET
+      - key: METRICS_TOKEN
+        sync: false # Opcional: protege GET /api/metrics em produção
 
       # ── URLs ────────────────────────────────────────────────────────────────
       - key: FRONTEND_URL

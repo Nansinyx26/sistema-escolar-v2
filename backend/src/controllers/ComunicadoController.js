@@ -52,6 +52,7 @@ exports.create = async (req, res) => {
         }
 
         const novoComunicado = new Comunicado({
+            escolaId: req.escolaId || undefined,
             titulo,
             conteudo,
             imagens: imagensValidadas,
@@ -113,6 +114,9 @@ exports.getAll = async (req, res) => {
                 { dataAgendada: { $lte: agora } }
             ]
         };
+
+        // Multi-escola: isola por tenant quando o contexto está resolvido
+        if (req.escolaId) query.escolaId = req.escolaId;
 
         // Filtro por categoria (se fornecido)
         if (categoria && categoria !== 'Todos') {

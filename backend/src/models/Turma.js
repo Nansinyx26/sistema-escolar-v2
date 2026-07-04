@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const TurmaSchema = new mongoose.Schema({
     _id: { type: String, default: () => new mongoose.Types.ObjectId().toString() },
+    escolaId: { type: String, index: true }, // Multi-escola: discriminador de tenant
     id: { type: String, index: true }, // "1A"
     nome: String, // "1A"
     ano: Number,

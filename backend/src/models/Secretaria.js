@@ -8,6 +8,8 @@ const SecretariaSchema = new mongoose.Schema({
     email: { type: String, unique: true },
     telefone: String,
     escola: String,
+    // Multi-escola: vínculos do usuário com escolas (escolaId = _id de Escola)
+    vinculos: [{ escolaId: { type: String, index: true }, cargo: String, _id: false }],
     setor: { type: String, default: 'Secretaria Geral' }, // Ex: 'Secretaria Geral', 'Secretaria Acadêmica'
     cargo: { type: String, default: 'Secretário(a)' },
     permissoes: {

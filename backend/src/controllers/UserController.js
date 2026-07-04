@@ -344,6 +344,54 @@ exports.login = async (req, res) => {
         });
 
         // ============================================
+        // MULTI-ESCOLA: resolve a escola ativa ANTES do redirect.
+        // - ?escolaId (clique no modal): exige vínculo → 403 se não tiver;
+        // - 1 vínculo → usa automaticamente;
+        // - múltiplos → devolve a lista para o seletor do frontend;
+        // - sem vínculos (legado/admin/responsável) → segue; o middleware
+        //   filtrarPorEscola resolve pelo fallback (escola ativa única).
+        // ============================================
+        let escolaAtivaId = null;
+        try {
+            const { vinculosDoUsuario } = require('../middleware/filtrarPorEscola');
+            const Escola = require('../models/Escola');
+            const escolaIdSolicitada = req.body.escolaId || null;
+            const vinculos = await vinculosDoUsuario({ id: user._id, email: user.email, perfil: user.perfil });
+
+            if (escolaIdSolicitada) {
+                const escolaSolicitada = await Escola.findById(escolaIdSolicitada).select('nome ativo').lean().catch(() => null);
+                if (!escolaSolicitada || !escolaSolicitada.ativo) {
+                    return res.status(403).json({ success: false, error: 'Esta escola ainda não está disponível no sistema.' });
+                }
+                const temVinculo = user.perfil === 'admin'
+                    || vinculos.some(v => String(v.escolaId) === String(escolaIdSolicitada));
+                if (!temVinculo) {
+                    return res.status(403).json({
+                        success: false,
+                        error: `Você não possui vínculo com a escola "${escolaSolicitada.nome}". Verifique com a direção da escola.`
+                    });
+                }
+                escolaAtivaId = String(escolaIdSolicitada);
+            } else if (vinculos.length === 1) {
+                escolaAtivaId = String(vinculos[0].escolaId);
+            } else if (vinculos.length > 1) {
+                const escolas = await Escola.find({ _id: { $in: vinculos.map(v => v.escolaId) }, ativo: true })
+                    .select('nome tipo bairro').lean();
+                if (escolas.length > 1) {
+                    return res.json({
+                        success: true,
+                        requiresEscolha: true,
+                        escolas,
+                        message: 'Você possui vínculo com mais de uma escola. Selecione em qual deseja entrar.'
+                    });
+                }
+                if (escolas.length === 1) escolaAtivaId = String(escolas[0]._id);
+            }
+        } catch (e) {
+            console.error('[LOGIN] Falha na resolução multi-escola (seguindo sem contexto):', e.message);
+        }
+
+        // ============================================
         // MELHORIA: Verificação 2FA — Roadmap #1
         // Se o usuário tiver 2FA ativo, NÍO emite o cookie JWT ainda.
         // Dispara o envio do código e retorna requires2FA=true.
@@ -370,6 +418,8 @@ exports.login = async (req, res) => {
                     recursoId: user._id,
                     descricao: `Login 2FA (fixo) exigido para ${user.email}`
                 });
+
+                if (req.session && escolaAtivaId) req.session.escolaPendenteId = escolaAtivaId;
 
                 return res.json({
                     success: true,
@@ -409,6 +459,8 @@ exports.login = async (req, res) => {
                 descricao: `Login 2FA exigido para ${user.email}`
             });
 
+            if (req.session && escolaAtivaId) req.session.escolaPendenteId = escolaAtivaId;
+
             return res.json({
                 success: true,
                 requires2FA: true,
@@ -443,6 +495,12 @@ exports.login = async (req, res) => {
             sameSite: 'Lax',
             maxAge: 8 * 60 * 60 * 1000 // 8h
         });
+
+        // Sessão multi-escola
+        if (req.session) {
+            req.session.usuarioId = String(user._id);
+            if (escolaAtivaId) req.session.escolaAtivaId = escolaAtivaId;
+        }
 
         // Atualiza ultimoLogin apenas aqui (sem 2FA)
         await Usuario.updateOne({ _id: user._id }, { $set: { ultimoLogin: new Date() } });
@@ -649,12 +707,21 @@ exports.googleLogin = async (req, res) => {
 
 
 exports.logout = async (req, res) => {
-    // clearCookie precisa das mesmas opções usadas no setCookie, senão o browser ignora
+    // clearCookie precisa das mesmas opções usadas no setCookie, senão o browser ignora.
+    // O cookie é emitido com sameSite 'Lax' — usar 'Strict' aqui impedia a limpeza.
     res.clearCookie('escola_jwt', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'Strict'
+        sameSite: 'Lax'
     });
+    // Encerra também a sessão multi-escola
+    if (req.session) {
+        req.session.destroy(() => {
+            res.clearCookie('escola_sess');
+            res.json({ success: true, message: 'Logout realizado com sucesso' });
+        });
+        return;
+    }
     res.json({ success: true, message: 'Logout realizado com sucesso' });
 };
 
@@ -1210,23 +1277,22 @@ exports.registerResponsavel = async (req, res) => {
  * Cadastro público de Docente
  */
 exports.registerDocente = async (req, res) => {
-    const { nome, email, senha, disciplina, turma, matricula, telefone, codigoEscola } = req.body;
+    const { nome, email, senha, disciplina, turma, matricula, telefone, codigoEscola, escolaId } = req.body;
 
     try {
         if (!nome || !email || !senha || !disciplina || !turma || !matricula || !telefone || !codigoEscola) {
             return res.status(400).json({ success: false, error: 'Todos os campos são obrigatórios, incluindo o Código Secreto da Escola.' });
         }
 
-        // Valida o código secreto do dia
+        // Valida o código secreto (por escola quando escolaId presente)
         const SecurityController = require('./SecurityController');
-        const isValidCode = await SecurityController.validateCode(codigoEscola);
-        if (!isValidCode) {
-            // Log para debug — mostra o código esperado no console do servidor
-            const SecurityConfig = require('../models/SecurityConfig');
-            const cfg = await SecurityConfig.findOne({ chave: 'CONFIG_GERAL' });
-            console.log(`⚠️ [REGISTER-DOCENTE] Código recebido: "${codigoEscola}" | Código esperado: "${cfg?.codigoSecretoEscola}"`);
+        const codeResult = await SecurityController.validateCode(codigoEscola, escolaId || null);
+        if (!codeResult) {
+            console.log(`⚠️ [REGISTER-DOCENTE] Código inválido para escolaId=${escolaId || '(auto)'}`);
             return res.status(403).json({ success: false, error: 'Código Secreto da Escola inválido ou expirado. Solicite o código atual à direção da escola.' });
         }
+        const escolaResolvida = codeResult.escola || null; // null = modo legado (sem escolas cadastradas)
+        const escolaIdFinal = escolaResolvida ? String(escolaResolvida._id) : null;
 
         if (!validateEmail(email)) {
             return res.status(400).json({ success: false, error: 'E-mail inválido.' });
@@ -1287,7 +1353,9 @@ exports.registerDocente = async (req, res) => {
             tipoEspecial: isEspecial,
             role: 'professor',
             ativo: true,
-            escola: 'default'
+            escola: escolaResolvida ? escolaResolvida.nome : 'default',
+            vinculos: escolaIdFinal ? [{ escolaId: escolaIdFinal, cargo: 'professor' }] : [],
+            escolaId: escolaIdFinal || undefined
         });
 
         // 1. Salvar Notificação persistente no banco de dados para a direção
@@ -1302,7 +1370,7 @@ exports.registerDocente = async (req, res) => {
             mensagem: `${nome} se cadastrou como Docente (${disciplina} - ${turma}) no dia ${dateStr} às ${hourStr}.`,
             destinatarios: 'diretores',
             status: 'enviado',
-            escolaId: 'default'
+            escolaId: escolaIdFinal || 'default'
         });
 
         // 2. Notificação em Tempo Real (WebSocket)
@@ -1327,6 +1395,12 @@ exports.registerDocente = async (req, res) => {
             sameSite: 'Lax',
             maxAge: 8 * 60 * 60 * 1000
         });
+
+        // Sessão multi-escola: escola ativa já definida ao entrar no painel
+        if (req.session && escolaIdFinal) {
+            req.session.escolaAtivaId = escolaIdFinal;
+            req.session.usuarioId = String(user._id);
+        }
 
         res.status(201).json({
             success: true,
@@ -1673,22 +1747,22 @@ exports.updateTTSSettings = async (req, res) => {
  * Requer Código Secreto da Escola (validação diária)
  */
 exports.registerDiretor = async (req, res) => {
-    const { nome, email, senha, telefone, escola, codigoEscola } = req.body;
+    const { nome, email, senha, telefone, escola, codigoEscola, escolaId } = req.body;
 
     try {
         if (!nome || !email || !senha || !telefone || !codigoEscola) {
             return res.status(400).json({ success: false, error: 'Todos os campos são obrigatórios, incluindo o Código Secreto da Escola.' });
         }
 
-        // 1. Valida o código secreto do dia
+        // 1. Valida o código secreto (por escola quando escolaId presente)
         const SecurityController = require('./SecurityController');
-        const isValidCode = await SecurityController.validateCode(codigoEscola);
-        if (!isValidCode) {
-            const SecurityConfig = require('../models/SecurityConfig');
-            const cfg = await SecurityConfig.findOne({ chave: 'CONFIG_GERAL' });
-            console.log(`⚠️ [REGISTER-DIRETOR] Código recebido: "${codigoEscola}" | Código esperado: "${cfg?.codigoSecretoEscola}"`);
+        const codeResult = await SecurityController.validateCode(codigoEscola, escolaId || null);
+        if (!codeResult) {
+            console.log(`⚠️ [REGISTER-DIRETOR] Código inválido para escolaId=${escolaId || '(auto)'}`);
             return res.status(403).json({ success: false, error: 'Código Secreto da Escola inválido ou expirado. Solicite o código atual à direção da escola.' });
         }
+        const escolaResolvida = codeResult.escola || null;
+        const escolaIdFinal = escolaResolvida ? String(escolaResolvida._id) : null;
 
         // 2. Validações básicas
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -1735,9 +1809,11 @@ exports.registerDiretor = async (req, res) => {
             nome: user.nome,
             email: user.email.toLowerCase(),
             telefone: user.telefone || telefone,
-            escola: escola || 'default',
+            escola: escolaResolvida ? escolaResolvida.nome : (escola || 'default'),
             role: 'director',
-            ativo: true
+            ativo: true,
+            vinculos: escolaIdFinal ? [{ escolaId: escolaIdFinal, cargo: 'diretor' }] : [],
+            escolaId: escolaIdFinal || undefined
         });
 
         // 5. Notificação persistente
@@ -1752,7 +1828,7 @@ exports.registerDiretor = async (req, res) => {
             mensagem: `${nome} se cadastrou como Diretor${escola ? ` (${escola})` : ''} no dia ${dateStr} às ${hourStr}.`,
             destinatarios: 'diretores',
             status: 'enviado',
-            escolaId: 'default'
+            escolaId: escolaIdFinal || 'default'
         });
 
         // 6. WebSocket
@@ -1778,6 +1854,12 @@ exports.registerDiretor = async (req, res) => {
             maxAge: 8 * 60 * 60 * 1000
         });
 
+        // Sessão multi-escola
+        if (req.session && escolaIdFinal) {
+            req.session.escolaAtivaId = escolaIdFinal;
+            req.session.usuarioId = String(user._id);
+        }
+
         res.status(201).json({
             success: true,
             message: 'Conta de diretor criada com sucesso!',
@@ -1794,22 +1876,22 @@ exports.registerDiretor = async (req, res) => {
  * Requer Código Secreto da Escola (validação diária)
  */
 exports.registerSecretaria = async (req, res) => {
-    const { nome, email, senha, telefone, escola, codigoEscola } = req.body;
+    const { nome, email, senha, telefone, escola, codigoEscola, escolaId } = req.body;
 
     try {
         if (!nome || !email || !senha || !telefone || !codigoEscola) {
             return res.status(400).json({ success: false, error: 'Todos os campos são obrigatórios, incluindo o Código Secreto da Escola.' });
         }
 
-        // 1. Valida o código secreto do dia
+        // 1. Valida o código secreto (por escola quando escolaId presente)
         const SecurityController = require('./SecurityController');
-        const isValidCode = await SecurityController.validateCode(codigoEscola);
-        if (!isValidCode) {
-            const SecurityConfig = require('../models/SecurityConfig');
-            const cfg = await SecurityConfig.findOne({ chave: 'CONFIG_GERAL' });
-            console.log(`⚠️ [REGISTER-SECRETARIA] Código recebido: "${codigoEscola}" | Código esperado: "${cfg?.codigoSecretoEscola}"`);
+        const codeResult = await SecurityController.validateCode(codigoEscola, escolaId || null);
+        if (!codeResult) {
+            console.log(`⚠️ [REGISTER-SECRETARIA] Código inválido para escolaId=${escolaId || '(auto)'}`);
             return res.status(403).json({ success: false, error: 'Código Secreto da Escola inválido ou expirado. Solicite o código atual à direção da escola.' });
         }
+        const escolaResolvida = codeResult.escola || null;
+        const escolaIdFinal = escolaResolvida ? String(escolaResolvida._id) : null;
 
         // 2. Validações básicas
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -1856,10 +1938,12 @@ exports.registerSecretaria = async (req, res) => {
             nome: user.nome,
             email: user.email.toLowerCase(),
             telefone: user.telefone || telefone,
-            escola: escola || 'default',
+            escola: escolaResolvida ? escolaResolvida.nome : (escola || 'default'),
             setor: 'Secretaria Geral',
             cargo: 'Secretário(a)',
-            ativo: true
+            ativo: true,
+            vinculos: escolaIdFinal ? [{ escolaId: escolaIdFinal, cargo: 'secretaria' }] : [],
+            escolaId: escolaIdFinal || undefined
         });
 
         // 5. Notificação persistente
@@ -1874,7 +1958,7 @@ exports.registerSecretaria = async (req, res) => {
             mensagem: `${nome} se cadastrou como Secretaria${escola ? ` (${escola})` : ''} no dia ${dateStr} às ${hourStr}.`,
             destinatarios: 'diretores',
             status: 'enviado',
-            escolaId: 'default'
+            escolaId: escolaIdFinal || 'default'
         });
 
         // 6. WebSocket
@@ -1899,6 +1983,12 @@ exports.registerSecretaria = async (req, res) => {
             sameSite: 'Lax',
             maxAge: 8 * 60 * 60 * 1000
         });
+
+        // Sessão multi-escola
+        if (req.session && escolaIdFinal) {
+            req.session.escolaAtivaId = escolaIdFinal;
+            req.session.usuarioId = String(user._id);
+        }
 
         res.status(201).json({
             success: true,

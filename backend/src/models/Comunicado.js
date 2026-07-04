@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const ComunicadoSchema = new mongoose.Schema({
+    escolaId: { type: String, index: true }, // Multi-escola: discriminador de tenant
     titulo: { type: String, required: true },
     conteudo: { type: String, required: true }, // HTML formatado
     imagens: [{ type: String }], // Array de strings (Base64 ou URLs)

@@ -24,6 +24,9 @@ exports.list = async (req, res) => {
         const { turma, turmaId, q, page = 1, limit = 100 } = req.query;
         const query = { ativo: { $ne: false } };
 
+        // Multi-escola: isola por tenant quando o contexto está resolvido
+        if (req.escolaId) query.escolaId = req.escolaId;
+
         // Filtro de Turma Flexível: busca em ambos os campos e aceita variações (1C vs 1ºC)
         if (turmaId || turma) {
             const val = turmaId || turma;
@@ -165,6 +168,9 @@ exports.create = async (req, res) => {
 
         // Gerar código secreto de forma randômica e automática
         filteredBody.codigoSecreto = await generateUniqueSecretCode();
+
+        // Multi-escola: novo aluno pertence à escola ativa da sessão
+        if (req.escolaId) filteredBody.escolaId = req.escolaId;
 
         // --- SEGURANÇA: Verificação Horizontal para Professor (Prevenção IDOR) ---
         if (req.user && req.user.perfil === 'professor') {

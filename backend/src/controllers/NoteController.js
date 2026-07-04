@@ -31,6 +31,8 @@ function validarNota(valor) {
 exports.list = async (req, res) => {
     try {
         const filters = {};
+        // Multi-escola: isola por tenant quando o contexto está resolvido
+        if (req.escolaId) filters.escolaId = req.escolaId;
         if (req.query.alunoId)   filters.alunoId   = req.query.alunoId;
         if (req.query.turmaId)   filters.turmaId   = req.query.turmaId;
         if (req.query.materiaId) filters.materiaId = req.query.materiaId;
@@ -75,6 +77,9 @@ exports.create = async (req, res) => {
         // Whitelist
         const body = {};
         NOTE_WHITELIST.forEach(f => { if (req.body[f] !== undefined) body[f] = req.body[f]; });
+
+        // Multi-escola: nova nota pertence à escola ativa da sessão
+        if (req.escolaId) body.escolaId = req.escolaId;
 
         // Valida nota
         if (body.nota !== undefined) {

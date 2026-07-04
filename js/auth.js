@@ -90,15 +90,19 @@ class AuthManager {
     /**
      * Login com Email e Senha
      * Usa POST /auth/login no backend (suporta bcrypt + legacy plain text)
+     * @param {string} [escolaId] - Multi-escola: escola pré-selecionada (modal da landing)
      */
-    async loginWithEmail(email, senha) {
+    async loginWithEmail(email, senha, escolaId) {
         try {
             const baseUrl = this._apiBase();
+
+            const body = { email, senha };
+            if (escolaId) body.escolaId = escolaId;
 
             const res = await fetch(`${baseUrl}/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, senha }),
+                body: JSON.stringify(body),
                 credentials: 'include' // IMPORTANTE: Para receber o cookie HttpOnly
             });
 
@@ -106,6 +110,12 @@ class AuthManager {
 
             if (!data.success) {
                 throw new Error(data.error || 'Credenciais inválidas');
+            }
+
+            // Multi-escola: usuário com vínculo em várias escolas precisa escolher.
+            // Devolve o indicador para o login.js exibir o seletor.
+            if (data.requiresEscolha) {
+                return { requiresEscolha: true, escolas: data.escolas || [] };
             }
 
             // ============================================

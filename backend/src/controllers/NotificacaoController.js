@@ -8,6 +8,8 @@ module.exports = {
             const userPerfil = req.user?.perfil || '';
             const userId = String(req.user?._id || req.user?.id || '');
             let filter = {};
+            // Multi-escola: aplicado ao final sobre o filtro por perfil
+            const escolaFilter = req.escolaId ? { escolaId: req.escolaId } : null;
 
             // Filtrar notificações por perfil do usuário logado
             if (userPerfil === 'professor') {
@@ -70,7 +72,8 @@ module.exports = {
                 filter = {};
             }
 
-            const notificacoes = await Notificacao.find(filter).sort({ dataCriacao: -1 }).lean();
+            const filtroFinal = escolaFilter ? { $and: [filter, escolaFilter] } : filter;
+            const notificacoes = await Notificacao.find(filtroFinal).sort({ dataCriacao: -1 }).lean();
             
             // Adiciona campo lidoPorMim para que o frontend saiba quais já foram lidas pelo usuário atual
             const formatted = notificacoes.map(n => ({
@@ -106,7 +109,10 @@ module.exports = {
 
             // Atribui o nome do remetente (diretor/admin que enviou)
             data.criadoPor = req.user?.nome || req.user?.email || 'Direção';
-            
+
+            // Multi-escola: nova notificação pertence à escola ativa da sessão
+            if (req.escolaId) data.escolaId = req.escolaId;
+
             const notificacao = await Notificacao.create(data);
             res.status(201).json({ success: true, data: notificacao });
         } catch (error) {

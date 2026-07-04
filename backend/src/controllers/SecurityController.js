@@ -112,7 +112,19 @@ class SecurityController {
         config.codigoSecretoEscola = novoCodigo;
         config.dataUltimaRotacao = new Date();
         await config.save();
-        console.log(`🔐 [SECURITY] Código rotacionado por ${autor}. Novo: ${novoCodigo}`);
+        console.log(`🔐 [SECURITY] Código rotacionado por ${autor}.`);
+
+        // Multi-escola (transição): mantém o código da escola ativa única em
+        // sincronia com o código global, para os dois continuarem válidos.
+        try {
+            const Escola = require('../models/Escola');
+            const ativas = await Escola.find({ ativo: true }).select('_id').limit(2);
+            if (ativas.length === 1) {
+                await Escola.updateOne({ _id: ativas[0]._id }, { $set: { codigoSecreto: novoCodigo } });
+            }
+        } catch (e) {
+            console.error('[SECURITY] Falha ao sincronizar código com a escola ativa:', e.message);
+        }
 
         // Notifica admins
         try {
@@ -124,20 +136,63 @@ class SecurityController {
         }
     }
 
-    async validateCode(code) {
+    /**
+     * Valida o código secreto de cadastro.
+     *
+     * Multi-escola:
+     * - Com `escolaId`: o código deve bater com o codigoSecreto DAQUELA escola
+     *   (evita inconsistência entre a escola clicada no modal e o código digitado).
+     * - Sem `escolaId`: o código identifica a escola automaticamente
+     *   (busca Escola por codigoSecreto).
+     * - Transição/legado: o código global (CONFIG_GERAL, rotação diária)
+     *   continua aceito e resolve para a escola ativa única (Jaguari).
+     *
+     * Retorno: `false` se inválido; senão um objeto `{ escola }` onde
+     * `escola` é o doc da Escola resolvida (ou `null` no modo legado puro,
+     * quando ainda não há escolas cadastradas). Truthy = válido, preservando
+     * os callers que fazem `if (!isValidCode)`.
+     */
+    async validateCode(code, escolaId = null) {
+        const Escola = require('../models/Escola');
+        const codeStr = String(code);
+
+        // Código global legado (rotacionado diariamente)
         let config = await SecurityConfig.findOne({ chave: 'CONFIG_GERAL' });
         if (!config) {
-            // Cria código seguro com caracteres mistos
             const novoCodigo = this.generateCode();
             config = await SecurityConfig.create({
                 codigoSecretoEscola: novoCodigo,
                 dataUltimaRotacao: new Date(),
                 rotacaoAutomatica: true
             });
-            console.log(`🔑 [SECURITY] Código secreto criado: ${novoCodigo}`);
+            console.log('🔑 [SECURITY] Código secreto global criado.');
         }
-        // Comparação case-sensitive (o código tem maiúsculas e minúsculas)
-        return config.codigoSecretoEscola === String(code);
+        const matchGlobal = config.codigoSecretoEscola === codeStr;
+
+        // 1. Escola pré-selecionada (clique no modal): código deve ser DELA
+        if (escolaId) {
+            const escola = await Escola.findById(escolaId).select('+codigoSecreto nome ativo').catch(() => null);
+            if (!escola || !escola.ativo) return false;
+            if (escola.codigoSecreto === codeStr) return { escola };
+            // Transição: código global vale para a escola ativa única
+            if (matchGlobal) {
+                const ativas = await Escola.countDocuments({ ativo: true });
+                if (ativas === 1) return { escola };
+            }
+            return false;
+        }
+
+        // 2. Sem escola pré-selecionada: o código identifica a escola
+        const escolaPorCodigo = await Escola.findOne({ codigoSecreto: codeStr, ativo: true }).select('+codigoSecreto nome ativo');
+        if (escolaPorCodigo) return { escola: escolaPorCodigo };
+
+        // 3. Legado: código global → escola ativa única (ou nenhuma escola cadastrada)
+        if (matchGlobal) {
+            const ativas = await Escola.find({ ativo: true }).select('nome').limit(2);
+            if (ativas.length === 1) return { escola: ativas[0] };
+            if (ativas.length === 0) return { escola: null }; // pré-migração
+        }
+        return false;
     }
 
     /**
@@ -145,12 +200,17 @@ class SecurityController {
      */
     async validateCodePublic(req, res) {
         try {
-            const { codigo } = req.body;
+            const { codigo, escolaId } = req.body;
             if (!codigo) {
                 return res.status(400).json({ success: false, error: 'Código não fornecido.' });
             }
-            const isValid = await this.validateCode(codigo);
-            res.json({ success: true, valid: isValid });
+            const result = await this.validateCode(codigo, escolaId || null);
+            res.json({
+                success: true,
+                valid: !!result,
+                // Nome da escola identificada pelo código (para feedback no cadastro)
+                escolaNome: (result && result.escola && result.escola.nome) || null
+            });
         } catch (e) {
             res.status(500).json({ success: false, error: e.message });
         }

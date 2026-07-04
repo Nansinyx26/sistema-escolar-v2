@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const FaltaSchema = new mongoose.Schema({
     _id: { type: String, default: () => new mongoose.Types.ObjectId().toString() },
+    escolaId: { type: String, index: true }, // Multi-escola: discriminador de tenant
     aluno: { type: mongoose.Schema.Types.Mixed, ref: 'Aluno', index: true }, // ID ou ref
     matriculaId: { type: String, index: true }, // Vínculo com a matrícula
     turma: { type: String, index: true },

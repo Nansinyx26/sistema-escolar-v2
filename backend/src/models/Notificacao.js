@@ -63,7 +63,7 @@ const NotificacaoSchema = new mongoose.Schema({
     comentariosCount: { type: Number, default: 0 },
     paraResponsavel: { type: Boolean, default: false },
     criadoPor: { type: String },
-    escolaId: { type: String, required: true, default: 'default' }
+    escolaId: { type: String, required: true, default: 'default', index: true }
 });
 
 NotificacaoSchema.pre('validate', function(next) {

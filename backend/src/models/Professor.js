@@ -18,6 +18,8 @@ const ProfessorSchema = new mongoose.Schema({
     salaPrincipal: String, // ex "1A"
     salasAdicionais: [String], // ["1B", "2A"]
     escola: String,
+    // Multi-escola: vínculos do usuário com escolas (escolaId = _id de Escola)
+    vinculos: [{ escolaId: { type: String, index: true }, cargo: String, _id: false }],
     disciplina: String,
     materias: [String], // ["Portugues", "Matematica"]
     tipoEspecial: Boolean, // Inglês, Artes, Ed. Física, SEBRAE, Oficina de Leitura

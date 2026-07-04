@@ -143,6 +143,38 @@ app.use(cors({
 
 app.use(cookieParser());
 
+// ============================================
+// SESSÃO PERSISTENTE (express-session + connect-mongo)
+// Usada para o contexto multi-escola (escolaAtivaId). A AUTENTICAÇÃO
+// continua 100% via JWT em cookie HttpOnly — a sessão guarda apenas o
+// estado de navegação (qual escola o usuário está operando).
+// Em testes (sem MONGODB_URI) usa o MemoryStore padrão.
+// ============================================
+const session = require('express-session');
+const sessionOptions = {
+    name: 'escola_sess',
+    secret: process.env.SESSION_SECRET || process.env.JWT_SECRET || 'escola-sess-jest-fallback',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'Lax',
+        maxAge: 8 * 60 * 60 * 1000 // mesmo horizonte do JWT (8h)
+    }
+};
+if (process.env.MONGODB_URI && process.env.NODE_ENV !== 'test') {
+    const connectMongo = require('connect-mongo');
+    const MongoStore = connectMongo.default || connectMongo; // compat CJS/ESM
+    sessionOptions.store = MongoStore.create({
+        mongoUrl: process.env.MONGODB_URI,
+        dbName: process.env.MONGODB_DB_NAME || undefined,
+        collectionName: 'sessions',
+        ttl: 8 * 60 * 60
+    });
+}
+app.use(session(sessionOptions));
+
 // Body Parser - Limite reduzido para 1MB para prevenir DoS
 app.use(express.json({ limit: '1mb' })); 
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));

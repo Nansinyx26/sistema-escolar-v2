@@ -4,7 +4,10 @@ const AuditoriaService = require('../services/AuditoriaService');
 exports.list = async (req, res) => {
     try {
         const query = { ativo: { $ne: false } };
-        
+
+        // Multi-escola: isola por tenant quando o contexto está resolvido
+        if (req.escolaId) query.escolaId = req.escolaId;
+
         if (req.user && req.user.perfil === 'professor' && req.allowedTurmas) {
             query.nome = { $in: req.allowedTurmas };
         }
@@ -22,8 +25,9 @@ exports.list = async (req, res) => {
 };
 
 exports.create = async (req, res) => {
-    try { 
-        const doc = await Turma.create(req.body); 
+    try {
+        if (req.escolaId && !req.body.escolaId) req.body.escolaId = req.escolaId;
+        const doc = await Turma.create(req.body);
         
         // Registro de Auditoria
         await AuditoriaService.log({

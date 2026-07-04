@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const NotaSchema = new mongoose.Schema({
     _id: { type: String, default: () => new mongoose.Types.ObjectId().toString() },
+    escolaId: { type: String, index: true }, // Multi-escola: discriminador de tenant
     id: { type: mongoose.Schema.Types.Mixed, index: true },
     alunoId: { type: mongoose.Schema.Types.Mixed, required: true, index: true },
     matriculaId: { type: String, index: true }, // Vínculo com a matrícula específica (Opcional por enquanto, para compatibilidade)

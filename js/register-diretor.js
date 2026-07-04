@@ -121,7 +121,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ nome, email, senha, telefone, escola, codigoEscola })
+                body: JSON.stringify({
+                    nome, email, senha, telefone, escola, codigoEscola,
+                    // Multi-escola: escola pré-selecionada no modal da landing
+                    escolaId: (window.EscolaContexto && window.EscolaContexto.id) || undefined
+                })
             });
 
             const data = await res.json();

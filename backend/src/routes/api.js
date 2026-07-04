@@ -115,21 +115,24 @@ router.post('/upload/documento', authJWT, uploadDocument.array('documentos', 10)
 });
 
 // --- 4. Sub-Rotas Modularizadas ---
+const filtrarPorEscola = require('../middleware/filtrarPorEscola');
+
 router.use('/auth', require('./auth'));
+router.use('/escolas', require('./escolas')); // GET público (modal) + troca de escola (auth interna)
 router.use('/responsavel', authJWT, require('./responsavel'));
-router.use('/notificacoes', authJWT, require('./notificacoes'));
+router.use('/notificacoes', authJWT, filtrarPorEscola, require('./notificacoes'));
 router.use('/security', authJWT, require('./security'));
 router.use('/audit', authJWT, require('./audit'));
 router.use('/usuarios', authJWT, require('./usuarios'));
 router.use('/meus-dados', authJWT, require('./meus-dados'));
 router.use('/atribuicoes', authJWT, require('./atribuicoes'));
-router.use('/alunos', authJWT, horizontalFilter, require('./alunos'));
+router.use('/alunos', authJWT, horizontalFilter, filtrarPorEscola, require('./alunos'));
 router.use('/professores', authJWT, horizontalFilter, require('./professores'));
 router.use('/diretores', authJWT, require('./diretores'));
-router.use('/turmas', authJWT, horizontalFilter, require('./turmas'));
-router.use('/faltas', authJWT, horizontalFilter, require('./faltas'));
+router.use('/turmas', authJWT, horizontalFilter, filtrarPorEscola, require('./turmas'));
+router.use('/faltas', authJWT, horizontalFilter, filtrarPorEscola, require('./faltas'));
 router.use('/frequencia-professores', authJWT, horizontalFilter, require('./frequencia-professores'));
-router.use('/notas', authJWT, horizontalFilter, require('./notas'));
+router.use('/notas', authJWT, horizontalFilter, filtrarPorEscola, require('./notas'));
 router.use('/dashboard', require('./dashboard'));
 router.use('/tabela-geral', authJWT, require('./tabela-geral'));
 router.use('/grade-horaria', authJWT, require('./grade-horaria'));
@@ -137,7 +140,7 @@ router.use('/avaliacoes', require('./avaliacoes'));
 router.use('/reviews', authJWT, require('./reviews'));
 router.use('/reactions', authJWT, require('./reactions'));
 router.use('/notifications/realtime', authJWT, require('./realtime-notifications'));
-router.use('/comunicados', authJWT, require('./comunicados'));
+router.use('/comunicados', authJWT, filtrarPorEscola, require('./comunicados'));
 router.use('/comentarios', authJWT, require('./comentarios'));
 router.use('/relatorios', authJWT, require('./relatorios'));
 router.use('/audio', require('./audio'));

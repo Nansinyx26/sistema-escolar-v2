@@ -10,6 +10,8 @@ const DiretorSchema = new mongoose.Schema({
     idade: Number,
     biografia: String,
     escola: String,
+    // Multi-escola: vínculos do usuário com escolas (escolaId = _id de Escola)
+    vinculos: [{ escolaId: { type: String, index: true }, cargo: String, _id: false }],
     permissoes: [String],
     role: { type: String, default: 'director' },
     foto: String,
