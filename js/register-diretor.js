@@ -132,8 +132,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             showToast('Conta de diretor criada com sucesso! Redirecionando...', 'success');
 
+            // Persiste a sessão criada pelo backend (cookie JWT já emitido)
+            if (data.user) {
+                sessionStorage.setItem('currentUser', JSON.stringify(data.user));
+            }
+
             setTimeout(() => {
-                window.location.href = '../../html/direcao/index.html';
+                window.location.href = data.redirect_to || '../dashboard.html';
             }, 1200);
 
         } catch (error) {

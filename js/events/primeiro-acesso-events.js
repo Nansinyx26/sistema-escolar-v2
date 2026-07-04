@@ -93,6 +93,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const response = await fetch(`${window.API_BASE_URL}/auth/first-access`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include', // recebe o cookie JWT do auto-login
                     body: JSON.stringify({
                         emailOrCpf: document.getElementById('emailOrCpf').value,
                         password: passInput.value
@@ -103,9 +104,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (json.success) {
                     showToast('🎉 Conta ativada com sucesso!', 'success');
+                    // Persiste a sessão criada pelo backend e vai direto ao painel
+                    if (json.user) {
+                        sessionStorage.setItem('currentUser', JSON.stringify(json.user));
+                    }
                     setTimeout(() => {
-                        window.location.href = 'index.html?activated=true';
-                    }, 2000);
+                        window.location.href = json.redirect_to || 'dashboard.html';
+                    }, 1500);
                 } else {
                     showToast(json.error || 'Erro ao validar dados', 'error');
                     btnSubmit.disabled = false;

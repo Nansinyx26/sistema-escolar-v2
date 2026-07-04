@@ -144,7 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             setTimeout(() => {
-                window.location.href = '../secretaria/painel.html';
+                window.location.href = data.redirect_to || '../secretaria/painel.html';
             }, 1200);
 
         } catch (error) {

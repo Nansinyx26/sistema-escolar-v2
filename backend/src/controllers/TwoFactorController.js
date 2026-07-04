@@ -187,7 +187,10 @@ exports.verifyCode = async (req, res) => {
                 email: usuario.email,
                 perfil: usuario.perfil,
                 nome: usuario.nome,
-                deveMudarSenha: usuario.deveMudarSenha
+                deveMudarSenha: usuario.deveMudarSenha,
+                profileCompleted: !!usuario.profileCompleted,
+                // Sem tokenVersion o authJWT invalida o cookie após qualquer troca de senha
+                tokenVersion: usuario.tokenVersion || 0
             },
             ACTUAL_JWT_SECRET,
             { expiresIn: '8h' }
@@ -207,13 +210,9 @@ exports.verifyCode = async (req, res) => {
             descricao: `Login 2FA concluído para ${usuario.email}`
         });
 
-        const redirect_to = usuario.deveMudarSenha
-            ? '/mudar-senha.html'
-            : usuario.perfil === 'responsavel'
-                ? '/portal-responsavel/dist/index.html'
-                : usuario.perfil
-                    ? '/dashboard.html'
-                    : '/escolher-perfil.html';
+        // Reusa a mesma tabela de redirecionamento por perfil do login normal
+        const { getRedirectPath } = require('./UserController');
+        const redirect_to = getRedirectPath(usuario);
 
         return res.json({
             success: true,

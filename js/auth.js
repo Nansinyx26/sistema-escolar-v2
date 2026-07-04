@@ -57,13 +57,32 @@ class AuthManager {
     }
 
     /**
-     * Verifica se há sessão ativa
+     * Verifica se há sessão ativa.
+     * Fonte primária: sessionStorage (rápido, sem rede).
+     * Fallback: cookie JWT HttpOnly validado via /auth/me — cobre fluxos que
+     * autenticam no backend sem passar pela tela de login (cadastro, ativação
+     * de conta, retorno em nova aba), que antes "perdiam" a sessão.
      */
     async checkSession() {
         const sessionData = sessionStorage.getItem('currentUser');
         if (sessionData) {
             this.currentUser = JSON.parse(sessionData);
             return this.currentUser;
+        }
+
+        try {
+            const baseUrl = this._apiBase();
+            const res = await fetch(`${baseUrl}/auth/me`, { credentials: 'include' });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.success && data.user) {
+                    this.currentUser = data.user;
+                    sessionStorage.setItem('currentUser', JSON.stringify(data.user));
+                    return this.currentUser;
+                }
+            }
+        } catch (e) {
+            // Sem rede ou sem cookie válido — segue não autenticado
         }
         return null;
     }

@@ -143,7 +143,25 @@ exports.firstAccess = async (req, res) => {
             descricao: `Professor ${prof.nome} ativou sua conta via Primeiro Acesso.`
         });
 
-        res.json({ success: true, message: 'Conta ativada com sucesso! Você já pode fazer login.' });
+        // Logar automaticamente gerando cookie JWT (mesmo padrão dos demais cadastros)
+        const token = jwt.sign(
+            { id: user._id, perfil: user.perfil, email: user.email, nome: user.nome, tokenVersion: user.tokenVersion || 0 },
+            ACTUAL_JWT_SECRET,
+            { expiresIn: '8h' }
+        );
+        res.cookie('escola_jwt', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'Lax',
+            maxAge: 8 * 60 * 60 * 1000
+        });
+
+        res.json({
+            success: true,
+            message: 'Conta ativada com sucesso!',
+            user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email },
+            redirect_to: getRedirectPath(user)
+        });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
@@ -224,19 +242,31 @@ exports.registerWithCode = async (req, res) => {
         });
 
         // Responde indicando sucesso e que o usuário já está autenticado
-        res.status(201).json({ success: true, message: 'Conta criada e autenticada com sucesso! Redirecionando...', user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email } });
+        res.status(201).json({
+            success: true,
+            message: 'Conta criada e autenticada com sucesso! Redirecionando...',
+            user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email },
+            redirect_to: getRedirectPath(user)
+        });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
 };
 
+// IMPORTANTE: os paths devem existir de verdade no servidor estático.
+// As páginas do sistema vivem em /html/*; um path como '/dashboard.html' (raiz)
+// cai no catch-all do Express e devolve a landing page — causa histórica do
+// bug "voltar para a página inicial" após login/cadastro.
 function getRedirectPath(user) {
-    if (!user) return '/login.html';
-    if (user.deveMudarSenha) return '/mudar-senha.html';
+    if (!user) return '/html/login.html';
+    if (user.deveMudarSenha) return '/html/mudar-senha.html';
     if (user.perfil === 'responsavel') return '/portal-responsavel/dist/index.html';
-    if (!user.perfil) return '/escolher-perfil.html';
-    return '/dashboard.html';
+    if (user.perfil === 'secretaria') return '/html/secretaria/painel.html';
+    if (!user.perfil) return '/html/escolher-perfil.html';
+    // admin, diretor e professor usam o dashboard unificado (adapta-se ao perfil)
+    return '/html/dashboard.html';
 }
+exports.getRedirectPath = getRedirectPath;
 
 exports.login = async (req, res) => {
     const { email, senha } = req.body;
@@ -448,6 +478,12 @@ exports.login = async (req, res) => {
  * sem precisar de senha, apenas com o e-mail.
  */
 exports.mockGoogleLogin = async (req, res) => {
+    // SEGURANÇA: rota de simulação — emite JWT só com o e-mail, sem senha.
+    // Jamais pode existir fora do ambiente de desenvolvimento.
+    if (process.env.NODE_ENV !== 'development') {
+        return res.status(404).json({ success: false, error: 'Endpoint não encontrado' });
+    }
+
     const { email } = req.body;
 
     try {
@@ -1159,10 +1195,11 @@ exports.registerResponsavel = async (req, res) => {
             maxAge: 8 * 60 * 60 * 1000
         });
 
-        res.status(201).json({ 
-            success: true, 
+        res.status(201).json({
+            success: true,
             message: `Conta criada com sucesso! Aluno "${aluno.nome}" vinculado automaticamente.`,
-            user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email }
+            user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email },
+            redirect_to: getRedirectPath(user)
         });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
@@ -1291,10 +1328,11 @@ exports.registerDocente = async (req, res) => {
             maxAge: 8 * 60 * 60 * 1000
         });
 
-        res.status(201).json({ 
-            success: true, 
+        res.status(201).json({
+            success: true,
             message: 'Conta de docente criada com sucesso!',
-            user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email }
+            user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email },
+            redirect_to: getRedirectPath(user)
         });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
@@ -1740,10 +1778,11 @@ exports.registerDiretor = async (req, res) => {
             maxAge: 8 * 60 * 60 * 1000
         });
 
-        res.status(201).json({ 
-            success: true, 
+        res.status(201).json({
+            success: true,
             message: 'Conta de diretor criada com sucesso!',
-            user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email }
+            user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email },
+            redirect_to: getRedirectPath(user)
         });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
@@ -1861,10 +1900,11 @@ exports.registerSecretaria = async (req, res) => {
             maxAge: 8 * 60 * 60 * 1000
         });
 
-        res.status(201).json({ 
-            success: true, 
+        res.status(201).json({
+            success: true,
             message: 'Conta de secretaria criada com sucesso!',
-            user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email }
+            user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email },
+            redirect_to: getRedirectPath(user)
         });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });

@@ -72,7 +72,8 @@ describe('POST /api/auth/login', () => {
 
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
-        expect(res.body.redirect_to).toBe('/dashboard.html');
+        // Path real do dashboard (o antigo '/dashboard.html' caía no catch-all → landing page)
+        expect(res.body.redirect_to).toBe('/html/dashboard.html');
     });
 
     it('deve exigir 2FA para secretaria e retornar redirect_to no login', async () => {
@@ -82,7 +83,8 @@ describe('POST /api/auth/login', () => {
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
         expect(res.body.requires2FA).toBe(true);
-        expect(res.body.redirect_to).toBe('/dashboard.html');
+        // Secretaria vai direto ao seu painel dedicado
+        expect(res.body.redirect_to).toBe('/html/secretaria/painel.html');
         expect(res.body.userId).toBeTruthy();
     });
 });

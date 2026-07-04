@@ -291,7 +291,7 @@ function setupRegisterForm() {
 
         try {
             // Registra via Código Secreto (Backend)
-            await auth.registerWithCode(email, password, nome, codigoEscola, cpf, telefone);
+            const data = await auth.registerWithCode(email, password, nome, codigoEscola, cpf, telefone);
 
             showToast('Conta criada com sucesso! Redirecionando...', 'success');
 
@@ -304,8 +304,8 @@ function setupRegisterForm() {
                 validationIcon.className = 'bi';
             }
 
-            // Redireciona para escolha de perfil (já autenticado via cookie JWT)
-            window.location.href = 'escolher-perfil.html';
+            // Já autenticado via cookie JWT — vai direto ao painel do perfil criado
+            window.location.href = (data && data.redirect_to) || 'escolher-perfil.html';
             
         } catch (error) {
             console.error('Erro no registro:', error);

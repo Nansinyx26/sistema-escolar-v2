@@ -272,10 +272,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 setTimeout(() => {
-                    if (isDocente) {
+                    // O backend informa o painel correto para o perfil recém-criado
+                    if (data.redirect_to) {
+                        window.location.href = data.redirect_to;
+                    } else if (isDocente) {
                         window.location.href = '../dashboard.html';
                     } else {
-                        window.location.href = '../portal-responsavel/dist/index.html';
+                        window.location.href = '/portal-responsavel/dist/index.html';
                     }
                 }, 2000);
             } else {
