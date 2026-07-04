@@ -71,8 +71,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, compact = false }) => {
       display: 'flex',
       alignItems: 'center',
       gap: compact ? '8px' : '10px',
-      background: 'linear-gradient(135deg, rgba(0,212,255,0.08), rgba(124,58,237,0.08))',
-      border: '1px solid rgba(0,212,255,0.15)',
+      background: 'linear-gradient(135deg, rgba(16, 185, 129,0.08), rgba(124,58,237,0.08))',
+      border: '1px solid rgba(16, 185, 129,0.15)',
       borderRadius: '999px',
       padding: compact ? '5px 10px 5px 5px' : '7px 14px 7px 7px',
       minWidth: 0,
@@ -91,7 +91,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, compact = false }) => {
           borderRadius: '50%',
           background: playing
             ? 'linear-gradient(135deg,#7c3aed,#a855f7)'
-            : 'linear-gradient(135deg,#00d4ff,#0ea5e9)',
+            : 'linear-gradient(135deg,#10b981,#0ea5e9)',
           border: 'none',
           display: 'flex',
           alignItems: 'center',
@@ -103,7 +103,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, compact = false }) => {
           transition: 'transform 0.15s, background 0.2s',
           boxShadow: playing
             ? '0 0 12px rgba(124,58,237,0.4)'
-            : '0 0 12px rgba(0,212,255,0.3)',
+            : '0 0 12px rgba(16, 185, 129,0.3)',
         }}
         onMouseEnter={e => { if (!loading) (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.1)'; }}
         onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)'; }}
@@ -122,7 +122,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, compact = false }) => {
             width: compact ? '2px' : '3px',
             height: `${compact ? h * 0.8 : h}px`,
             borderRadius: '2px',
-            background: playing ? '#00d4ff' : 'rgba(0,212,255,0.35)',
+            background: playing ? '#10b981' : 'rgba(16, 185, 129,0.35)',
             transition: 'background 0.3s',
             animation: playing ? `barPulse 0.8s ease-in-out infinite alternate` : 'none',
             animationDelay: `${i * 0.08}s`,
@@ -144,7 +144,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, compact = false }) => {
           <div style={{
             height: '100%',
             width: `${progress}%`,
-            background: 'linear-gradient(90deg,#00d4ff,#7c3aed)',
+            background: 'linear-gradient(90deg,#10b981,#7c3aed)',
             borderRadius: '99px',
             transition: 'width 0.1s linear',
           }} />
@@ -174,7 +174,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, compact = false }) => {
       <span style={{
         fontSize: compact ? '0.65rem' : '0.7rem',
         fontWeight: 600,
-        color: playing ? '#00d4ff' : '#71717a',
+        color: playing ? '#10b981' : '#71717a',
         whiteSpace: 'nowrap',
         fontVariantNumeric: 'tabular-nums',
         minWidth: '32px',
@@ -197,9 +197,9 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, compact = false }) => {
           width: ${compact ? 10 : 12}px;
           height: ${compact ? 10 : 12}px;
           border-radius: 50%;
-          background: #00d4ff;
+          background: #10b981;
           cursor: pointer;
-          box-shadow: 0 0 6px rgba(0,212,255,0.6);
+          box-shadow: 0 0 6px rgba(16, 185, 129,0.6);
           transition: transform 0.15s;
         }
         input[type=range]::-webkit-slider-thumb:hover {
@@ -209,7 +209,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, compact = false }) => {
           width: ${compact ? 10 : 12}px;
           height: ${compact ? 10 : 12}px;
           border-radius: 50%;
-          background: #00d4ff;
+          background: #10b981;
           cursor: pointer;
           border: none;
         }

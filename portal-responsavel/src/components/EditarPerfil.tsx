@@ -157,9 +157,9 @@ export default function EditarPerfil({ user, onSuccess }: EditarPerfilProps) {
               <div style={{ position: 'relative', width: '100px', height: '100px', cursor: 'pointer' }}
                 onClick={() => fileInputRef.current?.click()} title="Clique para alterar a foto">
                 {displayPreview ? (
-                  <img src={displayPreview} alt="Foto de perfil" style={{ width: '100px', height: '100px', borderRadius: '50%', objectFit: 'cover', border: '3px solid rgba(0,212,255,0.4)', boxShadow: '0 0 20px rgba(0,212,255,0.2)' }} />
+                  <img src={displayPreview} alt="Foto de perfil" style={{ width: '100px', height: '100px', borderRadius: '50%', objectFit: 'cover', border: '3px solid rgba(16, 185, 129,0.4)', boxShadow: '0 0 20px rgba(16, 185, 129,0.2)' }} />
                 ) : (
-                  <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: 'linear-gradient(135deg,#00d4ff,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', fontWeight: 700, color: '#fff', border: '3px solid rgba(0,212,255,0.3)' }}>
+                  <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: 'linear-gradient(135deg,#10b981,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', fontWeight: 700, color: '#fff', border: '3px solid rgba(16, 185, 129,0.3)' }}>
                     {getInitials(nome)}
                   </div>
                 )}
@@ -171,7 +171,7 @@ export default function EditarPerfil({ user, onSuccess }: EditarPerfilProps) {
               </div>
               <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={handlePhotoChange} />
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                <button type="button" onClick={() => fileInputRef.current?.click()} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px', fontSize: '0.78rem', fontWeight: 600, background: 'rgba(0,212,255,0.1)', border: '1px solid rgba(0,212,255,0.3)', color: '#00d4ff', cursor: 'pointer' }}>
+                <button type="button" onClick={() => fileInputRef.current?.click()} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px', fontSize: '0.78rem', fontWeight: 600, background: 'rgba(16, 185, 129,0.1)', border: '1px solid rgba(16, 185, 129,0.3)', color: '#10b981', cursor: 'pointer' }}>
                   <i className="ti ti-upload" /> {displayPreview ? 'Alterar Foto' : 'Adicionar Foto'}
                 </button>
                 {displayPreview && (
@@ -202,8 +202,8 @@ export default function EditarPerfil({ user, onSuccess }: EditarPerfilProps) {
 
         {activeTab === 'lgpd' && (
           <div className={styles.profileFormSection}>
-            <h3 className={styles.profileSectionTitle} style={{ borderColor: 'rgba(6,182,212,0.3)' }}>
-              <i className="ti ti-shield-lock" style={{ color: '#06b6d4' }} /> Termos de Consentimento Ativos
+            <h3 className={styles.profileSectionTitle} style={{ borderColor: 'rgba(16, 185, 129,0.3)' }}>
+              <i className="ti ti-shield-lock" style={{ color: '#10b981' }} /> Termos de Consentimento Ativos
             </h3>
             <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '20px', lineHeight: '1.5' }}>
               Para manter o acesso ao portal, a legislação exige o consentimento explícito sobre o tratamento dos dados.
@@ -243,7 +243,7 @@ export default function EditarPerfil({ user, onSuccess }: EditarPerfilProps) {
             disabled={isButtonDisabled}
             style={{
               maxWidth: '240px',
-              background: isButtonDisabled ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg,#06b6d4,#8b5cf6)',
+              background: isButtonDisabled ? 'rgba(255,255,255,0.08)' : 'linear-gradient(135deg,#10b981,#8b5cf6)',
               border: 'none', fontWeight: 700, transition: 'all 0.3s',
             }}
           >

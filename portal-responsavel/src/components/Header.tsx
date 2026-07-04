@@ -230,7 +230,7 @@ const Header: React.FC<HeaderProps> = ({ user, notifications, onLogout, onBellCl
           >
             <div className={styles.avatar} aria-hidden="true">
               {userPhoto !== '/img/default-avatar.png' ? (
-                <img src={userPhoto} alt={user.name} referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = '/img/default-avatar.png'; }} />
+                <img src={userPhoto} alt={user.name} loading="lazy" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = '/img/default-avatar.png'; }} />
               ) : (
                 <span>{getInitials(user.name)}</span>
               )}

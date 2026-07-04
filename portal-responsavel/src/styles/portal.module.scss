@@ -175,8 +175,8 @@
     width: auto;
     object-fit: contain;
     filter: brightness(1.15) saturate(1.1)
-      drop-shadow(0 0 10px rgba(0, 212, 255, 0.4))
-      drop-shadow(0 0 20px rgba(0, 212, 255, 0.2));
+      drop-shadow(0 0 10px rgba(16, 185, 129, 0.4))
+      drop-shadow(0 0 20px rgba(16, 185, 129, 0.2));
   }
 }
 
@@ -1190,7 +1190,7 @@
   background-image:
     radial-gradient(
       circle at 10% 10%,
-      rgba(0, 212, 255, 0.08) 0%,
+      rgba(16, 185, 129, 0.08) 0%,
       transparent 40%
     ),
     radial-gradient(
@@ -1223,11 +1223,11 @@
   transition: all $transition-smooth;
 
   &:hover {
-    border-color: rgba(0, 212, 255, 0.2);
+    border-color: rgba(16, 185, 129, 0.2);
     box-shadow:
       0 4px 30px rgba(0, 0, 0, 0.3),
       0 24px 70px rgba(0, 0, 0, 0.5),
-      0 0 30px rgba(0, 212, 255, 0.1),
+      0 0 30px rgba(16, 185, 129, 0.1),
       inset 0 1px 0 rgba(255, 255, 255, 0.15);
   }
 
@@ -1253,14 +1253,14 @@
     height: 100%;
     object-fit: contain;
     filter: brightness(1.15) saturate(1.1)
-      drop-shadow(0 0 15px rgba(0, 212, 255, 0.5))
-      drop-shadow(0 0 30px rgba(0, 212, 255, 0.2));
+      drop-shadow(0 0 15px rgba(16, 185, 129, 0.5))
+      drop-shadow(0 0 30px rgba(16, 185, 129, 0.2));
   }
 }
 
 .loginCard:hover .loginLogo {
   transform: scale(1.06) rotate(3deg);
-  box-shadow: 0 0 25px rgba(0, 212, 255, 0.4);
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.4);
 }
 
 .loginTitle {
@@ -4156,5 +4156,130 @@ input:checked + .slider:before {
 
   .notificationTitle {
     white-space: normal;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   FLUIDEZ E FEEDBACK — toast, skeletons, navegação rápida,
+   transição de abas e acessibilidade de movimento
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Toast unificado ── */
+@keyframes toastIn {
+  from { transform: translateX(24px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+.toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-radius: 10px;
+  color: #fff;
+  font-weight: 500;
+  font-size: 0.9rem;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: min(380px, calc(100vw - 32px));
+
+  button {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.85);
+    cursor: pointer;
+    font-size: 1.15rem;
+    line-height: 1;
+    padding: 2px 4px;
+    margin-left: 4px;
+  }
+}
+
+.toastSuccess { background: $success; }
+.toastError   { background: $danger; }
+
+/* ── Skeleton loaders (shimmer) ── */
+@keyframes skeletonShimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton {
+  border-radius: $radius-md;
+  border: 1px solid $border-color;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 25%,
+    rgba(255, 255, 255, 0.07) 50%,
+    rgba(255, 255, 255, 0.03) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+}
+
+.skeletonCardLg { height: 240px; }
+.skeletonCardMd { height: 180px; }
+.skeletonFeed   { height: 320px; margin-bottom: 24px; }
+
+/* ── Navegação rápida (menos cliques até a informação) ── */
+.quickNav {
+  display: flex;
+  gap: 8px;
+  margin: 4px 0 20px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid $border-color;
+    border-radius: 999px;
+    color: $text-secondary;
+    font-size: 0.82rem;
+    font-weight: 500;
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
+
+    i { color: $accent-cyan; font-size: 0.9rem; }
+
+    &:hover,
+    &:focus-visible {
+      border-color: rgba(16, 185, 129, 0.5);
+      color: $text-primary;
+      background: rgba(16, 185, 129, 0.06);
+    }
+    &:focus-visible {
+      outline: 2px solid $accent-cyan;
+      outline-offset: 2px;
+    }
+  }
+}
+
+/* ── Transição de entrada ao trocar de aba/aluno ── */
+@keyframes tabFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.tabFade {
+  animation: tabFadeIn 0.28s ease both;
+}
+
+/* ── Acessibilidade: usuários que desligam animações ── */
+@media (prefers-reduced-motion: reduce) {
+  .toast,
+  .tabFade,
+  .skeleton {
+    animation: none !important;
   }
 }

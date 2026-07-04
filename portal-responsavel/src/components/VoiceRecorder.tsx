@@ -122,7 +122,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onSend, onCancel }) => {
                   style={{
                     width: '3px',
                     height: `${Math.random() * 16 + 6}px`,
-                    background: '#00d4ff',
+                    background: '#10b981',
                     borderRadius: '9999px',
                     animation: `bounce 0.8s ease infinite`,
                     animationDelay: `${i * 0.1}s`,
@@ -149,7 +149,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onSend, onCancel }) => {
               style={{
                 width: '32px', height: '32px',
                 borderRadius: '50%',
-                background: '#00d4ff',
+                background: '#10b981',
                 border: 'none',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 color: '#000',
@@ -162,7 +162,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onSend, onCancel }) => {
             <div style={{ flex: 1, height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '9999px', overflow: 'hidden' }}>
               <div style={{
                 height: '100%',
-                background: '#00d4ff',
+                background: '#10b981',
                 borderRadius: '9999px',
                 width: isPlaying ? '100%' : '0%',
                 transition: 'width 0.3s',
@@ -206,7 +206,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onSend, onCancel }) => {
               style={{
                 width: '40px', height: '40px',
                 borderRadius: '50%',
-                background: '#00d4ff',
+                background: '#10b981',
                 border: 'none',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 color: '#000',

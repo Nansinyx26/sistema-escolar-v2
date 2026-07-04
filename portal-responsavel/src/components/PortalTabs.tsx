@@ -9,6 +9,7 @@ import AnnouncementFeed from './AnnouncementFeed';
 import FrequencyCard from './FrequencyCard';
 import NotesCard from './NotesCard';
 import FichaAluno from './FichaAluno';
+import DashboardSkeleton from './DashboardSkeleton';
 import styles from '../styles/portal.module.scss';
 
 type PortalTab = 'dashboard' | 'linking' | 'profile' | 'bi';
@@ -59,6 +60,7 @@ interface DashboardTabProps {
   notifications: Notification[];
   showNotifications: boolean;
   dataLoading: boolean;
+  detailsLoading: boolean;
   dataError: string | null;
   grades: Grade[];
   attendance: Attendance | null;
@@ -79,6 +81,7 @@ export function DashboardTabSection({
   notifications,
   showNotifications,
   dataLoading,
+  detailsLoading,
   dataError,
   grades,
   attendance,
@@ -130,6 +133,24 @@ export function DashboardTabSection({
         </p>
       </div>
 
+      {/* Atalhos diretos às informações-chave (rolagem suave até a seção) */}
+      <nav className={styles.quickNav} aria-label="Ir direto para">
+        {[
+          { id: 'sec-notas', icon: 'ti-notebook', label: 'Notas' },
+          { id: 'sec-frequencia', icon: 'ti-calendar-check', label: 'Frequência' },
+          { id: 'sec-comunicados', icon: 'ti-speakerphone', label: 'Comunicados' },
+          { id: 'sec-documentos', icon: 'ti-files', label: 'Documentos' },
+        ].map((atalho) => (
+          <button
+            key={atalho.id}
+            type="button"
+            onClick={() => document.getElementById(atalho.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          >
+            <i className={`ti ${atalho.icon}`} aria-hidden="true" /> {atalho.label}
+          </button>
+        ))}
+      </nav>
+
       {dataError && (
         <div className={styles.errorAlert} role="alert" style={{ marginBottom: '24px' }}>
           <i className="ti ti-alert-circle" aria-hidden="true" />
@@ -141,10 +162,7 @@ export function DashboardTabSection({
       )}
 
       {dataLoading ? (
-        <div className={styles.fullscreenCenter} style={{ minHeight: '300px' }} aria-busy="true">
-          <span className={styles.spinner} aria-label="Carregando dados…" />
-          <p className={styles.loadingText}>Buscando dados do banco de dados…</p>
-        </div>
+        <DashboardSkeleton />
       ) : (
         <>
           <div className={styles.topGrid} data-tour="summary-cards">
@@ -175,21 +193,38 @@ export function DashboardTabSection({
 
           <div className={styles.comunicadosGrid}>
             <div className={styles.comunicadosMainCol}>
-              <AnnouncementFeed />
+              <section id="sec-comunicados" aria-label="Comunicados">
+                <AnnouncementFeed />
+              </section>
 
               <div className={styles.cardsGrid}>
-                <FrequencyCard attendance={attendance ?? { presenca: 0, ausencia: 0, atraso: 0, percentual: 0 }} />
-                <NotesCard grades={grades} />
+                {detailsLoading ? (
+                  <>
+                    <div className={`${styles.skeleton} ${styles.skeletonCardMd}`} aria-busy="true" />
+                    <div className={`${styles.skeleton} ${styles.skeletonCardMd}`} aria-busy="true" />
+                  </>
+                ) : (
+                  <>
+                    <section id="sec-frequencia" aria-label="Frequência">
+                      <FrequencyCard attendance={attendance ?? { presenca: 0, ausencia: 0, atraso: 0, percentual: 0 }} />
+                    </section>
+                    <section id="sec-notas" aria-label="Notas">
+                      <NotesCard grades={grades} />
+                    </section>
+                  </>
+                )}
               </div>
             </div>
 
             <div className={styles.comunicadosSideCol}>
-              {activeStudent && (
-                <FichaAluno
-                  student={activeStudent}
-                  onUpdate={(partial) => onStudentUpdate(activeStudent.id, partial)}
-                />
-              )}
+              <section id="sec-documentos" aria-label="Ficha e documentos do aluno">
+                {activeStudent && (
+                  <FichaAluno
+                    student={activeStudent}
+                    onUpdate={(partial) => onStudentUpdate(activeStudent.id, partial)}
+                  />
+                )}
+              </section>
             </div>
           </div>
         </>
@@ -208,6 +243,7 @@ interface PortalTabContentProps {
   notifications: Notification[];
   showNotifications: boolean;
   dataLoading: boolean;
+  detailsLoading: boolean;
   dataError: string | null;
   grades: Grade[];
   attendance: Attendance | null;

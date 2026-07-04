@@ -130,8 +130,8 @@ export default function ProfileSidebar({
                 marginTop: '8px',
                 display: 'inline-flex', alignItems: 'center', gap: '5px',
                 padding: '5px 12px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 600,
-                background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)',
-                color: '#00d4ff', cursor: 'pointer', transition: 'background 0.2s',
+                background: 'rgba(16, 185, 129,0.08)', border: '1px solid rgba(16, 185, 129,0.2)',
+                color: '#10b981', cursor: 'pointer', transition: 'background 0.2s',
               }}
             >
               <i className="ti ti-camera" /> Editar foto e nome
@@ -222,7 +222,7 @@ export default function ProfileSidebar({
                       }
                     }}
                     style={{
-                      background: 'linear-gradient(135deg, #06b6d4, #8b5cf6)',
+                      background: 'linear-gradient(135deg, #10b981, #8b5cf6)',
                       border: 'none',
                       color: '#fff',
                       padding: '6px 12px',

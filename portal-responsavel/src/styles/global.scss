@@ -113,12 +113,12 @@ button { cursor: pointer; }
   background: rgba(255, 255, 255, 0.15);
   border-radius: 99px;
 
-  &:hover { background: rgba(0, 212, 255, 0.4); }
+  &:hover { background: rgba(16, 185, 129, 0.4); }
 }
 
 // ─── Text Selection ───────────────────────────────────────────────────────────
 ::selection {
-  background: rgba(0, 212, 255, 0.25);
+  background: rgba(16, 185, 129, 0.25);
   color: $text-primary;
 }
 

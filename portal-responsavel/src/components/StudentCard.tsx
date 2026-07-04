@@ -95,6 +95,7 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, lgpdAccepted = true 
       <div className={styles.studentAvatar} aria-hidden="true">
         {showFoto ? (
           <img
+            loading="lazy"
             src={student.foto}
             alt={`${student.nome} ${student.sobrenome}`}
             onError={() => setImgError(true)}

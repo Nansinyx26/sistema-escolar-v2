@@ -156,6 +156,11 @@
                         <h3>Relatórios</h3>
                         <p>Alunos por turma, matrículas, exportar CSV</p>
                     </a>
+                    <a href="#" class="sec-quick-card" data-codigo-aluno>
+                        <div class="sec-quick-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;"><i class="bi bi-key-fill"></i></div>
+                        <h3>Código Secreto do Aluno</h3>
+                        <p>Consultar, copiar ou regenerar o código do primeiro acesso</p>
+                    </a>
                     <a href="../../detalhes/alunos.html" class="sec-quick-card">
                         <div class="sec-quick-icon" style="background: rgba(14, 165, 233, 0.15); color: #0ea5e9;"><i class="bi bi-people"></i></div>
                         <h3>Lista de Alunos</h3>
@@ -186,6 +191,7 @@
     <script defer src="../../js/database.js?v=3"></script>
     <script defer src="../../js/auth.js?v=3"></script>
     <script defer src="../../js/utils.js?v=3"></script>
+    <script defer src="../../js/secretaria-codigo-aluno.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', async () => {
         // Wait for auth to be ready

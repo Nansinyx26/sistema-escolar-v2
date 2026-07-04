@@ -64,6 +64,7 @@ const AnnouncementCard: React.FC<Props> = ({ comunicado }) => {
       <div style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
         {directorPhoto && !directorPhoto.includes('default-avatar.png') ? (
           <img
+            loading="lazy"
             src={directorPhoto}
             alt={comunicado.diretorNome}
             style={{
@@ -131,7 +132,7 @@ const AnnouncementCard: React.FC<Props> = ({ comunicado }) => {
               border: '1px solid rgba(255, 255, 255, 0.05)',
               background: '#27272a',
             }}>
-              <img src={img} alt="Anexo" style={{
+              <img src={img} alt="Anexo" loading="lazy" style={{
                 width: '100%',
                 height: '100%',
                 objectFit: 'cover',
@@ -205,11 +206,11 @@ const AnnouncementCard: React.FC<Props> = ({ comunicado }) => {
                   width: '32px',
                   height: '32px',
                   borderRadius: '6px',
-                  background: 'rgba(0, 212, 255, 0.2)',
+                  background: 'rgba(16, 185, 129, 0.2)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#00d4ff',
+                  color: '#10b981',
                 }}>
                   <span style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' }}>{doc.tipo || 'PDF'}</span>
                 </div>
@@ -250,9 +251,9 @@ const AnnouncementCard: React.FC<Props> = ({ comunicado }) => {
             fontWeight: 600,
             borderRadius: '9999px',
             padding: '6px 12px',
-            border: showComments ? '1px solid rgba(0, 212, 255, 0.3)' : '1px solid transparent',
-            background: showComments ? 'rgba(0, 212, 255, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-            color: showComments ? '#00d4ff' : '#a1a1aa',
+            border: showComments ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid transparent',
+            background: showComments ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+            color: showComments ? '#10b981' : '#a1a1aa',
             cursor: 'pointer',
             transition: 'all 0.2s',
           }}

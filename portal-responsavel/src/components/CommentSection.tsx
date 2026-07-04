@@ -252,7 +252,7 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
                 />
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button type="button" onClick={() => handleEditSave(comment._id)} style={{
-                    fontSize: '0.75rem', fontWeight: 700, color: '#00d4ff', background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: '0.75rem', fontWeight: 700, color: '#10b981', background: 'none', border: 'none', cursor: 'pointer',
                     display: 'inline-flex', alignItems: 'center', gap: '4px',
                   }}>
                     <Check size={12} /> Salvar
@@ -388,9 +388,9 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
       ) : (
         <form onSubmit={handleSubmit} style={{ position: 'relative', marginBottom: '16px' }}>
           {replyTo && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px', color: '#00d4ff', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px', color: '#10b981', marginBottom: '8px' }}>
               <Reply size={10} /> Respondendo comentário...
-              <button type="button" onClick={() => setReplyTo(null)} style={{ textDecoration: 'underline', background: 'none', border: 'none', color: '#00d4ff', cursor: 'pointer', fontSize: '10px' }}>Cancelar</button>
+              <button type="button" onClick={() => setReplyTo(null)} style={{ textDecoration: 'underline', background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', fontSize: '10px' }}>Cancelar</button>
             </div>
           )}
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -469,7 +469,7 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
               type="submit"
               disabled={!newComment.trim() || submitting}
               style={{
-                background: '#00d4ff',
+                background: '#10b981',
                 color: '#000',
                 padding: '10px 12px',
                 borderRadius: '12px',

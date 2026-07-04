@@ -49,7 +49,7 @@ const AnnouncementFeed: React.FC = () => {
   if (loading && comunicados.length === 0) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 0', gap: '16px' }}>
-        <RefreshCw style={{ animation: 'spin 1s linear infinite', color: '#00d4ff' }} size={32} />
+        <RefreshCw style={{ animation: 'spin 1s linear infinite', color: '#10b981' }} size={32} />
         <p style={{ color: '#71717a', fontSize: '0.875rem' }}>Buscando comunicados importantes...</p>
       </div>
     );
@@ -61,15 +61,15 @@ const AnnouncementFeed: React.FC = () => {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{
-            background: 'rgba(0, 212, 255, 0.15)',
-            border: '1px solid rgba(0, 212, 255, 0.25)',
+            background: 'rgba(16, 185, 129, 0.15)',
+            border: '1px solid rgba(16, 185, 129, 0.25)',
             padding: '10px',
             borderRadius: '12px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
           }}>
-            <Megaphone color="#00d4ff" size={22} />
+            <Megaphone color="#10b981" size={22} />
           </div>
           <div>
             <h1 style={{
@@ -101,7 +101,7 @@ const AnnouncementFeed: React.FC = () => {
             justifyContent: 'center',
             transition: 'background 0.2s, color 0.2s',
           }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,212,255,0.1)'; (e.currentTarget as HTMLButtonElement).style.color = '#00d4ff'; }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(16, 185, 129,0.1)'; (e.currentTarget as HTMLButtonElement).style.color = '#10b981'; }}
           onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)'; (e.currentTarget as HTMLButtonElement).style.color = '#a0a0a0'; }}
           title="Recarregar"
         >

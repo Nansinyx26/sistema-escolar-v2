@@ -200,7 +200,7 @@ export default function CompletarCadastro({ user, onSuccess }: CompletarCadastro
         {/* STEP 0: WELCOME */}
         {step === 0 && (
           <div className={styles.onboardingStep}>
-            <div className={styles.stepIcon} style={{ background: 'linear-gradient(135deg, #06b6d4, #8b5cf6)' }}>
+            <div className={styles.stepIcon} style={{ background: 'linear-gradient(135deg, #10b981, #8b5cf6)' }}>
               <i className="ti ti-confetti" />
             </div>
             <h2>Bem-vindo ao Portal do Responsável!</h2>

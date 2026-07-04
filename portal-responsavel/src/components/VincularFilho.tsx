@@ -118,7 +118,7 @@ export default function VincularFilho({ onSuccess, onCancel, canCancel = false }
                 width: '40px',
                 height: '40px',
                 borderRadius: '8px',
-                background: 'linear-gradient(135deg, #06b6d4, #8b5cf6)',
+                background: 'linear-gradient(135deg, #10b981, #8b5cf6)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -148,7 +148,7 @@ export default function VincularFilho({ onSuccess, onCancel, canCancel = false }
             onClick={onCancel}
             className={styles.submitBtn}
             style={{
-              background: 'linear-gradient(135deg, #06b6d4, #8b5cf6)',
+              background: 'linear-gradient(135deg, #10b981, #8b5cf6)',
               border: 'none',
               fontWeight: 700
             }}
@@ -172,9 +172,9 @@ export default function VincularFilho({ onSuccess, onCancel, canCancel = false }
             display: 'inline-flex',
             alignItems: 'center',
             gap: '6px',
-            background: 'rgba(6, 182, 212, 0.1)',
-            border: '1px solid rgba(6, 182, 212, 0.3)',
-            color: '#06b6d4',
+            background: 'rgba(16, 185, 129, 0.1)',
+            border: '1px solid rgba(16, 185, 129, 0.3)',
+            color: '#10b981',
             padding: '6px 12px',
             borderRadius: '20px',
             fontSize: '0.75rem',
@@ -269,7 +269,7 @@ export default function VincularFilho({ onSuccess, onCancel, canCancel = false }
                     flex: 2,
                     height: '48px',
                     margin: 0,
-                    background: (loading || codigoSecreto.length < 4) ? 'rgba(255, 255, 255, 0.08)' : 'linear-gradient(135deg, #06b6d4, #8b5cf6)',
+                    background: (loading || codigoSecreto.length < 4) ? 'rgba(255, 255, 255, 0.08)' : 'linear-gradient(135deg, #10b981, #8b5cf6)',
                     border: 'none',
                     fontWeight: 700
                   }}
@@ -296,8 +296,8 @@ export default function VincularFilho({ onSuccess, onCancel, canCancel = false }
             </p>
 
             <div style={{
-              background: 'rgba(6, 182, 212, 0.05)',
-              border: '1px solid rgba(6, 182, 212, 0.2)',
+              background: 'rgba(16, 185, 129, 0.05)',
+              border: '1px solid rgba(16, 185, 129, 0.2)',
               borderRadius: '16px',
               padding: '24px',
               marginBottom: '24px',
@@ -308,7 +308,7 @@ export default function VincularFilho({ onSuccess, onCancel, canCancel = false }
                 width: '64px',
                 height: '64px',
                 borderRadius: '50%',
-                background: 'linear-gradient(135deg, #06b6d4, #8b5cf6)',
+                background: 'linear-gradient(135deg, #10b981, #8b5cf6)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',

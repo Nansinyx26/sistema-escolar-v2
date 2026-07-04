@@ -4,6 +4,7 @@ const StudentController = require('../controllers/StudentController');
 const authorize = require('../middleware/authorize');
 
 router.get('/codigos-secretos', authorize('admin', 'diretor', 'secretaria'), StudentController.listSecretCodes);
+router.post('/:id/regenerar-codigo', authorize('admin', 'diretor', 'secretaria'), StudentController.regenerateSecretCode);
 router.get('/', StudentController.list);
 router.get('/:id', StudentController.get);
 // Escrita restrita à equipe escolar — responsáveis usam /api/responsavel/aluno/:id/dados

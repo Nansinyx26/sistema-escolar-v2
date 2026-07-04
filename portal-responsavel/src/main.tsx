@@ -63,8 +63,8 @@ function MissingClientIdScreen() {
         Login com Google não configurado
       </p>
       <p style={{ color: '#a0a0a0', maxWidth: '420px', lineHeight: 1.5 }}>
-        Adicione <code style={{ color: '#00d4ff' }}>VITE_GMAIL_CLIENT_ID</code> ao
-        arquivo <code style={{ color: '#00d4ff' }}>.env</code> do portal com o Client ID
+        Adicione <code style={{ color: '#10b981' }}>VITE_GMAIL_CLIENT_ID</code> ao
+        arquivo <code style={{ color: '#10b981' }}>.env</code> do portal com o Client ID
         do Google Cloud Console.
       </p>
     </div>

@@ -324,6 +324,9 @@ exports.listSecretCodes = async (req, res) => {
         const { turma, q } = req.query;
         const query = { ativo: { $ne: false } };
 
+        // Multi-escola: códigos visíveis apenas da escola ativa da sessão
+        if (req.escolaId) query.escolaId = req.escolaId;
+
         if (turma) {
             if (turma.startsWith('SERIE_')) {
                 const serie = turma.replace('SERIE_', '');
@@ -421,6 +424,51 @@ exports.listSecretCodes = async (req, res) => {
         });
 
         res.json({ success: true, data });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+/**
+ * Regenera o código secreto de um aluno (usado pelo responsável no
+ * primeiro acesso). Invalida o código anterior imediatamente.
+ * Restrito a admin/diretor/secretaria (authorize na rota) e à escola
+ * ativa da sessão (multi-tenant).
+ */
+exports.regenerateSecretCode = async (req, res) => {
+    try {
+        const aluno = await Aluno.findOne({
+            $or: [{ _id: req.params.id }, { id: req.params.id }]
+        });
+        if (!aluno) {
+            return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
+        }
+
+        // Multi-escola: só regenera código de aluno da escola ativa
+        if (req.escolaId && aluno.escolaId && String(aluno.escolaId) !== String(req.escolaId)) {
+            return res.status(403).json({ success: false, error: 'Este aluno pertence a outra escola.' });
+        }
+
+        const codigoAnterior = aluno.codigoSecreto;
+        aluno.codigoSecreto = await generateUniqueSecretCode();
+        await aluno.save();
+
+        const { logAction } = require('../utils/auditHelper');
+        await logAction(req, 'REGENERATE_STUDENT_CODE', 'Aluno', {
+            recursoId: aluno._id,
+            descricao: `Código secreto do aluno "${aluno.nome}" regenerado (anterior invalidado).`
+        });
+
+        res.json({
+            success: true,
+            message: 'Novo código gerado. O código anterior deixou de funcionar.',
+            data: {
+                alunoId: aluno._id,
+                nome: `${aluno.nome}${aluno.sobrenome ? ' ' + aluno.sobrenome : ''}`,
+                codigoSecreto: aluno.codigoSecreto,
+                codigoAnteriorInvalidado: !!codigoAnterior
+            }
+        });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }

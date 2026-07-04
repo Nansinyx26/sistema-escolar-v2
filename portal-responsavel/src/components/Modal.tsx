@@ -103,7 +103,7 @@ const Modal: React.FC<ModalProps> = ({ notification, onClose }) => {
             {formattedDate}
           </p>
           {notification.criadoPor && (
-            <p className={styles.modalDate} style={{ margin: 0, fontWeight: 500, color: 'rgba(0, 212, 255, 0.9)' }}>
+            <p className={styles.modalDate} style={{ margin: 0, fontWeight: 500, color: 'rgba(16, 185, 129, 0.9)' }}>
               <i className="ti ti-user" aria-hidden="true" style={{ marginRight: '6px' }} />
               <strong>Enviado por:</strong> {notification.criadoPor}
             </p>

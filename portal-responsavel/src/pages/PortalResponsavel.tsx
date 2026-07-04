@@ -18,6 +18,7 @@ import styles from '../styles/portal.module.scss';
 import { useAuth } from '../hooks/useAuth';
 import { useNotifications } from '../hooks/useNotifications';
 import PortalOnboardingManager from '../components/PortalOnboardingManager';
+import Toast from '../components/Toast';
 import LgpdConsentWidget from '../components/LgpdConsentWidget';
 import { PortalTabContent } from '../components/PortalTabs';
 
@@ -112,6 +113,7 @@ const PortalResponsavel: React.FC = () => {
   const [grades, setGrades] = useState<Grade[]>([]);
   const [attendance, setAttendance] = useState<Attendance | null>(null);
   const [dataLoading, setDataLoading] = useState(false);
+  const [detailsLoading, setDetailsLoading] = useState(false);
   const [dataError, setDataError] = useState<string | null>(null);
 
   const {
@@ -135,16 +137,21 @@ const PortalResponsavel: React.FC = () => {
       const alunos = await getAlunosDoResponsavel();
       setStudents(alunos);
 
-      if (alunos.length > 0 && (!activeId || !alunos.find((aluno) => aluno.id === activeId))) {
-        setActiveId(alunos[0].id);
-      }
+      // Seleciona o primeiro aluno se nenhum válido estiver ativo.
+      // setActiveId funcional evita depender de activeId — antes cada troca
+      // de aluno recriava loadData e refazia o fetch da lista inteira.
+      setActiveId((atual) => {
+        if (alunos.length === 0) return null;
+        if (atual && alunos.find((aluno) => aluno.id === atual)) return atual;
+        return alunos[0].id;
+      });
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Erro ao carregar lista de alunos.';
       setDataError(message);
     } finally {
       setDataLoading(false);
     }
-  }, [activeId]);
+  }, []);
 
   useEffect(() => {
     if (authUser) void loadData();
@@ -155,7 +162,7 @@ const PortalResponsavel: React.FC = () => {
 
     let isMounted = true;
     const fetchDetails = async () => {
-      setDataLoading(true);
+      setDetailsLoading(true);
       try {
         const [notasData, freqData] = await Promise.all([
           getNotasDoAluno(activeId),
@@ -168,7 +175,7 @@ const PortalResponsavel: React.FC = () => {
       } catch (err) {
         if (isMounted) console.error('Erro ao buscar detalhes do aluno', err);
       } finally {
-        if (isMounted) setDataLoading(false);
+        if (isMounted) setDetailsLoading(false);
       }
     };
 
@@ -195,13 +202,7 @@ const PortalResponsavel: React.FC = () => {
   if (!authUser) {
     return (
       <div className={styles.loginPage}>
-        {toast && (
-          <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 9999, padding: '12px 24px', borderRadius: '8px', color: '#fff', fontWeight: 500, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', background: toast.type === 'success' ? '#10b981' : '#ef4444', display: 'flex', alignItems: 'center', gap: '8px', animation: 'slideIn 0.3s ease-out' }}>
-            <i className={`ti ${toast.type === 'success' ? 'ti-check' : 'ti-alert-circle'}`} />
-            {toast.message}
-            <button onClick={() => setToast(null)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', marginLeft: '12px' }}>×</button>
-          </div>
-        )}
+        <Toast toast={toast} onClose={() => setToast(null)} />
 
         <div className={styles.loginCard}>
           <div className={styles.loginLogo}>
@@ -307,14 +308,14 @@ const PortalResponsavel: React.FC = () => {
                     <form onSubmit={(e) => { e.preventDefault(); if (forgotStep === 1) void handleForgotSendCode(); else if (forgotStep === 2) void handleForgotVerifyCode(); else if (forgotStep === 3) void handleForgotResetPassword(); }} noValidate>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                         <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <i className="ti ti-key" style={{ color: '#06b6d4' }} /> Recuperar Senha
+                          <i className="ti ti-key" style={{ color: '#10b981' }} /> Recuperar Senha
                         </h3>
                         <button type="button" onClick={() => { setShowForgotModal(false); resetForgotModal(); }} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '1.4rem' }}>&times;</button>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '20px' }}>
-                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: forgotStep >= 1 ? '#06b6d4' : 'rgba(255,255,255,0.1)' }} />
-                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: forgotStep >= 2 ? '#06b6d4' : 'rgba(255,255,255,0.1)' }} />
-                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: forgotStep >= 3 ? '#06b6d4' : 'rgba(255,255,255,0.1)' }} />
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: forgotStep >= 1 ? '#10b981' : 'rgba(255,255,255,0.1)' }} />
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: forgotStep >= 2 ? '#10b981' : 'rgba(255,255,255,0.1)' }} />
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: forgotStep >= 3 ? '#10b981' : 'rgba(255,255,255,0.1)' }} />
                       </div>
                       {forgotStep === 1 && (
                         <div className={styles.loginForm}>
@@ -341,11 +342,11 @@ const PortalResponsavel: React.FC = () => {
                           </div>
                           <div style={{ textAlign: 'center', marginBottom: '16px', fontSize: '0.85rem' }}>
                             <p style={{ color: '#64748b', margin: '0 0 8px 0' }}>
-                              <i className="ti ti-clock" /> Código válido por <strong style={{ color: '#06b6d4' }}>{Math.floor(codeCountdown / 60)}:{String(codeCountdown % 60).padStart(2, '0')}</strong>
+                              <i className="ti ti-clock" /> Código válido por <strong style={{ color: '#10b981' }}>{Math.floor(codeCountdown / 60)}:{String(codeCountdown % 60).padStart(2, '0')}</strong>
                             </p>
                             <div>
                               <span style={{ color: '#64748b' }}>Não recebeu? </span>
-                              <button type="button" onClick={() => void handleResendCode()} disabled={resendCountdown > 0 || forgotLoading} style={{ background: 'none', border: 'none', color: resendCountdown > 0 ? '#64748b' : '#06b6d4', textDecoration: 'underline', cursor: resendCountdown > 0 ? 'not-allowed' : 'pointer', padding: 0 }}>
+                              <button type="button" onClick={() => void handleResendCode()} disabled={resendCountdown > 0 || forgotLoading} style={{ background: 'none', border: 'none', color: resendCountdown > 0 ? '#64748b' : '#10b981', textDecoration: 'underline', cursor: resendCountdown > 0 ? 'not-allowed' : 'pointer', padding: 0 }}>
                                 {resendCountdown > 0 ? `Reenviar em ${resendCountdown}s` : 'Reenviar Código'}
                               </button>
                             </div>
@@ -384,7 +385,7 @@ const PortalResponsavel: React.FC = () => {
                               </div>
                             </div>
                           )}
-                          <div style={{ marginBottom: '16px', padding: '12px', background: 'rgba(6, 182, 212, 0.05)', borderRadius: '6px', fontSize: '0.75rem', color: '#94a3b8' }}>
+                          <div style={{ marginBottom: '16px', padding: '12px', background: 'rgba(16, 185, 129, 0.05)', borderRadius: '6px', fontSize: '0.75rem', color: '#94a3b8' }}>
                             <p style={{ margin: '0 0 4px 0', fontWeight: 'bold', color: '#fff' }}>Requisitos da senha:</p>
                             <ul style={{ margin: 0, paddingLeft: '16px', listStyleType: 'disc' }}>
                               <li style={{ color: forgotNewPassword.length >= 8 ? '#10b981' : '#94a3b8' }}>Mínimo 8 caracteres</li>
@@ -467,13 +468,7 @@ const PortalResponsavel: React.FC = () => {
 
   return (
     <div className={styles.portal}>
-      {toast && (
-        <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 9999, padding: '12px 24px', borderRadius: '8px', color: '#fff', fontWeight: 500, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', background: toast.type === 'success' ? '#10b981' : '#ef4444', display: 'flex', alignItems: 'center', gap: '8px', animation: 'slideIn 0.3s ease-out' }}>
-          <i className={`ti ${toast.type === 'success' ? 'ti-check' : 'ti-alert-circle'}`} />
-          {toast.message}
-          <button onClick={() => setToast(null)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', marginLeft: '12px' }}>×</button>
-        </div>
-      )}
+      <Toast toast={toast} onClose={() => setToast(null)} />
 
       <Header user={headerUser} notifications={notifications} onLogout={handleLogout} onBellClick={() => setShowNotificationsModal(true)} onProfileClick={() => setShowSidebar(true)} onBiClick={() => setCurrentTab('bi')} activeTab={currentTab} />
 
@@ -510,6 +505,7 @@ const PortalResponsavel: React.FC = () => {
         </aside>
 
         <main className={styles.container} id="main-content" style={{ flex: 1, padding: '24px' }}>
+          <div key={currentTab} className={styles.tabFade}>
           <PortalTabContent
             currentTab={currentTab}
             authUser={authUser}
@@ -520,6 +516,7 @@ const PortalResponsavel: React.FC = () => {
             notifications={notifications}
             showNotifications={showNotifications}
             dataLoading={dataLoading}
+            detailsLoading={detailsLoading}
             dataError={dataError}
             grades={grades}
             attendance={attendance}
@@ -543,6 +540,7 @@ const PortalResponsavel: React.FC = () => {
               )));
             }}
           />
+          </div>
         </main>
       </div>
 
