@@ -22,11 +22,14 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            /* Card travado no viewport: a página não rola — se o conteúdo
+               exceder a altura da tela, o scroll acontece DENTRO do card */
+            height: 100dvh;
             min-height: 100vh;
             margin: 0;
             font-family: 'Inter', sans-serif;
             color: #f8fafc;
-            overflow-x: hidden;
+            overflow: hidden;
             position: relative;
         }
 
@@ -47,10 +50,15 @@
         .container {
             width: 100%;
             max-width: 540px;
+            max-height: 100dvh;
+            overflow-y: auto;
+            /* Esconde a barra de scroll interna mantendo a rolagem em telas baixas */
+            scrollbar-width: none;
             padding: 1.5rem;
             z-index: 10;
             animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
         }
+        .container::-webkit-scrollbar { display: none; }
 
         .auth-card {
             background: rgba(15, 23, 42, 0.45);
