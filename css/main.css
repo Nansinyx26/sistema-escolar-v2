@@ -196,9 +196,24 @@ a:hover {
 }
 
 .btn-primary {
-    background: linear-gradient(90deg, var(--primary), var(--primary-light));
-    color: #000;
+    /* Alinhado ao design system (components-new.css): gradiente oficial e
+       texto branco — antes o texto era preto só nas páginas legadas */
+    background: var(--gradient-primary, linear-gradient(135deg, var(--primary), var(--secondary)));
+    color: #fff;
     box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+/* Acessibilidade: foco visível nas páginas que usam este sistema
+   (selecionar, turma, ata, direção) — antes só existia em base.css */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: 4px;
 }
 
 .btn-primary:hover {

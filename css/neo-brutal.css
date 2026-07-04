@@ -202,10 +202,11 @@
 .form-input:focus,
 .form-select:focus,
 .form-textarea:focus {
-    border-color: rgba(76, 154, 255, 0.7) !important;
+    /* Foco unificado na cor primária oficial (antes azul, divergente do resto) */
+    border-color: rgba(16, 185, 129, 0.7) !important;
     box-shadow:
-        3px 3px 0px rgba(76, 154, 255, 0.6),
-        0 0 0 3px rgba(76, 154, 255, 0.12) !important;
+        3px 3px 0px rgba(16, 185, 129, 0.6),
+        0 0 0 3px rgba(16, 185, 129, 0.12) !important;
     transform: translate(-1px, -1px) !important;
 }
 

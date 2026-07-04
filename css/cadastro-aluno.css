@@ -281,7 +281,7 @@ body {
     color: rgba(255,255,255,.4);
     cursor: default;
 }
-.ca-field select option { background: #1a1a2e; color: #fff; }
+.ca-field select option { background: var(--bg-tertiary, #18181b); color: var(--text-body, #d4d4d8); }
 .ca-field textarea { resize: vertical; min-height: 90px; }
 .ca-field input::placeholder,
 .ca-field textarea::placeholder { color: rgba(255,255,255,.25); }

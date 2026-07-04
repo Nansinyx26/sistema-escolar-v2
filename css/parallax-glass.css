@@ -250,11 +250,12 @@
 
 .form-input:focus,
 .form-select:focus {
-    background: rgba(76, 154, 255, 0.06) !important;
-    border-color: rgba(76, 154, 255, 0.5) !important;
+    /* Foco unificado na cor primária oficial (antes azul, divergente do resto) */
+    background: rgba(16, 185, 129, 0.06) !important;
+    border-color: rgba(16, 185, 129, 0.5) !important;
     box-shadow:
-        0 0 0 3px rgba(76, 154, 255, 0.15),
-        0 4px 16px rgba(76, 154, 255, 0.1) !important;
+        0 0 0 3px rgba(16, 185, 129, 0.15),
+        0 4px 16px rgba(16, 185, 129, 0.1) !important;
 }
 
 /* ===================================================

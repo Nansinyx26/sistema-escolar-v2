@@ -124,9 +124,9 @@ input[type="tel"],
 input[type="url"],
 select,
 textarea {
-    background-color: #1e1e2e;
-    color: #e2e8f0;
-    border: 1px solid #334155;
+    background-color: var(--bg-tertiary, #18181b);
+    color: var(--text-body, #d4d4d8);
+    border: 1px solid var(--border-secondary, rgba(255, 255, 255, 0.08));
     border-radius: 8px;
     padding: 10px 14px;
     outline: none;
@@ -152,8 +152,8 @@ input::-ms-clear {
 
 /* Correção para o "Branco Fantasma" em selects no Windows/Chrome */
 select option {
-    background-color: #1e1e2e;
-    color: #e2e8f0;
+    background-color: var(--bg-tertiary, #18181b);
+    color: var(--text-body, #d4d4d8);
     padding: 10px;
 }
 

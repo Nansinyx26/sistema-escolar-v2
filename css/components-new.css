@@ -225,7 +225,7 @@ select.form-select {
     appearance: none !important;
     -webkit-appearance: none !important;
     -moz-appearance: none !important;
-    background-color: #000000 !important;
+    background-color: var(--bg-tertiary, #18181b) !important;
     color: #ffffff !important;
     border: 1.5px solid rgba(255, 255, 255, 0.15) !important;
     border-radius: 10px !important;
@@ -248,7 +248,7 @@ select:hover,
 select.form-input:hover,
 select.form-select:hover {
     border-color: #10b981 !important;
-    background-color: #0a0a0a !important;
+    background-color: var(--bg-elevated, #27272a) !important;
     color: #10b981 !important;
     box-shadow: 0 0 12px rgba(16, 185, 129, 0.25) !important;
 }
@@ -258,14 +258,14 @@ select.form-input:focus,
 select.form-select:focus {
     border-color: #10b981 !important;
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
-    background-color: #000000 !important;
+    background-color: var(--bg-tertiary, #18181b) !important;
     outline: none !important;
 }
 
 select option,
 select.form-input option,
 select.form-select option {
-    background-color: #000000 !important;
+    background-color: var(--bg-tertiary, #18181b) !important;
     color: #ffffff !important;
     font-family: inherit !important;
     padding: 0.75rem !important;
