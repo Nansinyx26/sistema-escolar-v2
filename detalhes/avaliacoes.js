@@ -36,7 +36,7 @@ async function init() {
 
         if (!user) {
             console.warn('⚠️ Usuário não autenticado');
-            window.location.href = '../login.html';
+            window.location.href = '../html/login.html';
             return;
         }
 

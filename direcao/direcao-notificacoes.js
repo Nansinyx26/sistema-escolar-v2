@@ -13,9 +13,9 @@ let histFiltroAtual = 'todos';
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         await auth.init();
-        if (!auth.isAuthenticated()) { window.location.href = '/login.html'; return; }
+        if (!auth.isAuthenticated()) { window.location.href = '/html/login.html'; return; }
         const user = auth.getCurrentUser();
-        if (user.perfil !== 'diretor' && user.perfil !== 'admin') { window.location.href = '/dashboard.html'; return; }
+        if (user.perfil !== 'diretor' && user.perfil !== 'admin') { window.location.href = '/html/dashboard.html'; return; }
         const fotoEl = document.getElementById('userPhotoPreview');
         if (fotoEl) fotoEl.src = window.getPhotoUrl(user.foto, user.fotoGoogle);
         setupEventListeners();
@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function setupEventListeners() {
-    document.getElementById('btnVoltar')?.addEventListener('click', () => window.location.href = '/direcao/');
+    document.getElementById('btnVoltar')?.addEventListener('click', () => window.location.href = '/html/direcao/index.html');
     document.getElementById('btnNovaNotificacao')?.addEventListener('click', () => {
         document.getElementById('cardPostar')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         setTimeout(() => document.getElementById('tituloNotif')?.focus(), 400);

@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (e) {}
 
     if (!user || user.perfil !== 'diretor') {
-        window.location.href = '../../login.html';
+        window.location.href = '../login.html';
         return;
     }
 

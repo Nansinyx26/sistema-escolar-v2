@@ -72,7 +72,7 @@ class VoiceOrbManager {
                 if (window.chatbotIA && window.chatbotIA.openChat) {
                     window.chatbotIA.openChat();
                 } else {
-                    const dashboardLink = window.location.pathname.includes('direcao') ? '/html/direcao/dashboard.html' : '/html/dashboard.html';
+                    const dashboardLink = window.location.pathname.includes('direcao') ? '/html/direcao/index.html' : '/html/dashboard.html';
                     window.location.href = `${dashboardLink}#chat`;
                 }
             });

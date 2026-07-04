@@ -884,7 +884,7 @@ class App {
                     this.showNotasModal(alunoId, turmaId, bimestre);
                     break;
                 case 'grafico':
-                    window.location.href = `graficos/index.html?aluno=${alunoId}`;
+                    window.location.href = `../graficos/index.html?aluno=${alunoId}`;
                     break;
                 case 'excluir':
                     const alunoNomeExcluir = row.querySelector('.nome')?.textContent || 'Aluno';

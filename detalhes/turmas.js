@@ -35,7 +35,7 @@ async function init() {
 
         if (!user) {
             console.warn('⚠️ Usuário não autenticado');
-            window.location.href = '../login.html';
+            window.location.href = '../html/login.html';
             return;
         }
 
@@ -117,7 +117,7 @@ async function loadTurmas(user) {
             <td><strong>${t.totalAlunos}</strong> alunos</td>
             <td>${mediaHtml}</td>
             <td style="text-align: right;">
-                 <a href="../turma.html?turma=${t.id}" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.8rem;">
+                 <a href="../html/turma.html?turma=${t.id}" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.8rem;">
                     Acessar Turma <i class="bi bi-arrow-right"></i>
                 </a>
             </td>

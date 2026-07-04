@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const user = auth.getCurrentUser();
     if (!auth.isAuthenticated() || !user || !['admin', 'diretor'].includes(user.perfil)) {
-        window.location.href = '../../login.html';
+        window.location.href = '../login.html';
         return;
     }
 

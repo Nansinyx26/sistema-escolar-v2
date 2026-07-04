@@ -5,13 +5,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const user = window.auth?.getCurrentUser?.();
     if (!user) {
-        window.location.href = '../login.html';
+        window.location.href = '../html/login.html';
         return;
     }
 
     if (user.perfil !== 'diretor' && user.perfil !== 'admin') {
         alert('Acesso negado! Apenas diretores ou administradores podem acessar esta página.');
-        window.location.href = '../dashboard.html';
+        window.location.href = '../html/dashboard.html';
         return;
     }
 

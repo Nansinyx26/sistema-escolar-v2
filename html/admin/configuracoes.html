@@ -48,7 +48,7 @@
         <header class="dashboard-header">
             <div class="header-content">
                 <div class="header-left">
-                    <button class="btn btn-secondary btn-sm" onclick="window.location.href='../../dashboard.html'">
+                    <button class="btn btn-secondary btn-sm" onclick="window.location.href='../dashboard.html'">
                         <i class="bi bi-arrow-left"></i> Voltar
                     </button>
 
@@ -142,7 +142,7 @@
 
             const user = auth.getCurrentUser();
             if (!user || user.perfil !== 'admin') {
-                window.location.href = '../../login.html';
+                window.location.href = '../login.html';
                 return;
             }
 
