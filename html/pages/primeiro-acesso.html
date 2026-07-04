@@ -51,14 +51,22 @@
             width: 100%;
             max-width: 540px;
             max-height: 100dvh;
-            overflow-y: auto;
-            /* Esconde a barra de scroll interna mantendo a rolagem em telas baixas */
-            scrollbar-width: none;
+            /* Card travado: nem a página nem o card rolam — em telas
+               baixas o conteúdo compacta (media query abaixo) */
+            overflow: hidden;
             padding: 1.5rem;
             z-index: 10;
             animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        .container::-webkit-scrollbar { display: none; }
+
+        /* Telas baixas: compacta espaçamentos para caber sem scroll */
+        @media (max-height: 760px) {
+            .auth-card { padding: 1.75rem 1.75rem; }
+            .brand-icon { font-size: 2.4rem; margin-bottom: 0.75rem; }
+            h1 { font-size: 1.6rem; margin-bottom: 0.5rem; }
+            .subtitle { margin-bottom: 1.5rem; font-size: 0.9rem; }
+            .choice-btn { padding: 1rem 1.25rem; margin-bottom: 0.85rem; }
+        }
 
         .auth-card {
             background: rgba(15, 23, 42, 0.45);

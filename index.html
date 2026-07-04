@@ -266,7 +266,8 @@
               onclick="
                 document
                   .getElementById('modalPrimeiroAcesso')
-                  .classList.add('open')
+                  .classList.add('open');
+                document.documentElement.classList.add('pa-lock');
               "
             >
               <i class="bi bi-person-plus"></i> Criar Conta
@@ -281,7 +282,8 @@
                 onclick="
                   document
                     .getElementById('modalPrimeiroAcesso')
-                    .classList.remove('open')
+                    .classList.remove('open');
+                  document.documentElement.classList.remove('pa-lock');
                 "
                 aria-label="Fechar"
               >

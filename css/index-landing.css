@@ -2273,14 +2273,48 @@ footer {
 .pa-modal-overlay.open {
   opacity: 1;
   visibility: visible;
-  /* Impede que o scroll "vaze" do modal para a página atrás */
+  /* Impede que o scroll "vaze" do modal para a página atrás
+     e bloqueia gestos de arraste (touch) sobre o overlay */
   overscroll-behavior: contain;
+  touch-action: none;
 }
 
-/* Trava o scroll da página enquanto o modal está aberto — sem isso a
-   página rolava por baixo e o modal parecia "descer" junto */
+/* ── TRAVA TOTAL DE SCROLL com o modal aberto ──────────────────────
+   1. html.pa-lock: classe aplicada pelos botões de abrir/fechar —
+      funciona em qualquer navegador (não depende de :has()).
+   2. :has() fica como reforço para o caso de a classe não ser aplicada.
+   Trava html E body: quando html tem overflow-x definido, o overflow
+   do body deixa de propagar para o viewport — travar só o body falhava. */
+html.pa-lock,
+html.pa-lock body,
+html:has(.pa-modal-overlay.open),
 body:has(.pa-modal-overlay.open) {
+  overflow: hidden !important;
+  height: 100%;
+}
+
+/* O próprio card também não rola: conteúdo é compacto e deve caber
+   inteiro; em telas muito baixas ele encolhe (media query abaixo) */
+.pa-modal-card {
+  max-height: calc(100dvh - 2rem);
   overflow: hidden;
+}
+
+/* Telas baixas: compacta espaçamentos para o card caber sem scroll */
+@media (max-height: 720px) {
+  .pa-modal-card {
+    padding: 1.5rem 1.5rem !important;
+  }
+  .pa-modal-header {
+    margin-bottom: 1rem !important;
+  }
+  .pa-modal-icon {
+    font-size: 2rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+  .pa-option {
+    padding: 0.8rem 1rem !important;
+  }
 }
 .pa-modal-card {
   position: relative;
