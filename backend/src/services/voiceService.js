@@ -8,9 +8,13 @@ const TTSService = require('./TTSService');
 class VoiceService {
 
     /**
-     * Gera texto a partir de um prompt usando Google Gemini 1.5 Flash.
+     * Gera texto a partir de um prompt usando Google Gemini.
+     * @param {string} prompt
+     * @param {object} [opts]
+     * @param {number} [opts.maxOutputTokens=1000] - teto de saída (controle de custo)
+     * @param {number} [opts.temperature=0.7]
      */
-    async generateInsightText(prompt) {
+    async generateInsightText(prompt, opts = {}) {
         // Aceita múltiplos nomes de variável para a chave do Gemini.
         // No Render a chave está configurada como GEMINI_KEY.
         const apiKey = process.env.GEMINI_KEY
@@ -21,6 +25,14 @@ class VoiceService {
             const err = new Error('Chave do Gemini não configurada no servidor (GEMINI_KEY).');
             err.quotaExceeded = true;
             throw err;
+        }
+
+        // Controle de custo: teto de entrada (~16k chars ≈ 4k tokens).
+        // Prompts maiores são truncados preservando o início (instruções + dados).
+        const MAX_PROMPT_CHARS = 16000;
+        if (typeof prompt === 'string' && prompt.length > MAX_PROMPT_CHARS) {
+            logger.warn(`[VoiceService] Prompt truncado de ${prompt.length} para ${MAX_PROMPT_CHARS} chars.`);
+            prompt = prompt.slice(0, MAX_PROMPT_CHARS);
         }
 
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
@@ -34,8 +46,8 @@ class VoiceService {
                 body: JSON.stringify({
                     contents: [{ parts: [{ text: prompt }] }],
                     generationConfig: {
-                        temperature: 0.7,
-                        maxOutputTokens: 1000,
+                        temperature: opts.temperature ?? 0.7,
+                        maxOutputTokens: opts.maxOutputTokens ?? 1000,
                     }
                 })
             });

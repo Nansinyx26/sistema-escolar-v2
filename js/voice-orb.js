@@ -80,19 +80,38 @@ class VoiceOrbManager {
     }
 
     /**
+     * Garante que o orbe está montado no container informado, SEM recriar
+     * o DOM se já estiver lá. Recriar a cada interação reiniciava todas as
+     * animações CSS (rings, entrada, glow) — o bug visual do "flicker".
+     * Use este método em vez de init() em handlers repetitivos.
+     */
+    ensureMounted(parent, options = {}) {
+        const jaMontado = this.container
+            && this.container.parentNode === parent
+            && this.mode === (options.mode || this.mode);
+        if (!jaMontado) {
+            this.init(parent, options);
+        }
+        return this.container;
+    }
+
+    /**
      * Altera o estado visual do Orbe
-     * @param {string} state - 'idle' | 'loading' | 'speaking'
+     * @param {string} state - 'idle' | 'loading' | 'thinking' | 'speaking' | 'listening' | 'error'
      */
     setState(state) {
         if (!this.container) return;
         this.state = state;
-        
-        this.container.classList.remove('state-idle', 'state-loading', 'state-speaking', 'state-listening');
+
+        this.container.classList.remove(
+            'state-idle', 'state-loading', 'state-thinking',
+            'state-speaking', 'state-listening', 'state-error'
+        );
         this.container.classList.add(`state-${state}`);
 
         const micBar = this.container.querySelector('.user-mic-bar');
         const pillIcon = this.container.querySelector('.pill-icon');
-        
+
         if (state === 'listening') {
             if (micBar) micBar.style.display = 'flex';
             if (pillIcon) pillIcon.style.display = 'none';
@@ -106,8 +125,10 @@ class VoiceOrbManager {
             const labels = {
                 idle: 'pronto',
                 loading: 'carregando...',
+                thinking: 'pensando...',
                 speaking: 'falando...',
-                listening: 'entendendo pergunta...'
+                listening: 'entendendo pergunta...',
+                error: 'algo deu errado'
             };
             statusLabel.textContent = labels[state] || 'pronto';
         }

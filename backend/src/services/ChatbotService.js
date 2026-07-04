@@ -750,7 +750,8 @@ async function process({ message, alunoId, perfil, userId, nomeUsuario, userEmai
         const conversationalPrompt = buildConversationalPrompt({ perfil, nomeUsuario, message });
         let response;
         try {
-            response = await voiceService.generateInsightText(conversationalPrompt);
+            // Conversa social: respostas bem curtas — teto agressivo de tokens
+            response = await voiceService.generateInsightText(conversationalPrompt, { maxOutputTokens: 300 });
             response = (response || '').replace(/[*_~`#]/g, '').trim();
         } catch (err) {
             logger.warn(`[ChatbotService] Gemini error (conversational): ${err.message} — usando fallback.`);
@@ -890,8 +891,14 @@ async function process({ message, alunoId, perfil, userId, nomeUsuario, userEmai
     const respostaDireta = formatarResposta({ intencao, dados, aluno, perfil });
 
     // ─── LAYER 3: Gemini humanization with DB data (optional) ─────────────
-    const googleApiKey = process.env.GOOGLE_TTS_API_KEY;
-    if (!googleApiKey) {
+    // Aceita os mesmos nomes de variável do voiceService — antes só
+    // GOOGLE_TTS_API_KEY era checada aqui, e ambientes com GEMINI_KEY
+    // nunca passavam respostas de dados pelo Gemini.
+    const geminiApiKey = process.env.GEMINI_KEY
+        || process.env.GEMINI_API_KEY
+        || process.env.GOOGLE_TTS_API_KEY
+        || process.env.GOOGLE_API_KEY;
+    if (!geminiApiKey) {
         // No API key → Layer 2 fallback only
         return { response: respostaDireta, alunoId: resolvedAlunoId };
     }
@@ -902,7 +909,8 @@ async function process({ message, alunoId, perfil, userId, nomeUsuario, userEmai
 
     let response;
     try {
-        response = await voiceService.generateInsightText(prompt);
+        // Chat: respostas curtas — teto menor de tokens controla custo por chamada
+        response = await voiceService.generateInsightText(prompt, { maxOutputTokens: 500 });
         response = (response || '').replace(/[*_~`#]/g, '').trim();
     } catch (err) {
         if (err.quotaExceeded) {

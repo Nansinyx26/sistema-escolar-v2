@@ -339,8 +339,9 @@
 
             if (window.VoiceOrbManager && orbContainer) {
                 orbContainer.style.display = 'block';
-                orbContainer.innerHTML = ''; 
-                window.VoiceOrbManager.init(orbContainer, { mode: 'chat' });
+                // ensureMounted reusa o orbe existente — recriar o DOM aqui
+                // reiniciava todas as animações CSS a cada play
+                window.VoiceOrbManager.ensureMounted(orbContainer, { mode: 'chat' });
                 window.VoiceOrbManager.setState('speaking');
             }
 
@@ -405,8 +406,8 @@
 
         if (window.VoiceOrbManager && orbContainer) {
             orbContainer.style.display = 'block';
-            orbContainer.innerHTML = '';
-            window.VoiceOrbManager.init(orbContainer, { mode: 'chat' });
+            // ensureMounted reusa o orbe existente (sem reiniciar animações)
+            window.VoiceOrbManager.ensureMounted(orbContainer, { mode: 'chat' });
             window.VoiceOrbManager.setState('thinking');
         }
 
@@ -433,13 +434,15 @@
             if (responseText) {
                 addMessage(responseText, true, responseOptions);
                 statusEl.textContent = 'Conectado';
+                if (window.VoiceOrbManager) window.VoiceOrbManager.setState('idle');
             } else {
                 addMessage("Não consegui processar sua pergunta.", true, null);
                 statusEl.textContent = 'Conectado';
+                if (window.VoiceOrbManager) window.VoiceOrbManager.setState('error');
             }
         } catch (err) {
             removeTypingIndicator();
-            if (window.VoiceOrbManager) window.VoiceOrbManager.setState('idle');
+            if (window.VoiceOrbManager) window.VoiceOrbManager.setState('error');
             addMessage("Ocorreu um erro de conexão. Verifique sua internet e tente novamente.", true, null);
         } finally {
             input.disabled = false;
