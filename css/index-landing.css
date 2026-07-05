@@ -1659,6 +1659,10 @@ nav.scrolled {
   border: 1px solid var(--b);
   border-radius: 14px;
   padding: 2.25rem;
+  /* Coluna flex: o texto cresce e o bloco do autor ancora na base,
+     alinhando os três cards independentemente do tamanho da citação */
+  display: flex;
+  flex-direction: column;
   transition:
     border-color 0.3s,
     box-shadow 0.3s;
@@ -1685,6 +1689,7 @@ nav.scrolled {
   line-height: 1.8;
   margin-bottom: 1.75rem;
   font-style: italic;
+  flex: 1; /* empurra .test-person para a base do card */
 }
 
 .test-person {

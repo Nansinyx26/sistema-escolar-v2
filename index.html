@@ -101,7 +101,7 @@
         <div class="nav-logo">
           <img src="img/logo-jaguari.png" alt="Logo" />
         </div>
-        ESCOLA JAGUARI
+        <span id="navBrandNome">ESCOLA JAGUARI</span>
       </a>
       <div class="nav-links">
         <a href="#funcionalidades">Funcionalidades</a>
@@ -464,27 +464,27 @@
       <div class="stats-inner">
         <div class="stat-cell">
           <div class="stat-n">
-            <span data-target="1200">0</span><span class="acc">+</span>
+            <span data-target="0">0</span>
           </div>
           <div class="stat-l">Alunos cadastrados</div>
         </div>
         <div class="stat-cell">
           <div class="stat-n">
-            <span data-target="84">0</span><span class="acc">+</span>
+            <span data-target="0">0</span>
           </div>
           <div class="stat-l">Professores ativos</div>
         </div>
         <div class="stat-cell">
           <div class="stat-n">
-            <span data-target="62">0</span><span class="acc">+</span>
+            <span data-target="0">0</span>
           </div>
           <div class="stat-l">Turmas gerenciadas</div>
         </div>
         <div class="stat-cell">
           <div class="stat-n">
-            <span data-target="99">0</span><span class="acc">%</span>
+            <span data-target="0">0</span>
           </div>
-          <div class="stat-l">Disponibilidade</div>
+          <div class="stat-l">Escolas na rede</div>
         </div>
       </div>
     </div>
@@ -782,48 +782,38 @@
           ? "http://localhost:3001/api"
           : "https://sistema-escolar-bfty.onrender.com/api";
 
-      /* FETCH DYNAMIC STATS */
-      async function fetchStats() {
+      /* FETCH DYNAMIC STATS — dados REAIS do banco (public-summary).
+         statsAnimados evita corrida: se a API (cold start do Render)
+         responder DEPOIS da animação, os contadores reanimam com os
+         valores reais em vez de ficarem presos nos antigos. */
+      let statsAnimados = false;
+      function setStat(nth, valor) {
+        if (valor === undefined || valor === null) return;
+        const el = document.querySelector(
+          `.stat-cell:nth-child(${nth}) .stat-n span[data-target]`,
+        );
+        if (!el) return;
+        el.setAttribute("data-target", valor);
+        if (statsAnimados) animCounter(el, parseInt(valor) || 0);
+      }
+
+      const statsPromise = (async function fetchStats() {
         try {
           const response = await fetch(
             `${window.API_BASE_URL}/dashboard/public-summary`,
           );
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success && data.data) {
-              const stats = data.data;
-              const alu = document.querySelector(
-                ".stat-cell:nth-child(1) .stat-n span[data-target]",
-              );
-              if (alu && stats.totalAlunos)
-                alu.setAttribute("data-target", stats.totalAlunos);
-
-              const prof = document.querySelector(
-                ".stat-cell:nth-child(2) .stat-n span[data-target]",
-              );
-              if (prof && stats.professoresAtivos)
-                prof.setAttribute("data-target", stats.professoresAtivos);
-
-              const tur = document.querySelector(
-                ".stat-cell:nth-child(3) .stat-n span[data-target]",
-              );
-              if (tur && stats.totalTurmas)
-                tur.setAttribute("data-target", stats.totalTurmas);
-
-              const dis = document.querySelector(
-                ".stat-cell:nth-child(4) .stat-n span[data-target]",
-              );
-              if (dis && stats.disponibilidade !== undefined)
-                dis.setAttribute("data-target", stats.disponibilidade);
-            }
-          }
+          if (!response.ok) return;
+          const data = await response.json();
+          if (!data.success || !data.data) return;
+          const stats = data.data;
+          setStat(1, stats.totalAlunos);
+          setStat(2, stats.professoresAtivos);
+          setStat(3, stats.totalTurmas);
+          setStat(4, stats.totalEscolas);
         } catch (err) {
-          // Silently fail — landing page still works with fallback numbers
+          // Sem rede: células ficam em 0 até a API responder
         }
-      }
-
-      /* INIT STATS FETCH BEFORE INTERSECTION OBSERVER */
-      fetchStats();
+      })();
 
       /* PARTICLES */
       (function () {
@@ -948,26 +938,27 @@
         requestAnimationFrame(tick);
       }
 
-      // Set observer after a small delay to allow fetchStats to complete if fast enough
-      setTimeout(() => {
-        const co = new IntersectionObserver(
-          (entries) => {
-            entries.forEach((e) => {
-              if (e.isIntersecting) {
-                e.target
-                  .querySelectorAll("[data-target]")
-                  .forEach((n) =>
-                    animCounter(n, parseInt(n.dataset.target) || 0),
-                  );
-                co.unobserve(e.target);
-              }
+      // Anima quando a seção entra na tela E os dados reais chegaram
+      // (espera a API por até 5s; depois disso anima com o que houver
+      // e o setStat reanima sozinho quando a resposta chegar)
+      const co = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((e) => {
+            if (!e.isIntersecting) return;
+            co.unobserve(e.target);
+            const timeout = new Promise((r) => setTimeout(r, 5000));
+            Promise.race([statsPromise, timeout]).then(() => {
+              statsAnimados = true;
+              e.target
+                .querySelectorAll("[data-target]")
+                .forEach((n) => animCounter(n, parseInt(n.dataset.target) || 0));
             });
-          },
-          { threshold: 0.3 },
-        );
-        const sb = document.querySelector(".stats-wrap");
-        if (sb) co.observe(sb);
-      }, 100);
+          });
+        },
+        { threshold: 0.3 },
+      );
+      const sb = document.querySelector(".stats-wrap");
+      if (sb) co.observe(sb);
 
       /* PROGRESS BARS animation */
       const pbo = new IntersectionObserver(
@@ -1103,7 +1094,7 @@
               }
 
               const avatarContent = photoUrl
-                ? `<img src="${photoUrl}" alt="${name.replace(/'/g, "")}" onerror="this.style.display='none'; this.parentElement.innerText='${initials}'">`
+                ? `<img src="${photoUrl}" alt="" onerror="this.style.display='none'; this.parentElement.innerText='${initials.replace(/'/g, "")}'">`
                 : initials;
 
               const cleanText = escapeHTML(av.texto || "");

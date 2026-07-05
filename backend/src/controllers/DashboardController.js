@@ -20,12 +20,20 @@ exports.getPublicSummary = async (req, res) => {
             ? Math.round((totalPresencas / totalRegistrosPresenca) * 100)
             : 100;
 
+        // Escolas cadastradas na rede (multi-escola) — métrica real da landing
+        let totalEscolas = 0;
+        try {
+            const Escola = require('../models/Escola');
+            totalEscolas = await Escola.countDocuments();
+        } catch (e) { /* opcional — landing tem fallback */ }
+
         res.json({
             success: true,
             data: {
                 totalAlunos,
                 professoresAtivos: totalProfessores,
                 totalTurmas,
+                totalEscolas,
                 disponibilidade
             }
         });
