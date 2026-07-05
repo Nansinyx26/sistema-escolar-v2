@@ -93,10 +93,17 @@
      * Padrão: "Escola Jaguari" (a escola em operação).
      */
     function aplicarMarcaEscola(nome) {
+        if (!nome) return;
         var brand = document.getElementById('navBrandNome');
-        if (brand && nome) brand.textContent = nome.toUpperCase();
+        if (brand) brand.textContent = nome.toUpperCase();
         var splash = document.querySelector('.splash-title');
-        if (splash && nome) splash.textContent = nome;
+        if (splash) splash.textContent = nome;
+        // Badge do hero: "Rede municipal de Americana · SP" vira
+        // "<Escola selecionada> · Americana"
+        var badgeNome = document.getElementById('heroBadgeNome');
+        var badgeSufixo = document.getElementById('heroBadgeSufixo');
+        if (badgeNome) badgeNome.textContent = nome;
+        if (badgeSufixo) badgeSufixo.textContent = 'Americana';
     }
 
     function restaurarMarcaEscola() {
