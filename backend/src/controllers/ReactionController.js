@@ -23,10 +23,11 @@ exports.addOrUpdate = async (req, res) => {
         // Upsert: cria ou atualiza a reação do usuário nesta mensagem
         const reaction = await MessageReaction.findOneAndUpdate(
             { messageId, senderId: queryId },
-            { 
-                messageId, senderId, senderType, senderName,
+            {
+                messageId, senderId: queryId, senderType, senderName,
                 parentName: parentName || '', studentName: studentName || '',
-                emoji, updatedAt: new Date() 
+                escolaId: req.escolaId || req.session?.escolaAtivaId || undefined,
+                emoji, updatedAt: new Date()
             },
             { upsert: true, new: true, setDefaultsOnInsert: true }
         );
@@ -35,29 +36,20 @@ exports.addOrUpdate = async (req, res) => {
 
         // Buscar todas as reações desta mensagem para retornar
         const allReactions = await MessageReaction.find({ messageId }).lean();
+        const summary = buildReactionSummary(allReactions);
 
-        // Emitir evento realtime
+        // Emitir evento realtime (sala da mensagem + global para feeds abertos)
         if (global.io) {
-            global.io.emit(isNew ? 'reaction:add' : 'reaction:update', {
-                messageId, reaction, allReactions,
-                summary: buildReactionSummary(allReactions)
-            });
-
-            // Notificar professores/direção
-            global.io.emit('reaction:notify', {
-                title: 'Nova reação',
-                message: `${senderName}${studentName ? ` (responsável de ${studentName})` : ''} reagiu ${emoji} à sua mensagem.`,
-                type: 'reaction',
-                icon: emoji,
-                senderName, senderType
-            });
+            const payload = { messageId, reaction, allReactions, summary };
+            global.io.to(`message:${messageId}`).emit(isNew ? 'reaction:add' : 'reaction:update', payload);
+            global.io.emit(isNew ? 'reaction:add' : 'reaction:update', payload);
         }
 
-        res.status(isNew ? 201 : 200).json({ 
-            success: true, 
-            data: reaction, 
+        res.status(isNew ? 201 : 200).json({
+            success: true,
+            data: reaction,
             allReactions,
-            summary: buildReactionSummary(allReactions) 
+            summary
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });

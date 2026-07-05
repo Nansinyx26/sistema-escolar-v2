@@ -2,9 +2,14 @@ const mongoose = require('mongoose');
 
 const MessageReactionSchema = new mongoose.Schema({
     messageId: { type: String, required: true, index: true },
-    senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
-    senderType: { type: String, enum: ['responsavel', 'professor', 'diretor', 'admin'], required: true },
+    // Usuario._id é String neste projeto — usar ObjectId aqui fazia o cast
+    // divergir e a reação não persistir de forma consistente. String casa 1:1.
+    senderId: { type: String, required: true, index: true },
+    // Sem enum: secretaria/coordenador/aluno também reagem (o enum antigo
+    // rejeitava esses perfis com erro de validação).
+    senderType: { type: String, required: true },
     senderName: { type: String, required: true },
+    escolaId: { type: String, index: true }, // isolamento multi-tenant
     parentId: { type: String },
     parentName: { type: String },
     studentName: { type: String },

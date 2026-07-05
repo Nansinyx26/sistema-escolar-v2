@@ -73,6 +73,35 @@ const BASE_URL = import.meta.env.DEV
 
 import { socket } from '../services/socket';
 
+/**
+ * Token CSRF do cookie. SEM ele, o backend bloqueia POST/DELETE com 403
+ * (double-submit cookie) — era ESTE o motivo de as reações não registrarem:
+ * o fetch cru daqui não enviava o header que o apiService já envia.
+ */
+function getCsrfToken(): string | null {
+  const m = document.cookie.match(/csrf_token=([^;]+)/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+function mutatingHeaders(json = false): Record<string, string> {
+  const h: Record<string, string> = {};
+  if (json) h['Content-Type'] = 'application/json';
+  const csrf = getCsrfToken();
+  if (csrf) h['X-CSRF-Token'] = csrf;
+  return h;
+}
+
+/** Reconstrói o resumo (emoji → contagem/usuários) a partir da lista crua. */
+function buildSummary(all: any[]): ReactionSummary {
+  const summary: ReactionSummary = {};
+  (all || []).forEach((r: any) => {
+    if (!summary[r.emoji]) summary[r.emoji] = { count: 0, users: [] };
+    summary[r.emoji].count++;
+    summary[r.emoji].users.push({ name: r.senderName || 'Usuário', type: r.senderType });
+  });
+  return summary;
+}
+
 export const ReactionArea: React.FC<ReactionAreaProps> = ({ messageId }) => {
   const [reactions, setReactions] = useState<ReactionSummary>({});
   const [currentUser, setCurrentUser] = useState<{ nome: string } | null>(null);
@@ -124,6 +153,9 @@ export const ReactionArea: React.FC<ReactionAreaProps> = ({ messageId }) => {
       }
     };
 
+    // Entra na sala desta mensagem para receber eventos direcionados
+    socket.emit('join:message', messageId);
+
     socket.on('reaction:add', handleReactionSync);
     socket.on('reaction:update', handleReactionSync);
     socket.on('reaction:remove', handleReactionSync);
@@ -136,42 +168,54 @@ export const ReactionArea: React.FC<ReactionAreaProps> = ({ messageId }) => {
   }, [messageId]);
 
   const toggleReaction = async (emoji: string) => {
+    const nome = currentUser?.nome || '';
     const emojiData = reactions[emoji];
-    const hasReacted = emojiData?.users?.some(u => u.name === currentUser?.nome);
+    const hasReacted = emojiData?.users?.some(u => u.name === nome);
+
+    // ── Atualização OTIMISTA: reflete o clique na hora, antes do servidor ──
+    const anterior = reactions;
+    const otimista: ReactionSummary = JSON.parse(JSON.stringify(reactions));
+    // Remove qualquer reação anterior deste usuário (1 por usuário)
+    Object.keys(otimista).forEach(e => {
+      otimista[e].users = otimista[e].users.filter(u => u.name !== nome);
+      otimista[e].count = otimista[e].users.length;
+      if (otimista[e].count === 0) delete otimista[e];
+    });
+    if (!hasReacted) {
+      if (!otimista[emoji]) otimista[emoji] = { count: 0, users: [] };
+      otimista[emoji].users.push({ name: nome, type: 'responsavel' });
+      otimista[emoji].count = otimista[emoji].users.length;
+    }
+    setReactions(otimista);
+    setShowPicker(false);
 
     try {
       let res;
       if (hasReacted) {
         res = await fetch(`${BASE_URL}/reactions/${messageId}`, {
           method: 'DELETE',
+          headers: mutatingHeaders(false),
           credentials: 'include'
         });
       } else {
         res = await fetch(`${BASE_URL}/reactions`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: mutatingHeaders(true),
           credentials: 'include',
           body: JSON.stringify({ messageId, emoji })
         });
       }
 
-      const json = await res.json() as { success: boolean; allReactions?: any[] };
-      if (json.success && json.allReactions) {
-        // Rebuild summary locally
-        const summary: ReactionSummary = {};
-        json.allReactions.forEach((r: any) => {
-          if (!summary[r.emoji]) {
-            summary[r.emoji] = { count: 0, users: [] };
-          }
-          summary[r.emoji].count++;
-          summary[r.emoji].users.push({ name: r.senderName || 'Usuário', type: r.senderType });
-        });
-        setReactions(summary);
+      const json = await res.json() as { success: boolean; allReactions?: any[]; summary?: ReactionSummary };
+      if (json.success) {
+        // Confirmação do servidor sobrescreve o otimista com a verdade
+        setReactions(json.summary || buildSummary(json.allReactions || []));
       } else {
-        fetchReactions();
+        setReactions(anterior); // rollback
       }
     } catch (e) {
       console.error('Error toggling reaction:', e);
+      setReactions(anterior); // rollback em erro de rede
     }
   };
 
