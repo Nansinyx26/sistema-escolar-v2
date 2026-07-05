@@ -834,7 +834,11 @@ Responda em português do Brasil:`;
  *
  * @returns {Promise<{ response: string, alunoId: string|null }>}
  */
-async function process({ message, alunoId, perfil, userId, nomeUsuario, userEmail }) {
+// IMPORTANTE: NÃO renomear de volta para "process". O nome "process"
+// sombreava o objeto global process do Node dentro desta função, fazendo
+// process.env.GEMINI_KEY ler undefined.GEMINI_KEY (TypeError) — a
+// humanização via Gemini nunca era acionada pela pipeline de dados.
+async function processMessage({ message, alunoId, perfil, userId, nomeUsuario, userEmail }) {
     // 1. Normalise message
     const normalizedMessage = message.toLowerCase();
 
@@ -899,7 +903,7 @@ async function process({ message, alunoId, perfil, userId, nomeUsuario, userEmai
         await enforceRBAC({ perfil, userId, userEmail });
 
     // 4. Resolve aluno context
-    const { aluno, alunoId: resolvedAlunoId, ambiguous, ambiguousMessage, options: alunoOptions } =
+    let { aluno, alunoId: resolvedAlunoId, ambiguous, ambiguousMessage, options: alunoOptions } =
         await resolveAlunoContext({ alunoId, message, alunoFilter });
 
     // 4a. Múltiplos alunos com mesmo nome — retorna botões de opção
@@ -907,6 +911,14 @@ async function process({ message, alunoId, perfil, userId, nomeUsuario, userEmai
     if (ambiguous) {
         logger.warn(`[ChatbotService] Ambiguous: ${ambiguousMessage} | options: ${JSON.stringify(alunoOptions)}`);
         return { response: ambiguousMessage, alunoId: null, options: alunoOptions };
+    }
+
+    // 4b. Responsável com UM único filho e sem nome citado ("notas do meu
+    // filho?", "e as faltas?") → resolve automaticamente para esse filho.
+    // Vale para todas as intenções sobre o aluno (NOTAS/FALTAS/RESUMO/HORARIO).
+    if (!resolvedAlunoId && perfil === 'responsavel' && alunosVinculados && alunosVinculados.length === 1) {
+        aluno = alunosVinculados[0];
+        resolvedAlunoId = String(alunosVinculados[0]._id);
     }
 
     // 5. Special-case access checks
@@ -1062,7 +1074,7 @@ async function process({ message, alunoId, perfil, userId, nomeUsuario, userEmai
 }
 
 module.exports = {
-    process,
+    process: processMessage, // API pública inalterada; ver nota em processMessage()
     // Exported for unit-testing individual helpers
     classifyIntent,
     isConversationalIntent,
