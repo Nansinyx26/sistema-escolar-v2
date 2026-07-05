@@ -52,7 +52,8 @@ exports.notify = async ({
     criadoPor,
     link = '/dashboard',
     comunicadoId = null,
-    paraResponsavel = null
+    paraResponsavel = null,
+    escolaId = null
 }) => {
     try {
         const destList = Array.isArray(destinatarios) ? destinatarios : [destinatarios];
@@ -71,24 +72,43 @@ exports.notify = async ({
             destinatarios: destList,
             criadoPor,
             comunicadoId,
+            escolaId: escolaId || undefined,
             paraResponsavel: paraResponsavel != null ? paraResponsavel : includesResponsaveis
         });
         await novaNotif.save();
 
-        // 2. Entrega em Tempo Real (Socket.io)
+        // 2. Entrega em Tempo Real (Socket.io) — DIRECIONADA por sala em vez
+        // de broadcast global (antes toda a rede recebia todo aviso). Cada
+        // destinatário recebe só o que lhe pertence; escolaId no payload
+        // permite ao cliente descartar avisos de outra escola.
         if (global.io) {
             const populada = await Notificacao.findById(novaNotif._id)
                 .populate('criadoPor', 'nome foto fotoGoogle perfil')
                 .lean();
-            
-            global.io.emit('notification:new', {
-                ...populada,
-                link
-            });
+            const payload = { ...populada, link, escolaId: escolaId || null };
+
+            // Salas de destino conforme a lista de destinatários
+            const rooms = new Set();
+            for (const d of destList) {
+                if (d === 'todos') { rooms.add('role:professor'); rooms.add('role:responsavel'); rooms.add('role:diretor'); rooms.add('role:admin'); rooms.add('role:secretaria'); }
+                else if (d === 'professores') rooms.add('role:professor');
+                else if (d === 'responsaveis') rooms.add('role:responsavel');
+                else if (d === 'diretores' || d === 'diretor') { rooms.add('role:diretor'); rooms.add('role:admin'); }
+                else if (String(d).startsWith('usuario:')) rooms.add(`user:${String(d).split(':')[1]}`);
+                else if (String(d).startsWith('turma:')) { rooms.add('role:responsavel'); rooms.add('role:professor'); }
+            }
+
+            if (rooms.size > 0) {
+                let emitter = global.io;
+                rooms.forEach(r => { emitter = emitter.to(r); });
+                emitter.emit('notification:new', payload);
+            } else {
+                global.io.emit('notification:new', payload);
+            }
         }
 
         // 3. Processar Entrega Assíncrona (Email e Push) baseado em preferências
-        const targetUsers = await this.getTargetUsers(destList);
+        const targetUsers = await this.getTargetUsers(destList, escolaId);
 
         targetUsers.forEach(async (user) => {
             const prefs = user.notificacoesPreferencias || { portal: true, push: true, email: true };
@@ -139,12 +159,18 @@ exports.notify = async ({
 /**
  * Auxiliar para converter string de destinatários em lista de usuários.
  */
-exports.getTargetUsers = async (destinatarios) => {
+exports.getTargetUsers = async (destinatarios, escolaId = null) => {
     const destList = Array.isArray(destinatarios) ? destinatarios : [destinatarios];
     const userMap = new Map();
 
     for (const dest of destList) {
         let query = { ativo: true };
+        // Multi-tenant: prioriza usuários da mesma escola, mas inclui os
+        // legados sem escolaId (ex.: contas da Jaguari anteriores à migração)
+        // para não deixar de notificar quem já existe.
+        if (escolaId) {
+            query.$or = [{ escolaId }, { escolaId: { $exists: false } }, { escolaId: null }];
+        }
 
         if (dest === 'todos') {
             // Sem filtro adicional

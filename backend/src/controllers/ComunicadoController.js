@@ -83,7 +83,8 @@ exports.create = async (req, res) => {
                 destinatarios,
                 criadoPor: diretorId,
                 link: '/dashboard',
-                comunicadoId: novoComunicado._id
+                comunicadoId: novoComunicado._id,
+                escolaId: req.escolaId || req.session?.escolaAtivaId || novoComunicado.escolaId || null
             });
 
             if (global.io) {

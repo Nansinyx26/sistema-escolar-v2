@@ -10,6 +10,7 @@ const UsuarioSchema = new mongoose.Schema({
     cpf: { type: String, unique: true, sparse: true }, // CPF opcional/sparse para novos cadastros
     perfil: { type: String, enum: ['admin', 'diretor', 'professor', 'responsavel', 'secretaria'], default: 'professor' },
     escola: { type: String }, // Nome da escola
+    escolaId: { type: String, index: true }, // Multi-tenant: id da Escola (para notificações/filtros)
     disciplina: { type: String }, // Disciplina lecionada
     turma: { type: String }, // Turma vinculada
     matricula: { type: String }, // Matrícula (docente)
