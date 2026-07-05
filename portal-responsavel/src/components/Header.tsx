@@ -158,7 +158,7 @@ const VoiceSelector: React.FC = () => {
   );
 };
 
-const Header: React.FC<HeaderProps> = ({ user, notifications, onLogout, onBellClick, onProfileClick, onBiClick, activeTab }) => {
+const Header: React.FC<HeaderProps> = ({ user, notifications, onLogout, onBellClick, onProfileClick }) => {
   const unreadCount = notifications.filter((n) => !n.lido).length;
   const userPhoto = getPhotoUrl(user.picture);
 
@@ -176,17 +176,6 @@ const Header: React.FC<HeaderProps> = ({ user, notifications, onLogout, onBellCl
         <div className={styles.headerActions}>
           <VoiceSelector />
           
-          {/* Botão BI Pedagógico */}
-          <button
-            className={`${styles.notificationBell} ${activeTab === 'bi' ? styles.activeTab : ''}`}
-            onClick={onBiClick}
-            title="Relatórios BI"
-            aria-label="Abrir BI Pedagógico"
-            style={{ marginRight: '8px' }}
-          >
-            <i className="ti ti-chart-pie" aria-hidden="true" style={{ fontSize: '1.4rem' }} />
-          </button>
-
           {/* Botão Ver Tour Guiado */}
           <button
             className={styles.notificationBell}

@@ -49,7 +49,7 @@ const getPasswordStrength = (pwd: string) => {
   }
 };
 
-type PortalTab = 'dashboard' | 'linking' | 'profile' | 'bi';
+type PortalTab = 'dashboard' | 'linking' | 'profile';
 
 const PortalResponsavel: React.FC = () => {
   const rawApiUrl = import.meta.env.DEV
@@ -470,7 +470,7 @@ const PortalResponsavel: React.FC = () => {
     <div className={styles.portal}>
       <Toast toast={toast} onClose={() => setToast(null)} />
 
-      <Header user={headerUser} notifications={notifications} onLogout={handleLogout} onBellClick={() => setShowNotificationsModal(true)} onProfileClick={() => setShowSidebar(true)} onBiClick={() => setCurrentTab('bi')} activeTab={currentTab} />
+      <Header user={headerUser} notifications={notifications} onLogout={handleLogout} onBellClick={() => setShowNotificationsModal(true)} onProfileClick={() => setShowSidebar(true)} activeTab={currentTab} />
 
       <div className={styles.portalBody}>
         <aside className={styles.desktopSidebar} data-tour="sidebar">

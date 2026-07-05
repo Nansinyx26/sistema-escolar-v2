@@ -1,7 +1,6 @@
 import NotificationSettings from './NotificationSettings';
 import EditarPerfil from './EditarPerfil';
 import VincularFilho from './VincularFilho';
-import BI from '../pages/BI';
 import type { Attendance, AuthUser, Grade, Notification, Student } from '../types';
 import StudentCard from './StudentCard';
 import NotificationsPanel from './NotificationsPanel';
@@ -12,7 +11,7 @@ import FichaAluno from './FichaAluno';
 import DashboardSkeleton from './DashboardSkeleton';
 import styles from '../styles/portal.module.scss';
 
-type PortalTab = 'dashboard' | 'linking' | 'profile' | 'bi';
+type PortalTab = 'dashboard' | 'linking' | 'profile';
 
 interface ProfileTabProps {
   authUser: AuthUser;
@@ -45,10 +44,6 @@ interface LinkingTabProps {
 
 export function LinkingTabSection({ onSuccess, onCancel }: LinkingTabProps) {
   return <VincularFilho onSuccess={onSuccess} onCancel={onCancel} canCancel={true} />;
-}
-
-export function BiTabSection() {
-  return <BI />;
 }
 
 interface DashboardTabProps {
@@ -274,10 +269,6 @@ export function PortalTabContent(props: PortalTabContentProps) {
 
   if (currentTab === 'linking') {
     return <LinkingTabSection onSuccess={onLinkingSuccess} onCancel={onLinkingCancel} />;
-  }
-
-  if (currentTab === 'bi') {
-    return <BiTabSection />;
   }
 
   return <DashboardTabSection {...props} />;

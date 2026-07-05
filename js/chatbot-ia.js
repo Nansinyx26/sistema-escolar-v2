@@ -185,9 +185,9 @@
             const perfil = getRoleName(user?.perfil);
             
             if (nome) {
-                addMessage(`Olá, **${nome}**! Você está na conta **${perfil}**. Posso consultar informações do sistema escolar para você. O que deseja saber?`, true);
+                addMessage(`Olá, **${nome}**! Você está na conta **${perfil}**. Posso consultar informações do sistema escolar para você. Escolha um tema ou pergunte direto:`, true, getInitialSuggestions());
             } else {
-                addMessage("Olá! Sou o Assistente Escolar IA. Como posso ajudar?", true);
+                addMessage("Olá! Sou o Assistente Escolar IA. Escolha um tema ou pergunte direto:", true, getInitialSuggestions());
             }
         }
     }
@@ -203,7 +203,26 @@
         messages = [];
         contextAlunoId = null;
         body.innerHTML = '';
-        addMessage("Conversa limpa. Como posso ajudar?", true);
+        addMessage("Conversa limpa. Escolha um tema ou pergunte direto:", true, getInitialSuggestions());
+    }
+
+    // Chips de sugestão iniciais, adequados ao perfil logado
+    // (mesmos rótulos das sugestões do backend — o clique envia o rótulo como pergunta)
+    function getInitialSuggestions() {
+        const user = getCurrentUser();
+        const perfil = (user?.perfil || '').toLowerCase();
+        const base = [
+            { label: '📝 Notas e desempenho', value: '' },
+            { label: '📅 Faltas e frequência', value: '' },
+            { label: '📢 Comunicados recentes', value: '' },
+            { label: '🕐 Grade horária', value: '' },
+        ];
+        if (perfil === 'responsavel') return base;
+        base.push({ label: '👨‍🏫 Professores da turma', value: '' });
+        if (['diretor', 'admin', 'coordenador', 'secretaria'].includes(perfil)) {
+            base.push({ label: '🏫 Resumo da escola', value: '' });
+        }
+        return base;
     }
 
     // Prevent clicks from propagating (safe to register immediately — no function calls)
@@ -476,8 +495,12 @@
 
     // Layer 1, Rule 4: click resolution uses ID (value), never re-searches by name
     async function selectOption(label, value) {
-        contextAlunoId = value;
-        const lastUserMsg = messages.filter(m => !m.isAi).slice(-1)[0]?.text || label;
+        // Sem value = chip de tema (não é botão de aluno): a pergunta é o rótulo
+        const isChipDeTema = !value;
+        if (!isChipDeTema) contextAlunoId = value;
+        const lastUserMsg = isChipDeTema
+            ? label
+            : (messages.filter(m => !m.isAi).slice(-1)[0]?.text || label);
         addMessage(label, false, null);
         input.disabled = true;
         document.getElementById('chat-submit-btn').disabled = true;
@@ -487,7 +510,7 @@
             const res = await fetch(CONFIG.apiBase, {
                 method: 'POST',
                 headers: getHeaders(),
-                body: JSON.stringify({ message: lastUserMsg, alunoId: value }),
+                body: JSON.stringify({ message: lastUserMsg, alunoId: isChipDeTema ? (contextAlunoId || null) : value }),
                 credentials: 'include'
             });
             let responseText = '';

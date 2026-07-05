@@ -850,7 +850,9 @@ async function process({ message, alunoId, perfil, userId, nomeUsuario, userEmai
             || process.env.GEMINI_API_KEY
             || process.env.GOOGLE_TTS_API_KEY
             || process.env.GOOGLE_API_KEY;
-        const showSuggestions = (intencao === 'INDEFINIDA' || intencao === 'FORA_CONTEXTO');
+        // Sugestões de temas também na saudação e no "o que você faz" —
+        // antes só apareciam quando o bot NÃO entendia a mensagem
+        const showSuggestions = ['INDEFINIDA', 'FORA_CONTEXTO', 'SAUDACAO', 'SOBRE_SISTEMA'].includes(intencao);
         const suggestions = getConversationalSuggestions(perfil);
 
         // Resposta offline com variação de template (persona compartilhada).

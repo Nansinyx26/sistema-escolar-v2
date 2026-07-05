@@ -11,7 +11,7 @@ declare global {
 interface PortalOnboardingManagerProps {
   authUser: AuthUser | null;
   authLoading: boolean;
-  currentTab: 'dashboard' | 'linking' | 'profile' | 'bi';
+  currentTab: 'dashboard' | 'linking' | 'profile';
   onUserChange: Dispatch<SetStateAction<AuthUser | null>>;
 }
 
