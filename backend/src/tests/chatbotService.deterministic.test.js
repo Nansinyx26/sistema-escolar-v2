@@ -97,7 +97,7 @@ describe('buildPrompt', () => {
 
     it('includes strict rule about not inventing names', () => {
         const prompt = buildPrompt(baseParams);
-        expect(prompt).toContain('Não invente nomes');
+        expect(prompt).toContain('NUNCA invente nome');
     });
 
     it('includes strict rule about not generating buttons', () => {
@@ -107,7 +107,7 @@ describe('buildPrompt', () => {
 
     it('includes rule about saying info not available for null fields', () => {
         const prompt = buildPrompt(baseParams);
-        expect(prompt).toContain('informação não está disponível');
+        expect(prompt).toContain('ainda não foi lançada no sistema');
     });
 
     it('includes Português-BR instruction', () => {
@@ -117,13 +117,12 @@ describe('buildPrompt', () => {
 
     it('includes empático e humanizado', () => {
         const prompt = buildPrompt(baseParams);
-        expect(prompt).toContain('empático');
-        expect(prompt).toContain('humanizado');
+        expect(prompt).toContain('humana');
     });
 
     it('includes NÃO retorne JSON bruto', () => {
         const prompt = buildPrompt(baseParams);
-        expect(prompt).toContain('NÃO retorne JSON bruto');
+        expect(prompt).toContain('NÃO retorne JSON');
     });
 
     it('includes NÃO use markdown', () => {
@@ -143,7 +142,7 @@ describe('buildPrompt', () => {
 
     it('includes original question', () => {
         const prompt = buildPrompt(baseParams);
-        expect(prompt).toContain('Pergunta original: Quais são as notas do meu filho?');
+        expect(prompt).toContain('Pergunta original: "Quais são as notas do meu filho?"');
     });
 
     it('serializes dados with JSON.stringify', () => {
@@ -195,12 +194,12 @@ describe('buildPrompt', () => {
 
     it('includes [Dados consultados do banco] section', () => {
         const prompt = buildPrompt(baseParams);
-        expect(prompt).toContain('[Dados consultados do banco]');
+        expect(prompt).toContain('[Dados reais consultados]');
     });
 
     it('includes [Histórico recente] section', () => {
         const prompt = buildPrompt(baseParams);
-        expect(prompt).toContain('[Histórico recente]');
+        expect(prompt).toContain('[Histórico recente da conversa]');
     });
 
     it('returns a non-empty string', () => {

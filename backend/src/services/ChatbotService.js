@@ -48,47 +48,75 @@ function validateButtons(buttons, matches) {
  * @param {string} message
  * @returns {string} Intent token
  */
+// ── Dicionários de intenção (v2) ────────────────────────────────────────
+// Termos SEM acento (a mensagem é normalizada antes do match — antes,
+// "frequencia"/"media"/"horario" digitados sem acento caíam em INDEFINIDA).
+// Convenções de match:
+//   - termo com espaço  → frase: casa por substring, peso 3
+//   - termo curto (≤3)  → palavra exata (\b...\b), peso 1
+//   - termo longo       → prefixo de palavra (\b...), casa flexões
+//     (ex.: 'falt' casa falta/faltou/faltando), peso 1
+const DATA_INTENTS = [
+    { intent: 'NOTAS',        keywords: ['nota', 'media', 'boletim', 'tirou', 'rendimento', 'desempenho', 'prova', 'avaliac', 'aproveitamento', 'quanto tirou', 'foi bem', 'foi mal'] },
+    { intent: 'FALTAS',       keywords: ['falt', 'presenc', 'frequenc', 'veio', 'presente', 'ausen', 'assiduidade', 'compareceu'] },
+    { intent: 'COMUNICADOS',  keywords: ['comunicado', 'aviso', 'reuniao', 'mural', 'recado', 'anuncio', 'informe', 'noticia', 'novidade', 'evento'] },
+    // HORARIO e PROFESSORES vêm antes de TURMA_GERAL: em empate
+    // ("horário da turma", "professores da turma"), o termo específico vence
+    { intent: 'HORARIO',      keywords: ['horario', 'grade', 'cronograma', 'aula', 'que aula', 'proxima aula', 'que horas'] },
+    { intent: 'PROFESSORES',  keywords: ['professor', 'leciona', 'ensina', 'docente', 'quem da aula', 'quem ensina'] },
+    { intent: 'TURMA_GERAL',  keywords: ['turma', 'alunos', 'sala', 'quantos alunos', 'lista de alunos', 'matriculado'] },
+    { intent: 'RESUMO_GERAL', keywords: ['como esta', 'como vai', 'como anda', 'resumo', 'situacao', 'panorama', 'visao geral'] },
+];
+
+const CONVERSATIONAL_INTENTS = [
+    { intent: 'SAUDACAO',      keywords: ['ola', 'oi', 'bom dia', 'boa tarde', 'boa noite', 'e ai', 'eai', 'hey', 'hello', 'tudo bem', 'salve'] },
+    { intent: 'AGRADECIMENTO', keywords: ['obrigad', 'valeu', 'agradec', 'thanks', 'brigad', 'vlw'] },
+    { intent: 'DESPEDIDA',     keywords: ['tchau', 'ate mais', 'ate logo', 'ate amanha', 'adeus', 'bye', 'flw', 'falou'] },
+    { intent: 'SOBRE_SISTEMA', keywords: ['o que voce faz', 'como funciona', 'me ajuda', 'ajuda', 'help', 'o que pode', 'quais funcoes', 'quem e voce', 'o que sabe'] },
+    { intent: 'ELOGIO',        keywords: ['parabens', 'muito bom', 'excelente', 'adorei', 'amei', 'incrivel', 'top', 'maravilhoso', 'otimo trabalho'] },
+    { intent: 'RECLAMACAO',    keywords: ['reclamac', 'nao funciona', 'problema', 'erro', 'bug', 'ruim', 'pessimo', 'horrivel', 'nao gostei'] },
+];
+
+/**
+ * Pontua uma mensagem normalizada contra a lista de keywords de um intent.
+ * @returns {number} soma dos pesos dos termos que casaram
+ */
+function scoreIntent(normalized, keywords) {
+    let score = 0;
+    for (const kw of keywords) {
+        if (kw.includes(' ')) {
+            if (normalized.includes(kw)) score += 3;
+        } else if (kw.length <= 3) {
+            if (new RegExp('\\b' + kw + '\\b').test(normalized)) score += 1;
+        } else {
+            if (new RegExp('\\b' + kw).test(normalized)) score += 1;
+        }
+    }
+    return score;
+}
+
 function classifyIntent(message) {
-    const normalized = message.toLowerCase();
+    // Normaliza acentos + caixa: "frequência" e "frequencia" são iguais aqui
+    const normalized = normalizeText(message);
 
-    // ── Data intents (require DB queries) ──────────────────────────────────
-    const dataIntentMap = [
-        { intent: 'NOTAS',        keywords: ['nota', 'média', 'boletim', 'tirou', 'rendimento', 'desempenho'] },
-        { intent: 'FALTAS',       keywords: ['falta', 'presença', 'frequência', 'veio', 'presente', 'ausente'] },
-        { intent: 'COMUNICADOS',  keywords: ['comunicado', 'aviso', 'reunião', 'mural'] },
-        { intent: 'TURMA_GERAL',  keywords: ['turma', 'alunos', 'sala'] },
-        { intent: 'HORARIO',      keywords: ['horário', 'aula', 'grade'] },
-        { intent: 'PROFESSORES',  keywords: ['professor', 'leciona', 'ensina'] },
-        { intent: 'RESUMO_GERAL', keywords: ['como está', 'resumo', 'situação'] },
-    ];
-
-    for (const { intent, keywords } of dataIntentMap) {
-        for (const keyword of keywords) {
-            if (normalized.includes(keyword)) {
-                return intent;
-            }
-        }
+    // ── Data intents primeiro (pedido de dados vence conversa social) ─────
+    let melhor = null;
+    let melhorScore = 0;
+    for (const { intent, keywords } of DATA_INTENTS) {
+        const s = scoreIntent(normalized, keywords);
+        if (s > melhorScore) { melhor = intent; melhorScore = s; }
     }
+    if (melhor) return melhor;
 
-    // ── Conversational intents (no DB needed) ─────────────────────────────
-    const conversationalIntentMap = [
-        { intent: 'SAUDACAO',      keywords: ['olá', 'ola', 'oi', 'bom dia', 'boa tarde', 'boa noite', 'e aí', 'eai', 'hey', 'hello', 'tudo bem'] },
-        { intent: 'AGRADECIMENTO', keywords: ['obrigado', 'obrigada', 'valeu', 'agradeço', 'thanks', 'brigado', 'brigada'] },
-        { intent: 'DESPEDIDA',     keywords: ['tchau', 'até mais', 'ate mais', 'até logo', 'adeus', 'bye', 'flw', 'falou'] },
-        { intent: 'SOBRE_SISTEMA', keywords: ['o que você faz', 'o que voce faz', 'como funciona', 'me ajuda', 'ajuda', 'help', 'o que pode', 'quais funções', 'quais funcoes'] },
-        { intent: 'ELOGIO',        keywords: ['parabéns', 'parabens', 'muito bom', 'excelente', 'adorei', 'amei', 'incrível', 'incrivel', 'top', 'maravilhoso'] },
-        { intent: 'RECLAMACAO',    keywords: ['reclamação', 'reclamacao', 'não funciona', 'nao funciona', 'problema', 'erro', 'bug', 'ruim', 'péssimo', 'pessimo', 'horrível', 'horrivel'] },
-    ];
-
-    for (const { intent, keywords } of conversationalIntentMap) {
-        for (const keyword of keywords) {
-            if (normalized.includes(keyword)) {
-                return intent;
-            }
-        }
+    // ── Conversational intents ─────────────────────────────────────────────
+    melhor = null;
+    melhorScore = 0;
+    for (const { intent, keywords } of CONVERSATIONAL_INTENTS) {
+        const s = scoreIntent(normalized, keywords);
+        if (s > melhorScore) { melhor = intent; melhorScore = s; }
     }
+    if (melhor) return melhor;
 
-    // ── Catch-all ──────────────────────────────────────────────────────────
     return 'INDEFINIDA';
 }
 
@@ -174,40 +202,71 @@ function getConversationalSuggestions(perfil) {
  * @param {string} params.message       Original user message
  * @returns {string} Formatted prompt
  */
-function buildConversationalPrompt({ perfil, nomeUsuario, message }) {
+// Capacidades do assistente por perfil — usadas nos prompts para o modelo
+// orientar o usuário com exemplos REAIS do que o sistema sabe responder.
+function capacidadesPorPerfil(perfil) {
+    if (perfil === 'responsavel') {
+        return `- Notas e médias do(s) seu(s) filho(s) — ex.: "Notas da Maria" ou "média do 2º bimestre"
+- Frequência e faltas — ex.: "Quantas faltas o Pedro tem?"
+- Comunicados da escola — ex.: "Tem algum comunicado novo?"
+- Grade de horários da turma — ex.: "Qual o horário da turma?"
+- Resumo geral do aluno — ex.: "Como está o desempenho da Ana?"`;
+    }
+    if (perfil === 'professor') {
+        return `- Notas e médias dos alunos das SUAS turmas — ex.: "Notas do João Silva"
+- Frequência e faltas — ex.: "Faltas da Maria"
+- Alunos por turma — ex.: "Quantos alunos tem na minha turma?"
+- Grade de horários — ex.: "Horário da turma"
+- Comunicados — ex.: "Comunicados recentes"`;
+    }
+    // diretor / admin / coordenador / secretaria
+    return `- Notas, médias e boletim de qualquer aluno — ex.: "Notas do João Silva"
+- Frequência e alertas de evasão — ex.: "Faltas da Maria Souza"
+- Resumo da escola (média geral, frequência global) — ex.: "Resumo da escola"
+- Alunos por turma — ex.: "Quantos alunos na turma 3A?"
+- Professores e horários — ex.: "Professores da turma 2B"
+- Comunicados ativos — ex.: "Comunicados"`;
+}
+
+function buildConversationalPrompt({ perfil, nomeUsuario, message, historico }) {
+    const historicoTexto = (historico && historico.length > 0)
+        ? historico.slice(0, 3).reverse()
+            .map(h => `[Usuário]: ${h.pergunta}\n[Você]: ${(h.resposta || '').substring(0, 200)}`)
+            .join('\n')
+        : '(primeira mensagem da conversa)';
+
     return `${PERSONA_PROMPT_PREFIX}
 
-Você é o assistente virtual de uma escola, integrado a um sistema de gestão escolar.
+Você é o assistente virtual da escola, dentro do sistema de gestão escolar.
 
 CONTEXTO:
-O usuário enviou uma mensagem que NÃO requer consulta ao banco de dados (não é sobre notas, 
-faltas, horários, professores ou comunicados de um aluno/turma específico). Pode ser uma 
-saudação, agradecimento, despedida, pergunta sobre o que você faz, um elogio, uma reclamação, 
-uma pergunta fora do contexto escolar, ou uma mensagem que você não conseguiu classificar.
+A mensagem do usuário NÃO exige consulta ao banco (não é um pedido direto de dados de um
+aluno/turma). Pode ser saudação, agradecimento, despedida, dúvida sobre o que você faz,
+elogio, reclamação, algo fora do escopo escolar — ou uma pergunta que o classificador não
+entendeu (nesse caso, seja esperto: tente deduzir o que a pessoa quis e sugira a forma
+certa de perguntar).
 
-SEU PAPEL:
-- Responder de forma humana, calorosa e natural, como um atendente simpático da escola.
-- Manter respostas curtas (1 a 3 frases). Nada de parágrafos longos.
-- Sempre que fizer sentido, lembrar o usuário do que você PODE ajudar: notas, faltas, 
-  horários, professores e comunicados — adaptado ao perfil dele, se souber 
-  (diretor/coordenador, professor ou responsável).
-- Se a mensagem for sobre um assunto totalmente fora do escopo escolar (clima, piadas, 
-  notícias, etc.), recuse com simpatia e redirecione para o que você pode ajudar.
-- Se for uma reclamação ou confusão, peça desculpas brevemente e ofereça ajuda novamente.
-- Nunca invente dados de aluno, nota, falta ou horário. Você não tem acesso ao banco de 
-  dados nesta conversa — se o usuário pedir uma informação específica de aluno/turma, 
-  oriente-o a perguntar de forma direta (ex: "Notas do João Silva") para que o sistema 
-  busque os dados.
-- Use emojis com moderação (0 a 1 por resposta), apenas quando o tom permitir.
-- Nunca use o nome "Gemini" ou mencione que é uma IA do Google. Você é "o assistente da escola".
+O QUE VOCÊ SABE FAZER PARA ESTE PERFIL (${perfil}):
+${capacidadesPorPerfil(perfil)}
 
-DADOS DISPONÍVEIS NESTA CHAMADA:
-- Perfil do usuário: ${perfil}
-- Nome do usuário (se houver): ${nomeUsuario || 'não informado'}
-- Mensagem do usuário: ${message}
+REGRAS:
+- Resposta curta (1 a 3 frases), tom humano e acolhedor de atendente de escola brasileira.
+- Se a mensagem parecer um pedido de dados mal formulado, NÃO diga apenas "não entendi":
+  proponha a pergunta pronta entre aspas (ex.: sugira perguntar "Notas do João Silva").
+- Use o histórico para manter continuidade — se o usuário disser "e as faltas?", entenda
+  que se refere ao mesmo aluno da mensagem anterior e sugira a pergunta completa.
+- Assunto fora do escopo escolar: recuse com leveza e volte para o que você faz.
+- Reclamação: peça desculpas em uma frase e ofereça um caminho concreto.
+- NUNCA invente nome de aluno, nota, data ou horário. Você não consultou o banco agora.
+- Emojis: no máximo 1. Nunca mencione "Gemini", "Google" ou "IA". Você é "o assistente da escola".
 
-TAREFA:
-Gere uma resposta curta, natural e adequada ao perfil do usuário, em português do Brasil.`;
+HISTÓRICO RECENTE:
+${historicoTexto}
+
+USUÁRIO (perfil ${perfil}${nomeUsuario ? ', nome ' + nomeUsuario : ''}) DISSE:
+"${message}"
+
+Responda em português do Brasil:`;
 }
 
 /**
@@ -242,9 +301,10 @@ const MATERIAS_CONHECIDAS = [
 ];
 
 function detectMateria(message) {
-    const normalized = message.toLowerCase();
+    // Compara sem acentos: "matematica" digitado sem acento também casa
+    const normalized = normalizeText(message);
     for (const materia of MATERIAS_CONHECIDAS) {
-        if (normalized.includes(materia)) {
+        if (normalized.includes(normalizeText(materia))) {
             return materia;
         }
     }
@@ -507,6 +567,45 @@ async function fetchResumoGeral() {
 }
 
 /**
+ * Resumo individual do aluno: notas + frequência numa consulta combinada.
+ * Usado quando a intenção é RESUMO ("como está o João?") com aluno resolvido.
+ * @param {Object} params
+ * @param {string} params.alunoContexto Aluno ID
+ * @returns {Promise<Object>}
+ */
+async function fetchResumoAluno({ alunoContexto }) {
+    const [notasInfo, faltasInfo] = await Promise.all([
+        fetchNotas({ alunoContexto, bimestre: null, materia: null }),
+        fetchFaltas({ alunoContexto }),
+    ]);
+
+    // Médias por matéria (destaques e dificuldades)
+    const porMateria = {};
+    for (const n of notasInfo.notas) {
+        const mat = n.materiaId || n.materia || 'Geral';
+        if (!porMateria[mat]) porMateria[mat] = { soma: 0, qtd: 0 };
+        porMateria[mat].soma += parseFloat(n.nota) || 0;
+        porMateria[mat].qtd += 1;
+    }
+    const materias = Object.entries(porMateria)
+        .map(([materia, { soma, qtd }]) => ({ materia, media: soma / qtd }))
+        .sort((a, b) => b.media - a.media);
+
+    return {
+        resumoAluno: true,
+        media: notasInfo.media,
+        totalNotas: notasInfo.notas.length,
+        melhorMateria: materias[0] || null,
+        piorMateria: materias.length > 1 ? materias[materias.length - 1] : null,
+        frequencia: faltasInfo.frequencia,
+        totalRegistros: faltasInfo.total,
+        faltas: faltasInfo.total - faltasInfo.presentes,
+        alertaCritico: faltasInfo.alertaCritico,
+        alertaObservacao: faltasInfo.alertaObservacao,
+    };
+}
+
+/**
  * Fetch recent conversation history for the user.
  * @param {string} userId
  * @returns {Promise<Object[]>}
@@ -634,6 +733,25 @@ function formatarResposta({ intencao, dados, aluno, perfil }) {
         }
 
         case 'RESUMO_GERAL': {
+            // Resumo individual ("como está o João?")
+            if (dados.resumoAluno) {
+                const linhas = [`Resumo de ${nomeAluno || 'aluno'}:`];
+                if (dados.totalNotas > 0) {
+                    linhas.push(`• Média geral: ${Number(dados.media).toFixed(1)} (${dados.totalNotas} nota(s) lançada(s))`);
+                    if (dados.melhorMateria) linhas.push(`• Melhor matéria: ${dados.melhorMateria.materia} (${dados.melhorMateria.media.toFixed(1)})`);
+                    if (dados.piorMateria) linhas.push(`• Precisa de atenção: ${dados.piorMateria.materia} (${dados.piorMateria.media.toFixed(1)})`);
+                } else {
+                    linhas.push('• Ainda não há notas lançadas.');
+                }
+                if (dados.totalRegistros > 0) {
+                    linhas.push(`• Frequência: ${Number(dados.frequencia).toFixed(1)}% (${dados.faltas} falta(s))`);
+                    if (dados.alertaCritico) linhas.push('• Atenção: frequência CRÍTICA (abaixo de 75%) — risco de reprovação por falta.');
+                    else if (dados.alertaObservacao) linhas.push('• Aviso: frequência em observação (75%–85%).');
+                } else {
+                    linhas.push('• Ainda não há registros de frequência.');
+                }
+                return linhas.join('\n');
+            }
             const media = dados.mediaEscola !== null ? Number(dados.mediaEscola).toFixed(1) : '—';
             const freq  = `${Number(dados.frequenciaGlobal).toFixed(1)}%`;
             return `Resumo da escola:\n• Media geral de notas: ${media}\n• Frequencia global: ${freq}\n• Comunicados ativos: ${dados.totalComunicadosAtivos}`;
@@ -667,29 +785,36 @@ function buildPrompt({ perfil, intencao, message, dados, historico }) {
 
     const dadosSerialized = JSON.stringify(dados, null, 2);
 
-    return `Você é o assistente de comunicação do chatbot escolar. Você NUNCA decide quais alunos existem, nunca escolhe nomes, e nunca cria botões — isso já foi resolvido pelo backend antes de você ser chamado.
+    return `Você é o assistente da escola, respondendo dentro do sistema de gestão escolar. Você NUNCA decide quais alunos existem, nunca escolhe nomes e nunca cria botões — isso já foi resolvido pelo sistema antes de você ser chamado.
 
-Sua única função: reescrever os dados recebidos em linguagem natural, acolhedora e objetiva, em Português-BR.
+Sua função: transformar os dados consultados em uma resposta útil, clara e humana, em Português-BR.
 
-Regras obrigatórias:
-- Use SOMENTE os dados literais fornecidos abaixo. Não invente nomes, notas, datas, turmas ou qualquer valor não presente nos dados.
-- Se algum campo vier nulo ou vazio, diga que a informação não está disponível — nunca complete com um valor plausível.
-- NÃO retorne JSON bruto. NÃO use markdown.
-- NÃO gere botões, listas de opções ou sugestões de nomes de alunos.
-- Tom: natural, empático e humanizado, breve, sem jargão técnico, sem mencionar "banco de dados", "query" ou "JSON".
-- Se a intenção for INDEFINIDA e não houver dados de banco associados, responda de forma simpática e contextual, orientando o usuário sobre os tipos de pergunta suportados (notas, faltas, comunicados, horários, professores, resumo geral).
+COMO RESPONDER BEM:
+1. Responda PRIMEIRO exatamente o que foi perguntado, na primeira frase.
+2. Depois, apresente os dados de forma organizada: use linhas curtas iniciadas por "•" quando houver 3+ itens.
+3. Se os dados contiverem um alerta (frequência crítica, média baixa, prioridade Urgente), destaque-o com clareza e explique a consequência em uma frase (ex.: risco de reprovação por falta).
+4. Números: use vírgula decimal e no máximo 1 casa (ex.: 7,5). Datas no formato dd/mm.
+5. Feche com UMA sugestão natural de próxima pergunta relacionada, sem parecer robô (ex.: "Se quiser, posso mostrar as faltas dele também."). Não repita a sugestão se o histórico mostrar que acabou de usá-la.
+6. Adapte o tom ao perfil: responsável (acolhedor, foco no filho), professor (direto, foco na turma), direção/secretaria (objetivo, foco em gestão).
+
+REGRAS INEGOCIÁVEIS:
+- Use SOMENTE os dados literais fornecidos abaixo. NUNCA invente nome, nota, data, turma ou valor.
+- Campo nulo/vazio: diga que a informação ainda não foi lançada no sistema — nunca complete com um valor plausível.
+- NÃO retorne JSON. NÃO use markdown (*, #, tabelas). Texto puro com "•" para listas.
+- NÃO gere botões nem liste nomes de alunos como opções.
+- Nunca mencione "banco de dados", "JSON", "Gemini" ou "IA". Você é "o assistente da escola".
 
 Perfil do usuário: ${perfil}
 Intenção identificada: ${intencao}
-Pergunta original: ${message}
+Pergunta original: "${message}"
 
-[Histórico recente]
+[Histórico recente da conversa]
 ${historicoTexto}
 
-[Dados consultados do banco]
+[Dados reais consultados]
 ${dadosSerialized}
 
-Responda de forma natural e amigável baseada nesses dados.`;
+Responda em português do Brasil:`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -747,7 +872,9 @@ async function process({ message, alunoId, perfil, userId, nomeUsuario, userEmai
                 options: showSuggestions ? suggestions : undefined,
             };
         }
-        const conversationalPrompt = buildConversationalPrompt({ perfil, nomeUsuario, message });
+        // Histórico dá continuidade ("e as faltas?" após falar de um aluno)
+        const historicoConversa = await fetchHistorico(userId);
+        const conversationalPrompt = buildConversationalPrompt({ perfil, nomeUsuario, message, historico: historicoConversa });
         let response;
         try {
             // Conversa social: respostas bem curtas — teto agressivo de tokens
@@ -788,7 +915,7 @@ async function process({ message, alunoId, perfil, userId, nomeUsuario, userEmai
         alunosVinculados &&
         alunosVinculados.length > 1 &&
         !resolvedAlunoId &&
-        (intencao === 'NOTAS' || intencao === 'FALTAS')
+        (intencao === 'NOTAS' || intencao === 'FALTAS' || intencao === 'RESUMO_GERAL')
     ) {
         const childButtons = alunosVinculados.map(a => ({
             label: `${a.nome} — Turma ${a.turma || '—'}`,
@@ -821,9 +948,6 @@ async function process({ message, alunoId, perfil, userId, nomeUsuario, userEmai
             alunoId: null,
         };
     }
-
-    // 6. Fetch conversation history (mantido para registro, não usado na resposta)
-    await fetchHistorico(userId);
 
     // 7 & 8. Route to correct fetchData
     let dados = null;
@@ -879,9 +1003,18 @@ async function process({ message, alunoId, perfil, userId, nomeUsuario, userEmai
             dados = await fetchTurmaGeral({ alunoFilter });
             break;
 
-        case 'RESUMO_GERAL':
-            dados = await fetchResumoGeral();
+        case 'RESUMO_GERAL': {
+            // "Como está o João?" → resumo do aluno, não da escola
+            let idResumo = resolvedAlunoId;
+            // Responsável sem nome citado mas com 1 filho → usa o filho
+            if (!idResumo && perfil === 'responsavel' && alunosVinculados && alunosVinculados.length === 1) {
+                idResumo = String(alunosVinculados[0]._id);
+            }
+            dados = idResumo
+                ? await fetchResumoAluno({ alunoContexto: idResumo })
+                : await fetchResumoGeral();
             break;
+        }
 
         default:
             dados = {};
@@ -944,6 +1077,7 @@ module.exports = {
     fetchProfessores,
     fetchTurmaGeral,
     fetchResumoGeral,
+    fetchResumoAluno,
     fetchHistorico,
     formatarResposta,
     buildPrompt,

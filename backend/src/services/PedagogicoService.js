@@ -66,6 +66,39 @@ class PedagogicoService {
     }
 
     /**
+     * Médias de nota agrupadas por turma (uma agregação só).
+     */
+    static async getMediasPorTurma() {
+        const pipeline = [
+            { $match: { nota: { $exists: true, $ne: null } } },
+            { $addFields: { notaNum: { $toDouble: '$nota' }, turmaFinal: { $ifNull: ['$turmaId', 'Sem turma'] } } },
+            { $group: { _id: '$turmaFinal', media: { $avg: '$notaNum' }, qtdNotas: { $sum: 1 } } },
+            { $sort: { media: 1 } },
+        ];
+        const rows = await Nota.aggregate(pipeline);
+        return rows.map(r => ({ turma: r._id, media: Number(r.media.toFixed(1)), qtdNotas: r.qtdNotas }));
+    }
+
+    /**
+     * As N disciplinas com pior desempenho (não só a pior).
+     */
+    static async getMateriasCriticas(n = 3) {
+        const rows = await Nota.aggregate([
+            { $match: { nota: { $exists: true, $ne: null } } },
+            {
+                $addFields: {
+                    notaNum: { $toDouble: '$nota' },
+                    materiaFinal: { $ifNull: ['$materiaId', '$materia', 'Geral'] }
+                }
+            },
+            { $group: { _id: '$materiaFinal', media: { $avg: '$notaNum' }, qtd: { $sum: 1 } } },
+            { $sort: { media: 1 } },
+            { $limit: n }
+        ]);
+        return rows.map(r => ({ materia: r._id, media: Number(r.media.toFixed(1)), qtd: r.qtd }));
+    }
+
+    /**
      * Busca a disciplina com desempenho mais baixo (Matéria Crítica).
      */
     static async getMateriaCritica() {
@@ -93,13 +126,21 @@ class PedagogicoService {
      * Gera Insights Globais Narrativos (Unificado).
      */
     static async getGlobalInsights() {
-        const [totalAlunos, mediaEscola, alunosAlerta, totalComunicados, materiaCriticaInfo] = await Promise.all([
+        const [totalAlunos, mediaEscola, alunosAlerta, totalComunicados, materiaCriticaInfo, mediasPorTurma, materiasCriticas] = await Promise.all([
             Aluno.countDocuments({ ativo: { $ne: false } }),
             this.getMediaEscola(),
             this.getAlunosEmAlertaFrequencia(),
             Comunicado.countDocuments({ ativo: true }),
-            this.getMateriaCritica()
+            this.getMateriaCritica(),
+            this.getMediasPorTurma(),
+            this.getMateriasCriticas(3)
         ]);
+
+        const turmasEmRisco = mediasPorTurma.filter(t => t.media < 6);
+        const melhorTurma = mediasPorTurma.length ? mediasPorTurma[mediasPorTurma.length - 1] : null;
+        const piorTurma = mediasPorTurma.length ? mediasPorTurma[0] : null;
+        // Nomes de até 5 alunos em alerta — dados REAIS para o insight citar
+        const alertaAmostra = alunosAlerta.slice(0, 5).map(a => `${a.nome} (${a.turma || 'sem turma'}, ${a.totalFaltas} faltas)`);
 
         // Geração do Sumário (Lógica movida do Controller)
         let sumario = `Análise Pedagógica Global finalizada. Atualmente, contamos com **${totalAlunos}** alunos ativos. `;
@@ -123,27 +164,45 @@ class PedagogicoService {
         sumario += `Há **${totalComunicados}** comunicados ativos mantendo a comunidade informada. `;
         sumario += "Recomendamos foco em reforço escolar para as turmas com média abaixo de 6.0.";
 
+        // Fallback determinístico com plano de ação concreto
+        if (turmasEmRisco.length > 0) {
+            sumario += `Turmas com média abaixo de 6.0: ${turmasEmRisco.map(t => `${t.turma} (${t.media})`).join(', ')}. `;
+        }
+
         const fallbackResult = {
             totalAlunos,
             mediaEscola,
             alunosRisco: alunosAlerta.length,
             materiaCritica: materiaCriticaInfo?.materia || "N/A",
+            turmasEmRisco: turmasEmRisco.map(t => t.turma),
+            melhorTurma: melhorTurma?.turma || null,
             sumario,
             timestamp: new Date()
         };
 
         try {
-            const prompt = `Você é o assistente pedagógico da escola. Com base nos dados abaixo, escreva um resumo em português brasileiro para o diretor, sem mencionar Gemini ou IA do Google.
+            const prompt = `Você é o assistente pedagógico da escola, escrevendo o painel de insights do BI para a DIREÇÃO. Nunca mencione Gemini, Google ou IA.
 
-- Total de alunos ativos: ${totalAlunos}
-- Média geral da escola: ${mediaEscola}
-- Alunos em alerta de evasão: ${alunosAlerta.length}
+DADOS REAIS DA ESCOLA (use somente estes números — nunca invente):
+- Alunos ativos: ${totalAlunos}
+- Média geral: ${mediaEscola}
+- Alunos em alerta de evasão (frequência crítica): ${alunosAlerta.length}${alertaAmostra.length ? `
+- Casos mais graves: ${alertaAmostra.join('; ')}` : ''}
+- Disciplinas com pior desempenho: ${materiasCriticas.map(m => `${m.materia} (média ${m.media})`).join(', ') || 'sem dados'}
+- Médias por turma (da pior para a melhor): ${mediasPorTurma.map(t => `${t.turma}: ${t.media}`).join(', ') || 'sem dados'}
+- Turmas com média abaixo de 6.0: ${turmasEmRisco.length ? turmasEmRisco.map(t => t.turma).join(', ') : 'nenhuma'}
 - Comunicados ativos: ${totalComunicados}
-- Matéria crítica: ${materiaCriticaInfo?.materia || 'N/A'} (média ${materiaCriticaInfo?.media || 'N/A'})
 
-Use um tom profissional, objetivo e amigável. Sugira foco em reforço pedagógico quando necessário.`;
+ESCREVA EM PORTUGUÊS-BR, TEXTO PURO (sem markdown), NESTA ESTRUTURA:
+1ª linha — visão geral em UMA frase direta (o diretor lê em 5 segundos).
+Depois, três blocos curtos separados por quebra de linha:
+"Destaques:" 1-2 pontos positivos concretos citando turma/matéria/números reais.
+"Pontos de atenção:" 1-3 riscos concretos, citando os alunos/turmas/matérias dos dados (nomes reais quando fornecidos).
+"Ações recomendadas:" 2-3 ações práticas e específicas que a direção pode executar esta semana (ex.: convocar responsáveis dos alunos citados, plano de reforço na matéria X para a turma Y). Nada genérico como "melhorar o ensino".
 
-            const naturalSummary = await voiceService.generateInsightText(prompt);
+Máximo de 130 palavras no total.`;
+
+            const naturalSummary = await voiceService.generateInsightText(prompt, { maxOutputTokens: 700, temperature: 0.5 });
             if (naturalSummary && naturalSummary.trim().length > 10) {
                 return {
                     ...fallbackResult,

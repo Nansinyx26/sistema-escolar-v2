@@ -152,32 +152,33 @@ describe('buildConversationalPrompt', () => {
 
     it('includes user profile', () => {
         const prompt = buildConversationalPrompt(baseParams);
-        expect(prompt).toContain('Perfil do usuário: responsavel');
+        expect(prompt).toContain('PERFIL (responsavel)');
     });
 
     it('includes user name', () => {
         const prompt = buildConversationalPrompt(baseParams);
-        expect(prompt).toContain('Nome do usuário (se houver): Maria Silva');
+        expect(prompt).toContain('nome Maria Silva');
     });
 
     it('includes user message', () => {
         const prompt = buildConversationalPrompt(baseParams);
-        expect(prompt).toContain('Mensagem do usuário: Olá, bom dia!');
+        expect(prompt).toContain('"Olá, bom dia!"');
     });
 
     it('handles missing user name', () => {
         const prompt = buildConversationalPrompt({ ...baseParams, nomeUsuario: null });
-        expect(prompt).toContain('não informado');
+        expect(prompt).not.toContain('nome null');
+        expect(prompt).toContain('perfil responsavel');
     });
 
     it('includes instruction to not invent data', () => {
         const prompt = buildConversationalPrompt(baseParams);
-        expect(prompt).toContain('Nunca invente dados');
+        expect(prompt).toContain('NUNCA invente nome de aluno');
     });
 
     it('includes instruction to never mention Gemini', () => {
         const prompt = buildConversationalPrompt(baseParams);
-        expect(prompt).toContain('Nunca use o nome "Gemini"');
+        expect(prompt).toContain('Nunca mencione "Gemini"');
     });
 
     it('includes instruction for short responses', () => {

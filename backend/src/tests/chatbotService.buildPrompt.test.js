@@ -24,13 +24,12 @@ describe('buildPrompt', () => {
 
     it('inclui instrução de tom empático e humanizado', () => {
         const prompt = buildPrompt(baseParams);
-        expect(prompt).toContain('empático');
-        expect(prompt).toContain('humanizado');
+        expect(prompt).toContain('humana');
     });
 
     it('inclui instrução de não retornar JSON bruto', () => {
         const prompt = buildPrompt(baseParams);
-        expect(prompt).toContain('NÃO retorne JSON bruto');
+        expect(prompt).toContain('NÃO retorne JSON');
     });
 
     it('inclui instrução de não usar markdown', () => {
@@ -51,7 +50,7 @@ describe('buildPrompt', () => {
 
     it('inclui a pergunta original no prompt', () => {
         const prompt = buildPrompt(baseParams);
-        expect(prompt).toContain('Pergunta original: Quais são as notas do meu filho?');
+        expect(prompt).toContain('Pergunta original: "Quais são as notas do meu filho?"');
     });
 
     it('serializa os dados consultados com JSON.stringify', () => {
@@ -126,11 +125,11 @@ describe('buildPrompt', () => {
 
     it('inclui seção de dados consultados do banco', () => {
         const prompt = buildPrompt(baseParams);
-        expect(prompt).toContain('[Dados consultados do banco]');
+        expect(prompt).toContain('[Dados reais consultados]');
     });
 
     it('inclui seção de histórico recente', () => {
         const prompt = buildPrompt(baseParams);
-        expect(prompt).toContain('[Histórico recente]');
+        expect(prompt).toContain('[Histórico recente da conversa]');
     });
 });
