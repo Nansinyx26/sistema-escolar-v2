@@ -1,6 +1,21 @@
 const AvaliacaoSistema = require('../models/AvaliacaoSistema');
 const Usuario = require('../models/Usuario');
 const SiteReview = require('../models/SiteReview');
+const Professor = require('../models/Professor');
+const Diretor = require('../models/Diretor');
+const Secretaria = require('../models/Secretaria');
+
+/**
+ * Normaliza o campo foto para uma URL que o <img> da landing consegue
+ * carregar. Trata o prefixo "gridfs:<id>" (foto salva no GridFS pelos
+ * perfis de equipe) — sem isso, a URL virava /api/files/gridfs:<id> e
+ * a imagem nunca carregava, caindo nas iniciais.
+ */
+function resolverFotoPublica(foto) {
+    if (!foto || typeof foto !== 'string') return '';
+    if (foto.startsWith('gridfs:')) return `/api/files/${foto.slice('gridfs:'.length)}`;
+    return foto; // data:, http(s):, /api/files/... já prontos
+}
 
 exports.create = async (req, res) => {
     try {
@@ -69,6 +84,20 @@ exports.getPublic = async (req, res) => {
             usuariosMap[u._id.toString()] = u;
         });
 
+        // Fallback de foto: perfis de equipe guardam a foto na própria
+        // collection (professores/diretores/secretarias), não em usuarios.
+        const [profs, dirs, secs] = await Promise.all([
+            Professor.find({ idUsuario: { $in: allUserIds } }).select('idUsuario foto').lean().catch(() => []),
+            Diretor.find({ idUsuario: { $in: allUserIds } }).select('idUsuario foto').lean().catch(() => []),
+            Secretaria.find({ idUsuario: { $in: allUserIds } }).select('idUsuario foto').lean().catch(() => []),
+        ]);
+        const fotoPerfilMap = {};
+        [...profs, ...dirs, ...secs].forEach(d => {
+            if (d.idUsuario && d.foto && !fotoPerfilMap[String(d.idUsuario)]) {
+                fotoPerfilMap[String(d.idUsuario)] = d.foto;
+            }
+        });
+
         // 4. Formata Avaliacoes do Sistema com dados atuais
         const formattedAvaliacoes = avaliacoes.map(a => {
             const u = a.usuarioId ? usuariosMap[a.usuarioId.toString()] : null;
@@ -79,7 +108,7 @@ exports.getPublic = async (req, res) => {
                 perfil: u?.perfil || a.perfil,
                 estrelas: a.estrelas,
                 texto: a.texto,
-                foto: u?.foto || u?.fotoGoogle || a.foto || '',
+                foto: resolverFotoPublica(u?.foto || u?.fotoGoogle || fotoPerfilMap[a.usuarioId?.toString()] || a.foto || ''),
                 ativo: true,
                 dataCriacao: a.dataCriacao
             };
@@ -95,7 +124,7 @@ exports.getPublic = async (req, res) => {
                 perfil: u?.perfil || r.userType,
                 estrelas: r.rating,
                 texto: r.comment,
-                foto: u?.foto || u?.fotoGoogle || r.userAvatar || '',
+                foto: resolverFotoPublica(u?.foto || u?.fotoGoogle || fotoPerfilMap[r.userId?.toString()] || r.userAvatar || ''),
                 ativo: true,
                 dataCriacao: r.updatedAt || r.createdAt || new Date()
             };
