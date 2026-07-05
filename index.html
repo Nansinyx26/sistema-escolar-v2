@@ -1093,23 +1093,22 @@
                 }
               }
 
-              const avatarContent = photoUrl
-                ? `<img src="${photoUrl}" alt="" onerror="this.style.display='none'; this.parentElement.innerText='${initials.replace(/'/g, "")}'">`
-                : initials;
-
               const cleanText = escapeHTML(av.texto || "");
               const cleanName = escapeHTML(name);
               const cleanRole = escapeHTML(
                 av.perfil || "Usuário",
               ).toUpperCase();
 
+              // Avatar entra vazio no HTML; a imagem é criada via DOM
+              // logo abaixo — interpolar a URL no template quebrava o
+              // markup quando a foto era um SVG data-URI com aspas.
               const card = `
                 <div class="test-card">
                   <div class="test-stars">${starsHtml}</div>
                   <div class="test-quote">"</div>
                   <p class="test-text">${cleanText}</p>
                   <div class="test-person">
-                    <div class="test-avatar ${avatarClass}">${avatarContent}</div>
+                    <div class="test-avatar ${avatarClass}"></div>
                     <div>
                       <div class="test-name">${cleanName}</div>
                       <div class="test-role">${cleanRole}</div>
@@ -1118,6 +1117,24 @@
                 </div>`;
 
               avaliacoesContainer.insertAdjacentHTML("beforeend", card);
+
+              const avatarEl =
+                avaliacoesContainer.lastElementChild.querySelector(
+                  ".test-avatar",
+                );
+              if (photoUrl && avatarEl) {
+                const img = document.createElement("img");
+                img.alt = "";
+                img.loading = "lazy";
+                img.onerror = () => {
+                  img.remove();
+                  avatarEl.textContent = initials;
+                };
+                img.src = photoUrl; // DOM: seguro para data-URIs com aspas
+                avatarEl.appendChild(img);
+              } else if (avatarEl) {
+                avatarEl.textContent = initials;
+              }
             });
 
             avaliacoesContainer
