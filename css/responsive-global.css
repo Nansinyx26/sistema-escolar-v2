@@ -924,3 +924,44 @@ body.preference-audio .listen-content-btn {
     letter-spacing: 1px !important;
   }
 }
+
+/* ============================================================
+   REDE DE SEGURANÇA RESPONSIVA GLOBAL (Bloco 7)
+   Aplica-se a todas as páginas que carregam este arquivo.
+   ============================================================ */
+
+/* Mídia fluida por padrão (seguro em qualquer largura) */
+img, video, canvas, svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* overflow-x só no mobile: no desktop quebraria position:sticky das
+   sidebars. No mobile a página não rola horizontalmente. */
+@media (max-width: 640px) {
+  html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  p, span, td, th, li, a, h1, h2, h3, h4 {
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  /* Qualquer <table> sem wrapper vira bloco scrollável no mobile —
+     evita que tabelas largas estourem a largura da tela.
+     Marque com class="no-responsive" para excluir. */
+  table:not(.no-responsive) {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Modais e overlays ocupam a tela com folga, sem vazar */
+  .modal, .modal-content, [class*="modal-card"], [class*="Modal"] {
+    max-width: calc(100vw - 24px) !important;
+    max-height: calc(100dvh - 24px) !important;
+  }
+}
