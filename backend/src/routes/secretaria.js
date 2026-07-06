@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const SecretariaController = require('../controllers/SecretariaController');
 const authorize = require('../middleware/authorize');
+const filtrarPorEscola = require('../middleware/filtrarPorEscola');
 
 // Todas as rotas requerem perfil secretaria, diretor ou admin
 const auth = authorize('secretaria', 'diretor', 'admin');
@@ -10,7 +11,9 @@ const auth = authorize('secretaria', 'diretor', 'admin');
 router.get('/dashboard/resumo', auth, SecretariaController.dashboardResumo);
 
 // ─── T3: Alunos & Matrículas ────────────────────────────────────────────────
-router.post('/alunos', auth, SecretariaController.criarAluno);
+router.post('/alunos', auth, filtrarPorEscola, SecretariaController.criarAluno);
+router.post('/alunos/importar', auth, filtrarPorEscola, SecretariaController.importarAlunos);
+router.post('/alunos/importar/estruturar', auth, SecretariaController.estruturarTextoAlunos);
 router.put('/alunos/:id', auth, SecretariaController.editarAluno);
 router.post('/matriculas', auth, SecretariaController.criarMatricula);
 router.put('/matriculas/:id/transferir', auth, SecretariaController.transferirMatricula);

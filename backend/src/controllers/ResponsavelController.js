@@ -10,12 +10,27 @@
  *   GET /api/responsavel/frequencia/:alunoId → resumo de frequência
  */
 
+const mongoose = require('mongoose');
 const Aluno = require('../models/Aluno');
 const Nota = require('../models/Nota');
 const Falta = require('../models/Falta');
 const FrequenciaProfessor = require('../models/FrequenciaProfessor');
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/**
+ * Monta um filtro para localizar uma notificação por `_id` OU pelo campo `id`.
+ * Só inclui a condição `_id` quando o valor for um ObjectId válido — caso
+ * contrário o Mongoose lança CastError (500) e a ação (marcar lida/ocultar)
+ * falha silenciosamente no portal.
+ */
+function buildNotifQuery(id) {
+    const or = [{ id: id }];
+    if (mongoose.Types.ObjectId.isValid(id)) {
+        or.push({ _id: id });
+    }
+    return { $or: or };
+}
 
 /**
  * Encontra o aluno vinculado ao e-mail do responsável.
@@ -72,6 +87,18 @@ exports.getAlunos = async (req, res) => {
         };
         const alunos = await Aluno.find(query).lean();
 
+        // Resolve o nome da escola de cada aluno (multi-escola).
+        // Legados sem escolaId caem no rótulo padrão "Escola Jaguari".
+        const escolaIds = [...new Set(alunos.map(a => a.escolaId).filter(Boolean).map(String))];
+        const escolaNomePorId = {};
+        if (escolaIds.length) {
+            try {
+                const Escola = require('../models/Escola');
+                const escolas = await Escola.find({ _id: { $in: escolaIds } }).select('nome').lean();
+                escolas.forEach(e => { escolaNomePorId[String(e._id)] = e.nome; });
+            } catch (_) { /* segue com fallback */ }
+        }
+
         // Retorna todos os dados para o frontend usar (dados pessoais, médicos, etc)
         const safeAlunos = alunos.map(aluno => {
             const safe = {
@@ -105,7 +132,8 @@ exports.getAlunos = async (req, res) => {
                 condicao: aluno.condicao || '',
                 observacoes: aluno.observacoes || '',
                 documentos: aluno.documentos || [],
-                lgpdConsentimento: aluno.lgpdConsentimento || null
+                lgpdConsentimento: aluno.lgpdConsentimento || null,
+                escolaNome: (aluno.escolaId && escolaNomePorId[String(aluno.escolaId)]) || 'Escola Jaguari'
             };
             if (safe.foto && safe.foto.length > 20 && !safe.foto.startsWith('data:') && !safe.foto.startsWith('/api')) {
                 safe.foto = `/api/upload/photo/${safe.foto}`;
@@ -603,12 +631,13 @@ exports.marcarComoLida = async (req, res) => {
         }
 
         const Notificacao = require('../models/Notificacao');
-        const notificacao = await Notificacao.findOne({ $or: [{ _id: id }, { id: id }] });
+        const notificacao = await Notificacao.findOne(buildNotifQuery(id));
         if (!notificacao) {
             return res.status(404).json({ success: false, error: 'Notificação não encontrada.' });
         }
 
         // Adiciona o alunoId ao array lido se não estiver lá
+        if (!Array.isArray(notificacao.lido)) notificacao.lido = [];
         const currentAluId = String(alunoId);
         if (!notificacao.lido.includes(currentAluId)) {
             notificacao.lido.push(currentAluId);
@@ -638,7 +667,7 @@ exports.ocultarNotificacao = async (req, res) => {
         }
 
         const Notificacao = require('../models/Notificacao');
-        const notificacao = await Notificacao.findOne({ $or: [{ _id: id }, { id: id }] });
+        const notificacao = await Notificacao.findOne(buildNotifQuery(id));
         if (!notificacao) {
             return res.status(404).json({ success: false, error: 'Notificação não encontrada.' });
         }

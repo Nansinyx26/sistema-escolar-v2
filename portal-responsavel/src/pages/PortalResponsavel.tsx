@@ -21,6 +21,7 @@ import PortalOnboardingManager from '../components/PortalOnboardingManager';
 import Toast from '../components/Toast';
 import LgpdConsentWidget from '../components/LgpdConsentWidget';
 import { PortalTabContent } from '../components/PortalTabs';
+import { getPhotoUrl } from '../utils/photoUtils';
 
 function toGmailUser(u: AuthUser, googleProfile?: GmailUser | null): GmailUser {
   return {
@@ -476,11 +477,43 @@ const PortalResponsavel: React.FC = () => {
         <aside className={styles.desktopSidebar} data-tour="sidebar">
           <div className={styles.desktopSidebarUserCard} data-tour="profile">
             <div className={styles.desktopSidebarAvatar}>
-              <span>{getInitials(authUser.nome)}</span>
+              {(() => {
+                const photoUrl = getPhotoUrl(authUser.foto || authUser.fotoGoogle || '');
+                const hasPhoto = photoUrl !== '/img/default-avatar.png';
+                return hasPhoto ? (
+                  <img
+                    src={photoUrl}
+                    alt={authUser.nome}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }}
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                ) : (
+                  <span>{getInitials(authUser.nome)}</span>
+                );
+              })()}
             </div>
             <h4>{authUser.nome}</h4>
             <p>{authUser.email}</p>
           </div>
+
+          {students.length > 0 && (
+            <div className={styles.desktopSidebarSchoolCard} aria-label="Escola dos filhos vinculados">
+              <span className={styles.desktopSidebarSchoolTitle}>
+                <i className="ti ti-school" aria-hidden="true" /> {students.length > 1 ? 'Escolas dos filhos' : 'Escola do filho'}
+              </span>
+              <ul className={styles.desktopSidebarSchoolList}>
+                {students.map((student) => (
+                  <li key={student.id}>
+                    <span className={styles.schoolChildName}>{student.nome} {student.sobrenome}</span>
+                    <span className={styles.schoolName}>
+                      <i className="ti ti-building" aria-hidden="true" /> {student.escolaNome || 'Escola Jaguari'}
+                      {student.turma ? <span className={styles.schoolTurma}> · {student.turma}</span> : null}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <LgpdConsentWidget accepted={lgpdAccepted} onSign={handleSignLgpd} />
 

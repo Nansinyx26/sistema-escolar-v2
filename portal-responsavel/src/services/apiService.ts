@@ -174,6 +174,7 @@ interface RawAluno {
   turma: string;
   dataNascimento: string;
   foto: string | null;
+  escolaNome?: string;
   ativo: boolean;
   cpfAluno?: string;
   telefone?: string;
@@ -207,6 +208,7 @@ export async function getAlunosDoResponsavel(): Promise<Student[]> {
     turma:           r.turma,
     dataNascimento:  r.dataNascimento,
     foto:            r.foto ?? undefined,
+    escolaNome:      r.escolaNome ?? undefined,
     responsavelId:   '',   // not needed on the client
     cpfAluno:        r.cpfAluno,
     telefone:        r.telefone,

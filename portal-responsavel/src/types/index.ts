@@ -63,6 +63,7 @@ export interface Student {
   turma: string;
   dataNascimento: string;
   foto?: string;
+  escolaNome?: string;
   responsavelId: string;
   cpfAluno?: string;
   telefone?: string;

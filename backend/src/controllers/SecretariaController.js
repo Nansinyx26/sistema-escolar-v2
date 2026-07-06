@@ -49,10 +49,13 @@ async function gerarNumeroDocumento() {
 // POST /api/secretaria/alunos — cadastrar aluno
 exports.criarAluno = async (req, res) => {
     try {
-        const dados = req.body;
+        const dados = { ...req.body };
         if (!dados.nome) {
             return res.status(400).json({ success: false, error: 'Nome do aluno é obrigatório.' });
         }
+
+        // Multi-tenant: carimba a escola ativa quando disponível
+        if (req.escolaId && !dados.escolaId) dados.escolaId = req.escolaId;
 
         const aluno = new Aluno(dados);
         await aluno.save();
@@ -62,6 +65,184 @@ exports.criarAluno = async (req, res) => {
         res.status(201).json({ success: true, data: aluno });
     } catch (error) {
         logger.error(`[Secretaria.criarAluno] ${error.message}`);
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+// ─── Importação em massa de alunos ───────────────────────────────────────────
+// Campos aceitos na importação (whitelist — ignora colunas desconhecidas)
+const CAMPOS_IMPORT_ALUNO = [
+    'nome', 'sobrenome', 'matricula', 'turma', 'nascimento',
+    'responsavel', 'telefone', 'cpfAluno', 'nacionalidade',
+    'etnia', 'religiao', 'endereco', 'observacoes'
+];
+
+// Normaliza uma data solta ("dd/mm/aaaa", "aaaa-mm-dd" ou ISO) para Date válido
+function parseDataNascimento(valor) {
+    if (!valor) return undefined;
+    if (valor instanceof Date) return isNaN(valor) ? undefined : valor;
+    const txt = String(valor).trim();
+    if (!txt) return undefined;
+    // dd/mm/aaaa
+    const br = txt.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (br) {
+        const d = new Date(Date.UTC(+br[3], +br[2] - 1, +br[1]));
+        return isNaN(d) ? undefined : d;
+    }
+    const d = new Date(txt);
+    return isNaN(d) ? undefined : d;
+}
+
+// Monta o objeto de aluno a partir de uma linha crua, aplicando a whitelist
+function montarDadosAluno(linha, escolaId) {
+    const dados = {};
+    for (const campo of CAMPOS_IMPORT_ALUNO) {
+        if (linha[campo] === undefined || linha[campo] === null) continue;
+        const valor = typeof linha[campo] === 'string' ? linha[campo].trim() : linha[campo];
+        if (valor === '') continue;
+        dados[campo] = valor;
+    }
+    if (dados.nascimento !== undefined) {
+        const dt = parseDataNascimento(dados.nascimento);
+        if (dt) dados.nascimento = dt; else delete dados.nascimento;
+    }
+    if (escolaId) dados.escolaId = escolaId;
+    dados.ativo = true;
+    return dados;
+}
+
+// POST /api/secretaria/alunos/importar — cadastro em massa a partir de linhas revisadas
+// Fluxo: o frontend lê o arquivo (CSV/PDF/DOC), monta um array revisado e envia aqui.
+// Nunca cria a partir de extração de IA sem esta etapa de confirmação.
+exports.importarAlunos = async (req, res) => {
+    try {
+        const linhas = Array.isArray(req.body?.alunos) ? req.body.alunos : null;
+        if (!linhas || linhas.length === 0) {
+            return res.status(400).json({ success: false, error: 'Envie uma lista de alunos em "alunos".' });
+        }
+        if (linhas.length > 1000) {
+            return res.status(400).json({ success: false, error: 'Limite de 1000 alunos por importação.' });
+        }
+
+        const criados = [];
+        const ignorados = [];
+        const erros = [];
+
+        for (let i = 0; i < linhas.length; i++) {
+            const linha = linhas[i] || {};
+            const numeroLinha = i + 1;
+            const nome = typeof linha.nome === 'string' ? linha.nome.trim() : '';
+
+            if (!nome) {
+                erros.push({ linha: numeroLinha, nome: linha.nome || '', erro: 'Nome é obrigatório.' });
+                continue;
+            }
+
+            const dados = montarDadosAluno(linha, req.escolaId);
+
+            // Dedupe por RA (matrícula) dentro da mesma escola, quando informado
+            if (dados.matricula) {
+                const filtroDup = { matricula: dados.matricula };
+                if (req.escolaId) filtroDup.escolaId = req.escolaId;
+                const existente = await Aluno.findOne(filtroDup).select('_id nome').lean();
+                if (existente) {
+                    ignorados.push({ linha: numeroLinha, nome, matricula: dados.matricula, motivo: 'Matrícula já cadastrada.' });
+                    continue;
+                }
+            }
+
+            try {
+                const aluno = new Aluno(dados); // pre-save gera codigoSecreto único
+                await aluno.save();
+                criados.push({ id: aluno._id, nome: aluno.nome, matricula: aluno.matricula, codigoSecreto: aluno.codigoSecreto });
+            } catch (e) {
+                if (e.code === 11000) {
+                    ignorados.push({ linha: numeroLinha, nome, matricula: dados.matricula, motivo: 'Registro duplicado (matrícula/código).' });
+                } else {
+                    erros.push({ linha: numeroLinha, nome, erro: e.message });
+                }
+            }
+        }
+
+        await audit(req, 'IMPORT_STUDENTS', 'Alunos', null, {
+            descricao: `Importação em massa: ${criados.length} criados, ${ignorados.length} ignorados, ${erros.length} com erro`
+        });
+
+        res.status(criados.length > 0 ? 201 : 200).json({
+            success: true,
+            data: {
+                totalEnviados: linhas.length,
+                totalCriados: criados.length,
+                totalIgnorados: ignorados.length,
+                totalErros: erros.length,
+                criados,
+                ignorados,
+                erros
+            }
+        });
+    } catch (error) {
+        logger.error(`[Secretaria.importarAlunos] ${error.message}`);
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+// POST /api/secretaria/alunos/importar/estruturar — usa IA para transformar o
+// texto extraído de um PDF/DOC em linhas de aluno PARA REVISÃO. Não cria nada.
+exports.estruturarTextoAlunos = async (req, res) => {
+    try {
+        const texto = typeof req.body?.texto === 'string' ? req.body.texto.trim() : '';
+        if (!texto || texto.length < 10) {
+            return res.status(400).json({ success: false, error: 'Texto do documento vazio ou muito curto.' });
+        }
+
+        const voiceService = require('../services/voiceService');
+        const prompt = `Você extrai dados de alunos de um documento escolar e responde SOMENTE com JSON válido, sem comentários.
+Retorne um array de objetos com estas chaves (use string vazia quando não houver o dado): nome, sobrenome, matricula, turma, nascimento, responsavel, telefone, cpfAluno.
+- "nascimento" no formato dd/mm/aaaa quando possível.
+- Não invente dados que não estão no texto.
+- Se o documento não contiver alunos, retorne [].
+
+DOCUMENTO:
+"""
+${texto}
+"""
+
+JSON:`;
+
+        let bruto = '';
+        try {
+            bruto = await voiceService.generateInsightText(prompt, { maxOutputTokens: 2000, temperature: 0 });
+        } catch (e) {
+            const status = e.quotaExceeded ? 503 : 502;
+            return res.status(status).json({ success: false, error: `Não foi possível processar o documento por IA: ${e.message}` });
+        }
+
+        // Extrai o array JSON mesmo que venha com texto ao redor
+        let linhas = [];
+        try {
+            const inicio = bruto.indexOf('[');
+            const fim = bruto.lastIndexOf(']');
+            const json = (inicio !== -1 && fim !== -1) ? bruto.slice(inicio, fim + 1) : bruto;
+            linhas = JSON.parse(json);
+        } catch (e) {
+            return res.status(422).json({ success: false, error: 'A IA não retornou dados estruturados legíveis. Revise o documento ou use CSV.' });
+        }
+
+        if (!Array.isArray(linhas)) linhas = [];
+        // Mantém apenas linhas com nome e só as chaves conhecidas
+        const CHAVES = ['nome', 'sobrenome', 'matricula', 'turma', 'nascimento', 'responsavel', 'telefone', 'cpfAluno'];
+        const limpos = linhas
+            .filter(l => l && typeof l === 'object' && String(l.nome || '').trim())
+            .slice(0, 1000)
+            .map(l => {
+                const o = {};
+                for (const k of CHAVES) o[k] = l[k] != null ? String(l[k]).trim() : '';
+                return o;
+            });
+
+        res.json({ success: true, data: { alunos: limpos, totalDetectados: limpos.length } });
+    } catch (error) {
+        logger.error(`[Secretaria.estruturarTextoAlunos] ${error.message}`);
         res.status(500).json({ success: false, error: error.message });
     }
 };

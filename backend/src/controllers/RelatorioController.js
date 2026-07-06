@@ -40,8 +40,9 @@ try {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-const CYAN   = '#00d4ff';
-const PURPLE = '#7c3aed';
+// Paleta alinhada ao design system do portal: fundo escuro + acento emerald #10b981.
+const CYAN   = '#10b981'; // acento primário (emerald) — antes ciano #00d4ff
+const PURPLE = '#059669'; // acento secundário (emerald escuro) p/ cabeçalhos — antes roxo
 const DARK   = '#0f172a';
 const DARK2  = '#1e293b';
 const WHITE  = '#ffffff';
@@ -219,7 +220,7 @@ exports.gerarBoletim = async (req, res) => {
                                 headerCell('2º BIM'),
                                 headerCell('3º BIM'),
                                 headerCell('4º BIM'),
-                                { ...headerCell('MÉDIA'), fillColor: '#581c87' }
+                                { ...headerCell('MÉDIA'), fillColor: '#064e3b' }
                             ],
                             ...tableRows
                         ]
