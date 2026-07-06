@@ -49,7 +49,7 @@ const getPasswordStrength = (pwd: string) => {
   }
 };
 
-type PortalTab = 'dashboard' | 'linking' | 'profile';
+type PortalTab = 'dashboard' | 'ficha' | 'linking' | 'profile';
 
 const PortalResponsavel: React.FC = () => {
   const rawApiUrl = import.meta.env.DEV
@@ -487,6 +487,9 @@ const PortalResponsavel: React.FC = () => {
           <nav className={styles.desktopSidebarNav} aria-label="Menu principal">
             <button onClick={() => setCurrentTab('dashboard')} className={`${styles.desktopSidebarNavLink} ${currentTab === 'dashboard' ? styles.active : ''}`}>
               <i className="ti ti-home" /> Painel Geral
+            </button>
+            <button onClick={() => setCurrentTab('ficha')} className={`${styles.desktopSidebarNavLink} ${currentTab === 'ficha' ? styles.active : ''}`}>
+              <i className="ti ti-clipboard-list" /> Ficha &amp; Autorizações
             </button>
             <button onClick={() => setCurrentTab('linking')} className={`${styles.desktopSidebarNavLink} ${currentTab === 'linking' ? styles.active : ''}`}>
               <i className="ti ti-user-plus" /> Vincular meu Filho

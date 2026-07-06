@@ -4456,3 +4456,13 @@ input:checked + .slider:before {
 @media (prefers-reduced-motion: reduce) {
   .announcementCard { transition: none !important; }
 }
+
+/* ── Aba Ficha & Autorizações (página dedicada) ── */
+.fichaWrapper {
+  max-width: 720px;   /* leitura confortável em coluna única */
+  margin: 0 auto;
+  animation: slideUp 0.4s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fichaWrapper { animation: none; }
+}

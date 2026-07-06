@@ -11,7 +11,7 @@ import FichaAluno from './FichaAluno';
 import DashboardSkeleton from './DashboardSkeleton';
 import styles from '../styles/portal.module.scss';
 
-type PortalTab = 'dashboard' | 'linking' | 'profile';
+type PortalTab = 'dashboard' | 'ficha' | 'linking' | 'profile';
 
 interface ProfileTabProps {
   authUser: AuthUser;
@@ -85,7 +85,6 @@ export function DashboardTabSection({
   onShowAllNotifications,
   onMarkAsRead,
   onDeleteNotification,
-  onStudentUpdate,
 }: DashboardTabProps) {
   if (students.length === 0) {
     return (
@@ -134,7 +133,6 @@ export function DashboardTabSection({
           { id: 'sec-notas', icon: 'ti-notebook', label: 'Notas' },
           { id: 'sec-frequencia', icon: 'ti-calendar-check', label: 'Frequência' },
           { id: 'sec-comunicados', icon: 'ti-speakerphone', label: 'Comunicados' },
-          { id: 'sec-documentos', icon: 'ti-files', label: 'Documentos' },
         ].map((atalho) => (
           <button
             key={atalho.id}
@@ -186,44 +184,88 @@ export function DashboardTabSection({
             </div>
           </div>
 
-          <div className={styles.comunicadosGrid}>
-            <div className={styles.comunicadosMainCol}>
-              <section id="sec-comunicados" aria-label="Comunicados">
-                <AnnouncementFeed />
-              </section>
+          <div className={styles.comunicadosMainCol}>
+            <section id="sec-comunicados" aria-label="Comunicados">
+              <AnnouncementFeed />
+            </section>
 
-              <div className={styles.cardsGrid}>
-                {detailsLoading ? (
-                  <>
-                    <div className={`${styles.skeleton} ${styles.skeletonCardMd}`} aria-busy="true" />
-                    <div className={`${styles.skeleton} ${styles.skeletonCardMd}`} aria-busy="true" />
-                  </>
-                ) : (
-                  <>
-                    <section id="sec-frequencia" aria-label="Frequência">
-                      <FrequencyCard attendance={attendance ?? { presenca: 0, ausencia: 0, atraso: 0, percentual: 0 }} />
-                    </section>
-                    <section id="sec-notas" aria-label="Notas">
-                      <NotesCard grades={grades} />
-                    </section>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div className={styles.comunicadosSideCol}>
-              <section id="sec-documentos" aria-label="Ficha e documentos do aluno">
-                {activeStudent && (
-                  <FichaAluno
-                    student={activeStudent}
-                    onUpdate={(partial) => onStudentUpdate(activeStudent.id, partial)}
-                  />
-                )}
-              </section>
+            <div className={styles.cardsGrid}>
+              {detailsLoading ? (
+                <>
+                  <div className={`${styles.skeleton} ${styles.skeletonCardMd}`} aria-busy="true" />
+                  <div className={`${styles.skeleton} ${styles.skeletonCardMd}`} aria-busy="true" />
+                </>
+              ) : (
+                <>
+                  <section id="sec-frequencia" aria-label="Frequência">
+                    <FrequencyCard attendance={attendance ?? { presenca: 0, ausencia: 0, atraso: 0, percentual: 0 }} />
+                  </section>
+                  <section id="sec-notas" aria-label="Notas">
+                    <NotesCard grades={grades} />
+                  </section>
+                </>
+              )}
             </div>
           </div>
         </>
       )}
+    </>
+  );
+}
+
+interface FichaTabProps {
+  activeStudent: Student | null;
+  students: Student[];
+  activeId: string | null;
+  onSelectStudent: (id: string) => void;
+  onStudentUpdate: (studentId: string, partial: Partial<Student>) => void;
+}
+
+/** Aba dedicada: Ficha & Autorizações do aluno (movida da coluna lateral). */
+export function FichaTabSection({ activeStudent, students, activeId, onSelectStudent, onStudentUpdate }: FichaTabProps) {
+  if (!activeStudent) {
+    return (
+      <div className={styles.emptyDashboardCard}>
+        <i className="ti ti-clipboard-list" style={{ fontSize: '3rem', color: '#10b981', marginBottom: '12px' }} />
+        <h3>Nenhum aluno selecionado</h3>
+        <p style={{ margin: '8px 0', color: '#94a3b8' }}>
+          Vincule um aluno à sua conta para preencher a ficha e as autorizações escolares.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {students.length > 1 && (
+        <div className={styles.topBarSelectors}>
+          <div className={styles.studentTabs}>
+            {students.map((student) => (
+              <button
+                key={student.id}
+                className={student.id === activeId ? styles.active : ''}
+                onClick={() => onSelectStudent(student.id)}
+              >
+                {student.nome} {student.sobrenome}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className={styles.pageHeader}>
+        <h1 className={styles.pageTitle}>Ficha &amp; Autorizações</h1>
+        <p className={styles.pageSubtitle}>
+          Dados, autorizações escolares e documento assinado de <strong>{activeStudent.nome} {activeStudent.sobrenome}</strong>
+        </p>
+      </div>
+
+      <div className={styles.fichaWrapper}>
+        <FichaAluno
+          student={activeStudent}
+          onUpdate={(partial) => onStudentUpdate(activeStudent.id, partial)}
+        />
+      </div>
     </>
   );
 }
@@ -269,6 +311,18 @@ export function PortalTabContent(props: PortalTabContentProps) {
 
   if (currentTab === 'linking') {
     return <LinkingTabSection onSuccess={onLinkingSuccess} onCancel={onLinkingCancel} />;
+  }
+
+  if (currentTab === 'ficha') {
+    return (
+      <FichaTabSection
+        activeStudent={activeStudent}
+        students={props.students}
+        activeId={props.activeId}
+        onSelectStudent={props.onSelectStudent}
+        onStudentUpdate={props.onStudentUpdate}
+      />
+    );
   }
 
   return <DashboardTabSection {...props} />;

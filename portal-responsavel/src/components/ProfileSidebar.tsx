@@ -11,7 +11,7 @@ interface ProfileSidebarProps {
   onUpdateUser: (updatedUser: AuthUser) => void;
   onLogout: () => void;
   onPasswordRecovery: () => void;
-  onNavigate: (tab: 'dashboard' | 'linking' | 'profile') => void;
+  onNavigate: (tab: 'dashboard' | 'ficha' | 'linking' | 'profile') => void;
   onRestartTour?: () => void;
 }
 
@@ -256,6 +256,15 @@ export default function ProfileSidebar({
                   className={styles.sidebarNavLink}
                 >
                   <i className="ti ti-home" /> Ir para o Painel (Home)
+                </button>
+                <button
+                  onClick={() => {
+                    onNavigate('ficha');
+                    onClose();
+                  }}
+                  className={styles.sidebarNavLink}
+                >
+                  <i className="ti ti-clipboard-list" /> Ficha &amp; Autorizações
                 </button>
                 <button
                   onClick={() => {
