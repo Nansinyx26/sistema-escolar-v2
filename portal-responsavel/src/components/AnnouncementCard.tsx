@@ -10,6 +10,7 @@ import { MessageCircle } from 'lucide-react';
 import { socket } from '../services/socket';
 import { getPhotoUrl } from '../utils/photoUtils';
 import { sanitizeHtml } from '../utils/htmlSanitizer';
+import styles from '../styles/portal.module.scss';
 
 interface Props {
   comunicado: Comunicado;
@@ -51,17 +52,9 @@ const AnnouncementCard: React.FC<Props> = ({ comunicado }) => {
   const directorPhoto = getPhotoUrl(comunicado.diretorFoto);
 
   return (
-    <div style={{
-      background: 'rgba(24, 24, 27, 0.5)',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
-      borderRadius: '12px',
-      overflow: 'hidden',
-      marginBottom: '24px',
-      minWidth: 0,
-      transition: 'border-color 0.2s',
-    }}>
+    <div className={styles.announcementCard}>
       {/* Header with avatar */}
-      <div style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div className={styles.announcementHeader} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         {directorPhoto && !directorPhoto.includes('default-avatar.png') ? (
           <img
             loading="lazy"

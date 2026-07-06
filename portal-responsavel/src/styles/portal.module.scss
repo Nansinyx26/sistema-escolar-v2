@@ -4370,3 +4370,89 @@ input:checked + .slider:before {
     transition: none !important;
   }
 }
+
+/* ════════════════════════════════════════════════════════════
+   POLIMENTO — Mural, Notas/Frequência, Sidebar e Mobile
+   ════════════════════════════════════════════════════════════ */
+
+/* ── 1. Card do comunicado (mural) — no tema, com hover e responsivo ── */
+.announcementCard {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 100px),
+    $bg-secondary;
+  border: 1px solid $border-color;
+  border-radius: $radius-lg;
+  overflow: hidden;
+  margin-bottom: 20px;
+  min-width: 0;
+  box-shadow: $shadow-card;
+  transition: border-color $transition-smooth, box-shadow $transition-smooth, transform $transition-smooth;
+
+  &:hover {
+    border-color: rgba($accent-cyan, 0.25);
+    box-shadow: $shadow-glow-cyan;
+    transform: translateY(-2px);
+  }
+}
+
+.announcementHeader {
+  padding: 16px 18px;
+}
+
+@media (max-width: 640px) {
+  .announcementHeader { padding: 14px 14px; }
+  /* Conteúdo e mídias do comunicado com respiro menor no celular */
+  .announcementCard > div { padding-left: 14px !important; padding-right: 14px !important; }
+}
+
+/* ── 2. Barra de frequência: cor semântica abaixo de 75% ── */
+.progressFillLow {
+  background: linear-gradient(90deg, $warning, $danger) !important;
+}
+
+/* ── 3. Sidebar: item ATIVO ganha barra emerald à esquerda (distingue
+      "onde estou" do simples hover) ── */
+.desktopSidebarNavLink {
+  position: relative;
+
+  &.active {
+    background: rgba(16, 185, 129, 0.1);
+    font-weight: 600;
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 60%;
+      border-radius: 0 3px 3px 0;
+      background: $accent-cyan;
+    }
+  }
+}
+
+/* ── 4. Mobile: respiro e alinhamento das seções-chave ── */
+@media (max-width: 640px) {
+  /* Cards de notas/frequência: padding um pouco menor */
+  .card { padding: 18px 16px; }
+
+  /* Grid de frequência 2x2 mantém bom toque */
+  .frequencyGrid { gap: 10px; }
+
+  /* Tabela de notas rola horizontalmente dentro do wrapper */
+  .tableWrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -4px;
+  }
+  .gradesTable { min-width: 460px; }
+
+  /* Título da página não encosta nas bordas */
+  .pageTitle { font-size: 1.4rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .announcementCard { transition: none !important; }
+}

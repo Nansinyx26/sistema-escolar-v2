@@ -76,11 +76,11 @@ const FrequencyCard: React.FC<FrequencyCardProps> = ({ attendance }) => {
         ))}
       </dl>
 
-      {/* Progress bar */}
+      {/* Progress bar — cor semântica: verde ok, âmbar/vermelho abaixo de 75% */}
       <div className={styles.progressBar} aria-label={`Barra de frequência: ${attendance.percentual}%`}>
         <div
-          className={styles.progressFill}
-          style={{ width: `${attendance.percentual}%` }}
+          className={`${styles.progressFill} ${attendance.percentual < 75 ? styles.progressFillLow : ''}`}
+          style={{ width: `${Math.min(100, Math.max(0, attendance.percentual))}%` }}
           role="progressbar"
           aria-valuenow={attendance.percentual}
           aria-valuemin={0}
