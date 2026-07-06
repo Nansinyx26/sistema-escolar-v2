@@ -62,7 +62,7 @@ function setupForm() {
 
             const res = await fetch(`${window.API_BASE_URL}/usuarios`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: window.csrfHeaders ? window.csrfHeaders(true) : { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify(payload)
             });

@@ -106,6 +106,7 @@
 </div>
 
 <script src="../../js/api-config.js"></script>
+    <script src="../../js/csrf-helper.js"></script>
 <script defer src="../../js/database.js?v=3"></script>
 <script defer src="../../js/auth.js?v=3"></script>
 <script defer src="../../js/utils.js?v=3"></script>
@@ -149,7 +150,7 @@ async function criarMatricula(e) {
     try {
         const res = await fetch(`${API()}/secretaria/matriculas`, {
             method: 'POST', credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
+            headers: window.csrfHeaders(true),
             body: JSON.stringify({
                 alunoId: document.getElementById('matAlunoId').value,
                 turmaId: document.getElementById('matTurmaId').value,
@@ -169,7 +170,7 @@ async function alterarStatus() {
     try {
         const res = await fetch(`${API()}/secretaria/matriculas/${id}/status`, {
             method: 'PUT', credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
+            headers: window.csrfHeaders(true),
             body: JSON.stringify({
                 status: document.getElementById('statusNovo').value,
                 motivoSaida: document.getElementById('statusMotivo').value

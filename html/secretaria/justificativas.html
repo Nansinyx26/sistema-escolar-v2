@@ -71,6 +71,7 @@
 </div>
 
 <script src="../../js/api-config.js"></script>
+    <script src="../../js/csrf-helper.js"></script>
 <script defer src="../../js/database.js?v=3"></script>
 <script defer src="../../js/auth.js?v=3"></script>
 <script defer src="../../js/utils.js?v=3"></script>
@@ -124,7 +125,7 @@ async function analisar(id, status) {
     try {
         const res = await fetch(`${API()}/secretaria/justificativas/${id}`, {
             method:'PUT', credentials:'include',
-            headers:{'Content-Type':'application/json'},
+            headers: window.csrfHeaders(true),
             body: JSON.stringify({ status, motivoRejeicao: motivo })
         });
         const json = await res.json();

@@ -98,6 +98,7 @@
 </div>
 
 <script src="../../js/api-config.js"></script>
+    <script src="../../js/csrf-helper.js"></script>
 <script defer src="../../js/database.js?v=3"></script>
 <script defer src="../../js/auth.js?v=3"></script>
 <script defer src="../../js/utils.js?v=3"></script>
@@ -115,7 +116,7 @@ async function gerarDocumento() {
     const tipo = document.getElementById('docTipo').value;
     if (!alunoId) return toast('Informe o ID do aluno', 'error');
     try {
-        const res = await fetch(`${API()}/secretaria/documentos/${tipo}/${alunoId}`, { method:'POST', credentials:'include' });
+        const res = await fetch(`${API()}/secretaria/documentos/${tipo}/${alunoId}`, { method:'POST', credentials:'include', headers: window.csrfHeaders(false) });
         const json = await res.json();
         if (json.success) {
             document.getElementById('docContent').innerHTML = json.data.conteudoHTML;
