@@ -139,29 +139,15 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, lgpdAccepted = true 
         </dl>
 
         {/* Action Buttons */}
-        <div style={{ marginTop: '1rem', display: 'flex', gap: '0.8rem', justifyContent: 'center' }}>
-          <button 
+        <div className={styles.studentActions}>
+          <button
             type="button"
-            className={styles.primaryButton} 
+            className={styles.boletimButton}
             onClick={handleDownloadBoletim}
             disabled={downloading}
-            style={{ 
-              fontSize: '0.8rem', 
-              padding: '0.5rem 0.8rem', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '0.4rem',
-              background: 'rgba(37, 99, 235, 0.1)',
-              color: '#2563eb',
-              border: '1px solid rgba(37, 99, 235, 0.2)',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              opacity: downloading ? 0.6 : 1
-            }}
           >
-            <i className={downloading ? "ti ti-loader animate-spin" : "ti ti-file-download"} />
-            {downloading ? 'Gerando...' : 'Boletim PDF'}
+            <i className={downloading ? 'ti ti-loader animate-spin' : 'ti ti-file-download'} aria-hidden="true" />
+            {downloading ? 'Gerando…' : 'Baixar boletim (PDF)'}
           </button>
         </div>
       </div>

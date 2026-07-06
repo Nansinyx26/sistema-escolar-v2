@@ -4283,3 +4283,90 @@ input:checked + .slider:before {
     animation: none !important;
   }
 }
+
+/* ════════════════════════════════════════════════════════════
+   POLIMENTO DE INTERFACE — Portal do Responsável
+   Refinamentos coesos no tema emerald/dark.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Botão de boletim (StudentCard) — no tema, não mais azul inline ── */
+.studentActions {
+  margin-top: 1.25rem;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  width: 100%;
+}
+
+.boletimButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.6rem 1.1rem;
+  border-radius: 10px;
+  cursor: pointer;
+  color: $accent-cyan;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.12s ease;
+
+  &:hover:not(:disabled) {
+    background: rgba(16, 185, 129, 0.18);
+    border-color: rgba(16, 185, 129, 0.5);
+    transform: translateY(-1px);
+  }
+  &:active:not(:disabled) { transform: translateY(0); }
+  &:focus-visible { outline: 2px solid $accent-cyan; outline-offset: 2px; }
+  &:disabled { opacity: 0.6; cursor: default; }
+}
+
+/* ── Superfície dos cards: leve gradiente de profundidade + hover suave ── */
+.studentCard,
+.card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 120px),
+    $bg-secondary;
+}
+
+/* ── Faixa de destaque no topo do card do aluno (identidade emerald) ── */
+.studentCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: $radius-lg $radius-lg 0 0;
+  background: linear-gradient(90deg, $accent-cyan, $accent-purple);
+  opacity: 0.9;
+}
+
+/* ── Cabeçalho: respiro e hierarquia ── */
+.pageHeader {
+  padding-bottom: 4px;
+  border-bottom: 1px solid $border-color;
+}
+.pageSubtitle {
+  margin-top: 2px;
+  line-height: 1.5;
+}
+
+/* ── Info do aluno: chips mais legíveis ── */
+.infoItem {
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+.infoItem:hover {
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+/* ── Redução de movimento ── */
+@media (prefers-reduced-motion: reduce) {
+  .boletimButton,
+  .studentCard,
+  .card,
+  .infoItem {
+    transition: none !important;
+  }
+}
