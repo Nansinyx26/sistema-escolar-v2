@@ -3,10 +3,24 @@
  */
 
 .dashboard-page {
-    background: var(--surface-gradient), #020617;
+    /* Fundo transparente para revelar o canvas da rede neural/sinapse
+       (threejs-dashboard.js cria um <canvas> fixo em z-index:-1). O antigo
+       fundo azulado (--surface-gradient indigo) era opaco e cobria o canvas,
+       fazendo a animação "sumir". O preto neutro fica atrás do canvas. */
+    background: transparent;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+}
+
+/* Camada de fundo preta (neutra, sem tom azulado) atrás da sinapse (-1) */
+.dashboard-page::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: #060608;
+    z-index: -2;
+    pointer-events: none;
 }
 
 /* === HEADER (CLEAN MODERN) === */
