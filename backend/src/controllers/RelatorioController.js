@@ -6,34 +6,72 @@ const Falta = require('../models/Falta');
 const logger = require('../utils/logger');
 
 // ── Resolução robusta das fontes pdfmake ──────────────────────────────────────
-// Tenta múltiplos caminhos para funcionar tanto em dev quanto no Render
-function resolveFontPath(filename) {
+// Tenta múltiplos caminhos em disco; se nenhum existir, cai para os buffers
+// embutidos no vfs_fonts.js do próprio pdfmake (base64). Sem isso, o pacote
+// pdfmake não traz os .ttf em disco e o createPdfKitDocument falha em runtime
+// (boletim não gera / 500).
+function resolveFontFile(filename) {
     const candidates = [
         path.join(__dirname, '../../node_modules/pdfmake/fonts/Roboto', filename),
         path.join(process.cwd(), 'node_modules/pdfmake/fonts/Roboto', filename),
         path.join(__dirname, '../../../node_modules/pdfmake/fonts/Roboto', filename),
     ];
     for (const p of candidates) {
-        if (fs.existsSync(p)) return p;
+        if (fs.existsSync(p)) return p; // caminho em disco (preferível)
     }
-    // fallback: retorna o primeiro (vai falhar com mensagem clara)
-    logger.warn(`[PDF] Fonte não encontrada: ${filename}. Usando fallback.`);
-    return candidates[0];
+    return null;
+}
+
+// Extrai as fontes Roboto embutidas no vfs (Buffers) como fallback confiável.
+function loadVfsFontBuffers() {
+    try {
+        const vfsModule = require('pdfmake/build/vfs_fonts.js');
+        const vfs = (vfsModule.pdfMake && vfsModule.pdfMake.vfs) || vfsModule.vfs || vfsModule;
+        const get = (name) => (vfs[name] ? Buffer.from(vfs[name], 'base64') : null);
+        const buffers = {
+            normal:      get('Roboto-Regular.ttf'),
+            bold:        get('Roboto-Medium.ttf'),
+            italics:     get('Roboto-Italic.ttf'),
+            bolditalics: get('Roboto-MediumItalic.ttf'),
+        };
+        return buffers.normal ? buffers : null;
+    } catch (e) {
+        logger.warn(`[PDF] Não foi possível carregar fontes do vfs: ${e.message}`);
+        return null;
+    }
+}
+
+function buildRobotoFontDef() {
+    const disk = {
+        normal:      resolveFontFile('Roboto-Regular.ttf'),
+        bold:        resolveFontFile('Roboto-Medium.ttf'),
+        italics:     resolveFontFile('Roboto-Italic.ttf'),
+        bolditalics: resolveFontFile('Roboto-MediumItalic.ttf'),
+    };
+    if (disk.normal && disk.bold && disk.italics && disk.bolditalics) {
+        logger.info('[PDF] Fontes Roboto carregadas do disco.');
+        return disk;
+    }
+    const vfs = loadVfsFontBuffers();
+    if (vfs) {
+        logger.info('[PDF] Fontes Roboto carregadas do vfs embutido (Buffers).');
+        // Preenche eventuais faltas de disco com o buffer correspondente
+        return {
+            normal:      disk.normal      || vfs.normal,
+            bold:        disk.bold        || vfs.bold,
+            italics:     disk.italics     || vfs.italics,
+            bolditalics: disk.bolditalics || vfs.bolditalics,
+        };
+    }
+    logger.warn('[PDF] Nenhuma fonte Roboto encontrada (disco ou vfs).');
+    return disk;
 }
 
 // ── Inicialização do PdfPrinter (pdfmake 0.2.x) ───────────────────────────────
 let printer;
 try {
     const PdfPrinter = require('pdfmake');
-    const fonts = {
-        Roboto: {
-            normal:      resolveFontPath('Roboto-Regular.ttf'),
-            bold:        resolveFontPath('Roboto-Medium.ttf'),
-            italics:     resolveFontPath('Roboto-Italic.ttf'),
-            bolditalics: resolveFontPath('Roboto-MediumItalic.ttf'),
-        }
-    };
-    printer = new PdfPrinter(fonts);
+    printer = new PdfPrinter({ Roboto: buildRobotoFontDef() });
     logger.info('[PDF] PdfPrinter inicializado com sucesso.');
 } catch (e) {
     logger.error(`[PDF] Falha ao inicializar PdfPrinter: ${e.message}`);

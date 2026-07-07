@@ -26,15 +26,35 @@ const STATUS_COLORS: Record<string, string> = {
   conferido: '#10b981',
 };
 
-function SimNaoSelect({ value, onChange, label }: {
+function SimNaoSelect({ value, onChange, label, description }: {
   value: boolean | null | undefined;
   onChange: (v: boolean | null) => void;
   label: string;
+  description?: string;
 }) {
   const val = value === true ? 'sim' : value === false ? 'nao' : '';
+  const [showInfo, setShowInfo] = useState(false);
   return (
     <div style={{ marginBottom: '0.75rem' }}>
-      <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem', color: 'rgba(255,255,255,0.7)' }}>{label}</label>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.25rem' }}>
+        <label style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)' }}>{label}</label>
+        {description && (
+          <button
+            type="button"
+            onClick={() => setShowInfo(v => !v)}
+            aria-expanded={showInfo}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'transparent', border: 'none', color: '#10b981', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer', padding: '2px 4px', whiteSpace: 'nowrap' }}
+          >
+            <i className={`bi ${showInfo ? 'bi-chevron-up' : 'bi-info-circle'}`} />
+            {showInfo ? 'Ocultar' : 'Exibir detalhes'}
+          </button>
+        )}
+      </div>
+      {description && showInfo && (
+        <p style={{ margin: '0 0 0.5rem', padding: '0.6rem 0.75rem', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '8px', fontSize: '0.78rem', lineHeight: 1.5, color: 'rgba(255,255,255,0.75)' }}>
+          {description}
+        </p>
+      )}
       <select
         value={val}
         onChange={e => onChange(e.target.value === 'sim' ? true : e.target.value === 'nao' ? false : null)}
@@ -47,6 +67,18 @@ function SimNaoSelect({ value, onChange, label }: {
     </div>
   );
 }
+
+// Explicações em linguagem simples — ajudam o responsável a entender o que
+// está autorizando (ou não) em cada item da ficha escolar.
+const AUTORIZACAO_INFO: Record<string, string> = {
+  tratamentoOdontologico: 'Autoriza a escola a encaminhar seu filho(a) ao atendimento odontológico (dentista) oferecido ou conveniado pela escola, incluindo avaliações e ações preventivas como aplicação de flúor. Marque NÃO se prefere cuidar do dentista por conta própria.',
+  tratamentoMedicoEmergencial: 'Em caso de acidente ou mal súbito, autoriza a escola a buscar atendimento médico de urgência (levar ao posto/hospital ou acionar o SAMU) mesmo antes de conseguir falar com você. É uma autorização de segurança para agir rápido quando cada minuto conta — a escola tentará avisá-lo(a) o quanto antes.',
+  testagemAcuidade: 'Autoriza exames simples e não invasivos de visão e audição feitos na própria escola, para identificar cedo se a criança precisa de óculos ou de acompanhamento. Os resultados são informados a você.',
+  atividadesFisicas: 'Autoriza a participação nas aulas de educação física, jogos e esportes da escola. Marque NÃO apenas se houver recomendação médica de restrição — nesse caso, envie o atestado.',
+  atividadesExtraclasse: 'Autoriza a participação em passeios, visitas e excursões fora da escola organizados pela instituição, com transporte e acompanhamento dos professores. Cada passeio específico ainda poderá ter um aviso próprio com data e local.',
+  conducaoEscolar: 'Indica que o transporte do aluno é feito por van ou ônibus escolar contratado por você (particular). Ao marcar SIM, informe o nome e o telefone do motorista responsável, para que a escola saiba quem está autorizado a levar/buscar a criança.',
+  antitermico: 'Autoriza a escola a administrar medicamento para febre (antitérmico) caso a criança apresente febre, seguindo exatamente o medicamento e a dose que você informar. Marque NÃO se prefere ser sempre avisado(a) antes de qualquer medicação.',
+};
 
 const FichaAluno: React.FC<Props> = ({ student, onUpdate }) => {
   const [auth, setAuth] = useState<AutorizacoesEscolares>(student.autorizacoesEscolares || {});
@@ -139,13 +171,16 @@ const FichaAluno: React.FC<Props> = ({ student, onUpdate }) => {
       </div>
 
       {/* Autorizações */}
-      <h4 style={{ fontSize: '0.85rem', color: '#10b981', margin: '1rem 0 0.5rem' }}>Autorizações Escolares</h4>
-      <SimNaoSelect label="Tratamento odontológico" value={auth.tratamentoOdontologico} onChange={v => setAuth(a => ({ ...a, tratamentoOdontologico: v }))} />
-      <SimNaoSelect label="Tratamento médico emergencial" value={auth.tratamentoMedicoEmergencial} onChange={v => setAuth(a => ({ ...a, tratamentoMedicoEmergencial: v }))} />
-      <SimNaoSelect label="Testagem acuidade visual/auditiva" value={auth.testagemAcuidade} onChange={v => setAuth(a => ({ ...a, testagemAcuidade: v }))} />
-      <SimNaoSelect label="Atividades físicas" value={auth.atividadesFisicas} onChange={v => setAuth(a => ({ ...a, atividadesFisicas: v }))} />
-      <SimNaoSelect label="Atividades extraclasse / excursões" value={auth.atividadesExtraclasse} onChange={v => setAuth(a => ({ ...a, atividadesExtraclasse: v }))} />
-      <SimNaoSelect label="Condução escolar contratada" value={auth.conducaoEscolar} onChange={v => setAuth(a => ({ ...a, conducaoEscolar: v }))} />
+      <h4 style={{ fontSize: '0.85rem', color: '#10b981', margin: '1rem 0 0.25rem' }}>Autorizações Escolares</h4>
+      <p style={{ fontSize: '0.76rem', color: 'rgba(255,255,255,0.5)', margin: '0 0 0.75rem', lineHeight: 1.5 }}>
+        Toque em <strong style={{ color: '#10b981' }}>Exibir detalhes</strong> em cada item para entender exatamente o que você está autorizando antes de escolher SIM ou NÃO.
+      </p>
+      <SimNaoSelect label="Tratamento odontológico" description={AUTORIZACAO_INFO.tratamentoOdontologico} value={auth.tratamentoOdontologico} onChange={v => setAuth(a => ({ ...a, tratamentoOdontologico: v }))} />
+      <SimNaoSelect label="Tratamento médico emergencial" description={AUTORIZACAO_INFO.tratamentoMedicoEmergencial} value={auth.tratamentoMedicoEmergencial} onChange={v => setAuth(a => ({ ...a, tratamentoMedicoEmergencial: v }))} />
+      <SimNaoSelect label="Testagem acuidade visual/auditiva" description={AUTORIZACAO_INFO.testagemAcuidade} value={auth.testagemAcuidade} onChange={v => setAuth(a => ({ ...a, testagemAcuidade: v }))} />
+      <SimNaoSelect label="Atividades físicas" description={AUTORIZACAO_INFO.atividadesFisicas} value={auth.atividadesFisicas} onChange={v => setAuth(a => ({ ...a, atividadesFisicas: v }))} />
+      <SimNaoSelect label="Atividades extraclasse / excursões" description={AUTORIZACAO_INFO.atividadesExtraclasse} value={auth.atividadesExtraclasse} onChange={v => setAuth(a => ({ ...a, atividadesExtraclasse: v }))} />
+      <SimNaoSelect label="Condução escolar contratada" description={AUTORIZACAO_INFO.conducaoEscolar} value={auth.conducaoEscolar} onChange={v => setAuth(a => ({ ...a, conducaoEscolar: v }))} />
       {auth.conducaoEscolar && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
           <input placeholder="Nome do motorista" value={auth.motoristaNome || ''} onChange={e => setAuth(a => ({ ...a, motoristaNome: e.target.value }))}
@@ -154,7 +189,7 @@ const FichaAluno: React.FC<Props> = ({ student, onUpdate }) => {
             style={{ padding: '0.5rem', borderRadius: '8px', background: '#18181b', border: '1px solid #27272a', color: '#fff' }} />
         </div>
       )}
-      <SimNaoSelect label="Autoriza antitérmico" value={auth.antitermico} onChange={v => setAuth(a => ({ ...a, antitermico: v }))} />
+      <SimNaoSelect label="Autoriza antitérmico" description={AUTORIZACAO_INFO.antitermico} value={auth.antitermico} onChange={v => setAuth(a => ({ ...a, antitermico: v }))} />
       {auth.antitermico && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
           <input placeholder="Nome do medicamento" value={auth.medicamentoNome || ''} onChange={e => setAuth(a => ({ ...a, medicamentoNome: e.target.value }))}
@@ -165,7 +200,10 @@ const FichaAluno: React.FC<Props> = ({ student, onUpdate }) => {
       )}
 
       {/* Pessoas autorizadas retirada */}
-      <h4 style={{ fontSize: '0.85rem', color: '#10b981', margin: '1rem 0 0.5rem' }}>Pessoas Autorizadas a Retirar</h4>
+      <h4 style={{ fontSize: '0.85rem', color: '#10b981', margin: '1rem 0 0.25rem' }}>Pessoas Autorizadas a Retirar</h4>
+      <p style={{ fontSize: '0.76rem', color: 'rgba(255,255,255,0.5)', margin: '0 0 0.6rem', lineHeight: 1.5 }}>
+        Liste quem, além dos responsáveis, pode buscar a criança na saída (ex.: avós, tios, babá). A escola só liberará o aluno para as pessoas cadastradas aqui, mediante documento com foto.
+      </p>
       {pessoas.map((p, i) => (
         <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '0.5rem', marginBottom: '0.5rem' }}>
           <input placeholder="Nome" value={p.nome} onChange={e => { const n = [...pessoas]; n[i] = { ...n[i], nome: e.target.value }; setPessoas(n); }}

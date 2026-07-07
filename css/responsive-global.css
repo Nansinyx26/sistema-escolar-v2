@@ -965,3 +965,73 @@ img, video, canvas, svg {
     max-height: calc(100dvh - 24px) !important;
   }
 }
+
+/* ============================================================
+   REFORÇO RESPONSIVO — PÁGINAS DE DIRETOR / PROFESSOR / SECRETARIA
+   Padrões que costumam estourar em telas pequenas. Escopo mobile
+   (≤ 768px) e apenas classes de conteúdo destas áreas — sem afetar
+   o desktop nem o layout da landing.
+   ============================================================ */
+@media (max-width: 768px) {
+  /* Cabeçalhos "título + ações" lado a lado quebram para coluna */
+  .sec-header,
+  .page-header,
+  .content-header,
+  .panel-header,
+  .card-header-row,
+  .toolbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+  }
+
+  /* Grids largas (auto-fit com min grande) colapsam para 1 coluna */
+  .sec-form-grid,
+  .sec-stats-grid,
+  .sec-quick-grid,
+  .cards-grid,
+  .grid-2,
+  .grid-3,
+  .grid-4,
+  .stats-cards,
+  .metrics-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Linhas de botões: cada botão ocupa a largura toda e centraliza */
+  .actions-row,
+  .btn-row,
+  .form-actions,
+  .sec-header > div,
+  .direcao-actions {
+    flex-wrap: wrap !important;
+  }
+  .actions-row > button,
+  .actions-row > a,
+  .btn-row > button,
+  .btn-row > a,
+  .form-actions > button {
+    flex: 1 1 100% !important;
+    justify-content: center !important;
+  }
+
+  /* Campos de formulário e selects nunca menores que a tela */
+  input, select, textarea {
+    max-width: 100% !important;
+  }
+
+  /* Containers de conteúdo com padding menor no celular */
+  .sec-page,
+  .content-wrap,
+  .page-wrap {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Em telas muito pequenas, stats de 2 colunas viram 1 */
+  .sec-stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

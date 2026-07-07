@@ -838,37 +838,60 @@
 
       /* ── RESPONSIVE ── */
       @media (max-width: 900px) {
+        html,
+        body {
+          overflow: auto; /* permite rolar a página inteira no celular */
+          height: auto;
+          min-height: 100%;
+        }
         .app {
           grid-template-columns: 1fr;
-          grid-template-rows: 1fr 1fr;
-          overflow-y: auto;
+          grid-template-rows: auto auto;
+          height: auto;
+          min-height: 100dvh;
         }
         .stage {
-          height: 50vh;
-          min-height: 350px;
+          min-height: 300px;
+          padding: 24px 16px;
         }
         .chat-panel {
-          height: 50vh;
           border-left: none;
           border-top: 1px solid var(--border);
+          /* garante área utilizável sem esconder o input atrás da barra do navegador */
+          min-height: 70vh;
         }
         :root {
           --orb-size: 140px;
+        }
+        .gear-btn {
+          top: 12px;
+          right: 12px;
         }
       }
 
       @media (max-width: 600px) {
         .stage {
-          height: 40vh;
+          min-height: 240px;
+          gap: 24px;
         }
-        .chat-panel {
-          height: 60vh;
+        .chat-header {
+          padding: 14px 16px;
         }
         .chat-header-info h2 {
           font-size: 13px;
         }
+        .messages {
+          padding: 16px;
+        }
+        .msg {
+          max-width: 92%;
+        }
         .msg-bubble {
-          font-size: 12.5px;
+          font-size: 13px;
+        }
+        .input-wrap {
+          padding: 12px 14px;
+          gap: 8px;
         }
       }
     </style>
@@ -1228,15 +1251,22 @@
           }
           addMessage("ai", reply);
 
-          // Chamar o serviço de voz global padronizado
-          if (window.speak) {
-            setState("speaking");
-            const audio = await window.speak(reply);
-            if (audio) {
-              audio.onended = () => setState("idle");
-            } else {
+          // Voz é opcional: uma falha no TTS não deve invalidar a resposta de texto.
+          if (typeof window.speak === "function") {
+            try {
+              setState("speaking");
+              const audio = await window.speak(reply);
+              if (audio && typeof audio.onended !== "undefined") {
+                audio.onended = () => setState("idle");
+              } else {
+                setState("idle");
+              }
+            } catch (voiceErr) {
+              console.warn("[IA Assistant] TTS indisponível:", voiceErr?.message);
               setState("idle");
             }
+          } else {
+            setState("idle");
           }
         } catch (err) {
           removeTypingIndicator();
