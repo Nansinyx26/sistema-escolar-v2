@@ -148,8 +148,11 @@ function atualizarHeader(user, perfil) {
     if (sidebarUserName) sidebarUserName.textContent = nomeExibir;
     if (sidebarUserRole) sidebarUserRole.textContent = roleLabel;
 
-    // Sincroniza fotos em toda a interface
-    const userToUpdate = perfil ? { ...user, foto: perfil.foto } : user;
+    // Sincroniza fotos em toda a interface.
+    // Só sobrescreve a foto do login se o perfil estendido realmente tiver uma
+    // — antes, o fallback (perfil = { nome }) zerava a foto real do usuário.
+    const fotoPerfil = perfil && (perfil.foto || perfil.fotoGoogle);
+    const userToUpdate = fotoPerfil ? { ...user, foto: fotoPerfil } : user;
     if (window.updateAllAvatars) {
         window.updateAllAvatars(userToUpdate);
     }
