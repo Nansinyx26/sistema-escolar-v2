@@ -11,8 +11,20 @@ const voiceService = require('../services/voiceService');
 const logger       = require('../utils/logger');
 const { PERSONA_PROMPT_PREFIX } = require('./assistantPersona');
 const offlineResponseService    = require('./offlineResponseService');
+const { escolaMatch }           = require('../middleware/filtrarPorEscola');
 
 const DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+
+/**
+ * Combina um filtro-base com o filtro de escola (tolerante a legados) usando
+ * $and — evita colisão da chave $or (ex.: filtro do responsável) com o $or do
+ * escopo por escola. Retorna o base inalterado quando não há escola no contexto.
+ */
+function comEscola(base, ef) {
+    if (!ef || Object.keys(ef).length === 0) return base;
+    if (!base || Object.keys(base).length === 0) return ef;
+    return { $and: [base, ef] };
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Internal helpers
@@ -319,14 +331,17 @@ function detectMateria(message) {
  * @param {string} [params.userEmail]
  * @returns {Promise<{ alunoFilter: Object, turmasAutorizadas: string[]|null, professorDoc: Object|null, alunosVinculados?: Object[] }>}
  */
-async function enforceRBAC({ perfil, userId, userEmail }) {
+async function enforceRBAC({ perfil, userId, userEmail, escolaId }) {
+    // Escopo por escola (tolerante a registros legados sem escolaId)
+    const ef = escolaMatch(escolaId);
+
     if (perfil === 'responsavel') {
-        const alunoFilter = {
+        const alunoFilter = comEscola({
             $or: [
                 { responsavel: userEmail },
                 { 'responsavelDados.email': userEmail },
             ],
-        };
+        }, ef);
         const alunosVinculados = await Aluno.find(alunoFilter)
             .select('_id turma turmaId nome')
             .lean();
@@ -339,18 +354,19 @@ async function enforceRBAC({ perfil, userId, userEmail }) {
     if (perfil === 'professor') {
         const professorDoc = await Professor.findOne({ idUsuario: String(userId) }).lean();
         if (!professorDoc) {
-            return { alunoFilter: {}, turmasAutorizadas: [], professorDoc: null };
+            return { alunoFilter: { _id: null }, turmasAutorizadas: [], professorDoc: null };
         }
         const turmasAutorizadas = [
             professorDoc.salaPrincipal,
             ...(professorDoc.salasAdicionais || []),
         ].filter(Boolean);
-        const alunoFilter = { turma: { $in: turmasAutorizadas } };
+        const alunoFilter = comEscola({ turma: { $in: turmasAutorizadas } }, ef);
         return { alunoFilter, turmasAutorizadas, professorDoc };
     }
 
-    // diretor, admin, coordenador, secretaria — acesso irrestrito
-    return { alunoFilter: {}, turmasAutorizadas: null, professorDoc: null };
+    // diretor, admin, coordenador, secretaria — restrito à ESCOLA ativa
+    // (antes irrestrito: o diretor via alunos de todas as escolas no chat)
+    return { alunoFilter: ef, turmasAutorizadas: null, professorDoc: null };
 }
 
 /**
@@ -479,16 +495,17 @@ async function fetchFaltas({ alunoContexto }) {
  * @param {string} [params.turmaAluno] Turma of the selected aluno (used for responsavel filter)
  * @returns {Promise<Object[]>}
  */
-async function fetchComunicados({ perfil, turmaAluno }) {
-    const query = { ativo: true };
+async function fetchComunicados({ perfil, turmaAluno, escolaId }) {
+    const base = { ativo: true };
 
     if (perfil === 'responsavel') {
-        query.destinatarios = { $in: ['todos', 'responsaveis', turmaAluno].filter(Boolean) };
+        base.destinatarios = { $in: ['todos', 'responsaveis', turmaAluno].filter(Boolean) };
     } else if (perfil === 'professor') {
-        query.destinatarios = { $in: ['todos', 'professores'] };
+        base.destinatarios = { $in: ['todos', 'professores'] };
     }
     // admin, diretor, coordenador, secretaria: sem filtro de destinatários
 
+    const query = comEscola(base, escolaMatch(escolaId));
     const comunicados = await Comunicado.find(query)
         .sort({ dataCriacao: -1 })
         .limit(5)
@@ -550,12 +567,17 @@ async function fetchTurmaGeral({ alunoFilter }) {
  * @param {Object} params
  * @returns {Promise<Object>}
  */
-async function fetchResumoGeral() {
+async function fetchResumoGeral({ escolaId } = {}) {
+    const ef = escolaMatch(escolaId);
+    const temEscola = ef && Object.keys(ef).length > 0;
     const [notaAgg, totalFaltas, totalAulas, totalComunicadosAtivos] = await Promise.all([
-        Nota.aggregate([{ $group: { _id: null, media: { $avg: { $toDouble: '$nota' } } } }]),
-        Falta.countDocuments({ presente: false }),
-        Falta.countDocuments(),
-        Comunicado.countDocuments({ ativo: true }),
+        Nota.aggregate([
+            ...(temEscola ? [{ $match: ef }] : []),
+            { $group: { _id: null, media: { $avg: { $toDouble: '$nota' } } } },
+        ]),
+        Falta.countDocuments({ presente: false, ...ef }),
+        Falta.countDocuments(ef),
+        Comunicado.countDocuments({ ativo: true, ...ef }),
     ]);
 
     const mediaEscola = notaAgg.length > 0 ? notaAgg[0].media : null;
@@ -838,7 +860,7 @@ Responda em português do Brasil:`;
 // sombreava o objeto global process do Node dentro desta função, fazendo
 // process.env.GEMINI_KEY ler undefined.GEMINI_KEY (TypeError) — a
 // humanização via Gemini nunca era acionada pela pipeline de dados.
-async function processMessage({ message, alunoId, perfil, userId, nomeUsuario, userEmail }) {
+async function processMessage({ message, alunoId, perfil, userId, nomeUsuario, userEmail, escolaId }) {
     // 1. Normalise message
     const normalizedMessage = message.toLowerCase();
 
@@ -900,7 +922,7 @@ async function processMessage({ message, alunoId, perfil, userId, nomeUsuario, u
     // ─── DATA INTENT PIPELINE ──────────────────────────────────────────────
     // 3. Enforce RBAC
     const { alunoFilter, turmasAutorizadas, professorDoc, alunosVinculados } =
-        await enforceRBAC({ perfil, userId, userEmail });
+        await enforceRBAC({ perfil, userId, userEmail, escolaId });
 
     // 4. Resolve aluno context
     let { aluno, alunoId: resolvedAlunoId, ambiguous, ambiguousMessage, options: alunoOptions } =
@@ -987,6 +1009,7 @@ async function processMessage({ message, alunoId, perfil, userId, nomeUsuario, u
             dados = await fetchComunicados({
                 perfil,
                 turmaAluno: aluno ? aluno.turma : null,
+                escolaId,
             });
             break;
 
@@ -1026,7 +1049,7 @@ async function processMessage({ message, alunoId, perfil, userId, nomeUsuario, u
             }
             dados = idResumo
                 ? await fetchResumoAluno({ alunoContexto: idResumo })
-                : await fetchResumoGeral();
+                : await fetchResumoGeral({ escolaId });
             break;
         }
 

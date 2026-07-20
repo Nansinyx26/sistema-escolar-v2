@@ -37,4 +37,7 @@ router.post('/plano-estudo', authorize(['diretor', 'professor', 'responsavel', '
 // Rota de Health Check de IA
 router.get('/health', IAController.AnalyticsController.health);
 
+// Diagnóstico da chave do Gemini (diretor/admin) — valida config sem expor a chave
+router.get('/gemini-status', authorize(['diretor', 'admin']), IAController.geminiStatus);
+
 module.exports = router;

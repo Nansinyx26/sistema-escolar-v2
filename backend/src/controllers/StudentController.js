@@ -279,12 +279,34 @@ exports.update = async (req, res) => {
         }
         // -------------------------------------------------------------------------
 
+        // Multi-escola: transferir o aluno para outra escola é permitido apenas
+        // à equipe gestora (admin/diretor/secretaria). Professores nunca alteram
+        // escolaId. O nome do campo NÃO está na whitelist geral de propósito.
+        if (req.body.escolaId && ['admin', 'diretor', 'secretaria'].includes(req.user?.perfil)) {
+            filteredBody.escolaId = String(req.body.escolaId);
+        }
+
         const student = await Aluno.findOneAndUpdate(
             { $or: [{ _id: req.params.id }, { id: req.params.id }] },
             filteredBody,
             { new: true, runValidators: true }
         );
         if (!student) return res.status(404).json({ success: false, error: 'Aluno não encontrado' });
+
+        // Mantém a escola do RESPONSÁVEL em sincronia com a do aluno: se o aluno
+        // mudou de escola, o responsável vinculado passa a pertencer à mesma escola.
+        try {
+            if (student.escolaId && student.responsavel) {
+                const Usuario = require('../models/Usuario');
+                await Usuario.updateOne(
+                    { email: String(student.responsavel).toLowerCase(), perfil: 'responsavel' },
+                    { $set: { escolaId: String(student.escolaId) } }
+                );
+            }
+        } catch (syncErr) {
+            console.warn('[Student Update] Falha ao sincronizar escola do responsável:', syncErr.message);
+        }
+
         res.json({ success: true, data: student });
     } catch (error) {
         res.status(400).json({ success: false, error: error.message });

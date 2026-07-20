@@ -64,18 +64,20 @@ Resumo de todas as mudanças feitas nesta sessão, com arquivos afetados, motivo
   - `NotesCard`: `calcMedia` considera **apenas** bimestres com nota (ignora `null`); células vazias mostram **"—"**; tipos ajustados (`number | null`).
   - Portal **rebuildado** (`npm run build` → `dist/assets/index-DInmu1nU.js`). ⚠️ Como o Render serve o `dist` commitado (não rebuilda o portal), o `dist` atualizado **precisa ir junto no commit/deploy**.
 
+### 11. Diagnóstico da chave do Gemini (validação)
+- **Arquivos:** `backend/src/controllers/IAController.js`, `backend/src/routes/ia.js`
+- **O quê:** Novo endpoint **`GET /api/ia/gemini-status`** (diretor/admin) que informa se a chave está configurada (qual variável, sem expor o valor) e faz um **teste ao vivo** de chamada ao Gemini.
+- **Ação de ambiente (você):** definir **`GEMINI_KEY`** no Render (Settings → Environment). Depois, validar acessando `/api/ia/gemini-status` logado como diretor.
+
+### 12. Chatbot da IA escopado por escola
+- **Arquivos:** `backend/src/services/ChatbotService.js`, `backend/src/controllers/IAController.js`
+- **O quê:** `ChatbotService.process` recebe `escolaId` (de `filtrarPorEscola`). O `enforceRBAC` passou a escopar o `alunoFilter` pela escola ativa (diretor/admin antes viam alunos de **todas** as escolas no chat); `fetchComunicados` e `fetchResumoGeral` também escopados. Combinação via `$and` para não colidir com o `$or` do responsável. Corrigido de passagem: professor sem cadastro deixou de conseguir resolver qualquer aluno (`alunoFilter` agora não casa nada).
+
+### 13. Escola do aluno → responsável (propagação na troca de escola)
+- **Arquivos:** `backend/src/controllers/StudentController.js`
+- **O quê:** No `update` do aluno, equipe gestora (admin/diretor/secretaria) pode alterar o `escolaId` do aluno (transferência); professores não. Após salvar, o **responsável vinculado** tem seu `escolaId` sincronizado com o do aluno.
+
 ---
 
-## ⏳ Pendente (planejado, ainda não implementado)
-
-### B. `html/direcao/ia-assistant.html` — chave do Gemini (ops)
-- O código já está correto (chama `/ia/chatbot`). Falta apenas **configurar a variável de ambiente** do Gemini no backend/Render: `GEMINI_KEY` (ou `GEMINI_API_KEY`). Sem ela, o assistente cai no fallback local.
-- Follow-up opcional: escopar o próprio chatbot por escola (hoje o diretor vê dados de todas as escolas no chat), passando `req.escolaId` ao `ChatbotService.processMessage`.
-
-### D. Boletim do aluno com dados divergentes (#2 original)
-- **Causa provável:** o backend `/notas/boletim/:alunoId` usa média aritmética simples por matéria, enquanto o app do professor usa fórmulas próprias ("Sala Principal" sem especiais + "Média Geral"). Alinhar as fórmulas.
-
----
-
-## Recomendação
-Seguir os pendentes **um de cada vez** (A → B → C → D), validando cada um antes do próximo, dado que envolvem UI + backend + escopo por escola.
+## ⏳ Pendente / Ações de ambiente
+- **Definir `GEMINI_KEY` no Render** e validar via `/api/ia/gemini-status` (código pronto).

@@ -54,6 +54,7 @@ class ChatbotController {
         userId,
         nomeUsuario,
         userEmail: req.user?.email,
+        escolaId: req.escolaId, // Escopo multi-escola (definido por filtrarPorEscola)
       });
 
       logger.debug(`[ChatbotController] response="${response?.substring(0, 60)}" options=${JSON.stringify(options)}`);
@@ -207,10 +208,51 @@ class AnalyticsController {
   }
 }
 
+/**
+ * GET /api/ia/gemini-status
+ * Diagnóstico: informa se a chave do Gemini está configurada e se responde.
+ * NUNCA expõe a chave — apenas qual variável está presente e o teste ao vivo.
+ */
+async function geminiStatus(req, res) {
+  const varNames = ['GEMINI_KEY', 'GEMINI_API_KEY', 'GOOGLE_TTS_API_KEY', 'GOOGLE_API_KEY'];
+  const varPresente = varNames.find((n) => process.env[n]);
+  if (!varPresente) {
+    return res.json({
+      success: true,
+      keyConfigured: false,
+      liveOk: false,
+      message: 'Nenhuma variável de chave do Gemini definida no servidor. Configure GEMINI_KEY no Render.',
+    });
+  }
+
+  // Teste ao vivo (chamada mínima) — não interrompe em caso de falha.
+  try {
+    const voiceService = require('../services/voiceService');
+    const resposta = await voiceService.generateInsightText('Responda apenas: OK', { maxOutputTokens: 5, temperature: 0 });
+    return res.json({
+      success: true,
+      keyConfigured: true,
+      variavel: varPresente,
+      liveOk: Boolean(resposta && resposta.length),
+      message: 'Gemini configurado e respondendo.',
+    });
+  } catch (err) {
+    return res.json({
+      success: true,
+      keyConfigured: true,
+      variavel: varPresente,
+      liveOk: false,
+      quotaExceeded: Boolean(err.quotaExceeded),
+      message: `Chave presente, mas o teste falhou: ${err.message}`,
+    });
+  }
+}
+
 module.exports = {
   ChatbotController,
   AnalyticsController,
-  
+  geminiStatus,
+
   // Retrocompatibilidade total caso algum import legada utilize a forma chave/valor antiga:
   chatbot: ChatbotController.sendMessage,
   analisarDesempenho: PedagogicoController.analisarDesempenho,
