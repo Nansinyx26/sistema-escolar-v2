@@ -189,6 +189,84 @@ function preencherFormulario(user, perfil) {
         if (escolaInput) escolaInput.required = false;
         if (disciplinaInput) disciplinaInput.required = false;
     }
+
+    // Seção "Minha Escola" — trocar de escola (professor/diretor/secretaria)
+    initTrocarEscola(user);
+}
+
+// === TROCAR DE ESCOLA (professor / diretor / secretaria) ===
+function apiBaseUrl() {
+    return window.API_BASE_URL || (window.location.hostname === 'localhost'
+        ? `http://${window.location.hostname}:3001/api`
+        : 'https://sistema-escolar-bfty.onrender.com/api');
+}
+
+function initTrocarEscola(user) {
+    const secao = document.getElementById('secaoTrocarEscola');
+    if (!secao) return;
+
+    const cargosComEscola = ['professor', 'diretor', 'secretaria'];
+    if (!cargosComEscola.includes(user.perfil)) {
+        secao.classList.add('hidden');
+        return;
+    }
+    secao.classList.remove('hidden');
+
+    // Carrega a escola ativa atual
+    const nomeEl = document.getElementById('escolaAtivaPerfil');
+    fetch(`${apiBaseUrl()}/escolas/minhas`, { credentials: 'include' })
+        .then(r => r.ok ? r.json() : null)
+        .then(json => {
+            if (json && json.success && Array.isArray(json.data) && json.data.length) {
+                const ativa = json.data.find(e => String(e._id) === String(json.escolaAtivaId)) || json.data[0];
+                if (nomeEl) nomeEl.value = ativa ? ativa.nome : 'Não definida';
+            } else if (nomeEl) {
+                nomeEl.value = perfilAtual?.escola || 'Não definida';
+            }
+        })
+        .catch(() => { if (nomeEl) nomeEl.value = perfilAtual?.escola || 'Não definida'; });
+
+    const btn = document.getElementById('btnMudarEscola');
+    if (btn && !btn.dataset.bound) {
+        btn.dataset.bound = '1';
+        btn.addEventListener('click', mudarEscola);
+    }
+}
+
+async function mudarEscola() {
+    const input = document.getElementById('novoCodigoEscola');
+    const btn = document.getElementById('btnMudarEscola');
+    const codigo = (input?.value || '').trim();
+    if (!codigo) {
+        showToast('Digite o código secreto da nova escola.', 'warning');
+        return;
+    }
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+    try {
+        const res = await fetch(`${apiBaseUrl()}/escolas/mudar`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': document.cookie.match(/csrf_token=([^;]+)/)?.[1] || ''
+            },
+            body: JSON.stringify({ codigoEscola: codigo })
+        });
+        const json = await res.json();
+        if (res.ok && json.success) {
+            showToast(json.message || 'Escola atualizada!', 'success');
+            const nomeEl = document.getElementById('escolaAtivaPerfil');
+            if (nomeEl && json.escolaNome) nomeEl.value = json.escolaNome;
+            if (input) input.value = '';
+            setTimeout(() => { window.location.href = json.redirect_to || 'dashboard.html'; }, 900);
+        } else {
+            showToast(json.error || 'Não foi possível trocar de escola.', 'error');
+        }
+    } catch (e) {
+        showToast('Falha de conexão ao trocar de escola.', 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+    }
 }
 
 // === UPLOAD DE FOTO ===

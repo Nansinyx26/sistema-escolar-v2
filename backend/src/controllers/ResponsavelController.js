@@ -348,9 +348,11 @@ exports.getNotas = async (req, res) => {
         // Converte para o formato esperado pelo frontend:
         // { disciplina, professor, bimestres: [b1, b2, b3, b4] }
         const resultado = Object.values(porMateria).map((m, idx) => {
+            // Bimestre sem nota lançada => null (ausência de nota), NUNCA 0.
+            // Retornar 0 fazia o boletim exibir "0,0" e derrubava a média do aluno.
             const bimestres = [1, 2, 3, 4].map((b) => {
                 const entry = m.porBimestre[String(b)];
-                if (!entry || entry.count === 0) return 0;
+                if (!entry || entry.count === 0) return null;
                 return Math.round((entry.soma / entry.count) * 10) / 10;
             });
 

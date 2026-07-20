@@ -177,6 +177,30 @@
                             </div>
                         </div>
 
+                        <!-- Trocar de Escola (professor / diretor / secretaria) -->
+                        <div class="form-section hidden" id="secaoTrocarEscola"
+                            style="border: 1px solid rgba(16,185,129,0.25); border-radius: 12px; background: rgba(16,185,129,0.05); padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;">
+                            <h3 class="section-title" style="color: #10b981; margin-bottom: 0.75rem;">
+                                <i class="bi bi-building-gear"></i>
+                                Minha Escola
+                            </h3>
+                            <div class="form-group">
+                                <label class="form-label">Escola ativa</label>
+                                <input type="text" id="escolaAtivaPerfil" class="form-input" disabled
+                                    placeholder="Carregando...">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="novoCodigoEscola">Mudei de escola — código secreto da nova escola</label>
+                                <input type="text" id="novoCodigoEscola" class="form-input"
+                                    placeholder="Cole aqui o código da nova escola" autocomplete="off">
+                                <small class="text-secondary">Solicite o código à direção da nova escola. Isso troca a escola vinculada à sua conta.</small>
+                            </div>
+                            <button type="button" class="btn btn-outline btn-sm" id="btnMudarEscola"
+                                style="border-color: #10b981; color: #10b981;">
+                                <i class="bi bi-arrow-left-right"></i> Trocar de escola
+                            </button>
+                        </div>
+
                         <!-- Informações Específicas (Professor) -->
                         <div class="form-section hidden" id="infoProfessor">
                             <h3 class="section-title">

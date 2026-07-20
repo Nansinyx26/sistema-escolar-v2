@@ -1,6 +1,7 @@
 const Notificacao = require('../models/Notificacao');
 const Professor = require('../models/Professor');
 const Aluno = require('../models/Aluno');
+const { escolaMatch } = require('../middleware/filtrarPorEscola');
 
 module.exports = {
     async getAll(req, res) {
@@ -8,8 +9,9 @@ module.exports = {
             const userPerfil = req.user?.perfil || '';
             const userId = String(req.user?._id || req.user?.id || '');
             let filter = {};
-            // Multi-escola: aplicado ao final sobre o filtro por perfil
-            const escolaFilter = req.escolaId ? { escolaId: req.escolaId } : null;
+            // Multi-escola: filtro tolerante (escola ativa + registros legados
+            // sem escolaId/'default'), aplicado ao final sobre o filtro por perfil.
+            const escolaFilter = escolaMatch(req.escolaId);
 
             // Filtrar notificações por perfil do usuário logado
             if (userPerfil === 'professor') {
@@ -72,7 +74,8 @@ module.exports = {
                 filter = {};
             }
 
-            const filtroFinal = escolaFilter ? { $and: [filter, escolaFilter] } : filter;
+            const temEscolaFilter = escolaFilter && Object.keys(escolaFilter).length > 0;
+            const filtroFinal = temEscolaFilter ? { $and: [filter, escolaFilter] } : filter;
             const notificacoes = await Notificacao.find(filtroFinal).sort({ dataCriacao: -1 }).lean();
             
             // Adiciona campo lidoPorMim para que o frontend saiba quais já foram lidas pelo usuário atual
@@ -218,8 +221,12 @@ module.exports = {
             }
 
             // Add userId to lido of all notifications matching filter that don't already have it
+            const escolaFilter = escolaMatch(req.escolaId);
+            const baseFilter = (escolaFilter && Object.keys(escolaFilter).length > 0)
+                ? { $and: [filter, escolaFilter] }
+                : filter;
             await Notificacao.updateMany(
-                { ...filter, lido: { $ne: String(userId) } },
+                { ...baseFilter, lido: { $ne: String(userId) } },
                 { $push: { lido: String(userId) } }
             );
             res.json({ success: true, message: 'Todas as notificações marcadas como lidas.' });

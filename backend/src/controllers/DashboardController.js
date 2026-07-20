@@ -1,6 +1,7 @@
 const Aluno = require('../models/Aluno');
 const Nota = require('../models/Nota');
 const Falta = require('../models/Falta');
+const { escolaMatch } = require('../middleware/filtrarPorEscola');
 
 exports.getPublicSummary = async (req, res) => {
     try {
@@ -116,7 +117,7 @@ exports.getSummary = async (req, res) => {
 exports.getChartData = async (req, res) => {
     try {
         const { turmaId, bimestre, materiaId } = req.query;
-        const noteFilter = {};
+        const noteFilter = { ...escolaMatch(req.escolaId) }; // Escopo por escola (tolerante a legados)
         if (turmaId) noteFilter.turmaId = turmaId;
         if (bimestre) noteFilter.bimestre = parseInt(bimestre);
         if (materiaId) noteFilter.materiaId = materiaId;

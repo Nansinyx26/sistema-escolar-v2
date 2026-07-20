@@ -145,7 +145,7 @@ router.use('/comentarios', authJWT, require('./comentarios'));
 router.use('/relatorios', authJWT, require('./relatorios'));
 router.use('/audio', require('./audio'));
 router.use('/tts', authJWT, require('./tts'));
-router.use('/ia', authJWT, require('./ia'));
+router.use('/ia', authJWT, filtrarPorEscola, require('./ia'));
 router.use('/chatbot', authJWT, require('./chatbot'));
 router.use('/secretaria', authJWT, require('./secretaria'));
 

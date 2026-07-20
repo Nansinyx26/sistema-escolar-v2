@@ -51,6 +51,7 @@
     let tourSteps = PROFESSOR_STEPS;
     let scrollRaf = null;
     let sidebarWasOpenedByTour = false;
+    let voiceUnlockHandler = null; // Retry da fala quando o autoplay é bloqueado
 
     const MOBILE_BP = 768;
     const isMobile = () => window.innerWidth <= MOBILE_BP;
@@ -355,8 +356,14 @@
         // TTS Automático com animação do VoiceOrb
         const tourSpeakText = `${step.title}. ${step.content}`;
 
-        const triggerTourSpeak = () => {
+        const triggerTourSpeak = async () => {
             if (!window.speak) return;
+
+            // Remove um retry pendente de um passo anterior
+            if (voiceUnlockHandler) {
+                document.removeEventListener('pointerdown', voiceUnlockHandler);
+                voiceUnlockHandler = null;
+            }
 
             // Aciona o orb assim que o áudio começa
             const onStarted = () => {
@@ -379,7 +386,20 @@
             window.addEventListener('tts:started', onStarted, { once: true });
             window.addEventListener('tts:ended', onEnded, { once: true });
 
-            window.speak(tourSpeakText);
+            const audio = await window.speak(tourSpeakText);
+
+            // Autoplay bloqueado pelo navegador (o tour inicia sem gesto do
+            // usuário) → window.speak retorna null. Refaz a fala na primeira
+            // interação do usuário, quando o áudio já é permitido.
+            if (!audio) {
+                window.removeEventListener('tts:started', onStarted);
+                window.removeEventListener('tts:ended', onEnded);
+                voiceUnlockHandler = () => {
+                    voiceUnlockHandler = null;
+                    if (tourActive) triggerTourSpeak();
+                };
+                document.addEventListener('pointerdown', voiceUnlockHandler, { once: true });
+            }
         };
 
         setTimeout(triggerTourSpeak, 300);
@@ -426,6 +446,10 @@
 
     function destroyUI() {
         restoreSidebarIfNeeded();
+        if (voiceUnlockHandler) {
+            document.removeEventListener('pointerdown', voiceUnlockHandler);
+            voiceUnlockHandler = null;
+        }
         window.removeEventListener('resize', onTourLayoutChange);
         window.removeEventListener('scroll', onTourLayoutChange, true);
         if (scrollRaf) cancelAnimationFrame(scrollRaf);

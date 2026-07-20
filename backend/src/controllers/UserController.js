@@ -1205,6 +1205,11 @@ exports.registerResponsavel = async (req, res) => {
         const bcrypt = require('bcryptjs');
         const senhaHash = await bcrypt.hash(senha, SALT_ROUNDS);
 
+        // Multi-escola: o responsável pertence à escola do aluno vinculado.
+        // (Se o aluno for legado e não tiver escolaId, fica indefinido e o
+        //  middleware filtrarPorEscola resolve pela escola ativa em runtime.)
+        const escolaIdDoAluno = aluno.escolaId || undefined;
+
         const now = new Date();
         const user = await Usuario.create({
             nome,
@@ -1213,6 +1218,7 @@ exports.registerResponsavel = async (req, res) => {
             telefone,
             perfil: 'responsavel',
             ativo: true,
+            escolaId: escolaIdDoAluno,
             ultimoLogin: now,
             lastLogin: now,
             consentimentoAceiteEm: now
@@ -1235,7 +1241,7 @@ exports.registerResponsavel = async (req, res) => {
             mensagem: `${nome} se cadastrou como Responsável e foi vinculado automaticamente ao aluno "${aluno.nome}" (Turma: ${aluno.turma || aluno.turmaId}) no dia ${dateStr} às ${hourStr}.`,
             destinatarios: 'diretores',
             status: 'enviado',
-            escolaId: 'default'
+            escolaId: aluno.escolaId || 'default'
         });
 
         // 5. Notificação em Tempo Real (WebSocket)

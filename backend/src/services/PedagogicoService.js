@@ -5,6 +5,7 @@ const Professor = require('../models/Professor');
 const Comunicado = require('../models/Comunicado');
 const voiceService = require('./voiceService');
 const logger = require('../utils/logger');
+const { escolaMatch } = require('../middleware/filtrarPorEscola');
 
 /**
  * PedagogicoService: Camada de serviço para lógica de negócios complexa
@@ -25,9 +26,9 @@ class PedagogicoService {
     /**
      * Calcula a média geral da escola de forma otimizada.
      */
-    static async getMediaEscola() {
+    static async getMediaEscola(ef = {}) {
         const pipeline = [
-            { $match: { nota: { $exists: true, $ne: null } } },
+            { $match: { nota: { $exists: true, $ne: null }, ...ef } },
             { $addFields: { notaNum: { $toDouble: "$nota" } } },
             { $group: { _id: null, avg: { $avg: "$notaNum" } } }
         ];
@@ -39,9 +40,9 @@ class PedagogicoService {
      * Identifica alunos com frequência crítica.
      * Centraliza a lógica de "Alerta de Evasão".
      */
-    static async getAlunosEmAlertaFrequencia(limit = 50) {
-        // Busca todos os ativos
-        const alunos = await Aluno.find({ ativo: { $ne: false } }).select('_id nome turma faltasBimestre').lean();
+    static async getAlunosEmAlertaFrequencia(ef = {}, limit = 50) {
+        // Busca todos os ativos (escopados por escola)
+        const alunos = await Aluno.find({ ativo: { $ne: false }, ...ef }).select('_id nome turma faltasBimestre').lean();
         const emAlerta = [];
 
         for (const al of alunos) {
@@ -68,9 +69,9 @@ class PedagogicoService {
     /**
      * Médias de nota agrupadas por turma (uma agregação só).
      */
-    static async getMediasPorTurma() {
+    static async getMediasPorTurma(ef = {}) {
         const pipeline = [
-            { $match: { nota: { $exists: true, $ne: null } } },
+            { $match: { nota: { $exists: true, $ne: null }, ...ef } },
             { $addFields: { notaNum: { $toDouble: '$nota' }, turmaFinal: { $ifNull: ['$turmaId', 'Sem turma'] } } },
             { $group: { _id: '$turmaFinal', media: { $avg: '$notaNum' }, qtdNotas: { $sum: 1 } } },
             { $sort: { media: 1 } },
@@ -82,9 +83,9 @@ class PedagogicoService {
     /**
      * As N disciplinas com pior desempenho (não só a pior).
      */
-    static async getMateriasCriticas(n = 3) {
+    static async getMateriasCriticas(ef = {}, n = 3) {
         const rows = await Nota.aggregate([
-            { $match: { nota: { $exists: true, $ne: null } } },
+            { $match: { nota: { $exists: true, $ne: null }, ...ef } },
             {
                 $addFields: {
                     notaNum: { $toDouble: '$nota' },
@@ -101,14 +102,14 @@ class PedagogicoService {
     /**
      * Busca a disciplina com desempenho mais baixo (Matéria Crítica).
      */
-    static async getMateriaCritica() {
+    static async getMateriaCritica(ef = {}) {
         const heatmapData = await Nota.aggregate([
-            { $match: { nota: { $exists: true, $ne: null } } },
-            { 
-                $addFields: { 
+            { $match: { nota: { $exists: true, $ne: null }, ...ef } },
+            {
+                $addFields: {
                     notaNum: { $toDouble: "$nota" },
                     materiaFinal: { $ifNull: ["$materiaId", "$materia", "Geral"] }
-                } 
+                }
             },
             { $group: { _id: "$materiaFinal", media: { $avg: "$notaNum" } } },
             { $sort: { media: 1 } },
@@ -125,15 +126,18 @@ class PedagogicoService {
     /**
      * Gera Insights Globais Narrativos (Unificado).
      */
-    static async getGlobalInsights() {
+    static async getGlobalInsights(escolaId = null) {
+        // Escopo por escola do diretor logado (tolerante a registros legados)
+        const ef = escolaMatch(escolaId);
+
         const [totalAlunos, mediaEscola, alunosAlerta, totalComunicados, materiaCriticaInfo, mediasPorTurma, materiasCriticas] = await Promise.all([
-            Aluno.countDocuments({ ativo: { $ne: false } }),
-            this.getMediaEscola(),
-            this.getAlunosEmAlertaFrequencia(),
-            Comunicado.countDocuments({ ativo: true }),
-            this.getMateriaCritica(),
-            this.getMediasPorTurma(),
-            this.getMateriasCriticas(3)
+            Aluno.countDocuments({ ativo: { $ne: false }, ...ef }),
+            this.getMediaEscola(ef),
+            this.getAlunosEmAlertaFrequencia(ef),
+            Comunicado.countDocuments({ ativo: true, ...ef }),
+            this.getMateriaCritica(ef),
+            this.getMediasPorTurma(ef),
+            this.getMateriasCriticas(ef, 3)
         ]);
 
         const turmasEmRisco = mediasPorTurma.filter(t => t.media < 6);

@@ -89,5 +89,28 @@ module.exports = async function filtrarPorEscola(req, res, next) {
         return next();
     }
 };
+/**
+ * Filtro de LEITURA tolerante a registros legados.
+ *
+ * Isola os dados da escola ativa, mas também inclui registros criados antes
+ * do escopo por escola (escolaId ausente, null, '' ou 'default'). Em transição
+ * multi-escola (com uma escola ativa), isso evita que dados antigos "sumam"
+ * das telas — ex.: avisos da direção que ficaram com escolaId 'default'.
+ *
+ * @param {string} [escolaId] valor de req.escolaId
+ * @returns {Object} objeto de filtro Mongo (vazio = sem restrição por escola)
+ */
+function escolaMatch(escolaId) {
+    if (!escolaId || escolaId === 'default') return {};
+    return {
+        $or: [
+            { escolaId },
+            { escolaId: { $in: [null, '', 'default'] } },
+            { escolaId: { $exists: false } },
+        ],
+    };
+}
+
 module.exports.invalidarCacheEscolas = invalidarCacheEscolas;
 module.exports.vinculosDoUsuario = vinculosDoUsuario;
+module.exports.escolaMatch = escolaMatch;

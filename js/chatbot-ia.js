@@ -211,14 +211,26 @@
     function getInitialSuggestions() {
         const user = getCurrentUser();
         const perfil = (user?.perfil || '').toLowerCase();
+
+        // Responsável: chips voltados ao(s) filho(s) — o clique envia o rótulo
+        // como pergunta, e o backend resolve/oferece a escolha do filho.
+        if (perfil === 'responsavel') {
+            return [
+                { label: '📝 Notas do meu filho', value: '' },
+                { label: '📅 Faltas do meu filho', value: '' },
+                { label: '📊 Resumo do desempenho', value: '' },
+                { label: '📢 Comunicados recentes', value: '' },
+                { label: '🕐 Grade horária', value: '' },
+            ];
+        }
+
         const base = [
             { label: '📝 Notas e desempenho', value: '' },
             { label: '📅 Faltas e frequência', value: '' },
             { label: '📢 Comunicados recentes', value: '' },
             { label: '🕐 Grade horária', value: '' },
+            { label: '👨‍🏫 Professores da turma', value: '' },
         ];
-        if (perfil === 'responsavel') return base;
-        base.push({ label: '👨‍🏫 Professores da turma', value: '' });
         if (['diretor', 'admin', 'coordenador', 'secretaria'].includes(perfil)) {
             base.push({ label: '🏫 Resumo da escola', value: '' });
         }

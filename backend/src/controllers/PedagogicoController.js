@@ -86,7 +86,7 @@ exports.analisarDesempenho = async(req, res) => {
 
 exports.getGlobalInsights = async(req, res) => {
     try {
-        const insights = await PedagogicoService.getGlobalInsights();
+        const insights = await PedagogicoService.getGlobalInsights(req.escolaId);
         res.json({ success: true, data: insights });
     } catch (error) {
         logger.error(`[PedagogicoController] Error in getGlobalInsights: ${error.message}`);

@@ -4,6 +4,15 @@ const Escola = require('../models/Escola');
 const authJWT = require('../middleware/authJWT');
 const { vinculosDoUsuario } = require('../middleware/filtrarPorEscola');
 const { getRedirectPath } = require('../controllers/UserController');
+const SecurityController = require('../controllers/SecurityController');
+const Usuario = require('../models/Usuario');
+
+// Perfis de equipe que possuem vínculo por escola (código secreto da escola)
+const CARGO_MODEL = {
+    professor: () => require('../models/Professor'),
+    diretor: () => require('../models/Diretor'),
+    secretaria: () => require('../models/Secretaria'),
+};
 
 /**
  * GET /api/escolas?tipo=Todas|EMEF|CIEP
@@ -80,6 +89,79 @@ router.post('/trocar/:escolaId', authJWT, async (req, res) => {
             success: true,
             message: `Agora você está operando em: ${escola.nome}`,
             escolaAtivaId: String(escolaId),
+            redirect_to: getRedirectPath(req.user)
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+/**
+ * POST /api/escolas/mudar
+ * Autenticada — MUDA a escola do usuário de equipe (professor/diretor/secretaria)
+ * quando ele passa a trabalhar em outra escola. Valida pelo CÓDIGO SECRETO da
+ * nova escola (mesma prova de vínculo usada no cadastro), cria o vínculo se não
+ * existir, atualiza o escolaId da conta e ativa a nova escola na sessão.
+ *
+ * Body: { codigoEscola, escolaId? }
+ */
+router.post('/mudar', authJWT, async (req, res) => {
+    try {
+        const perfil = req.user?.perfil;
+        const loader = CARGO_MODEL[perfil];
+        if (!loader) {
+            return res.status(403).json({
+                success: false,
+                error: 'Apenas professor, diretor ou secretaria podem trocar de escola por aqui.'
+            });
+        }
+
+        const { codigoEscola, escolaId } = req.body || {};
+        if (!codigoEscola) {
+            return res.status(400).json({ success: false, error: 'Informe o código secreto da nova escola.' });
+        }
+
+        // 1. Valida o código secreto (por escola quando escolaId presente)
+        const codeResult = await SecurityController.validateCode(codigoEscola, escolaId || null);
+        if (!codeResult) {
+            return res.status(403).json({ success: false, error: 'Código secreto da escola inválido ou expirado.' });
+        }
+        const escola = codeResult.escola;
+        if (!escola || !escola._id) {
+            return res.status(400).json({ success: false, error: 'Nenhuma escola cadastrada corresponde a este código.' });
+        }
+        const novaEscolaId = String(escola._id);
+
+        // 2. Atualiza o vínculo no documento do cargo (cria se não existir)
+        const Model = loader();
+        const doc = await Model.findOne({
+            $or: [{ idUsuario: String(req.user.id || req.user._id) }, { email: req.user.email }]
+        });
+        if (doc) {
+            doc.vinculos = Array.isArray(doc.vinculos) ? doc.vinculos : [];
+            const jaTem = doc.vinculos.some(v => String(v.escolaId) === novaEscolaId);
+            if (!jaTem) doc.vinculos.push({ escolaId: novaEscolaId, cargo: perfil });
+            doc.escola = escola.nome; // nome legível
+            await doc.save();
+        }
+
+        // 3. Atualiza o escolaId da conta (usado por filtros/notificações)
+        await Usuario.updateOne(
+            { $or: [{ _id: req.user.id || req.user._id }, { email: req.user.email }] },
+            { $set: { escolaId: novaEscolaId, escola: escola.nome } }
+        );
+
+        // 4. Ativa a nova escola na sessão
+        if (req.session) {
+            req.session.escolaAtivaId = novaEscolaId;
+            req.session.usuarioId = String(req.user.id || req.user._id);
+        }
+
+        res.json({
+            success: true,
+            message: `Escola atualizada para: ${escola.nome}`,
+            escolaAtivaId: novaEscolaId,
+            escolaNome: escola.nome,
             redirect_to: getRedirectPath(req.user)
         });
     } catch (e) {

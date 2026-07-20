@@ -92,7 +92,8 @@ export interface Student {
 export interface Grade {
   id: string;
   disciplina: string;
-  bimestres: [number, number, number, number];
+  // null = bimestre sem nota lançada (exibido como "—", ignorado na média)
+  bimestres: [number | null, number | null, number | null, number | null];
   professor?: string;
 }
 

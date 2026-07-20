@@ -633,11 +633,37 @@ class App {
             if (navUserName) navUserName.textContent = nomeProfessor;
 
             const navAvatar = document.getElementById('userAvatar');
-            if (navAvatar && !navAvatar.querySelector('img')) {
-                navAvatar.classList.add('avatar-placeholder');
-                navAvatar.textContent = window.utils?.getInitials
+            if (navAvatar) {
+                const iniciais = window.utils?.getInitials
                     ? window.utils.getInitials(nomeProfessor)
                     : (nomeProfessor.charAt(0)?.toUpperCase() || 'P');
+
+                const fotoProf = profDaTurma.regente?.foto;
+                const photoUrl = window.getPhotoUrl ? window.getPhotoUrl(fotoProf) : null;
+                const semFoto = !photoUrl || photoUrl.includes('default-avatar.png');
+
+                if (semFoto) {
+                    // Sem foto: exibe as iniciais
+                    navAvatar.classList.add('avatar-placeholder');
+                    navAvatar.style.backgroundImage = 'none';
+                    navAvatar.textContent = iniciais;
+                } else {
+                    // Com foto: usa a imagem, mas cai para iniciais se a foto falhar
+                    const img = new Image();
+                    img.onload = () => {
+                        navAvatar.classList.remove('avatar-placeholder');
+                        navAvatar.textContent = '';
+                        navAvatar.style.backgroundImage = `url(${photoUrl})`;
+                        navAvatar.style.backgroundSize = 'cover';
+                        navAvatar.style.backgroundPosition = 'center';
+                    };
+                    img.onerror = () => {
+                        navAvatar.classList.add('avatar-placeholder');
+                        navAvatar.style.backgroundImage = 'none';
+                        navAvatar.textContent = iniciais;
+                    };
+                    img.src = photoUrl;
+                }
             }
         } else {
             // Sem professor definido: mantém o usuário logado na navbar

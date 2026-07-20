@@ -28,12 +28,17 @@ function formatSubject(code: string): string {
   return map[cleanCode] || code;
 }
 
-function calcMedia(bimestres: readonly number[]): number {
-  const sum = bimestres.reduce((acc, v) => acc + v, 0);
-  return sum / bimestres.length;
+// Média considera SOMENTE bimestres com nota lançada (ignora null/vazio),
+// para não derrubar a média com bimestres ainda não avaliados.
+function calcMedia(bimestres: readonly (number | null)[]): number | null {
+  const valores = bimestres.filter((v): v is number => v !== null && v !== undefined);
+  if (valores.length === 0) return null;
+  const sum = valores.reduce((acc, v) => acc + v, 0);
+  return sum / valores.length;
 }
 
-function gradeBadgeClass(value: number): string {
+function gradeBadgeClass(value: number | null): string {
+  if (value === null || value === undefined) return styles.warning;
   if (value >= 7.5) return styles.excellent;
   if (value >= 7.0) return styles.good;
   return styles.warning;
@@ -83,7 +88,7 @@ const NotesCard: React.FC<NotesCardProps> = ({ grades }) => {
                     {grade.bimestres.map((nota, idx) => (
                       <td key={idx}>
                         <span className={`${styles.gradeBadge} ${gradeBadgeClass(nota)}`}>
-                          {nota.toFixed(1)}
+                          {nota === null || nota === undefined ? '—' : nota.toFixed(1)}
                         </span>
                       </td>
                     ))}
@@ -91,7 +96,7 @@ const NotesCard: React.FC<NotesCardProps> = ({ grades }) => {
                       <span
                         className={`${styles.gradeBadge} ${styles.mediaCell} ${gradeBadgeClass(media)}`}
                       >
-                        {media.toFixed(1)}
+                        {media === null ? '—' : media.toFixed(1)}
                       </span>
                     </td>
                   </tr>

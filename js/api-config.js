@@ -113,6 +113,18 @@ window.updateAllAvatars = function(user) {
             }
         } else {
             if (el.tagName === 'IMG') {
+                // Se a foto falhar ao carregar (ex.: ID inválido no GridFS), cai para as iniciais
+                el.onerror = function () {
+                    el.onerror = null;
+                    el.style.display = 'none';
+                    if (wrapper && !wrapper.querySelector('.avatar-placeholder-global')) {
+                        const ph = document.createElement('div');
+                        ph.className = 'avatar-placeholder-global';
+                        ph.style.cssText = `width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--primary, #10b981) 0%, var(--primary-dark, #059669) 100%); color: white; font-weight: 700; border-radius: inherit;`;
+                        ph.textContent = initialsText;
+                        wrapper.appendChild(ph);
+                    }
+                };
                 el.src = photoUrl;
                 el.style.display = 'block';
                 wrapper?.querySelector('.avatar-placeholder-global')?.remove();
@@ -143,6 +155,17 @@ window.updateAllAvatars = function(user) {
             }
         } else {
             if (el.tagName === 'IMG') {
+                el.onerror = function () {
+                    el.onerror = null;
+                    el.style.display = 'none';
+                    if (wrapper && !wrapper.querySelector('.avatar-placeholder-global')) {
+                        const ph = document.createElement('div');
+                        ph.className = 'avatar-placeholder-global';
+                        ph.style.cssText = `width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--primary, #10b981) 0%, var(--primary-dark, #059669) 100%); color: white; font-weight: 700; border-radius: inherit;`;
+                        ph.textContent = initialsText;
+                        wrapper.appendChild(ph);
+                    }
+                };
                 el.src = photoUrl;
                 el.style.display = 'block';
                 wrapper?.querySelector('.avatar-placeholder-global')?.remove();

@@ -253,7 +253,8 @@ interface RawGrade {
   id: string;
   disciplina: string;
   professor: string | null;
-  bimestres: [number, number, number, number];
+  // null = bimestre sem nota lançada
+  bimestres: [number | null, number | null, number | null, number | null];
 }
 
 /** Fetch all subject grades for a given student. */
