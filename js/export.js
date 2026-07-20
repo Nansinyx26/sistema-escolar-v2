@@ -107,7 +107,7 @@ class ExportManager {
                         new Paragraph({
                             children: [
                                 new TextRun({
-                                    text: config.escola.nome,
+                                    text: config?.escola?.nome || config?.nomeEscola || 'Sistema Escolar',
                                     bold: true,
                                     size: 32
                                 })
@@ -246,7 +246,7 @@ class ExportManager {
                 sections: [{
                     children: [
                         new Paragraph({
-                            children: [new TextRun({ text: config.escola.nome, bold: true, size: 32 })],
+                            children: [new TextRun({ text: config?.escola?.nome || config?.nomeEscola || 'Sistema Escolar', bold: true, size: 32 })],
                             alignment: AlignmentType.CENTER
                         }),
                         new Paragraph({
@@ -378,7 +378,7 @@ class ExportManager {
 
             let relatorio = `
 ${'='.repeat(60)}
-${config.escola.nome}
+${config?.escola?.nome || config?.nomeEscola || 'Sistema Escolar'}
 ${'='.repeat(60)}
 
 RELATÓRIO DA TURMA ${turmaId} - ${bimestre}º BIMESTRE

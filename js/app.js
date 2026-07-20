@@ -563,7 +563,8 @@ class App {
     async initTurmaPage() {
         if (!auth.requireAuth()) return;
 
-        this.updateUserNavbar(); // Atualizar foto/nome do usuário
+        // Na página da turma, a navbar exibe o professor da sala (definido em renderTurmaPage).
+        // Se a turma não tiver professor, cai no fallback do usuário logado.
 
         // Obtém parâmetros da URL
         const params = new URLSearchParams(window.location.search);
@@ -625,6 +626,23 @@ class App {
 
         document.getElementById('professorName')?.textContent &&
             (document.getElementById('professorName').textContent = nomeProfessor);
+
+        // Exibe o professor da sala na navbar do topo (ao invés do usuário logado)
+        if (nomeProfessor) {
+            const navUserName = document.getElementById('navUserName');
+            if (navUserName) navUserName.textContent = nomeProfessor;
+
+            const navAvatar = document.getElementById('userAvatar');
+            if (navAvatar && !navAvatar.querySelector('img')) {
+                navAvatar.classList.add('avatar-placeholder');
+                navAvatar.textContent = window.utils?.getInitials
+                    ? window.utils.getInitials(nomeProfessor)
+                    : (nomeProfessor.charAt(0)?.toUpperCase() || 'P');
+            }
+        } else {
+            // Sem professor definido: mantém o usuário logado na navbar
+            this.updateUserNavbar();
+        }
 
         // Renderiza tabs de bimestre
         this.renderBimestreTabs(bimestre);

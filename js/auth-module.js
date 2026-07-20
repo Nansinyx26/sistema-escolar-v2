@@ -75,6 +75,32 @@ class AuthModule {
     }
 
     /**
+     * Sincroniza os dados do usuário com o backend (foto/nome/etc).
+     * Atualiza currentUser e sessionStorage. Retorna o usuário atualizado
+     * ou null se não for possível sincronizar (offline/sem sessão).
+     * @returns {Promise<Object|null>}
+     */
+    async refreshUser() {
+        try {
+            const res = await fetch(`${this._apiBase()}/auth/me`, {
+                credentials: 'include'
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.success && data.user) {
+                    this.currentUser = data.user;
+                    sessionStorage.setItem(this.STORAGE_KEY, JSON.stringify(data.user));
+                    window.dispatchEvent(new CustomEvent('auth:updated', { detail: data.user }));
+                    return data.user;
+                }
+            }
+        } catch (e) {
+            console.warn('[auth] Não foi possível sincronizar usuário:', e.message);
+        }
+        return null;
+    }
+
+    /**
      * Retorna o usuário atual
      * @returns {Object|null}
      */
