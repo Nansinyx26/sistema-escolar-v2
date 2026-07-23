@@ -46,10 +46,7 @@
     animation: grade-spin 1s ease-in-out infinite;
 }
 
-[data-theme="light"] .grade-loader {
-    border: 2px solid rgba(0, 0, 0, 0.1);
-    border-top-color: var(--primary);
-}
+
 
 @keyframes grade-spin {
     to { transform: rotate(360deg); }
@@ -84,9 +81,7 @@ select.form-input::-webkit-scrollbar-thumb {
     margin: 2rem 0;
 }
 
-[data-theme="light"] .empty-feedback {
-    background: rgba(0, 0, 0, 0.01);
-}
+
 
 .empty-feedback i {
     font-size: 2.5rem;
@@ -103,6 +98,4 @@ select.form-input::-webkit-scrollbar-thumb {
     background-color: rgba(255, 255, 255, 0.02) !important;
 }
 
-[data-theme="light"] .schedule-table-row:hover {
-    background-color: rgba(0, 0, 0, 0.02) !important;
-}
+

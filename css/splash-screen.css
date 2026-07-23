@@ -140,38 +140,19 @@
     animation: splash-fadeInUp 0.8s 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+
 /* === LIGHT MODE === */
-[data-theme="light"] #splashScreen {
-    background: #ffffff;
-    background-image:
-        radial-gradient(ellipse at 30% 20%, rgba(16, 185, 129, 0.06) 0%, transparent 50%),
-        radial-gradient(ellipse at 70% 80%, rgba(14, 165, 233, 0.04) 0%, transparent 50%);
-}
 
-@media (prefers-color-scheme: light) {
-    #splashScreen {
-        background: #ffffff;
-        background-image:
-            radial-gradient(ellipse at 30% 20%, rgba(16, 185, 129, 0.06) 0%, transparent 50%),
-            radial-gradient(ellipse at 70% 80%, rgba(14, 165, 233, 0.04) 0%, transparent 50%);
-    }
-}
 
-[data-theme="light"] .splash-title {
-    color: #09090b;
-}
 
-[data-theme="light"] .splash-subtitle {
-    color: #a1a1aa;
-}
 
-[data-theme="light"] .splash-progress-track {
-    background: rgba(0, 0, 0, 0.06);
-}
 
-[data-theme="light"] .splash-version {
-    color: #d4d4d8;
-}
+
+
+
+
+
+
 
 /* === ANIMATIONS === */
 @keyframes splash-fadeInUp {

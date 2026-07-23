@@ -618,82 +618,39 @@
 #cardCadastroAluno .action-icon { background: linear-gradient(135deg,#10b981,#0ea5e9); }
 #cardCadastroAluno:hover { border-color: #10b981 !important; background: rgba(16,185,129,.08) !important; box-shadow: 0 10px 30px rgba(16,185,129,.15); }
 
+
 /* ==========================================
    TEMA CLARO
    Esta página fixa muitos textos em #fff e fundos em branco translúcido
    (rgba(255,255,255,...)) sobre um fundo escuro. No tema claro isso vira
    branco-sobre-branco (invisível). Aqui: superfícies claras e texto escuro.
    ========================================== */
-:root[data-theme="light"] .page-header {
-    background:
-        linear-gradient(135deg, rgba(226, 232, 240, 0.92) 0%, rgba(241, 245, 249, 0.82) 100%),
-        url('../img/triangles-bg.png');
-    background-size: cover;
-    background-position: center;
-    border-bottom-color: rgba(5, 150, 105, 0.45);
-    box-shadow: 0 10px 40px rgba(15, 23, 42, 0.10);
-}
-:root[data-theme="light"] .page-header h1 {
-    background: linear-gradient(90deg, #0f172a, #7c3aed, #8b5cf6);
-    -webkit-background-clip: text;
-    background-clip: text;
-}
+
+
+
 
 /* Superfícies (cards / seções) → branco com borda sutil */
-:root[data-theme="light"] .action-card,
-:root[data-theme="light"] .stat-card,
-:root[data-theme="light"] .turma-card {
-    background: var(--bg-secondary);
-    border-color: var(--border-secondary);
-}
-:root[data-theme="light"] .turmas-section {
-    background: rgba(15, 23, 42, 0.03);
-    border-color: var(--border-secondary);
-}
-:root[data-theme="light"] .action-card:hover,
-:root[data-theme="light"] .turma-card:hover {
-    background: var(--bg-tertiary);
-    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
-}
-:root[data-theme="light"] .turma-card.expanded {
-    background: var(--bg-secondary);
-}
+
+
+
+
+
 
 /* Textos fixos em branco → escuros */
-:root[data-theme="light"] .stat-card-value,
-:root[data-theme="light"] .turmas-section h2,
-:root[data-theme="light"] .turma-info h4 {
-    color: var(--text-primary);
-    text-shadow: none;
-}
-:root[data-theme="light"] .turma-info p {
-    color: var(--text-secondary);
-}
+
+
+
 
 /* Marca d'água grande da letra da turma (era branco translúcido) */
-:root[data-theme="light"] .turma-icon {
-    color: rgba(15, 23, 42, 0.06);
-}
-:root[data-theme="light"] .turma-card:hover .turma-icon {
-    color: rgba(139, 92, 246, 0.18);
-}
+
+
+
 
 /* Ícone gradiente das ações: começa escuro em vez de branco */
-:root[data-theme="light"] .action-icon {
-    background: linear-gradient(135deg, #0f172a, #7c3aed);
-    -webkit-background-clip: text;
-    background-clip: text;
-}
+
+
 
 /* Abas de expansão da turma */
-:root[data-theme="light"] .turma-tab-btn {
-    background: rgba(15, 23, 42, 0.04);
-    border-color: var(--border-secondary);
-    color: var(--text-secondary);
-}
-:root[data-theme="light"] .turma-tab-btn:hover {
-    color: var(--text-primary);
-}
-:root[data-theme="light"] .turma-expand-tabs {
-    border-top-color: var(--border-secondary);
-}
+
+
+

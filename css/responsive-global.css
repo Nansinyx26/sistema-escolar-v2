@@ -666,17 +666,14 @@ html {
   }
 }
 
+
 /* =========================================================
    7. DARK/LIGHT MODE SPLASH & PWA CONSISTENCY
    ========================================================= */
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    color-scheme: light;
-  }
-}
+
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root {
     color-scheme: dark;
   }
 }

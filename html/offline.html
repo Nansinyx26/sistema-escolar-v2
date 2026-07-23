@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#09090b">
+    <title>Sem conexão — Sistema Escolar</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/img/icons/apple-touch-icon-180.png">
+    <!-- Página exibida pelo Service Worker quando não há rede.
+         Totalmente autocontida: nenhum CSS, fonte ou script externo. -->
+    <style>
+        :root {
+            color-scheme: dark;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            background: #09090b;
+            color: #fafafa;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            text-align: center;
+        }
+
+        .offline-card {
+            max-width: 420px;
+            width: 100%;
+            padding: 2.5rem 1.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            background: #0a0a0c;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .offline-icon {
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+        }
+
+        .offline-icon svg {
+            width: 34px;
+            height: 34px;
+            stroke: #10b981;
+        }
+
+        h1 {
+            font-size: 1.35rem;
+            font-weight: 700;
+            margin-bottom: 0.6rem;
+        }
+
+        p {
+            font-size: 0.92rem;
+            line-height: 1.6;
+            color: #a1a1aa;
+            margin-bottom: 1.75rem;
+        }
+
+        .offline-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            min-height: 48px;
+            padding: 0.75rem 1.25rem;
+            border-radius: 12px;
+            border: 1px solid transparent;
+            font: inherit;
+            font-size: 0.92rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 200ms ease, border-color 200ms ease, transform 200ms ease;
+        }
+
+        .btn-primary {
+            background: #10b981;
+            color: #04140e;
+        }
+
+        .btn-primary:hover {
+            background: #0ea472;
+            transform: translateY(-1px);
+        }
+
+        .btn-ghost {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(255, 255, 255, 0.1);
+            color: #d4d4d8;
+        }
+
+        .btn-ghost:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.18);
+        }
+
+        .btn:focus-visible {
+            outline: 2px solid #10b981;
+            outline-offset: 2px;
+        }
+
+        .offline-status {
+            margin-top: 1.5rem;
+            font-size: 0.78rem;
+            color: #52525b;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .btn {
+                transition: none;
+            }
+
+            .btn:hover {
+                transform: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main class="offline-card" role="main">
+        <div class="offline-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 1l22 22" />
+                <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55" />
+                <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39" />
+                <path d="M10.71 5.05A16 16 0 0 1 22.58 9" />
+                <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88" />
+                <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+                <path d="M12 20h.01" />
+            </svg>
+        </div>
+        <h1>Você está sem conexão</h1>
+        <p>Não foi possível carregar esta página porque o dispositivo está offline. As páginas já visitadas continuam
+            disponíveis.</p>
+        <div class="offline-actions">
+            <button type="button" class="btn btn-primary" id="btnRetry">Tentar novamente</button>
+            <a href="/" class="btn btn-ghost">Ir para a página inicial</a>
+        </div>
+        <p class="offline-status" id="status" role="status" aria-live="polite">Aguardando conexão…</p>
+    </main>
+
+    <script>
+        (function () {
+            'use strict';
+            var status = document.getElementById('status');
+
+            function retry() {
+                window.location.reload();
+            }
+
+            document.getElementById('btnRetry').addEventListener('click', retry);
+
+            // Recarrega sozinho assim que a rede voltar.
+            window.addEventListener('online', function () {
+                status.textContent = 'Conexão restabelecida. Recarregando…';
+                retry();
+            });
+
+            window.addEventListener('offline', function () {
+                status.textContent = 'Aguardando conexão…';
+            });
+
+            if (navigator.onLine) status.textContent = 'Conexão detectada. Toque em "Tentar novamente".';
+        })();
+    </script>
+</body>
+
+</html>

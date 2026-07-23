@@ -1,4 +1,5 @@
 {
+  "id": "/",
   "name": "Sistema Escolar — Portal Educacional",
   "short_name": "Escola",
   "description": "Portal de Gestão Escolar para Professores, Diretores e Responsáveis",
@@ -14,61 +15,42 @@
   "categories": ["education", "productivity"],
   "prefer_related_applications": false,
   "icons": [
-    {
-      "src": "/img/logo-jaguari.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/img/logo-jaguari.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/img/logo-jaguari.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/img/logo-jaguari.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/img/logo-jaguari.png",
-      "sizes": "180x180",
-      "type": "image/png"
-    }
+    { "src": "/img/icons/icon-72.png", "sizes": "72x72", "type": "image/png", "purpose": "any" },
+    { "src": "/img/icons/icon-96.png", "sizes": "96x96", "type": "image/png", "purpose": "any" },
+    { "src": "/img/icons/icon-128.png", "sizes": "128x128", "type": "image/png", "purpose": "any" },
+    { "src": "/img/icons/icon-144.png", "sizes": "144x144", "type": "image/png", "purpose": "any" },
+    { "src": "/img/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/img/icons/icon-256.png", "sizes": "256x256", "type": "image/png", "purpose": "any" },
+    { "src": "/img/icons/icon-384.png", "sizes": "384x384", "type": "image/png", "purpose": "any" },
+    { "src": "/img/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/img/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/img/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "screenshots": [],
   "shortcuts": [
     {
       "name": "Lançar Frequência",
       "short_name": "Frequência",
-      "url": "/frequencia-professores.html",
-      "icons": [{ "src": "/favicon/favicon.png", "sizes": "192x192" }]
+      "url": "/html/frequencia-professores.html",
+      "icons": [{ "src": "/img/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "Ver Alunos",
       "short_name": "Alunos",
       "url": "/detalhes/alunos.html",
-      "icons": [{ "src": "/favicon/favicon.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/img/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "Meu Horário",
       "short_name": "Horário",
-      "url": "/meu-horario.html",
-      "icons": [{ "src": "/favicon/favicon.png", "sizes": "192x192" }]
+      "url": "/html/meu-horario.html",
+      "icons": [{ "src": "/img/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "Dashboard",
       "short_name": "Dashboard",
-      "url": "/dashboard.html",
-      "icons": [{ "src": "/favicon/favicon.png", "sizes": "192x192" }]
+      "url": "/html/dashboard.html",
+      "icons": [{ "src": "/img/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]
 }

@@ -341,22 +341,12 @@
     }
 }
 
+
+
 /* Tema claro */
 
-[data-theme="light"] .nandev-watermark,
-body.light-theme .nandev-watermark {
-    color: #374151;
-    background: rgba(255, 255, 255, 0.8);
-    border-color: rgba(0, 0, 0, 0.1);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
 
-[data-theme="light"] .nandev-watermark:hover,
-body.light-theme .nandev-watermark:hover {
-    color: var(--nd-primary);
-    background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 4px 20px rgba(0, 204, 106, 0.2);
-}
+
 
 /* Responsivo */
 

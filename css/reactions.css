@@ -298,71 +298,35 @@
     font-size: 0.85rem;
 }
 
+
 /* === LIGHT MODE SUPPORT === */
-[data-theme="light"] .reaction-chip {
-    background: rgba(0, 0, 0, 0.03);
-    border-color: rgba(0, 0, 0, 0.08);
-}
 
-[data-theme="light"] .reaction-chip:hover {
-    background: rgba(0, 0, 0, 0.06);
-    border-color: rgba(0, 0, 0, 0.12);
-}
 
-[data-theme="light"] .reaction-chip.active {
-    background: rgba(16, 185, 129, 0.08);
-    border-color: rgba(16, 185, 129, 0.25);
-}
 
-[data-theme="light"] .reaction-chip .reaction-count {
-    color: #71717a;
-}
 
-[data-theme="light"] .reaction-add-btn {
-    background: rgba(0, 0, 0, 0.02);
-    border-color: rgba(0, 0, 0, 0.1);
-    color: #a1a1aa;
-}
 
-[data-theme="light"] .reaction-picker-modal {
-    background: #ffffff;
-    border-color: rgba(0, 0, 0, 0.08);
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.12);
-}
 
-[data-theme="light"] .reaction-picker-header {
-    border-bottom-color: rgba(0, 0, 0, 0.06);
-}
 
-[data-theme="light"] .reaction-picker-title {
-    color: #18181b;
-}
 
-[data-theme="light"] .reaction-picker-close {
-    color: #71717a;
-}
 
-[data-theme="light"] .reaction-picker-close:hover {
-    color: #18181b;
-}
 
-[data-theme="light"] .reaction-picker-tabs {
-    background: rgba(0, 0, 0, 0.02);
-    border-bottom-color: rgba(0, 0, 0, 0.06);
-}
 
-[data-theme="light"] .reaction-picker-tab:hover,
-[data-theme="light"] .reaction-picker-tab.active {
-    background: rgba(0, 0, 0, 0.04);
-}
 
-[data-theme="light"] .reaction-picker-category-label {
-    color: #71717a;
-}
 
-[data-theme="light"] .reaction-picker-emoji:hover {
-    background: rgba(0, 0, 0, 0.05);
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* === RESPONSIVE CONSTRAINTS === */
 @media (max-width: 480px) {

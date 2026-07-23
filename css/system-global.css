@@ -1,0 +1,452 @@
+/**
+ * system-global.css — Camada global do design system
+ *
+ * Carregado em TODAS as páginas (injetado por inject-pwa-features.js), sempre
+ * como a última folha de estilo, para garantir consistência de:
+ *   1. Selects modernos (escola, turma, série, ano, cargo, perfil…)
+ *   2. Ícones padronizados
+ *   3. Afordância de clique (hover / active / focus / disabled)
+ *   4. Acessibilidade (WCAG 2.2 AA): foco visível, alvo mínimo, alto contraste,
+ *      redução de animações, escala de fonte
+ *   5. Regras anti-scroll-horizontal
+ *
+ * Tema: exclusivamente escuro.
+ */
+
+/* ======================================================================
+   1. SELECT SYSTEM — Premium Dark
+   ====================================================================== */
+select,
+select.form-input,
+select.form-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-color: #09090b;
+    color: #fafafa;
+    border: 1.5px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 0.75rem 2.8rem 0.75rem 1rem;
+    min-height: 48px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    max-width: 100%;
+    line-height: 1.4;
+    color-scheme: dark;
+    outline: none;
+    transition: border-color 200ms cubic-bezier(0.4, 0, 0.2, 1),
+        box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1),
+        background-color 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2310b981' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.85rem center;
+    background-size: 1.15rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+select:hover:not(:disabled) {
+    border-color: #10b981;
+    background-color: #0f0f12;
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.15), 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+select:focus {
+    border-color: #10b981;
+    background-color: #09090b;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+    outline: none;
+}
+
+select:focus-visible {
+    outline: 2px solid #10b981;
+    outline-offset: 2px;
+}
+
+select:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: grayscale(0.3);
+}
+
+select option {
+    background-color: #09090b;
+    color: #fafafa;
+    font-family: inherit;
+    padding: 0.75rem;
+}
+
+select option:checked {
+    background: linear-gradient(0deg, rgba(16, 185, 129, 0.25), rgba(16, 185, 129, 0.25));
+    color: #10b981;
+    font-weight: 600;
+}
+
+select option:disabled {
+    color: #52525b;
+}
+
+/* Selects compactos usados dentro de barras de filtro e painéis */
+select.select-sm,
+.sd-item select {
+    min-height: 38px;
+    padding: 0.4rem 2.2rem 0.4rem 0.7rem;
+    font-size: 0.82rem;
+    border-radius: 10px;
+    background-size: 1rem;
+    background-position: right 0.6rem center;
+}
+
+/* ======================================================================
+   2. ÍCONES PADRONIZADOS
+   ====================================================================== */
+.bi,
+[class^="bi-"],
+[class*=" bi-"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    vertical-align: -0.125em;
+    flex-shrink: 0;
+}
+
+/* Botões que contêm apenas um ícone: alvo de toque adequado e ícone centrado */
+.icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #a1a1aa;
+    font-size: 1.15rem;
+    cursor: pointer;
+    transition: background-color 200ms, color 200ms, border-color 200ms, transform 200ms;
+}
+
+.icon-btn:hover {
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: #10b981;
+}
+
+.icon-btn:active {
+    transform: scale(0.94);
+}
+
+/* ======================================================================
+   3. AFORDÂNCIA DE CLIQUE
+   ====================================================================== */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+a[href],
+summary,
+label[for],
+input[type="checkbox"],
+input[type="radio"],
+input[type="submit"],
+input[type="button"],
+input[type="file"],
+select:not(:disabled),
+.clickable,
+.card-clickable {
+    cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled="true"],
+.btn.disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* Feedback de clique consistente em qualquer elemento acionável */
+button:not(:disabled):active,
+[role="button"]:not([aria-disabled="true"]):active,
+.btn:not(:disabled):active,
+.clickable:active,
+.card-clickable:active {
+    transform: scale(0.985);
+}
+
+.card-clickable {
+    transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1),
+        box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1),
+        border-color 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-clickable:hover {
+    transform: translateY(-2px);
+    border-color: rgba(16, 185, 129, 0.35);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+/* Alvo de toque mínimo (WCAG 2.2 — 2.5.8 Target Size Minimum: 24x24) */
+button,
+[role="button"],
+.btn,
+input[type="submit"],
+input[type="button"] {
+    min-height: 24px;
+    min-width: 24px;
+}
+
+@media (pointer: coarse) {
+
+    button,
+    [role="button"],
+    .btn,
+    a.btn,
+    input[type="submit"],
+    input[type="button"] {
+        min-height: 44px;
+    }
+}
+
+/* ======================================================================
+   4. FOCO VISÍVEL (WCAG 2.2 — 2.4.11 / 2.4.13)
+   ====================================================================== */
+/* Não define border-radius aqui: o outline já acompanha o raio do elemento,
+   e sobrescrevê-lo deformaria botões redondos ao receber foco. */
+:focus-visible {
+    outline: 2px solid #10b981;
+    outline-offset: 2px;
+}
+
+/* Remove o outline apenas para o mouse, nunca para o teclado */
+:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* Link "pular para o conteúdo" */
+.skip-to-content {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    transform: translate(-50%, -120%);
+    z-index: 2000;
+    padding: 0.75rem 1.25rem;
+    border-radius: 0 0 12px 12px;
+    background: #10b981;
+    color: #04140e;
+    font-weight: 700;
+    text-decoration: none;
+    transition: transform 200ms;
+}
+
+.skip-to-content:focus {
+    transform: translate(-50%, 0);
+}
+
+/* Conteúdo visível apenas para leitores de tela */
+.sr-only {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ======================================================================
+   5. ACESSIBILIDADE — preferências do painel de Configurações
+   ====================================================================== */
+
+/* --- Alto contraste --- */
+.high-contrast {
+    --text-primary: #ffffff;
+    --text-secondary: #e4e4e7;
+    --text-tertiary: #d4d4d8;
+    --border-primary: #ffffff;
+}
+
+.high-contrast body,
+.high-contrast .card,
+.high-contrast .modal,
+.high-contrast .panel {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+}
+
+.high-contrast p,
+.high-contrast span,
+.high-contrast li,
+.high-contrast td,
+.high-contrast th,
+.high-contrast label,
+.high-contrast small {
+    color: #ffffff !important;
+}
+
+.high-contrast a,
+.high-contrast .btn-link {
+    color: #6ee7b7 !important;
+    text-decoration: underline;
+}
+
+.high-contrast button,
+.high-contrast .btn,
+.high-contrast select,
+.high-contrast input,
+.high-contrast textarea,
+.high-contrast .card,
+.high-contrast .icon-btn {
+    border: 1.5px solid #ffffff !important;
+}
+
+.high-contrast :focus-visible {
+    outline: 3px solid #ffff00 !important;
+    outline-offset: 2px;
+}
+
+/* --- Redução de animações --- */
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* --- Escala de fonte (definida via --user-font-scale pelo painel) --- */
+html {
+    font-size: calc(16px * var(--user-font-scale, 1));
+}
+
+/* --- Modo leitura: mais espaçamento e menos ruído visual --- */
+.reading-mode p,
+.reading-mode li,
+.reading-mode td {
+    line-height: 1.85 !important;
+    letter-spacing: 0.01em;
+}
+
+.reading-mode .decorative,
+.reading-mode .particles,
+.reading-mode canvas.background-fx {
+    display: none !important;
+}
+
+/* ======================================================================
+   6. LAYOUT DEFENSIVO — nada pode estourar a viewport
+   ====================================================================== */
+/* O bloqueio de scroll horizontal fica em responsive-global.css, que aplica
+   overflow-x apenas no mobile — no desktop isso quebraria o position:sticky
+   das sidebars. Aqui só limitamos a largura. */
+html,
+body {
+    max-width: 100%;
+}
+
+img,
+video,
+canvas,
+svg,
+iframe {
+    max-width: 100%;
+}
+
+img,
+video {
+    height: auto;
+}
+
+/* Tabelas largas rolam dentro do próprio contêiner, nunca na página */
+.table-responsive,
+.table-wrapper,
+.tabela-scroll {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Quebra de palavras longas (e-mails, códigos) em telas estreitas */
+h1,
+h2,
+h3,
+h4,
+p,
+td,
+th,
+li,
+label {
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+/* As safe-areas (entalhe do iPhone, barras de gesto, dobráveis) já são
+   aplicadas em <html> por responsive-global.css — não repetir aqui para não
+   duplicar o espaçamento. */
+
+/* ======================================================================
+   7. BOTÃO DE CONFIGURAÇÕES NO HEADER
+   ====================================================================== */
+.settings-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #a1a1aa;
+    font-size: 1.15rem;
+    cursor: pointer;
+    transition: background-color 200ms, color 200ms, border-color 200ms, transform 300ms;
+}
+
+.settings-trigger:hover {
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: #10b981;
+}
+
+.settings-trigger:hover i {
+    transform: rotate(45deg);
+    transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.settings-trigger:active {
+    transform: scale(0.94);
+}
+
+/* Fallback flutuante para páginas cujo header não tem slot de ações */
+.settings-trigger--floating {
+    position: fixed;
+    top: calc(0.9rem + env(safe-area-inset-top));
+    right: 0.9rem;
+    z-index: 1080;
+    background: #0a0a0c;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+}
+
+@media (max-width: 640px) {
+    .settings-trigger--floating {
+        width: 42px;
+        height: 42px;
+    }
+}

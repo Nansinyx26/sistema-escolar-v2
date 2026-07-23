@@ -250,9 +250,7 @@ select {
     color-scheme: dark;
 }
 
-[data-theme="light"] select {
-    color-scheme: light;
-}
+
 
 .form-input {
     width: 100%;

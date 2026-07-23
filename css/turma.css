@@ -1003,6 +1003,9 @@ input:checked + .slider:before {
     color: #ffffff !important;
 }
 
+
+
+
 /* ==========================================
    TEMA CLARO
    As superfícies desta página usam tokens (--bg-medium/dark/light = aliases
@@ -1013,59 +1016,18 @@ input:checked + .slider:before {
    Obs.: textos sobre fundos coloridos (botões com gradiente, aba ativa, ícone
    da turma) permanecem brancos — não entram nas regras abaixo.
    ========================================== */
-
 /* Escritas sobre superfícies claras → escuras */
-:root[data-theme="light"] .turma-details h1,
-:root[data-theme="light"] .faltas-title-text h3,
-:root[data-theme="light"] .alunos-table td,
-:root[data-theme="light"] .col-num,
-:root[data-theme="light"] .current-period .period-badge,
-:root[data-theme="light"] .relatorio-text,
-:root[data-theme="light"] .bimestre-tab:hover {
-    color: var(--text-primary);
-}
+
+
 
 /* Grupo com color:#fff !important (linhas 992-1004) → precisa de !important */
-:root[data-theme="light"] .turma-details .meta,
-:root[data-theme="light"] .turma-details .meta span,
-:root[data-theme="light"] .alunos-count,
-:root[data-theme="light"] .alunos-table th,
-:root[data-theme="light"] .observacoes,
-:root[data-theme="light"] .col-nome,
-:root[data-theme="light"] .col-condicao,
-:root[data-theme="light"] .col-matricula,
-:root[data-theme="light"] .col-faltas,
-:root[data-theme="light"] .col-recuperacao {
-    color: var(--text-primary) !important;
-}
+
+
 
 /* Fundos fixos escuros → claros (senão viram faixas escuras no tema claro) */
-:root[data-theme="light"] .relatorios-header-card {
-    background: rgba(255, 255, 255, 0.9);
-    border-color: var(--border-primary);
-}
-:root[data-theme="light"] .relatorios-bottom-bar {
-    background: rgba(255, 255, 255, 0.85);
-    border-color: var(--border-primary);
-}
-:root[data-theme="light"] .date-navigation,
-:root[data-theme="light"] .relatorio-text {
-    background: rgba(15, 23, 42, 0.03);
-    border-color: var(--border-secondary);
-}
-:root[data-theme="light"] .relatorio-text:focus {
-    background: #ffffff;
-}
-:root[data-theme="light"] .btn-quinzena {
-    background: rgba(15, 23, 42, 0.04);
-    border-color: var(--border-secondary);
-    color: var(--text-primary);
-}
-:root[data-theme="light"] .btn-quinzena:hover {
-    background: rgba(56, 189, 248, 0.15);
-    border-color: #38bdf8;
-    color: var(--secondary);
-}
-:root[data-theme="light"] .alunos-table tr:hover td {
-    background: rgba(15, 23, 42, 0.03);
-}
+
+
+
+
+
+

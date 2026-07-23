@@ -268,83 +268,9 @@
     outline: none;
 }
 
-/* ======================================
-   MODERN SELECT SYSTEM — Premium Dark
-   ====================================== */
-select,
-select.form-input,
-select.form-select {
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    background-color: #09090b;
-    color: #fafafa;
-    border: 1.5px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 0.75rem 2.8rem 0.75rem 1rem;
-    min-height: 48px;
-    font-size: 0.95rem;
-    font-family: inherit;
-    font-weight: 500;
-    cursor: pointer;
-    transition: border-color 200ms var(--ease-standard),
-                box-shadow 200ms var(--ease-standard),
-                background-color 200ms var(--ease-standard);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2310b981' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 0.85rem center;
-    background-size: 1.15rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
-    color-scheme: dark;
-    outline: none;
-    line-height: 1.4;
-}
-
-select:hover,
-select.form-input:hover,
-select.form-select:hover {
-    border-color: #10b981;
-    background-color: #0f0f12;
-    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.15),
-                0 4px 12px rgba(0, 0, 0, 0.4);
-}
-
-select:focus,
-select.form-input:focus,
-select.form-select:focus {
-    border-color: #10b981;
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
-    background-color: #09090b;
-    outline: none;
-}
-
-select:focus-visible {
-    outline: 2px solid #10b981;
-    outline-offset: 2px;
-}
-
-select:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-    filter: grayscale(0.3);
-}
-
-select option {
-    background-color: #09090b;
-    color: #fafafa;
-    font-family: inherit;
-    padding: 0.75rem;
-}
-
-select option:checked {
-    background: linear-gradient(0deg, rgba(16, 185, 129, 0.25), rgba(16, 185, 129, 0.25));
-    color: #10b981;
-    font-weight: 600;
-}
-
-select option:disabled {
-    color: #52525b;
-}
+/* O sistema moderno de <select> foi movido para css/system-global.css, que é
+   carregado em todas as páginas (este arquivo está presente em apenas parte
+   delas). Evita CSS duplicado e garante selects padronizados em todo o site. */
 
 .form-input::placeholder {
     color: var(--text-tertiary);
