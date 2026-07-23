@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Meu Horário Semanal - Sistema Escolar CIEP Jaguari">
+    <title>Meu Horário — CIEP Jaguari</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="../favicon/favicon.png">
+    <link rel="apple-touch-icon" href="../favicon/favicon.png">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <style>
+        /* ── Reset e Base ─────────────────────────────────────────────── */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg-deep: #060b18;
+            --bg-main: #0d1525;
+            --bg-card: #111827;
+            --bg-elevated: #1e293b;
+            --border: #1e293b;
+            --border-light: #334155;
+            --text-primary: #f1f5f9;
+            --text-sec: #94a3b8;
+            --text-muted: #475569;
+            --accent: #8b5cf6;
+            --accent-glow: rgba(139, 92, 246, .25);
+            --green: #10b981;
+            --blue: #3b82f6;
+            --yellow: #f59e0b;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* ── Fundo decorativo ─────────────────────────────────────────── */
+        .page-bg {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: .18;
+        }
+
+        .orb-1 {
+            width: 500px;
+            height: 500px;
+            background: #8b5cf6;
+            top: -150px;
+            left: -100px;
+        }
+
+        .orb-2 {
+            width: 400px;
+            height: 400px;
+            background: #0ea5e9;
+            bottom: -100px;
+            right: -80px;
+        }
+
+        /* ── Header ───────────────────────────────────────────────────── */
+        .page-header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(6, 11, 24, .85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+        }
+
+        .header-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            height: 64px;
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: none;
+            border: 1px solid var(--border-light);
+            color: var(--text-sec);
+            border-radius: 8px;
+            padding: 7px 14px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all .2s;
+            text-decoration: none;
+        }
+
+        .back-btn:hover {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .header-title .icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #fff;
+        }
+
+        .header-title h1 {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .header-title p {
+            font-size: 12px;
+            color: var(--text-sec);
+            margin-top: 1px;
+        }
+
+        /* ── Container principal ──────────────────────────────────────── */
+        .main {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 32px 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ── Info do professor ────────────────────────────────────────── */
+        .prof-banner {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: linear-gradient(135deg, rgba(139, 92, 246, .15), rgba(109, 40, 217, .08));
+            border: 1px solid rgba(139, 92, 246, .3);
+            border-radius: 16px;
+            padding: 20px 24px;
+            margin-bottom: 28px;
+        }
+
+        .prof-avatar {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .prof-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .prof-disc {
+            font-size: 13px;
+            color: #a78bfa;
+            margin-top: 3px;
+        }
+
+        .readonly-badge {
+            margin-left: auto;
+            background: rgba(16, 185, 129, .12);
+            border: 1px solid rgba(16, 185, 129, .3);
+            color: #34d399;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 5px 12px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            flex-shrink: 0;
+        }
+
+        /* ── Grade de dias ────────────────────────────────────────────── */
+        .week-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 14px;
+        }
+
+        @media (max-width: 900px) {
+            .week-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 500px) {
+            .week-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ── Card de dia ──────────────────────────────────────────────── */
+        .day-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+            transition: transform .2s, box-shadow .2s;
+        }
+
+        .day-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, .4);
+        }
+
+        /* ── Cores das Disciplinas Especialistas (RGB Sólido) ── */
+        .aula-slot.ef-marjorie {
+            background-color: rgb(255, 0, 255) !important;
+        }
+
+        .aula-slot.ef-marjorie * {
+            color: rgb(0, 0, 0) !important;
+            border-color: rgba(0, 0, 0, 0.2) !important;
+        }
+
+        .aula-slot.ef-marcos {
+            background-color: rgb(0, 112, 192) !important;
+        }
+
+        .aula-slot.ef-marcos * {
+            color: rgb(255, 255, 255) !important;
+            border-color: rgba(255, 255, 255, 0.2) !important;
+        }
+
+        .aula-slot.ingles {
+            background-color: rgb(57, 255, 20) !important;
+        }
+
+        .aula-slot.ingles * {
+            color: rgb(0, 0, 0) !important;
+            border-color: rgba(0, 0, 0, 0.2) !important;
+        }
+
+        .aula-slot.artes-mirian {
+            background-color: rgb(255, 165, 0) !important;
+        }
+
+        .aula-slot.artes-mirian * {
+            color: rgb(0, 0, 0) !important;
+            border-color: rgba(0, 0, 0, 0.2) !important;
+        }
+
+        .aula-slot.artes-bianca {
+            background-color: rgb(255, 255, 0) !important;
+        }
+
+        .aula-slot.artes-bianca * {
+            color: rgb(0, 0, 0) !important;
+            border-color: rgba(0, 0, 0, 0.2) !important;
+        }
+
+        .aula-slot.leitura {
+            background-color: rgb(255, 0, 0) !important;
+        }
+
+        .aula-slot.leitura * {
+            color: rgb(255, 255, 255) !important;
+            border-color: rgba(255, 255, 255, 0.2) !important;
+        }
+
+        .aula-slot.maker {
+            background-color: rgb(155, 89, 182) !important;
+        }
+
+        .aula-slot.maker * {
+            color: rgb(255, 255, 255) !important;
+            border-color: rgba(255, 255, 255, 0.2) !important;
+        }
+
+        .aula-slot.sebrae {
+            background-color: rgb(0, 255, 255) !important;
+        }
+
+        .aula-slot.sebrae * {
+            color: rgb(0, 0, 0) !important;
+            border-color: rgba(0, 0, 0, 0.2) !important;
+        }
+
+        .aula-slot.proerd {
+            background-color: rgb(255, 255, 255) !important;
+        }
+
+        .aula-slot.proerd * {
+            color: rgb(0, 0, 0) !important;
+            border-color: rgba(0, 0, 0, 0.2) !important;
+        }
+
+        .aula-slot.reuniao {
+            background-color: rgb(107, 114, 128) !important;
+        }
+
+        .aula-slot.reuniao * {
+            color: rgb(255, 255, 255) !important;
+            border-color: rgba(255, 255, 255, 0.2) !important;
+        }
+
+        /* Ocultar a bolinha lateral quando o bloco todo tem cor */
+        .aula-slot[class*="ef-"] .aula-dot,
+        .aula-slot.ingles .aula-dot,
+        .aula-slot[class*="artes-"] .aula-dot,
+        .aula-slot.leitura .aula-dot,
+        .aula-slot.maker .aula-dot,
+        .aula-slot.sebrae .aula-dot,
+        .aula-slot.proerd .aula-dot,
+        .aula-slot.reuniao .aula-dot {
+            display: none;
+        }
+
+        .day-card.today {
+            border-color: rgba(139, 92, 246, .5);
+        }
+
+        .day-card.today .day-header {
+            background: linear-gradient(90deg, #8b5cf6, #6d28d9);
+        }
+
+        .day-header {
+            background: var(--bg-elevated);
+            padding: 12px 16px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: .06em;
+            color: var(--text-sec);
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .day-card.today .day-header {
+            color: #fff;
+        }
+
+        /* ── Slots de aula ────────────────────────────────────────────── */
+        .aulas-list {
+            padding: 8px 0;
+        }
+
+        .aula-slot {
+            display: flex;
+            align-items: stretch;
+            padding: 0 12px;
+            min-height: 54px;
+            border-bottom: 1px solid rgba(30, 41, 59, .6);
+            transition: background .15s;
+        }
+
+        .aula-slot:last-child {
+            border-bottom: none;
+        }
+
+        .aula-slot:hover {
+            background: rgba(255, 255, 255, .03);
+        }
+
+        .aula-num {
+            width: 22px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-muted);
+            border-right: 1px solid var(--border);
+            margin: 6px 0;
+        }
+
+        .aula-info {
+            flex: 1;
+            padding: 8px 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .aula-hora {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-bottom: 3px;
+        }
+
+        .aula-turma {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .aula-disc {
+            font-size: 11px;
+            color: var(--text-sec);
+            margin-top: 1px;
+        }
+
+        .aula-slot.livre .aula-turma {
+            color: var(--text-muted);
+            font-weight: 400;
+            font-style: italic;
+        }
+
+        .aula-dot {
+            width: 6px;
+            flex-shrink: 0;
+            border-radius: 3px;
+            margin: 8px 0 8px 6px;
+        }
+
+        .aula-dot.ocupada {
+            background: var(--accent);
+        }
+
+        .aula-dot.livre {
+            background: transparent;
+        }
+
+        /* ── Resumo rápido ────────────────────────────────────────────── */
+        .summary-bar {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+        }
+
+        .summary-chip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 16px;
+            font-size: 13px;
+        }
+
+        .summary-chip .num {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--accent);
+        }
+
+        .summary-chip .lbl {
+            color: var(--text-sec);
+            font-size: 11px;
+            line-height: 1.3;
+        }
+
+        /* ── Estado de carregamento/erro ─────────────────────────────── */
+        .state-box {
+            text-align: center;
+            padding: 64px 24px;
+            color: var(--text-sec);
+        }
+
+        .state-box i {
+            font-size: 40px;
+            display: block;
+            margin-bottom: 14px;
+        }
+
+        .state-box h3 {
+            font-size: 18px;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin: 0 auto 16px;
+            border: 3px solid var(--border-light);
+            border-top-color: var(--accent);
+            animation: spin .8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+    <!-- Tailwind CSS Play CDN — preflight desabilitado para nao conflitar com CSS existente -->
+    <!-- Offline Compiled Tailwind CSS -->
+    <link rel="stylesheet" href="../css/tailwind-built.css">
+    <script src="../js/tailwind-config.js"></script>
+    <link rel="stylesheet" href="../css/responsive-global.css?v=1.0">
+    <link rel="stylesheet" href="../css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="../css/reactions.css?v=1.0">
+</head>
+
+<body>
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Sistema Escolar</h2>
+            <p class="splash-subtitle">Meu Horário</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="../js/splash-screen.js"></script>
+
+    <div class="page-bg">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="page-header">
+        <div class="header-inner">
+            <a href="dashboard.html" class="back-btn">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+            <div class="header-title">
+                <div class="icon"><i class="bi bi-calendar-week-fill"></i></div>
+                <div>
+                    <h1 id="pageTitle">Meu Horário Semanal</h1>
+                    <p id="pageSubtitle">CIEP Profª. Maria Nilde Mascellani — Jaguari · 2026</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main -->
+    <main class="main">
+
+        <!-- Banner do professor -->
+        <div class="prof-banner" id="profBanner" style="display:none;">
+            <div class="prof-avatar" id="profAvatar">👩‍🏫</div>
+            <div>
+                <div class="prof-name" id="profName">—</div>
+                <div class="prof-disc" id="profDisc">—</div>
+            </div>
+            <div class="readonly-badge">
+                <i class="bi bi-eye-fill"></i> Somente leitura
+            </div>
+        </div>
+
+        <!-- Resumo rápido -->
+        <div class="summary-bar" id="summaryBar" style="display:none;">
+            <div class="summary-chip">
+                <span class="num" id="totalAulas">0</span>
+                <span class="lbl">Aulas por<br>semana</span>
+            </div>
+            <div class="summary-chip">
+                <span class="num" id="totalTurmas">0</span>
+                <span class="lbl">Turmas<br>atendidas</span>
+            </div>
+            <div class="summary-chip">
+                <span class="num" id="totalDias">0</span>
+                <span class="lbl">Dias com<br>aula</span>
+            </div>
+        </div>
+
+        <!-- Estado de carregamento -->
+        <div class="state-box" id="stateLoading">
+            <div class="spinner"></div>
+            <h3>Carregando seu horário...</h3>
+            <p>Buscando dados no banco de dados</p>
+        </div>
+
+        <!-- Estado de erro -->
+        <div class="state-box" id="stateError" style="display:none;">
+            <i class="bi bi-exclamation-circle text-danger" style="color:#ef4444;"></i>
+            <h3>Professor não encontrado</h3>
+            <p id="errorMsg">Não foi possível carregar o horário. Verifique a URL ou contate a direção.</p>
+        </div>
+
+        <!-- Grade semanal -->
+        <div class="week-grid" id="weekGrid" style="display:none;"></div>
+
+    </main>
+
+    <script src="../js/api-config.js"></script>
+    <script src="../js/database.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/meu-horario.js"></script>
+    <script src="../js/vendor.js"></script>
+    <script defer src="../js/reactions.js"></script>
+
+<script src="../js/click-sound.js" defer></script>
+    <script defer src="../js/push-notifications.js"></script>
+    <script defer src="../js/pwa-install.js"></script>
+</body>
+
+</html>

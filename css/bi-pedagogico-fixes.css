@@ -1,0 +1,5 @@
+/* Small accessibility fix for BI voice settings panel */
+
+body.no-scroll {
+    overflow: hidden;
+}

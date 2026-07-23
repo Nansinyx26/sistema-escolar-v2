@@ -1,0 +1,32 @@
+{
+    "name": "sistema-escolar-v2-root",
+    "version": "1.0.0",
+    "description": "Root package for school management system",
+    "scripts": {
+        "install-backend": "cd backend && npm install --legacy-peer-deps",
+        "build": "npm run install-backend && npm run build:css && npm run build:tailwind",
+        "start": "cd backend && npm start",
+        "dev": "cd backend && npm run dev",
+        "build:css": "sass scss/main.scss css/main-compiled.css --style=compressed",
+        "build:tailwind": "tailwindcss -i ./css/tailwind-input.css -o ./css/tailwind-built.css --minify",
+        "watch:css": "sass scss/main.scss css/main-compiled.css --watch --style=expanded"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "devDependencies": {
+        "@types/react": "^19.2.17",
+        "@types/react-dom": "^19.2.3",
+        "autoprefixer": "^10.5.0",
+        "postcss": "^8.5.15",
+        "sass": "^1.99.0",
+        "tailwindcss": "^3.4.19",
+        "vite": "^8.0.16"
+    },
+    "dependencies": {
+        "@react-oauth/google": "^0.13.5",
+        "animejs": "^4.4.1",
+        "gsap": "^3.15.0",
+        "three": "^0.134.0"
+    }
+}

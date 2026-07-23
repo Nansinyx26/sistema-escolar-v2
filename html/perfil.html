@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Meu Perfil - Sistema Escolar">
+    <title>Meu Perfil - Sistema Escolar</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="../favicon/favicon.png">    <link rel="apple-touch-icon" href="../favicon/favicon.png">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="../css/variables.css">
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components-new.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <link rel="stylesheet" href="../css/cadastro.css">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../css/parallax-glass.css">
+    <link rel="stylesheet" href="../css/neo-brutal.css">
+    <!-- Offline Compiled Tailwind CSS -->
+    <link rel="stylesheet" href="../css/tailwind-built.css">    <link rel="stylesheet" href="../css/responsive-global.css?v=1.0">
+    <link rel="stylesheet" href="../css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="../css/reactions.css?v=1.0">
+</head>
+
+<body>
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Sistema Escolar</h2>
+            <p class="splash-subtitle">Meu Perfil</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="../js/splash-screen.js"></script>
+
+    <div class="dashboard-page">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-voltar-dashboard">
+                        <i class="bi bi-arrow-left"></i>
+                        <span>Voltar</span>
+                    </button>
+                    <div class="header-logo">
+                        <i class="bi bi-mortarboard-fill"></i>
+                        <span>Meu Perfil</span>
+                    </div>
+                </div>
+
+                <div class="header-right">
+                    <!-- Botão Ferramentas (apenas para Admin) -->
+                    <button type="button" class="btn btn-accent btn-sm hidden" id="btn-ferramentas">
+                        <i class="bi bi-gear-fill"></i>
+                        <span>Ferramentas</span>
+                    </button>
+                    <a href="meus-dados.html" class="btn btn-secondary btn-sm" title="Portal de Privacidade LGPD" style="text-decoration:none;">
+                        <i class="bi bi-shield-lock"></i>
+                        <span>Meus Dados</span>
+                    </a>
+                    <button class="btn btn-secondary btn-sm" id="btn-sair-perfil">
+                        <i class="bi bi-box-arrow-right"></i>
+                        <span>Sair</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="dashboard-main">
+            <div class="cadastro-container">
+                <!-- Formulário de Perfil -->
+                <div class="cadastro-card">
+                    <form id="perfilForm" class="cadastro-form">
+                        <!-- Foto -->
+                        <div class="form-section">
+                            <div class="photo-upload">
+                                <div class="photo-preview" id="photoPreview">
+                                    <i class="bi bi-person-circle"></i>
+                                </div>
+                                <div class="photo-upload-actions">
+                                    <label for="fotoInput" class="btn btn-secondary btn-sm">
+                                        <i class="bi bi-camera"></i>
+                                        Alterar Foto
+                                    </label>
+                                    <input type="file" id="fotoInput" accept="image/*" hidden>
+                                    <button type="button" class="btn btn-outline btn-sm hidden" id="removeFotoBtn">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                                <small class="text-secondary">JPG, PNG ou GIF - Máx. 2MB</small>
+                            </div>
+                        </div>
+
+                        <!-- Informações Básicas -->
+                        <div class="form-section">
+                            <h3 class="section-title">
+                                <i class="bi bi-person-badge"></i>
+                                Informações Básicas
+                            </h3>
+
+                            <div class="form-group">
+                                <label class="form-label required" for="nome">Nome Completo</label>
+                                <input type="text" id="nome" class="form-input" placeholder="Digite seu nome completo"
+                                    required>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-md">
+                                <div class="form-group">
+                                    <label class="form-label required" for="cpf">CPF</label>
+                                    <input type="text" id="cpf" class="form-input" placeholder="000.000.000-00" required
+                                        maxlength="14">
+                                    <small class="text-secondary">Obrigatório para recuperação de senha</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label required" for="telefone">Telefone</label>
+                                    <input type="tel" id="telefone" class="form-input" placeholder="(00) 00000-0000"
+                                        required maxlength="15">
+                                    <small class="text-secondary">Obrigatório para recuperação de senha</small>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-md">
+                                <div class="form-group">
+                                    <label class="form-label" for="idade">Idade</label>
+                                    <input type="number" id="idade" class="form-input" placeholder="30" min="18"
+                                        max="100">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="biografia">Biografia</label>
+                                <textarea id="biografia" class="form-textarea"
+                                    placeholder="Conte um pouco sobre você..." rows="4"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Informações da Conta -->
+                        <div class="form-section">
+                            <h3 class="section-title">
+                                <i class="bi bi-lock"></i>
+                                Informações da Conta
+                            </h3>
+
+                            <div class="form-group">
+                                <label class="form-label">Email</label>
+                                <input type="email" id="email" class="form-input" disabled>
+                                <small class="text-secondary">O email não pode ser alterado</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Tipo de Perfil</label>
+                                <input type="text" id="tipoPerfil" class="form-input" disabled>
+                                <small class="text-secondary">O tipo de perfil não pode ser alterado</small>
+                            </div>
+                        </div>
+
+                        <!-- Trocar de Escola (professor / diretor / secretaria) -->
+                        <div class="form-section hidden" id="secaoTrocarEscola"
+                            style="border: 1px solid rgba(16,185,129,0.25); border-radius: 12px; background: rgba(16,185,129,0.05); padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;">
+                            <h3 class="section-title" style="color: #10b981; margin-bottom: 0.75rem;">
+                                <i class="bi bi-building-gear"></i>
+                                Minha Escola
+                            </h3>
+                            <div class="form-group">
+                                <label class="form-label">Escola ativa</label>
+                                <input type="text" id="escolaAtivaPerfil" class="form-input" disabled
+                                    placeholder="Carregando...">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="novoCodigoEscola">Mudei de escola — código secreto da nova escola</label>
+                                <input type="text" id="novoCodigoEscola" class="form-input"
+                                    placeholder="Cole aqui o código da nova escola" autocomplete="off">
+                                <small class="text-secondary">Solicite o código à direção da nova escola. Isso troca a escola vinculada à sua conta.</small>
+                            </div>
+                            <button type="button" class="btn btn-outline btn-sm" id="btnMudarEscola"
+                                style="border-color: #10b981; color: #10b981;">
+                                <i class="bi bi-arrow-left-right"></i> Trocar de escola
+                            </button>
+                        </div>
+
+                        <!-- Informações Específicas (Professor) -->
+                        <div class="form-section hidden" id="infoProfessor">
+                            <h3 class="section-title">
+                                <i class="bi bi-book"></i>
+                                Informações do Professor
+                            </h3>
+
+                            <div class="form-group">
+                                <label class="form-label required" for="escola">Nome da Escola</label>
+                                <input type="text" id="escola" class="form-input" placeholder="Nome da Escola" required>
+                                <small class="text-secondary">Nome da instituição onde leciona</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label required" for="disciplina">Disciplina</label>
+                                <input type="text" id="disciplina" class="form-input"
+                                    placeholder="Sua disciplina principal" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Sala Principal</label>
+                                <input type="text" id="salaPrincipal" class="form-input" disabled>
+                                <small class="text-secondary">Contate a direção para alterar</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Matérias</label>
+                                <div id="materiasDisplay" class="select-multiple">
+                                    <!-- Será preenchido dinamicamente -->
+                                </div>
+                            </div>
+
+                            <div class="form-group hidden" id="salasAdicionaisDisplay">
+                                <label class="form-label">Salas Adicionais</label>
+                                <div id="salasDisplay" class="select-multiple">
+                                    <!-- Será preenchido dinamicamente -->
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="atividadesPessoais">Atividades Pessoais / Hobbies</label>
+                                <textarea id="atividadesPessoais" class="form-textarea"
+                                    placeholder="Seus hobbies, interesses..." rows="3"></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label" for="ideiasParaAno">Ideias para o Ano Letivo</label>
+                                <textarea id="ideiasParaAno" class="form-textarea"
+                                    placeholder="Projetos, atividades que gostaria de implementar..."
+                                    rows="3"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- LGPD Info -->
+                        <div class="form-section" style="border: 1px solid rgba(26,86,219,0.2); border-radius: 12px; background: rgba(26,86,219,0.05); padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;">
+                            <h3 class="section-title" style="color: #60a5fa; margin-bottom: 0.75rem;">
+                                <i class="bi bi-shield-check"></i>
+                                Privacidade e Dados Pessoais (LGPD)
+                            </h3>
+                            <p style="font-size: 0.88rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 1rem;">
+                                De acordo com a Lei 13.709/2018 (LGPD), você tem direito a acessar, exportar e solicitar a exclusão dos seus dados a qualquer momento.
+                            </p>
+                            <a href="meus-dados.html" class="btn btn-secondary btn-sm" style="text-decoration: none; display: inline-flex;">
+                                <i class="bi bi-shield-lock"></i>
+                                Acessar Portal de Privacidade
+                            </a>
+                        </div>
+
+                        <!-- Avaliação do Sistema -->
+                        <div class="form-section" style="border: 1px solid rgba(226,199,106,0.2); border-radius: 12px; background: rgba(226,199,106,0.05); padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;">
+                            <h3 class="section-title" style="color: var(--gold); margin-bottom: 0.75rem;">
+                                <i class="bi bi-star-fill"></i>
+                                Avaliação do Sistema
+                            </h3>
+                            <p style="font-size: 0.88rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 1rem;">
+                                Sua opinião ajuda a melhorar o sistema para todos! (Opcional)
+                            </p>
+                            
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label class="form-label" style="color: var(--text-primary);">Sua Nota (1 a 5 estrelas)</label>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;" id="ratingStars">
+                                    <input type="radio" name="estrelas" value="1" id="star1" class="hidden">
+                                    <label for="star1" style="cursor: pointer; color: #475569; font-size: 1.8rem; transition: all 0.2s ease;"><i class="bi bi-star"></i></label>
+                                    
+                                    <input type="radio" name="estrelas" value="2" id="star2" class="hidden">
+                                    <label for="star2" style="cursor: pointer; color: #475569; font-size: 1.8rem; transition: all 0.2s ease;"><i class="bi bi-star"></i></label>
+                                    
+                                    <input type="radio" name="estrelas" value="3" id="star3" class="hidden">
+                                    <label for="star3" style="cursor: pointer; color: #475569; font-size: 1.8rem; transition: all 0.2s ease;"><i class="bi bi-star"></i></label>
+                                    
+                                    <input type="radio" name="estrelas" value="4" id="star4" class="hidden">
+                                    <label for="star4" style="cursor: pointer; color: #475569; font-size: 1.8rem; transition: all 0.2s ease;"><i class="bi bi-star"></i></label>
+                                    
+                                    <input type="radio" name="estrelas" value="5" id="star5" class="hidden">
+                                    <label for="star5" style="cursor: pointer; color: #475569; font-size: 1.8rem; transition: all 0.2s ease;"><i class="bi bi-star"></i></label>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 1rem;">
+                                <label class="form-label" for="avaliacaoTexto">Deixe seu depoimento sobre a plataforma</label>
+                                <textarea id="avaliacaoTexto" class="form-textarea" placeholder="O que você achou do sistema?..." rows="3"></textarea>
+                            </div>
+                            
+                            <button type="button" class="btn btn-outline btn-sm" id="btnEnviarAvaliacao" style="border-color: var(--gold); color: var(--gold);">
+                                <i class="bi bi-send-fill"></i> Enviar Avaliação
+                            </button>
+                        </div>
+
+                        <!-- Botões -->
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-outline" id="btn-ver-tutorial" onclick="window.OnboardingTour && window.OnboardingTour.restart()">
+                                <i class="bi bi-question-circle"></i>
+                                Ver Tutorial Novamente
+                            </button>
+                            <button type="button" class="btn btn-secondary" id="btn-voltar-dashboard">
+                                <i class="bi bi-x-lg"></i>
+                                Cancelar
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg"></i>
+                                <span>Salvar Alterações</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="../js/api-config.js"></script>
+    <script defer src="../js/database.js?v=2"></script>
+    <script defer src="../js/auth.js?v=2"></script>
+    <script defer src="../js/utils.js?v=2"></script>
+    <script defer src="../js/perfil.js?v=2"></script>
+    <script defer src="../js/parallax.js"></script>
+    <script src="../js/vendor.js"></script>
+    <script defer src="../js/events/perfil-events.js"></script>
+    <script defer src="../js/reactions.js"></script>
+    <script defer src="../js/onboarding-tour.js"></script>
+
+<script src="../js/click-sound.js" defer></script>
+    <script defer src="../js/push-notifications.js"></script>
+    <script defer src="../js/pwa-install.js"></script>
+</body>
+
+</html>

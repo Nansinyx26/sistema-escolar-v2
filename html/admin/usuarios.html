@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Gerenciar Usuários - Admin</title>
+    <!-- CSS -->
+    <link rel="stylesheet" href="../../css/variables.css">
+    <link rel="stylesheet" href="../../css/base.css">
+    <link rel="stylesheet" href="../../css/components-new.css">
+    <link rel="stylesheet" href="../../css/dashboard.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        .container {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .table-card {
+            background: var(--surface-card);
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+
+        .actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-delete {
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+            border: none;
+            padding: 0.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn-delete:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+    </style>
+    <link rel="stylesheet" href="../../css/parallax-glass.css">
+    <link rel="stylesheet" href="../../css/neo-brutal.css">
+    <!-- Tailwind CSS Play CDN — preflight desabilitado para nao conflitar com CSS existente -->
+    <!-- Offline Compiled Tailwind CSS -->
+    <link rel="stylesheet" href="../../css/tailwind-built.css">    <link rel="stylesheet" href="../../css/responsive-global.css?v=1.0">
+    <link rel="stylesheet" href="../../css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="../../css/reactions.css?v=1.0">
+</head>
+
+<body>
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Sistema Escolar</h2>
+            <p class="splash-subtitle">Gerenciar Usuários</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="../../js/splash-screen.js"></script>
+
+    <div class="dashboard-page">
+        <header class="dashboard-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <button class="btn btn-secondary btn-sm" onclick="window.location.href='../dashboard.html'">
+                        <i class="bi bi-arrow-left"></i> Voltar
+                    </button>
+                    <div class="header-logo">
+                        <i class="bi bi-people-fill"></i>
+                        <span>Gerenciar Usuários</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="container">
+            <!-- Painel de Segurança (Código do Dia) -->
+            <div class="glass-strong" style="margin-bottom: 2rem; padding: 1.2rem; border-radius: var(--radius-lg); border-left: 5px solid var(--primary-color);">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;">
+                    <!-- Lado Esquerdo: Título -->
+                    <div style="flex: 1; min-width: 250px;">
+                        <h3 style="margin: 0; font-size: 1.1rem; color: var(--primary-color); display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="bi bi-shield-lock"></i> Central de Segurança
+                        </h3>
+                        <p class="text-secondary text-sm" style="margin: 0.2rem 0 0;">Controle de acesso e códigos da escola.</p>
+                    </div>
+
+                    <!-- Centro: Código Secreto -->
+                    <div style="display: flex; align-items: center; gap: 0.8rem;">
+                        <div style="background: rgba(0,0,0,0.2); padding: 0.4rem 1rem; border-radius: var(--radius-md); border: 1px solid rgba(var(--primary-rgb), 0.2); display: flex; align-items: center; gap: 1rem;">
+                            <div style="text-align: right;">
+                                <span class="text-secondary" style="display: block; font-size: 0.65rem; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Código Secreto do Dia</span>
+                                <span id="dailyCodeDisplay" data-code="------" style="font-family: monospace; font-size: 1.4rem; font-weight: 700; color: var(--text-primary); letter-spacing: 2px;">••••••</span>
+                            </div>
+                            <button type="button" onclick="toggleSecretVisibility('dailyCodeDisplay', this)" class="btn-icon" style="color: var(--text-secondary); margin-top: 5px;">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        
+                        <button id="btnRotateCode" class="btn btn-secondary btn-sm" onclick="rotateSecretCode()" title="Gerar Novo Código" style="display: none; height: 42px;">
+                            <i class="bi bi-arrow-repeat"></i>
+                        </button>
+                    </div>
+
+                    <!-- Lado Direito: Ações -->
+                    <div style="display: flex; gap: 0.75rem;">
+                        <button class="btn btn-primary btn-sm" onclick="openNewUserModal()" style="height: 42px;">
+                            <i class="bi bi-person-plus-fill"></i> Novo Usuário
+                        </button>
+                        <button class="btn btn-secondary btn-sm" onclick="window.location.href='auditoria.html'" style="height: 42px;" title="Ver Logs de Auditoria">
+                            <i class="bi bi-journal-text"></i> Auditoria
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2 style="margin: 0; font-size: 1.25rem;">Lista de Usuários</h2>
+            </div>
+            
+            <div class="table-card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Email</th>
+                            <th>Perfil</th>
+                            <th>Origem</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTable">
+                        <tr>
+                            <td colspan="5">Carregando...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+
+        <!-- Modal Novo Usuário -->
+        <div id="newUserModal" class="backdrop" style="display: none; align-items: center; justify-content: center; z-index: 1000;">
+            <div class="glass-strong" style="max-width: 500px; width: 90%; padding: 2rem; border-radius: var(--radius-lg);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h3 style="margin: 0;"><i class="bi bi-person-plus-fill"></i> Cadastrar Usuário</h3>
+                    <button class="btn-icon" onclick="closeNewUserModal()"><i class="bi bi-x-lg"></i></button>
+                </div>
+                
+                <form id="newUserForm">
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label>Nome Completo</label>
+                        <input type="text" id="newUserName" class="form-control" placeholder="Ex: João Silva" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label>E-mail</label>
+                        <input type="email" id="newUserEmail" class="form-control" placeholder="email@escola.com" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label>Senha Inicial</label>
+                        <div style="position: relative;">
+                            <input type="password" id="newUserPass" class="form-control" value="123456" required style="padding-right: 40px;">
+                            <button type="button" onclick="togglePass('newUserPass', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 1.5rem;">
+                        <label>Perfil de Acesso</label>
+                        <select id="newUserRole" class="form-control" required>
+                            <option value="professor">Professor</option>
+                            <option value="diretor">Diretor</option>
+                            <option value="admin">Administrador</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 1rem;">
+                        <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="window.location.href='../login.html'">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" style="flex: 1;">Criar Conta</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+    <script src="../../js/api-config.js"></script>
+    <script defer src="../../js/database.js"></script>
+    <script defer src="../../js/auth.js"></script>
+    <script defer src="../../js/utils.js"></script>
+    <script>
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const usersTable = document.getElementById('usersTable');
+            const newUserForm = document.getElementById('newUserForm');
+
+            // Auth Check
+            await auth.init();
+            const user = auth.getCurrentUser();
+
+            if (!user || (user.perfil !== 'admin' && user.perfil !== 'diretor')) {
+                alert('Acesso negado. Esta página é restrita à Direção.');
+                window.location.href = '../login.html';
+                return;
+            }
+
+            // Controle de botões (Admin vs Diretor)
+            if (user.perfil === 'admin' || user.perfil === 'diretor') {
+                const btnRotate = document.getElementById('btnRotateCode');
+                if (btnRotate) btnRotate.style.display = 'inline-flex';
+            }
+
+            // --- Segurança / Código do Dia ---
+            async function fetchSecurityStatus() {
+                try {
+                    const res = await fetch(`${window.API_BASE_URL}/security/status`);
+                    const json = await res.json();
+                    if (json.success) {
+                        const el = document.getElementById('dailyCodeDisplay');
+                        el.setAttribute('data-code', json.data.codigo);
+                        el.innerText = '••••••'; // Oculto por padrão
+                    }
+                } catch (e) {
+                    console.error('Erro ao buscar código:', e);
+                }
+            }
+
+            window.rotateSecretCode = async () => {
+                if (!confirm('Deseja realmente gerar um novo código? O código atual deixará de funcionar imediatamente.')) return;
+                
+                const btnRotate = document.getElementById('btnRotateCode');
+                const originalHtml = btnRotate ? btnRotate.innerHTML : '';
+                
+                try {
+                    if (btnRotate) {
+                        btnRotate.disabled = true;
+                        btnRotate.innerHTML = '<i class="bi bi-arrow-repeat inline-block animate-spin"></i>';
+                    }
+                    
+                    const res = await fetch(`${window.API_BASE_URL}/security/rotate`, {
+                        method: 'POST'
+                    });
+                    const json = await res.json();
+                    if (json.success && json.data) {
+                        const el = document.getElementById('dailyCodeDisplay');
+                        const toggleBtn = document.querySelector('button[onclick*="dailyCodeDisplay"]');
+                        const icon = toggleBtn ? toggleBtn.querySelector('i') : null;
+                        
+                        el.setAttribute('data-code', json.data.codigo);
+                        // Revela o código novo automaticamente para melhor UX
+                        el.innerText = json.data.codigo;
+                        if (icon) {
+                            icon.classList.remove('bi-eye');
+                            icon.classList.add('bi-eye-slash');
+                        }
+                        showToast('Novo código gerado com sucesso!', 'success');
+                    } else {
+                        throw new Error(json.error || 'Erro ao gerar');
+                    }
+                } catch (e) {
+                    console.error(e);
+                    showToast('Erro ao rotacionar código', 'error');
+                } finally {
+                    if (btnRotate) {
+                        btnRotate.disabled = false;
+                        btnRotate.innerHTML = originalHtml;
+                    }
+                }
+            };
+
+            fetchSecurityStatus();
+
+            // --- Modal Functions ---
+            window.openNewUserModal = () => {
+                document.getElementById('newUserModal').style.display = 'flex';
+                document.getElementById('newUserName').focus();
+            };
+
+            window.closeNewUserModal = () => {
+                document.getElementById('newUserModal').style.display = 'none';
+                newUserForm.reset();
+            };
+
+            newUserForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const btn = e.target.querySelector('button[type="submit"]');
+                const originalText = btn.innerHTML;
+                
+                try {
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Criando...';
+
+                    const userData = {
+                        nome: document.getElementById('newUserName').value,
+                        email: document.getElementById('newUserEmail').value,
+                        senha: document.getElementById('newUserPass').value,
+                        perfil: document.getElementById('newUserRole').value,
+                        ativo: true
+                    };
+
+                    const res = await fetch(`${window.API_BASE_URL}/usuarios`, {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(userData)
+                    });
+
+                    const json = await res.json();
+                    if (json.success) {
+                        showToast('Usuário criado com sucesso!', 'success');
+                        closeNewUserModal();
+                        await loadUsers(); // Refresh instantâneo
+                    } else {
+                        throw new Error(json.error || 'Erro ao criar usuário');
+                    }
+                } catch (err) {
+                    showToast(err.message, 'error');
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }
+            });
+
+            loadUsers();
+
+            window.deleteUser = async (id, source, email) => {
+                const msg = `Deseja realmente excluir ${email}?`;
+                if (!confirm(msg)) return;
+
+                try {
+                    let success = false;
+                    if (source === 'MongoDB') {
+                        const res = await fetch(`${window.API_BASE_URL}/usuarios/${id}`, { 
+                            method: 'DELETE'
+                        });
+                        const json = await res.json();
+                        if (json.success) success = true;
+                        else throw new Error(json.error);
+                    } else if (source === 'IndexedDB') {
+                        success = await deleteFromIndexedDB(id);
+                    } else if (source === 'LocalStorage') {
+                        localStorage.removeItem('escola_session');
+                        success = true;
+                    }
+
+                    if (success) {
+                        showToast('Usuário removido!', 'success');
+                        await loadUsers(); // Refresh imediato
+                    }
+                } catch (e) {
+                    showToast(e.message || 'Erro ao excluir', 'error');
+                }
+            };
+
+            async function loadUsers() {
+                usersTable.innerHTML = '<tr><td colspan="5" class="text-center">Sincronizando dados...</td></tr>';
+                const allUsers = [];
+
+                // 1. MongoDB
+                try {
+                    const res = await fetch(`${window.API_BASE_URL}/usuarios`);
+                    const json = await res.json();
+                    if (json.success) {
+                        json.data.forEach(u => allUsers.push({ ...u, source: 'MongoDB', id: u._id || u.id }));
+                    }
+                } catch (e) { console.error('Erro Mongo:', e); }
+
+                // 2. IndexedDB
+                try {
+                    const idbUsers = await getIndexedDBUsers();
+                    idbUsers.forEach(u => {
+                        const exists = allUsers.find(ex => ex.email === u.email && ex.source === 'MongoDB');
+                        allUsers.push({ ...u, source: 'IndexedDB', id: u._id || u.id, isDuplicate: !!exists });
+                    });
+                } catch (e) { }
+
+                // 3. LocalStorage
+                const sessao = localStorage.getItem('escola_session');
+                if (sessao) {
+                    const u = JSON.parse(sessao);
+                    const exists = allUsers.find(ex => ex.email === u.email && ex.source === 'MongoDB');
+                    allUsers.push({ ...u, source: 'LocalStorage', id: 'session', isDuplicate: !!exists });
+                }
+
+                window.allUsersCache = allUsers;
+                renderTable(allUsers);
+            }
+
+            function renderTable(users) {
+                if (users.length === 0) {
+                    usersTable.innerHTML = '<tr><td colspan="5" class="text-center">Nenhum usuário encontrado.</td></tr>';
+                    return;
+                }
+
+                usersTable.innerHTML = users.map(u => `
+                    <tr style="${u.isDuplicate ? 'opacity: 0.6;' : ''}">
+                        <td>${u.nome || 'Sem nome'} ${u.isDuplicate ? '<br><small>(Local/Duplicado)</small>' : ''}</td>
+                        <td>${u.email}</td>
+                        <td><span class="badge ${u.perfil === 'admin' ? 'badge-primary' : 'badge-secondary'}">${u.perfil || 'Indefinido'}</span></td>
+                        <td><span class="badge ${u.source === 'MongoDB' ? 'badge-success' : 'badge-info'}">${u.source}</span></td>
+                        <td class="actions">
+                            ${(u.source !== 'MongoDB' && !u.isDuplicate) ? `
+                                <button class="btn-icon" onclick="migrateUser('${u.id}', '${u.source}', '${u.email}')" title="Subir para Nuvem" style="color: var(--primary-color)">
+                                    <i class="bi bi-cloud-upload-fill"></i>
+                                </button>
+                            ` : ''}
+                            ${u.source === 'LocalStorage' ? `
+                                <button class="btn-icon" onclick="deleteUser('${u.id}', '${u.source}', '${u.email}')" title="Limpar Sessão Local" style="color: var(--text-secondary)">
+                                    <i class="bi bi-broom"></i>
+                                </button>
+                            ` : `
+                                ${u.source === 'MongoDB' ? `
+                                    <button class="btn-icon" onclick="anonymizeUser('${u.id}')" title="Anonimizar (LGPD)" style="color: var(--warning-color, #f59e0b)">
+                                        <i class="bi bi-shield-lock"></i>
+                                    </button>
+                                ` : ''}
+                                <button class="btn-icon" onclick="deleteUser('${u.id}', '${u.source}', '${u.email}')" title="Excluir Permanentemente" style="color: #ef4444">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            `}
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            window.anonymizeUser = async (id) => {
+                if (!confirm('Tem certeza que deseja ANONIMIZAR este usuário? Todos os dados pessoais (CPF, Telefone, E-mail) serão removidos permanentemente para cumprir a LGPD, mas o registro histórico será mantido.')) return;
+
+                try {
+                    const response = await fetch(`${window.API_BASE_URL}/usuarios/${id}/anonymize`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    const json = await response.json();
+                    if (json.success) {
+                        showToast('Usuário anonimizado com sucesso!', 'success');
+                        loadUsers(); // Recarrega a lista
+                    } else {
+                        showToast(json.error || 'Erro ao anonimizar', 'error');
+                    }
+                } catch (err) {
+                    showToast('Erro na conexão', 'error');
+                }
+            };
+
+            window.migrateUser = async (id, source, email) => {
+                const user = window.allUsersCache.find(u => u.id === id && u.source === source);
+                if (!user || !confirm(`Subir ${email} para a nuvem?`)) return;
+
+                try {
+                    const res = await fetch(`${window.API_BASE_URL}/usuarios`, {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ ...user, id: undefined, _id: undefined, source: undefined, isDuplicate: undefined, ativo: true })
+                    });
+
+                    const json = await res.json();
+                    if (json.success) {
+                        showToast('Usuário migrado!', 'success');
+                        await loadUsers();
+                    } else throw new Error(json.error);
+                } catch (e) { showToast(e.message, 'error'); }
+            };
+
+            // --- Helpers IndexedDB ---
+            function getIndexedDBUsers() {
+                return new Promise((resolve) => {
+                    const req = indexedDB.open('escolaDB');
+                    req.onerror = () => resolve([]);
+                    req.onsuccess = (e) => {
+                        const db = e.target.result;
+                        if (!db.objectStoreNames.contains('usuarios')) {
+                            resolve([]);
+                            return;
+                        }
+                        const tx = db.transaction(['usuarios'], 'readonly');
+                        const store = tx.objectStore('usuarios');
+                        const reqAll = store.getAll();
+                        reqAll.onsuccess = () => resolve(reqAll.result);
+                        reqAll.onerror = () => resolve([]);
+                    };
+                    req.onupgradeneeded = (e) => e.target.transaction.abort();
+                });
+            }
+
+            function deleteFromIndexedDB(id) {
+                return new Promise((resolve, reject) => {
+                    const req = indexedDB.open('escolaDB');
+                    req.onsuccess = (e) => {
+                        const db = e.target.result;
+                        const tx = db.transaction(['usuarios'], 'readwrite');
+                        const store = tx.objectStore('usuarios');
+                        const del = store.delete(id); // Use key provided
+                        del.onsuccess = () => resolve(true);
+                        del.onerror = () => reject('Erro ao deletar do IDB');
+                    };
+                    req.onerror = () => reject('Erro ao abrir IDB');
+                });
+            }
+        });
+    </script>
+    <script defer src="../../js/parallax.js"></script>
+    <script src="../../js/vendor.js"></script>
+    <script defer src="../../js/reactions.js"></script>
+
+<script src="../../js/click-sound.js" defer></script>
+    <script defer src="../../js/push-notifications.js"></script>
+    <script defer src="../../js/pwa-install.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,89 @@
+/* 
+ * Glassmorphism Premium 2026
+ * Estilos otimizados para dashboards de alta fidelidade.
+ * Os tokens de glass vêm de variables.css; aqui há apenas fallbacks locais
+ * para páginas que carregam glass-premium.css sem o design system completo.
+ */
+
+:root {
+    /* Fallbacks locais — não sobrescrevem variables.css quando ele está presente,
+       pois aqui usamos os mesmos nomes apenas como reforço de segurança. */
+    --accent-glow: 0 0 20px rgba(16, 185, 129, 0.3);
+}
+
+.glass-card {
+    background: var(--glass-bg, rgba(17, 24, 39, 0.7));
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.08));
+    border-radius: 1.25rem;
+    box-shadow: var(--glass-shadow, 0 8px 32px 0 rgba(0, 0, 0, 0.37));
+    transition: all 0.3s var(--ease-standard);
+}
+
+.glass-card:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.45);
+}
+
+.glass-header {
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid var(--glass-border);
+    padding: 1.5rem 2rem;
+    border-radius: 1.25rem 1.25rem 0 0;
+}
+
+.glow-text {
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+.accent-glow {
+    box-shadow: var(--accent-glow);
+}
+
+/* Animações de Entrada */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in {
+    animation: fadeInUp 0.6s var(--ease-out) forwards;
+}
+
+/* Scrollbar Premium */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Utilitários de Gradiente */
+.bg-gradient-premium {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(14, 165, 233, 0.15));
+}
+
+.text-gradient {
+    background: linear-gradient(to right, #fff, #94a3b8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}

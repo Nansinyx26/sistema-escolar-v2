@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matrículas - Secretaria</title>
+    <link rel="icon" type="image/png" href="../../favicon/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/variables.css?v=2.0">
+    <link rel="stylesheet" href="../../css/base.css?v=2.0">
+    <link rel="stylesheet" href="../../css/components-new.css?v=2.0">
+    <link rel="stylesheet" href="../../css/dashboard.css?v=2.1">
+    <link rel="stylesheet" href="../../css/responsive-global.css?v=1.1">
+    <link rel="stylesheet" href="../../css/dashboard-premium.css?v=1.0">
+    <link rel="stylesheet" href="../../js/libs/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../../css/tailwind-built.css">
+    <style>
+        .sec-page { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .sec-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem; }
+        .sec-header h1 { font-size: 1.5rem; font-weight: 700; color: #fff; margin: 0; display: flex; align-items: center; gap: 0.75rem; }
+        .sec-form-card { background: rgba(30,41,59,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:1.5rem; margin-bottom:1.5rem; backdrop-filter:blur(12px); }
+        .sec-form-card h3 { color:#fff; font-size:1rem; margin:0 0 1rem; display:flex; align-items:center; gap:0.5rem; }
+        .sec-form-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap:1rem; }
+        .sec-input { width:100%; padding:0.6rem 0.8rem; background:rgba(15,23,42,0.8); border:1px solid rgba(255,255,255,0.12); border-radius:10px; color:#fff; font-size:0.85rem; }
+        .sec-input:focus { outline:none; border-color:#10b981; }
+        .sec-select { width:100%; padding:0.6rem 0.8rem; background:rgba(15,23,42,0.8); border:1px solid rgba(255,255,255,0.12); border-radius:10px; color:#fff; font-size:0.85rem; }
+        .sec-btn { padding:0.6rem 1.2rem; border-radius:10px; font-size:0.85rem; font-weight:600; cursor:pointer; border:none; transition:all 0.2s; }
+        .sec-btn-primary { background:#10b981; color:#fff; }
+        .sec-btn-primary:hover { background:#059669; }
+        .sec-btn-outline { background:transparent; color:#10b981; border:1px solid rgba(16,185,129,0.3); }
+        .sec-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+        .sec-table th { padding:0.75rem 1rem; text-align:left; color:#94a3b8; font-weight:600; font-size:0.75rem; text-transform:uppercase; border-bottom:1px solid rgba(255,255,255,0.06); }
+        .sec-table td { padding:0.75rem 1rem; color:#cbd5e1; border-bottom:1px solid rgba(255,255,255,0.04); }
+        .sec-table tr:hover { background:rgba(255,255,255,0.02); }
+        .sec-badge { padding:3px 10px; border-radius:20px; font-size:0.7rem; font-weight:600; }
+        .sec-badge-green { background:rgba(16,185,129,0.15); color:#10b981; }
+        .sec-badge-blue { background:rgba(59,130,246,0.15); color:#3b82f6; }
+        .sec-badge-red { background:rgba(239,68,68,0.15); color:#ef4444; }
+        .sec-badge-yellow { background:rgba(251,191,36,0.15); color:#fbbf24; }
+        .sec-toast { position:fixed; bottom:20px; right:20px; padding:1rem 1.5rem; border-radius:12px; font-size:0.85rem; z-index:9999; animation: slideUp 0.3s; }
+        .sec-toast-success { background:#10b981; color:#fff; }
+        .sec-toast-error { background:#ef4444; color:#fff; }
+        @keyframes slideUp { from { transform: translateY(20px); opacity:0; } to { transform: translateY(0); opacity:1; } }
+    </style>
+    <link rel="stylesheet" href="../../css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="../../css/reactions.css?v=1.0">
+</head>
+<body>
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Sistema Escolar</h2>
+            <p class="splash-subtitle">Matrículas</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="../../js/splash-screen.js"></script>
+
+<div class="dashboard-page" id="pageWrapper">
+    <div class="dashboard-bg"><div class="orb orb-primary"></div><div class="orb orb-secondary"></div></div>
+    <main class="dashboard-main">
+        <div class="sec-page">
+            <div class="sec-header">
+                <h1><i class="bi bi-card-checklist" style="color:#8b5cf6;"></i> Matrículas</h1>
+                <div style="display:flex;gap:0.5rem;">
+                    <a href="painel.html" class="sec-btn sec-btn-outline" style="text-decoration:none;"><i class="bi bi-arrow-left"></i> Voltar</a>
+                </div>
+            </div>
+
+            <!-- Nova Matrícula -->
+            <div class="sec-form-card">
+                <h3><i class="bi bi-plus-circle" style="color:#10b981;"></i> Nova Matrícula</h3>
+                <form id="formMatricula" onsubmit="criarMatricula(event)">
+                    <div class="sec-form-grid">
+                        <div><label style="font-size:0.75rem;color:#94a3b8;">ID do Aluno</label><input id="matAlunoId" class="sec-input" placeholder="ID do aluno" required></div>
+                        <div><label style="font-size:0.75rem;color:#94a3b8;">Turma</label><select id="matTurmaId" class="sec-select"><option value="">Carregando...</option></select></div>
+                        <div><label style="font-size:0.75rem;color:#94a3b8;">Ano Letivo</label><input id="matAno" class="sec-input" type="number" value="2025" required></div>
+                        <div><label style="font-size:0.75rem;color:#94a3b8;">Nº Chamada</label><input id="matChamada" class="sec-input" type="number" placeholder="Opcional"></div>
+                    </div>
+                    <div style="margin-top:1rem;display:flex;gap:0.5rem;">
+                        <button type="submit" class="sec-btn sec-btn-primary"><i class="bi bi-check-lg"></i> Matricular</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Alterar Status -->
+            <div class="sec-form-card">
+                <h3><i class="bi bi-arrow-left-right" style="color:#3b82f6;"></i> Alterar Status / Transferir</h3>
+                <div class="sec-form-grid">
+                    <div><label style="font-size:0.75rem;color:#94a3b8;">ID da Matrícula</label><input id="statusMatId" class="sec-input" placeholder="ID da matrícula"></div>
+                    <div><label style="font-size:0.75rem;color:#94a3b8;">Novo Status</label>
+                        <select id="statusNovo" class="sec-select">
+                            <option value="cursando">Cursando</option>
+                            <option value="aprovado">Aprovado</option>
+                            <option value="reprovado">Reprovado</option>
+                            <option value="transferido">Transferido</option>
+                            <option value="evadido">Evadido</option>
+                        </select>
+                    </div>
+                    <div><label style="font-size:0.75rem;color:#94a3b8;">Motivo (saída)</label><input id="statusMotivo" class="sec-input" placeholder="Opcional"></div>
+                </div>
+                <div style="margin-top:1rem;"><button class="sec-btn sec-btn-primary" onclick="alterarStatus()"><i class="bi bi-check-lg"></i> Atualizar</button></div>
+            </div>
+
+            <!-- Lista de Turmas -->
+            <div class="sec-form-card">
+                <h3><i class="bi bi-people" style="color:#0ea5e9;"></i> Turmas Ativas</h3>
+                <div style="overflow-x:auto;">
+                    <table class="sec-table" id="turmasTable">
+                        <thead><tr><th>Turma</th><th>Período</th><th>Capacidade</th><th>Alunos</th><th>Status</th></tr></thead>
+                        <tbody id="turmasBody"><tr><td colspan="5" style="text-align:center;color:#94a3b8;">Carregando...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="../../js/api-config.js"></script>
+    <script src="../../js/csrf-helper.js"></script>
+<script defer src="../../js/database.js?v=3"></script>
+<script defer src="../../js/auth.js?v=3"></script>
+<script defer src="../../js/utils.js?v=3"></script>
+<script>
+const API = () => window.API_BASE_URL || '/api';
+function toast(msg, type='success') {
+    const d = document.createElement('div');
+    d.className = `sec-toast sec-toast-${type}`;
+    d.textContent = msg;
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), 3000);
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    if (typeof db !== 'undefined') await db.init();
+    if (typeof auth !== 'undefined') await auth.init();
+    carregarTurmas();
+});
+
+async function carregarTurmas() {
+    try {
+        const res = await fetch(`${API()}/secretaria/turmas`, { credentials: 'include' });
+        const json = await res.json();
+        const sel = document.getElementById('matTurmaId');
+        const body = document.getElementById('turmasBody');
+        if (json.success) {
+            sel.innerHTML = json.data.map(t => `<option value="${t._id}">${t.nome || t.id}</option>`).join('');
+            body.innerHTML = json.data.map(t => `<tr>
+                <td><strong>${t.nome || t.id}</strong></td>
+                <td>${t.periodo || '-'}</td>
+                <td>${t.capacidade || '-'}</td>
+                <td>${t.totalAlunos}</td>
+                <td><span class="sec-badge sec-badge-green">${t.ativo ? 'Ativa' : 'Inativa'}</span></td>
+            </tr>`).join('');
+        }
+    } catch(e) { console.error(e); }
+}
+
+async function criarMatricula(e) {
+    e.preventDefault();
+    try {
+        const res = await fetch(`${API()}/secretaria/matriculas`, {
+            method: 'POST', credentials: 'include',
+            headers: window.csrfHeaders(true),
+            body: JSON.stringify({
+                alunoId: document.getElementById('matAlunoId').value,
+                turmaId: document.getElementById('matTurmaId').value,
+                anoLetivo: parseInt(document.getElementById('matAno').value),
+                numeroChamada: parseInt(document.getElementById('matChamada').value) || undefined
+            })
+        });
+        const json = await res.json();
+        if (json.success) { toast('Matrícula criada!'); document.getElementById('formMatricula').reset(); }
+        else toast(json.error, 'error');
+    } catch(e) { toast('Erro ao criar matrícula', 'error'); }
+}
+
+async function alterarStatus() {
+    const id = document.getElementById('statusMatId').value;
+    if (!id) return toast('Informe o ID da matrícula', 'error');
+    try {
+        const res = await fetch(`${API()}/secretaria/matriculas/${id}/status`, {
+            method: 'PUT', credentials: 'include',
+            headers: window.csrfHeaders(true),
+            body: JSON.stringify({
+                status: document.getElementById('statusNovo').value,
+                motivoSaida: document.getElementById('statusMotivo').value
+            })
+        });
+        const json = await res.json();
+        if (json.success) toast('Status atualizado!');
+        else toast(json.error, 'error');
+    } catch(e) { toast('Erro ao atualizar', 'error'); }
+}
+</script>
+<script src="../../js/sidebar-voice.js?v=4.0"></script>
+<script src="../../js/chatbot-ia.js?v=4.0"></script>
+
+<script src="../../js/click-sound.js" defer></script>
+    <script defer src="../../js/reactions.js"></script>
+    <script defer src="../../js/push-notifications.js"></script>
+    <script defer src="../../js/pwa-install.js"></script>
+</body>
+</html>

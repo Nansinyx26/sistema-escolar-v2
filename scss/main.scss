@@ -1,0 +1,78 @@
+// scss/main.scss
+// Ponto de entrada do Sass do Sistema Escolar v2
+// Compile com: npm run build:css
+// Watch (dev):  npm run watch:css
+
+// ─── 1. Importa os CSS existentes como base (para migração gradual) ───────────
+// Para migrar um arquivo CSS para SCSS, copie o conteúdo para uma pasta
+// scss/partials/_arquivo.scss e importe abaixo com @use ou @forward.
+
+// ─── 2. Variáveis Sass (equivalente ao variables.css, mas com poder extra) ───
+$primary:   #1a56db;
+$secondary: #6366f1;
+$success:   #22c55e;
+$danger:    #ef4444;
+$warning:   #f59e0b;
+
+$font-base:    'Inter', sans-serif;
+$radius-sm:    6px;
+$radius-md:    12px;
+$radius-lg:    20px;
+
+$transition-fast:   0.15s ease;
+$transition-normal: 0.3s ease;
+$transition-slow:   0.5s ease;
+
+// ─── 3. Mixins Utilitários ─────────────────────────────────────────────────────
+@mixin flex-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@mixin glass($opacity: 0.08) {
+    background: rgba(255, 255, 255, $opacity);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+@mixin hover-lift {
+    transition: transform $transition-normal, box-shadow $transition-normal;
+    &:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+    }
+}
+
+// ─── 4. Estilos Novos (use aqui para novos componentes em Sass) ───────────────
+// Exemplo: um card com glassmorphism usando o mixin
+.card-glass {
+    @include glass(0.08);
+    @include hover-lift;
+    border-radius: $radius-md;
+    padding: 1.5rem;
+}
+
+// ─── 5. Animações customizadas ────────────────────────────────────────────────
+@keyframes fade-in-up {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in-up {
+    animation: fade-in-up 0.4s $transition-normal both;
+}
+
+// ─── PRÓXIMOS PASSOS ──────────────────────────────────────────────────────────
+// Para migrar o CSS existente gradualmente:
+// 1. Crie scss/partials/_components.scss
+// 2. Cole o conteúdo de css/components-new.css
+// 3. Adicione: @use 'partials/components';
+// O arquivo compilado vai para css/main-compiled.css

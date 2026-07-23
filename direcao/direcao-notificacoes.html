@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+    <title>Mural Escolar | Direção</title>
+    <link rel="stylesheet" href="../../css/variables.css">
+    <link rel="stylesheet" href="../../css/base.css">
+    <link rel="stylesheet" href="../../css/components-new.css">
+    <link rel="stylesheet" href="../../css/dashboard.css">
+    <link rel="stylesheet" href="../../css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="../../css/reactions.css?v=1.0">
+    <link rel="stylesheet" href="../../css/social-feed.css?v=1.0">
+    <link rel="stylesheet" href="../../css/responsive-global.css?v=1.0">
+    <!-- Icons (Localized) -->
+    <link rel="stylesheet" href="../js/libs/bootstrap-icons.min.css">
+    <!-- React & Framer (Localized) -->
+    <script src="../js/libs/react.min.js"></script>
+    <script src="../js/libs/react-dom.min.js"></script>
+    <script src="../js/libs/framer-motion.js"></script>
+    <link rel="stylesheet" href="../../css/notificacoes-mural.css">
+</head>
+<body>
+<div id="splashScreen">
+    <div class="splash-logo-container"><div class="splash-logo"><i class="bi bi-mortarboard-fill"></i></div><div class="splash-logo-ring"></div></div>
+    <div class="splash-text"><h2 class="splash-title">Sistema Escolar</h2><p class="splash-subtitle">Mural Escolar — Direção</p></div>
+    <div class="splash-progress-container"><div class="splash-progress-track"><div class="splash-progress-bar"></div></div><div class="splash-progress-text">Carregando...</div></div>
+    <div class="splash-version">v3.0</div>
+</div>
+<script src="../../js/splash-screen.js"></script>
+
+<header class="mn-header">
+    <div class="mn-header-brand">
+        <button id="btnVoltar" class="mn-btn-back" title="Voltar ao Dashboard"><i class="bi bi-arrow-left"></i></button>
+        <img src="../../img/logo-jaguari.png" alt="Logo" onerror="this.style.display='none'">
+        <div>
+            <h1>Mural Escolar <span id="liveBadge" class="mn-live-badge">● AO VIVO</span></h1>
+            <p id="notifCount" class="mn-header-count">Carregando avisos...</p>
+        </div>
+    </div>
+    <div class="mn-search"><i class="bi bi-search"></i><input type="text" id="searchMural" placeholder="Buscar avisos..."></div>
+    <div class="mn-cat-filters">
+        <button class="mn-cat-btn active" data-cat="Todos">Todos</button>
+        <button class="mn-cat-btn" data-cat="Direção">Direção</button>
+        <button class="mn-cat-btn" data-cat="Professores">Professores</button>
+        <button class="mn-cat-btn" data-cat="Responsáveis">Responsáveis</button>
+    </div>
+    <button id="btnNovaNotificacao" class="mn-btn-primary" style="margin-left:auto;"><i class="bi bi-plus-lg"></i> Novo Aviso</button>
+</header>
+
+<div class="mn-layout">
+    <div>
+        <div class="mn-stats">
+            <div class="mn-stat-card"><span class="mn-stat-label">Total</span><span class="mn-stat-value" id="statsTotal">0</span></div>
+            <div class="mn-stat-card"><span class="mn-stat-label">Vistos</span><span class="mn-stat-value" id="statsLidos">0</span></div>
+            <div class="mn-stat-card mn-stat-urgent"><span class="mn-stat-label">Críticos</span><span class="mn-stat-value" id="statsImportantes">0</span></div>
+        </div>
+
+        <div class="mn-card mn-form-card" id="cardPostar">
+            <div class="mn-form-author">
+                <img src="../../img/default-avatar.png" id="userPhotoPreview" data-user-photo="self" class="user-avatar" alt="Foto">
+                <div><h2>Publicar novo aviso</h2><p>Comunique-se com toda a comunidade escolar</p></div>
+            </div>
+            <form id="formNotificacao" novalidate>
+                <div style="display:grid;grid-template-columns:2fr 1fr;gap:.75rem;margin-bottom:.85rem;">
+                    <input type="text" class="mn-input" id="tituloNotif" placeholder="Título do comunicado..." required>
+                    <select class="mn-select" id="categoriaNotif">
+                        <option value="Direção">🏫 Direção</option>
+                        <option value="Professores">👨‍🏫 Professores</option>
+                        <option value="Responsáveis">👨‍👩‍👧 Responsáveis</option>
+                        <option value="Sistema">⚙️ Sistema</option>
+                    </select>
+                </div>
+                <div class="mn-editor-wrap">
+                    <div class="mn-editor-toolbar">
+                        <button type="button" onclick="formatDoc('bold')" title="Negrito"><i class="bi bi-type-bold"></i></button>
+                        <button type="button" onclick="formatDoc('italic')" title="Itálico"><i class="bi bi-type-italic"></i></button>
+                        <button type="button" onclick="formatDoc('underline')" title="Sublinhado"><i class="bi bi-type-underline"></i></button>
+                        <button type="button" onclick="formatDoc('insertUnorderedList')" title="Lista"><i class="bi bi-list-ul"></i></button>
+                        <button type="button" onclick="inserirEmoji('📢')" title="Megafone">📢</button>
+                        <button type="button" onclick="inserirEmoji('⚠️')" title="Atenção">⚠️</button>
+                        <button type="button" onclick="inserirEmoji('✅')" title="OK">✅</button>
+                        <span class="mn-editor-char-count"><span id="charCount">0</span>/2000</span>
+                    </div>
+                    <div id="editorComunicado" contenteditable="true" placeholder="Escreva o conteúdo do aviso aqui..."></div>
+                </div>
+                <div class="mn-upload-row">
+                    <div class="mn-upload-box" onclick="document.getElementById('inputImagens').click()"><i class="bi bi-camera"></i> Adicionar Fotos<input type="file" id="inputImagens" multiple accept="image/*" style="display:none;"></div>
+                    <div class="mn-upload-box" onclick="document.getElementById('inputArquivos').click()"><i class="bi bi-paperclip"></i> Adicionar Anexos<input type="file" id="inputArquivos" multiple accept=".pdf,.doc,.docx" style="display:none;"></div>
+                </div>
+                <div id="previewImagens" class="mn-preview-grid"></div>
+                <div id="previewArquivos"></div>
+                <div class="mn-form-footer">
+                    <div class="mn-form-footer-left">
+                        <select id="prioridadeNotif" class="mn-select" style="width:155px;height:38px;font-size:.8rem;">
+                            <option value="Normal">⚪ Normal</option>
+                            <option value="Importante">🟡 Importante</option>
+                            <option value="Urgente">🔴 Urgente</option>
+                        </select>
+                        <button type="button" id="btnConfigDest" class="mn-btn-secondary"><i class="bi bi-people"></i> Público</button>
+                        <input type="datetime-local" id="dataAgend" class="mn-input" style="width:195px;height:38px;font-size:.78rem;" title="Agendar publicação">
+                    </div>
+                    <button type="submit" class="mn-btn-primary" id="btnPublicar" style="padding:10px 26px;"><i class="bi bi-send-fill"></i> Publicar Agora</button>
+                </div>
+                <div id="quickDestSetup" class="mn-dest-panel">
+                    <p style="font-size:.75rem;color:#71717a;margin:0 0 .85rem;text-transform:uppercase;letter-spacing:.06em;font-weight:700;">Selecionar destinatários</p>
+                    <div class="mn-checkbox-row">
+                        <label class="mn-checkbox-label"><input type="checkbox" id="destTodosProfs" checked> 👨‍🏫 Todos os Professores</label>
+                        <label class="mn-checkbox-label"><input type="checkbox" id="destTodosResps" checked> 👨‍👩‍👧 Pais e Responsáveis</label>
+                    </div>
+                    <div class="mn-dest-row">
+                        <select id="selectTurma" class="mn-select" style="flex:1;"><option value="">Todas as turmas</option></select>
+                        <select id="selectAluno" class="mn-select" style="flex:1;display:none;"><option value="">Aluno específico...</option></select>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div id="announcement-feed-container" class="mn-feed-wrap"></div>
+
+        <div class="mn-card mn-history-section" style="margin-top:1.5rem;">
+            <div class="mn-history-header">
+                <h2><i class="bi bi-clock-history"></i> Histórico de Envios</h2>
+                <div style="display:flex;gap:6px;">
+                    <span style="font-size:.75rem;color:#52525b;align-self:center;">Filtrar:</span>
+                    <button class="mn-cat-btn active" data-hist="todos">Todos</button>
+                    <button class="mn-cat-btn" data-hist="ativos">Ativos</button>
+                </div>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="mn-table">
+                    <thead><tr><th>Título</th><th>Público</th><th>Data</th><th style="text-align:center;">Status</th><th style="text-align:center;">Ações</th></tr></thead>
+                    <tbody id="historico"><tr><td colspan="5" style="text-align:center;color:#52525b;padding:2rem;">Carregando histórico...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="mn-sidebar">
+        <div class="mn-card mn-sidebar-card">
+            <h3><i class="bi bi-info-circle"></i> Informações</h3>
+            <div id="recentActionsList"><p>Aguardando novas ações no sistema...</p></div>
+            <hr class="mn-divider">
+            <div class="mn-tip"><h4>💡 Dica da Direção</h4><p>Use avisos <strong style="color:#fbbf24;">Urgentes</strong> para comunicados que precisam de atenção imediata dos pais e responsáveis.</p></div>
+            <hr class="mn-divider">
+            <h3 style="margin-bottom:.85rem;"><i class="bi bi-bar-chart-line"></i> Resumo</h3>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;justify-content:space-between;font-size:.82rem;"><span style="color:#71717a;">Total de avisos</span><span id="resumoTotal" style="font-weight:700;color:#fff;">—</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:.82rem;"><span style="color:#71717a;">Urgentes</span><span id="resumoUrgentes" style="font-weight:700;color:#f87171;">—</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:.82rem;"><span style="color:#71717a;">Esta semana</span><span id="resumoSemana" style="font-weight:700;color:#10b981;">—</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mn-modal-overlay" id="modalConfirm">
+    <div class="mn-modal">
+        <h3 id="modalTitle">Confirmação</h3>
+        <p id="confirmText"></p>
+        <div class="mn-modal-actions">
+            <button id="btnConfirmarEnvio" class="mn-btn-primary" style="flex:1;display:none;justify-content:center;"><i class="bi bi-check-lg"></i> Confirmar</button>
+            <button id="btnFecharModal" class="mn-btn-secondary" style="flex:1;justify-content:center;"><i class="bi bi-x-lg"></i> Fechar</button>
+        </div>
+    </div>
+</div>
+
+<script src="../../js/api-config.js"></script>
+<script src="../../js/database.js"></script>
+<script src="../../js/auth.js"></script>
+<script src="../../js/announcement-feed-react.js?v=3.1"></script>
+<script src="direcao-notificacoes.js?v=4"></script>
+<script defer src="../../js/reactions.js"></script>
+
+<script src="../js/click-sound.js" defer></script>
+    <script defer src="../js/push-notifications.js"></script>
+    <script defer src="../js/pwa-install.js"></script>
+</body>
+</html>

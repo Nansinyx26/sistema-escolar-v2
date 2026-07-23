@@ -1,0 +1,153 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Lista de Professores - Sistema Escolar</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="../favicon/favicon.png">    <link rel="apple-touch-icon" href="../favicon/favicon.png">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="../css/variables.css">
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components-new.css">
+    <link rel="stylesheet" href="../css/lista-professores.css">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- PDF Libraries -->
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script defer
+        src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <link rel="stylesheet" href="../css/parallax-glass.css">
+    <link rel="stylesheet" href="../css/neo-brutal.css">
+    <!-- Tailwind CSS Play CDN — preflight desabilitado para nao conflitar com CSS existente -->
+    <!-- Offline Compiled Tailwind CSS -->
+    <link rel="stylesheet" href="../css/tailwind-built.css">    <link rel="stylesheet" href="../css/responsive-global.css?v=1.0">
+    <link rel="stylesheet" href="../css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="../css/reactions.css?v=1.0">
+</head>
+
+<body class="dashboard-page">
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Sistema Escolar</h2>
+            <p class="splash-subtitle">Lista de Professores</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="../js/splash-screen.js"></script>
+
+    <div class="container">
+        <header class="dashboard-header" style="margin-bottom: 30px; background: transparent; padding: 0;">
+            <div class="header-content" style="padding: 0;">
+                <div class="header-left">
+                    <button class="btn btn-secondary btn-sm" data-href="dashboard.html"
+                        style="margin-right: 20px;">
+                        <i class="bi bi-arrow-left"></i> Voltar
+                    </button>
+                    <h1>Lista de Professores</h1>
+                </div>
+            </div>
+        </header>
+
+        <div class="glass-card">
+            <div class="header">
+                <h2>Controle de Atribuições</h2>
+                <p>Gerencie a carga horária e atribuições dos docentes</p>
+            </div>
+
+            <textarea id="caixaTexto" placeholder="Digite observações gerais aqui..."></textarea>
+
+            <div class="controls">
+                <button class="btn btn-primary" id="btn-salvar-prof">
+                    <i class="bi bi-save"></i> Salvar Alterações
+                </button>
+                <button class="btn btn-success" id="btn-adicionar-prof">
+                    <i class="bi bi-plus-lg"></i> Adicionar Professor
+                </button>
+                <button class="btn btn-danger" id="btn-gerar-pdf">
+                    <i class="bi bi-file-earmark-pdf"></i> Gerar PDF
+                </button>
+            </div>
+
+            <div class="table-wrapper">
+                <table id="tabelaProfessores">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Classe</th>
+                            <th>Pontuação</th>
+                            <th>Série/Turma</th>
+                            <th>H.A</th>
+                            <th>R.P</th>
+                            <th>Estudo L</th>
+                            <th>Estudo Esc.</th>
+                            <th>Carga Horária</th>
+                            <th>Observações</th>
+                            <th>Assinatura</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><input type="text" value="Luciana Op. Hollweg" placeholder="Nome do professor"></td>
+                            <td><input type="text" value="10°" placeholder="Classe"></td>
+                            <td><input type="number" value="145043" placeholder="Pontuação"></td>
+                            <td><input type="text" value="1°" placeholder="Série/Turma"></td>
+                            <td><input type="number" value="04" placeholder="H.A"></td>
+                            <td><input type="number" value="04" placeholder="R.P"></td>
+                            <td><input type="number" value="03" placeholder="Estudo L"></td>
+                            <td><input type="number" value="02" placeholder="Estudo Esc."></td>
+                            <td><input type="text" value="40h" placeholder="Carga"></td>
+                            <td><input type="text" value="" placeholder="Observações"></td>
+                            <td class="col-assinatura">_____________________</td>
+                            <td><button class="btn btn-delete btn-sm" class="btn btn-delete btn-sm btn-remover-linha"><i
+                                        class="bi bi-trash"></i></button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container para notificações -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="../js/api-config.js"></script>
+    <script defer src="../js/database.js"></script>
+    <script defer src="../js/auth.js"></script>
+    <script defer src="../js/utils.js"></script>
+    <script defer src="../js/lista-professores.js"></script>
+    <script defer src="../js/parallax.js"></script>
+    <script src="../js/vendor.js"></script>
+    <script defer src="../js/events/lista-prof-events.js"></script>
+    <script defer src="../js/reactions.js"></script>
+
+<script src="../js/click-sound.js" defer></script>
+    <script defer src="../js/push-notifications.js"></script>
+    <script defer src="../js/pwa-install.js"></script>
+</body>
+
+</html>

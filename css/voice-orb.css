@@ -1,0 +1,379 @@
+/* voice-orb.css — Pixel-Perfect Mockup Match & Recording Bar */
+
+:root {
+    --orb-size-chat: 280px;
+    --orb-core-size: 140px;
+    --orb-pill-bg: rgba(255, 255, 255, 0.08);
+    --orb-accent: #ffffff;
+    --orb-glow-soft: rgba(255, 255, 255, 0.15);
+    --orb-glow-intense: rgba(255, 255, 255, 0.4);
+}
+
+.voice-orb-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    position: relative;
+    font-family: 'Inter', sans-serif;
+}
+
+.voice-orb-stage {
+    position: relative;
+    width: var(--orb-size-chat);
+    height: var(--orb-size-chat);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Orbital Rings & Dots */
+.voice-orb-rings {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+}
+
+.orb-ring {
+    position: absolute;
+    top: 50%; left: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.ring-1 { width: 95%; height: 95%; animation: rotate-cw 25s linear infinite; }
+.ring-2 { width: 75%; height: 75%; animation: rotate-ccw 18s linear infinite; border-style: dashed; border-width: 0.5px; opacity: 0.5; }
+.ring-3 { width: 110%; height: 110%; animation: rotate-cw 40s linear infinite; opacity: 0.3; }
+
+/* Orbital Dot Pseudo-elements */
+.ring-1::after {
+    content: '';
+    position: absolute;
+    top: -3px; left: 50%;
+    width: 6px; height: 6px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #fff;
+}
+
+.ring-2::after {
+    content: '';
+    position: absolute;
+    bottom: 20%; right: 5%;
+    width: 4px; height: 4px;
+    background: #fff;
+    border-radius: 50%;
+    opacity: 0.7;
+}
+
+/* Core Sphere */
+.voice-orb-wrapper {
+    position: relative;
+    width: var(--orb-core-size);
+    height: var(--orb-core-size);
+    z-index: 10;
+}
+
+.voice-orb-core {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #444 0%, #000 100%);
+    box-shadow: inset 0 0 30px rgba(255, 255, 255, 0.1), 0 0 50px var(--orb-glow-soft);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.voice-orb-glass {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%, rgba(0,0,0,0.5) 100%);
+    pointer-events: none;
+}
+
+/* Internal Equalizer Bars */
+.voice-orb-bars {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 40px;
+}
+
+.orb-bar {
+    width: 6px;
+    background: #fff;
+    border-radius: 10px;
+    height: 15px; /* Base height */
+    transition: height 0.2s ease;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+/* Pill UI (AI Status) */
+.voice-orb-pill {
+    position: absolute;
+    bottom: -30px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 20px;
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 100px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    z-index: 20;
+    transition: all 0.3s ease;
+}
+
+.pill-icon {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    height: 12px;
+}
+
+.bar-mini {
+    width: 3px;
+    height: 60%;
+    background: #fff;
+    border-radius: 10px;
+}
+
+.pill-text {
+    color: #fff;
+    font-size: 0.85rem;
+    letter-spacing: 0.02em;
+}
+
+.status-label {
+    opacity: 0.7;
+}
+
+/* Dedicated User Recording Bar (Horizontal Wave) */
+.user-recording-session {
+    position: absolute;
+    bottom: 80px;
+    left: 20px;
+    right: 20px;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 20px;
+    display: none;
+    flex-direction: column;
+    gap: 14px;
+    animation: slideUpScale 0.4s var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+    z-index: 10001;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+}
+
+.recording-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.7rem;
+    color: #ef4444;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+}
+
+.recording-wave {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: 40px;
+    justify-content: center;
+}
+
+.recording-segment {
+    width: 3px;
+    background: #ef4444;
+    border-radius: 10px;
+    height: 20%;
+    animation: wave-bounce 0.8s infinite ease-in-out;
+}
+
+.recording-segment:nth-child(even) { animation-delay: 0.15s; height: 50%; }
+.recording-segment:nth-child(3n) { animation-delay: 0.3s; height: 80%; }
+.recording-segment:nth-child(4n) { animation-delay: 0.45s; height: 100%; }
+
+.recording-transcription {
+    font-size: 1rem;
+    color: #f1f5f9;
+    text-align: center;
+    min-height: 1.5em;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+/* Animations — State Driven */
+.state-speaking .orb-bar { animation: equalize-premium 0.8s infinite ease-in-out; }
+.state-speaking .orb-bar:nth-child(1) { animation-delay: 0.1s; }
+.state-speaking .orb-bar:nth-child(2) { animation-delay: 0.3s; }
+.state-speaking .orb-bar:nth-child(3) { animation-delay: 0s; height: 35px; }
+.state-speaking .orb-bar:nth-child(4) { animation-delay: 0.2s; }
+.state-speaking .orb-bar:nth-child(5) { animation-delay: 0.4s; }
+
+.state-speaking .bar-mini { animation: equalize-mini 1s infinite; }
+.state-speaking .bar-mini:nth-child(2) { animation-delay: 0.2s; }
+
+@keyframes equalize-premium {
+    0%, 100% { height: 15px; }
+    50% { height: 45px; }
+}
+
+@keyframes equalize-mini {
+    0%, 100% { height: 40%; }
+    50% { height: 100%; }
+}
+
+@keyframes wave-bounce {
+    0%, 100% { height: 20%; opacity: 0.4; }
+    50% { height: 100%; opacity: 1; }
+}
+
+@keyframes rotate-cw { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
+@keyframes rotate-ccw { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(-360deg); } }
+
+@keyframes slideUpScale {
+    from { transform: translateY(20px) scale(0.95); opacity: 0; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* Pulse Glow when speaking */
+.state-speaking .voice-orb-core {
+    box-shadow: inset 0 0 30px rgba(255, 255, 255, 0.2), 0 0 70px rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Loading State */
+.state-loading .voice-orb-core {
+    animation: orb-breathe 2s infinite ease-in-out;
+}
+
+.state-loading .orb-bar {
+    opacity: 0.3;
+}
+
+@keyframes orb-breathe {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.05); opacity: 0.8; }
+}
+
+/* Global Voice FAB style */
+#global-voice-fab {
+    position: fixed;
+    bottom: 96px;
+    right: 24px;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+#global-voice-fab .voice-orb-stage {
+    pointer-events: auto;
+}
+
+#global-voice-fab .voice-orb-container {
+    transform: scale(0.65);
+    transform-origin: bottom right;
+}
+
+/* Local VoiceOrb styling inside BI Pedagogico — compact inline orb */
+#bi-ai-orb-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 140px;
+    overflow: hidden;
+    border-radius: 16px;
+    background: radial-gradient(ellipse at center, rgba(99, 102, 241, 0.06) 0%, transparent 70%);
+}
+
+#bi-ai-orb-container .voice-orb-container {
+    transform: scale(0.45);
+    transform-origin: center center;
+}
+
+/* Hide the pill label inside the BI orb (too cramped) */
+#bi-ai-orb-container .voice-orb-pill {
+    display: none;
+}
+
+
+/* ============================================================
+   ESTADOS ADICIONAIS + ACESSIBILIDADE + PERFORMANCE
+   (Fase 5 — redesign do orb)
+   ============================================================ */
+
+/* Thinking: mesma respiração do loading, com anéis mais rápidos
+   para comunicar "processando" sem elementos novos */
+.state-thinking .voice-orb-core {
+    animation: orb-breathe 1.4s infinite ease-in-out;
+}
+.state-thinking .orb-bar {
+    opacity: 0.35;
+    animation: equalize-premium 1.6s infinite ease-in-out;
+}
+.state-thinking .orb-bar:nth-child(1) { animation-delay: 0.15s; }
+.state-thinking .orb-bar:nth-child(2) { animation-delay: 0.45s; }
+.state-thinking .orb-bar:nth-child(4) { animation-delay: 0.3s; }
+.state-thinking .orb-bar:nth-child(5) { animation-delay: 0.6s; }
+.state-thinking .ring-1 { animation-duration: 6s; }
+.state-thinking .ring-2 { animation-duration: 8s; }
+
+/* Error: halo âmbar/vermelho discreto, barras estáticas */
+.state-error .voice-orb-core {
+    border-color: rgba(239, 68, 68, 0.5);
+    box-shadow: inset 0 0 24px rgba(239, 68, 68, 0.15), 0 0 40px rgba(239, 68, 68, 0.2);
+    animation: none;
+}
+.state-error .orb-bar {
+    opacity: 0.25;
+    animation: none;
+    background: rgba(239, 68, 68, 0.6);
+}
+.state-error .voice-orb-pill {
+    border-color: rgba(239, 68, 68, 0.35);
+}
+
+/* Hover: leve elevação apenas no modo interativo (fab) */
+.voice-orb-container.fab .voice-orb-core {
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.voice-orb-container.fab:hover .voice-orb-core {
+    transform: scale(1.06);
+    box-shadow: inset 0 0 30px rgba(255, 255, 255, 0.18), 0 0 60px rgba(255, 255, 255, 0.22);
+}
+.voice-orb-container.fab:focus-visible .voice-orb-core {
+    outline: 2px solid rgba(255, 255, 255, 0.6);
+    outline-offset: 4px;
+}
+
+/* Performance mobile: anéis são o maior custo de composição.
+   Em telas pequenas, reduz para um anel e desliga blur pesado. */
+@media (max-width: 640px) {
+    .voice-orb-rings .ring-2,
+    .voice-orb-rings .ring-3 { display: none; }
+    .voice-orb-glass { backdrop-filter: none; }
+}
+
+/* Acessibilidade: respeita usuários que desligam animações.
+   Mantém apenas os estados estáticos — nada gira nem pulsa. */
+@media (prefers-reduced-motion: reduce) {
+    .voice-orb-container *,
+    .voice-orb-container *::before,
+    .voice-orb-container *::after {
+        animation: none !important;
+        transition: none !important;
+    }
+}

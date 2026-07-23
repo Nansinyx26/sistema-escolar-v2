@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Cadastro de Docente — Sistema Escolar</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="../../css/variables.css">
+    <link rel="stylesheet" href="../../css/base.css">
+    <link rel="stylesheet" href="../../css/components-new.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <style>
+        body {
+            background: radial-gradient(circle at 50% 50%, #0f172a 0%, #020617 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            color: #f8fafc;
+            overflow-x: hidden;
+            position: relative;
+            padding: 2rem 0;
+        }
+
+        /* Ambient Glows */
+        .glow {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.12) 0%, transparent 70%);
+            filter: blur(40px);
+            z-index: 0;
+            pointer-events: none;
+        }
+        .glow-1 { top: -5%; left: -5%; }
+        .glow-2 { bottom: -5%; right: -5%; }
+
+        .container {
+            width: 100%;
+            max-width: 580px;
+            padding: 1.5rem;
+            z-index: 10;
+            animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .auth-card {
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 3rem 2.5rem;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .auth-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #10b981, #0ea5e9);
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .auth-header i {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+            display: inline-block;
+        }
+
+        h1 {
+            font-family: 'Inter', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(to right, #ffffff, #cbd5e1);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: #94a3b8;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+        }
+
+        .form-group-full {
+            grid-column: span 2;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .input-group {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 1.2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+            font-size: 1.1rem;
+            transition: color 0.3s ease;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.9rem 1rem 0.9rem 3.2rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            color: #ffffff;
+            font-size: 0.95rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-sizing: border-box;
+        }
+
+        .form-select {
+            appearance: none;
+            cursor: pointer;
+        }
+
+        .form-input:focus, .form-select:focus {
+            background: rgba(255, 255, 255, 0.07);
+            border-color: #10b981;
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
+            outline: none;
+        }
+
+        .form-input:focus + .input-icon,
+        .form-select:focus + .input-icon {
+            color: #818cf8;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 1.2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #64748b;
+            cursor: pointer;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            font-size: 1.1rem;
+            transition: color 0.3s ease;
+        }
+
+        .password-toggle:hover {
+            color: #ffffff;
+        }
+
+        .password-requirements {
+            margin-top: 1rem;
+            padding: 1.2rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            grid-column: span 2;
+        }
+
+        .requirement {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            margin-bottom: 0.6rem;
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            transition: all 0.3s ease;
+        }
+
+        .requirement:last-child {
+            margin-bottom: 0;
+        }
+
+        .requirement i {
+            font-size: 1rem;
+            color: #475569;
+            transition: all 0.3s ease;
+        }
+
+        .requirement.valid {
+            color: #10b981;
+            transform: translateX(2px);
+        }
+
+        .requirement.valid i {
+            color: #10b981;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 1rem;
+            font-weight: 600;
+            font-size: 1rem;
+            margin-top: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            border: none;
+            border-radius: 12px;
+            color: #ffffff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .footer-action {
+            text-align: center;
+            margin-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            padding-top: 1.5rem;
+        }
+
+        .footer-link {
+            color: #64748b;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .footer-link:hover {
+            color: #818cf8;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 580px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            .form-group-full {
+                grid-column: span 1;
+            }
+            .password-requirements {
+                grid-column: span 1;
+            }
+            .auth-card {
+                padding: 2rem 1.5rem;
+            }
+        }
+
+        /* Toast Container style directly here to verify visual */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+        .dnc-toast {
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #fff;
+            margin-bottom: 10px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+    <link rel="stylesheet" href="../../css/responsive-global.css?v=1.0">
+    <link rel="stylesheet" href="../../css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="../../css/reactions.css?v=1.0">
+</head>
+<body>
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Sistema Escolar</h2>
+            <p class="splash-subtitle">Cadastro de Docente</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="../../js/splash-screen.js"></script>
+
+    <div class="glow glow-1"></div>
+    <div class="glow glow-2"></div>
+
+    <div class="container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <i class="bi bi-person-workspace"></i>
+                <h1>Cadastro de Docente</h1>
+                <p class="subtitle">Insira suas informações profissionais para criar sua conta no portal.</p>
+            </div>
+
+            <form id="docenteRegisterForm">
+                <div class="form-grid">
+                    <!-- Nome Completo -->
+                    <div class="form-group form-group-full">
+                        <label class="form-label" for="nome">Nome Completo</label>
+                        <div class="input-group">
+                            <i class="bi bi-person input-icon"></i>
+                            <input type="text" id="nome" class="form-input" placeholder="Ex: João da Silva" required>
+                        </div>
+                    </div>
+
+                    <!-- E-mail -->
+                    <div class="form-group">
+                        <label class="form-label" for="email">E-mail</label>
+                        <div class="input-group">
+                            <i class="bi bi-envelope input-icon"></i>
+                            <input type="email" id="email" class="form-input" placeholder="Ex: joao@escola.com" required>
+                        </div>
+                    </div>
+
+                    <!-- Telefone -->
+                    <div class="form-group">
+                        <label class="form-label" for="telefone">Telefone</label>
+                        <div class="input-group">
+                            <i class="bi bi-telephone input-icon"></i>
+                            <input type="text" id="telefone" class="form-input" placeholder="(00) 00000-0000" required>
+                        </div>
+                    </div>
+
+                    <!-- Disciplina -->
+                    <div class="form-group">
+                        <label class="form-label" for="disciplina">Disciplina</label>
+                        <div class="input-group">
+                            <i class="bi bi-book input-icon"></i>
+                            <input type="text" id="disciplina" class="form-input" placeholder="Ex: Matemática" required>
+                        </div>
+                    </div>
+
+                    <!-- Turma -->
+                    <div class="form-group">
+                        <label class="form-label" for="turma">Turma</label>
+                        <div class="input-group">
+                            <i class="bi bi-door-closed input-icon"></i>
+                            <select id="turma" class="form-input form-select" required>
+                                <option value="" disabled selected>Carregando turmas...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Matrícula -->
+                    <div class="form-group form-group-full">
+                        <label class="form-label" for="matricula">Matrícula</label>
+                        <div class="input-group">
+                            <i class="bi bi-card-text input-icon"></i>
+                            <input type="text" id="matricula" class="form-input" placeholder="Ex: DOC2026123" required>
+                        </div>
+                    </div>
+
+                    <!-- Escola (multi-escola) -->
+                    <div class="form-group form-group-full" id="escolaCadastroGroup" style="display: none;">
+                        <label class="form-label" for="escolaCadastro">Escola</label>
+                        <div class="input-group">
+                            <i class="bi bi-building input-icon"></i>
+                            <select id="escolaCadastro" class="form-input form-select">
+                                <option value="">Selecione a escola</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Código Secreto da Escola -->
+                    <div class="form-group form-group-full">
+                        <label class="form-label" for="codigoEscola">Código Secreto da Escola</label>
+                        <div class="input-group">
+                            <i class="bi bi-shield-lock-fill input-icon"></i>
+                            <input type="text" id="codigoEscola" class="form-input" placeholder="Digite o código secreto gerado pela direção" required>
+                        </div>
+                    </div>
+
+                    <!-- Senha -->
+                    <div class="form-group">
+                        <label class="form-label" for="senha">Senha</label>
+                        <div class="input-group">
+                            <i class="bi bi-lock input-icon"></i>
+                            <input type="password" id="senha" class="form-input" placeholder="Crie uma senha" required>
+                            <button type="button" class="password-toggle" id="btn-toggle-senha">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Confirmar Senha -->
+                    <div class="form-group">
+                        <label class="form-label" for="confirmSenha">Confirmar Senha</label>
+                        <div class="input-group">
+                            <i class="bi bi-shield-check input-icon"></i>
+                            <input type="password" id="confirmSenha" class="form-input" placeholder="Confirme a senha" required>
+                            <button type="button" class="password-toggle" id="btn-toggle-confirmSenha">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Requisitos de Senha -->
+                    <div class="password-requirements">
+                        <div id="req-length" class="requirement"><i class="bi bi-circle"></i> Mínimo 8 caracteres</div>
+                        <div id="req-upper" class="requirement"><i class="bi bi-circle"></i> Uma letra maiúscula</div>
+                        <div id="req-number" class="requirement"><i class="bi bi-circle"></i> Um número</div>
+                        <div id="req-special" class="requirement"><i class="bi bi-circle"></i> Um caractere especial</div>
+                    </div>
+                </div>
+
+                <button type="submit" id="btnSubmit" class="btn-primary" disabled>
+                    <i class="bi bi-check-circle-fill"></i> Concluir Cadastro
+                </button>
+            </form>
+
+            <div class="footer-action">
+                <a href="primeiro-acesso.html" class="footer-link">
+                    <i class="bi bi-arrow-left"></i> Voltar
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="../../js/api-config.js"></script>
+    <script src="../../js/auth.js"></script>
+    <script src="../../js/escola-contexto.js"></script>
+    <script src="../../js/register.js"></script>
+    <script defer src="../../js/reactions.js"></script>
+
+<script src="../../js/click-sound.js" defer></script>
+    <script defer src="../../js/push-notifications.js"></script>
+    <script defer src="../../js/pwa-install.js"></script>
+</body>
+</html>

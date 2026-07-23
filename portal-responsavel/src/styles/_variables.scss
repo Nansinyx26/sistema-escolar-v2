@@ -1,0 +1,47 @@
+/**
+ * styles/_variables.scss
+ * Design tokens – all SCSS variables for the Portal do Responsável.
+ * Import this file first in any SCSS that needs design tokens.
+ */
+
+// ─── Color Palette (Dark Theme) ───────────────────────────────────────────────
+$bg-primary:    #09090b;
+$bg-secondary:  #121212;
+$bg-tertiary:   #1a1a1a;
+
+$text-primary:   #f5f5f5;
+$text-secondary: #d1d1d1;
+$text-tertiary:  #a0a0a0;
+
+$border-color: rgba(255, 255, 255, 0.08);
+
+$accent-cyan:   #10b981; // unificado com o design system (antes ciano #00d4ff)
+$accent-purple: #7c3aed;
+
+$success: #10b981;
+$warning: #f59e0b;
+$danger:  #ef4444;
+
+// ─── Breakpoints ──────────────────────────────────────────────────────────────
+$bp-sm: 640px;
+$bp-md: 768px;
+$bp-lg: 1024px;
+$bp-xl: 1280px;
+
+// ─── Transitions ──────────────────────────────────────────────────────────────
+$transition-smooth: 300ms ease;
+
+// ─── Typography ───────────────────────────────────────────────────────────────
+$font-sans:    'Inter', system-ui, sans-serif;
+$font-display: 'Inter', system-ui, sans-serif;
+
+// ─── Spacing / Border Radius ──────────────────────────────────────────────────
+$radius-sm: 6px;
+$radius-md: 12px;
+$radius-lg: 16px;
+$radius-xl: 24px;
+
+// ─── Shadows ──────────────────────────────────────────────────────────────────
+$shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
+$shadow-glow-cyan:   0 0 20px rgba(16, 185, 129, 0.25);
+$shadow-glow-purple: 0 0 20px rgba(124, 58, 237, 0.25);
