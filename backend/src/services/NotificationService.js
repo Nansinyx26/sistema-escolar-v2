@@ -99,11 +99,17 @@ exports.notify = async ({
             }
 
             if (rooms.size > 0) {
+                // Interseção com a sala da escola: as salas `role:` sozinhas
+                // alcançavam o mesmo perfil em TODAS as escolas da rede.
                 let emitter = global.io;
+                if (escolaId) emitter = emitter.to(`escola:${escolaId}`);
                 rooms.forEach(r => { emitter = emitter.to(r); });
                 emitter.emit('notification:new', payload);
-            } else {
-                global.io.emit('notification:new', payload);
+            } else if (escolaId) {
+                // Sem sala de perfil resolvida, entrega no máximo à escola —
+                // nunca um broadcast global (o fallback anterior mandava o
+                // aviso interno para todos os sockets conectados).
+                global.io.to(`escola:${escolaId}`).emit('notification:new', payload);
             }
         }
 
@@ -132,7 +138,7 @@ exports.notify = async ({
                 const payload = {
                     title: titulo,
                     body: mensagem,
-                    icon: '/icon-192x192.png',
+                    icon: '/favicon/favicon.png',
                     data: { url: link, id: novaNotif._id }
                 };
 

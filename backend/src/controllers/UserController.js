@@ -12,6 +12,7 @@ const nodemailer = require('nodemailer');
 const ACTUAL_JWT_SECRET = require('../utils/jwtConfig');
 const RecuperacaoSenha = require('../models/RecuperacaoSenha');
 const EmailService = require('../services/EmailService');
+const { emitirParaPerfis } = require('../utils/realtime');
 
 const SALT_ROUNDS = 12;
 
@@ -36,11 +37,22 @@ exports.list = async (req, res) => {
     try {
         const filters = {};
         const ALLOWED_FILTERS = ['email', 'perfil', 'ativo', 'nome'];
+        // SEGURANÇA: coerção para String — sem isso ?perfil[$ne]=zzz chegava
+        // como objeto (express extended:true) e virava um operador Mongo,
+        // devolvendo a base inteira de usuários.
         Object.keys(req.query).forEach(key => {
-            if (ALLOWED_FILTERS.includes(key)) filters[key] = req.query[key];
+            if (!ALLOWED_FILTERS.includes(key)) return;
+            const valor = req.query[key];
+            if (valor === null || valor === undefined || typeof valor === 'object') return;
+            filters[key] = key === 'ativo' ? String(valor) === 'true' : String(valor);
         });
 
-        const users = await Usuario.find(filters).select('-senha').lean();
+        // Multi-escola: a lista de contas é isolada por tenant (admin vê tudo)
+        const { escolaMatch } = require('../middleware/filtrarPorEscola');
+        const escopo = req.user?.perfil === 'admin' ? {} : escolaMatch(req.escolaId);
+        const filtroFinal = Object.keys(escopo).length ? { $and: [filters, escopo] } : filters;
+
+        const users = await Usuario.find(filtroFinal).select('-senha').lean();
         res.json({ success: true, data: users });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -171,18 +183,24 @@ exports.firstAccess = async (req, res) => {
  * OPÇÍO B — CADASTRO COM CÓDIGO SECRETO
  */
 exports.registerWithCode = async (req, res) => {
-    const { nome, email, senha, codigoEscola, cpf, telefone } = req.body;
+    const { nome, email, senha, codigoEscola, cpf, telefone, escolaId } = req.body;
 
     try {
         if (!senha || senha.length < 8) {
             return res.status(400).json({ success: false, error: 'A senha é obrigatória e deve ter no mínimo 8 caracteres.' });
         }
 
-        // 1. Valida o código secreto do dia
-        const isValid = await SecurityController.validateCode(codigoEscola);
-        if (!isValid) {
+        // 1. Valida o código secreto e RESOLVE a escola correspondente.
+        //    Quando o modal pré-seleciona a escola, `escolaId` garante que o
+        //    código digitado é o daquela escola; sem ele, o código identifica
+        //    a escola sozinho. `escolaResolvida` = null só no modo legado
+        //    (nenhuma escola cadastrada ainda).
+        const codeResult = await SecurityController.validateCode(codigoEscola, escolaId || null);
+        if (!codeResult) {
             return res.status(403).json({ success: false, error: 'Código Secreto da Escola inválido ou expirado.' });
         }
+        const escolaResolvida = codeResult.escola || null;
+        const escolaIdFinal = escolaResolvida ? String(escolaResolvida._id) : null;
 
         // 2. Verifica duplicidade
         const existing = await Usuario.findOne({ email: email.toLowerCase() });
@@ -190,7 +208,7 @@ exports.registerWithCode = async (req, res) => {
             return res.status(400).json({ success: false, error: 'Este e-mail já está cadastrado.' });
         }
 
-        // 3. Cria a conta
+        // 3. Cria a conta — já vinculada à escola do código
         const senhaHash = await bcrypt.hash(senha, SALT_ROUNDS);
         const emailVerificacaoToken = crypto.randomBytes(32).toString('hex');
 
@@ -202,15 +220,50 @@ exports.registerWithCode = async (req, res) => {
             telefone: telefone ? telefone.replace(/\D/g, '') : undefined,
             perfil: 'professor', // Cadastro via código sempre começa como professor por segurança
             ativo: true,
+            escola: escolaResolvida ? escolaResolvida.nome : undefined,
+            escolaId: escolaIdFinal || undefined,
             emailVerificado: false,
             emailVerificacaoToken,
             emailVerificacaoExpiry: Date.now() + 24 * 60 * 60 * 1000, // 24 horas
             deveMudarSenha: false // usuário não precisa mudar senha no primeiro acesso
         });
 
+        // 3b. Registro na coleção 'professores' com o VÍNCULO da escola. É por
+        //     aqui que filtrarPorEscola/vinculosDoUsuario resolve a escola do
+        //     professor — sem este doc, o código validado não linkava ninguém.
+        //     Perfil estendido (disciplina/turma) é completado depois no painel.
+        if (escolaIdFinal) {
+            const mongoose = require('mongoose');
+            const Professor = require('../models/Professor');
+            const jaExiste = await Professor.findOne({
+                $or: [{ idUsuario: user._id.toString() }, { email: user.email.toLowerCase() }]
+            }).select('_id');
+            if (!jaExiste) {
+                await Professor.create({
+                    _id: new mongoose.Types.ObjectId().toString(),
+                    idUsuario: user._id.toString(),
+                    nome: user.nome,
+                    email: user.email.toLowerCase(),
+                    telefone: user.telefone,
+                    role: 'professor',
+                    ativo: true,
+                    escola: escolaResolvida.nome,
+                    escolaId: escolaIdFinal,
+                    vinculos: [{ escolaId: escolaIdFinal, cargo: 'professor' }]
+                });
+            }
+        }
+
+        // Sessão multi-escola: escola ativa já definida ao entrar no painel
+        if (req.session && escolaIdFinal) {
+            req.session.escolaAtivaId = escolaIdFinal;
+            req.session.usuarioId = String(user._id);
+        }
+
         await logAction(req, 'REGISTER_WITH_CODE', 'Usuarios', {
             recursoId: user._id,
-            descricao: `Nova conta criada via Código Secreto por ${email}`
+            escolaId: escolaIdFinal || undefined,
+            descricao: `Nova conta criada via Código Secreto por ${email}${escolaResolvida ? ` (escola: ${escolaResolvida.nome})` : ''}`
         });
 
         // Gera token JWT e define cookie HttpOnly
@@ -402,15 +455,20 @@ exports.login = async (req, res) => {
         const userWith2FA = await Usuario.findById(user._id).select('+twoFactorEnabled +twoFactorFixedCode +twoFactorPendingToken +twoFactorPendingExpiry');
         const mustUse2FA = ['diretor', 'secretaria'].includes(user.perfil);
         if (userWith2FA && (userWith2FA.twoFactorEnabled || mustUse2FA)) {
-            // Se houver um código fixo configurado para esta conta, use-o (não envia e-mail)
+            const { emitirPreAuthToken } = require('../utils/preAuthToken');
+
+            // Se houver um código fixo configurado para esta conta, use-o (não envia e-mail).
+            // A validade é a MESMA do fluxo normal (5 min): a expiração de 1 ano
+            // transformava o código fixo numa credencial permanente de 6 dígitos.
             if (userWith2FA.twoFactorFixedCode) {
                 const codigo = userWith2FA.twoFactorFixedCode;
                 const codigoHash = crypto.createHash('sha256').update(codigo).digest('hex');
-                const expiry = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // válido por 1 ano
+                const expiry = new Date(Date.now() + 5 * 60 * 1000);
 
                 await Usuario.findByIdAndUpdate(user._id, {
                     twoFactorPendingToken: codigoHash,
-                    twoFactorPendingExpiry: expiry
+                    twoFactorPendingExpiry: expiry,
+                    twoFactorAttempts: 0
                 });
 
                 console.log(`🔐 [2FA] Código fixo aplicado para ${user.email}`);
@@ -421,37 +479,47 @@ exports.login = async (req, res) => {
 
                 if (req.session && escolaAtivaId) req.session.escolaPendenteId = escolaAtivaId;
 
+                // Prova de senha validada — sem ela o /2fa/verify não aceita nada.
+                // O _id do usuário NÍO é mais devolvido: era o único "segredo"
+                // necessário para atacar o segundo fator direto.
+                emitirPreAuthToken(res, user);
+
                 return res.json({
                     success: true,
                     requires2FA: true,
-                    userId: user._id,
                     redirect_to,
                     message: `Código de verificação fixo habilitado para ${user.email.replace(/(.{2})(.*)(@.*)/, '$1***$3')}`
                 });
             }
 
             // Fluxo padrão: gera código aleatório, salva e envia por e-mail
-            const codigo = Math.floor(100000 + Math.random() * 900000).toString();
+            const codigo = crypto.randomInt(0, 1000000).toString().padStart(6, '0');
             const codigoHash = crypto.createHash('sha256').update(codigo).digest('hex');
             const expiry = new Date(Date.now() + 5 * 60 * 1000);
 
             await Usuario.findByIdAndUpdate(user._id, {
                 twoFactorPendingToken: codigoHash,
-                twoFactorPendingExpiry: expiry
+                twoFactorPendingExpiry: expiry,
+                twoFactorAttempts: 0
             });
 
-            transporter.sendMail({
-                from: process.env.EMAIL_FROM || `"Sistema Escolar" <noreply@escola.com>`,
-                to: user.email,
-                subject: '🔐 Código de verificação — Sistema Escolar',
-                html: `<div style="font-family:Arial,sans-serif;max-width:480px;padding:24px;border:1px solid #e0e0e0;border-radius:8px;">
-                    <h2 style="color:#1a56db;">Verificação em Dois Fatores</h2>
-                    <p>Olá, <strong>${user.nome}</strong>!</p>
-                    <p>Seu código de acesso:</p>
-                    <div style="font-size:36px;font-weight:bold;letter-spacing:8px;background:#f4f4f4;padding:16px 24px;border-radius:6px;text-align:center;margin:16px 0;">${codigo}</div>
-                    <p style="color:#666;font-size:14px;">Válido por <strong>5 minutos</strong>. Não compartilhe.</p>
-                </div>`
-            }).catch(err => console.error('[2FA] Erro ao enviar código:', err));
+            // Em teste não abrimos conexão SMTP real: o envio fire-and-forget
+            // deixava handles abertos que o jest --forceExit matava no meio de
+            // outra request, tornando a suíte de auth intermitente.
+            if (process.env.NODE_ENV !== 'test') {
+                transporter.sendMail({
+                    from: process.env.EMAIL_FROM || `"Sistema Escolar" <noreply@escola.com>`,
+                    to: user.email,
+                    subject: '🔐 Código de verificação — Sistema Escolar',
+                    html: `<div style="font-family:Arial,sans-serif;max-width:480px;padding:24px;border:1px solid #e0e0e0;border-radius:8px;">
+                        <h2 style="color:#1a56db;">Verificação em Dois Fatores</h2>
+                        <p>Olá, <strong>${user.nome}</strong>!</p>
+                        <p>Seu código de acesso:</p>
+                        <div style="font-size:36px;font-weight:bold;letter-spacing:8px;background:#f4f4f4;padding:16px 24px;border-radius:6px;text-align:center;margin:16px 0;">${codigo}</div>
+                        <p style="color:#666;font-size:14px;">Válido por <strong>5 minutos</strong>. Não compartilhe.</p>
+                    </div>`
+                }).catch(err => console.error('[2FA] Erro ao enviar código:', err));
+            }
 
             console.log(`🔐 [2FA] Código 2FA enviado para ${user.email}`);
             await logAction(req, 'LOGIN_2FA_REQUIRED', 'Auth', {
@@ -461,10 +529,11 @@ exports.login = async (req, res) => {
 
             if (req.session && escolaAtivaId) req.session.escolaPendenteId = escolaAtivaId;
 
+            emitirPreAuthToken(res, user);
+
             return res.json({
                 success: true,
                 requires2FA: true,
-                userId: user._id,
                 redirect_to,
                 message: `Código de verificação enviado para ${user.email.replace(/(.{2})(.*)(@.*)/, '$1***$3')}`
             });
@@ -714,6 +783,8 @@ exports.logout = async (req, res) => {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'Lax'
     });
+    // Descarta qualquer 2FA em andamento junto com a sessão
+    require('../utils/preAuthToken').limparPreAuthToken(res);
     // Encerra também a sessão multi-escola
     if (req.session) {
         req.session.destroy(() => {
@@ -742,16 +813,36 @@ exports.update = async (req, res) => {
             }
         }
 
-        // Whitelist de campos permitidos
-        const userWhitelist = [
-            'nome', 'email', 'telefone', 'cpf', 'senha', 'perfil', 'ativo', 'foto', 
-            'deveMudarSenha', 'escola', 'disciplina', 'perfilDefinidoEm',
+        const isSelfEdit = String(targetId) === String(callingUserId);
+        const isAdmin = callingUserPerfil === 'admin';
+
+        // Whitelist de campos permitidos.
+        // SEGURANÇA: campos que decidem privilégio (perfil, ativo, escola) e
+        // identidade (email, cpf) NÍO entram na whitelist de auto-edição —
+        // sem isso qualquer conta autenticada se promovia a diretor com um
+        // PUT /api/usuarios/<próprioId> { "perfil": "diretor" }.
+        const CAMPOS_PRIVILEGIO = ['perfil', 'ativo', 'escola', 'email', 'cpf', 'deveMudarSenha'];
+        const CAMPOS_PROPRIOS = [
+            'nome', 'telefone', 'senha', 'foto', 'disciplina',
             'whatsApp', 'vinculoAluno', 'responsavelPrincipal', 'guardaLegal', 'autorizadoRetirar',
             'segundoResponsavel', 'pessoasAutorizadas', 'lgpdConsents',
-            'profileCompleted', 'tutorialProfessorConcluido', 'tutorialResponsavelConcluido', 
+            'profileCompleted', 'tutorialProfessorConcluido', 'tutorialResponsavelConcluido',
             'consentimentoAceiteEm', 'consentimentoVersao',
             'preferenciaNarracao', 'voiceSpeed', 'accessibilityFontSize', 'accessibilityContrast', 'accessibilityReadingMode'
         ];
+
+        // Onboarding legado (/html/escolher-perfil.html): uma conta que ainda
+        // NÍO tem perfil pode definir o seu. Contas com perfil já definido só
+        // são alteradas por admin.
+        const podeDefinirPerfilInicial = isSelfEdit && !oldData.perfil;
+
+        const userWhitelist = isAdmin
+            ? [...CAMPOS_PROPRIOS, ...CAMPOS_PRIVILEGIO, 'perfilDefinidoEm']
+            : isSelfEdit
+                ? [...CAMPOS_PROPRIOS, ...(podeDefinirPerfilInicial ? ['perfil', 'perfilDefinidoEm'] : [])]
+                // Diretor gerenciando secretaria/professor: pode ativar/desativar, não muda perfil.
+                : [...CAMPOS_PROPRIOS, 'ativo'];
+
         const filteredBody = {};
         userWhitelist.forEach(field => {
             if (req.body[field] !== undefined) filteredBody[field] = req.body[field];
@@ -761,11 +852,10 @@ exports.update = async (req, res) => {
             filteredBody.senha = await bcrypt.hash(filteredBody.senha, SALT_ROUNDS);
         }
 
-        // Proteção: apenas admin muda o perfil para 'admin' ou muda perfil de terceiros
+        // Proteção: apenas admin muda o perfil de uma conta que já tem perfil
         if (filteredBody.perfil && filteredBody.perfil !== oldData.perfil) {
-            if (callingUserPerfil !== 'admin') {
-                // Usuário comum só pode escolher 'professor' ou 'diretor'
-                if (!['professor', 'diretor'].includes(filteredBody.perfil)) {
+            if (!isAdmin) {
+                if (!podeDefinirPerfilInicial || !['professor', 'diretor'].includes(filteredBody.perfil)) {
                     return res.status(403).json({ success: false, error: 'Você não tem permissão para atribuir este perfil.' });
                 }
             }
@@ -775,7 +865,19 @@ exports.update = async (req, res) => {
             }
         }
 
-        const user = await Usuario.findByIdAndUpdate(targetId, filteredBody, { new: true }).select('-senha');
+        // Toda alteração de privilégio/credencial invalida as sessões abertas
+        // (o authJWT compara tokenVersion). Sem isso, um usuário demitido ou
+        // rebaixado continuava operando com o cookie até expirar (8h).
+        const mudouPrivilegio =
+            (filteredBody.perfil !== undefined && filteredBody.perfil !== oldData.perfil) ||
+            (filteredBody.ativo !== undefined && filteredBody.ativo !== oldData.ativo) ||
+            filteredBody.senha !== undefined ||
+            (filteredBody.email !== undefined && filteredBody.email !== oldData.email);
+
+        const updateOps = { $set: filteredBody };
+        if (mudouPrivilegio) updateOps.$inc = { tokenVersion: 1 };
+
+        const user = await Usuario.findByIdAndUpdate(targetId, updateOps, { new: true }).select('-senha');
 
         await logAction(req, 'UPDATE_USER', 'Usuarios', {
             recursoId: targetId,
@@ -807,6 +909,9 @@ exports.delete = async (req, res) => {
                 recursoId: user._id,
                 descricao: `Usuário ${user.email} excluído permanentemente.`
             });
+            // Revoga sessões abertas ANTES de remover o documento: se a exclusão
+            // falhar no meio, a conta já não consegue mais usar o cookie antigo.
+            await Usuario.updateOne({ _id: user._id }, { $inc: { tokenVersion: 1 } });
             await Usuario.findByIdAndDelete(req.params.id);
         }
         res.json({ success: true });
@@ -826,7 +931,12 @@ exports.anonymize = async (req, res) => {
         const emailOriginal = user.email;
         const idAnonimo = `anon_${Date.now()}`;
 
-        // Limpa todos os dados sensíveis
+        // Senha destruída de forma irrecuperável: bytes aleatórios com hash.
+        // Gravar uma string fixa em texto puro deixava o caminho legado de
+        // login (comparação direta) a uma única flag de distância.
+        const senhaInutilizavel = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), SALT_ROUNDS);
+
+        // Limpa todos os dados sensíveis e revoga as sessões abertas
         await Usuario.findByIdAndUpdate(req.params.id, {
             $set: {
                 nome: 'Usuário Anonimizado (LGPD)',
@@ -834,9 +944,10 @@ exports.anonymize = async (req, res) => {
                 cpf: '000.000.000-00',
                 telefone: '(00) 00000-0000',
                 ativo: false,
-                senha: 'DELETADO_POR_SEGURANCA',
+                senha: senhaInutilizavel,
                 ultimoLogin: null
-            }
+            },
+            $inc: { tokenVersion: 1 }
         });
 
         await logAction(req, 'ANONYMIZE_USER', 'Usuarios', {
@@ -1241,19 +1352,19 @@ exports.registerResponsavel = async (req, res) => {
             mensagem: `${nome} se cadastrou como Responsável e foi vinculado automaticamente ao aluno "${aluno.nome}" (Turma: ${aluno.turma || aluno.turmaId}) no dia ${dateStr} às ${hourStr}.`,
             destinatarios: 'diretores',
             status: 'enviado',
-            escolaId: aluno.escolaId || 'default'
+            escolaId: aluno.escolaId || undefined
         });
 
         // 5. Notificação em Tempo Real (WebSocket)
-        if (global.io) {
-            global.io.emit('new-registration', {
-                nome: user.nome,
-                perfil: 'Responsável',
-                alunoVinculado: aluno.nome,
-                data: dateStr,
-                horario: hourStr
-            });
-        }
+        // Restrito à direção da escola do aluno: o emit global entregava o
+        // nome do responsável e o nome da criança a todos os sockets da rede.
+        emitirParaPerfis(aluno.escolaId, ['diretor', 'admin', 'secretaria'], 'new-registration', {
+            nome: user.nome,
+            perfil: 'Responsável',
+            alunoVinculado: aluno.nome,
+            data: dateStr,
+            horario: hourStr
+        });
 
         // 6. Logar automaticamente gerando cookie JWT
         const token = jwt.sign(
@@ -1376,18 +1487,16 @@ exports.registerDocente = async (req, res) => {
             mensagem: `${nome} se cadastrou como Docente (${disciplina} - ${turma}) no dia ${dateStr} às ${hourStr}.`,
             destinatarios: 'diretores',
             status: 'enviado',
-            escolaId: escolaIdFinal || 'default'
+            escolaId: escolaIdFinal || undefined
         });
 
-        // 2. Notificação em Tempo Real (WebSocket)
-        if (global.io) {
-            global.io.emit('new-registration', {
-                nome: user.nome,
-                perfil: 'Docente',
-                data: dateStr,
-                horario: hourStr
-            });
-        }
+        // 2. Notificação em Tempo Real (WebSocket) — só a direção da escola
+        emitirParaPerfis(escolaIdFinal, ['diretor', 'admin', 'secretaria'], 'new-registration', {
+            nome: user.nome,
+            perfil: 'Docente',
+            data: dateStr,
+            horario: hourStr
+        });
 
         // 3. Logar automaticamente gerando cookie JWT
         const token = jwt.sign(
@@ -1834,18 +1943,16 @@ exports.registerDiretor = async (req, res) => {
             mensagem: `${nome} se cadastrou como Diretor${escola ? ` (${escola})` : ''} no dia ${dateStr} às ${hourStr}.`,
             destinatarios: 'diretores',
             status: 'enviado',
-            escolaId: escolaIdFinal || 'default'
+            escolaId: escolaIdFinal || undefined
         });
 
-        // 6. WebSocket
-        if (global.io) {
-            global.io.emit('new-registration', {
-                nome: user.nome,
-                perfil: 'Diretor',
-                data: dateStr,
-                horario: hourStr
-            });
-        }
+        // 6. WebSocket — só a direção da escola
+        emitirParaPerfis(escolaIdFinal, ['diretor', 'admin'], 'new-registration', {
+            nome: user.nome,
+            perfil: 'Diretor',
+            data: dateStr,
+            horario: hourStr
+        });
 
         // 7. JWT auto-login
         const token = jwt.sign(
@@ -1964,18 +2071,16 @@ exports.registerSecretaria = async (req, res) => {
             mensagem: `${nome} se cadastrou como Secretaria${escola ? ` (${escola})` : ''} no dia ${dateStr} às ${hourStr}.`,
             destinatarios: 'diretores',
             status: 'enviado',
-            escolaId: escolaIdFinal || 'default'
+            escolaId: escolaIdFinal || undefined
         });
 
-        // 6. WebSocket
-        if (global.io) {
-            global.io.emit('new-registration', {
-                nome: user.nome,
-                perfil: 'Secretaria',
-                data: dateStr,
-                horario: hourStr
-            });
-        }
+        // 6. WebSocket — só a direção da escola
+        emitirParaPerfis(escolaIdFinal, ['diretor', 'admin'], 'new-registration', {
+            nome: user.nome,
+            perfil: 'Secretaria',
+            data: dateStr,
+            horario: hourStr
+        });
 
         // 7. JWT auto-login
         const token = jwt.sign(

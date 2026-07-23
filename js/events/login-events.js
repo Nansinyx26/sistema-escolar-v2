@@ -75,11 +75,13 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ── Lógica do Modal 2FA (Roadmap #1) ──────────────────────────────────────
-    window._2fa = { userId: null, countdownTimer: null };
+    // O alvo do 2FA vem do cookie de pré-autenticação (escola_preauth) emitido
+    // no passo de senha — o frontend não conhece mais o userId, justamente para
+    // que ninguém consiga atacar /2fa/verify sabendo só o _id de um diretor.
+    window._2fa = { countdownTimer: null, redirectTo: null };
 
     // Abre o modal 2FA após o backend retornar requires2FA=true
-    window.abrirModal2FA = function(userId, emailMascarado, redirectTo) {
-        window._2fa.userId = userId;
+    window.abrirModal2FA = function(emailMascarado, redirectTo) {
         window._2fa.redirectTo = redirectTo || null;
         const modal = document.getElementById('modal2FA');
         const emailDisplay = document.getElementById('twofa-email-display');
@@ -99,7 +101,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const modal = document.getElementById('modal2FA');
         if (modal) modal.classList.add('hidden');
         clearInterval(window._2fa.countdownTimer);
-        window._2fa.userId = null;
+        window._2fa.redirectTo = null;
     };
 
     // Contador regressivo de 5 minutos
@@ -124,7 +126,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Verifica o código 2FA
     async function verificarCodigo2FA() {
-        const userId = window._2fa.userId;
         const codeInput = document.getElementById('twofa-code-input');
         const code = codeInput ? codeInput.value.trim() : '';
         const errorMsg = document.getElementById('twofa-error-msg');
@@ -153,9 +154,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const res = await fetch(`${baseUrl}/auth/2fa/verify`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: window.csrfHeaders ? window.csrfHeaders(true) : { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ userId, codigo: code })
+                body: JSON.stringify({ codigo: code })
             });
 
             const data = await res.json();
@@ -198,9 +199,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Reenviar código
     async function reenviarCodigo2FA() {
-        const userId = window._2fa.userId;
-        if (!userId) return;
-
         try {
             const baseUrl = window.API_BASE_URL || (
                 (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
@@ -209,8 +207,9 @@ document.addEventListener('DOMContentLoaded', function () {
             );
             await fetch(`${baseUrl}/auth/2fa/send`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId })
+                headers: window.csrfHeaders ? window.csrfHeaders(true) : { 'Content-Type': 'application/json' },
+                credentials: 'include', // leva o cookie escola_preauth
+                body: JSON.stringify({})
             });
             iniciarContagem2FA();
             const submitBtn = document.getElementById('twofa-submit-btn');

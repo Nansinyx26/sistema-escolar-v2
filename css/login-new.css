@@ -762,3 +762,46 @@
         gap: 0;
     }
 }
+/* ============================================================
+   Seletor de Portal — troca de perfil no login
+   (Professor · Diretor · Secretaria). Presente nas 4 páginas
+   de login; o item ativo indica o portal atual.
+   ============================================================ */
+.portal-switcher {
+    display: flex;
+    gap: 6px;
+    padding: 6px;
+    margin-bottom: 1.25rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+    border-radius: 14px;
+}
+.portal-switch-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0.6rem 0.4rem;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary, #a1a1aa);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+}
+.portal-switch-btn i { font-size: 1rem; }
+.portal-switch-btn:hover {
+    color: var(--text-primary, #fafafa);
+    background: rgba(255, 255, 255, 0.05);
+}
+.portal-switch-btn.active {
+    color: #fff;
+    background: linear-gradient(135deg, var(--primary-color, #10b981), #0ea5e9);
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
+}
+@media (max-width: 400px) {
+    .portal-switch-btn span { display: none; } /* telas estreitas: só ícones */
+    .portal-switch-btn { padding: 0.6rem 0.3rem; }
+}

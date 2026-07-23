@@ -6,6 +6,9 @@ const CalendarioEscolarSchema = new mongoose.Schema({
     titulo: { type: String, required: true },
     descricao: String,
 
+    // Multi-escola: isolamento por tenant (_id de Escola)
+    escolaId: { type: String, index: true },
+
     dataInicio: { type: Date, required: true },
     dataFim: { type: Date, required: true },
 

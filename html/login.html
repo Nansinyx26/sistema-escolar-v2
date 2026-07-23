@@ -72,6 +72,19 @@
         <!-- Container de Login -->
         <div class="login-container">
             <div class="login-card">
+                <!-- Seletor de Perfil — troca de portal de acesso -->
+                <div class="portal-switcher" aria-label="Escolha o portal de acesso">
+                    <a href="login-professor.html" class="portal-switch-btn active" aria-current="page">
+                        <i class="bi bi-mortarboard"></i><span>Professor</span>
+                    </a>
+                    <a href="login-diretor.html" class="portal-switch-btn">
+                        <i class="bi bi-briefcase"></i><span>Diretor</span>
+                    </a>
+                    <a href="login-secretaria.html" class="portal-switch-btn">
+                        <i class="bi bi-person-badge"></i><span>Secretaria</span>
+                    </a>
+                </div>
+
                 <!-- Header -->
                 <div class="login-header">
                     <div class="login-logo">
@@ -98,6 +111,17 @@
                     <!-- Tab Login -->
                     <div class="login-tab-content active" id="login-tab">
                         <form id="loginForm" class="login-form">
+                            <div class="form-group" id="loginEscolaGroup" style="display: none;">
+                                <label class="form-label" for="loginEscola">Escola</label>
+                                <div class="input-group">
+                                    <i class="input-icon bi bi-building"></i>
+                                    <select id="loginEscola" class="form-input" style="appearance: none; cursor: pointer;">
+                                        <option value="">Selecione a escola</option>
+                                    </select>
+                                    <i class="bi bi-chevron-down" style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 0.9rem; pointer-events: none; color: var(--text-tertiary);"></i>
+                                </div>
+                            </div>
+
                             <div class="form-group">
                                 <label class="form-label" for="loginEmail">Email</label>
                                 <div class="input-group">
@@ -535,6 +559,7 @@
 
     <!-- Scripts -->
     <script defer src="../js/api-config.js"></script>
+    <script defer src="../js/csrf-helper.js"></script>
     <script defer src="../js/database.js"></script>
     <script defer src="../js/auth.js"></script>
     <script defer src="../js/utils.js"></script>
@@ -548,5 +573,7 @@
     <script src="../js/gsap-login.js"></script>
     <script defer src="../js/events/login-events.js"></script>
     <script defer src="../js/reactions.js"></script>
+
+<script src="../js/click-sound.js" defer></script>
 </body>
 </html>

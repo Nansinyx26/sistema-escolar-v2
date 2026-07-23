@@ -23,8 +23,16 @@ class App {
         try {
             console.log('Inicializando aplicação...');
 
-            // Define tema dark como padrão
-            document.documentElement.setAttribute('data-theme', 'dark');
+            // Aplica o tema salvo pelo usuário (padrão: escuro).
+            // O controle e a persistência ficam em js/theme.js.
+            if (!document.documentElement.getAttribute('data-theme')) {
+                var savedTheme = 'dark';
+                try {
+                    var t = localStorage.getItem('theme');
+                    if (t === 'light' || t === 'dark') savedTheme = t;
+                } catch (e) {}
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
 
             // Inicializa UI primeiro (para mostrar loading)
             ui.init();

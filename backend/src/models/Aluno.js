@@ -128,34 +128,27 @@ const AlunoSchema = new mongoose.Schema({
 });
 
 // pre-save hook to ensure every student always has a unique secret code
+//
+// SEGURANÇA: o gerador vive em utils/secretCodeHelper e usa crypto.randomInt.
+// A versão anterior duplicava a lógica aqui com Math.random() — um PRNG cujo
+// estado é recuperável a partir de poucas saídas, e todo responsável recebe
+// legitimamente um código. Manter uma única implementação evita que uma das
+// duas volte a ficar fraca sem ninguém notar.
 AlunoSchema.pre('save', async function (next) {
-    if (!this.codigoSecreto || this.codigoSecreto === 'N/A' || this.codigoSecreto === 'n/a' || this.codigoSecreto.trim() === '') {
-        let code = '';
-        let exists = true;
-        let attempts = 0;
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        
-        while (exists && attempts < 100) {
-            code = '';
-            for (let i = 0; i < 6; i++) {
-                code += chars.charAt(Math.floor(Math.random() * chars.length));
-            }
-            const existing = await this.constructor.findOne({ codigoSecreto: code });
-            if (!existing) {
-                exists = false;
-            }
-            attempts++;
+    try {
+        const atual = typeof this.codigoSecreto === 'string' ? this.codigoSecreto.trim() : '';
+        const invalido = !atual || ['N/A', 'n/a'].includes(atual);
+
+        if (invalido) {
+            const { generateUniqueSecretCode } = require('../utils/secretCodeHelper');
+            this.codigoSecreto = await generateUniqueSecretCode();
+        } else {
+            this.codigoSecreto = atual.toUpperCase();
         }
-        
-        if (exists) {
-            code += Math.floor(Math.random() * 10);
-        }
-        
-        this.codigoSecreto = code;
-    } else {
-        this.codigoSecreto = this.codigoSecreto.trim().toUpperCase();
+        next();
+    } catch (err) {
+        next(err);
     }
-    next();
 });
 
 // ============================================

@@ -1,13 +1,26 @@
 const Aluno = require('../models/Aluno');
+const crypto = require('crypto');
+const { emitirParaEscola } = require('./realtime');
+
+// Alfabeto sem caracteres ambíguos (0/O, 1/I) — o código é ditado por telefone
+// e transcrito à mão pelos responsáveis.
+const ALFABETO = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const TAMANHO_CODIGO = 10;
 
 /**
- * Generates a random 6-character alphanumeric secret code (A-Z, 0-9).
+ * Gera um código secreto aleatório.
+ *
+ * SEGURANÇA: usa crypto.randomInt (CSPRNG), não Math.random. O PRNG do V8
+ * (xorshift128+) tem estado recuperável a partir de poucas saídas — e todo
+ * responsável recebe legitimamente um código, ou seja, um atacante tinha
+ * amostras de sobra para prever os códigos dos outros alunos.
+ *
+ * 10 caracteres num alfabeto de 32 = 2^50 combinações (antes: 36^6 ≈ 2^31).
  */
-function generateRandomCode() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+function generateRandomCode(tamanho = TAMANHO_CODIGO) {
     let code = '';
-    for (let i = 0; i < 6; i++) {
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    for (let i = 0; i < tamanho; i++) {
+        code += ALFABETO.charAt(crypto.randomInt(0, ALFABETO.length));
     }
     return code;
 }
@@ -29,13 +42,13 @@ async function generateUniqueSecretCode() {
         attempts++;
     }
 
-    // Fallback if many collisions happen - stay at 6 characters but try again or append a small random
+    // Colisão em 2^50 é praticamente impossível; se acontecer, alonga o código
+    // em vez de aceitar uma repetição silenciosa.
     if (exists) {
-        console.warn(`⚠️ [SECRET-CODES] High collision rate detected after ${attempts} attempts. Forcing a new random code.`);
-        code = generateRandomCode(); 
+        console.warn(`⚠️ [SECRET-CODES] Colisões após ${attempts} tentativas — gerando código estendido.`);
+        code = generateRandomCode(TAMANHO_CODIGO + 4);
     }
 
-    console.log(`🔑 [SECRET-CODES] Generated unique code after ${attempts} attempts.`);
     return code;
 }
 
@@ -67,15 +80,15 @@ async function initializeSecretCodes() {
             student.codigoSecreto = undefined;
             await student.save();
             console.log(`   └─ Student: ${student.nome} -> Secret code initialized`);
-            
-            // Notify frontend in real-time about new student or code updates if socket.io is active
-            if (global.io) {
-                global.io.emit('student:code_updated', {
-                    id: student._id || student.id,
-                    nome: `${student.nome} ${student.sobrenome || ''}`.trim(),
-                    codigoSecreto: student.codigoSecreto
-                });
-            }
+
+            // SEGURANÇA: o broadcast antigo entregava o código secreto a TODOS
+            // os sockets conectados. O evento agora só avisa que houve mudança
+            // (restrito à escola do aluno); o código sai apenas pela rota
+            // autenticada /api/alunos/codigos-secretos.
+            emitirParaEscola(student.escolaId, 'student:code_updated', {
+                id: student._id || student.id,
+                nome: `${student.nome} ${student.sobrenome || ''}`.trim()
+            });
         }
         console.log('✅ [SECRET-CODES] Secret codes initialization complete!');
     } catch (err) {

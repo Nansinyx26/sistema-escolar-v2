@@ -51,8 +51,32 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         .table-scroll { overflow-x:auto; max-height:60vh; overflow-y:auto; }
     </style>
+    <link rel="stylesheet" href="../../css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="../../css/reactions.css?v=1.0">
 </head>
 <body>
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Sistema Escolar</h2>
+            <p class="splash-subtitle">Importar Alunos</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="../../js/splash-screen.js"></script>
+
 <div class="dashboard-page" id="pageWrapper">
     <div class="dashboard-bg"><div class="orb orb-primary"></div><div class="orb orb-secondary"></div></div>
     <main class="dashboard-main">
@@ -376,5 +400,9 @@ function mostrarResultado(data) {
     toast(`${data.totalCriados} aluno(s) salvos no banco.`);
 }
 </script>
+
+<script src="../../js/click-sound.js" defer></script>
+    <script defer src="../../js/reactions.js"></script>
+    <script defer src="../../js/push-notifications.js"></script>
 </body>
 </html>

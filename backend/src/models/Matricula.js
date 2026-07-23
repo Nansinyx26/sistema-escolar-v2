@@ -7,6 +7,9 @@ const MatriculaSchema = new mongoose.Schema({
     alunoId: { type: String, required: true, ref: 'Aluno', index: true }, // Referencia ao Aluno
     turmaId: { type: String, required: true, ref: 'Turma', index: true }, // Referencia a Turma
 
+    // Multi-escola: isolamento por tenant (_id de Escola)
+    escolaId: { type: String, index: true },
+
     anoLetivo: { type: Number, required: true, index: true }, // Ex: 2024, 2025
     matriculaNumero: { type: String, unique: true }, // Ex: "2024001" (antigo campo matricula do aluno)
 

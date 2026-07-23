@@ -21,6 +21,8 @@ async function logAction(req, acao, recurso, detalhes = {}) {
             acao: acao,
             recurso: recurso,
             recursoId: detalhes.recursoId,
+            // Escola do contexto (resolvida por filtrarPorEscola) ou explícita
+            escolaId: req.escolaId ? String(req.escolaId) : (detalhes.escolaId || undefined),
             detalhes: {
                 valorAnterior: detalhes.valorAnterior,
                 valorNovo: detalhes.valorNovo,

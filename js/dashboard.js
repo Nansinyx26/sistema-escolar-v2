@@ -192,6 +192,7 @@ async function atualizarCards(user, perfil) {
     const cardNotificacoesResp = document.getElementById('cardNotificacoesResp');
 
     const cardSecretCodes = document.getElementById('cardSecretCodes');
+    const cardCodigosEscolas = document.getElementById('cardCodigosEscolas');
 
     if (user.perfil === 'admin') {
         // Admin vê tudo
@@ -207,6 +208,7 @@ async function atualizarCards(user, perfil) {
         if (cardListaAlunos) cardListaAlunos.style.display = 'flex';
         if (cardNotificacoesResp) cardNotificacoesResp.style.display = 'flex';
         if (cardSecretCodes) cardSecretCodes.style.display = 'flex';
+        if (cardCodigosEscolas) cardCodigosEscolas.style.display = 'flex';
     } else if (user.perfil === 'professor' && perfil) {
         // ... (existing teacher logic) ...
         const principal = perfil.salaPrincipal || '';

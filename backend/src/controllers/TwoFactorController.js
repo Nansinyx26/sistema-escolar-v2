@@ -25,6 +25,11 @@ const Usuario = require('../models/Usuario');
 const { logAction } = require('../utils/auditHelper');
 const ACTUAL_JWT_SECRET = require('../utils/jwtConfig');
 const jwt = require('jsonwebtoken');
+const { validarPreAuthToken, limparPreAuthToken } = require('../utils/preAuthToken');
+
+// Força bruta de 6 dígitos: 5 tentativas e o código é invalidado.
+const MAX_TENTATIVAS_2FA = 5;
+const BLOQUEIO_2FA_MS = 15 * 60 * 1000;
 
 // Reutiliza as mesmas configurações de e-mail do UserController
 const isResend = !process.env.EMAIL_HOST || process.env.EMAIL_HOST === 'smtp.resend.com';
@@ -51,6 +56,8 @@ function gerarCodigo6Digitos() {
 // Utilitário: Envia e-mail com o código 2FA
 // --------------------------------------------------
 async function enviarEmail2FA(email, nome, codigo) {
+    // Não abre SMTP real em testes (evita handles pendentes / flakiness)
+    if (process.env.NODE_ENV === 'test') return;
     await transporter.sendMail({
         from: process.env.EMAIL_FROM || `"Sistema Escolar" <noreply@escola.com>`,
         to: email,
@@ -80,11 +87,14 @@ async function enviarEmail2FA(email, nome, codigo) {
 // --------------------------------------------------
 exports.sendCode = async (req, res) => {
     try {
-        const { userId } = req.body;
-
-        if (!userId) {
-            return res.status(400).json({ success: false, error: 'userId é obrigatório.' });
+        // SEGURANÇA: o alvo vem do token de pré-autenticação, nunca de um
+        // userId arbitrário no corpo — senão qualquer um dispara códigos
+        // (e reinicia o contador de tentativas) na conta que quiser.
+        const pre = validarPreAuthToken(req);
+        if (!pre.ok) {
+            return res.status(401).json({ success: false, error: pre.error });
         }
+        const userId = pre.userId;
 
         const usuario = await Usuario.findById(userId)
             .select('+twoFactorEnabled +twoFactorPendingToken +twoFactorPendingExpiry');
@@ -93,7 +103,8 @@ exports.sendCode = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
         }
 
-        if (!usuario.twoFactorEnabled) {
+        const exige2FA = usuario.twoFactorEnabled || ['diretor', 'secretaria'].includes(usuario.perfil);
+        if (!exige2FA) {
             return res.status(400).json({ success: false, error: '2FA não está ativo nesta conta.' });
         }
 
@@ -105,7 +116,8 @@ exports.sendCode = async (req, res) => {
 
         await Usuario.findByIdAndUpdate(userId, {
             twoFactorPendingToken: codigoHash,
-            twoFactorPendingExpiry: expiry
+            twoFactorPendingExpiry: expiry,
+            twoFactorAttempts: 0
         });
 
         await enviarEmail2FA(usuario.email, usuario.nome, codigo);
@@ -129,27 +141,45 @@ exports.sendCode = async (req, res) => {
 // --------------------------------------------------
 exports.verifyCode = async (req, res) => {
     try {
-        const { userId, codigo } = req.body;
+        // 1. Prova de que a senha foi validada nesta sessão de login.
+        const pre = validarPreAuthToken(req);
+        if (!pre.ok) {
+            return res.status(401).json({ success: false, error: pre.error });
+        }
+        const userId = pre.userId;
 
-        if (!userId || !codigo) {
-            return res.status(400).json({ success: false, error: 'userId e codigo são obrigatórios.' });
+        const { codigo } = req.body;
+        if (!codigo) {
+            return res.status(400).json({ success: false, error: 'O código é obrigatório.' });
         }
 
         const usuario = await Usuario.findById(userId)
-            .select('+twoFactorPendingToken +twoFactorPendingExpiry +twoFactorFixedCode');
+            .select('+twoFactorPendingToken +twoFactorPendingExpiry +twoFactorFixedCode +twoFactorAttempts +twoFactorLockUntil');
 
         if (!usuario) {
             return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
         }
 
-        // Verifica expiração — se expirou e não há código fixo, erro
         const now = new Date();
-        if ((!usuario.twoFactorPendingExpiry || now > usuario.twoFactorPendingExpiry) && !usuario.twoFactorFixedCode) {
+
+        // 2. Bloqueio por tentativas: 10^6 códigos só são varridos sem limite.
+        if (usuario.twoFactorLockUntil && usuario.twoFactorLockUntil > now) {
+            const minutos = Math.ceil((usuario.twoFactorLockUntil - now) / 60000);
+            return res.status(429).json({
+                success: false,
+                error: `Muitas tentativas incorretas. Tente novamente em ${minutos} minuto(s).`
+            });
+        }
+
+        // 3. Expiração SEMPRE aplicada — inclusive quando existe código fixo.
+        //    Antes, twoFactorFixedCode pulava a checagem e o login gravava uma
+        //    validade de 1 ano, deixando o código eternamente utilizável.
+        if (!usuario.twoFactorPendingExpiry || now > usuario.twoFactorPendingExpiry) {
             return res.status(401).json({ success: false, error: 'Código expirado. Solicite um novo.' });
         }
 
         // Compara hash (proteção contra timing attacks via crypto.timingSafeEqual)
-        const codigoHash = crypto.createHash('sha256').update(codigo.trim()).digest('hex');
+        const codigoHash = crypto.createHash('sha256').update(String(codigo).trim()).digest('hex');
         const hashEsperado = usuario.twoFactorPendingToken || '';
 
         let valido = false;
@@ -161,24 +191,45 @@ exports.verifyCode = async (req, res) => {
             valido = false;
         }
 
-        // Fallback: se houver um código fixo configurado para a conta, aceitar quando corresponder
-        if (!valido && usuario.twoFactorFixedCode) {
-            const fixedHash = crypto.createHash('sha256').update(usuario.twoFactorFixedCode.trim()).digest('hex');
-            if (fixedHash === codigoHash) {
-                valido = true;
-            }
-        }
-
         if (!valido) {
+            const tentativas = (usuario.twoFactorAttempts || 0) + 1;
+            const update = { twoFactorAttempts: tentativas };
+
+            if (tentativas >= MAX_TENTATIVAS_2FA) {
+                // Invalida o código atual junto com o bloqueio: reiniciar o
+                // fluxo exige um código novo, não só esperar o tempo passar.
+                update.twoFactorLockUntil = new Date(Date.now() + BLOQUEIO_2FA_MS);
+                update.twoFactorAttempts = 0;
+                update.twoFactorPendingToken = null;
+                update.twoFactorPendingExpiry = null;
+            }
+
+            await Usuario.findByIdAndUpdate(userId, update);
+            await logAction(req, 'LOGIN_2FA_FAILED', 'Auth', {
+                recursoId: usuario._id,
+                descricao: `Código 2FA incorreto para ${usuario.email} (tentativa ${tentativas}/${MAX_TENTATIVAS_2FA})`
+            });
+
+            if (tentativas >= MAX_TENTATIVAS_2FA) {
+                return res.status(429).json({
+                    success: false,
+                    error: 'Muitas tentativas incorretas. O código foi invalidado — faça login novamente.'
+                });
+            }
             return res.status(401).json({ success: false, error: 'Código inválido.' });
         }
 
-        // Limpa o token pendente
+        // Limpa o token pendente e o contador de tentativas
         await Usuario.findByIdAndUpdate(userId, {
             twoFactorPendingToken: null,
             twoFactorPendingExpiry: null,
+            twoFactorAttempts: 0,
+            twoFactorLockUntil: null,
             ultimoLogin: new Date()
         });
+
+        // O pre-auth é de uso único: consumido, some.
+        limparPreAuthToken(res);
 
         // Gera e seta o cookie JWT com o mesmo nome usado no UserController
         const token = jwt.sign(

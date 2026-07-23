@@ -21,6 +21,7 @@ const mongoose = require('mongoose');
 const ACTUAL_JWT_SECRET = require('../utils/jwtConfig');
 const { logAction } = require('../utils/auditHelper');
 const logger = require('../utils/logger');
+const { emitirParaPerfis } = require('../utils/realtime');
 
 const SALT_ROUNDS = 12;
 
@@ -151,18 +152,18 @@ class RegistrationService {
         mensagem: `${nome} se cadastrou como Responsável e foi vinculado ao aluno "${aluno.nome}".`,
         destinatarios: 'diretores',
         status: 'enviado',
-        escolaId: 'default'
+        escolaId: undefined
       });
 
       // Emitir notificação em tempo real
-      if (global.io) {
-        global.io.emit('new-registration', {
-          nome: user.nome,
-          perfil: 'Responsável',
-          alunoVinculado: aluno.nome,
-          data: now.toLocaleDateString('pt-BR')
-        });
-      }
+      // Restrito à direção da escola do aluno (o emit global entregava o
+      // nome do responsável e da criança a toda a rede).
+      emitirParaPerfis(aluno.escolaId, ['diretor', 'admin', 'secretaria'], 'new-registration', {
+        nome: user.nome,
+        perfil: 'Responsável',
+        alunoVinculado: aluno.nome,
+        data: now.toLocaleDateString('pt-BR')
+      });
 
       // Gerar JWT
       const token = this._generateJWT(user);
@@ -284,7 +285,10 @@ class RegistrationService {
         tipoEspecial: materiaEspecial,
         role: 'professor',
         ativo: true,
-        escola: 'default'
+        // Nunca a string literal 'default': ela tornava o registro visível a
+        // todas as escolas no filtro tolerante. Herda a escola da conta.
+        escola: user.escolaId ? String(user.escolaId) : undefined,
+        vinculos: user.escolaId ? [{ escolaId: String(user.escolaId), cargo: 'professor' }] : []
       });
 
       // Criar notificação para direção
@@ -295,19 +299,17 @@ class RegistrationService {
         mensagem: `${nome} se cadastrou como Docente (${disciplina} - ${turma}).`,
         destinatarios: 'diretores',
         status: 'enviado',
-        escolaId: 'default'
+        escolaId: undefined
       });
 
       // Emitir notificação em tempo real
-      if (global.io) {
-        global.io.emit('new-registration', {
-          nome: user.nome,
-          perfil: 'Docente',
-          disciplina,
-          turma,
-          data: now.toLocaleDateString('pt-BR')
-        });
-      }
+      emitirParaPerfis(user.escolaId, ['diretor', 'admin', 'secretaria'], 'new-registration', {
+        nome: user.nome,
+        perfil: 'Docente',
+        disciplina,
+        turma,
+        data: now.toLocaleDateString('pt-BR')
+      });
 
       // Gerar JWT
       const token = this._generateJWT(user);

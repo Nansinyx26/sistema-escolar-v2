@@ -130,15 +130,19 @@ exports.gerarBoletim = async (req, res) => {
     try {
         const { alunoId } = req.params;
 
-        // 1. Dados do aluno
-        const aluno = await Aluno.findById(alunoId).lean();
-        if (!aluno) return res.status(404).json({ success: false, error: 'Aluno não encontrado' });
+        // 1. Dados do aluno — SEGURANÇA: o boletim em PDF traz nome completo,
+        // turma, todas as notas e a frequência. Sem esta verificação, um
+        // responsável baixava o boletim de qualquer criança da rede.
+        const assertAcessoAoAluno = require('../middleware/assertAcessoAoAluno');
+        const acesso = await assertAcessoAoAluno(req, alunoId);
+        if (!acesso.ok) return res.status(acesso.status).json({ success: false, error: acesso.error });
+        const aluno = acesso.aluno;
 
         // 2. Notas
-        const notas = await Nota.find({ alunoId }).lean();
+        const notas = await Nota.find({ alunoId: String(alunoId) }).lean();
 
         // 3. Frequência
-        const faltas = await Falta.find({ aluno: alunoId }).lean();
+        const faltas = await Falta.find({ aluno: String(alunoId) }).lean();
         const totalAulas = faltas.length;
         const totalPresencas = faltas.filter(f => f.presente).length;
         const freqNum = totalAulas > 0 ? (totalPresencas / totalAulas) * 100 : 100;

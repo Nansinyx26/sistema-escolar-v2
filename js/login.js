@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     setupTabs();
+    setupEscolaSelect();
     setupLoginForm();
     setupRegisterForm();
     // setupGoogleButtons removido
@@ -36,14 +37,17 @@ function setupTabs() {
         tab.addEventListener('click', () => {
             const targetTab = tab.dataset.tab;
 
-            // "Criar Conta" (register) → salva tipo e redireciona para cadastro-docente.html
+            // "Criar Conta" (register) → salva tipo e redireciona para o cadastro do perfil.
+            // Páginas de login por perfil definem window.LOGIN_CONFIG; sem ele, cai no docente.
             if (targetTab === 'register') {
+                const cfg = window.LOGIN_CONFIG || {};
+                const cadastroUrl = cfg.cadastroUrl || 'pages/cadastro-docente.html';
                 try {
-                    sessionStorage.setItem('primeiroAcessoTipo', 'docente');
+                    sessionStorage.setItem('primeiroAcessoTipo', cfg.primeiroAcessoTipo || 'docente');
                 } catch (e) { }
 
                 const ctxEscola = getEscolaIdFromUrl();
-                window.location.href = 'pages/cadastro-docente.html' + (ctxEscola ? ('?escolaId=' + encodeURIComponent(ctxEscola)) : '');
+                window.location.href = cadastroUrl + (ctxEscola ? ('?escolaId=' + encodeURIComponent(ctxEscola)) : '');
                 return;
             }
 
@@ -64,6 +68,57 @@ function getEscolaIdFromUrl() {
     try {
         return new URLSearchParams(window.location.search).get('escolaId') || null;
     } catch (e) { return null; }
+}
+
+/**
+ * MULTI-ESCOLA: preenche o seletor "Escola" do formulário de login com as
+ * escolas ativas (GET /api/escolas). O docente escolhe em qual escola vai
+ * entrar; o backend só autentica se a conta tiver vínculo com ela.
+ *
+ * Robustez: se a lista não carregar ou não houver escola ativa, o campo
+ * permanece oculto e o login segue pela resolução automática do backend
+ * (vínculo único → entra; múltiplos → modal seletor).
+ */
+async function setupEscolaSelect() {
+    const group = document.getElementById('loginEscolaGroup');
+    const select = document.getElementById('loginEscola');
+    if (!group || !select) return;
+
+    try {
+        const baseUrl = (window.auth && auth._apiBase) ? auth._apiBase() : (window.API_BASE_URL || 'http://localhost:3001/api');
+        const res = await fetch(`${baseUrl}/escolas`, { credentials: 'include' });
+        const data = await res.json();
+        const escolas = (data && data.success && Array.isArray(data.data)) ? data.data.filter(e => e.ativo) : [];
+
+        if (!escolas.length) return; // sem escolas ativas → mantém oculto (fallback do backend)
+
+        escolas
+            .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
+            .forEach((e) => {
+                const opt = document.createElement('option');
+                opt.value = e._id;
+                opt.textContent = e.nome + (e.bairro ? ' — ' + e.bairro : '');
+                select.appendChild(opt);
+            });
+
+        // Pré-seleciona a escola vinda do modal da landing, se houver
+        const ctx = getEscolaIdFromUrl();
+        if (ctx && escolas.some(e => String(e._id) === String(ctx))) {
+            select.value = ctx;
+        }
+
+        group.style.display = '';
+    } catch (e) {
+        // Falha de rede — mantém o campo oculto para não travar o login
+        console.warn('Não foi possível carregar as escolas:', e);
+    }
+}
+
+/** Escola escolhida no formulário (prioriza o seletor; cai para o ?escolaId da URL). */
+function getEscolaSelecionada() {
+    const select = document.getElementById('loginEscola');
+    if (select && select.value) return select.value;
+    return getEscolaIdFromUrl();
 }
 
 /**
@@ -180,11 +235,20 @@ function setupLoginForm() {
             return;
         }
 
+        // Multi-escola: se o seletor estiver visível, escolher a escola é obrigatório
+        const escolaGroup = document.getElementById('loginEscolaGroup');
+        const escolaSelect = document.getElementById('loginEscola');
+        if (escolaGroup && escolaGroup.style.display !== 'none' && escolaSelect && !escolaSelect.value) {
+            showToast('Selecione a escola que deseja acessar', 'error');
+            escolaSelect.focus();
+            return;
+        }
+
         // Loading
         const submitBtn = form.querySelector('button[type="submit"]');
         showLoading(submitBtn);
 
-        await fazerLogin(email, password, getEscolaIdFromUrl(), submitBtn);
+        await fazerLogin(email, password, getEscolaSelecionada(), submitBtn);
     });
 }
 

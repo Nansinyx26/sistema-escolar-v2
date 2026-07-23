@@ -1,5 +1,13 @@
 const Turma = require('../models/Turma');
 const AuditoriaService = require('../services/AuditoriaService');
+const { escolaMatch } = require('../middleware/filtrarPorEscola');
+
+// Multi-escola: resolve uma turma por _id/id/nome SEMPRE dentro da escola ativa.
+// Casar por `nome` sem escopo permitia atingir a turma homônima de outra escola.
+const byIdEscopado = (req) => ({
+    ...escolaMatch(req.escolaId),
+    $or: [{ _id: req.params.id }, { id: req.params.id }, { nome: req.params.id }]
+});
 
 exports.list = async (req, res) => {
     try {
@@ -44,17 +52,17 @@ exports.create = async (req, res) => {
 };
 
 exports.get = async (req, res) => {
-    try { const doc = await Turma.findOne({ $or: [{ _id: req.params.id }, { id: req.params.id }, { nome: req.params.id }] }).populate('professor'); res.json({ success: !!doc, data: doc }); }
+    try { const doc = await Turma.findOne(byIdEscopado(req)).populate('professor'); res.json({ success: !!doc, data: doc }); }
     catch (e) { res.status(500).json({ success: false, error: e.message }); }
 };
 
 exports.update = async (req, res) => {
     try {
         delete req.body._id;
-        const existingClass = await Turma.findOne({ $or: [{ _id: req.params.id }, { id: req.params.id }, { nome: req.params.id }] }).lean();
+        const existingClass = await Turma.findOne(byIdEscopado(req)).lean();
         if (!existingClass) return res.status(404).json({ success: false, error: 'Turma não encontrada.' });
 
-        const doc = await Turma.findOneAndUpdate({ $or: [{ _id: req.params.id }, { id: req.params.id }, { nome: req.params.id }] }, req.body, { new: true }); 
+        const doc = await Turma.findOneAndUpdate(byIdEscopado(req), req.body, { new: true });
         
         // Registro de Auditoria
         await AuditoriaService.log({
@@ -72,10 +80,10 @@ exports.update = async (req, res) => {
 
 exports.delete = async (req, res) => {
     try { 
-        const existingClass = await Turma.findOne({ $or: [{ _id: req.params.id }, { id: req.params.id }, { nome: req.params.id }] }).lean();
+        const existingClass = await Turma.findOne(byIdEscopado(req)).lean();
         if (!existingClass) return res.status(404).json({ success: false, error: 'Turma não encontrada.' });
 
-        await Turma.findOneAndDelete({ $or: [{ _id: req.params.id }, { id: req.params.id }, { nome: req.params.id }] }); 
+        await Turma.findOneAndDelete(byIdEscopado(req));
         
         // Registro de Auditoria
         await AuditoriaService.log({

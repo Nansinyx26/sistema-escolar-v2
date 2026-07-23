@@ -1,0 +1,27 @@
+/**
+ * easings.css — Tokens de easing/transição isolados.
+ *
+ * Contém APENAS as curvas de animação (nomes exclusivos, sem paleta,
+ * spacing ou radius), para páginas que não carregam o variables.css
+ * completo. Assim elas herdam as mesmas curvas premium do sistema sem
+ * qualquer risco de colisão com seus próprios :root.
+ *
+ * Mantenha estes valores em sincronia com o bloco correspondente em
+ * variables.css (fonte da verdade do design system).
+ */
+:root {
+    /* === CURVAS DE EASING === */
+    --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);      /* material padrão */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);          /* desaceleração suave (entradas) */
+    --ease-in: cubic-bezier(0.4, 0, 1, 1);              /* aceleração (saídas) */
+    --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);      /* ênfase, elementos grandes */
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);   /* leve overshoot elástico */
+    --ease-snappy: cubic-bezier(0.22, 1, 0.36, 1);      /* rápido e responsivo */
+
+    /* === TRANSIÇÕES === */
+    --transition-fast: 150ms var(--ease-out);
+    --transition-base: 250ms var(--ease-out);
+    --transition-slow: 400ms var(--ease-emphasized);
+    --transition-spring: 500ms var(--ease-spring);
+    --transition-colors: 200ms var(--ease-standard);
+}

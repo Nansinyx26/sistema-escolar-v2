@@ -1,5 +1,6 @@
 const MessageReaction = require('../models/MessageReaction');
 const RealtimeNotification = require('../models/RealtimeNotification');
+const { emitirParaMensagem } = require('../utils/realtime');
 
 exports.addOrUpdate = async (req, res) => {
     try {
@@ -38,12 +39,12 @@ exports.addOrUpdate = async (req, res) => {
         const allReactions = await MessageReaction.find({ messageId }).lean();
         const summary = buildReactionSummary(allReactions);
 
-        // Emitir evento realtime (sala da mensagem + global para feeds abertos)
-        if (global.io) {
-            const payload = { messageId, reaction, allReactions, summary };
-            global.io.to(`message:${messageId}`).emit(isNew ? 'reaction:add' : 'reaction:update', payload);
-            global.io.emit(isNew ? 'reaction:add' : 'reaction:update', payload);
-        }
+        // Emitir apenas na sala da mensagem. O emit global adicional entregava
+        // o resumo de reações (nome e perfil de quem reagiu) a todos os
+        // sockets conectados, inclusive de conversas de outras escolas.
+        emitirParaMensagem(messageId, isNew ? 'reaction:add' : 'reaction:update', {
+            messageId, reaction, allReactions, summary
+        });
 
         res.status(isNew ? 201 : 200).json({
             success: true,
@@ -69,12 +70,10 @@ exports.remove = async (req, res) => {
 
         const allReactions = await MessageReaction.find({ messageId }).lean();
 
-        if (global.io) {
-            global.io.emit('reaction:remove', { 
-                messageId, senderId, allReactions,
-                summary: buildReactionSummary(allReactions)
-            });
-        }
+        emitirParaMensagem(messageId, 'reaction:remove', {
+            messageId, senderId, allReactions,
+            summary: buildReactionSummary(allReactions)
+        });
 
         res.json({ success: true, message: 'Reação removida.', allReactions });
     } catch (error) {

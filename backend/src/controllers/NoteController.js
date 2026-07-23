@@ -12,6 +12,7 @@
 const Nota = require('../models/Nota');
 const Aluno = require('../models/Aluno');
 const AuditoriaService = require('../services/AuditoriaService'); // Adicionado para Roadmap #4
+const assertAcessoAoAluno = require('../middleware/assertAcessoAoAluno');
 
 // Whitelist de campos permitidos
 const NOTE_WHITELIST = ['alunoId', 'matriculaId', 'turmaId', 'materiaId', 'bimestre', 'tipo', 'nota', 'descricao', 'data'];
@@ -257,9 +258,14 @@ exports.getMedia = async (req, res) => {
     try {
         const { alunoId } = req.params;
 
-        const notas = await Nota.find({
-            $or: [{ alunoId }, { alunoId: alunoId }]
-        }).lean();
+        // SEGURANÇA: sem esta checagem, qualquer conta logada obtinha as notas
+        // de qualquer aluno da rede só trocando o :alunoId da URL.
+        const acesso = await assertAcessoAoAluno(req, alunoId);
+        if (!acesso.ok) return res.status(acesso.status).json({ success: false, error: acesso.error });
+
+        const filtro = { alunoId: String(alunoId) };
+        if (req.escolaId) filtro.escolaId = String(req.escolaId);
+        const notas = await Nota.find(filtro).lean();
 
         if (!notas.length) {
             return res.json({ success: true, data: { bimestres: {}, mediaGeral: null } });
@@ -307,14 +313,14 @@ exports.getBoletim = async (req, res) => {
     try {
         const { alunoId } = req.params;
 
-        const [aluno, notas] = await Promise.all([
-            Aluno.findOne({ $or: [{ _id: alunoId }, { id: alunoId }] })
-                .select('nome matricula turma turmaId nascimento').lean(),
-            Nota.find({ $or: [{ alunoId }, { alunoId: alunoId }] })
-                .sort({ bimestre: 1 }).lean()
-        ]);
+        // SEGURANÇA: escola + turma + vínculo antes de montar o boletim
+        const acesso = await assertAcessoAoAluno(req, alunoId);
+        if (!acesso.ok) return res.status(acesso.status).json({ success: false, error: acesso.error });
 
-        if (!aluno) return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
+        const aluno = acesso.aluno;
+        const filtroNotas = { alunoId: String(alunoId) };
+        if (req.escolaId) filtroNotas.escolaId = String(req.escolaId);
+        const notas = await Nota.find(filtroNotas).sort({ bimestre: 1 }).lean();
 
         // Estrutura: { materia: { bimestre: [notas] } }
         const boletim = {};

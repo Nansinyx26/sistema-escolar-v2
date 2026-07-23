@@ -6,6 +6,9 @@ const DocumentoEmitidoSchema = new mongoose.Schema({
     alunoId: { type: String, required: true, ref: 'Aluno', index: true },
     alunoNome: { type: String, required: true }, // Cache para listagem rápida
 
+    // Multi-escola: isolamento por tenant (_id de Escola)
+    escolaId: { type: String, index: true },
+
     tipo: {
         type: String,
         required: true,

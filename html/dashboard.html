@@ -357,7 +357,7 @@
         <main class="dashboard-main">
             <main class="dashboard-content" id="mainContent">
             <!-- WIDGETS SYSTEM (PHASE 2) -->
-            <div class="widgets-container" id="dashboardWidgets">
+            <div class="widgets-container" id="dashboardWidgets" data-stagger>
                 <!-- Widgets will be injected here via JS -->
                 <div class="widget-card" id="widget-ia-insights">
                     <h4 style="margin-bottom: 1rem;"><i class="bi bi-robot" style="color: #60a5fa;"></i> Insights da IA</h4>
@@ -368,7 +368,7 @@
                 
                 <div class="widget-card" id="widget-badges">
                     <h4 style="margin-bottom: 1rem;"><i class="bi bi-trophy" style="color: #fbbf24;"></i> Suas Conquistas</h4>
-                    <div id="badges-grid-dashboard" style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 5px;">
+                    <div id="badges-grid-dashboard" data-stagger data-stagger-step="40" style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 5px;">
                         <!-- Badges injected here -->
                     </div>
                 </div>
@@ -383,7 +383,7 @@
                 </div>
 
                 <!-- SEÇÃO DE RESUMO DO DIRETOR (Nova) -->
-                <div id="directorDashboardSummary" class="dashboard-stats-grid" style="display: none;">
+                <div id="directorDashboardSummary" class="dashboard-stats-grid" style="display: none;" data-stagger>
                     <div class="stat-card-premium glass-strong">
                         <div class="stat-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
                             <i class="bi bi-people"></i>
@@ -419,7 +419,7 @@
                         <div class="panel-header">
                             <h4><i class="bi bi-activity"></i> Atividade Recente</h4>
                         </div>
-                        <div id="recentActivityList" class="activity-list">
+                        <div id="recentActivityList" class="activity-list" data-stagger data-stagger-step="45">
                             <div class="activity-placeholder">Carregando atividades...</div>
                         </div>
                     </div>
@@ -427,7 +427,7 @@
                         <div class="panel-header">
                             <h4><i class="bi bi-megaphone"></i> Últimos Avisos</h4>
                         </div>
-                        <div id="latestNoticesList" class="notices-mini-list">
+                        <div id="latestNoticesList" class="notices-mini-list" data-stagger data-stagger-step="45">
                             <div class="activity-placeholder">Buscando avisos...</div>
                         </div>
                     </div>
@@ -618,6 +618,21 @@
                             <i class="bi bi-arrow-right"></i>
                         </a>
                     </div>
+
+                    <!-- Card Admin — Códigos secretos por escola (cadastro de professores) -->
+                    <div class="dashboard-card" id="cardCodigosEscolas" style="display: none;">
+                        <div class="card-icon card-icon--teal">
+                            <i class="bi bi-building-lock"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Códigos por Escola</h3>
+                            <p class="card-description">Códigos de cadastro de professores</p>
+                        </div>
+                        <a href="admin/codigos-escolas.html" class="btn btn-outline btn-sm" style="text-decoration: none;">
+                            Ver Códigos
+                            <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
                 </div>
 
 
@@ -731,6 +746,7 @@
 
     <!-- Scripts -->
     <script src="../js/api-config.js"></script>
+    <script defer src="../js/ui-stagger.js"></script>
     <!-- Three.js local (deve carregar antes de threejs-dashboard.js) -->
     <script src="../js/three.min.js"></script>
     <script src="../js/gsap.min.js"></script>
@@ -771,6 +787,9 @@
             }
         });
     </script>
+
+<script src="../js/click-sound.js" defer></script>
+    <script defer src="../js/push-notifications.js"></script>
 </body>
 
 </html>

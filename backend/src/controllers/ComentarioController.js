@@ -4,6 +4,7 @@ const Usuario = require('../models/Usuario');
 const NotificationService = require('../services/NotificationService');
 const logger = require('../utils/logger');
 const mongoose = require('mongoose');
+const { emitirParaMensagem } = require('../utils/realtime');
 
 exports.add = async (req, res) => {
     try {
@@ -84,14 +85,14 @@ exports.add = async (req, res) => {
             logger.error(`Erro ao processar notificações de post: ${notifErr.message}`);
         }
  
-        // Emitir evento em tempo real
-        if (global.io) {
-            global.io.emit('comentario:new', {
-                comunicadoId: comunicadoId || null,
-                notificacaoId: notificacaoId || null,
-                comentario: novoComentario
-            });
-        }
+        // Emitir evento em tempo real — apenas na sala da mensagem.
+        // O emit global mandava o comentário para todos os sockets da rede,
+        // inclusive de outras escolas.
+        emitirParaMensagem(comunicadoId || notificacaoId, 'comentario:new', {
+            comunicadoId: comunicadoId || null,
+            notificacaoId: notificacaoId || null,
+            comentario: novoComentario
+        });
  
         res.status(201).json({ success: true, data: novoComentario });
     } catch (error) {
@@ -117,9 +118,11 @@ exports.update = async (req, res) => {
         comentario.dataAtualizacao = Date.now();
         await comentario.save();
 
-        if (global.io) {
-            global.io.emit('comentario:update', { comentario });
-        }
+        emitirParaMensagem(
+            comentario.comunicadoId || comentario.notificacaoId,
+            'comentario:update',
+            { comentario }
+        );
 
         res.json({ success: true, data: comentario });
     } catch (error) {
@@ -231,13 +234,15 @@ exports.delete = async (req, res) => {
             );
         }
 
-        if (global.io) {
-            global.io.emit('comentario:remove', { 
+        emitirParaMensagem(
+            comentario.comunicadoId || comentario.notificacaoId,
+            'comentario:remove',
+            {
                 id: comentario._id,
                 comunicadoId: comentario.comunicadoId,
                 notificacaoId: comentario.notificacaoId
-            });
-        }
+            }
+        );
 
         res.json({ success: true, message: 'Comentário removido.' });
     } catch (error) {

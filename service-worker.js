@@ -1,4 +1,4 @@
-const CACHE_NAME = 'escola-pwa-v2';
+const CACHE_NAME = 'escola-pwa-v3';
 
 // Recursos mínimos para exibir a shell da aplicação offline
 const STATIC_ASSETS = [
@@ -107,11 +107,14 @@ self.addEventListener('push', function(event) {
 
     const options = {
         body: data.body,
-        icon: '/icon-512.png',
-        badge: '/icon-512.png',
+        icon: data.icon || '/favicon/favicon.png',
+        badge: '/favicon/favicon.png',
         vibrate: [100, 50, 100],
+        // Reabre a mesma notificação em vez de empilhar duplicatas do mesmo aviso
+        tag: (data.data && data.data.id) ? String(data.data.id) : undefined,
+        renotify: true,
         data: {
-            url: data.url || '/'
+            url: (data.data && data.data.url) || data.url || '/'
         }
     };
 

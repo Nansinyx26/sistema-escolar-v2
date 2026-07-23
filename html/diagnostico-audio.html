@@ -81,8 +81,32 @@
             margin-top: 0.2rem;
         }
     </style>
+    <link rel="stylesheet" href="../css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="../css/reactions.css?v=1.0">
 </head>
 <body class="bg-primary">
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Sistema Escolar</h2>
+            <p class="splash-subtitle">Diagnóstico de Áudio</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="../js/splash-screen.js"></script>
+
 <div class="dashboard-page p-6" style="max-width: 1100px; margin: 0 auto;">
 
     <header class="mb-6">
@@ -218,5 +242,9 @@
 <script src="../js/auth.js"></script>
 <script src="../js/utils.js"></script>
 <script src="../js/diagnostico-audio.js"></script>
+
+<script src="../js/click-sound.js" defer></script>
+    <script defer src="../js/reactions.js"></script>
+    <script defer src="../js/push-notifications.js"></script>
 </body>
 </html>

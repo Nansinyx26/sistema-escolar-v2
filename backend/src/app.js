@@ -6,7 +6,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const compression = require('compression');
 const apiRoutes = require('./routes/api');
-const { sanitizeObject } = require('./utils/sanitize');
+const { sanitizeObject, sanitizeInput } = require('./utils/sanitize');
 const { csrfCookieSetter, csrfValidator } = require('./middleware/csrfProtection');
 const logger = require('./utils/logger');
 const { requestLogger } = require('./middleware/requestLogger');
@@ -80,26 +80,61 @@ app.use(helmet({
 // Rate Limiter Global (Protecao contra DoS generico)
 // DESABILITADO em desenvolvimento/testes para nao interferir
 const isProduction = process.env.NODE_ENV === 'production';
+const isTest = process.env.NODE_ENV === 'test';
+
+// Limiters ficam ATIVOS em desenvolvimento (com teto folgado) — desligá-los
+// fora de produção significava que nenhuma força bruta era exercitada antes
+// do deploy. Só os testes automatizados ficam de fora.
 const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: isProduction ? 500 : 0, // 0 = desabilita completamente em dev
+    max: isProduction ? 500 : 5000,
     message: { success: false, error: 'Muitas requisicoes vindas deste IP. Tente novamente mais tarde.' },
-    skip: () => !isProduction // Skip sempre em desenvolvimento
+    skip: () => isTest
 });
 
-if (isProduction) {
-    app.use(globalLimiter);
-}
+app.use(globalLimiter);
 
 // Rate Limiter Especifico para Autenticacao (Brute Force)
-// DESABILITADO em desenvolvimento/testes
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: isProduction ? 15 : 0,
-    skip: () => !isProduction,
-    message: { 
-        success: false, 
-        error: 'Muitas tentativas de login ou recuperacao. Tente novamente em 15 minutos.' 
+    max: isProduction ? 15 : 200,
+    skip: () => isTest,
+    message: {
+        success: false,
+        error: 'Muitas tentativas de login ou recuperacao. Tente novamente em 15 minutos.'
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// Limiter agressivo para endpoints que validam SEGREDOS curtos: código 2FA,
+// código secreto da escola e código secreto do aluno. Sem isso, 10^6 (2FA) e
+// 36^6 (vínculo) eram varríveis à vontade.
+// O teto é por IP e generoso o bastante para uma escola inteira atrás de NAT,
+// mas reduz a varredura a séculos. A trava por conta fica no banco
+// (twoFactorAttempts / tentativasVinculo).
+const codeLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hora
+    max: isProduction ? 30 : 300,
+    skip: () => isTest,
+    message: {
+        success: false,
+        error: 'Muitas tentativas de verificação de código. Tente novamente mais tarde.'
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// Limiter do prefixo /api/auth: cobre cadastro/ativação, que antes não tinham
+// nenhum freio. Requisições GET (/me, /2fa/status, /google-client-id) ficam de
+// fora — são chamadas a cada carregamento de página.
+const authPrefixLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: isProduction ? 60 : 600,
+    skip: (req) => isTest || req.method === 'GET' || req.method === 'HEAD',
+    message: {
+        success: false,
+        error: 'Muitas requisições de autenticação. Tente novamente em 15 minutos.'
     },
     standardHeaders: true,
     legacyHeaders: false,
@@ -189,12 +224,42 @@ app.use('/api/usuarios/foto', (req, res, next) => req.method === 'PUT' ? photoLi
 app.use('/api/comunicados', (req, res, next) => (req.method === 'POST' || req.method === 'PUT') ? photoLimit(req, res, next) : next());
 
 // Sanitização Global de Inputs (XSS e NoSQL Injection Protection)
+// req.query e req.params também passam aqui: com `extended: true` o Express
+// transforma ?campo[$ne]=x num OBJETO, que ia direto para o filtro Mongo dos
+// controllers (ex.: /api/professores?ativo[$ne]=false devolvia a rede inteira).
 app.use((req, res, next) => {
-    if (req.body) {
-        sanitizeObject(req.body);
-    }
+    if (req.body) sanitizeObject(req.body);
+    if (req.query) removerOperadoresMongo(req.query);
+    if (req.params) removerOperadoresMongo(req.params);
     next();
 });
+
+/**
+ * Remove chaves iniciadas por '$' e achata objetos aninhados em query/params.
+ * `req.query` é getter-only no Express 5 — por isso mutamos no lugar.
+ */
+function removerOperadoresMongo(alvo) {
+    if (!alvo || typeof alvo !== 'object') return;
+    Object.keys(alvo).forEach((chave) => {
+        if (chave.startsWith('$')) {
+            delete alvo[chave];
+            return;
+        }
+        const valor = alvo[chave];
+        if (Array.isArray(valor)) {
+            // ?t[]=a&t[]=b é legítimo: mantém, mas só com valores escalares
+            alvo[chave] = valor
+                .filter(v => typeof v !== 'object' || v === null)
+                .map(v => (typeof v === 'string' ? sanitizeInput(v) : v));
+        } else if (valor && typeof valor === 'object') {
+            // ?campo[$ne]=x → objeto. Nada legítimo em query string precisa
+            // de operadores Mongo, então o parâmetro inteiro é descartado.
+            delete alvo[chave];
+        } else if (typeof valor === 'string') {
+            alvo[chave] = sanitizeInput(valor);
+        }
+    });
+}
 
 // ============================================
 // PROTEÇÍO CSRF (Double Submit Cookie)
@@ -204,10 +269,25 @@ app.use(csrfCookieSetter);
 // 2. Valida o token CSRF em rotas que mudam estado (POST/PUT/DELETE)
 app.use('/api', csrfValidator);
 
-// Aplicar limiters específicos antes das rotas gerais
+// Aplicar limiters específicos antes das rotas gerais.
+// Os mais restritivos vêm primeiro: /api/auth/2fa/* precisa do codeLimiter
+// e não apenas do authLimiter herdado do prefixo.
+app.use('/api/auth/2fa/verify', codeLimiter);
+app.use('/api/auth/2fa/send', codeLimiter);
+app.use('/api/auth/validate-code', codeLimiter);
+app.use('/api/auth/verify-recovery-code', codeLimiter);
+app.use('/api/responsavel/vincular', codeLimiter);
+app.use('/api/responsavel/buscar-aluno', codeLimiter);
+
+// Os três endpoints historicamente mais atacados mantêm o teto mais baixo
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/forgot-password', authLimiter);
 app.use('/api/auth/reset-password', authLimiter);
+
+// Todo o restante do prefixo /api/auth — cadastro, ativação e 2FA.
+// Antes só login/forgot/reset eram cobertos, deixando register-diretor,
+// register-code e os endpoints de 2FA sem qualquer freio.
+app.use('/api/auth', authPrefixLimiter);
 
 // Rotas
 app.use('/api', apiRoutes);

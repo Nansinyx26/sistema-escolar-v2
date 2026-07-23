@@ -136,7 +136,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s var(--ease-standard, cubic-bezier(0.4, 0, 0.2, 1));
     position: relative;
     overflow: hidden;
     min-height: 180px; /* Altura uniforme garantida */
@@ -895,7 +895,7 @@
     gap: 8px;
     box-shadow: 0 8px 32px rgba(16, 184, 168, 0.4);
     z-index: 10000;
-    animation: dnc-toast-in 0.35s ease-out, dnc-toast-out 0.35s ease-in 2.65s forwards;
+    animation: dnc-toast-in 0.35s var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)), dnc-toast-out 0.35s var(--ease-in, cubic-bezier(0.4, 0, 1, 1)) 2.65s forwards;
 }
 
 @keyframes dnc-toast-in {
@@ -1033,3 +1033,4 @@ body.reading-mode .dashboard-main {
 .card-icon--violet  { background: linear-gradient(135deg, #6366f1, #4f46e5); }
 .card-icon--amber   { background: linear-gradient(135deg, #f59e0b, #d97706); }
 .card-icon--purple  { background: linear-gradient(135deg, #a855f7, #7c3aed); }
+.card-icon--teal    { background: linear-gradient(135deg, #14b8a6, #0d9488); }

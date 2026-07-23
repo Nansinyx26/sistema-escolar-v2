@@ -15,6 +15,22 @@ const Aluno = require('../models/Aluno');
 const Nota = require('../models/Nota');
 const Falta = require('../models/Falta');
 const FrequenciaProfessor = require('../models/FrequenciaProfessor');
+const escapeRegex = require('../utils/escapeRegex');
+
+// Trava por conta contra varredura do código secreto do aluno
+const MAX_TENTATIVAS_VINCULO = 5;
+const BLOQUEIO_VINCULO_MS = 60 * 60 * 1000; // 1 hora
+
+/**
+ * Regex ancorada e escapada para casar e-mail exato.
+ *
+ * `new RegExp(email, 'i')` sem escape era um buraco real: updateProfile deixa
+ * o responsável trocar o próprio e-mail e a validação aceita metacaracteres,
+ * então um e-mail como `a.*@x.com` casava com os alunos de outras famílias.
+ */
+function emailRegexExato(email) {
+    return new RegExp(`^${escapeRegex(String(email || ''))}$`, 'i');
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -39,8 +55,8 @@ function buildNotifQuery(id) {
  */
 async function findAlunoByResponsavel(email, matricula) {
     const query = matricula
-        ? { matricula }
-        : { $or: [{ responsavel: email }, { responsavel: new RegExp(email, 'i') }] };
+        ? { matricula: String(matricula) }
+        : { responsavel: emailRegexExato(email) };
 
     return Aluno.findOne(query).lean();
 }
@@ -51,7 +67,7 @@ async function findAlunoByResponsavel(email, matricula) {
  */
 async function verifyOwnership(alunoId, email) {
     if (!email) return false;
-    const emailRegex = new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+    const emailRegex = emailRegexExato(email);
     const aluno = await Aluno.findOne({
         $and: [
             { $or: [{ _id: alunoId }, { id: alunoId }] },
@@ -76,11 +92,10 @@ exports.getAlunos = async (req, res) => {
             return res.status(400).json({ success: false, error: 'E-mail obrigatório.' });
         }
 
-        const emailRegex = new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+        const emailRegex = emailRegexExato(email);
         const query = {
             $or: [
                 { responsavel: emailRegex },
-                { responsavel: new RegExp(`^${email}$`, 'i') },
                 { 'responsavelDados.email': emailRegex },
                 { 'responsaveis.email': emailRegex }
             ]
@@ -158,14 +173,15 @@ exports.buscarAluno = async (req, res) => {
 
         const sanitizedCode = codigo.trim().toUpperCase();
 
-        if (!/^[A-Z0-9]{4,10}$/.test(sanitizedCode)) {
+        if (!/^[A-Z0-9]{4,16}$/.test(sanitizedCode)) {
             return res.status(400).json({
                 success: false,
                 error: 'Código secreto inválido. Use o código fornecido pela escola.'
             });
         }
 
-        console.log(`🔍 [LINK-STUDENT] Buscando aluno pelo código: ${sanitizedCode}`);
+        // O código não vai para o log — ele é a credencial de vínculo
+        console.log(`🔍 [LINK-STUDENT] Consulta de aluno por código secreto.`);
 
         // Busca aluno pelo código secreto (deve ser único conforme o model)
         const aluno = await Aluno.findOne({ 
@@ -205,9 +221,10 @@ exports.buscarAluno = async (req, res) => {
 exports.vincularAluno = async (req, res) => {
     try {
         const { codigoSecreto } = req.body;
-        const email = req.user?.email || req.user?._id;
+        const email = req.user?.email;
+        const usuarioId = req.user?.id || req.user?._id;
 
-        if (!email) {
+        if (!email || !usuarioId) {
             return res.status(401).json({ success: false, error: 'Usuário não autenticado.' });
         }
 
@@ -217,10 +234,24 @@ exports.vincularAluno = async (req, res) => {
 
         const sanitizedCode = codigoSecreto.trim().toUpperCase();
 
-        if (!/^[A-Z0-9]{4,10}$/.test(sanitizedCode)) {
+        if (!/^[A-Z0-9]{4,16}$/.test(sanitizedCode)) {
             return res.status(400).json({
                 success: false,
                 error: 'Código secreto inválido. Use o código fornecido pela escola.'
+            });
+        }
+
+        // ── Trava por conta contra varredura de códigos ──────────────────────
+        // O rate limit por IP (app.js) é a primeira camada; esta impede que a
+        // mesma conta varra códigos trocando de IP.
+        const Usuario = require('../models/Usuario');
+        const conta = await Usuario.findById(usuarioId).select('+vinculoAttempts +vinculoLockUntil');
+        const agora = new Date();
+        if (conta?.vinculoLockUntil && conta.vinculoLockUntil > agora) {
+            const minutos = Math.ceil((conta.vinculoLockUntil - agora) / 60000);
+            return res.status(429).json({
+                success: false,
+                error: `Muitas tentativas de vínculo. Tente novamente em ${minutos} minuto(s) ou procure a secretaria.`
             });
         }
 
@@ -231,20 +262,57 @@ exports.vincularAluno = async (req, res) => {
         });
 
         if (!aluno) {
-            console.warn(`❌ [LINK-LINK] Falha ao vincular: código ${sanitizedCode} não encontrado ou inativo.`);
+            const tentativas = (conta?.vinculoAttempts || 0) + 1;
+            const update = { vinculoAttempts: tentativas };
+            if (tentativas >= MAX_TENTATIVAS_VINCULO) {
+                update.vinculoLockUntil = new Date(Date.now() + BLOQUEIO_VINCULO_MS);
+                update.vinculoAttempts = 0;
+            }
+            await Usuario.updateOne({ _id: usuarioId }, { $set: update });
+
+            const { logAction } = require('../utils/auditHelper');
+            await logAction(req, 'LINK_STUDENT_FAILED', 'Alunos', {
+                descricao: `Tentativa de vínculo com código inválido por ${email} (${tentativas}/${MAX_TENTATIVAS_VINCULO}).`
+            });
+
+            console.warn(`❌ [LINK-STUDENT] Código inválido informado por ${email}.`);
             return res.status(404).json({
                 success: false,
                 error: 'Código secreto inválido ou aluno inativo. Por favor, confirme o código com a secretaria.'
             });
         }
 
-        // Se já está vinculado a outro e-mail, registramos isso no log
-        if (aluno.responsavel && aluno.responsavel !== email.toLowerCase()) {
-            console.warn(`⚠️ [LINK-STUDENT] Sobrescrevendo responsável do aluno ${aluno.nome}: de ${aluno.responsavel} para ${email}`);
+        const targetEmail = email.toLowerCase();
+
+        // SEGURANÇA: um aluno JÁ VINCULADO não é reatribuído por quem apresenta
+        // o código. Antes o vínculo era sobrescrito com um simples warning no
+        // log — o responsável legítimo era desvinculado e o atacante passava a
+        // ler notas/frequência e a editar quem pode retirar a criança da escola.
+        if (aluno.responsavel && String(aluno.responsavel).toLowerCase() !== targetEmail) {
+            const { logAction } = require('../utils/auditHelper');
+            await logAction(req, 'LINK_STUDENT_BLOCKED', 'Alunos', {
+                recursoId: aluno._id,
+                descricao: `Tentativa de vínculo por ${targetEmail} em aluno já vinculado a outro responsável.`
+            });
+            return res.status(409).json({
+                success: false,
+                error: 'Este aluno já possui um responsável vinculado. Procure a secretaria da escola para transferir o vínculo.'
+            });
         }
 
-        // Vincula o aluno definindo o e-mail do responsável
-        const targetEmail = email.toLowerCase();
+        // Vínculo bem-sucedido zera o contador de tentativas.
+        // Multi-escola: contas criadas via Google (SSO) nascem sem escolaId — o
+        // registerResponsavel herda a escola do aluno, mas o onboarding por
+        // código não fazia isso, deixando a conta sem escola. Herdamos aqui a
+        // escola do aluno quando a conta ainda não tem uma definida.
+        const updateConta = { vinculoAttempts: 0, vinculoLockUntil: null };
+        if (aluno.escolaId && !conta?.escolaId) {
+            updateConta.escolaId = aluno.escolaId;
+        }
+        await Usuario.updateOne(
+            { _id: usuarioId },
+            { $set: updateConta }
+        );
         aluno.responsavel = targetEmail;
         
         // Atualiza responsavelDados se necessário
@@ -263,11 +331,13 @@ exports.vincularAluno = async (req, res) => {
             }
         );
 
+        // O código secreto NUNCA vai para o log de auditoria — ele continua
+        // válido depois do vínculo e dá acesso à conta do aluno.
         const { logAction } = require('../utils/auditHelper');
         await logAction(req, 'LINK_STUDENT_VIA_CODE', 'Alunos', {
             recursoId: aluno._id,
             valorNovo: { email: targetEmail },
-            descricao: `Vínculo realizado: Responsável ${targetEmail} vinculou o aluno ${aluno.nome} via código secreto ${sanitizedCode}.`
+            descricao: `Vínculo realizado: Responsável ${targetEmail} vinculou o aluno ${aluno.nome} via código secreto.`
         });
 
         console.log(`✅ [LINK-STUDENT] Sucesso: Aluno ${aluno.nome} vinculado a ${targetEmail}`);

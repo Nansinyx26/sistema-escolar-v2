@@ -1,11 +1,23 @@
 const express = require('express');
+const crypto = require('crypto');
 const router = express.Router();
 const Escola = require('../models/Escola');
 const authJWT = require('../middleware/authJWT');
+const authorize = require('../middleware/authorize');
 const { vinculosDoUsuario } = require('../middleware/filtrarPorEscola');
 const { getRedirectPath } = require('../controllers/UserController');
 const SecurityController = require('../controllers/SecurityController');
 const Usuario = require('../models/Usuario');
+const { logAction } = require('../utils/auditHelper');
+
+// Mesmo alfabeto do seed (scripts/seedEscolas.js): sem caracteres ambíguos,
+// para o código ser ditado por telefone e digitado no cadastro do docente.
+const CODIGO_ESCOLA_ALFABETO = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+function gerarCodigoEscola(length = 10) {
+    let code = '';
+    for (let i = 0; i < length; i++) code += CODIGO_ESCOLA_ALFABETO[crypto.randomInt(CODIGO_ESCOLA_ALFABETO.length)];
+    return code;
+}
 
 // Perfis de equipe que possuem vínculo por escola (código secreto da escola)
 const CARGO_MODEL = {
@@ -163,6 +175,67 @@ router.post('/mudar', authJWT, async (req, res) => {
             escolaAtivaId: novaEscolaId,
             escolaNome: escola.nome,
             redirect_to: getRedirectPath(req.user)
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+/**
+ * GET /api/escolas/codigos-secretos
+ * ADMIN — lista todas as escolas com o codigoSecreto de cadastro de docentes.
+ *
+ * Diferente da rota pública `/`, esta projeta explicitamente o campo
+ * `codigoSecreto` (que é `select:false` no schema). É a fonte da aba de
+ * "Códigos por Escola" no painel do admin. Nunca deve ser exposta a outros
+ * perfis — o código dá direito a criar conta de professor na escola.
+ */
+router.get('/codigos-secretos', authJWT, authorize('admin'), async (req, res) => {
+    try {
+        const escolas = await Escola.find({})
+            .select('+codigoSecreto nome tipo bairro municipio ativo')
+            .sort({ tipo: 1, nome: 1 })
+            .lean();
+
+        const data = escolas.map(e => ({
+            _id: e._id,
+            nome: e.nome,
+            tipo: e.tipo,
+            bairro: e.bairro || '',
+            municipio: e.municipio || '',
+            ativo: !!e.ativo,
+            codigoSecreto: e.codigoSecreto || null
+        }));
+
+        res.json({ success: true, data });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+/**
+ * POST /api/escolas/:escolaId/codigo-secreto
+ * ADMIN — gera (ou regenera) o codigoSecreto de cadastro de docentes de uma
+ * escola. O código anterior deixa de valer imediatamente para novos cadastros.
+ */
+router.post('/:escolaId/codigo-secreto', authJWT, authorize('admin'), async (req, res) => {
+    try {
+        const { escolaId } = req.params;
+        const escola = await Escola.findById(escolaId).select('+codigoSecreto nome');
+        if (!escola) return res.status(404).json({ success: false, error: 'Escola não encontrada.' });
+
+        escola.codigoSecreto = gerarCodigoEscola();
+        await escola.save();
+
+        await logAction(req, 'GENERATE_SCHOOL_CODE', 'Escola', {
+            descricao: `Novo código secreto de cadastro gerado para a escola "${escola.nome}".`,
+            recursoId: String(escola._id)
+        });
+
+        res.json({
+            success: true,
+            message: `Novo código gerado para ${escola.nome}.`,
+            data: { _id: escola._id, nome: escola.nome, codigoSecreto: escola.codigoSecreto }
         });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });

@@ -2,7 +2,9 @@ const MigrationService = require('../services/MigrationService');
 
 exports.migrate = async (req, res) => {
     const key = req.headers['x-migration-key'];
-    if (key !== process.env.MIGRATION_KEY) {
+    // SEGURANÇA: sem a variável configurada, undefined === undefined dava true
+    // e a checagem passava. Exige a chave presente E igual.
+    if (!process.env.MIGRATION_KEY || key !== process.env.MIGRATION_KEY) {
         return res.status(403).json({ success: false, error: 'Chave de migração inválida' });
     }
 

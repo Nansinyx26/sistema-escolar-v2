@@ -7,6 +7,11 @@ const filtrarPorEscola = require('../middleware/filtrarPorEscola');
 // Todas as rotas requerem perfil secretaria, diretor ou admin
 const auth = authorize('secretaria', 'diretor', 'admin');
 
+// SEGURANÇA (multi-tenant): o contexto de escola é resolvido para TODAS as
+// rotas do módulo. Antes só criarAluno/importarAlunos tinham o middleware —
+// relatórios, documentos e dashboards varriam a rede inteira.
+router.use(filtrarPorEscola);
+
 // ─── Dashboard ──────────────────────────────────────────────────────────────
 router.get('/dashboard/resumo', auth, SecretariaController.dashboardResumo);
 

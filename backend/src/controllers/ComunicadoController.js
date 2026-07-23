@@ -2,6 +2,51 @@ const Comunicado = require('../models/Comunicado');
 const Usuario = require('../models/Usuario');
 const ImageProcessor = require('../utils/imageProcessor');
 const logger = require('../utils/logger');
+const escapeRegex = require('../utils/escapeRegex');
+const { emitirParaEscola } = require('../utils/realtime');
+
+/**
+ * Restringe a consulta à escola ativa. Admin enxerga a rede toda.
+ * Sem isso, getById/delete alcançavam comunicados de qualquer escola só
+ * sabendo o _id — que vazava no broadcast global do Socket.IO.
+ */
+function escopoEscola(req, query) {
+    if (!req.escolaId || req.user?.perfil === 'admin') return query;
+    return { ...query, escolaId: String(req.escolaId) };
+}
+
+/**
+ * true se o comunicado é endereçado ao usuário logado.
+ * Replica a regra de destinatários do getAll — o getById não a aplicava,
+ * então qualquer usuário lia comunicados internos sabendo o _id.
+ */
+async function podeVerComunicado(comunicado, user) {
+    const perfil = String(user?.perfil || '').toLowerCase();
+    if (['diretor', 'admin', 'secretaria'].includes(perfil)) return true;
+
+    const destinatarios = Array.isArray(comunicado.destinatarios) ? comunicado.destinatarios : [];
+    const alvos = ['todos', `usuario:${user.id || user._id}`];
+    if (perfil === 'professor') alvos.push('professores');
+
+    if (perfil === 'responsavel' && user.email) {
+        alvos.push('responsaveis');
+        const Aluno = require('../models/Aluno');
+        const emailRegex = new RegExp(`^${escapeRegex(String(user.email))}$`, 'i');
+        const alunos = await Aluno.find({
+            $or: [
+                { responsavel: emailRegex },
+                { 'responsavelDados.email': emailRegex },
+                { 'responsaveis.email': emailRegex }
+            ]
+        }).select('turma turmaId').lean();
+        alunos.forEach(a => {
+            const t = a.turma || a.turmaId;
+            if (t) alvos.push(t, `turma:${t}`);
+        });
+    }
+
+    return destinatarios.some(d => alvos.includes(d));
+}
 
 exports.create = async (req, res) => {
     try {
@@ -87,9 +132,13 @@ exports.create = async (req, res) => {
                 escolaId: req.escolaId || req.session?.escolaAtivaId || novoComunicado.escolaId || null
             });
 
-            if (global.io) {
-                global.io.emit('comunicado:new', novoComunicado.toObject());
-            }
+            // Broadcast restrito à escola do comunicado — o emit global
+            // entregava título, HTML e imagens a toda a rede.
+            emitirParaEscola(
+                novoComunicado.escolaId || req.escolaId,
+                'comunicado:new',
+                novoComunicado.toObject()
+            );
         }
 
         res.status(201).json({ success: true, data: novoComunicado });
@@ -106,30 +155,33 @@ exports.getAll = async (req, res) => {
         const userId = user.id || user._id;
         const perfil = user.perfil;
 
-        // Filtro base: apenas ativos e (não agendados OU já passados da data)
+        // Filtro base: apenas ativos e (não agendados OU já passados da data).
+        // A condição de agendamento vive num $and próprio — antes ela morava
+        // em query.$or e a busca textual a SOBRESCREVIA, expondo comunicados
+        // agendados para o futuro que ainda não deveriam ser visíveis.
         const agora = new Date();
-        let query = { 
-            ativo: true,
-            $or: [
-                { dataAgendada: null },
-                { dataAgendada: { $lte: agora } }
-            ]
-        };
+        const condicoes = [
+            { $or: [{ dataAgendada: null }, { dataAgendada: { $lte: agora } }] }
+        ];
+        let query = { ativo: true, $and: condicoes };
 
         // Multi-escola: isola por tenant quando o contexto está resolvido
-        if (req.escolaId) query.escolaId = req.escolaId;
+        if (req.escolaId) query.escolaId = String(req.escolaId);
 
         // Filtro por categoria (se fornecido)
         if (categoria && categoria !== 'Todos') {
-            query.categoria = categoria;
+            query.categoria = String(categoria);
         }
 
-        // Busca textual
+        // Busca textual — regex ESCAPADA: `?busca=(x+x+)+y` travava o event loop
         if (busca) {
-            query.$or = [
-                { titulo: { $regex: busca, $options: 'i' } },
-                { conteudo: { $regex: busca, $options: 'i' } }
-            ];
+            const termo = escapeRegex(String(busca));
+            condicoes.push({
+                $or: [
+                    { titulo: { $regex: termo, $options: 'i' } },
+                    { conteudo: { $regex: termo, $options: 'i' } }
+                ]
+            });
         }
 
         if (perfil !== 'diretor' && perfil !== 'admin') {
@@ -204,10 +256,17 @@ exports.getAll = async (req, res) => {
 
 exports.getById = async (req, res) => {
     try {
-        const comunicado = await Comunicado.findById(req.params.id).lean();
+        // Escola + destinatários: as duas checagens que só existiam no getAll
+        const comunicado = await Comunicado.findOne(
+            escopoEscola(req, { _id: String(req.params.id), ativo: true })
+        ).lean();
 
         if (!comunicado) {
             return res.status(404).json({ success: false, error: 'Comunicado não encontrado.' });
+        }
+
+        if (!(await podeVerComunicado(comunicado, req.user))) {
+            return res.status(403).json({ success: false, error: 'Você não tem acesso a este comunicado.' });
         }
 
         // População manual para garantir o vínculo correto da foto
@@ -230,15 +289,24 @@ exports.getById = async (req, res) => {
 
 exports.delete = async (req, res) => {
     try {
-        const comunicado = await Comunicado.findByIdAndUpdate(req.params.id, { ativo: false }, { new: true });
+        // Multi-escola: um diretor da Escola A não remove comunicados da Escola B
+        const comunicado = await Comunicado.findOneAndUpdate(
+            escopoEscola(req, { _id: String(req.params.id) }),
+            { ativo: false },
+            { new: true }
+        );
         if (!comunicado) {
             return res.status(404).json({ success: false, error: 'Comunicado não encontrado.' });
         }
-        
-        if (global.io) {
-            global.io.emit('comunicado:remove', { id: comunicado._id });
-        }
-        
+
+        emitirParaEscola(comunicado.escolaId, 'comunicado:remove', { id: comunicado._id });
+
+        const { logAction } = require('../utils/auditHelper');
+        await logAction(req, 'DELETE_ANNOUNCEMENT', 'Comunicados', {
+            recursoId: comunicado._id,
+            descricao: `Comunicado "${comunicado.titulo}" removido.`
+        });
+
         res.json({ success: true, message: 'Comunicado removido.' });
     } catch (error) {
         logger.error(`[ComunicadoController.delete] Error: ${error.message}`, { id: req.params.id });

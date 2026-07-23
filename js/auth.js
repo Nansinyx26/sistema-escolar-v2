@@ -124,8 +124,10 @@ class AuthManager {
             // abre o modal — não redireciona ainda.
             // ============================================
             if (data.requires2FA) {
+                // O userId não vem mais na resposta: o alvo do 2FA é o cookie
+                // de pré-autenticação emitido pelo backend no passo de senha.
                 if (typeof window.abrirModal2FA === 'function') {
-                    window.abrirModal2FA(data.userId, data.message || email, data.redirect_to);
+                    window.abrirModal2FA(data.message || email, data.redirect_to);
                 }
                 // Retorna um indicador especial para o login.js não redirecionar
                 return { requires2FA: true, redirect_to: data.redirect_to };

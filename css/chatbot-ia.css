@@ -40,7 +40,7 @@
     justify-content: center;
     box-shadow: 0 8px 25px rgba(var(--chat-accent-rgb), 0.5);
     cursor: pointer;
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: all 0.4s var(--ease-spring);
     z-index: 10001;
 }
 
@@ -68,13 +68,13 @@
     flex-direction: column;
     overflow: hidden;
     box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.4s var(--ease-standard);
     transform-origin: bottom right;
 }
 
 .chatbot-window.open {
     display: flex;
-    animation: slideInChat 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: slideInChat 0.5s var(--ease-out);
 }
 
 @keyframes slideInChat {
@@ -210,7 +210,7 @@
 
 .msg {
     max-width: 88%;
-    animation: msgFadeIn 0.3s ease-out;
+    animation: msgFadeIn 0.3s var(--ease-out);
 }
 
 @keyframes msgFadeIn {
@@ -438,7 +438,7 @@
     justify-content: center;
     background: linear-gradient(to bottom, transparent, rgba(var(--chat-accent-rgb), 0.05));
     border-top: 1px solid var(--chat-border);
-    transition: all 0.4s ease;
+    transition: all 0.4s var(--ease-out);
 }
 
 #chatbot-voice-orb-container .voice-orb-container {
@@ -503,7 +503,7 @@
         max-height: 100vh;
         border-radius: 0;
         z-index: 10000;
-        animation: slideInMobile 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        animation: slideInMobile 0.4s var(--ease-out);
     }
     @keyframes slideInMobile {
         from {

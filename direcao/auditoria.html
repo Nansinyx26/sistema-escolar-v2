@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Auditoria | Sistema Escolar</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../../css/variables.css">
     <link rel="stylesheet" href="../../css/dashboard.css">
     <link rel="stylesheet" href="../../css/responsive-global.css">
     <link rel="stylesheet" href="../../css/glass-premium.css">
@@ -113,8 +114,32 @@
             font-size: 1.1rem;
         }
     </style>
+    <link rel="stylesheet" href="../css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="../css/reactions.css?v=1.0">
 </head>
 <body>
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Sistema Escolar</h2>
+            <p class="splash-subtitle">Portal Educacional</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="../js/splash-screen.js"></script>
+
 
     <div class="audit-container">
         <header class="glass-header">
@@ -230,5 +255,9 @@
         document.getElementById('btnSearch').addEventListener('click', fetchLogs);
         window.addEventListener('load', fetchLogs);
     </script>
+
+<script src="../js/click-sound.js" defer></script>
+    <script defer src="../js/reactions.js"></script>
+    <script defer src="../js/push-notifications.js"></script>
 </body>
 </html>

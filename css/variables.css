@@ -1,7 +1,12 @@
 /**
  * CSS Variables - Design System
  * Sistema Escolar - Modo Escuro Principal
+ *
+ * O tema claro (opcional, por usuário) vive em themes/light.css e é ativado
+ * quando <html data-theme="light">. Importado aqui para carregar em todo o
+ * sistema, já que variables.css é incluído em todas as páginas.
  */
+@import url('themes/light.css');
 
 :root {
     /* === CORES PRINCIPAIS - CLEAN MODERN (SLATE & MINT) === */
@@ -105,10 +110,21 @@
     --radius-full: 9999px;
     --border-dark: rgba(255, 255, 255, 0.06);
     
+    /* === CURVAS DE EASING === */
+    /* Curvas premium reutilizáveis em todo o sistema */
+    --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);      /* material padrão */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);          /* desaceleração suave (entradas) */
+    --ease-in: cubic-bezier(0.4, 0, 1, 1);              /* aceleração (saídas) */
+    --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);      /* ênfase, elementos grandes */
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);   /* leve overshoot elástico */
+    --ease-snappy: cubic-bezier(0.22, 1, 0.36, 1);      /* rápido e responsivo */
+
     /* === TRANSIÇÕES === */
-    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-fast: 150ms var(--ease-out);
+    --transition-base: 250ms var(--ease-out);
+    --transition-slow: 400ms var(--ease-emphasized);
+    --transition-spring: 500ms var(--ease-spring);
+    --transition-colors: 200ms var(--ease-standard);
     
     /* === BACKDROP === */
     --backdrop-blur: blur(8px);
@@ -145,32 +161,8 @@
     --backdrop-color: rgba(9, 9, 11, 0.8);
 }
 
-/* === MODO CLARO (OPCIONAL) === */
-[data-theme="light"] {
-    --bg-primary: #ffffff;
-    --bg-secondary: #f7f9fb;
-    --bg-tertiary: #eff3f6;
-    --bg-elevated: #ffffff;
-    
-    --text-primary: #0f1419;
-    --text-body: #1f2937;         /* Texto de corpo legível (tema claro) */
-    --text-secondary: #536471;
-    --text-tertiary: #8b949e;
-    --text-inverse: #ffffff;
-    
-    --border-primary: #e1e8ed;
-    --border-secondary: #cfd9de;
-    
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
-    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.12);
-    --shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.15);
-    --shadow-glow: 0 0 20px rgba(16, 185, 129, 0.2);
-    --shadow-glow-lg: 0 0 40px rgba(16, 185, 129, 0.25);
-    
-    --backdrop-color: rgba(255, 255, 255, 0.8);
-}
+/* === MODO CLARO (OPCIONAL) ===
+   Definido em themes/light.css (importado no topo deste arquivo). */
 
 /* === UTILITÁRIOS DE GLASSMORPHISM === */
 .glass {
@@ -196,47 +188,51 @@
 @keyframes fadeInUp {
     from {
         opacity: 0;
-        transform: translateY(20px);
+        transform: translate3d(0, 18px, 0);
     }
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translate3d(0, 0, 0);
     }
 }
 
 @keyframes fadeInDown {
     from {
         opacity: 0;
-        transform: translateY(-20px);
+        transform: translate3d(0, -18px, 0);
     }
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translate3d(0, 0, 0);
     }
 }
 
 @keyframes slideInRight {
     from {
-        transform: translateX(100%);
+        opacity: 0;
+        transform: translate3d(100%, 0, 0);
     }
     to {
-        transform: translateX(0);
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
     }
 }
 
 @keyframes slideInLeft {
     from {
-        transform: translateX(-100%);
+        opacity: 0;
+        transform: translate3d(-100%, 0, 0);
     }
     to {
-        transform: translateX(0);
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
     }
 }
 
 @keyframes scaleIn {
     from {
         opacity: 0;
-        transform: scale(0.9);
+        transform: scale(0.94);
     }
     to {
         opacity: 1;
@@ -268,5 +264,56 @@
     }
     100% {
         background-position: 1000px 0;
+    }
+}
+
+/* === UTILITÁRIOS DE ANIMAÇÃO ===
+   Classes reutilizáveis com curvas premium e aceleração por GPU. */
+.anim-fade-in     { animation: fadeIn 320ms var(--ease-out) both; }
+.anim-fade-in-up  { animation: fadeInUp 420ms var(--ease-out) both; }
+.anim-fade-in-down{ animation: fadeInDown 420ms var(--ease-out) both; }
+.anim-slide-right { animation: slideInRight 420ms var(--ease-emphasized) both; }
+.anim-slide-left  { animation: slideInLeft 420ms var(--ease-emphasized) both; }
+.anim-scale-in    { animation: scaleIn 360ms var(--ease-spring) both; }
+
+/* === ENTRADAS ESCALONADAS (STAGGER) EM LISTAS/GRIDS ===
+   Dirigido pelo js/ui-stagger.js. Os filhos só ficam ocultos quando o JS
+   está presente (classe .stagger-ready no <html>), garantindo degradação
+   graciosa sem JavaScript. A animação dispara quando o container entra na
+   tela (.in-view) e o atraso é calculado pelo índice --stagger-i, sem limite
+   de quantidade de itens. */
+.stagger-ready [data-stagger] > * {
+    opacity: 0;
+}
+[data-stagger].in-view > * {
+    animation: fadeInUp 460ms var(--ease-out) both;
+    animation-delay: calc(var(--stagger-i, 0) * 55ms);
+}
+
+/* Utilitário CSS puro (sem JS) para blocos sempre visíveis */
+.anim-stagger > * { animation: fadeInUp 460ms var(--ease-out) both; }
+.anim-stagger > *:nth-child(1) { animation-delay: 40ms; }
+.anim-stagger > *:nth-child(2) { animation-delay: 95ms; }
+.anim-stagger > *:nth-child(3) { animation-delay: 150ms; }
+.anim-stagger > *:nth-child(4) { animation-delay: 205ms; }
+.anim-stagger > *:nth-child(5) { animation-delay: 260ms; }
+.anim-stagger > *:nth-child(6) { animation-delay: 315ms; }
+.anim-stagger > *:nth-child(7) { animation-delay: 370ms; }
+.anim-stagger > *:nth-child(8) { animation-delay: 425ms; }
+
+/* Elementos animados ganham hint de composição enquanto animam */
+[class*="anim-"] { will-change: opacity, transform; }
+
+/* === ACESSIBILIDADE: MOVIMENTO REDUZIDO ===
+   Respeita a preferência do sistema do usuário e desliga animações
+   longas/decorativas, mantendo apenas transições instantâneas. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
     }
 }

@@ -14,6 +14,7 @@ const JustificativaFalta = require('../models/JustificativaFalta');
 const CalendarioEscolar = require('../models/CalendarioEscolar');
 const AuditLog = require('../models/AuditLog');
 const logger = require('../utils/logger');
+const { emitirParaEscola } = require('../utils/realtime');
 
 // ─── Helper: registrar auditoria ─────────────────────────────────────────────
 async function audit(req, acao, recurso, recursoId, detalhes = {}) {
@@ -26,6 +27,7 @@ async function audit(req, acao, recurso, recursoId, detalhes = {}) {
             acao,
             recurso,
             recursoId: recursoId?.toString(),
+            escolaId: req.escolaId ? String(req.escolaId) : undefined,
             detalhes: { descricao: detalhes.descricao, valorAnterior: detalhes.anterior, valorNovo: detalhes.novo },
             ip: req.ip,
             userAgent: req.get('User-Agent')
@@ -42,6 +44,55 @@ async function gerarNumeroDocumento() {
     return `DOC-${ano}-${String(count + 1).padStart(6, '0')}`;
 }
 
+// ─── Multi-escola ────────────────────────────────────────────────────────────
+// Toda query deste módulo passa por `escopo()`. Sem isso, uma secretaria de
+// qualquer escola lia (e exportava em CSV) os alunos da rede inteira e emitia
+// documentos oficiais de alunos de outras escolas.
+
+/** Injeta escolaId no filtro quando há tenant resolvido. */
+function escopo(req, query = {}) {
+    if (req.escolaId && req.user?.perfil !== 'admin') {
+        return { ...query, escolaId: String(req.escolaId) };
+    }
+    return query;
+}
+
+/** Valor de escolaId a gravar em documentos novos. */
+function escolaAtual(req) {
+    return req.escolaId ? String(req.escolaId) : undefined;
+}
+
+/**
+ * Carrega um aluno garantindo que ele pertence à escola ativa.
+ * Retorna null quando não existe OU quando é de outra escola — o handler
+ * responde 404 nos dois casos para não confirmar a existência do registro.
+ */
+async function carregarAlunoDaEscola(req, alunoId, projecao) {
+    if (!alunoId) return null;
+    const query = escopo(req, { _id: String(alunoId) });
+    const consulta = Aluno.findOne(query);
+    if (projecao) consulta.select(projecao);
+    return consulta.lean();
+}
+
+// Campos que a secretaria pode alterar na ficha do aluno. `codigoSecreto`,
+// `escolaId` e `responsavel` ficam de fora de propósito: o primeiro é a
+// credencial de vínculo, os outros dois sequestrariam o aluno para outra
+// escola / outra família.
+const CAMPOS_EDICAO_ALUNO = [
+    'nome', 'sobrenome', 'matricula', 'turma', 'turmaId', 'email', 'telefone',
+    'dataNascimento', 'nascimento', 'sexo', 'foto', 'ativo', 'observacoes',
+    'responsavelNome', 'responsavelTelefone',
+    'nivel', 'nivelBimestre', 'condicao', 'condicaoOutro',
+    'observacoesBimestre', 'recuperacaoBimestre', 'faltasBimestre',
+    'deficiencia', 'pcd',
+    'endereco', 'cpfAluno', 'nacionalidade', 'etnia', 'religiao',
+    'responsavelDados', 'responsaveis', 'guardaLegal', 'pessoasAutorizadasRetirada',
+    'autorizacoesEscolares', 'fichaDocumentoStatus',
+    'alergiasAlimentos', 'alergiasRemedio', 'planoSaude',
+    'documentos', 'lgpdConsentimento'
+];
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // T3 — ALUNOS & MATRÍCULAS & CADASTROS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -49,13 +100,17 @@ async function gerarNumeroDocumento() {
 // POST /api/secretaria/alunos — cadastrar aluno
 exports.criarAluno = async (req, res) => {
     try {
-        const dados = { ...req.body };
+        // Whitelist: o corpo nunca decide codigoSecreto nem escolaId
+        const dados = {};
+        CAMPOS_EDICAO_ALUNO.forEach(campo => {
+            if (req.body[campo] !== undefined) dados[campo] = req.body[campo];
+        });
         if (!dados.nome) {
             return res.status(400).json({ success: false, error: 'Nome do aluno é obrigatório.' });
         }
 
-        // Multi-tenant: carimba a escola ativa quando disponível
-        if (req.escolaId && !dados.escolaId) dados.escolaId = req.escolaId;
+        // Multi-tenant: a escola vem SEMPRE da sessão, nunca do corpo
+        if (req.escolaId) dados.escolaId = String(req.escolaId);
 
         const aluno = new Aluno(dados);
         await aluno.save();
@@ -250,11 +305,17 @@ JSON:`;
 // PUT /api/secretaria/alunos/:id — editar aluno
 exports.editarAluno = async (req, res) => {
     try {
-        const aluno = await Aluno.findById(req.params.id);
+        // SEGURANÇA: busca escopada por escola + whitelist de campos.
+        // Antes era findById + Object.assign(aluno, req.body): uma secretaria
+        // da Escola A reescrevia codigoSecreto/escolaId/responsavel de um
+        // aluno da Escola B e se vinculava como responsável dele.
+        const aluno = await Aluno.findOne(escopo(req, { _id: String(req.params.id) }));
         if (!aluno) return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
 
         const anterior = aluno.toObject();
-        Object.assign(aluno, req.body);
+        CAMPOS_EDICAO_ALUNO.forEach(campo => {
+            if (req.body[campo] !== undefined) aluno[campo] = req.body[campo];
+        });
         await aluno.save();
 
         await audit(req, 'UPDATE_STUDENT', 'Alunos', aluno._id, {
@@ -279,14 +340,14 @@ exports.criarMatricula = async (req, res) => {
             return res.status(400).json({ success: false, error: 'alunoId, turmaId e anoLetivo são obrigatórios.' });
         }
 
-        const aluno = await Aluno.findById(alunoId);
+        const aluno = await Aluno.findOne(escopo(req, { _id: String(alunoId) }));
         if (!aluno) return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
 
-        const turma = await Turma.findById(turmaId);
+        const turma = await Turma.findOne(escopo(req, { _id: String(turmaId) }));
         if (!turma) return res.status(404).json({ success: false, error: 'Turma não encontrada.' });
 
         // Gerar número de matrícula
-        const count = await Matricula.countDocuments({ anoLetivo });
+        const count = await Matricula.countDocuments(escopo(req, { anoLetivo }));
         const matriculaNumero = `${anoLetivo}${String(count + 1).padStart(4, '0')}`;
 
         const matricula = new Matricula({
@@ -296,6 +357,7 @@ exports.criarMatricula = async (req, res) => {
             matriculaNumero,
             numeroChamada,
             observacoes,
+            escolaId: escolaAtual(req),
             criadoPor: req.user._id || req.user.id
         });
 
@@ -324,8 +386,12 @@ exports.criarMatricula = async (req, res) => {
 exports.transferirMatricula = async (req, res) => {
     try {
         const { novaTurmaId, motivo } = req.body;
-        const matricula = await Matricula.findById(req.params.id);
+        const matricula = await Matricula.findOne(escopo(req, { _id: String(req.params.id) }));
         if (!matricula) return res.status(404).json({ success: false, error: 'Matrícula não encontrada.' });
+
+        // A turma de destino também precisa ser da escola ativa
+        const turma = await Turma.findOne(escopo(req, { _id: String(novaTurmaId) }));
+        if (!turma) return res.status(404).json({ success: false, error: 'Turma não encontrada.' });
 
         const turmaAnterior = matricula.turmaId;
         matricula.turmaId = novaTurmaId;
@@ -333,10 +399,10 @@ exports.transferirMatricula = async (req, res) => {
         await matricula.save();
 
         // Atualiza cache no aluno
-        const turma = await Turma.findById(novaTurmaId);
-        if (turma) {
-            await Aluno.findByIdAndUpdate(matricula.alunoId, { turma: turma.nome || turma.id, turmaId: novaTurmaId });
-        }
+        await Aluno.updateOne(
+            escopo(req, { _id: String(matricula.alunoId) }),
+            { $set: { turma: turma.nome || turma.id, turmaId: novaTurmaId } }
+        );
 
         await audit(req, 'TRANSFER_ENROLLMENT', 'Matriculas', matricula._id, {
             descricao: `Transferência de turma ${turmaAnterior} → ${novaTurmaId}`,
@@ -355,7 +421,7 @@ exports.transferirMatricula = async (req, res) => {
 exports.atualizarStatusMatricula = async (req, res) => {
     try {
         const { status, motivoSaida } = req.body;
-        const matricula = await Matricula.findById(req.params.id);
+        const matricula = await Matricula.findOne(escopo(req, { _id: String(req.params.id) }));
         if (!matricula) return res.status(404).json({ success: false, error: 'Matrícula não encontrada.' });
 
         const statusAnterior = matricula.status;
@@ -391,23 +457,24 @@ exports.criarResponsavel = async (req, res) => {
         }
 
         // Cria o usuário responsável
-        let usuario = await Usuario.findOne({ email });
+        let usuario = await Usuario.findOne({ email: String(email).toLowerCase() });
         if (!usuario) {
             usuario = new Usuario({
                 nome,
-                email,
+                email: String(email).toLowerCase(),
                 telefone,
                 cpf,
                 perfil: 'responsavel',
                 parentesco,
+                escolaId: escolaAtual(req),
                 nomeAluno: ''
             });
             await usuario.save();
         }
 
-        // Vincula ao aluno se informado
+        // Vincula ao aluno se informado (apenas alunos da escola ativa)
         if (alunoId) {
-            const aluno = await Aluno.findById(alunoId);
+            const aluno = await Aluno.findOne(escopo(req, { _id: String(alunoId) }));
             if (aluno) {
                 if (!aluno.responsaveis) aluno.responsaveis = [];
                 aluno.responsaveis.push({
@@ -442,14 +509,14 @@ exports.criarResponsavel = async (req, res) => {
 // GET /api/secretaria/turmas — listagem
 exports.listarTurmas = async (req, res) => {
     try {
-        const turmas = await Turma.find({ ativo: true }).sort({ nome: 1 }).lean();
+        const turmas = await Turma.find(escopo(req, { ativo: true })).sort({ nome: 1 }).lean();
 
         // Conta alunos por turma
         const turmasComContagem = await Promise.all(turmas.map(async (t) => {
-            const totalAlunos = await Aluno.countDocuments({
+            const totalAlunos = await Aluno.countDocuments(escopo(req, {
                 $or: [{ turma: t.nome }, { turma: t.id }, { turmaId: t._id }],
                 ativo: true
-            });
+            }));
             return { ...t, totalAlunos };
         }));
 
@@ -467,10 +534,11 @@ exports.listarTurmas = async (req, res) => {
 // POST /api/secretaria/documentos/declaracao-matricula/:alunoId
 exports.gerarDeclaracaoMatricula = async (req, res) => {
     try {
-        const aluno = await Aluno.findById(req.params.alunoId).lean();
+        // Documento oficial só é emitido para aluno da escola ativa
+        const aluno = await carregarAlunoDaEscola(req, req.params.alunoId);
         if (!aluno) return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
 
-        const matricula = await Matricula.findOne({ alunoId: req.params.alunoId, status: 'cursando' }).lean();
+        const matricula = await Matricula.findOne({ alunoId: String(req.params.alunoId), status: 'cursando' }).lean();
 
         const turma = aluno.turma || (matricula ? matricula.turmaId : 'N/A');
         const anoLetivo = matricula ? matricula.anoLetivo : new Date().getFullYear();
@@ -495,6 +563,7 @@ exports.gerarDeclaracaoMatricula = async (req, res) => {
             numeroDocumento: numDoc,
             anoLetivo,
             arquivo: { nome: `declaracao_matricula_${aluno._id}.html`, mimeType: 'text/html' },
+            escolaId: escolaAtual(req),
             emitidoPor: req.user._id || req.user.id,
             emitidoPorNome: req.user.nome
         });
@@ -515,11 +584,11 @@ exports.gerarDeclaracaoMatricula = async (req, res) => {
 // POST /api/secretaria/documentos/declaracao-frequencia/:alunoId
 exports.gerarDeclaracaoFrequencia = async (req, res) => {
     try {
-        const aluno = await Aluno.findById(req.params.alunoId).lean();
+        const aluno = await carregarAlunoDaEscola(req, req.params.alunoId);
         if (!aluno) return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
 
-        const totalFaltas = await Falta.countDocuments({ aluno: req.params.alunoId, presente: false });
-        const totalPresencas = await Falta.countDocuments({ aluno: req.params.alunoId, presente: true });
+        const totalFaltas = await Falta.countDocuments({ aluno: String(req.params.alunoId), presente: false });
+        const totalPresencas = await Falta.countDocuments({ aluno: String(req.params.alunoId), presente: true });
         const totalRegistros = totalFaltas + totalPresencas;
         const percentual = totalRegistros > 0 ? ((totalPresencas / totalRegistros) * 100).toFixed(1) : 'N/A';
         const numDoc = await gerarNumeroDocumento();
@@ -546,6 +615,7 @@ exports.gerarDeclaracaoFrequencia = async (req, res) => {
             numeroDocumento: numDoc,
             anoLetivo: new Date().getFullYear(),
             arquivo: { nome: `declaracao_frequencia_${aluno._id}.html`, mimeType: 'text/html' },
+            escolaId: escolaAtual(req),
             emitidoPor: req.user._id || req.user.id,
             emitidoPorNome: req.user.nome
         });
@@ -566,15 +636,15 @@ exports.gerarDeclaracaoFrequencia = async (req, res) => {
 // POST /api/secretaria/documentos/historico-escolar/:alunoId
 exports.gerarHistoricoEscolar = async (req, res) => {
     try {
-        const aluno = await Aluno.findById(req.params.alunoId).lean();
+        const aluno = await carregarAlunoDaEscola(req, req.params.alunoId);
         if (!aluno) return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
 
-        const matriculas = await Matricula.find({ alunoId: req.params.alunoId }).sort({ anoLetivo: 1 }).lean();
+        const matriculas = await Matricula.find({ alunoId: String(req.params.alunoId) }).sort({ anoLetivo: 1 }).lean();
         const numDoc = await gerarNumeroDocumento();
 
         let historicoRows = '';
         for (const m of matriculas) {
-            const turma = await Turma.findById(m.turmaId).lean();
+            const turma = await Turma.findById(String(m.turmaId)).lean();
             historicoRows += `<tr>
                 <td>${m.anoLetivo}</td>
                 <td>${turma ? turma.nome : m.turmaId}</td>
@@ -603,6 +673,7 @@ exports.gerarHistoricoEscolar = async (req, res) => {
             titulo: `Histórico Escolar - ${aluno.nome}`,
             numeroDocumento: numDoc,
             arquivo: { nome: `historico_escolar_${aluno._id}.html`, mimeType: 'text/html' },
+            escolaId: escolaAtual(req),
             emitidoPor: req.user._id || req.user.id,
             emitidoPorNome: req.user.nome
         });
@@ -623,7 +694,11 @@ exports.gerarHistoricoEscolar = async (req, res) => {
 // GET /api/secretaria/documentos/historico/:alunoId
 exports.listarDocumentosAluno = async (req, res) => {
     try {
-        const docs = await DocumentoEmitido.find({ alunoId: req.params.alunoId })
+        // Confirma o aluno na escola ativa antes de listar seus documentos
+        const aluno = await carregarAlunoDaEscola(req, req.params.alunoId, '_id');
+        if (!aluno) return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
+
+        const docs = await DocumentoEmitido.find({ alunoId: String(req.params.alunoId) })
             .sort({ createdAt: -1 }).lean();
 
         res.json({ success: true, data: docs });
@@ -636,7 +711,7 @@ exports.listarDocumentosAluno = async (req, res) => {
 // POST /api/secretaria/alunos/:id/documentos-upload
 exports.uploadDocumentoAluno = async (req, res) => {
     try {
-        const aluno = await Aluno.findById(req.params.id);
+        const aluno = await Aluno.findOne(escopo(req, { _id: String(req.params.id) }));
         if (!aluno) return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
 
         const { nomeArquivo, base64, tipo } = req.body;
@@ -681,8 +756,8 @@ exports.frequenciaConsolidada = async (req, res) => {
     try {
         const { turma, dataInicio, dataFim } = req.query;
 
-        let matchQuery = {};
-        if (turma) matchQuery.turma = turma;
+        let matchQuery = escopo(req, {});
+        if (turma) matchQuery.turma = String(turma);
         if (dataInicio || dataFim) {
             matchQuery.data = {};
             if (dataInicio) matchQuery.data.$gte = new Date(dataInicio);
@@ -705,7 +780,7 @@ exports.frequenciaConsolidada = async (req, res) => {
 
         // Popula nomes dos alunos
         const alunoIds = resultado.map(r => r._id);
-        const alunos = await Aluno.find({ _id: { $in: alunoIds } }).select('nome turma').lean();
+        const alunos = await Aluno.find(escopo(req, { _id: { $in: alunoIds } })).select('nome turma').lean();
         const alunosMap = {};
         alunos.forEach(a => { alunosMap[a._id.toString()] = a; });
 
@@ -735,7 +810,7 @@ exports.frequenciaConsolidada = async (req, res) => {
 exports.listarCalendario = async (req, res) => {
     try {
         const { anoLetivo } = req.query;
-        const query = { ativo: true };
+        const query = escopo(req, { ativo: true });
         if (anoLetivo) query.anoLetivo = parseInt(anoLetivo);
 
         const eventos = await CalendarioEscolar.find(query).sort({ dataInicio: 1 }).lean();
@@ -765,6 +840,7 @@ exports.criarEventoCalendario = async (req, res) => {
             abrangencia: abrangencia || 'escola',
             turmasIds: turmasIds || [],
             cor: cor || '#4A90D9',
+            escolaId: escolaAtual(req),
             criadoPor: req.user._id || req.user.id,
             criadoPorNome: req.user.nome
         });
@@ -786,9 +862,9 @@ exports.criarEventoCalendario = async (req, res) => {
 exports.listarJustificativas = async (req, res) => {
     try {
         const { status, alunoId } = req.query;
-        const query = {};
-        if (status) query.status = status;
-        if (alunoId) query.alunoId = alunoId;
+        const query = escopo(req, {});
+        if (status) query.status = String(status);
+        if (alunoId) query.alunoId = String(alunoId);
 
         const justificativas = await JustificativaFalta.find(query).sort({ createdAt: -1 }).lean();
         res.json({ success: true, data: justificativas });
@@ -807,7 +883,7 @@ exports.analisarJustificativa = async (req, res) => {
             return res.status(400).json({ success: false, error: 'Status deve ser "aprovada" ou "rejeitada".' });
         }
 
-        const justificativa = await JustificativaFalta.findById(req.params.id);
+        const justificativa = await JustificativaFalta.findOne(escopo(req, { _id: String(req.params.id) }));
         if (!justificativa) return res.status(404).json({ success: false, error: 'Justificativa não encontrada.' });
 
         justificativa.status = status;
@@ -868,14 +944,15 @@ exports.criarComunicado = async (req, res) => {
             diretorPerfil: 'Secretaria',
             destinatarios,
             categoria: categoria || 'Secretaria',
-            prioridade: prioridade || 'Normal'
+            prioridade: prioridade || 'Normal',
+            escolaId: escolaAtual(req)
         });
 
         await comunicado.save();
 
-        if (global.io) {
-            global.io.emit('comunicado:new', comunicado.toObject());
-        }
+        // Broadcast restrito à escola — `io.emit` alcançava todos os sockets
+        // conectados, entregando o comunicado a outras escolas da rede.
+        emitirParaEscola(comunicado.escolaId, 'comunicado:new', comunicado.toObject());
 
         await audit(req, 'CREATE_ANNOUNCEMENT', 'Comunicados', comunicado._id, {
             descricao: `Comunicado '${titulo}' criado pela secretaria`
@@ -891,7 +968,7 @@ exports.criarComunicado = async (req, res) => {
 // GET /api/secretaria/comunicados
 exports.listarComunicados = async (req, res) => {
     try {
-        const comunicados = await Comunicado.find({ ativo: true })
+        const comunicados = await Comunicado.find(escopo(req, { ativo: true }))
             .sort({ dataCriacao: -1 })
             .lean();
 
@@ -905,13 +982,13 @@ exports.listarComunicados = async (req, res) => {
 // GET /api/secretaria/relatorios/alunos-por-turma
 exports.relatorioAlunosPorTurma = async (req, res) => {
     try {
-        const turmas = await Turma.find({ ativo: true }).sort({ nome: 1 }).lean();
+        const turmas = await Turma.find(escopo(req, { ativo: true })).sort({ nome: 1 }).lean();
 
         const resultado = await Promise.all(turmas.map(async (t) => {
-            const alunos = await Aluno.find({
+            const alunos = await Aluno.find(escopo(req, {
                 $or: [{ turma: t.nome }, { turma: t.id }, { turmaId: t._id }],
                 ativo: true
-            }).select('nome sobrenome matricula turma ativo').sort({ nome: 1 }).lean();
+            })).select('nome sobrenome matricula turma ativo').sort({ nome: 1 }).lean();
 
             return {
                 turma: t.nome || t.id,
@@ -932,15 +1009,15 @@ exports.relatorioAlunosPorTurma = async (req, res) => {
 exports.relatorioMatriculas = async (req, res) => {
     try {
         const { anoLetivo, status } = req.query;
-        const query = {};
+        const query = escopo(req, {});
         if (anoLetivo) query.anoLetivo = parseInt(anoLetivo);
-        if (status) query.status = status;
+        if (status) query.status = String(status);
 
         const matriculas = await Matricula.find(query).sort({ createdAt: -1 }).lean();
 
         // Popula nomes
         const alunoIds = [...new Set(matriculas.map(m => m.alunoId))];
-        const alunos = await Aluno.find({ _id: { $in: alunoIds } }).select('nome sobrenome').lean();
+        const alunos = await Aluno.find(escopo(req, { _id: { $in: alunoIds } })).select('nome sobrenome').lean();
         const alunosMap = {};
         alunos.forEach(a => { alunosMap[a._id.toString()] = a; });
 
@@ -978,13 +1055,15 @@ exports.exportarRelatorio = async (req, res) => {
         let dados = [];
         let headers = [];
 
+        // O CSV carrega nome, turma, nascimento, telefone e e-mail do
+        // responsável — sem escopo, exportava a rede inteira.
         if (tipo === 'alunos') {
-            dados = await Aluno.find({ ativo: true }).select('nome sobrenome turma matricula nascimento telefone responsavel').sort({ nome: 1 }).lean();
+            dados = await Aluno.find(escopo(req, { ativo: true })).select('nome sobrenome turma matricula nascimento telefone responsavel').sort({ nome: 1 }).lean();
             headers = ['Nome', 'Sobrenome', 'Turma', 'Matrícula', 'Nascimento', 'Telefone', 'Responsável'];
         } else if (tipo === 'matriculas') {
-            const matriculas = await Matricula.find({}).sort({ anoLetivo: -1, createdAt: -1 }).lean();
+            const matriculas = await Matricula.find(escopo(req, {})).sort({ anoLetivo: -1, createdAt: -1 }).lean();
             const alunoIds = [...new Set(matriculas.map(m => m.alunoId))];
-            const alunos = await Aluno.find({ _id: { $in: alunoIds } }).select('nome').lean();
+            const alunos = await Aluno.find(escopo(req, { _id: { $in: alunoIds } })).select('nome').lean();
             const map = {};
             alunos.forEach(a => { map[a._id.toString()] = a.nome; });
             dados = matriculas.map(m => ({
@@ -1024,11 +1103,11 @@ exports.exportarRelatorio = async (req, res) => {
 exports.dashboardResumo = async (req, res) => {
     try {
         const [totalAlunos, totalTurmas, totalMatriculas, justificativasPendentes, docsEmitidos] = await Promise.all([
-            Aluno.countDocuments({ ativo: true }),
-            Turma.countDocuments({ ativo: true }),
-            Matricula.countDocuments({ status: 'cursando' }),
-            JustificativaFalta.countDocuments({ status: 'pendente' }),
-            DocumentoEmitido.countDocuments({ createdAt: { $gte: new Date(new Date().getFullYear(), 0, 1) } })
+            Aluno.countDocuments(escopo(req, { ativo: true })),
+            Turma.countDocuments(escopo(req, { ativo: true })),
+            Matricula.countDocuments(escopo(req, { status: 'cursando' })),
+            JustificativaFalta.countDocuments(escopo(req, { status: 'pendente' })),
+            DocumentoEmitido.countDocuments(escopo(req, { createdAt: { $gte: new Date(new Date().getFullYear(), 0, 1) } }))
         ]);
 
         res.json({

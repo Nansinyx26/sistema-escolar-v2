@@ -72,6 +72,10 @@ const startServer = async () => {
             const { iniciarDailyDigest } = require('./jobs/DailyDigestJob');
             iniciarDailyDigest();
 
+            // 6b. Ativa aviso automático de atualizações do sistema às 16h (BRT)
+            const { iniciarSystemUpdateJob } = require('./jobs/SystemUpdateJob');
+            iniciarSystemUpdateJob();
+
             // 7. Cron: Rotação automática do Código Secreto à meia-noite (horário de Brasília)
             cron.schedule('0 0 * * *', async () => {
                 try {
@@ -112,10 +116,16 @@ const startServer = async () => {
         });
 
         // Middleware de autenticação Socket.IO
-        io.use((socket, next) => {
+        // Replica as MESMAS checagens do authJWT: só verificar a assinatura
+        // deixava um token de conta desativada (ou com senha trocada) recebendo
+        // eventos em tempo real por até 8h depois da revogação.
+        const Usuario = require('./models/Usuario');
+        const { vinculosDoUsuario } = require('./middleware/filtrarPorEscola');
+
+        io.use(async (socket, next) => {
             try {
                 // Tenta obter token do handshake (cookie ou query)
-                const token = socket.handshake.auth?.token 
+                const token = socket.handshake.auth?.token
                     || socket.handshake.headers?.cookie?.match(/escola_jwt=([^;]+)/)?.[1]
                     || socket.handshake.query?.token;
 
@@ -124,7 +134,34 @@ const startServer = async () => {
                 }
 
                 const decoded = jwt.verify(token, JWT_SECRET);
-                socket.user = decoded;
+
+                const conta = await Usuario.findById(decoded.id || decoded._id)
+                    .select('tokenVersion ativo perfil escolaId')
+                    .lean();
+
+                if (!conta || conta.ativo === false) {
+                    return next(new Error('Account disabled'));
+                }
+
+                const versaoConta = conta.tokenVersion !== undefined ? conta.tokenVersion : 0;
+                const versaoToken = decoded.tokenVersion !== undefined ? decoded.tokenVersion : 0;
+                if (versaoConta !== versaoToken) {
+                    return next(new Error('Session revoked'));
+                }
+
+                // Perfil vem do BANCO, não do token: um rebaixamento vale na hora
+                socket.user = { ...decoded, perfil: conta.perfil };
+
+                // Escola do socket — base do isolamento multi-tenant no realtime
+                let escolaId = conta.escolaId ? String(conta.escolaId) : null;
+                if (!escolaId) {
+                    const vinculos = await vinculosDoUsuario({
+                        id: conta._id, email: decoded.email, perfil: conta.perfil
+                    });
+                    if (vinculos.length === 1) escolaId = String(vinculos[0].escolaId);
+                }
+                socket.escolaId = escolaId;
+
                 next();
             } catch (err) {
                 next(new Error('Invalid authentication token'));
@@ -137,14 +174,32 @@ const startServer = async () => {
             socket.join(`user:${user.id || user._id}`);
             // Entra na sala do perfil (professor, diretor, admin, responsavel)
             socket.join(`role:${user.perfil}`);
-            logger.debug(`🔌 [Socket.IO] ${user.nome || 'Usuário'} conectado`, { perfil: user.perfil, room: `user:${user.id || user._id}` });
+            // Entra na sala da escola — os emissores usam a interseção
+            // escola × perfil para não vazar eventos entre tenants
+            if (socket.escolaId) socket.join(`escola:${socket.escolaId}`);
 
-            // Evento: usuário quer entrar em sala de mensagem específica
-            socket.on('join:message', (messageId) => {
-                if (!socket.user) {
-                    return;
+            logger.debug(`🔌 [Socket.IO] ${user.nome || 'Usuário'} conectado`, {
+                perfil: user.perfil,
+                room: `user:${user.id || user._id}`,
+                escola: socket.escolaId || 'n/d'
+            });
+
+            // Evento: usuário quer entrar em sala de mensagem específica.
+            // SEGURANÇA: o handler antigo aceitava qualquer messageId do
+            // cliente — bastava iterar IDs para acompanhar reações e
+            // comentários de conversas de outras escolas.
+            socket.on('join:message', async (messageId) => {
+                if (!socket.user || !messageId) return;
+                try {
+                    const permitido = await podeAcessarMensagem(socket, String(messageId));
+                    if (!permitido) {
+                        logger.debug('[Socket.IO] join:message negado', { messageId });
+                        return;
+                    }
+                    socket.join(`message:${messageId}`);
+                } catch (e) {
+                    logger.warn(`[Socket.IO] Falha ao validar join:message: ${e.message}`);
                 }
-                socket.join(`message:${messageId}`);
             });
 
             socket.on('disconnect', () => {
@@ -175,6 +230,73 @@ const startServer = async () => {
         process.exit(1);
     }
 };
+
+/**
+ * Autoriza a entrada numa sala `message:<id>`.
+ *
+ * A sala carrega comentários e reações (nome e perfil de quem reagiu) de um
+ * comunicado ou de uma notificação. O usuário só entra se o documento
+ * pertencer à sua escola e for endereçado a ele.
+ */
+async function podeAcessarMensagem(socket, messageId) {
+    const perfil = String(socket.user?.perfil || '').toLowerCase();
+    if (perfil === 'admin') return true;
+
+    const mongoose = require('mongoose');
+    const Comunicado = require('./models/Comunicado');
+    const Notificacao = require('./models/Notificacao');
+
+    const filtroId = mongoose.Types.ObjectId.isValid(messageId)
+        ? { $or: [{ _id: messageId }, { id: messageId }] }
+        : { id: messageId };
+
+    const doc = await Comunicado.findOne(filtroId).select('escolaId destinatarios').lean()
+        || await Notificacao.findOne(filtroId).select('escolaId destinatarios paraResponsavel').lean();
+
+    if (!doc) return false;
+
+    // Fronteira de escola
+    if (socket.escolaId && doc.escolaId && String(doc.escolaId) !== String(socket.escolaId)) {
+        return false;
+    }
+
+    // Gestão acompanha qualquer mensagem da própria escola
+    if (['diretor', 'secretaria'].includes(perfil)) return true;
+
+    // Responsável nunca entra em sala de aviso interno de funcionários
+    if (perfil === 'responsavel' && doc.paraResponsavel === false) return false;
+
+    const destinatarios = Array.isArray(doc.destinatarios)
+        ? doc.destinatarios
+        : [doc.destinatarios].filter(Boolean);
+
+    const alvos = ['todos', `usuario:${socket.user.id || socket.user._id}`];
+    if (perfil === 'professor') alvos.push('professores');
+
+    if (perfil === 'responsavel' && socket.user.email) {
+        alvos.push('responsaveis');
+        // Avisos endereçados à turma ou diretamente ao aluno vinculado
+        const Aluno = require('./models/Aluno');
+        const escapeRegex = require('./utils/escapeRegex');
+        const emailRegex = new RegExp(`^${escapeRegex(String(socket.user.email))}$`, 'i');
+        const alunos = await Aluno.find({
+            $or: [
+                { responsavel: emailRegex },
+                { 'responsavelDados.email': emailRegex },
+                { 'responsaveis.email': emailRegex }
+            ]
+        }).select('turma turmaId id').lean();
+
+        alunos.forEach(a => {
+            const t = a.turma || a.turmaId;
+            if (t) alvos.push(t, `turma:${t}`);
+            alvos.push(String(a._id));
+            if (a.id) alvos.push(String(a.id));
+        });
+    }
+
+    return destinatarios.some(d => alvos.includes(String(d)));
+}
 
 /**
  * Migração silenciosa de preferências de voz/TTS/acessibilidade.

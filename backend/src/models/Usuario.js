@@ -67,6 +67,12 @@ const UsuarioSchema = new mongoose.Schema({
     // Token temporário de 6 dígitos (alternativa via e-mail, sem app)
     twoFactorPendingToken: { type: String, select: false },
     twoFactorPendingExpiry: { type: Date, select: false },
+    // Tentativas de código na etapa 2FA — bloqueia força bruta dos 10^6 códigos
+    twoFactorAttempts: { type: Number, default: 0, select: false },
+    twoFactorLockUntil: { type: Date, select: false },
+    // Tentativas de vínculo por código secreto do aluno (por conta)
+    vinculoAttempts: { type: Number, default: 0, select: false },
+    vinculoLockUntil: { type: Date, select: false },
     // Código fixo opcional para contas de teste / exceção (não retornado em queries padrão)
     twoFactorFixedCode: { type: String, select: false },
 

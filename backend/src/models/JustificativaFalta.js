@@ -6,6 +6,9 @@ const JustificativaFaltaSchema = new mongoose.Schema({
     alunoId: { type: String, required: true, ref: 'Aluno', index: true },
     alunoNome: { type: String, required: true },
 
+    // Multi-escola: isolamento por tenant (_id de Escola)
+    escolaId: { type: String, index: true },
+
     // Período da ausência
     dataInicio: { type: Date, required: true },
     dataFim: { type: Date, required: true },

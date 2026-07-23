@@ -346,6 +346,17 @@ function initVoiceToggles() {
             e.stopPropagation();
             panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
         });
+        // Botão "Configurações Voz" do sidebar abre o mesmo painel.
+        // Precisa de stopPropagation próprio: sem isso o clique sobe até o
+        // document e o listener global abaixo fecha o painel no mesmo clique.
+        const sidebarVoiceBtn = document.getElementById('sidebar-voice-btn');
+        if (sidebarVoiceBtn) {
+            sidebarVoiceBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
+            });
+        }
         document.addEventListener('click', () => { if (panel) panel.style.display = 'none'; });
         panel.addEventListener('click', (e) => e.stopPropagation());
     }

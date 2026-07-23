@@ -1,0 +1,271 @@
+/**
+ * TEMA CLARO — Sistema Escolar
+ * -----------------------------------------------------------------------------
+ * Ativado quando <html data-theme="light"> (controlado por js/theme.js).
+ *
+ * Estratégia:
+ *   1. Redefine os tokens do design system (variáveis CSS). Como var() é
+ *      resolvido no momento do uso, TODO componente que usa var(--bg-*),
+ *      var(--text-*), var(--glass-*) etc. já fica claro automaticamente.
+ *   2. Corrige os poucos padrões que hardcodam cores escuras / vidro branco
+ *      (rgba(255,255,255,...) sobre fundo escuro), que ficariam invisíveis
+ *      no claro. Esses usam !important para vencer a regra original,
+ *      independentemente da ordem de carregamento.
+ *
+ * Carregado em todo o sistema via @import em css/variables.css.
+ */
+
+/* ========================================================================== */
+/* 1. TOKENS DO DESIGN SYSTEM (MODO CLARO)                                    */
+/* ========================================================================== */
+:root[data-theme="light"] {
+    /* === FUNDOS === */
+    --bg-primary: #f6f8fa;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #eef1f5;
+    --bg-elevated: #ffffff;
+    --bg-color: #f6f8fa;            /* alias legado */
+
+    /* === TEXTO === */
+    --text-primary: #0f172a;
+    --text-body: #1f2937;
+    --text-secondary: #475569;
+    --text-tertiary: #64748b;
+    --text-accent: #059669;
+    --text-inverse: #ffffff;
+    --text-color: #0f172a;         /* alias legado (main.css) */
+
+    /* === BORDAS === */
+    --border-primary: rgba(15, 23, 42, 0.08);
+    --border-secondary: rgba(15, 23, 42, 0.12);
+    --border-dark: rgba(15, 23, 42, 0.10);
+    --border-focus: #10b981;
+
+    /* === MARCA (mantém o verde/azul, funcionam bem no claro) === */
+    --primary: #059669;
+    --primary-rgb: 5, 150, 105;
+    --primary-color: var(--primary);
+    --primary-dark: #047857;
+    --primary-hover: #10b981;
+    --primary-active: #047857;
+    --primary-light: rgba(5, 150, 105, 0.10);
+
+    --secondary: #0284c7;
+    --secondary-hover: #0ea5e9;
+    --secondary-light: rgba(2, 132, 199, 0.10);
+
+    /* === STATUS === */
+    --success: #059669;
+    --success-hover: #047857;
+    --success-light: rgba(5, 150, 105, 0.12);
+    --warning: #d97706;
+    --warning-hover: #b45309;
+    --warning-light: rgba(217, 119, 6, 0.12);
+    --error: #dc2626;
+    --error-hover: #b91c1c;
+    --error-light: rgba(220, 38, 38, 0.10);
+    --info: #0284c7;
+    --info-hover: #0369a1;
+    --info-light: rgba(2, 132, 199, 0.10);
+
+    /* === GRADIENTES (mais suaves no claro) === */
+    --gradient-primary: linear-gradient(to bottom right, #10b981, #0ea5e9);
+    --gradient-surface: linear-gradient(180deg, rgba(15, 23, 42, 0.02) 0%, rgba(15, 23, 42, 0) 100%);
+    --gradient-mesh: radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.06) 0, transparent 40%),
+                     radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.06) 0, transparent 40%);
+    --surface-gradient: radial-gradient(circle at top left, rgba(16, 185, 129, 0.06), transparent 40%),
+                        radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.06), transparent 40%);
+
+    /* === SOMBRAS (suaves, cinza neutro) === */
+    --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+    --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+    --shadow-lg: 0 12px 24px rgba(15, 23, 42, 0.10);
+    --shadow-xl: 0 24px 48px rgba(15, 23, 42, 0.12);
+    --shadow-2xl: 0 32px 64px rgba(15, 23, 42, 0.16);
+    --shadow-glow: 0 0 20px rgba(5, 150, 105, 0.18);
+    --shadow-glow-lg: 0 0 40px rgba(5, 150, 105, 0.22);
+
+    /* === VIDRO / BACKDROP (frosted branco em vez de branco translúcido) === */
+    --glass-bg: rgba(255, 255, 255, 0.72);
+    --glass-border: rgba(15, 23, 42, 0.08);
+    --glass-shadow: 0 8px 32px 0 rgba(15, 23, 42, 0.10);
+    --backdrop-color: rgba(255, 255, 255, 0.75);
+
+    /* === CORES DE COMPATIBILIDADE (nomes alternativos usados em telas antigas) === */
+    --card-bg: #ffffff;
+    --surface: #ffffff;
+    --surface-2: #f1f5f9;
+
+    color-scheme: light;
+}
+
+/* ========================================================================== */
+/* 2. CORREÇÕES DE PADRÕES HARDCODED (só no tema claro)                        */
+/*    Vencem por !important, sem depender da ordem de carregamento.            */
+/* ========================================================================== */
+
+/* --- Fundo geral: neutraliza gradientes/fundos escuros codificados no body - */
+:root[data-theme="light"] body {
+    background: var(--bg-primary) !important;
+    color: var(--text-body);
+}
+
+/* Camadas de fundo decorativas escuras (mesh/parallax) suavizadas */
+:root[data-theme="light"] .parallax-glass,
+:root[data-theme="light"] .bg-mesh,
+:root[data-theme="light"] .surface-gradient {
+    background: var(--gradient-mesh) !important;
+}
+
+/* --- Superfícies de vidro: branco frosted com borda escura sutil --------- */
+:root[data-theme="light"] .glass,
+:root[data-theme="light"] .glass-strong,
+:root[data-theme="light"] .glass-card,
+:root[data-theme="light"] .glass-header,
+:root[data-theme="light"] [class*="glass"] {
+    background: var(--glass-bg) !important;
+    border-color: var(--glass-border) !important;
+    box-shadow: var(--glass-shadow);
+}
+
+/* Cabeçalhos/áreas que usavam rgba(255,255,255,0.03) como leve realce claro:
+   no fundo branco isso some — troca por leve tinta escura. */
+:root[data-theme="light"] .glass-header {
+    background: rgba(15, 23, 42, 0.03) !important;
+}
+
+/* --- Textos com brilho branco (glow) somem no claro ---------------------- */
+:root[data-theme="light"] .glow-text {
+    text-shadow: none !important;
+}
+
+/* --- Cartões/painéis genéricos ------------------------------------------- */
+:root[data-theme="light"] .card,
+:root[data-theme="light"] .panel,
+:root[data-theme="light"] .modal-content,
+:root[data-theme="light"] .dropdown-menu {
+    background: var(--bg-elevated);
+    border-color: var(--border-secondary);
+    color: var(--text-body);
+}
+
+/* --- Barra lateral / navbar: fundo claro com borda sutil ----------------- */
+:root[data-theme="light"] .sidebar,
+:root[data-theme="light"] .navbar,
+:root[data-theme="light"] header.glass,
+:root[data-theme="light"] .topbar {
+    background: rgba(255, 255, 255, 0.85) !important;
+    border-color: var(--border-primary) !important;
+    color: var(--text-body);
+}
+
+/* --- Inputs / campos de formulário --------------------------------------- */
+:root[data-theme="light"] input,
+:root[data-theme="light"] textarea,
+:root[data-theme="light"] select {
+    background-color: #ffffff;
+    color: var(--text-primary);
+    border-color: var(--border-secondary);
+}
+:root[data-theme="light"] input::placeholder,
+:root[data-theme="light"] textarea::placeholder {
+    color: var(--text-tertiary);
+}
+
+/* --- Barra de rolagem ----------------------------------------------------- */
+:root[data-theme="light"] ::-webkit-scrollbar-track {
+    background: var(--bg-tertiary);
+}
+:root[data-theme="light"] ::-webkit-scrollbar-thumb {
+    background: rgba(15, 23, 42, 0.20);
+    border-radius: 999px;
+}
+:root[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+    background: rgba(15, 23, 42, 0.32);
+}
+
+/* --- Transição suave ao alternar tema (só superfícies-chave, evita jank) -- */
+:root[data-theme="light"] body,
+:root[data-theme="light"] .glass,
+:root[data-theme="light"] .glass-card,
+:root[data-theme="light"] .card,
+:root[data-theme="light"] .panel,
+:root[data-theme="light"] .sidebar,
+:root[data-theme="light"] .navbar {
+    transition: background-color 240ms var(--ease-standard, ease),
+                border-color 240ms var(--ease-standard, ease),
+                color 240ms var(--ease-standard, ease);
+}
+
+/* ========================================================================== */
+/* 3. LANDING PAGE (index-landing.css tem :root e cores próprias)              */
+/*    Redefine os tokens da landing e corrige as superfícies escuras fixas.    */
+/* ========================================================================== */
+:root[data-theme="light"] {
+    /* Tokens de tinta/superfície da landing → claros */
+    --ink: #f6f8fa;
+    --ink2: #ffffff;
+    --ink3: #eef1f5;
+    --surface: #ffffff;
+    --surface2: #f1f5f9;
+    --mid: #cbd5e1;
+    --blue: #eef2ff;
+    --blue2: #e0e7ff;
+
+    /* Texto da landing → escuro */
+    --text: #0f172a;
+    --text2: #334155;
+    --text3: #64748b;
+
+    /* Bordas/realces translúcidos claros → escuros sutis */
+    --b: rgba(15, 23, 42, 0.06);
+    --ba: rgba(15, 23, 42, 0.14);
+    --ga: rgba(15, 23, 42, 0.08);
+    --gb: rgba(15, 23, 42, 0.05);
+    --a3: rgba(15, 23, 42, 0.78);
+}
+
+/* Fundo da landing: remove a tinta escura, mantém só os brilhos suaves */
+:root[data-theme="light"] body {
+    background:
+        radial-gradient(circle at top left, rgba(16, 185, 129, 0.10), transparent 25%),
+        radial-gradient(circle at 85% 15%, rgba(14, 165, 233, 0.08), transparent 20%),
+        radial-gradient(circle at 15% 88%, rgba(99, 102, 241, 0.06), transparent 18%),
+        var(--bg-primary) !important;
+}
+/* Ruído/grão escuro por cima fica quase invisível no claro */
+:root[data-theme="light"] body::before { opacity: 0.15 !important; }
+
+/* Barra de navegação fixa da landing (era rgba(3,5,10,.88)) */
+:root[data-theme="light"] nav {
+    background: rgba(255, 255, 255, 0.85) !important;
+    border-bottom-color: var(--border-primary) !important;
+}
+:root[data-theme="light"] nav.scrolled {
+    background: rgba(255, 255, 255, 0.96) !important;
+    box-shadow: 0 2px 40px rgba(15, 23, 42, 0.10) !important;
+}
+
+/* Botões/painéis flutuantes escuros da landing */
+:root[data-theme="light"] .school-switcher-button {
+    background: #ffffff !important;
+    border-color: var(--border-secondary) !important;
+    color: var(--text-primary) !important;
+    box-shadow: var(--shadow-lg) !important;
+}
+:root[data-theme="light"] .school-switcher-button:hover {
+    background: var(--bg-tertiary) !important;
+}
+:root[data-theme="light"] .school-switcher-panel {
+    background: rgba(255, 255, 255, 0.98) !important;
+    border-color: var(--border-secondary) !important;
+    box-shadow: 10px 18px 55px rgba(15, 23, 42, 0.15) !important;
+    color: var(--text-body);
+}
+
+/* Cartões da landing que usavam faixas brancas translúcidas sobre o escuro:
+   no claro viram cinza-claro sutil para não sumirem. */
+:root[data-theme="light"] [style*="rgba(255, 255, 255, 0.04)"],
+:root[data-theme="light"] [style*="rgba(255, 255, 255, 0.05)"] {
+    background: rgba(15, 23, 42, 0.04) !important;
+}

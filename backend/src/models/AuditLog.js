@@ -15,6 +15,8 @@ const AuditLogSchema = new mongoose.Schema({
     }, // Ex: 'CREATE_USER', 'DELETE_STUDENT', 'UPDATE_GRADE'
     recurso: String, // Ex: 'Alunos', 'Notas', 'Usuarios'
     recursoId: String,
+    // Multi-escola: permite ao diretor auditar apenas a própria escola
+    escolaId: { type: String, index: true },
     detalhes: {
         valorAnterior: mongoose.Schema.Types.Mixed,
         valorNovo: mongoose.Schema.Types.Mixed,

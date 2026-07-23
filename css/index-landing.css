@@ -332,7 +332,7 @@ nav.scrolled {
   text-transform: uppercase;
   margin-bottom: 1.75rem;
   box-shadow: 0 18px 45px rgba(33, 255, 204, 0.1);
-  animation: fadeUp 0.6s ease both;
+  animation: fadeUp 0.6s var(--ease-out) both;
 }
 
 .badge-pulse {
@@ -559,7 +559,7 @@ nav.scrolled {
   text-wrap: balance;
   color: var(--text);
   text-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
-  animation: fadeUp 0.6s 0.1s ease both;
+  animation: fadeUp 0.6s 0.1s var(--ease-out) both;
 }
 
 .hero-h1 em {
@@ -580,7 +580,7 @@ nav.scrolled {
   margin-left: auto;
   margin-right: auto;
   letter-spacing: 0.01em;
-  animation: fadeUp 0.6s 0.2s ease both;
+  animation: fadeUp 0.6s 0.2s var(--ease-out) both;
 }
 
 .hero-ctas {
@@ -589,7 +589,7 @@ nav.scrolled {
   gap: 0.85rem;
   flex-wrap: wrap;
   justify-content: center;
-  animation: fadeUp 0.6s 0.3s ease both;
+  animation: fadeUp 0.6s 0.3s var(--ease-out) both;
   z-index: 2;
 }
 
@@ -653,7 +653,7 @@ nav.scrolled {
   justify-content: center;
   gap: 1.5rem;
   flex-wrap: wrap;
-  animation: fadeUp 0.6s 0.4s ease both;
+  animation: fadeUp 0.6s 0.4s var(--ease-out) both;
 }
 
 .hero-trust-item {
@@ -676,7 +676,7 @@ nav.scrolled {
 .hero-right {
   position: relative;
   z-index: 2;
-  animation: fadeUp 0.7s 0.25s ease both;
+  animation: fadeUp 0.7s 0.25s var(--ease-out) both;
 }
 
 .mockup-shell {
@@ -892,7 +892,7 @@ nav.scrolled {
 .m-prog-fill {
   height: 100%;
   border-radius: 4px;
-  transition: width 1.5s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: width 1.5s var(--ease-snappy);
 }
 
 .m-prog-t {
@@ -1423,6 +1423,51 @@ nav.scrolled {
 
 .portal-card:hover .pl {
   gap: 0.8rem;
+}
+
+/* Diretor (âmbar) e Secretaria (rosa) — portais de equipe */
+.pc-d::before {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+.pc-d:hover {
+  transform: translateY(-5px);
+  box-shadow:
+    0 20px 56px rgba(0, 0, 0, 0.38),
+    0 0 0 1px rgba(245, 158, 11, 0.2);
+}
+.pc-d .pi-wrap {
+  background: rgba(245, 158, 11, 0.1);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.18);
+}
+.pc-d .p-badge {
+  background: rgba(245, 158, 11, 0.1);
+  color: #fbbf24;
+}
+.pc-d .pl {
+  color: #fbbf24;
+}
+
+.pc-s::before {
+  background: linear-gradient(90deg, #ec4899, #f472b6);
+}
+.pc-s:hover {
+  transform: translateY(-5px);
+  box-shadow:
+    0 20px 56px rgba(0, 0, 0, 0.38),
+    0 0 0 1px rgba(236, 72, 153, 0.2);
+}
+.pc-s .pi-wrap {
+  background: rgba(236, 72, 153, 0.1);
+  color: #f472b6;
+  border: 1px solid rgba(236, 72, 153, 0.18);
+}
+.pc-s .p-badge {
+  background: rgba(236, 72, 153, 0.1);
+  color: #f472b6;
+}
+.pc-s .pl {
+  color: #f472b6;
 }
 
 /* HOW */
@@ -2086,8 +2131,8 @@ footer {
   opacity: 0;
   transform: translateY(32px);
   transition:
-    opacity 0.75s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 0.75s var(--ease-snappy),
+    transform 0.75s var(--ease-snappy);
 }
 
 .reveal.in {
@@ -2219,7 +2264,7 @@ footer {
   align-items: center;
   justify-content: center;
   gap: 2rem;
-  animation: fadeIn 0.3s ease;
+  animation: fadeIn 0.3s var(--ease-out);
 }
 
 .mobile-nav-overlay.open {
@@ -2333,7 +2378,7 @@ body:has(.pa-modal-overlay.open) {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   transform: translateY(30px) scale(0.96);
-  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.35s var(--ease-out);
   overflow: hidden;
 }
 .pa-modal-card::before {
@@ -2408,7 +2453,7 @@ body:has(.pa-modal-overlay.open) {
   border-radius: 14px;
   color: #fff;
   text-decoration: none;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: all 0.3s var(--ease-out);
   cursor: pointer;
 }
 .pa-option:hover {

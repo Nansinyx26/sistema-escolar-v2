@@ -12,6 +12,7 @@ npm-debug.log*
 backend/.env
 credentials.json
 secrets.json
+backend/vapid-keys.json
 
 # Logs and diagnostics — logs não pertencem ao repositório
 backend/*.log

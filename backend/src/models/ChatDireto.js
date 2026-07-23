@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 const ChatDiretoSchema = new mongoose.Schema({
     remetenteId: { type: String, required: true, index: true },
     destinatarioId: { type: String, required: true, index: true },
+    // Multi-escola: isolamento por tenant (_id de Escola)
+    escolaId: { type: String, index: true },
     turmaId: String,
     alunoId: String,
     contexto: {

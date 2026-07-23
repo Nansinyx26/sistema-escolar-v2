@@ -84,27 +84,43 @@ module.exports = async function filtrarPorEscola(req, res, next) {
         }
         return next();
     } catch (e) {
-        // Falha na resolução nunca derruba a request — segue sem filtro
+        // SEGURANÇA: falha FECHADA. Seguir sem req.escolaId fazia todos os
+        // controllers (padrão `if (req.escolaId) query.escolaId = ...`)
+        // simplesmente abandonarem o filtro e varrerem a rede inteira.
         console.error('[filtrarPorEscola] erro:', e.message);
-        return next();
+        try {
+            const estado = await estadoEscolas();
+            if (estado.total === 0) return next(); // pré-migração/testes: sem multi-tenant
+        } catch (_) { /* estado indisponível → trata como multi-tenant ativo */ }
+        return res.status(503).json({
+            success: false,
+            error: 'Não foi possível determinar a escola desta sessão. Faça login novamente.'
+        });
     }
 };
 /**
- * Filtro de LEITURA tolerante a registros legados.
+ * Filtro de LEITURA por escola.
  *
- * Isola os dados da escola ativa, mas também inclui registros criados antes
- * do escopo por escola (escolaId ausente, null, '' ou 'default'). Em transição
- * multi-escola (com uma escola ativa), isso evita que dados antigos "sumam"
- * das telas — ex.: avisos da direção que ficaram com escolaId 'default'.
+ * ESTRITO por padrão: só retorna documentos da escola ativa. Registros
+ * legados (escolaId ausente, null, '' ou 'default') ficam de fora — incluí-los
+ * significava que QUALQUER documento sem escolaId era visível para TODAS as
+ * escolas da rede, furando o isolamento multi-tenant.
+ *
+ * Durante a transição, `ESCOLA_INCLUIR_LEGADOS=true` restaura a tolerância.
+ * Use apenas até rodar `npm run migrate:multiescola`; nenhum caminho de
+ * criação grava mais 'default'.
  *
  * @param {string} [escolaId] valor de req.escolaId
  * @returns {Object} objeto de filtro Mongo (vazio = sem restrição por escola)
  */
+const INCLUIR_LEGADOS = String(process.env.ESCOLA_INCLUIR_LEGADOS || '').toLowerCase() === 'true';
+
 function escolaMatch(escolaId) {
     if (!escolaId || escolaId === 'default') return {};
+    if (!INCLUIR_LEGADOS) return { escolaId: String(escolaId) };
     return {
         $or: [
-            { escolaId },
+            { escolaId: String(escolaId) },
             { escolaId: { $in: [null, '', 'default'] } },
             { escolaId: { $exists: false } },
         ],

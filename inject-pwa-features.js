@@ -98,6 +98,15 @@ for (const file of files) {
         hasChanges = true;
     }
 
+    // 4. Inject push-notifications.js ("modo notificações no celular") before </body>.
+    //    Pula as telas de login (usuário ainda não autenticado) e a própria home.
+    const isLoginPage = /login/i.test(path.basename(file));
+    if (!isLoginPage && !content.includes('push-notifications.js')) {
+        const pushScript = `    <script defer src="${prefix}js/push-notifications.js"></script>\n`;
+        content = content.replace('</body>', pushScript + '</body>');
+        hasChanges = true;
+    }
+
     if (hasChanges) {
         fs.writeFileSync(file, content, 'utf-8');
         console.log('INTEGRATED:', path.relative(ROOT, file));

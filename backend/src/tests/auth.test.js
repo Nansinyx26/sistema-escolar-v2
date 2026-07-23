@@ -85,7 +85,11 @@ describe('POST /api/auth/login', () => {
         expect(res.body.requires2FA).toBe(true);
         // Secretaria vai direto ao seu painel dedicado
         expect(res.body.redirect_to).toBe('/html/secretaria/painel.html');
-        expect(res.body.userId).toBeTruthy();
+        // SEGURANÇA: o userId NÍO é mais devolvido — o alvo do 2FA vem do
+        // cookie de pré-autenticação, não de um id exposto na resposta.
+        expect(res.body.userId).toBeUndefined();
+        const cookies = res.headers['set-cookie'] || [];
+        expect(cookies.some(c => c.startsWith('escola_preauth'))).toBe(true);
     });
 });
 
@@ -146,60 +150,104 @@ describe('2FA: fluxo de dois fatores', () => {
 
         expect(res.status).toBe(200);
         expect(res.body.requires2FA).toBe(true);
-        expect(res.body.userId).toBeTruthy();
+        // userId não é mais exposto; o pré-auth é entregue via cookie HttpOnly
+        expect(res.body.userId).toBeUndefined();
         const cookies = res.headers['set-cookie'] || [];
         expect(cookies.some(c => c.startsWith('escola_jwt'))).toBe(false);
+        expect(cookies.some(c => c.startsWith('escola_preauth'))).toBe(true);
     });
+
+    // Extrai o cookie escola_preauth de uma resposta de login para reenviá-lo
+    // no /2fa/verify — o novo fluxo não aceita mais userId no corpo.
+    function preauthCookie(loginRes) {
+        return (loginRes.headers['set-cookie'] || [])
+            .filter(c => c.startsWith('escola_preauth'))
+            .map(c => c.split(';')[0]);
+    }
 
     it('deve verificar codigo 2FA correto e emitir cookie JWT', async () => {
         const usuario = await criarUsuario({ email: '2fa_verify@escola.test' });
+        await Usuario.findByIdAndUpdate(usuario._id, { twoFactorEnabled: true });
 
+        // 1. Login (senha) → gera o pré-auth e o token pendente
+        const login = await postLogin({ email: '2fa_verify@escola.test', senha: SENHA_TESTE });
+        const cookies = preauthCookie(login);
+        expect(cookies.length).toBeGreaterThan(0);
+
+        // 2. Injeta um código conhecido (o real seria enviado por e-mail)
         const codigo = '123456';
         const codigoHash = crypto.createHash('sha256').update(codigo).digest('hex');
         await Usuario.findByIdAndUpdate(usuario._id, {
-            twoFactorEnabled: true,
             twoFactorPendingToken: codigoHash,
             twoFactorPendingExpiry: new Date(Date.now() + 5 * 60 * 1000)
         });
 
         const res = await request(app)
             .post('/api/auth/2fa/verify')
-            .send({ userId: usuario._id, codigo });
+            .set('Cookie', cookies)
+            .send({ codigo });
 
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
-        const cookies = res.headers['set-cookie'] || [];
-        expect(cookies.some(c => c.startsWith('escola_jwt'))).toBe(true);
+        const setCookies = res.headers['set-cookie'] || [];
+        expect(setCookies.some(c => c.startsWith('escola_jwt'))).toBe(true);
+    });
+
+    it('deve rejeitar /2fa/verify sem pre-auth cookie (userId no corpo não basta)', async () => {
+        const usuario = await criarUsuario({ email: '2fa_nopre@escola.test' });
+        const codigoHash = crypto.createHash('sha256').update('123456').digest('hex');
+        await Usuario.findByIdAndUpdate(usuario._id, {
+            twoFactorEnabled: true,
+            twoFactorPendingToken: codigoHash,
+            twoFactorPendingExpiry: new Date(Date.now() + 5 * 60 * 1000)
+        });
+
+        // Ataque antigo: conhecer o _id e forçar o código, sem passar pela senha
+        const res = await request(app)
+            .post('/api/auth/2fa/verify')
+            .send({ userId: usuario._id, codigo: '123456' });
+
+        expect(res.status).toBe(401);
     });
 
     it('deve rejeitar codigo 2FA incorreto com 401', async () => {
         const usuario = await criarUsuario({ email: '2fa_wrong@escola.test' });
+        await Usuario.findByIdAndUpdate(usuario._id, { twoFactorEnabled: true });
+
+        const login = await postLogin({ email: '2fa_wrong@escola.test', senha: SENHA_TESTE });
+        const cookies = preauthCookie(login);
+
         const codigoHash = crypto.createHash('sha256').update('000000').digest('hex');
         await Usuario.findByIdAndUpdate(usuario._id, {
-            twoFactorEnabled: true,
             twoFactorPendingToken: codigoHash,
             twoFactorPendingExpiry: new Date(Date.now() + 5 * 60 * 1000)
         });
 
         const res = await request(app)
             .post('/api/auth/2fa/verify')
-            .send({ userId: usuario._id, codigo: '999999' });
+            .set('Cookie', cookies)
+            .send({ codigo: '999999' });
 
         expect(res.status).toBe(401);
     });
 
     it('deve rejeitar codigo 2FA expirado com 401', async () => {
         const usuario = await criarUsuario({ email: '2fa_expired@escola.test' });
+        await Usuario.findByIdAndUpdate(usuario._id, { twoFactorEnabled: true });
+
+        const login = await postLogin({ email: '2fa_expired@escola.test', senha: SENHA_TESTE });
+        const cookies = preauthCookie(login);
+
         const codigoHash = crypto.createHash('sha256').update('123456').digest('hex');
         await Usuario.findByIdAndUpdate(usuario._id, {
-            twoFactorEnabled: true,
             twoFactorPendingToken: codigoHash,
             twoFactorPendingExpiry: new Date(Date.now() - 1000) // ja expirou
         });
 
         const res = await request(app)
             .post('/api/auth/2fa/verify')
-            .send({ userId: usuario._id, codigo: '123456' });
+            .set('Cookie', cookies)
+            .send({ codigo: '123456' });
 
         expect(res.status).toBe(401);
     });

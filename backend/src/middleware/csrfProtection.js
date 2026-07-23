@@ -61,15 +61,21 @@ function csrfValidator(req, res, next) {
         return next();
     }
 
-    // Rotas isentas (públicas)
-    const path = req.path || req.url;
-    if (EXEMPT_ROUTES.some(route => path.startsWith(route.replace('/api', '')))) {
+    // Rotas isentas (públicas) — comparação EXATA. O startsWith deixava
+    // qualquer rota futura começando por um prefixo isento (ex.: /auth/login…)
+    // herdar a isenção silenciosamente.
+    const path = (req.path || req.url).split('?')[0].replace(/\/+$/, '') || '/';
+    const isento = EXEMPT_ROUTES.some(route => {
+        const semApi = route.replace('/api', '');
+        return path === route || path === semApi;
+    });
+    if (isento) {
         return next();
     }
 
 
     // Em testes automatizados o CSRF pode ser desabilitado para simplificar fixtures.
-    // Em desenvolvimento e produ��o a prote��o permanece ativa.
+    // Em desenvolvimento e produ��o a prote��o permanece ativa.
 
     if (process.env.NODE_ENV === 'test') {
         return next();

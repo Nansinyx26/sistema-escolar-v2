@@ -23,15 +23,27 @@ module.exports = async function authJWT(req, res, next) {
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
         
-        // Verificação de invalidação de sessão (Check de Alteração de Senha)
-        const user = await Usuario.findById(decoded.id || decoded._id).select('tokenVersion').lean();
+        // Verificação de invalidação de sessão (senha alterada, conta removida)
+        const user = await Usuario.findById(decoded.id || decoded._id)
+            .select('tokenVersion ativo perfil')
+            .lean();
+
         const userTokenVersion = (user && user.tokenVersion !== undefined) ? user.tokenVersion : 0;
         const decodedTokenVersion = decoded.tokenVersion !== undefined ? decoded.tokenVersion : 0;
         if (!user || userTokenVersion !== decodedTokenVersion) {
             return res.status(401).json({ success: false, error: 'Sessão expirada ou senha alterada. Faça login novamente.' });
         }
 
-        req.user = decoded;
+        // Conta desativada/anonimizada perde o acesso IMEDIATAMENTE. Antes só
+        // tokenVersion era comparado: um usuário desligado seguia operando com
+        // o cookie até ele expirar (8h).
+        if (user.ativo === false) {
+            return res.status(401).json({ success: false, error: 'Conta desativada. Procure a administração da escola.' });
+        }
+
+        // O perfil vem do BANCO, não do token: um rebaixamento de privilégio
+        // passa a valer na requisição seguinte, sem esperar novo login.
+        req.user = { ...decoded, perfil: user.perfil };
         next();
     } catch (e) {
         return res.status(401).json({ success: false, error: 'Token inválido ou expirado' });

@@ -46,11 +46,12 @@ exports.getPublicSummary = async (req, res) => {
 exports.getSummary = async (req, res) => {
     try {
         const { turmaId, bimestre, materiaId } = req.query;
-        const filters = {};
+        // Multi-escola: isola todas as métricas pela escola ativa da sessão
+        const ef = escolaMatch(req.escolaId);
 
         // Base filters for counts
-        const studentFilter = { ativo: { $ne: false } };
-        const noteFilter = {};
+        const studentFilter = { ativo: { $ne: false }, ...ef };
+        const noteFilter = { ...ef };
 
         if (turmaId) {
             studentFilter.turmaId = turmaId;
@@ -66,12 +67,14 @@ exports.getSummary = async (req, res) => {
         const totalAvaliacoes = await Nota.countDocuments(noteFilter);
 
         // Fetch Professors, Turmas, and Absences
-        const mongoose = require('mongoose');
+        const Turma = require('../models/Turma');
         let totalProfessores = 0;
         let totalTurmas = 0;
         try {
-            totalProfessores = await mongoose.connection.db.collection('professores').countDocuments();
-            totalTurmas = await mongoose.connection.db.collection('turmas').countDocuments();
+            // NOTA: professores usam vinculos[].escolaId (não um campo plano),
+            // então esta contagem permanece global. É apenas um inteiro sem PII.
+            totalProfessores = await require('mongoose').connection.db.collection('professores').countDocuments();
+            totalTurmas = await Turma.countDocuments(ef); // escopado por escola
         } catch (e) {
             console.error('Error fetching additional dashboard stats:', e);
         }
@@ -176,7 +179,9 @@ exports.getChartData = async (req, res) => {
 exports.getRanking = async (req, res) => {
     try {
         const { turmaId, bimestre, materiaId } = req.query;
-        const noteFilter = {};
+        // Multi-escola: isola o ranking pela escola ativa da sessão
+        const ef = escolaMatch(req.escolaId);
+        const noteFilter = { ...ef };
         if (turmaId) noteFilter.turmaId = turmaId;
         if (bimestre) noteFilter.bimestre = parseInt(bimestre);
         if (materiaId) noteFilter.materiaId = materiaId;
@@ -196,6 +201,7 @@ exports.getRanking = async (req, res) => {
         // Fetch Student Names (Robust search by _id or id)
         const ids = Array.from(studentIds);
         const students = await Aluno.find({
+            ...ef,
             $or: [
                 { _id: { $in: ids } },
                 { id: { $in: ids } }
@@ -248,6 +254,11 @@ exports.getTeacherPanel = async (req, res) => {
         const Falta = require('../models/Falta');
         const Aluno = require('../models/Aluno');
 
+        // Multi-escola: escopa as buscas pela escola ativa da sessão. Sem isto,
+        // turmas com nome idêntico em escolas diferentes (ex.: "3A") colidem e
+        // vazam notas/notificações entre tenants.
+        const ef = escolaMatch(req.escolaId);
+
         const user = await Usuario.findById(userId).lean();
         if (!user || user.perfil !== 'professor') {
             return res.status(403).json({ success: false, error: 'Acesso negado' });
@@ -275,12 +286,13 @@ exports.getTeacherPanel = async (req, res) => {
         // Se turmas for vazio, tenta buscar no banco de dados na collection de Turmas pelo vinculo com professor
         if (turmas.length === 0) {
             const Turma = require('../models/Turma');
-            const dbTurmas = await Turma.find({ 
+            const dbTurmas = await Turma.find({
+                ...ef,
                 $or: [
                     { professor: prof ? prof._id : '' },
                     { professor: prof ? prof.id : '' },
                     { professor: user.nome }
-                ] 
+                ]
             }).lean();
             if (dbTurmas.length > 0) {
                 turmas = dbTurmas.map(t => t.nome || t.id).filter(Boolean);
@@ -294,6 +306,7 @@ exports.getTeacherPanel = async (req, res) => {
 
         // Avisos ativos usando a estrutura real do banco de dados (destinatarios)
         const queryNotif = {
+            ...ef,
             destinatarios: { $in: ['todos', 'professores', ...turmas] }
         };
         const avisosCount = await Notificacao.countDocuments(queryNotif);
@@ -315,7 +328,7 @@ exports.getTeacherPanel = async (req, res) => {
         // Média Geral baseada UNICAMENTE nas notas reais da(s) sala(s) deste professor
         let mediaGeral = 0;
         if (turmas.length > 0) {
-            const queryNota = { turmaId: { $in: turmas } };
+            const queryNota = { ...ef, turmaId: { $in: turmas } };
             const notes = await Nota.find(queryNota).lean();
             if (notes.length > 0) {
                 const totalNotas = notes.reduce((acc, n) => acc + (Number(n.nota) || 0), 0);
@@ -330,7 +343,8 @@ exports.getTeacherPanel = async (req, res) => {
         // --- GESTÃO DE HORÁRIO DINÂMICO E GRADE POR PERÍODO ---
         const Turma = require('../models/Turma');
         // Descobre o período da turma principal do professor
-        const turmaPrincipalInfo = (turmas.length > 0) ? await Turma.findOne({ 
+        const turmaPrincipalInfo = (turmas.length > 0) ? await Turma.findOne({
+            ...ef,
             $or: [
                 { _id: turmas[0] },
                 { id: turmas[0] },
@@ -410,7 +424,7 @@ exports.getTeacherPanel = async (req, res) => {
         }
 
         // Buscar salas associadas para busca dinâmica de nome de sala
-        const dbTurmasList = await Turma.find({}).lean();
+        const dbTurmasList = await Turma.find(ef).lean();
         const turmasSalaMap = {};
         dbTurmasList.forEach(t => {
             const nameKey = (t.nome || '').replace(/\s/g, '').toUpperCase();
@@ -725,8 +739,10 @@ exports.getDirectorNotices = async (req, res) => {
         const Aluno = require('../models/Aluno');
         const Turma = require('../models/Turma');
 
-        // Busca todas as notificações para exibir no mural completo do Diretor
-        const notices = await Notificacao.find().sort({ dataCriacao: -1 }).lean();
+        // Busca as notificações da escola ativa para o mural completo do Diretor.
+        // Multi-escola: escopa por escolaId — antes varria a rede inteira,
+        // vazando comunicados e nomes de alunos de todas as escolas.
+        const notices = await Notificacao.find(escolaMatch(req.escolaId)).sort({ dataCriacao: -1 }).lean();
 
         // Resolve os IDs de destinatários para nomes amigáveis
         const resolvedNotices = await Promise.all(notices.map(async (notice) => {

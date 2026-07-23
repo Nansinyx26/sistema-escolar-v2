@@ -3,6 +3,7 @@ const ImageProcessor = require('../utils/imageProcessor');
 const { saveToGridFS, deleteFile } = require('../utils/gridfs');
 const escapeRegex = require('../utils/escapeRegex');
 const { generateUniqueSecretCode } = require('../utils/secretCodeHelper');
+const assertAcessoAoAluno = require('../middleware/assertAcessoAoAluno');
 
 // Whitelist de campos permitidos para o Aluno (Prevenção de Injeção de Parâmetros)
 const studentWhitelist = [
@@ -95,7 +96,10 @@ exports.list = async (req, res) => {
         // Normalização para o frontend: garante que cada item tenha um campo 'id' e resolve URLs de fotos
         const normalizedStudents = students.map(s => {
             const student = { ...s, id: s.id || s._id };
-            
+
+            // Nunca em listagem genérica: quem tem o código vincula o aluno
+            delete student.codigoSecreto;
+
             // Se a foto for um ID do GridFS, converte para URL
             if (student.foto && student.foto.length > 20 && !student.foto.startsWith('data:')) {
                 student.foto = `/api/upload/photo/${student.foto}`;
@@ -122,24 +126,21 @@ exports.list = async (req, res) => {
 
 exports.get = async (req, res) => {
     try {
-        const student = await Aluno.findOne({
-            $or: [{ _id: req.params.id }, { id: req.params.id }, { matricula: req.params.id }]
-        });
-
-        if (!student) return res.status(404).json({ success: false, error: 'Aluno não encontrado' });
-
-        // --- SEGURANÇA: Verificação Horizontal para Professor (Prevenção IDOR) ---
-        if (req.user && req.user.perfil === 'professor') {
-            const turmaAluno = student.turma || student.turmaId;
-            const allowed = req.allowedTurmas || [];
-            if (!allowed.includes(turmaAluno)) {
-                return res.status(403).json({ success: false, error: 'Acesso negado. Este aluno pertence a uma turma fora do seu escopo de acesso.' });
-            }
+        // SEGURANÇA: uma única verificação cobre escola (multi-tenant), turma
+        // (professor) e vínculo (responsável). Antes só o perfil 'professor'
+        // era checado e não havia filtro de escola — qualquer conta logada lia
+        // a ficha completa de qualquer aluno da rede.
+        const acesso = await assertAcessoAoAluno(req, req.params.id);
+        if (!acesso.ok) {
+            return res.status(acesso.status).json({ success: false, error: acesso.error });
         }
-        // -------------------------------------------------------------------------
 
-        const studentData = student.toObject();
+        const studentData = { ...acesso.aluno };
         studentData.id = studentData.id || studentData._id;
+
+        // O código secreto habilita o vínculo de responsável: só a gestão o vê,
+        // e apenas pela rota dedicada /api/alunos/codigos-secretos.
+        delete studentData.codigoSecreto;
 
         // Resolve URL da foto se estiver no GridFS
         if (studentData.foto && studentData.foto.startsWith('gridfs:')) {
@@ -203,14 +204,17 @@ exports.create = async (req, res) => {
         const student = new Aluno(filteredBody);
         await student.save();
 
+        // SEGURANÇA: o código secreto NUNCA entra em log de auditoria nem em
+        // stdout — ele é a credencial que vincula um responsável ao aluno, e
+        // agregadores de log (Render) o exporiam a quem tem acesso à esteira.
         const { logAction } = require('../utils/auditHelper');
         await logAction(req, 'CREATE_STUDENT', 'Alunos', {
             recursoId: student._id,
-            valorNovo: { nome: student.nome, codigoSecreto: student.codigoSecreto },
-            descricao: `Aluno ${student.nome} cadastrado com código secreto: ${student.codigoSecreto}`
+            valorNovo: { nome: student.nome },
+            descricao: `Aluno ${student.nome} cadastrado (código secreto gerado).`
         });
 
-        console.log(`✅ [STUDENT-CREATE] Aluno ${student.nome} criado com sucesso. Código: ${student.codigoSecreto}`);
+        console.log(`✅ [STUDENT-CREATE] Aluno ${student.nome} criado com sucesso.`);
         res.status(201).json({ success: true, data: student, message: 'Estudante cadastrado com sucesso!' });
     } catch (error) {
         console.error(`❌ [STUDENT-CREATE] Erro ao criar aluno:`, error.message);
@@ -260,17 +264,14 @@ exports.update = async (req, res) => {
         if (filteredBody.turmaId) filteredBody.turma = filteredBody.turmaId;
         else if (filteredBody.turma) filteredBody.turmaId = filteredBody.turma;
 
-        // --- SEGURANÇA: Verificação Horizontal para Professor (Prevenção IDOR) ---
-        const existingStudent = await Aluno.findOne({ $or: [{ _id: req.params.id }, { id: req.params.id }] }).lean();
-        if (!existingStudent) return res.status(404).json({ success: false, error: 'Aluno não encontrado' });
+        // --- SEGURANÇA: escola (multi-tenant) + turma (professor) ---
+        const acesso = await assertAcessoAoAluno(req, req.params.id);
+        if (!acesso.ok) return res.status(acesso.status).json({ success: false, error: acesso.error });
+        const existingStudent = acesso.aluno;
 
         if (req.user && req.user.perfil === 'professor') {
             const allowed = req.allowedTurmas || [];
-            const turmaAluno = existingStudent.turma || existingStudent.turmaId;
-            if (!allowed.includes(turmaAluno)) {
-                return res.status(403).json({ success: false, error: 'Acesso negado. Você não tem permissão para alterar dados deste aluno.' });
-            }
-            
+
             // Se tentar alterar a turma do aluno, valida se a nova turma também é autorizada
             const targetTurma = filteredBody.turma || filteredBody.turmaId;
             if (targetTurma && !allowed.includes(targetTurma)) {
@@ -315,17 +316,9 @@ exports.update = async (req, res) => {
 
 exports.delete = async (req, res) => {
     try {
-        // --- SEGURANÇA: Verificação Horizontal para Professor (Prevenção IDOR) ---
-        const existingStudent = await Aluno.findOne({ $or: [{ _id: req.params.id }, { id: req.params.id }] }).lean();
-        if (!existingStudent) return res.status(404).json({ success: false, error: 'Aluno não encontrado' });
-
-        if (req.user && req.user.perfil === 'professor') {
-            const allowed = req.allowedTurmas || [];
-            const turmaAluno = existingStudent.turma || existingStudent.turmaId;
-            if (!allowed.includes(turmaAluno)) {
-                return res.status(403).json({ success: false, error: 'Acesso negado. Você não tem permissão para remover este aluno.' });
-            }
-        }
+        // --- SEGURANÇA: escola (multi-tenant) + turma (professor) ---
+        const acesso = await assertAcessoAoAluno(req, req.params.id);
+        if (!acesso.ok) return res.status(acesso.status).json({ success: false, error: acesso.error });
         // -------------------------------------------------------------------------
 
         // Soft delete preferido via 'ativo: false', mas implementando delete real conforme pedido ou soft se 'ativo' existir

@@ -2,6 +2,12 @@ const Notificacao = require('../models/Notificacao');
 const Professor = require('../models/Professor');
 const Aluno = require('../models/Aluno');
 const { escolaMatch } = require('../middleware/filtrarPorEscola');
+const escapeRegex = require('../utils/escapeRegex');
+
+/** Regex ancorada e escapada para casar e-mail exato. */
+function emailRegexExato(email) {
+    return new RegExp(`^${escapeRegex(String(email || ''))}$`, 'i');
+}
 
 module.exports = {
     async getAll(req, res) {
@@ -52,7 +58,10 @@ module.exports = {
                 // Só vê notificações marcadas com paraResponsavel: true filtradas pelas informações vinculadas
                 const email = req.user?.email;
                 if (email) {
-                    const query = { $or: [{ responsavel: email }, { responsavel: new RegExp(`^${email}$`, 'i') }] };
+                    // Regex escapada: e-mails com metacaracteres (o próprio
+                    // responsável pode trocar o seu em updateProfile) casariam
+                    // com os alunos de outras famílias.
+                    const query = { responsavel: emailRegexExato(email) };
                     const alunos = await Aluno.find(query).lean();
                     const destinatariosList = ['todos'];
                     alunos.forEach(a => {
@@ -127,11 +136,26 @@ module.exports = {
     async delete(req, res) {
         try {
             const { id } = req.params;
-            const deleted = await Notificacao.findOneAndDelete({ $or: [{ _id: id }, { id: id }] });
-            
+
+            // Multi-escola: só apaga notificação da escola ativa (admin vê tudo)
+            const filtro = { $or: [{ _id: String(id) }, { id: String(id) }] };
+            const escolaFilter = req.user?.perfil === 'admin' ? {} : escolaMatch(req.escolaId);
+            const filtroFinal = Object.keys(escolaFilter).length
+                ? { $and: [filtro, escolaFilter] }
+                : filtro;
+
+            const deleted = await Notificacao.findOneAndDelete(filtroFinal);
+
             if (!deleted) {
                 return res.status(404).json({ success: false, error: 'Notificação não encontrada' });
             }
+
+            const { logAction } = require('../utils/auditHelper');
+            await logAction(req, 'DELETE_NOTIFICATION', 'Notificacoes', {
+                recursoId: deleted._id,
+                descricao: `Notificação "${deleted.titulo || deleted.id}" removida.`
+            });
+
             res.json({ success: true, message: 'Notificação removida com sucesso' });
         } catch (error) {
             console.error('Erro em NotificacaoController.delete:', error);
@@ -203,7 +227,7 @@ module.exports = {
                 };
             } else if (userPerfil === 'responsavel') {
                 const email = req.user?.email;
-                const query = { $or: [{ responsavel: email }, { responsavel: new RegExp(`^${email}$`, 'i') }] };
+                const query = { responsavel: emailRegexExato(email) };
                 const alunos = await Aluno.find(query).lean();
                 const destinatariosList = ['todos'];
                 alunos.forEach(a => {

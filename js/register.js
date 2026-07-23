@@ -95,6 +95,46 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // ── Multi-escola: seletor de escola no cadastro do docente ────────────
+    // Escola efetiva do cadastro: contexto travado da landing (?escolaId) tem
+    // prioridade; caso contrário, usa a escola escolhida no seletor.
+    function getEscolaCadastroId() {
+        if (window.EscolaContexto && window.EscolaContexto.id) return window.EscolaContexto.id;
+        const sel = document.getElementById('escolaCadastro');
+        return (sel && sel.value) ? sel.value : null;
+    }
+
+    if (isDocente) {
+        const escolaGroup = document.getElementById('escolaCadastroGroup');
+        const escolaSelect = document.getElementById('escolaCadastro');
+        // Só exibe o seletor quando a escola NÍO veio travada da landing.
+        if (escolaGroup && escolaSelect && !(window.EscolaContexto && window.EscolaContexto.id)) {
+            const API_BASE = window.API_BASE_URL || '/api';
+            fetch(`${API_BASE}/escolas`, { credentials: 'include' })
+                .then(res => res.json())
+                .then(data => {
+                    const escolas = (data && data.success && Array.isArray(data.data)) ? data.data.filter(e => e.ativo) : [];
+                    if (!escolas.length) return; // sem escolas ativas → mantém oculto
+                    escolas
+                        .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
+                        .forEach(e => {
+                            const opt = document.createElement('option');
+                            opt.value = e._id;
+                            opt.textContent = e.nome + (e.bairro ? ' — ' + e.bairro : '');
+                            escolaSelect.appendChild(opt);
+                        });
+                    escolaGroup.style.display = '';
+                    // Trocar de escola revalida o código secreto (agora escopado à escola)
+                    escolaSelect.addEventListener('change', () => {
+                        const codigoInput = document.getElementById('codigoEscola');
+                        if (codigoInput && codigoInput.value.trim()) codigoInput.dispatchEvent(new Event('input'));
+                        else validateForm();
+                    });
+                })
+                .catch(() => { /* falha de rede → mantém oculto; código secreto identifica a escola */ });
+        }
+    }
+
     // ── Olhinho (toggle senha) ───────────────────────────────────────────
     function setupToggle(btnId, inputId) {
         const btn = document.getElementById(btnId);
@@ -174,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const res = await fetch(`${baseUrl}/auth/validate-code`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ codigo: code })
+                        body: JSON.stringify({ codigo: code, escolaId: getEscolaCadastroId() || undefined })
                     });
                     const data = await res.json();
                     if (data.success && data.valid) {
@@ -215,7 +255,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Requer que o código esteja validado por API antes de submeter (apenas docente)
         const codeOk = !isDocente || (codigoInput && codigoInput.classList.contains('code-valid'));
 
-        btnSubmit.disabled = !(passOk && allFilled && codeOk);
+        // Multi-escola: se o seletor de escola estiver visível, escolher é obrigatório
+        const escolaGroup = document.getElementById('escolaCadastroGroup');
+        const escolaSelect = document.getElementById('escolaCadastro');
+        const escolaOk = !escolaGroup || escolaGroup.style.display === 'none' || (escolaSelect && !!escolaSelect.value);
+
+        btnSubmit.disabled = !(passOk && allFilled && codeOk && escolaOk);
     }
 
     // ── Submissão do formulário ──────────────────────────────────────────
@@ -242,8 +287,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     matricula:  document.getElementById('matricula').value.trim(),
                     telefone:   document.getElementById('telefone').value.trim(),
                     codigoEscola: document.getElementById('codigoEscola').value.trim(),
-                    // Multi-escola: escola pré-selecionada no modal da landing
-                    escolaId: (window.EscolaContexto && window.EscolaContexto.id) || undefined
+                    // Multi-escola: escola travada da landing OU escolhida no seletor
+                    escolaId: getEscolaCadastroId() || undefined
                 };
             } else {
                 endpoint = `${API_BASE}/auth/register-responsavel`;
