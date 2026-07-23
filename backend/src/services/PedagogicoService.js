@@ -29,11 +29,12 @@ class PedagogicoService {
     static async getMediaEscola(ef = {}) {
         const pipeline = [
             { $match: { nota: { $exists: true, $ne: null }, ...ef } },
-            { $addFields: { notaNum: { $toDouble: "$nota" } } },
+            { $addFields: { notaNum: { $convert: { input: "$nota", to: "double", onError: null, onNull: null } } } },
+            { $match: { notaNum: { $ne: null } } },
             { $group: { _id: null, avg: { $avg: "$notaNum" } } }
         ];
         const result = await Nota.aggregate(pipeline);
-        return result.length > 0 ? result[0].avg.toFixed(1) : "0";
+        return (result.length > 0 && result[0].avg != null) ? result[0].avg.toFixed(1) : "0";
     }
 
     /**
@@ -72,12 +73,13 @@ class PedagogicoService {
     static async getMediasPorTurma(ef = {}) {
         const pipeline = [
             { $match: { nota: { $exists: true, $ne: null }, ...ef } },
-            { $addFields: { notaNum: { $toDouble: '$nota' }, turmaFinal: { $ifNull: ['$turmaId', 'Sem turma'] } } },
+            { $addFields: { notaNum: { $convert: { input: "$nota", to: "double", onError: null, onNull: null } }, turmaFinal: { $ifNull: ['$turmaId', 'Sem turma'] } } },
+            { $match: { notaNum: { $ne: null } } },
             { $group: { _id: '$turmaFinal', media: { $avg: '$notaNum' }, qtdNotas: { $sum: 1 } } },
             { $sort: { media: 1 } },
         ];
         const rows = await Nota.aggregate(pipeline);
-        return rows.map(r => ({ turma: r._id, media: Number(r.media.toFixed(1)), qtdNotas: r.qtdNotas }));
+        return rows.map(r => ({ turma: r._id, media: r.media != null ? Number(r.media.toFixed(1)) : 0, qtdNotas: r.qtdNotas }));
     }
 
     /**
@@ -88,15 +90,16 @@ class PedagogicoService {
             { $match: { nota: { $exists: true, $ne: null }, ...ef } },
             {
                 $addFields: {
-                    notaNum: { $toDouble: '$nota' },
+                    notaNum: { $convert: { input: "$nota", to: "double", onError: null, onNull: null } },
                     materiaFinal: { $ifNull: ['$materiaId', '$materia', 'Geral'] }
                 }
             },
+            { $match: { notaNum: { $ne: null } } },
             { $group: { _id: '$materiaFinal', media: { $avg: '$notaNum' }, qtd: { $sum: 1 } } },
             { $sort: { media: 1 } },
             { $limit: n }
         ]);
-        return rows.map(r => ({ materia: r._id, media: Number(r.media.toFixed(1)), qtd: r.qtd }));
+        return rows.map(r => ({ materia: r._id, media: r.media != null ? Number(r.media.toFixed(1)) : 0, qtd: r.qtd }));
     }
 
     /**
@@ -107,16 +110,17 @@ class PedagogicoService {
             { $match: { nota: { $exists: true, $ne: null }, ...ef } },
             {
                 $addFields: {
-                    notaNum: { $toDouble: "$nota" },
+                    notaNum: { $convert: { input: "$nota", to: "double", onError: null, onNull: null } },
                     materiaFinal: { $ifNull: ["$materiaId", "$materia", "Geral"] }
                 }
             },
+            { $match: { notaNum: { $ne: null } } },
             { $group: { _id: "$materiaFinal", media: { $avg: "$notaNum" } } },
             { $sort: { media: 1 } },
             { $limit: 1 }
         ]);
 
-        if (heatmapData.length === 0) return null;
+        if (heatmapData.length === 0 || !heatmapData[0].media) return null;
         return {
             materia: heatmapData[0]._id,
             media: heatmapData[0].media.toFixed(1)

@@ -71,7 +71,7 @@ window.PushNotifications = (function () {
     }
 
     async function saveSubscription(subscription) {
-        await fetch(apiUrl('/notifications/realtime/subscribe'), {
+        const res = await fetch(apiUrl('/notifications/realtime/subscribe'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -80,6 +80,11 @@ window.PushNotifications = (function () {
             credentials: 'include',
             body: JSON.stringify(subscription)
         });
+        // Confirma que o backend realmente persistiu a inscrição no banco.
+        if (!res.ok) {
+            throw new Error('O servidor não confirmou o salvamento da inscrição de push.');
+        }
+        return res.json().catch(() => null);
     }
 
     // Cria (ou reaproveita) a inscrição do dispositivo e envia ao backend.
@@ -129,9 +134,9 @@ window.PushNotifications = (function () {
         }
 
         try {
-            const ok = await subscribeDevice();
-            if (ok) removeBanner();
-            return ok;
+            // subscribeDevice() só retorna true depois que o backend confirma
+            // que a inscrição foi salva no banco (ver saveSubscription).
+            return await subscribeDevice();
         } catch (err) {
             console.error('[Push] Falha ao ativar notificações:', err);
             return false;
@@ -182,7 +187,10 @@ window.PushNotifications = (function () {
             btn.disabled = true;
             btn.textContent = 'Ativando...';
             const ok = await enable();
-            if (!ok) {
+            if (ok) {
+                // Salvo no banco: NÃO some — mostra o estado confirmado.
+                markBannerActivated();
+            } else {
                 btn.disabled = false;
                 btn.textContent = 'Ativar';
             }
@@ -191,6 +199,22 @@ window.PushNotifications = (function () {
             localStorage.setItem(DISMISS_KEY, '1');
             removeBanner();
         });
+    }
+
+    // Após ativar e o backend confirmar o salvamento, transforma o aviso num
+    // estado de confirmação que PERMANECE na tela (não desaparece sozinho).
+    function markBannerActivated() {
+        const banner = document.getElementById('push-enable-banner');
+        if (!banner) return;
+        banner.style.borderColor = 'rgba(16,185,129,0.6)';
+        banner.innerHTML =
+            '<div style="font-size:1.6rem;line-height:1">✅</div>' +
+            '<div style="flex:1;line-height:1.35">' +
+            '<strong style="display:block;color:#34d399;margin-bottom:2px">Notificações ativadas</strong>' +
+            '<span style="color:#cbd5e1;font-size:0.82rem">Preferência salva no sistema. Você receberá os avisos da escola neste dispositivo.</span>' +
+            '</div>' +
+            '<button id="push-dismiss-btn" aria-label="Fechar" style="background:transparent;color:#94a3b8;border:none;font-size:1.3rem;cursor:pointer;line-height:1;padding:0 4px">&times;</button>';
+        document.getElementById('push-dismiss-btn').addEventListener('click', removeBanner);
     }
 
     function removeBanner() {

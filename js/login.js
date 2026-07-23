@@ -88,28 +88,41 @@ async function setupEscolaSelect() {
         const baseUrl = (window.auth && auth._apiBase) ? auth._apiBase() : (window.API_BASE_URL || 'http://localhost:3001/api');
         const res = await fetch(`${baseUrl}/escolas`, { credentials: 'include' });
         const data = await res.json();
-        const escolas = (data && data.success && Array.isArray(data.data)) ? data.data.filter(e => e.ativo) : [];
+        const escolas = (data && data.success && Array.isArray(data.data)) ? data.data : [];
 
-        if (!escolas.length) return; // sem escolas ativas → mantém oculto (fallback do backend)
+        if (!escolas.length) return; // sem escolas → mantém oculto (fallback do backend)
+
+        select.innerHTML = '<option value="">Selecione a sua escola...</option>';
 
         escolas
-            .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
+            .sort((a, b) => {
+                const aIsJ = (a.nome || '').toLowerCase().includes('jaguari') || (a.nome || '').toLowerCase().includes('mascellani') || a.ativo;
+                const bIsJ = (b.nome || '').toLowerCase().includes('jaguari') || (b.nome || '').toLowerCase().includes('mascellani') || b.ativo;
+                return (bIsJ ? 1 : 0) - (aIsJ ? 1 : 0) || (a.nome || '').localeCompare(b.nome || '');
+            })
             .forEach((e) => {
+                const isJaguari = (e.nome || '').toLowerCase().includes('jaguari') || (e.nome || '').toLowerCase().includes('mascellani') || e.ativo;
                 const opt = document.createElement('option');
                 opt.value = e._id;
-                opt.textContent = e.nome + (e.bairro ? ' — ' + e.bairro : '');
+                opt.textContent = e.nome + (e.bairro ? ' — ' + e.bairro : '') + (isJaguari ? ' (Disponível)' : ' 🔒 (Bloqueada - Em breve)');
+                if (!isJaguari) {
+                    opt.disabled = true;
+                }
                 select.appendChild(opt);
             });
 
-        // Pré-seleciona a escola vinda do modal da landing, se houver
+        // Pré-seleciona a escola vinda do modal da landing, se houver e estiver ativa
         const ctx = getEscolaIdFromUrl();
         if (ctx && escolas.some(e => String(e._id) === String(ctx))) {
             select.value = ctx;
+        } else {
+            // Seleciona a Jaguari por padrão
+            const jaguariOpt = Array.from(select.options).find(o => !o.disabled && o.value);
+            if (jaguariOpt) select.value = jaguariOpt.value;
         }
 
         group.style.display = '';
     } catch (e) {
-        // Falha de rede — mantém o campo oculto para não travar o login
         console.warn('Não foi possível carregar as escolas:', e);
     }
 }

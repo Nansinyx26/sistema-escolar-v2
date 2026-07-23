@@ -1,10 +1,16 @@
 /** perfil-events.js — substitui onclick do perfil.html */
 document.addEventListener('DOMContentLoaded', function () {
-    // Botões podem ter id duplicado (voltarDashboard aparece em 2 lugares)
+    // Botões podem ter id duplicado (voltarDashboard aparece em 2 lugares: topo e formulário)
     document.querySelectorAll('[id="btn-voltar-dashboard"], #btn-voltar-dashboard').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            if (typeof window.smartBack === 'function') window.smartBack('dashboard.html');
-            else if (typeof voltarDashboard === 'function') voltarDashboard();
+        btn.addEventListener('click', function (e) {
+            if (e) e.preventDefault();
+            if (typeof window.smartBack === 'function') {
+                window.smartBack('dashboard.html');
+            } else if (typeof voltarDashboard === 'function') {
+                voltarDashboard();
+            } else {
+                window.history.back();
+            }
         });
     });
     const btnFerr = document.getElementById('btn-ferramentas');

@@ -269,3 +269,148 @@
 :root[data-theme="light"] [style*="rgba(255, 255, 255, 0.05)"] {
     background: rgba(15, 23, 42, 0.04) !important;
 }
+
+/* "Como funciona": numerador dos passos (.step-n).
+   Na landing o número usa color: var(--a) (ciano a 12% de opacidade), que
+   fica invisível sobre o badge branco do tema claro. Aqui damos contraste. */
+:root[data-theme="light"] .step-n {
+    background: var(--bg-tertiary) !important;
+    border-color: var(--border-secondary) !important;
+    color: var(--primary) !important;
+}
+:root[data-theme="light"] .step:hover .step-n {
+    background: var(--primary) !important;
+    border-color: var(--primary) !important;
+    color: #ffffff !important;
+}
+
+/* ========================================================================== */
+/* 4. CORREÇÕES ABRANGENTES E HARMONIZAÇÃO DE COMPONENTES DO TEMA CLARO      */
+/* ========================================================================== */
+
+/* --- Texto inline branco que fica invisível sobre fundo claro ------------ */
+:root[data-theme="light"] [style*="color: #fff"]:not(.btn-primary):not(.btn-danger):not(.btn-success):not(.btn-warning):not(.badge-primary):not(.badge-danger):not(.badge-success):not(.badge-warning),
+:root[data-theme="light"] [style*="color:#fff"]:not(.btn-primary):not(.btn-danger):not(.btn-success):not(.btn-warning):not(.badge-primary):not(.badge-danger):not(.badge-success):not(.badge-warning),
+:root[data-theme="light"] [style*="color: white"]:not(.btn-primary):not(.btn-danger):not(.btn-success):not(.btn-warning):not(.badge-primary):not(.badge-danger):not(.badge-success):not(.badge-warning),
+:root[data-theme="light"] [style*="color:white"]:not(.btn-primary):not(.btn-danger):not(.btn-success):not(.btn-warning):not(.badge-primary):not(.badge-danger):not(.badge-success):not(.badge-warning),
+:root[data-theme="light"] [style*="color: #ffffff"]:not(.btn-primary):not(.btn-danger):not(.btn-success):not(.btn-warning):not(.badge-primary):not(.badge-danger):not(.badge-success):not(.badge-warning),
+:root[data-theme="light"] [style*="color:#ffffff"]:not(.btn-primary):not(.btn-danger):not(.btn-success):not(.btn-warning):not(.badge-primary):not(.badge-danger):not(.badge-success):not(.badge-warning) {
+    color: var(--text-primary) !important;
+}
+
+/* Textos translúcidos brancos inline */
+:root[data-theme="light"] [style*="color: rgba(255, 255, 255"],
+:root[data-theme="light"] [style*="color:rgba(255,255,255"] {
+    color: var(--text-secondary) !important;
+}
+
+/* Preserva texto branco em botões com fundo sólido colorido */
+:root[data-theme="light"] .btn-primary,
+:root[data-theme="light"] .btn-danger,
+:root[data-theme="light"] .btn-success,
+:root[data-theme="light"] .btn-warning,
+:root[data-theme="light"] .badge-primary,
+:root[data-theme="light"] .badge-danger,
+:root[data-theme="light"] .badge-success,
+:root[data-theme="light"] .badge-warning {
+    color: #ffffff !important;
+}
+
+/* --- Tabelas de Dados e Grades ------------------------------------------- */
+:root[data-theme="light"] table,
+:root[data-theme="light"] .table,
+:root[data-theme="light"] .data-table,
+:root[data-theme="light"] .table-responsive {
+    background-color: #ffffff !important;
+    color: var(--text-body) !important;
+    border-color: var(--border-secondary) !important;
+}
+
+:root[data-theme="light"] th,
+:root[data-theme="light"] .table th {
+    background-color: #f1f5f9 !important;
+    color: var(--text-primary) !important;
+    border-bottom: 2px solid var(--border-secondary) !important;
+    font-weight: 600;
+}
+
+:root[data-theme="light"] td,
+:root[data-theme="light"] .table td {
+    background-color: #ffffff !important;
+    color: var(--text-body) !important;
+    border-bottom: 1px solid var(--border-primary) !important;
+}
+
+:root[data-theme="light"] tr:hover td {
+    background-color: #f8fafc !important;
+}
+
+/* --- Cartões de Estatística, KPIs e BI ---------------------------------- */
+:root[data-theme="light"] .stat-card,
+:root[data-theme="light"] .kpi-card,
+:root[data-theme="light"] .dashboard-card,
+:root[data-theme="light"] .bi-card,
+:root[data-theme="light"] .feature-card,
+:root[data-theme="light"] .perfil-card,
+:root[data-theme="light"] .cadastro-card {
+    background: #ffffff !important;
+    border: 1px solid var(--border-secondary) !important;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06) !important;
+    color: var(--text-primary) !important;
+}
+
+:root[data-theme="light"] .stat-value,
+:root[data-theme="light"] .kpi-value,
+:root[data-theme="light"] .stat-number,
+:root[data-theme="light"] .metric-value {
+    color: var(--text-primary) !important;
+}
+
+:root[data-theme="light"] .stat-label,
+:root[data-theme="light"] .kpi-title,
+:root[data-theme="light"] .stat-desc,
+:root[data-theme="light"] .metric-label {
+    color: var(--text-secondary) !important;
+}
+
+/* --- Fundo com cores escuras inline ------------------------------------- */
+:root[data-theme="light"] [style*="background: #1e293b"],
+:root[data-theme="light"] [style*="background:#1e293b"],
+:root[data-theme="light"] [style*="background: #0f172a"],
+:root[data-theme="light"] [style*="background:#0f172a"],
+:root[data-theme="light"] [style*="background: #18181b"],
+:root[data-theme="light"] [style*="background:#18181b"],
+:root[data-theme="light"] [style*="background: #09090b"],
+:root[data-theme="light"] [style*="background:#09090b"] {
+    background: #ffffff !important;
+    border-color: var(--border-secondary) !important;
+    color: var(--text-primary) !important;
+}
+
+/* --- Modais e Janelas Flutuantes ----------------------------------------- */
+:root[data-theme="light"] .modal-container,
+:root[data-theme="light"] .modal-card,
+:root[data-theme="light"] .sweet-alert,
+:root[data-theme="light"] .swal2-popup,
+:root[data-theme="light"] .modal-content {
+    background: #ffffff !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-secondary) !important;
+    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.15) !important;
+}
+
+/* --- Formulários e Controles --------------------------------------------- */
+:root[data-theme="light"] .form-input,
+:root[data-theme="light"] .form-select,
+:root[data-theme="light"] .form-control {
+    background-color: #ffffff !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-secondary) !important;
+}
+
+:root[data-theme="light"] .form-input:focus,
+:root[data-theme="light"] .form-select:focus,
+:root[data-theme="light"] .form-control:focus {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15) !important;
+}

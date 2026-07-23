@@ -30,8 +30,12 @@
         var lista = document.getElementById('schoolSwitcherList');
         if (!lista || !escolas.length) return;
 
-        // Ativas primeiro, depois por tipo/nome (a API já ordena por tipo/nome)
-        escolas.sort(function (a, b) { return (b.ativo ? 1 : 0) - (a.ativo ? 1 : 0); });
+        // Escola Jaguari/Ativa primeiro
+        escolas.sort(function (a, b) {
+            var aIsJ = (a.nome || '').toLowerCase().includes('jaguari') || (a.nome || '').toLowerCase().includes('mascellani') || a.ativo;
+            var bIsJ = (b.nome || '').toLowerCase().includes('jaguari') || (b.nome || '').toLowerCase().includes('mascellani') || b.ativo;
+            return (bIsJ ? 1 : 0) - (aIsJ ? 1 : 0);
+        });
 
         lista.textContent = '';
         escolas.forEach(function (e) {
@@ -43,11 +47,11 @@
             item.appendChild(icone);
             item.appendChild(document.createTextNode(' ' + textoEscola(e) + ' '));
 
-            if (e.ativo) {
+            var isJaguari = (e.nome || '').toLowerCase().includes('jaguari') || (e.nome || '').toLowerCase().includes('mascellani') || e.ativo;
+
+            if (isJaguari) {
                 item.href = '/html/login.html?escolaId=' + encodeURIComponent(e._id);
                 item.title = 'Entrar em ' + e.nome;
-                // Persiste a escolha: a marca da landing (e futuras visitas)
-                // passa a exibir a escola selecionada
                 item.addEventListener('click', function () {
                     try {
                         localStorage.setItem('escolaSelecionada', JSON.stringify({ id: String(e._id), nome: e.nome }));
@@ -58,8 +62,16 @@
                 var cadeado = document.createElement('i');
                 cadeado.className = 'bi bi-lock-fill lock-icon-item';
                 item.appendChild(cadeado);
-                item.title = 'Em breve';
+                item.title = 'Bloqueada - Em breve';
                 item.setAttribute('aria-disabled', 'true');
+                item.style.opacity = '0.6';
+                item.style.cursor = 'not-allowed';
+                item.addEventListener('click', function (evt) {
+                    evt.preventDefault();
+                    if (typeof showToast === 'function') {
+                        showToast('Esta escola está temporariamente indisponível. Apenas a Escola Jaguari está em operação.', 'warning');
+                    }
+                });
             }
             lista.appendChild(item);
         });

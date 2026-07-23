@@ -482,6 +482,60 @@
 }
 
 
+/* =========================================================
+   TEMA CLARO — muitos textos/fundos do chat são fixos em cores
+   escuras (#fff, #f1f5f9, rgba escuros). No tema claro isso deixa
+   o texto branco sobre fundo branco (invisível). Aqui damos contraste:
+   texto escuro sobre superfícies claras.
+   ========================================================= */
+:root[data-theme="light"] .chatbot-window {
+    box-shadow: 0 25px 60px rgba(15, 23, 42, 0.18);
+}
+:root[data-theme="light"] .chatbot-header h3 {
+    color: var(--text-primary);
+}
+:root[data-theme="light"] .chatbot-header-status {
+    color: var(--primary);
+}
+:root[data-theme="light"] .chatbot-icon-btn {
+    background: rgba(15, 23, 42, 0.04);
+    border-color: var(--border-secondary);
+    color: var(--text-secondary);
+}
+:root[data-theme="light"] .chatbot-icon-btn:hover {
+    color: var(--primary);
+}
+/* Balão da IA: texto preto e fundo claro sutil */
+:root[data-theme="light"] .msg-ai .msg-text-bubble {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-secondary);
+}
+:root[data-theme="light"] .audio-settings-panel {
+    background: rgba(15, 23, 42, 0.03);
+}
+:root[data-theme="light"] .setting-item {
+    color: var(--text-secondary);
+}
+:root[data-theme="light"] .setting-item select,
+:root[data-theme="light"] .setting-item input[type="range"] {
+    background: #ffffff;
+    border-color: var(--border-secondary);
+    color: var(--text-primary);
+}
+:root[data-theme="light"] .chatbot-input {
+    background: rgba(15, 23, 42, 0.03);
+}
+:root[data-theme="light"] .chatbot-input input {
+    background: #ffffff;
+    color: var(--text-primary);
+    border-color: var(--border-secondary);
+}
+:root[data-theme="light"] .voice-animation-container {
+    background: rgba(15, 23, 42, 0.04);
+}
+
+
 /* Mobile Responsiveness */
 
 @media (max-width: 640px) {

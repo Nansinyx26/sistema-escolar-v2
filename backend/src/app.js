@@ -77,22 +77,64 @@ app.use(helmet({
     crossOriginEmbedderPolicy: false, // Desabilitado para compatibilidade com CDNs
 }));
 
-// Rate Limiter Global (Protecao contra DoS generico)
-// DESABILITADO em desenvolvimento/testes para nao interferir
+// ============================================
+// SERVIR ARQUIVOS ESTÁTICOS (Antes de qualquer rate limiter)
+// ============================================
+const frontendRootPath = path.join(__dirname, '../../');
+const staticDirectories = [
+    'css',
+    'js',
+    'img',
+    'html',
+    'detalhes',
+    'direcao',
+    'graficos',
+    'favicon',
+    'portal-responsavel/dist'
+];
+const staticFiles = [
+    'index.html',
+    'manifest.json',
+    'sw.js',
+    'service-worker.js',
+    'favicon.ico',
+    'favicon.svg'
+];
+const staticOptions = {
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.woff2')) res.setHeader('Content-Type', 'font/woff2');
+        if (filePath.endsWith('.woff')) res.setHeader('Content-Type', 'font/woff');
+    }
+};
+
+staticDirectories.forEach((directory) => {
+    app.use(`/${directory}`, express.static(path.join(frontendRootPath, directory), staticOptions));
+});
+
+staticFiles.forEach((file) => {
+    app.get(`/${file}`, (req, res) => {
+        res.sendFile(path.join(frontendRootPath, file));
+    });
+});
+
+// Raiz do site → landing page
+app.get('/', (req, res) => {
+    res.sendFile(path.join(frontendRootPath, 'index.html'));
+});
+
+// Rate Limiter Global (Proteção contra DoS em chamadas de API)
 const isProduction = process.env.NODE_ENV === 'production';
 const isTest = process.env.NODE_ENV === 'test';
 
-// Limiters ficam ATIVOS em desenvolvimento (com teto folgado) — desligá-los
-// fora de produção significava que nenhuma força bruta era exercitada antes
-// do deploy. Só os testes automatizados ficam de fora.
 const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: isProduction ? 500 : 5000,
-    message: { success: false, error: 'Muitas requisicoes vindas deste IP. Tente novamente mais tarde.' },
-    skip: () => isTest
+    max: isProduction ? 2000 : 5000,
+    message: { success: false, error: 'Muitas requisições vindas deste IP. Tente novamente mais tarde.' },
+    skip: (req) => isTest || !req.path.startsWith('/api')
 });
 
-app.use(globalLimiter);
+// Aplicar o globalLimiter APENAS em rotas /api
+app.use('/api', globalLimiter);
 
 // Rate Limiter Especifico para Autenticacao (Brute Force)
 const authLimiter = rateLimit({
@@ -101,18 +143,13 @@ const authLimiter = rateLimit({
     skip: () => isTest,
     message: {
         success: false,
-        error: 'Muitas tentativas de login ou recuperacao. Tente novamente em 15 minutos.'
+        error: 'Muitas tentativas de login ou recuperação. Tente novamente em 15 minutos.'
     },
     standardHeaders: true,
     legacyHeaders: false,
 });
 
-// Limiter agressivo para endpoints que validam SEGREDOS curtos: código 2FA,
-// código secreto da escola e código secreto do aluno. Sem isso, 10^6 (2FA) e
-// 36^6 (vínculo) eram varríveis à vontade.
-// O teto é por IP e generoso o bastante para uma escola inteira atrás de NAT,
-// mas reduz a varredura a séculos. A trava por conta fica no banco
-// (twoFactorAttempts / tentativasVinculo).
+// Limiter agressivo para endpoints que validam SEGREDOS curtos
 const codeLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hora
     max: isProduction ? 30 : 300,
@@ -125,9 +162,7 @@ const codeLimiter = rateLimit({
     legacyHeaders: false,
 });
 
-// Limiter do prefixo /api/auth: cobre cadastro/ativação, que antes não tinham
-// nenhum freio. Requisições GET (/me, /2fa/status, /google-client-id) ficam de
-// fora — são chamadas a cada carregamento de página.
+// Limiter do prefixo /api/auth
 const authPrefixLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: isProduction ? 60 : 600,
@@ -291,51 +326,6 @@ app.use('/api/auth', authPrefixLimiter);
 
 // Rotas
 app.use('/api', apiRoutes);
-
-// ============================================
-// SERVIR ARQUIVOS ESTÁTICOS — RESTRITO
-// ============================================
-const frontendRootPath = path.join(__dirname, '../../');
-const staticDirectories = [
-    'css',
-    'js',
-    'img',
-    'html',
-    'detalhes',
-    'direcao',
-    'graficos',
-    'favicon',
-    'portal-responsavel/dist'
-];
-const staticFiles = [
-    'index.html',
-    'manifest.json',
-    'sw.js',
-    'service-worker.js',
-    'favicon.ico',
-    'favicon.svg'
-];
-const staticOptions = {
-    setHeaders: (res, filePath) => {
-        if (filePath.endsWith('.woff2')) res.setHeader('Content-Type', 'font/woff2');
-        if (filePath.endsWith('.woff')) res.setHeader('Content-Type', 'font/woff');
-    }
-};
-
-staticDirectories.forEach((directory) => {
-    app.use(`/${directory}`, express.static(path.join(frontendRootPath, directory), staticOptions));
-});
-
-staticFiles.forEach((file) => {
-    app.get(`/${file}`, (req, res) => {
-        res.sendFile(path.join(frontendRootPath, file));
-    });
-});
-
-// Raiz do site → landing page
-app.get('/', (req, res) => {
-    res.sendFile(path.join(frontendRootPath, 'index.html'));
-});
 
 // 404 global: rota desconhecida NÃO mascara mais como landing page.
 // API → JSON; navegação → página de erro amigável (dark theme) com

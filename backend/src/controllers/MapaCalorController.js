@@ -15,7 +15,14 @@ exports.gerarMapaCalor = async(req, res) => {
             ...(temEscola ? [{ $match: ef }] : []),
             {
                 $addFields: {
-                    notaNum: { $toDouble: "$nota" },
+                    notaNum: {
+                        $convert: {
+                            input: "$nota",
+                            to: "double",
+                            onError: null,
+                            onNull: null
+                        }
+                    },
                     _materiaFinal: {
                         $cond: [
                             { $and: [{ $ifNull: ["$materiaId", false] }, { $ne: ["$materiaId", ""] }] },

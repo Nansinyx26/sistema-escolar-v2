@@ -451,19 +451,67 @@ function preventFormDefault(formId, callback) {
 }
 
 /**
+ * Registrar histórico de navegação no sessionStorage para fallback inteligente
+ */
+try {
+    const currentUrl = window.location.href;
+    const lastUrl = sessionStorage.getItem('current_page_url');
+    if (lastUrl && lastUrl !== currentUrl) {
+        sessionStorage.setItem('prev_page_url', lastUrl);
+    }
+    sessionStorage.setItem('current_page_url', currentUrl);
+} catch (e) {
+    // sessionStorage pode não estar disponível em contextos restritos
+}
+
+/**
  * Navegação inteligente: tenta voltar via histórico se possível, 
- * caso contrário redireciona para a URL de fallback.
+ * caso contrário redireciona para a URL de fallback ou página anterior armazenada.
  */
 window.smartBack = function (fallbackUrl = 'dashboard.html') {
     const referrer = document.referrer;
-    const host = window.location.host;
+    const host = window.location.host || window.location.hostname;
+    let prevUrl = null;
 
-    // Se viemos de uma página do mesmo sistema
-    if (referrer && referrer.includes(host) && referrer !== window.location.href) {
+    try {
+        prevUrl = sessionStorage.getItem('prev_page_url');
+    } catch (e) {}
+
+    const currentClean = window.location.href.split('?')[0].split('#')[0];
+    const referrerClean = referrer ? referrer.split('?')[0].split('#')[0] : '';
+    const isSameHost = referrer && (referrer.includes(host) || referrer.includes(window.location.hostname));
+    const isSamePage = referrerClean === currentClean;
+
+    // 1. Tentar window.history.back() se viemos de outra página do mesmo host ou se há histórico no navegador
+    if ((isSameHost && !isSamePage) || (window.history.length > 1 && !isSamePage && referrerClean)) {
+        let navigated = false;
+        const markNavigated = () => { navigated = true; };
+        window.addEventListener('pagehide', markNavigated, { once: true });
+        window.addEventListener('beforeunload', markNavigated, { once: true });
+
         window.history.back();
-    } else {
-        window.location.href = fallbackUrl;
+
+        // Se após 250ms a página não mudou, aciona o fallback inteligente
+        setTimeout(function () {
+            if (!navigated) {
+                if (prevUrl && prevUrl.split('?')[0].split('#')[0] !== currentClean) {
+                    window.location.href = prevUrl;
+                } else {
+                    window.location.href = fallbackUrl;
+                }
+            }
+        }, 250);
+        return;
     }
+
+    // 2. Se não foi possível usar history.back(), tentar prevUrl do sessionStorage se diferente da página atual
+    if (prevUrl && prevUrl.split('?')[0].split('#')[0] !== currentClean) {
+        window.location.href = prevUrl;
+        return;
+    }
+
+    // 3. Fallback final
+    window.location.href = fallbackUrl;
 };
 
 // Exportar para uso global

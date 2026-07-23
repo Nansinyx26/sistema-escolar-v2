@@ -130,8 +130,12 @@ exports.getChartData = async (req, res) => {
         // 1. By Turma
         const turmaMap = {};
         notes.forEach(n => {
-            if (!turmaMap[n.turmaId]) turmaMap[n.turmaId] = [];
-            turmaMap[n.turmaId].push(n.nota);
+            const val = Number(n.nota);
+            if (!isNaN(val)) {
+                const key = n.turmaId || 'Sem Turma';
+                if (!turmaMap[key]) turmaMap[key] = [];
+                turmaMap[key].push(val);
+            }
         });
         const turmasData = Object.keys(turmaMap).map(id => ({
             label: id,
@@ -139,23 +143,27 @@ exports.getChartData = async (req, res) => {
         }));
 
         // 2. By Materia
-        const materiaMap = {}; // We likely need a way to map ID to Name, or store Name in Note
-        // For now, grouping by materiaId (or fetching names if needed, but let's stick to IDs for speed or assume frontend mapping)
-        // Ideally, we populate or fetch distinct materiaIds. 
-        // Note model stores materiaId.
+        const materiaMap = {};
         notes.forEach(n => {
-            if (!materiaMap[n.materiaId]) materiaMap[n.materiaId] = [];
-            materiaMap[n.materiaId].push(n.nota);
+            const val = Number(n.nota);
+            if (!isNaN(val)) {
+                const key = n.materiaId || n.materia || 'Geral';
+                if (!materiaMap[key]) materiaMap[key] = [];
+                materiaMap[key].push(val);
+            }
         });
         const materiasData = Object.keys(materiaMap).map(id => ({
-            label: id, // Frontend can map this ID to name
+            label: id,
             value: (materiaMap[id].reduce((a, b) => a + b, 0) / materiaMap[id].length).toFixed(1)
         }));
 
         // 3. Evolution (Bimestre)
         const bimMap = { 1: [], 2: [], 3: [], 4: [] };
         notes.forEach(n => {
-            if (bimMap[n.bimestre]) bimMap[n.bimestre].push(n.nota);
+            const val = Number(n.nota);
+            if (!isNaN(val) && bimMap[n.bimestre]) {
+                bimMap[n.bimestre].push(val);
+            }
         });
         const evolucaoData = [1, 2, 3, 4].map(b => ({
             label: `${b}º Bim`,

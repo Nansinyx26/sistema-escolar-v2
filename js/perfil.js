@@ -575,9 +575,15 @@ function setupForm() {
     });
 }
 
-// === NAVEGAÇÍO ===
+// === NAVEGAÇÃO ===
 function voltarDashboard() {
-    window.location.href = 'dashboard.html';
+    if (typeof window.smartBack === 'function') {
+        window.smartBack('dashboard.html');
+    } else if (window.history.length > 1 && document.referrer && !document.referrer.includes('perfil.html')) {
+        window.history.back();
+    } else {
+        window.location.href = 'dashboard.html';
+    }
 }
 
 async function sair() {

@@ -293,6 +293,16 @@
     transform: scale(1.05);
 }
 
+/* Select de escola: o override global de select (components-new.css) força
+   padding-left: 1rem, fazendo o texto ficar por baixo do ícone da esquerda.
+   Aqui restauramos o espaçamento para alinhar com os demais campos. */
+.input-group select.form-input {
+    padding: 14px 40px 14px 48px !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
 .password-toggle {
     position: absolute;
     right: 14px;
