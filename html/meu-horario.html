@@ -45,6 +45,22 @@
             --yellow: #f59e0b;
         }
 
+        /* ── Tema claro ───────────────────────────────────────────────────
+           A página define suas próprias variáveis (não carrega variables.css),
+           então o modo claro precisa redefini-las aqui. Cascateia para tudo. */
+        :root[data-theme="light"] {
+            --bg-deep: #f1f5f9;
+            --bg-main: #ffffff;
+            --bg-card: #ffffff;
+            --bg-elevated: #f8fafc;
+            --border: #e2e8f0;
+            --border-light: #cbd5e1;
+            --text-primary: #0f172a;
+            --text-sec: #475569;
+            --text-muted: #94a3b8;
+            --accent-glow: rgba(139, 92, 246, .18);
+        }
+
         body {
             font-family: 'Inter', sans-serif;
             background: var(--bg-deep);

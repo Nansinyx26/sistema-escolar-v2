@@ -1052,3 +1052,38 @@ pre {
     grid-template-columns: 1fr !important;
   }
 }
+
+/* ============================================================
+   PERFORMANCE MOBILE — scroll fluido
+   backdrop-filter: blur() repinta a cada frame e é o maior vilão
+   de travamento de scroll em GPUs de celular. Em telas pequenas o
+   blur é quase imperceptível, então desligamos no mobile e mantemos
+   o fundo semitransparente já existente. Também desligamos animações
+   decorativas (orbs/float) que repintam durante o scroll.
+   Reversível: basta remover este bloco.
+   ============================================================ */
+@media (max-width: 768px) {
+    *, *::before, *::after {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
+    /* Fundos decorativos e brilhos animados: parados no mobile */
+    .orb, .dashboard-bg, [class*="orb-"],
+    .page-bg, .parallax-layer, .glow, .aurora {
+        animation: none !important;
+    }
+
+    /* Momentum scroll + evita “scroll chaining” engasgado */
+    html { scroll-behavior: auto; }
+    body {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-y: none;
+    }
+
+    /* Containers roláveis com inércia nativa */
+    .sidebar-nav, .dashboard-page, .feed-list,
+    .chatbot-body, .modal-content, .sd-body {
+        -webkit-overflow-scrolling: touch;
+    }
+}

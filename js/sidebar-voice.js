@@ -101,9 +101,11 @@ function initSidebar() {
         isOpen: () => sidebar.classList.contains('mobile-open')
     };
 
-    // Add mobile burger if not exists
+    // Add mobile burger só se a página não já tiver um hambúrguer no header.
+    // (o dashboard já traz #headerHamburger no HTML — injetar outro criava DOIS
+    // menus hambúrguer idênticos no mobile.)
     const menuBtnContainer = document.querySelector('.header-left') || document.querySelector('.navbar-content') || document.querySelector('.dashboard-header');
-    if (sidebar && menuBtnContainer && !document.getElementById('mobileHamburger')) {
+    if (sidebar && menuBtnContainer && !document.getElementById('mobileHamburger') && !document.getElementById('headerHamburger')) {
         const burger = document.createElement('button');
         burger.id = 'mobileHamburger';
         burger.type = 'button';

@@ -371,6 +371,35 @@
 :root[data-theme="light"] .msg-ai .msg-text-bubble { color: #0f172a; }
 :root[data-theme="light"] .msg-ai .msg-text-bubble a { color: #059669; }
 
+/* --- Escolher perfil: cards de estatística (selecionar.css) ---
+   Os cards ficavam cinza no fundo branco. Por pedido: card ESCURO/preto,
+   com valor branco (já é) e label claro. */
+:root[data-theme="light"] .stat-card {
+    background: #0f172a;
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+}
+:root[data-theme="light"] .stat-card-value { color: #ffffff; }
+:root[data-theme="light"] .stat-card-label { color: #cbd5e1; }
+
+/* --- Turma: tabela de alunos (turma.css) ---
+   As células (td) usavam color:#ffffff e o cabeçalho (th) cor muito clara,
+   sumindo no tema claro. */
+:root[data-theme="light"] .alunos-table td { color: #0f172a; }
+:root[data-theme="light"] .alunos-table th { color: #475569; }
+
+/* --- Sidebar do dashboard no tema claro (sidebar.css) ---
+   A sidebar fica clara, mas os textos eram claros (cinza/branco) e sumiam.
+   Aqui viram escuros/pretos. Item ativo continua verde. */
+:root[data-theme="light"] .sidebar-logo,
+:root[data-theme="light"] .sidebar-logo span { color: #0f172a; -webkit-text-fill-color: #0f172a; }
+:root[data-theme="light"] .user-fullname { color: #0f172a; }
+:root[data-theme="light"] .user-role-tag { color: #475569; }
+:root[data-theme="light"] .sidebar-group-label { color: #64748b; }
+:root[data-theme="light"] .sidebar-item { color: #1e293b; }
+:root[data-theme="light"] .sidebar-item:hover { color: #0f172a; }
+:root[data-theme="light"] .sidebar-item.active { color: #059669; }
+
 /* --- Painéis de voz (voice-panel.css / bi-pedagogico.css) --- */
 :root[data-theme="light"] .voice-panel,
 :root[data-theme="light"] .voice-panel-hidden { background: rgba(255, 255, 255, 0.98); border-color: rgba(15, 23, 42, 0.10); }
