@@ -160,7 +160,17 @@ class DatabaseManager {
     // Aliases para compatibilidade legada
     async findByIndex(store, idx, val) {
         const res = await this.getByIndex(store, idx, val);
-        return Array.isArray(res) ? res[0] : res;
+        if (Array.isArray(res)) {
+            if (res.length === 0) return null;
+            const match = res.find(item => 
+                String(item[idx]) === String(val) || 
+                String(item.idUsuario) === String(val) || 
+                String(item.email) === String(val) || 
+                String(item._id || item.id) === String(val)
+            );
+            return match || null;
+        }
+        return res;
     }
     async findById(store, id) { return this.get(store, id); }
     async getById(store, id) { return this.get(store, id); }

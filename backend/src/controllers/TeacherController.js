@@ -4,7 +4,7 @@ const ImageProcessor = require('../utils/imageProcessor');
 const PERFIS_GESTAO = ['admin', 'diretor', 'secretaria'];
 
 // Filtros de query aceitos na listagem. Qualquer outro parâmetro é ignorado.
-const ALLOWED_FILTERS = ['nome', 'email', 'disciplina', 'salaPrincipal', 'tipoEspecial', 'role', 'ativo'];
+const ALLOWED_FILTERS = ['nome', 'email', 'idUsuario', 'disciplina', 'salaPrincipal', 'tipoEspecial', 'role', 'ativo'];
 
 // Campos que o próprio docente pode editar no seu cadastro. As turmas
 // (salaPrincipal/salasAdicionais/turmas) e os vínculos de escola definem o

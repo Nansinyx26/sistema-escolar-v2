@@ -990,45 +990,39 @@ input:checked + .slider:before {
     gap: 4px;
 }
 
-/* MELHORIA: Forçar cor branca para descrições, cabeçalhos, metadados e colunas que não sejam notas */
-.turma-details .meta,
-.turma-details .meta span,
-.alunos-count,
-.alunos-table th,
-.observacoes,
-.col-nome,
-.col-condicao,
-.col-matricula,
-.col-faltas,
-.col-recuperacao {
+/* MELHORIA: Forçar cor branca para descrições, cabeçalhos, metadados e colunas no tema escuro */
+:root[data-theme="dark"] .turma-details .meta,
+:root[data-theme="dark"] .turma-details .meta span,
+:root[data-theme="dark"] .alunos-count,
+:root[data-theme="dark"] .alunos-table th,
+:root[data-theme="dark"] .observacoes,
+:root[data-theme="dark"] .col-nome,
+:root[data-theme="dark"] .col-condicao,
+:root[data-theme="dark"] .col-matricula,
+:root[data-theme="dark"] .col-faltas,
+:root[data-theme="dark"] .col-recuperacao {
     color: #ffffff !important;
 }
 
-
-
-
 /* ==========================================
    TEMA CLARO
-   As superfícies desta página usam tokens (--bg-medium/dark/light = aliases
-   de --bg-secondary/primary/tertiary) que no tema claro viram brancas.
-   Porém muitos textos estão fixos em branco (var(--text-white), #fff, white),
-   ficando invisíveis. Aqui deixamos TODAS as escritas de superfície escuras
-   e ajustamos os poucos fundos fixos escuros para claros.
-   Obs.: textos sobre fundos coloridos (botões com gradiente, aba ativa, ícone
-   da turma) permanecem brancos — não entram nas regras abaixo.
    ========================================== */
-/* Escritas sobre superfícies claras → escuras */
-
-
-
-/* Grupo com color:#fff !important (linhas 992-1004) → precisa de !important */
-
-
-
-/* Fundos fixos escuros → claros (senão viram faixas escuras no tema claro) */
-
-
-
-
-
-
+:root[data-theme="light"] .turma-details .meta,
+:root[data-theme="light"] .turma-details .meta span,
+:root[data-theme="light"] .alunos-count,
+:root[data-theme="light"] .alunos-table th,
+:root[data-theme="light"] .alunos-table td,
+:root[data-theme="light"] .col-num,
+:root[data-theme="light"] .col-nome,
+:root[data-theme="light"] .col-condicao,
+:root[data-theme="light"] .col-matricula,
+:root[data-theme="light"] .col-faltas,
+:root[data-theme="light"] .col-recuperacao {
+    color: #0f172a !important;
+}
+:root[data-theme="light"] .observacoes {
+    color: #475569 !important;
+}
+:root[data-theme="light"] .turma-details h1 {
+    color: #0f172a !important;
+}

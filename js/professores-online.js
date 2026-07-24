@@ -49,17 +49,27 @@
   }
 
   function render(list) {
-    const el = document.getElementById(LIST_ID);
-    const countEl = document.getElementById(COUNT_ID);
-    if (!el) return;
-    if (!Array.isArray(list) || list.length === 0) {
-      el.innerHTML = '<div class="po-empty">Nenhum professor cadastrado nesta escola.</div>';
-      if (countEl) countEl.textContent = '0 online';
-      return;
-    }
-    el.innerHTML = list.map(itemHtml).join('');
-    const online = list.filter(p => p.online).length;
-    if (countEl) countEl.textContent = `${online} online`;
+    const html = (!Array.isArray(list) || list.length === 0)
+      ? '<div class="po-empty">Nenhum professor cadastrado nesta escola.</div>'
+      : list.map(itemHtml).join('');
+
+    const online = Array.isArray(list) ? list.filter(p => p.online).length : 0;
+    const onlineText = `${online} online`;
+
+    // Renderiza no card embutido (se existir na página)
+    const elCard = document.getElementById(LIST_ID);
+    const countCard = document.getElementById(COUNT_ID);
+    if (elCard) elCard.innerHTML = html;
+    if (countCard) countCard.textContent = onlineText;
+
+    // Renderiza no painel flutuante (se existir na página)
+    const elPanel = document.getElementById('profsPanelList');
+    const countPanel = document.getElementById('profsPanelCount');
+    const fabBadge = document.getElementById('profsFabBadge');
+    if (elPanel) elPanel.innerHTML = html;
+    if (countPanel) countPanel.textContent = onlineText;
+    if (fabBadge) fabBadge.textContent = String(online);
+
     if (window.lucide && window.lucide.createIcons) window.renderLucideIcons && window.renderLucideIcons();
   }
 
@@ -73,14 +83,17 @@
       const json = await res.json();
       render(json.data || []);
     } catch (e) {
-      const el = document.getElementById(LIST_ID);
-      if (el && !el.dataset.loaded) {
-        el.innerHTML = '<div class="po-empty">Não foi possível carregar os professores.</div>';
-      }
+      const emptyMsg = '<div class="po-empty">Não foi possível carregar os professores.</div>';
+      const elCard = document.getElementById(LIST_ID);
+      const elPanel = document.getElementById('profsPanelList');
+      if (elCard && !elCard.dataset.loaded) elCard.innerHTML = emptyMsg;
+      if (elPanel && !elPanel.dataset.loaded) elPanel.innerHTML = emptyMsg;
     } finally {
       inFlight = false;
-      const el = document.getElementById(LIST_ID);
-      if (el) el.dataset.loaded = '1';
+      const elCard = document.getElementById(LIST_ID);
+      const elPanel = document.getElementById('profsPanelList');
+      if (elCard) elCard.dataset.loaded = '1';
+      if (elPanel) elPanel.dataset.loaded = '1';
     }
   }
 
@@ -112,12 +125,36 @@
     });
   }
 
+  function initFloatingPanel() {
+    const fab = document.getElementById('profsFab');
+    const panel = document.getElementById('profsPanel');
+    const overlay = document.getElementById('profsPanelOverlay');
+    const closeBtn = document.getElementById('profsPanelClose');
+    if (!fab || !panel) return;
+
+    function openPanel() {
+      panel.classList.add('open');
+      overlay?.classList.add('active');
+    }
+    function closePanel() {
+      panel.classList.remove('open');
+      overlay?.classList.remove('active');
+    }
+
+    fab.addEventListener('click', () => {
+      if (panel.classList.contains('open')) closePanel();
+      else openPanel();
+    });
+    closeBtn?.addEventListener('click', closePanel);
+    overlay?.addEventListener('click', closePanel);
+  }
+
   function start() {
-    if (!document.getElementById(LIST_ID)) return; // só roda onde o card existe
+    if (!document.getElementById(LIST_ID) && !document.getElementById('profsPanelList')) return;
     initCollapse();
+    initFloatingPanel();
     refresh();
     setInterval(() => { tryBindSocket(); refresh(); }, POLL_MS);
-    // Tenta ligar o socket já e de novo em seguida (caso conecte depois).
     tryBindSocket();
     setTimeout(tryBindSocket, 3000);
   }

@@ -92,3 +92,257 @@ body {
     background: #059669 !important;
     box-shadow: 0 0 25px rgba(16, 185, 129, 0.6);
 }
+
+/* ==========================================
+   SUPORTE COMPLETO AO TEMA CLARO — DIREÇÃO
+   ========================================== */
+
+/* --- Base --- */
+:root[data-theme="light"] body {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+}
+
+/* --- Container principal --- */
+:root[data-theme="light"] .container {
+    background: #ffffff !important;
+    border-color: rgba(15, 23, 42, 0.08) !important;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06) !important;
+}
+
+/* --- Navbar --- */
+:root[data-theme="light"] .navbar {
+    background: rgba(255, 255, 255, 0.85) !important;
+    border-bottom-color: rgba(15, 23, 42, 0.08) !important;
+    backdrop-filter: blur(12px) !important;
+}
+:root[data-theme="light"] .navbar span,
+:root[data-theme="light"] .navbar .navbar-brand span,
+:root[data-theme="light"] .navbar .btn-ghost {
+    color: #0f172a !important;
+}
+
+/* --- Sidebar --- */
+:root[data-theme="light"] .sidebar {
+    background: #ffffff !important;
+    border-right: 1px solid rgba(15, 23, 42, 0.08) !important;
+    box-shadow: 2px 0 12px rgba(15, 23, 42, 0.04) !important;
+}
+:root[data-theme="light"] .sidebar-logo i {
+    color: #059669 !important;
+}
+:root[data-theme="light"] .sidebar-logo span,
+:root[data-theme="light"] .sidebar-nav a,
+:root[data-theme="light"] .sidebar-item {
+    color: #334155 !important;
+}
+:root[data-theme="light"] .sidebar-item:hover {
+    background: rgba(15, 23, 42, 0.04) !important;
+    color: #0f172a !important;
+}
+:root[data-theme="light"] .sidebar-item.active {
+    background: rgba(5, 150, 105, 0.08) !important;
+    color: #059669 !important;
+    border-left-color: #059669 !important;
+}
+:root[data-theme="light"] .sidebar-info .user-fullname,
+:root[data-theme="light"] .sidebar-user-name,
+:root[data-theme="light"] .sidebar-profile-info strong,
+:root[data-theme="light"] .sidebar-profile-info span {
+    color: #0f172a !important;
+}
+:root[data-theme="light"] .sidebar-info .user-role-tag,
+:root[data-theme="light"] .sidebar-user-role,
+:root[data-theme="light"] .sidebar-profile-info small {
+    color: #64748b !important;
+}
+:root[data-theme="light"] .sidebar-status-online {
+    border-color: #ffffff !important;
+}
+:root[data-theme="light"] .sidebar-footer,
+:root[data-theme="light"] .sidebar-toggle {
+    color: #64748b !important;
+    background: transparent !important;
+}
+
+/* --- Header da Direção --- */
+:root[data-theme="light"] .direcao-header h1 {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    background: none !important;
+}
+:root[data-theme="light"] .direcao-header h1 i {
+    color: #059669 !important;
+    -webkit-text-fill-color: #059669 !important;
+}
+:root[data-theme="light"] .direcao-header p {
+    color: #64748b !important;
+}
+
+/* --- Botões --- */
+:root[data-theme="light"] .btn-outline {
+    background: transparent !important;
+    border-color: #059669 !important;
+    color: #059669 !important;
+}
+:root[data-theme="light"] .btn-outline:hover {
+    background: rgba(5, 150, 105, 0.08) !important;
+}
+:root[data-theme="light"] .btn-ghost {
+    border-color: rgba(15, 23, 42, 0.10) !important;
+    color: #334155 !important;
+}
+:root[data-theme="light"] .btn-ghost:hover {
+    background: rgba(15, 23, 42, 0.04) !important;
+}
+
+/* --- Stats Cards (BI) --- */
+:root[data-theme="light"] .stat-card-bi {
+    background: #ffffff !important;
+    border: 1px solid rgba(15, 23, 42, 0.08) !important;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+}
+:root[data-theme="light"] .bi-label,
+:root[data-theme="light"] .stat-card-label {
+    color: #64748b !important;
+}
+:root[data-theme="light"] .bi-value {
+    color: #059669 !important;
+    text-shadow: none !important;
+}
+:root[data-theme="light"] .bi-value.highlight {
+    color: #0284c7 !important;
+    text-shadow: none !important;
+}
+:root[data-theme="light"] .stat-card-bi.danger .bi-value {
+    color: #dc2626 !important;
+}
+
+/* --- Stats Cards (legado) --- */
+:root[data-theme="light"] .stat-card {
+    background: #ffffff !important;
+    border-color: rgba(15, 23, 42, 0.08) !important;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+}
+:root[data-theme="light"] .stat-card::after {
+    background: none !important;
+}
+:root[data-theme="light"] .stat-card-value {
+    text-shadow: none !important;
+}
+
+/* --- Professores Online Card --- */
+:root[data-theme="light"] .profs-online-card {
+    background: #ffffff !important;
+    border-color: rgba(15, 23, 42, 0.08) !important;
+}
+:root[data-theme="light"] .profs-online-header {
+    color: #0f172a !important;
+}
+:root[data-theme="light"] .profs-online-title {
+    color: #0f172a !important;
+}
+:root[data-theme="light"] .po-item {
+    background: #f8fafc !important;
+    border-color: rgba(15, 23, 42, 0.06) !important;
+}
+:root[data-theme="light"] .po-nome {
+    color: #0f172a !important;
+}
+:root[data-theme="light"] .po-sala {
+    color: #64748b !important;
+}
+:root[data-theme="light"] .po-status.po-off {
+    color: #94a3b8 !important;
+}
+:root[data-theme="light"] .po-dot {
+    border-color: #ffffff !important;
+}
+
+/* --- Chart Wrappers --- */
+:root[data-theme="light"] .bi-main-chart-wrapper {
+    background: #ffffff !important;
+    border: 1px solid rgba(15, 23, 42, 0.08) !important;
+    box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04) !important;
+}
+:root[data-theme="light"] .bi-chart-header h2 {
+    color: #0f172a !important;
+}
+:root[data-theme="light"] .bi-chart-header h2 i {
+    color: #059669 !important;
+}
+:root[data-theme="light"] .bi-select {
+    background: #f8fafc !important;
+    border-color: rgba(15, 23, 42, 0.12) !important;
+    color: #334155 !important;
+}
+:root[data-theme="light"] .grafico-card-bi {
+    background: #ffffff !important;
+    border-color: rgba(15, 23, 42, 0.08) !important;
+}
+:root[data-theme="light"] .grafico-card-bi h3 {
+    color: #475569 !important;
+}
+:root[data-theme="light"] .grafico-card {
+    background: #ffffff !important;
+    border-color: rgba(15, 23, 42, 0.08) !important;
+}
+:root[data-theme="light"] .grafico-card h3 {
+    color: #475569 !important;
+}
+
+/* --- Filtros --- */
+:root[data-theme="light"] .filtros-container {
+    background: #f8fafc !important;
+    border-color: rgba(15, 23, 42, 0.06) !important;
+}
+:root[data-theme="light"] .filtro-group label {
+    color: #059669 !important;
+}
+:root[data-theme="light"] .form-input,
+:root[data-theme="light"] select.form-input {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border-color: rgba(15, 23, 42, 0.12) !important;
+}
+
+/* --- Selects gerais --- */
+:root[data-theme="light"] select {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border-color: rgba(15, 23, 42, 0.12) !important;
+}
+:root[data-theme="light"] select option {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+}
+
+/* --- Tabelas / Ranking --- */
+:root[data-theme="light"] .table {
+    color: #0f172a !important;
+}
+:root[data-theme="light"] .table th {
+    background: rgba(5, 150, 105, 0.06) !important;
+    color: #059669 !important;
+    border-bottom-color: rgba(5, 150, 105, 0.12) !important;
+}
+:root[data-theme="light"] .table td {
+    color: #0f172a !important;
+    border-bottom-color: rgba(15, 23, 42, 0.06) !important;
+}
+:root[data-theme="light"] .table tr:hover td {
+    background: rgba(15, 23, 42, 0.02) !important;
+}
+:root[data-theme="light"] .ranking-section {
+    background: #ffffff !important;
+    border-color: rgba(15, 23, 42, 0.08) !important;
+}
+:root[data-theme="light"] .ranking-section h3 {
+    color: #059669 !important;
+}
+
+/* --- Watermark --- */
+:root[data-theme="light"] .watermark {
+    color: #94a3b8 !important;
+}
+

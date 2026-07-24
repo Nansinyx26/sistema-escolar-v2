@@ -344,6 +344,252 @@
         </div>
     </div>
 
+    <!-- Painel Flutuante: Professores Online -->
+    <div id="profsPanelOverlay" class="profs-panel-overlay"></div>
+    <div id="profsPanel" class="profs-panel">
+        <div class="profs-panel-header">
+            <div class="profs-panel-title">
+                <i class="bi bi-people-fill"></i>
+                <span>Professores</span>
+                <span class="profs-panel-badge" id="profsPanelCount">0 online</span>
+            </div>
+            <button class="profs-panel-close" id="profsPanelClose" aria-label="Fechar">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="profs-panel-body" id="profsPanelList">
+            <div class="po-empty">Carregando…</div>
+        </div>
+    </div>
+    <button class="profs-fab" id="profsFab" title="Professores Online" aria-label="Ver professores online">
+        <i class="bi bi-people-fill"></i>
+        <span class="profs-fab-badge" id="profsFabBadge">0</span>
+    </button>
+
+    <style>
+    /* === Professores Online FAB === */
+    .profs-fab {
+        position: fixed;
+        bottom: 96px;
+        right: 24px;
+        z-index: 9998;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #059669, #10b981);
+        color: #fff;
+        border: none;
+        font-size: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 6px 20px rgba(5, 150, 105, 0.45);
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .profs-fab:hover {
+        transform: scale(1.1);
+        box-shadow: 0 10px 30px rgba(5, 150, 105, 0.6);
+    }
+    .profs-fab-badge {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 5px;
+        border-radius: 10px;
+        background: #22c55e;
+        color: #fff;
+        font-size: 0.65rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid var(--bg-primary, #0f172a);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+
+    /* === Overlay === */
+    .profs-panel-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.3);
+        z-index: 10000;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+    .profs-panel-overlay.active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    /* === Painel Lateral === */
+    .profs-panel {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        width: 380px;
+        max-height: calc(100vh - 48px);
+        background: var(--bg-secondary, #1e293b);
+        border: 1px solid var(--border-secondary, rgba(255,255,255,0.08));
+        border-radius: 20px;
+        z-index: 10001;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        transform: translateY(20px) scale(0.95);
+        opacity: 0;
+        pointer-events: none;
+        transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .profs-panel.open {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    /* Header */
+    .profs-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--border-secondary, rgba(255,255,255,0.08));
+        background: linear-gradient(135deg, rgba(5,150,105,0.12), transparent);
+    }
+    .profs-panel-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 700;
+        font-size: 1rem;
+        color: var(--text-primary, #f1f5f9);
+    }
+    .profs-panel-title i {
+        color: #10b981;
+        font-size: 1.2rem;
+    }
+    .profs-panel-badge {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: #22c55e;
+        background: rgba(34,197,94,0.12);
+        padding: 2px 8px;
+        border-radius: 99px;
+    }
+    .profs-panel-close {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        border: none;
+        background: rgba(255,255,255,0.05);
+        color: var(--text-secondary, #94a3b8);
+        font-size: 14px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+    .profs-panel-close:hover {
+        background: rgba(220,38,38,0.12);
+        color: #ef4444;
+    }
+
+    /* Body / Lista */
+    .profs-panel-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        max-height: 500px;
+    }
+    .profs-panel-body .po-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.6rem 0.75rem;
+        border: 1px solid var(--border-secondary, rgba(255,255,255,0.06));
+        border-radius: 12px;
+        background: var(--bg-elevated, rgba(255,255,255,0.03));
+        transition: background 0.2s;
+    }
+    .profs-panel-body .po-item:hover {
+        background: rgba(16,185,129,0.06);
+    }
+
+    /* Light theme */
+    :root[data-theme="light"] .profs-fab {
+        box-shadow: 0 6px 20px rgba(5,150,105,0.25);
+    }
+    :root[data-theme="light"] .profs-fab-badge {
+        border-color: #ffffff;
+    }
+    :root[data-theme="light"] .profs-panel {
+        background: #ffffff;
+        border-color: rgba(15,23,42,0.08);
+        box-shadow: 0 20px 60px rgba(15,23,42,0.15);
+    }
+    :root[data-theme="light"] .profs-panel-header {
+        border-bottom-color: rgba(15,23,42,0.06);
+        background: linear-gradient(135deg, rgba(5,150,105,0.06), transparent);
+    }
+    :root[data-theme="light"] .profs-panel-title {
+        color: #0f172a;
+    }
+    :root[data-theme="light"] .profs-panel-close {
+        background: rgba(15,23,42,0.04);
+        color: #64748b;
+    }
+    :root[data-theme="light"] .profs-panel-body .po-item {
+        background: #f8fafc;
+        border-color: rgba(15,23,42,0.06);
+    }
+    :root[data-theme="light"] .profs-panel-body .po-nome {
+        color: #0f172a;
+    }
+    :root[data-theme="light"] .profs-panel-body .po-sala {
+        color: #64748b;
+    }
+    :root[data-theme="light"] .profs-panel-overlay.active {
+        background: rgba(15,23,42,0.2);
+    }
+
+    /* Responsivo completo */
+    @media (max-width: 768px) {
+        .profs-panel {
+            width: calc(100vw - 32px);
+            right: 16px;
+            bottom: 80px;
+            max-height: calc(100vh - 120px);
+        }
+        .profs-fab {
+            bottom: 88px;
+            right: 16px;
+            width: 44px;
+            height: 44px;
+            font-size: 18px;
+        }
+    }
+    @media (max-width: 480px) {
+        .profs-panel {
+            width: calc(100vw - 24px);
+            right: 12px;
+            bottom: 76px;
+            border-radius: 16px;
+        }
+        .profs-fab {
+            bottom: 80px;
+            right: 12px;
+        }
+    }
+    </style>
+
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
 

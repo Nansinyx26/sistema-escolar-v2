@@ -493,7 +493,7 @@ window.verPerfil = function () {
 };
 
 window.verRelatorios = function () {
-    window.location.href = 'direcao/bi-pedagogico.html';
+    window.location.href = 'secretaria/relatorios.html';
 };
 
 window.abrirFerramentas = function () {

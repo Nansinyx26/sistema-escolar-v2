@@ -415,8 +415,20 @@
 :root[data-theme="light"] .student-names h4 { color: #0f172a; }
 :root[data-theme="light"] .faltas-title-text p,
 :root[data-theme="light"] .student-names small { color: #475569; }
+/* turma.css força estas colunas/textos a #ffffff !important (linhas ~993-1005),
+   ficando invisíveis no tema claro. Aqui vencem por maior especificidade. */
 :root[data-theme="light"] .col-num,
-:root[data-theme="light"] .col-recuperacao { color: #0f172a !important; }
+:root[data-theme="light"] .col-nome,
+:root[data-theme="light"] .col-condicao,
+:root[data-theme="light"] .col-matricula,
+:root[data-theme="light"] .col-faltas,
+:root[data-theme="light"] .col-recuperacao,
+:root[data-theme="light"] .alunos-table th,
+:root[data-theme="light"] .turma-details .meta,
+:root[data-theme="light"] .turma-details .meta span,
+:root[data-theme="light"] .alunos-count { color: #0f172a !important; }
+/* Observações do aluno (branco translúcido fixo) → cinza-escuro no tema claro */
+:root[data-theme="light"] .observacoes { color: #475569 !important; }
 
 /* --- Selecionar: card de turma expandido é ESCURO — no tema claro os tokens
    deixavam o texto interno cinza-escuro (ilegível). Força cores claras. --- */
