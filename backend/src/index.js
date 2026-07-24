@@ -168,15 +168,27 @@ const startServer = async () => {
             }
         });
 
+        const presence = require('./realtime/presence');
         io.on('connection', (socket) => {
             const user = socket.user;
+            const uid = user.id || user._id;
             // Entra na sala do usuário individual
-            socket.join(`user:${user.id || user._id}`);
+            socket.join(`user:${uid}`);
             // Entra na sala do perfil (professor, diretor, admin, responsavel)
             socket.join(`role:${user.perfil}`);
             // Entra na sala da escola — os emissores usam a interseção
             // escola × perfil para não vazar eventos entre tenants
             if (socket.escolaId) socket.join(`escola:${socket.escolaId}`);
+
+            // Presença online: o diretor vê professores online/offline em tempo real.
+            if (socket.escolaId) {
+                const ficouOnline = presence.addUser(socket.escolaId, uid);
+                if (ficouOnline && user.perfil === 'professor') {
+                    io.to(`escola:${socket.escolaId}`).emit('presence:professor', {
+                        userId: String(uid), online: true
+                    });
+                }
+            }
 
             logger.debug(`🔌 [Socket.IO] ${user.nome || 'Usuário'} conectado`, {
                 perfil: user.perfil,
@@ -204,6 +216,14 @@ const startServer = async () => {
 
             socket.on('disconnect', () => {
                 logger.debug(`❌ [Socket.IO] ${user.nome || 'Usuário'} desconectado`);
+                if (socket.escolaId) {
+                    const ficouOffline = presence.removeUser(socket.escolaId, uid);
+                    if (ficouOffline && user.perfil === 'professor') {
+                        io.to(`escola:${socket.escolaId}`).emit('presence:professor', {
+                            userId: String(uid), online: false
+                        });
+                    }
+                }
             });
         });
 

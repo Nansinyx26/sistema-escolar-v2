@@ -268,3 +268,40 @@ exports.delete = async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 };
+
+/**
+ * GET /api/professores/status-online
+ * Lista os professores da escola ativa com foto, sala e status online.
+ * Usado pelo card em tempo real do painel do diretor.
+ */
+exports.statusOnline = async (req, res) => {
+    try {
+        const presence = require('../realtime/presence');
+        const escopo = escopoEscola(req) || {};
+        const profs = await Professor.find(escopo)
+            .select('nome foto salaPrincipal idUsuario')
+            .lean();
+
+        const escolaId = req.escolaId;
+        const lista = profs.map((p) => ({
+            id: String(p._id),
+            userId: p.idUsuario ? String(p.idUsuario) : null,
+            nome: p.nome,
+            foto: p.foto || null,
+            sala: p.salaPrincipal || '—',
+            online: escolaId ? presence.isOnline(escolaId, p.idUsuario) : false,
+        }));
+
+        // Online primeiro, depois alfabético.
+        lista.sort((a, b) => (Number(b.online) - Number(a.online)) || a.nome.localeCompare(b.nome, 'pt-BR'));
+
+        res.json({
+            success: true,
+            data: lista,
+            online: lista.filter((p) => p.online).length,
+            total: lista.length,
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};

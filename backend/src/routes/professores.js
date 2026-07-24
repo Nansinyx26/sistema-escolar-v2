@@ -10,6 +10,8 @@ const equipe = authorize('admin', 'diretor', 'secretaria', 'professor');
 const gestao = authorize('admin', 'diretor', 'secretaria');
 
 router.get('/', equipe, TeacherController.list);
+// Status online — precisa vir ANTES de '/:id' para não ser capturada como id.
+router.get('/status-online', authorize('admin', 'diretor', 'secretaria'), TeacherController.statusOnline);
 router.get('/:id', equipe, TeacherController.get);
 router.post('/', gestao, TeacherController.create);
 router.put('/:id', equipe, TeacherController.update);

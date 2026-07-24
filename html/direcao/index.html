@@ -257,6 +257,46 @@
                     </div>
                 </div>
 
+                <!-- Professores online (tempo real) -->
+                <style>
+                    .profs-online-card{margin-top:2rem;background:var(--bg-card,rgba(255,255,255,.04));border:1px solid var(--border-color,rgba(255,255,255,.08));border-radius:16px;overflow:hidden}
+                    .profs-online-header{width:100%;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.25rem;background:none;border:none;cursor:pointer;color:var(--text-primary,#f1f5f9);font:inherit}
+                    .profs-online-title{display:flex;align-items:center;gap:.6rem;font-size:1.05rem;font-weight:700}
+                    .profs-online-count{font-size:.75rem;font-weight:600;color:#22c55e;background:rgba(34,197,94,.12);padding:.15rem .55rem;border-radius:99px}
+                    .profs-online-chevron{transition:transform .25s ease}
+                    .profs-online-card.collapsed .profs-online-chevron{transform:rotate(-90deg)}
+                    .profs-online-body{padding:0 1rem 1rem}
+                    .profs-online-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.6rem}
+                    .po-item{display:flex;align-items:center;gap:.75rem;padding:.6rem .75rem;border:1px solid var(--border-color,rgba(255,255,255,.06));border-radius:12px;background:var(--bg-elevated,rgba(255,255,255,.03))}
+                    .po-avatar-wrap{position:relative;flex-shrink:0}
+                    .po-avatar{width:42px;height:42px;border-radius:50%;object-fit:cover;display:block;background:#334155}
+                    .po-avatar-fallback{display:flex;align-items:center;justify-content:center;color:#fff;font-size:.8rem;font-weight:700;background:linear-gradient(135deg,#10b981,#0d9488)}
+                    .po-dot{position:absolute;right:-1px;bottom:-1px;width:13px;height:13px;border-radius:50%;border:2px solid var(--bg-card,#111827)}
+                    .po-dot.po-on{background:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.25)}
+                    .po-dot.po-off{background:#f8fafc;border-color:#94a3b8}
+                    .po-info{display:flex;flex-direction:column;min-width:0}
+                    .po-nome{font-weight:600;font-size:.9rem;color:var(--text-primary,#f1f5f9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+                    .po-sala{font-size:.75rem;color:var(--text-secondary,#94a3b8)}
+                    .po-status{margin-left:auto;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+                    .po-status.po-on{color:#22c55e}
+                    .po-status.po-off{color:#94a3b8}
+                    .po-empty{grid-column:1/-1;padding:1rem;text-align:center;color:var(--text-secondary,#94a3b8);font-size:.9rem}
+                </style>
+                <div class="profs-online-card" id="profsOnlineCard">
+                    <button class="profs-online-header" id="profsOnlineToggle" aria-expanded="true" aria-controls="profsOnlineBody">
+                        <span class="profs-online-title">
+                            <i data-lucide="users"></i> Professores
+                            <span class="profs-online-count" id="profsOnlineCount">0 online</span>
+                        </span>
+                        <i data-lucide="chevron-down" class="profs-online-chevron"></i>
+                    </button>
+                    <div class="profs-online-body" id="profsOnlineBody">
+                        <div class="profs-online-list" id="profsOnlineList">
+                            <div class="po-empty">Carregando…</div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Dashboard de Evolução (Destaque Principal) -->
                 <div class="bi-main-chart-wrapper">
                     <div class="bi-chart-header">
@@ -315,6 +355,7 @@
     <script src="../../js/voice-orb.js?v=1.0"></script>
     <script src="../../js/sidebar-voice.js?v=4.0"></script>
     <script src="../../direcao/direcao.js"></script>
+    <script src="../../js/professores-online.js"></script>
     <script defer src="../../js/escola-switcher.js"></script>
     <script defer src="../../js/watermark.js"></script>
     <script defer src="../../js/parallax.js"></script>
