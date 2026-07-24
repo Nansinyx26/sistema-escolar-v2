@@ -635,48 +635,8 @@ class App {
         document.getElementById('professorName')?.textContent &&
             (document.getElementById('professorName').textContent = nomeProfessor);
 
-        // Exibe o professor da sala na navbar do topo (ao invés do usuário logado)
-        if (nomeProfessor) {
-            const navUserName = document.getElementById('navUserName');
-            if (navUserName) navUserName.textContent = nomeProfessor;
-
-            const navAvatar = document.getElementById('userAvatar');
-            if (navAvatar) {
-                const iniciais = window.utils?.getInitials
-                    ? window.utils.getInitials(nomeProfessor)
-                    : (nomeProfessor.charAt(0)?.toUpperCase() || 'P');
-
-                const fotoProf = profDaTurma.regente?.foto;
-                const photoUrl = window.getPhotoUrl ? window.getPhotoUrl(fotoProf) : null;
-                const semFoto = !photoUrl || photoUrl.includes('default-avatar.png');
-
-                if (semFoto) {
-                    // Sem foto: exibe as iniciais
-                    navAvatar.classList.add('avatar-placeholder');
-                    navAvatar.style.backgroundImage = 'none';
-                    navAvatar.textContent = iniciais;
-                } else {
-                    // Com foto: usa a imagem, mas cai para iniciais se a foto falhar
-                    const img = new Image();
-                    img.onload = () => {
-                        navAvatar.classList.remove('avatar-placeholder');
-                        navAvatar.textContent = '';
-                        navAvatar.style.backgroundImage = `url(${photoUrl})`;
-                        navAvatar.style.backgroundSize = 'cover';
-                        navAvatar.style.backgroundPosition = 'center';
-                    };
-                    img.onerror = () => {
-                        navAvatar.classList.add('avatar-placeholder');
-                        navAvatar.style.backgroundImage = 'none';
-                        navAvatar.textContent = iniciais;
-                    };
-                    img.src = photoUrl;
-                }
-            }
-        } else {
-            // Sem professor definido: mantém o usuário logado na navbar
-            this.updateUserNavbar();
-        }
+        // Sempre mantém o usuário logado na navbar
+        this.updateUserNavbar();
 
         // Renderiza tabs de bimestre
         this.renderBimestreTabs(bimestre);
