@@ -388,6 +388,22 @@
 :root[data-theme="light"] .alunos-table td { color: #0f172a; }
 :root[data-theme="light"] .alunos-table th { color: #475569; }
 
+/* --- Títulos com gradiente branco recortado em várias telas (perfil, cadastro,
+   login, neo-brutal, utilitário .text-gradient) — invisíveis no fundo branco.
+   No tema claro recebem gradiente escuro. --- */
+:root[data-theme="light"] .perfil-header h1,
+:root[data-theme="light"] .cadastro-header h1,
+:root[data-theme="light"] .login-header h1,
+:root[data-theme="light"] .card-title,
+:root[data-theme="light"] .text-gradient,
+:root[data-theme="light"] .text-gradient-warm {
+    background: linear-gradient(135deg, #0f172a 0%, #475569 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: #0f172a;
+}
+
 /* --- Ícones do header (ajuda/sino/engrenagem) no tema claro --- */
 :root[data-theme="light"] .header-icon-btn,
 :root[data-theme="light"] .header-icon-btn i,
