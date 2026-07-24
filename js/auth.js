@@ -306,6 +306,30 @@ class AuthManager {
     }
 
     /**
+     * Revalida o usuário contra o servidor (fonte de verdade da sessão via
+     * cookie JWT). Corrige o caso de o sessionStorage ter um usuário antigo
+     * em cache (ex.: troca de conta na mesma sessão do navegador), que fazia
+     * o nome/foto exibidos não baterem com quem está logado de fato.
+     */
+    async refreshCurrentUser() {
+        try {
+            const baseUrl = this._apiBase();
+            const res = await fetch(`${baseUrl}/auth/me`, { credentials: 'include' });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.success && data.user) {
+                    this.currentUser = data.user;
+                    sessionStorage.setItem('currentUser', JSON.stringify(data.user));
+                    return data.user;
+                }
+            }
+        } catch (e) {
+            // Sem rede: mantém o cache atual.
+        }
+        return null;
+    }
+
+    /**
      * Verifica se está autenticado
      */
     isAuthenticated() {

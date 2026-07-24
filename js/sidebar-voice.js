@@ -178,9 +178,22 @@ function setActiveSidebarItem() {
  * Sidebar User Profile Population and Accessibility Loading
  */
 function initSidebarProfile() {
+    let reconciled = false;
     const updateProfile = () => {
         const user = window.auth ? window.auth.getCurrentUser() : null;
         if (!user) return;
+
+        // Reconcilia com o servidor (fonte de verdade): se o sessionStorage
+        // tinha um usuário antigo em cache, corrige nome/foto ao re-renderizar.
+        if (!reconciled && window.auth && window.auth.refreshCurrentUser) {
+            reconciled = true;
+            window.auth.refreshCurrentUser().then((fresh) => {
+                if (!fresh) return;
+                const mudou = fresh.nome !== user.nome
+                    || String(fresh._id || fresh.id || '') !== String(user._id || user.id || '');
+                if (mudou) updateProfile();
+            });
+        }
 
         const avatar = document.getElementById('sidebarAvatar');
         const name = document.getElementById('sidebarUserName');
