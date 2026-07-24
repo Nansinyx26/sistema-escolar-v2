@@ -2639,6 +2639,12 @@ body:has(.pa-modal-overlay.open) {
 :root[data-theme="light"] body::before { opacity: 0.28; }
 
 /* Superfícies escritas com cor fixa escura (não usam tokens) */
+/* Barra de navegação + painéis/overlays estavam escuros hardcoded no claro. */
+:root[data-theme="light"] nav { background: rgba(255, 255, 255, 0.88); border-bottom-color: rgba(15, 23, 42, 0.08); }
+:root[data-theme="light"] nav.scrolled { background: rgba(255, 255, 255, 0.97); border-bottom-color: rgba(15, 23, 42, 0.10); }
+:root[data-theme="light"] .school-switcher-panel { background: rgba(255, 255, 255, 0.98); border-color: rgba(15, 23, 42, 0.10); }
+:root[data-theme="light"] .mobile-nav-overlay { background: rgba(248, 250, 252, 0.97); }
+:root[data-theme="light"] .pa-modal-overlay { background: rgba(15, 23, 42, 0.45); }
 :root[data-theme="light"] .school-switcher-button { background: rgba(255, 255, 255, 0.92); color: #334155; }
 :root[data-theme="light"] .btn-g { background: rgba(15, 23, 42, 0.04); }
 :root[data-theme="light"] .btn-h-p {
