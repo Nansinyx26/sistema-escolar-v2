@@ -184,14 +184,27 @@ function initSidebarProfile() {
         if (!user) return;
 
         // Reconcilia com o servidor (fonte de verdade): se o sessionStorage
-        // tinha um usuário antigo em cache, corrige nome/foto ao re-renderizar.
+        // tinha um usuário antigo/de outra conta em cache, corrige tudo.
         if (!reconciled && window.auth && window.auth.refreshCurrentUser) {
             reconciled = true;
             window.auth.refreshCurrentUser().then((fresh) => {
                 if (!fresh) return;
-                const mudou = fresh.nome !== user.nome
-                    || String(fresh._id || fresh.id || '') !== String(user._id || user.id || '');
-                if (mudou) updateProfile();
+                const idAntigo = String(user._id || user.id || '');
+                const idNovo = String(fresh._id || fresh.id || '');
+                // Conta diferente em cache (ex.: login anterior preso): o cache já
+                // foi reescrito por refreshCurrentUser; recarrega UMA vez para que
+                // TODAS as telas (dashboard, detalhes, filtros) usem a conta certa.
+                if (idNovo && idAntigo && idNovo !== idAntigo) {
+                    try {
+                        if (!sessionStorage.getItem('auth_reconciled_reload')) {
+                            sessionStorage.setItem('auth_reconciled_reload', '1');
+                            location.reload();
+                            return;
+                        }
+                    } catch (e) { /* noop */ }
+                }
+                // Mesmo id, só nome/foto desatualizados: re-render simples.
+                if (fresh.nome !== user.nome) updateProfile();
             });
         }
 
