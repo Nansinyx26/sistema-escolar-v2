@@ -388,6 +388,47 @@
 :root[data-theme="light"] .alunos-table td { color: #0f172a; }
 :root[data-theme="light"] .alunos-table th { color: #475569; }
 
+/* --- Ícones do header (ajuda/sino/engrenagem) no tema claro --- */
+:root[data-theme="light"] .header-icon-btn,
+:root[data-theme="light"] .header-icon-btn i,
+:root[data-theme="light"] .header-hamburger,
+:root[data-theme="light"] .header-hamburger i { color: #0f172a; }
+
+/* --- Turma: títulos/nomes brancos (var(--text-white)) e colunas sumiam --- */
+:root[data-theme="light"] .faltas-title-text h3,
+:root[data-theme="light"] .student-names h4 { color: #0f172a; }
+:root[data-theme="light"] .faltas-title-text p,
+:root[data-theme="light"] .student-names small { color: #475569; }
+:root[data-theme="light"] .col-num,
+:root[data-theme="light"] .col-recuperacao { color: #0f172a !important; }
+
+/* --- Selecionar: card de turma expandido é ESCURO — no tema claro os tokens
+   deixavam o texto interno cinza-escuro (ilegível). Força cores claras. --- */
+:root[data-theme="light"] .turma-card .turma-info p,
+:root[data-theme="light"] .turma-card .turma-turno { color: #cbd5e1; }
+:root[data-theme="light"] .turma-card .turma-info h4 { color: #ffffff; }
+
+/* --- Cadastro/criar conta: manter os cards ESCUROS no tema claro (pedido) ---
+   Os cards de seleção ficavam cinza-claro no modo white; aqui viram escuros
+   com texto claro. */
+:root[data-theme="light"] .role-card-content,
+:root[data-theme="light"] .checkbox-card-content {
+    background: #0f172a;
+    border-color: rgba(255, 255, 255, 0.10);
+    color: #e2e8f0;
+}
+:root[data-theme="light"] .role-card-content h3,
+:root[data-theme="light"] .role-card-content p,
+:root[data-theme="light"] .checkbox-card-content span { color: #e2e8f0; }
+
+/* --- Mural: header do topo (inline color:#fff) e abas de filtro ---
+   A header usa estilo inline, então precisa de !important para virar escura. */
+:root[data-theme="light"] .mural-section-header h2 { color: #0f172a !important; }
+:root[data-theme="light"] .mural-section-header p { color: #475569 !important; }
+:root[data-theme="light"] .feed-filter-tab { color: #475569; }
+:root[data-theme="light"] .feed-filter-tab:hover { color: #0f172a; }
+:root[data-theme="light"] .feed-filter-tab.active { color: #4f46e5; }
+
 /* --- Sidebar do dashboard no tema claro (sidebar.css) ---
    A sidebar fica clara, mas os textos eram claros (cinza/branco) e sumiam.
    Aqui viram escuros/pretos. Item ativo continua verde. */

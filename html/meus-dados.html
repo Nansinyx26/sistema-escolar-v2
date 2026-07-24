@@ -154,7 +154,7 @@
 
 
 <header class="header">
-    <a href="#" onclick="window.smartBack('dashboard.html'); return false;" class="header-back" id="btnVoltar">
+    <a href="dashboard.html" onclick="if(window.smartBack){window.smartBack('dashboard.html');return false;} return true;" class="header-back" id="btnVoltar">
         <i class="bi bi-arrow-left"></i> Dashboard
     </a>
     <span class="header-title">Portal de Privacidade</span>
