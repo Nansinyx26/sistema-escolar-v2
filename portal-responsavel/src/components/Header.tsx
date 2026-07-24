@@ -9,6 +9,7 @@ import type { GmailUser, Notification } from '../types';
 import styles from '../styles/portal.module.scss';
 import schoolLogo from '../assets/logo-jaguari.png';
 import { getPhotoUrl } from '../utils/photoUtils';
+import Icon from './ui/Icon';
 
 interface TtsSettingsResponse {
   success?: boolean;
@@ -100,19 +101,19 @@ const VoiceSelector: React.FC = () => {
         onClick={() => setIsOpen(!isOpen)}
         className={styles.notificationBell}
         title="Configurações de Voz e Leitura"
-        style={{ color: voice === 'off' ? '' : '#a78bfa' }}
+        style={{ color: voice === 'off' ? '' : '#059669' }}
       >
         <i className={`ti ${voice === 'off' ? 'ti-volume-off' : 'ti-volume-2'}`} style={{ fontSize: '1.4rem' }} />
       </button>
-      
+
       {isOpen && (
         <div style={{
           position: 'absolute', top: '100%', right: 0, marginTop: '8px',
-          background: '#18181b', border: '1px solid rgba(255,255,255,0.1)',
+          background: '#1a211d', border: '1px solid rgba(255,255,255,0.08)',
           borderRadius: '16px', padding: '12px', zIndex: 100, width: '200px',
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4)'
         }} onMouseLeave={() => setIsOpen(false)}>
-          
+
           <div style={{ marginBottom: '12px' }}>
             <p style={{ fontSize: '10px', color: '#71717a', padding: '0 8px 8px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Voz do Sistema</p>
             {voices.map(v => (
@@ -122,8 +123,8 @@ const VoiceSelector: React.FC = () => {
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
                   padding: '8px', borderRadius: '8px', fontSize: '12px', textAlign: 'left',
-                  background: voice === v.id ? 'rgba(139, 92, 246, 0.1)' : 'transparent',
-                  color: voice === v.id ? '#a78bfa' : '#a1a1aa',
+                  background: voice === v.id ? 'rgba(5, 150, 105, 0.1)' : 'transparent',
+                  color: voice === v.id ? '#059669' : '#a1a1aa',
                   border: 'none', cursor: 'pointer', transition: 'all 0.2s'
                 }}
               >
@@ -142,8 +143,8 @@ const VoiceSelector: React.FC = () => {
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
                   padding: '8px', borderRadius: '8px', fontSize: '12px', textAlign: 'left',
-                  background: mode === m.id ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
-                  color: mode === m.id ? '#10b981' : '#a1a1aa',
+                  background: mode === m.id ? 'rgba(5, 150, 105, 0.1)' : 'transparent',
+                  color: mode === m.id ? '#059669' : '#a1a1aa',
                   border: 'none', cursor: 'pointer', transition: 'all 0.2s'
                 }}
               >
@@ -172,20 +173,24 @@ const Header: React.FC<HeaderProps> = ({ user, notifications, onLogout, onBellCl
           <span className={styles.logoSub}>Portal do Responsável</span>
         </div>
 
-        {/* Actions */}
+        {/* Actions — agrupadas em clusters (utilidades | notificação+conta)
+            separados por um divisor, em vez de uma fileira única de ícones */}
         <div className={styles.headerActions}>
-          <VoiceSelector />
-          
-          {/* Botão Ver Tour Guiado */}
-          <button
-            className={styles.notificationBell}
-            onClick={() => windowBridge.startTourManual?.()}
-            title="Ver Tour Guiado"
-            aria-label="Ver Tour Guiado"
-            style={{ marginRight: '8px' }}
-          >
-            <i className="ti ti-help" aria-hidden="true" style={{ fontSize: '1.4rem' }} />
-          </button>
+          <div className={styles.headerUtilityGroup}>
+            <VoiceSelector />
+
+            {/* Botão Ver Tour Guiado */}
+            <button
+              className={styles.notificationBell}
+              onClick={() => windowBridge.startTourManual?.()}
+              title="Ver Tour Guiado"
+              aria-label="Ver Tour Guiado"
+            >
+              <Icon name="help" aria-hidden="true" style={{ fontSize: '1.4rem' }} />
+            </button>
+          </div>
+
+          <span className={styles.headerDivider} aria-hidden="true" />
 
           {/* Notification bell */}
           <button
@@ -197,8 +202,9 @@ const Header: React.FC<HeaderProps> = ({ user, notifications, onLogout, onBellCl
                 : 'Nenhuma notificação nova'
             }
           >
-            <i
-              className={`ti ti-bell-filled ${unreadCount > 0 ? styles.bellRinging : ''}`}
+            <Icon
+              name="bell-filled"
+              className={unreadCount > 0 ? styles.bellRinging : undefined}
               aria-hidden="true"
             />
             {unreadCount > 0 && (
@@ -237,7 +243,7 @@ const Header: React.FC<HeaderProps> = ({ user, notifications, onLogout, onBellCl
             onClick={onLogout}
             aria-label="Sair da conta"
           >
-            <i className="ti ti-logout" aria-hidden="true" />
+            <Icon name="logout" aria-hidden="true" />
             <span>Sair</span>
           </button>
         </div>

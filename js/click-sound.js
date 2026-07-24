@@ -231,11 +231,12 @@
     updateToggleUI();
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', createToggle);
-  } else {
-    createToggle();
-  }
+  // Botão flutuante removido (agora controlado via settings-drawer)
+  // if (document.readyState === 'loading') {
+  //   document.addEventListener('DOMContentLoaded', createToggle);
+  // } else {
+  //   createToggle();
+  // }
 
   // API opcional para controlar por código.
   window.ClickSound = {

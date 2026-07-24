@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { vincularAluno } from '../services/apiService';
 import styles from '../styles/portal.module.scss';
+import Icon from './ui/Icon';
 
 interface VincularFilhoProps {
   onSuccess: () => void;
@@ -95,7 +96,7 @@ export default function VincularFilho({ onSuccess, onCancel, canCancel = false }
             fontSize: '2.5rem',
             boxShadow: '0 0 20px rgba(34, 197, 94, 0.2)'
           }}>
-            <i className="ti ti-circle-check" />
+            <Icon name="circle-check" />
           </div>
           
           <h2 style={{ color: '#22c55e', justifyContent: 'center', marginBottom: '12px' }}>
@@ -165,7 +166,7 @@ export default function VincularFilho({ onSuccess, onCancel, canCancel = false }
       <div className={styles.vincularCard}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
           <h2>
-            <i className={step === 'CONFIRM' ? "ti ti-user-check" : "ti ti-user-plus"} aria-hidden="true" />
+            <Icon name={step === 'CONFIRM' ? "user-check" : "user-plus"} aria-hidden="true" />
             {step === 'CONFIRM' ? 'Confirmar Estudante' : 'Vincular meu filho'}
           </h2>
           <div style={{
@@ -180,7 +181,7 @@ export default function VincularFilho({ onSuccess, onCancel, canCancel = false }
             fontSize: '0.75rem',
             fontWeight: 600
           }}>
-            <i className="ti ti-shield-lock" style={{ fontSize: '0.85rem' }} />
+            <Icon name="shield-lock" style={{ fontSize: '0.85rem' }} />
             Segurança Ativa
           </div>
         </div>
@@ -204,7 +205,7 @@ export default function VincularFilho({ onSuccess, onCancel, canCancel = false }
                 gap: '8px',
                 fontSize: '0.85rem'
               }} role="alert">
-                <i className="ti ti-alert-circle" aria-hidden="true" />
+                <Icon name="alert-circle" aria-hidden="true" />
                 <span>{error}</span>
               </div>
             )}
@@ -281,7 +282,7 @@ export default function VincularFilho({ onSuccess, onCancel, canCancel = false }
                     </>
                   ) : (
                     <>
-                      <i className="ti ti-search" />
+                      <Icon name="search" />
                       Pesquisar Estudante
                     </>
                   )}
@@ -344,7 +345,7 @@ export default function VincularFilho({ onSuccess, onCancel, canCancel = false }
                   justifyContent: 'center',
                   gap: '8px'
                 }}>
-                  <i className="ti ti-alert-triangle" />
+                  <Icon name="alert-triangle" />
                   Este aluno já possui um responsável vinculado.
                 </div>
               )}
@@ -363,7 +364,7 @@ export default function VincularFilho({ onSuccess, onCancel, canCancel = false }
                 alignItems: 'center',
                 gap: '8px'
               }}>
-                <i className="ti ti-alert-circle" />
+                <Icon name="alert-circle" />
                 <span>{error}</span>
               </div>
             )}
@@ -398,7 +399,7 @@ export default function VincularFilho({ onSuccess, onCancel, canCancel = false }
                   </>
                 ) : (
                   <>
-                    <i className="ti ti-user-check" />
+                    <Icon name="user-check" />
                     Confirmar Vínculo
                   </>
                 )}

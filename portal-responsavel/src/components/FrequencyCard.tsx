@@ -7,6 +7,7 @@
 import React from 'react';
 import type { Attendance } from '../types';
 import styles from '../styles/portal.module.scss';
+import Icon from './ui/Icon';
 
 interface FrequencyCardProps {
   attendance: Attendance;
@@ -56,7 +57,7 @@ const FrequencyCard: React.FC<FrequencyCardProps> = ({ attendance }) => {
     <section className={styles.card} aria-labelledby="freq-heading">
       <div className={styles.cardHeader}>
         <h3 id="freq-heading" className={styles.cardTitle}>
-          <i className="ti ti-calendar-stats" aria-hidden="true" />
+          <Icon name="calendar-stats" aria-hidden="true" />
           Frequência Escolar
         </h3>
         <span className={styles.cardSubtitle}>Ano letivo 2026</span>

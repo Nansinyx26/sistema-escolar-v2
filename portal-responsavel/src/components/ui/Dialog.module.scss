@@ -1,0 +1,81 @@
+@use '../../styles/variables' as *;
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 10, 8, 0.62);
+  backdrop-filter: blur(4px);
+  animation: overlayIn 160ms ease-out;
+  z-index: 1000;
+}
+
+.content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(92vw, 520px);
+  max-height: 85vh;
+  overflow-y: auto;
+  background: $bg-secondary;
+  border: 1px solid $border-color;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-card, $shadow-glow-cyan;
+  padding: 1.5rem;
+  animation: contentIn 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 1001;
+
+  &:focus { outline: none; }
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: $text-primary;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.description {
+  font-size: 0.9rem;
+  color: $text-secondary;
+  margin: 0.25rem 0 0;
+}
+
+.close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.05);
+  color: $text-secondary;
+  cursor: pointer;
+  transition: background $transition-smooth, color $transition-smooth;
+  flex-shrink: 0;
+
+  &:hover { background: rgba(5, 150, 105, 0.16); color: $accent-cyan; }
+  &:focus-visible { outline: 2px solid $accent-cyan; outline-offset: 2px; }
+}
+
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes contentIn {
+  from { opacity: 0; transform: translate(-50%, -46%) scale(0.97); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}

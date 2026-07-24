@@ -3,6 +3,7 @@ import { postChatbotMessage } from '../services/apiService';
 import { useTTS } from '../hooks/useTTS';
 import VoiceOrb from './VoiceOrb';
 import styles from '../styles/portal.module.scss';
+import Icon from './ui/Icon';
 
 interface Message {
   text: string;
@@ -149,7 +150,7 @@ const ChatbotIA: React.FC<ChatbotIAProps> = ({ alunoId }: ChatbotIAProps) => {
           onClick={() => setIsOpen(true)}
           aria-label="Abrir Chatbot IA"
         >
-          <i className="ti ti-robot" />
+          <Icon name="robot" />
         </button>
       )}
 
@@ -158,7 +159,7 @@ const ChatbotIA: React.FC<ChatbotIAProps> = ({ alunoId }: ChatbotIAProps) => {
         <div className={styles.chatbotWindow}>
           <header className={styles.chatbotHeader}>
             <div className={styles.headerInfo}>
-              <i className="ti ti-robot" />
+              <Icon name="robot" />
               <div>
                 <strong>Assistente IA</strong>
                 <span>Online</span>
@@ -170,10 +171,10 @@ const ChatbotIA: React.FC<ChatbotIAProps> = ({ alunoId }: ChatbotIAProps) => {
                 className={styles.settingsBtn} 
                 title="Configurações de Voz"
               >
-                <i className="ti ti-settings" />
+                <Icon name="settings" />
               </button>
               <button onClick={() => { stop(); setIsOpen(false); }} className={styles.closeBtn}>
-                <i className="ti ti-x" />
+                <Icon name="x" />
               </button>
             </div>
           </header>
@@ -245,7 +246,7 @@ const ChatbotIA: React.FC<ChatbotIAProps> = ({ alunoId }: ChatbotIAProps) => {
                         className={styles.audioBtn}
                         title={isPlaying && activeMessageIndex === i ? "Pausar" : "Ouvir resposta"}
                       >
-                        <i className={isPlaying && activeMessageIndex === i ? "ti ti-player-pause" : "ti ti-volume"} />
+                        <Icon name={isPlaying && activeMessageIndex === i ? "player-pause" : "volume"} />
                       </button>
                     </div>
                   )}
@@ -312,7 +313,7 @@ const ChatbotIA: React.FC<ChatbotIAProps> = ({ alunoId }: ChatbotIAProps) => {
               autoFocus
             />
             <button type="submit" disabled={!input.trim() || loading}>
-              <i className="ti ti-send" />
+              <Icon name="send" />
             </button>
           </form>
         </div>

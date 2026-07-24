@@ -1,16 +1,19 @@
 /**
  * components/Modal.tsx
- * Accessible, animated modal dialog with overlay blur, ESC key support,
- * full notification content, reactions and comments.
+ * Modal de detalhe de notificação sobre Radix Dialog.
+ * O Radix cuida de foco preso, ESC, scroll-lock e aria-*; aqui mantemos o
+ * layout rico (badge de tipo, reações, comentários, leitura por voz).
  */
 
-import React, { useEffect, useCallback, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import * as RadixDialog from '@radix-ui/react-dialog';
 import type { Notification } from '../types';
 import ReactionArea from './ReactionArea';
 import CommentSection from './CommentSection';
 import SpeakButton from './SpeakButton';
 import styles from '../styles/portal.module.scss';
 import { sanitizeHtml } from '../utils/htmlSanitizer';
+import Icon from './ui/Icon';
 
 interface ModalProps {
   notification: Notification | null;
@@ -28,27 +31,12 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const Modal: React.FC<ModalProps> = ({ notification, onClose }) => {
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const [showComments, setShowComments] = useState(false);
 
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    },
-    [onClose],
-  );
-
+  // Reseta o painel de comentários ao abrir outra notificação.
   useEffect(() => {
-    if (!notification) return;
     setShowComments(false);
-    document.addEventListener('keydown', handleKeyDown);
-    closeButtonRef.current?.focus();
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = '';
-    };
-  }, [notification, handleKeyDown]);
+  }, [notification?.id]);
 
   if (!notification) return null;
 
@@ -62,91 +50,81 @@ const Modal: React.FC<ModalProps> = ({ notification, onClose }) => {
   const sanitizedBodyHtml = sanitizeHtml(notification.corpoHtml);
 
   return (
-    <div
-      className={styles.modalOverlay}
-      onClick={onClose}
-      role="presentation"
-      aria-hidden="true"
-    >
-      <div
-        className={styles.modalContent}
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="modal-title"
-        aria-describedby="modal-message"
-      >
-        <div className={styles.modalHeader}>
-          <div className={styles.modalMeta}>
-            <span className={styles.modalIcon}>{notification.icon}</span>
-            <span className={`${styles.notificationTypeBadge} ${styles[notification.tipo]}`}>
-              {TYPE_LABELS[notification.tipo] ?? notification.tipo}
-            </span>
+    <RadixDialog.Root open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <RadixDialog.Portal>
+        <RadixDialog.Overlay className={styles.modalOverlay} />
+        <RadixDialog.Content className={styles.modalContent}>
+          <div className={styles.modalHeader}>
+            <div className={styles.modalMeta}>
+              <span className={styles.modalIcon}>{notification.icon}</span>
+              <span className={`${styles.notificationTypeBadge} ${styles[notification.tipo]}`}>
+                {TYPE_LABELS[notification.tipo] ?? notification.tipo}
+              </span>
+            </div>
+            <RadixDialog.Close asChild>
+              <button className={styles.modalClose} aria-label="Fechar notificação">
+                <Icon name="x" aria-hidden="true" />
+              </button>
+            </RadixDialog.Close>
           </div>
-          <button
-            ref={closeButtonRef}
-            className={styles.modalClose}
-            onClick={onClose}
-            aria-label="Fechar notificação"
-          >
-            <i className="ti ti-x" aria-hidden="true" />
-          </button>
-        </div>
 
-        <h2 id="modal-title" className={styles.modalTitle}>
-          {notification.titulo}
-        </h2>
+          <RadixDialog.Title asChild>
+            <h2 className={styles.modalTitle}>{notification.titulo}</h2>
+          </RadixDialog.Title>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '1.25rem' }}>
-          <p className={styles.modalDate} style={{ margin: 0 }}>
-            <i className="ti ti-clock" aria-hidden="true" style={{ marginRight: '6px' }} />
-            {formattedDate}
-          </p>
-          {notification.criadoPor && (
-            <p className={styles.modalDate} style={{ margin: 0, fontWeight: 500, color: 'rgba(16, 185, 129, 0.9)' }}>
-              <i className="ti ti-user" aria-hidden="true" style={{ marginRight: '6px' }} />
-              <strong>Enviado por:</strong> {notification.criadoPor}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '1.25rem' }}>
+            <p className={styles.modalDate} style={{ margin: 0 }}>
+              <Icon name="clock" aria-hidden="true" style={{ marginRight: '6px' }} />
+              {formattedDate}
             </p>
-          )}
-        </div>
-
-        <div id="modal-message" className={styles.modalMessage} style={{ marginBottom: '1.25rem' }}>
-          {sanitizedBodyHtml ? (
-            <div dangerouslySetInnerHTML={{ __html: sanitizedBodyHtml }} />
-          ) : (
-            <p style={{ whiteSpace: 'pre-wrap' }}>{notification.mensagem}</p>
-          )}
-        </div>
-
-        <div className={styles.modalSectionDivider}>
-          <ReactionArea messageId={notification.id} />
-        </div>
-
-        {notification.comunicadoId && (
-          <div className={styles.modalSectionDivider}>
-            <button
-              type="button"
-              className={styles.notifCommentBtn}
-              onClick={() => setShowComments(prev => !prev)}
-              aria-expanded={showComments}
-            >
-              <i className="ti ti-message-circle" aria-hidden="true" />
-              {showComments ? 'Fechar comentários' : 'Comentar'}
-            </button>
-
-            {showComments && (
-              <div className={styles.notifCommentsBox}>
-                <CommentSection comunicadoId={notification.comunicadoId} />
-              </div>
+            {notification.criadoPor && (
+              <p className={styles.modalDate} style={{ margin: 0, fontWeight: 500, color: 'rgba(16, 185, 129, 0.9)' }}>
+                <Icon name="user" aria-hidden="true" style={{ marginRight: '6px' }} />
+                <strong>Enviado por:</strong> {notification.criadoPor}
+              </p>
             )}
           </div>
-        )}
 
-        <div className={styles.modalSectionDivider}>
-          <SpeakButton text={notification.corpoHtml || notification.mensagem} />
-        </div>
-      </div>
-    </div>
+          <RadixDialog.Description asChild>
+            <div className={styles.modalMessage} style={{ marginBottom: '1.25rem' }}>
+              {sanitizedBodyHtml ? (
+                <div dangerouslySetInnerHTML={{ __html: sanitizedBodyHtml }} />
+              ) : (
+                <p style={{ whiteSpace: 'pre-wrap' }}>{notification.mensagem}</p>
+              )}
+            </div>
+          </RadixDialog.Description>
+
+          <div className={styles.modalSectionDivider}>
+            <ReactionArea messageId={notification.id} />
+          </div>
+
+          {notification.comunicadoId && (
+            <div className={styles.modalSectionDivider}>
+              <button
+                type="button"
+                className={styles.notifCommentBtn}
+                onClick={() => setShowComments(prev => !prev)}
+                aria-expanded={showComments}
+              >
+                <Icon name="message-circle" aria-hidden="true" />
+                {showComments ? 'Fechar comentários' : 'Comentar'}
+              </button>
+
+              {showComments && (
+                <div className={styles.notifCommentsBox}>
+                  <CommentSection comunicadoId={notification.comunicadoId} />
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className={styles.modalSectionDivider}>
+            <SpeakButton text={notification.corpoHtml || notification.mensagem} />
+          </div>
+        </RadixDialog.Content>
+      </RadixDialog.Portal>
+    </RadixDialog.Root>
   );
 };
 

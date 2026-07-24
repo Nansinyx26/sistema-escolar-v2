@@ -13,6 +13,10 @@
 }
 
 // ─── Buttons ──────────────────────────────────────────────────────────────────
+// button-base fica só com declarações simples (sem regra aninhada) para que
+// os mixins concretos possam somar suas próprias declarações sem gerar o aviso
+// de depreciação do Sass "declarations after nested rules". A regra de foco é
+// um mixin à parte, sempre incluído por último — depois de :hover/:active.
 @mixin button-base {
   display: inline-flex;
   align-items: center;
@@ -29,7 +33,9 @@
   text-decoration: none;
   white-space: nowrap;
   outline: none;
+}
 
+@mixin button-focus-ring {
   &:focus-visible {
     outline: 2px solid $accent-cyan;
     outline-offset: 2px;
@@ -48,6 +54,8 @@
   }
 
   &:active { transform: translateY(0); }
+
+  @include button-focus-ring;
 }
 
 @mixin button-secondary {
@@ -60,6 +68,8 @@
     background: rgba(255, 255, 255, 0.06);
     border-color: rgba(255, 255, 255, 0.16);
   }
+
+  @include button-focus-ring;
 }
 
 @mixin button-danger-outline {
@@ -72,6 +82,8 @@
     background: rgba(239, 68, 68, 0.12);
     box-shadow: 0 0 12px rgba(239, 68, 68, 0.2);
   }
+
+  @include button-focus-ring;
 }
 
 @mixin button-ghost {
@@ -84,6 +96,8 @@
     background: rgba(255, 255, 255, 0.06);
     color: $text-primary;
   }
+
+  @include button-focus-ring;
 }
 
 // ─── Input ────────────────────────────────────────────────────────────────────

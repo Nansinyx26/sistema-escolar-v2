@@ -3,6 +3,7 @@ import { updateProfile, uploadManualPhoto, removeManualPhoto, ApiError } from '.
 import type { Student, AuthUser } from '../types';
 import styles from '../styles/portal.module.scss';
 import { getPhotoUrl } from '../utils/photoUtils';
+import Icon from './ui/Icon';
 
 interface EditarPerfilProps {
   user: AuthUser;
@@ -122,30 +123,30 @@ export default function EditarPerfil({ user, onSuccess }: EditarPerfilProps) {
   return (
     <article className={styles.profileViewCard} aria-label="Editar dados cadastrais e termo LGPD">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
-        <h2><i className="ti ti-signature" aria-hidden="true" /> Cadastro e Proteção de Dados (LGPD)</h2>
+        <h2><Icon name="signature" aria-hidden="true" /> Cadastro e Proteção de Dados (LGPD)</h2>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', color: '#22c55e', padding: '6px 12px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 600 }}>
-          <i className="ti ti-shield-check" style={{ fontSize: '0.9rem' }} /> Em conformidade com a LGPD
+          <Icon name="shield-check" style={{ fontSize: '0.9rem' }} /> Em conformidade com a LGPD
         </div>
       </div>
       <p className={styles.subtitle}>Confirme seus dados cadastrais e assine as autorizações obrigatórias.</p>
 
       <div className={styles.profileTabs}>
         <button type="button" onClick={() => setActiveTab('responsavel')} className={`${styles.tabBtn} ${activeTab === 'responsavel' ? styles.active : ''}`}>
-          <i className="ti ti-user" /> Responsável Legal
+          <Icon name="user" /> Responsável Legal
         </button>
         <button type="button" onClick={() => setActiveTab('lgpd')} className={`${styles.tabBtn} ${activeTab === 'lgpd' ? styles.active : ''}`}>
-          <i className="ti ti-shield-lock" /> Termos LGPD
+          <Icon name="shield-lock" /> Termos LGPD
         </button>
       </div>
 
       {error && (
         <div className={styles.sidebarError} role="alert" style={{ marginBottom: '20px' }}>
-          <i className="ti ti-alert-circle" /> <span>{error}</span>
+          <Icon name="alert-circle" /> <span>{error}</span>
         </div>
       )}
       {successMsg && (
         <div style={{ marginBottom: '24px', padding: '12px 16px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '8px', color: '#22c55e', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: 600 }} role="alert">
-          <i className="ti ti-circle-check-filled" /> <span>{successMsg}</span>
+          <Icon name="circle-check-filled" /> <span>{successMsg}</span>
         </div>
       )}
 
@@ -166,35 +167,35 @@ export default function EditarPerfil({ user, onSuccess }: EditarPerfilProps) {
                 {/* camera overlay */}
                 <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.2s' }}
                   onMouseEnter={e => (e.currentTarget.style.opacity = '1')} onMouseLeave={e => (e.currentTarget.style.opacity = '0')}>
-                  <i className="ti ti-camera" style={{ fontSize: '1.6rem', color: '#fff' }} />
+                  <Icon name="camera" style={{ fontSize: '1.6rem', color: '#fff' }} />
                 </div>
               </div>
               <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={handlePhotoChange} />
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
                 <button type="button" onClick={() => fileInputRef.current?.click()} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px', fontSize: '0.78rem', fontWeight: 600, background: 'rgba(16, 185, 129,0.1)', border: '1px solid rgba(16, 185, 129,0.3)', color: '#10b981', cursor: 'pointer' }}>
-                  <i className="ti ti-upload" /> {displayPreview ? 'Alterar Foto' : 'Adicionar Foto'}
+                  <Icon name="upload" /> {displayPreview ? 'Alterar Foto' : 'Adicionar Foto'}
                 </button>
                 {displayPreview && (
                   <button type="button" onClick={handleRemovePhoto} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px', fontSize: '0.78rem', fontWeight: 600, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444', cursor: 'pointer' }}>
-                    <i className="ti ti-trash" /> Remover
+                    <Icon name="trash" /> Remover
                   </button>
                 )}
               </div>
               <p style={{ fontSize: '0.72rem', color: '#71717a', margin: 0 }}>JPG, PNG ou WebP · máx. 5MB</p>
             </div>
 
-            <h3 className={styles.profileSectionTitle}><i className="ti ti-id-badge" /> Informações do Responsável Legal</h3>
+            <h3 className={styles.profileSectionTitle}><Icon name="id-badge" /> Informações do Responsável Legal</h3>
 
             <div className={styles.formGroup} style={{ marginBottom: '16px' }}>
               <label className={styles.formLabel}>Nome Completo</label>
               <div className={styles.inputWrapper}>
-                <i className="ti ti-user" /><input type="text" className={styles.formInput} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Seu nome completo" required />
+                <Icon name="user" /><input type="text" className={styles.formInput} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Seu nome completo" required />
               </div>
             </div>
             <div className={styles.formGroup}>
               <label className={styles.formLabel}>Telefone Celular</label>
               <div className={styles.inputWrapper}>
-                <i className="ti ti-phone" /><input type="text" className={styles.formInput} value={telefone === '(00) 00000-0000' ? '' : telefone} placeholder="(00) 00000-0000" onChange={handleTelefoneChange} required />
+                <Icon name="phone" /><input type="text" className={styles.formInput} value={telefone === '(00) 00000-0000' ? '' : telefone} placeholder="(00) 00000-0000" onChange={handleTelefoneChange} required />
               </div>
             </div>
           </div>
@@ -203,7 +204,7 @@ export default function EditarPerfil({ user, onSuccess }: EditarPerfilProps) {
         {activeTab === 'lgpd' && (
           <div className={styles.profileFormSection}>
             <h3 className={styles.profileSectionTitle} style={{ borderColor: 'rgba(16, 185, 129,0.3)' }}>
-              <i className="ti ti-shield-lock" style={{ color: '#10b981' }} /> Termos de Consentimento Ativos
+              <Icon name="shield-lock" style={{ color: '#10b981' }} /> Termos de Consentimento Ativos
             </h3>
             <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginBottom: '20px', lineHeight: '1.5' }}>
               Para manter o acesso ao portal, a legislação exige o consentimento explícito sobre o tratamento dos dados.

@@ -2,12 +2,15 @@
 <html data-theme="dark">
 
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Teste Login Backend</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="../../css/parallax-glass.css">
     <link rel="stylesheet" href="../../css/neo-brutal.css">
     <!-- Tailwind CSS Play CDN — preflight desabilitado para nao conflitar com CSS existente -->
     <!-- Offline Compiled Tailwind CSS -->
-    <link rel="stylesheet" href="../../css/tailwind-built.css">    <link rel="stylesheet" href="../../css/responsive-global.css?v=1.0">
+    <link rel="stylesheet" href="../../css/tailwind-built.css">    <link rel="stylesheet" href="../../css/responsive-global.css?v=1.2">
     <link rel="stylesheet" href="../../css/splash-screen.css?v=1.0">
     <link rel="stylesheet" href="../../css/reactions.css?v=1.0">
     <link rel="manifest" href="/manifest.json">
@@ -43,38 +46,76 @@
     </div>
     <script src="../../js/splash-screen.js"></script>
 
-    <h1>Teste de Login</h1>
-    <div id="result"></div>
+    <!-- Piloto daisyUI (prefixo dui-) + Lucide — tema verde institucional -->
+    <main data-theme="escolar-dark" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;">
+        <div class="dui-card bg-base-200 shadow-lg" style="width:100%;max-width:560px;">
+            <div class="dui-card-body">
+                <h1 class="dui-card-title" style="font-size:1.3rem;">
+                    <i data-lucide="plug-zap"></i> Teste de Conexão · Backend
+                </h1>
+                <p style="opacity:.7;font-size:.9rem;margin:0 0 .5rem;">
+                    Verifica se a API responde e consegue localizar um usuário por e-mail.
+                </p>
+
+                <label style="font-size:.8rem;opacity:.8;">URL base da API</label>
+                <input id="baseUrl" class="dui-input dui-input-bordered w-full"
+                       value="http://localhost:3001/api" />
+
+                <label style="font-size:.8rem;opacity:.8;margin-top:.5rem;">E-mail do usuário</label>
+                <input id="email" class="dui-input dui-input-bordered w-full"
+                       value="renan@escola.com" />
+
+                <div class="dui-card-actions" style="margin-top:1rem;">
+                    <button id="btnTest" class="dui-btn dui-btn-primary">
+                        <i data-lucide="play"></i> Testar conexão
+                    </button>
+                </div>
+
+                <div id="result" style="margin-top:1rem;"></div>
+            </div>
+        </div>
+    </main>
 
     <script type="module">
-        const baseUrl = 'http://localhost:3001/api';
         const resultDiv = document.getElementById('result');
+        const btn = document.getElementById('btnTest');
+
+        function render(html) {
+            resultDiv.innerHTML = html;
+            // Renderiza os ícones Lucide inseridos dinamicamente.
+            if (window.renderLucideIcons) window.renderLucideIcons();
+        }
 
         async function testLogin() {
-            try {
-                resultDiv.innerHTML = '<p>🔍 Buscando usuário renan@escola.com...</p>';
+            const baseUrl = document.getElementById('baseUrl').value.trim();
+            const email = document.getElementById('email').value.trim();
+            btn.classList.add('dui-btn-disabled');
+            render('<div class="dui-alert"><span class="dui-loading dui-loading-spinner dui-loading-sm"></span> Consultando a API…</div>');
 
-                // Busca usuário por email
-                const res = await fetch(`${baseUrl}/usuarios?email=renan@escola.com`);
+            try {
+                const res = await fetch(`${baseUrl}/usuarios?email=${encodeURIComponent(email)}`);
                 const json = await res.json();
 
-                if (json.success && json.data.length > 0) {
+                if (json.success && json.data && json.data.length > 0) {
                     const user = json.data[0];
-                    resultDiv.innerHTML = `
-                        <h2>✅ Usuário encontrado!</h2>
-                        <pre>${JSON.stringify(user, null, 2)}</pre>
-                        <p><strong>O backend está funcionando!</strong></p>
-                        <p>O problema é que o arquivo js/db.js não está sendo carregado corretamente no navegador.</p>
-                    `;
+                    render(`
+                        <div class="dui-alert dui-alert-success">
+                            <i data-lucide="circle-check"></i>
+                            <span>Usuário encontrado — o backend está respondendo.</span>
+                        </div>
+                        <pre class="bg-base-300" style="margin-top:.75rem;padding:1rem;border-radius:.5rem;overflow:auto;font-size:.8rem;">${JSON.stringify(user, null, 2)}</pre>
+                    `);
                 } else {
-                    resultDiv.innerHTML = '<p>❌ Usuário não encontrado</p>';
+                    render('<div class="dui-alert dui-alert-warning"><i data-lucide="triangle-alert"></i><span>API respondeu, mas nenhum usuário foi encontrado para este e-mail.</span></div>');
                 }
             } catch (error) {
-                resultDiv.innerHTML = `<p>❌ Erro: ${error.message}</p>`;
+                render(`<div class="dui-alert dui-alert-error"><i data-lucide="circle-x"></i><span>Falha ao conectar: ${error.message}</span></div>`);
+            } finally {
+                btn.classList.remove('dui-btn-disabled');
             }
         }
 
-        testLogin();
+        btn.addEventListener('click', testLogin);
     </script>
     <script defer src="../../js/parallax.js"></script>
     <script src="../../js/vendor.js"></script>
@@ -84,6 +125,9 @@
     <script defer src="../../js/push-notifications.js"></script>
     <script defer src="../../js/pwa-install.js"></script>
     <script defer src="../../js/settings-drawer.js"></script>
+    <!-- Lucide line icons (padronização) + shim de compatibilidade Bootstrap Icons -->
+    <script src="../../js/libs/lucide.min.js"></script>
+    <script src="../../js/libs/lucide-init.js"></script>
 </body>
 
 </html>

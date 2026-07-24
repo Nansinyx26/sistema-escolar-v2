@@ -27,11 +27,14 @@ class AnalyticsService {
       let resultado = await CacheService.get(cacheKey);
       if (resultado) return resultado;
 
-      const query = { aluno_id: alunoId };
+      // Campos reais da collection `notas`: alunoId (= Aluno._id), materiaId,
+      // nota. Antes usava aluno_id/disciplina/valor (inexistentes no schema
+      // strict), então a query nunca casava e o endpoint sempre dizia sem-dados.
+      const query = { alunoId: String(alunoId) };
       if (bimestre) query.bimestre = bimestre;
 
-      const notas = await Nota.find(query);
-      
+      const notas = await Nota.find(query).lean();
+
       if (notas.length === 0) {
         return {
           success: true,
@@ -41,16 +44,16 @@ class AnalyticsService {
         };
       }
 
-      // Calcular médias
+      // Calcular médias por matéria
       const disciplinas = {};
       notas.forEach(nota => {
-        if (!disciplinas[nota.disciplina]) {
-          disciplinas[nota.disciplina] = {
-            notas: [],
-            peso: nota.peso || 1,
-          };
+        const disc = nota.materiaId || nota.materia || 'Geral';
+        const valor = parseFloat(nota.nota);
+        if (isNaN(valor)) return;
+        if (!disciplinas[disc]) {
+          disciplinas[disc] = { notas: [] };
         }
-        disciplinas[nota.disciplina].notas.push(nota.valor);
+        disciplinas[disc].notas.push(valor);
       });
 
       // Agregações
@@ -77,8 +80,12 @@ class AnalyticsService {
         totalDisciplinas++;
       });
 
-      resultado_calc.mediaGeral = parseFloat((somaMedias / totalDisciplinas).toFixed(2));
-      resultado_calc.desempenho = this.classificarDesempenho(resultado_calc.mediaGeral);
+      resultado_calc.mediaGeral = totalDisciplinas > 0
+        ? parseFloat((somaMedias / totalDisciplinas).toFixed(2))
+        : 0;
+      resultado_calc.desempenho = totalDisciplinas > 0
+        ? this.classificarDesempenho(resultado_calc.mediaGeral)
+        : 'sem-avaliacao';
 
       // Cache por 1 hora
       await CacheService.set(cacheKey, resultado_calc, 3600);
@@ -95,18 +102,21 @@ class AnalyticsService {
    */
   static async analisarFrequenciaAluno(alunoId, mes = null) {
     try {
-      const query = { aluno_id: alunoId };
+      // A collection `faltas` é um LOG DE PRESENÇA: campo `aluno` (não aluno_id)
+      // e cada registro tem `presente` (true/false). Antes assumia que todo
+      // registro era uma ausência e usava 20 dias fixos — inflando a frequência.
+      const query = { aluno: String(alunoId) };
       if (mes) {
         const dataInicio = new Date(new Date().getFullYear(), mes - 1, 1);
-        const dataFim = new Date(new Date().getFullYear(), mes, 0);
+        const dataFim = new Date(new Date().getFullYear(), mes, 0, 23, 59, 59);
         query.data = { $gte: dataInicio, $lte: dataFim };
       }
 
-      const faltas = await Falta.find(query);
-      const totalDias = await this.calcularDiasLetivos(alunoId, mes);
-
+      const registros = await Falta.find(query).lean();
+      const totalDias = registros.length;
+      const faltas = registros.filter(r => !r.presente);
       const presencas = totalDias - faltas.length;
-      const percentualPresenca = totalDias > 0 
+      const percentualPresenca = totalDias > 0
         ? parseFloat(((presencas / totalDias) * 100).toFixed(2))
         : 0;
 
@@ -118,7 +128,10 @@ class AnalyticsService {
         presencas,
         faltas: faltas.length,
         percentualPresenca,
-        status: percentualPresenca >= 75 ? 'aceitavel' : 'preocupante',
+        // Sem registros → sem-dados (não dispara alerta de frequência baixa).
+        status: totalDias === 0
+          ? 'sem-dados'
+          : (percentualPresenca >= 75 ? 'aceitavel' : 'preocupante'),
         detalhesFaltas: faltas.map(f => ({
           data: f.data,
           motivo: f.motivo,
@@ -142,7 +155,12 @@ class AnalyticsService {
       if (relatorio) return relatorio;
 
       const turma = await Turma.findById(turmaId);
-      const alunos = await Aluno.find({ turma_id: turmaId });
+      // O :turmaId pode chegar como _id da Turma (Aluno.turmaId) ou como código
+      // de turma (Aluno.turma). Antes usava `turma_id`, campo inexistente no
+      // schema — nenhum aluno casava e o relatório vinha vazio.
+      const alunos = await Aluno.find({
+        $or: [{ turmaId: String(turmaId) }, { turma: String(turmaId) }],
+      });
 
       const analises = await Promise.all(
         alunos.map(aluno => this.analisarDesempenhoAluno(aluno._id, bimestre))
@@ -246,15 +264,6 @@ class AnalyticsService {
   }
 
   /**
-   * Helper: calcular dias letivos
-   */
-  static async calcularDiasLetivos(alunoId, mes) {
-    // Simplificado: assumir 20 dias por mês
-    // Em produção, buscar calendário escolar
-    return 20;
-  }
-
-  /**
    * Helper: gerar alertas
    */
   static gerarAlertas(desempenho, frequencia) {
@@ -268,7 +277,7 @@ class AnalyticsService {
       });
     }
 
-    if (frequencia.success && frequencia.percentualPresenca < 75) {
+    if (frequencia.success && frequencia.totalDias > 0 && frequencia.percentualPresenca < 75) {
       alertas.push({
         tipo: 'frequencia-baixa',
         mensagem: `Frequência em risco: ${frequencia.percentualPresenca}%`,

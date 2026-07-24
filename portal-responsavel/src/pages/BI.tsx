@@ -5,6 +5,7 @@ import { useTTS } from '../hooks/useTTS';
 import VoiceOrb from '../components/VoiceOrb';
 import styles from '../styles/portal.module.scss';
 import biStyles from '../styles/BI.module.scss'; // New dedicated styles for BI skeletons
+import Icon from '../components/ui/Icon';
 
 const BI: React.FC = () => {
   const { heatmapData, insights, loading, error, lastFetched, setBIState } = useBI();
@@ -143,7 +144,7 @@ const BI: React.FC = () => {
         <div className={styles.biHeaderActions}>
           {ttsError && <span className={styles.ttsErrorHint}>{ttsError}</span>}
           <button onClick={() => fetchData(true)} disabled={loading} className={styles.refreshBtn}>
-            <i className={`ti ti-refresh ${loading ? 'ti-spin' : ''}`} />
+            <Icon name="refresh" spin={loading} />
             {loading ? 'Sincronizando...' : 'Atualizar Dados'}
           </button>
         </div>
@@ -181,19 +182,19 @@ const BI: React.FC = () => {
             {insights && (
               <div className={styles.insightsBadges}>
                 <div className={styles.badge}>
-                  <i className="ti ti-users" /> 
+                  <Icon name="users" /> 
                   Total de Alunos: <strong>{insights.totalAlunos}</strong>
                 </div>
                 <div className={styles.badge}>
-                  <i className="ti ti-chart-bar" /> 
+                  <Icon name="chart-bar" /> 
                   Média Global: <strong>{insights.mediaEscola}</strong>
                 </div>
                 <div className={styles.badge}>
-                  <i className="ti ti-alert-triangle" /> 
+                  <Icon name="alert-triangle" /> 
                   Alunos em Risco: <strong>{insights.alunosRisco}</strong>
                 </div>
                 <div className={styles.badge}>
-                  <i className="ti ti-alert-circle" /> 
+                  <Icon name="alert-circle" /> 
                   Crítico: <strong>{insights.materiaCritica}</strong>
                 </div>
               </div>

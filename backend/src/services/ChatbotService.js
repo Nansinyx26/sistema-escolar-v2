@@ -533,14 +533,21 @@ async function fetchGradeHoraria({ turmaId }) {
  * @param {string} params.turma  Turma identifier
  * @returns {Promise<Object[]>}
  */
-async function fetchProfessores({ turma }) {
+async function fetchProfessores({ turma, escolaId }) {
     if (!turma) return [];
-    const professores = await Professor.find({
+    // Códigos de turma colidem entre escolas (ex.: "3A" existe em várias). Sem
+    // escopo, "professores da turma 3A" misturava docentes de outras escolas.
+    // Professor guarda o vínculo em vinculos.escolaId (não em escolaId de topo).
+    const base = {
         $or: [
             { salaPrincipal: turma },
             { salasAdicionais: turma },
         ],
-    }).select('nome materias disciplina').lean();
+    };
+    const query = escolaId
+        ? { $and: [base, { 'vinculos.escolaId': String(escolaId) }] }
+        : base;
+    const professores = await Professor.find(query).select('nome materias disciplina').lean();
     return professores;
 }
 
@@ -1028,10 +1035,13 @@ async function processMessage({ message, alunoId, perfil, userId, nomeUsuario, u
                 turma = turmasAutorizadas[0];
             }
             // diretor/admin/coordenador sem turma especificada → lista todos
+            // os professores DA ESCOLA ativa (antes: Professor.find({}) devolvia
+            // o corpo docente de todas as escolas da rede).
             if (!turma && turmasAutorizadas === null) {
-                dados = await Professor.find({}).select('nome materias disciplina salaPrincipal').lean();
+                const q = escolaId ? { 'vinculos.escolaId': String(escolaId) } : {};
+                dados = await Professor.find(q).select('nome materias disciplina salaPrincipal').lean();
             } else {
-                dados = await fetchProfessores({ turma });
+                dados = await fetchProfessores({ turma, escolaId });
             }
             break;
         }

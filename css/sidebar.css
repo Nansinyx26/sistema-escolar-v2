@@ -14,6 +14,7 @@
     top: 0;
     left: 0;
     height: 100vh;
+    height: 100dvh; /* acompanha a barra de endereço no mobile, sem salto */
     width: var(--sidebar-width);
     background: var(--sidebar-bg);
     backdrop-filter: blur(20px);

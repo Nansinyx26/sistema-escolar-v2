@@ -8,6 +8,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import styles from '../styles/portal.module.scss';
+import Icon from './ui/Icon';
 
 interface ReactionUser {
   name: string;
@@ -358,7 +359,7 @@ export const ReactionArea: React.FC<ReactionAreaProps> = ({ messageId }) => {
         aria-label="Adicionar reação"
         title="Reagir"
       >
-        <i className="ti ti-mood-smile" />
+        <Icon name="mood-smile" />
       </button>
 
       {renderPickerModal()}

@@ -39,7 +39,11 @@ router.post('/chatbot', authorize(['diretor', 'professor', 'responsavel', 'admin
 router.post('/plano-aula', authorize(['diretor', 'professor', 'admin']), IAController.gerarPlanoAula);
 
 // Rota de Plano de Estudos Personalizado (Todos os perfis autorizados - Legado/Mantido)
-router.post('/plano-estudo', authorize(['diretor', 'professor', 'responsavel', 'admin']), IAController.gerarPlanoEstudo);
+// SEGURANÇA: recebe alunoId no body e monta o PEI com notas/turma/previsão reais
+// do aluno. Sem este guard, um responsável/professor iterava IDs e extraía o
+// perfil de qualquer criança de qualquer escola. `acessoAluno` valida escola +
+// turma + vínculo (mesmo padrão de /analise, /frequencia e /dashboard).
+router.post('/plano-estudo', authorize(['diretor', 'professor', 'responsavel', 'admin']), acessoAluno, IAController.gerarPlanoEstudo);
 
 // Rota de Health Check de IA
 router.get('/health', IAController.AnalyticsController.health);

@@ -3,6 +3,7 @@ import { updateProfile, ApiError } from '../services/apiService';
 import type { AuthUser } from '../types';
 import styles from '../styles/portal.module.scss';
 import { getPhotoUrl } from '../utils/photoUtils';
+import Icon from './ui/Icon';
 
 interface ProfileSidebarProps {
   isOpen: boolean;
@@ -93,10 +94,10 @@ export default function ProfileSidebar({
       <div className={styles.sidebarContainer} onClick={(e) => e.stopPropagation()} data-tour="sidebar">
         <div className={styles.sidebarHeader}>
           <h3>
-            <i className="ti ti-user-circle" /> Opções do Perfil
+            <Icon name="user-circle" /> Opções do Perfil
           </h3>
           <button className={styles.sidebarCloseBtn} onClick={onClose} aria-label="Fechar menu lateral">
-            <i className="ti ti-x" />
+            <Icon name="x" />
           </button>
         </div>
 
@@ -134,13 +135,13 @@ export default function ProfileSidebar({
                 color: '#10b981', cursor: 'pointer', transition: 'background 0.2s',
               }}
             >
-              <i className="ti ti-camera" /> Editar foto e nome
+              <Icon name="camera" /> Editar foto e nome
             </button>
           </div>
 
           {error && (
             <div className={styles.sidebarError}>
-              <i className="ti ti-alert-circle" />
+              <Icon name="alert-circle" />
               <span>{error}</span>
             </div>
           )}
@@ -150,7 +151,7 @@ export default function ProfileSidebar({
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Nome Completo</label>
                 <div className={styles.inputWrapper}>
-                  <i className="ti ti-user" />
+                  <Icon name="user" />
                   <input
                     type="text"
                     className={styles.formInput}
@@ -164,7 +165,7 @@ export default function ProfileSidebar({
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Telefone Celular</label>
                 <div className={styles.inputWrapper}>
-                  <i className="ti ti-phone" />
+                  <Icon name="phone" />
                   <input
                     type="text"
                     className={styles.formInput}
@@ -242,7 +243,7 @@ export default function ProfileSidebar({
                 onNavigate('profile');
                 onClose();
               }}>
-                <i className="ti ti-signature" /> {user.consentimentoAceiteEm ? 'Alterar Cadastro / Termo LGPD' : 'Assinar Termo LGPD e Cadastro'}
+                <Icon name="signature" /> {user.consentimentoAceiteEm ? 'Alterar Cadastro / Termo LGPD' : 'Assinar Termo LGPD e Cadastro'}
               </button>
 
               <hr className={styles.sidebarSeparator} />
@@ -255,7 +256,7 @@ export default function ProfileSidebar({
                   }}
                   className={styles.sidebarNavLink}
                 >
-                  <i className="ti ti-home" /> Ir para o Painel (Home)
+                  <Icon name="home" /> Ir para o Painel (Home)
                 </button>
                 <button
                   onClick={() => {
@@ -264,7 +265,7 @@ export default function ProfileSidebar({
                   }}
                   className={styles.sidebarNavLink}
                 >
-                  <i className="ti ti-clipboard-list" /> Ficha &amp; Autorizações
+                  <Icon name="clipboard-list" /> Ficha &amp; Autorizações
                 </button>
                 <button
                   onClick={() => {
@@ -273,13 +274,13 @@ export default function ProfileSidebar({
                   }}
                   className={styles.sidebarNavLink}
                 >
-                  <i className="ti ti-shield-lock" /> {user.consentimentoAceiteEm ? 'Visualizar Termo LGPD' : 'Assinar Termo LGPD e Cadastro'}
+                  <Icon name="shield-lock" /> {user.consentimentoAceiteEm ? 'Visualizar Termo LGPD' : 'Assinar Termo LGPD e Cadastro'}
                 </button>
                 <button
                   onClick={onPasswordRecovery}
                   className={styles.sidebarNavLink}
                 >
-                  <i className="ti ti-lock" /> Mudar Senha da Conta
+                  <Icon name="lock" /> Mudar Senha da Conta
                 </button>
                 {onRestartTour && (
                   <button
@@ -287,7 +288,7 @@ export default function ProfileSidebar({
                     onClick={() => { onRestartTour(); onClose(); }}
                     className={styles.sidebarNavLink}
                   >
-                    <i className="ti ti-help" /> Ver Tutorial Novamente
+                    <Icon name="help" /> Ver Tutorial Novamente
                   </button>
                 )}
               </div>
@@ -295,7 +296,7 @@ export default function ProfileSidebar({
               <hr className={styles.sidebarSeparator} />
 
               <button className={styles.sidebarLogoutBtn} onClick={onLogout}>
-                <i className="ti ti-logout" /> Sair da Conta
+                <Icon name="logout" /> Sair da Conta
               </button>
             </div>
           )}

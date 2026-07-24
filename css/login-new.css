@@ -658,7 +658,95 @@
     border-radius: 4px;
     overflow: hidden;
 }
-/* Light mode overrides removed — System is strictly Dark Mode */
+/* === MODO CLARO (SLATE & MINT) ===
+   O login segue a preferência salva do usuário (js/theme.js). Como o design
+   usa muitas cores fixas escuras, aqui cada superfície é revestida para uma
+   versão clara coesa. Os campos .form-input são tratados globalmente em
+   variables.css. */
+:root[data-theme="light"] .login-background {
+    background: radial-gradient(circle at 50% 50%, var(--bg-primary) 0%, #e2e8f0 100%);
+}
+:root[data-theme="light"] .gradient-orb {
+    opacity: 0.16;
+    mix-blend-mode: multiply;
+}
+:root[data-theme="light"] .login-card {
+    background: rgba(255, 255, 255, 0.75);
+    border-color: rgba(15, 23, 42, 0.08);
+    box-shadow:
+        0 4px 30px rgba(15, 23, 42, 0.06),
+        0 24px 70px rgba(15, 23, 42, 0.10),
+        inset 0 1px 1px rgba(255, 255, 255, 0.7);
+}
+:root[data-theme="light"] .login-logo img {
+    filter: brightness(1) saturate(1.05)
+        drop-shadow(0 4px 12px rgba(2, 132, 199, 0.22));
+}
+/* Título usava gradiente branco → invisível no claro */
+:root[data-theme="light"] .login-header h1 {
+    background: linear-gradient(135deg, #0f172a 30%, #475569 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+:root[data-theme="light"] .login-tabs {
+    background: rgba(15, 23, 42, 0.04);
+    border-color: rgba(15, 23, 42, 0.06);
+}
+:root[data-theme="light"] .login-tab:hover {
+    background: rgba(15, 23, 42, 0.04);
+}
+:root[data-theme="light"] .login-tab.active {
+    color: #0f172a;
+    background: #ffffff;
+    border-color: rgba(15, 23, 42, 0.06);
+    box-shadow:
+        0 2px 8px rgba(15, 23, 42, 0.10),
+        inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+:root[data-theme="light"] .checkbox-label input[type="checkbox"] {
+    background: rgba(15, 23, 42, 0.04);
+    border-color: rgba(15, 23, 42, 0.20);
+}
+:root[data-theme="light"] .btn-secondary {
+    background: rgba(15, 23, 42, 0.03);
+    border-color: rgba(15, 23, 42, 0.10);
+}
+:root[data-theme="light"] .btn-secondary:hover {
+    background: rgba(15, 23, 42, 0.06);
+    border-color: rgba(15, 23, 42, 0.16);
+}
+:root[data-theme="light"] .login-footer {
+    border-top-color: rgba(15, 23, 42, 0.08);
+}
+:root[data-theme="light"] .divider-text::before,
+:root[data-theme="light"] .divider-text::after {
+    border-bottom-color: rgba(15, 23, 42, 0.10);
+}
+:root[data-theme="light"] .backdrop {
+    background: rgba(15, 23, 42, 0.35);
+}
+:root[data-theme="light"] .modal-content {
+    background: rgba(255, 255, 255, 0.94);
+    border-color: rgba(15, 23, 42, 0.08);
+    box-shadow:
+        0 10px 40px rgba(15, 23, 42, 0.12),
+        0 32px 80px rgba(15, 23, 42, 0.16);
+}
+:root[data-theme="light"] .modal-header,
+:root[data-theme="light"] .modal-footer {
+    border-color: rgba(15, 23, 42, 0.06);
+    background: rgba(15, 23, 42, 0.01);
+}
+:root[data-theme="light"] .password-strength-bar {
+    background: rgba(15, 23, 42, 0.06);
+}
+:root[data-theme="light"] .portal-switcher {
+    background: rgba(15, 23, 42, 0.03);
+    border-color: rgba(15, 23, 42, 0.08);
+}
+:root[data-theme="light"] .portal-switch-btn:hover {
+    background: rgba(15, 23, 42, 0.05);
+}
 
 /* === RESPONSIVE BREAKPOINTS === */
 @media (max-width: 480px) {

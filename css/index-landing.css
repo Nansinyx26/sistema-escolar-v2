@@ -230,6 +230,14 @@ nav.scrolled {
 
 /* HERO */
 
+/* Contêiner do hero: ancora o fundo decorativo (.hero-bg) ao próprio hero
+   e contém o sangramento de -5vw das laterais, evitando overflow horizontal.
+   O modal de primeiro acesso é position:fixed e escapa deste overflow. */
+.hero-shell {
+  position: relative;
+  overflow: hidden;
+}
+
 .hero {
   min-height: 100vh;
   display: grid;
@@ -314,6 +322,7 @@ nav.scrolled {
 .hero-left {
   position: relative;
   z-index: 2;
+  width: 100%;
   max-width: 680px;
 }
 
@@ -548,6 +557,26 @@ nav.scrolled {
   color: rgba(255, 255, 255, 0.55);
   letter-spacing: 0.03em;
   line-height: 1.5;
+}
+
+/* MOBILE: o botão flutuante de troca de escola sobrepunha o badge do hero.
+   Sobe o botão para logo abaixo da nav, encolhe, dá folga ao badge e
+   garante que o painel aberto caiba na largura da tela. */
+@media (max-width: 768px) {
+  .school-switcher {
+    top: 4.25rem;
+    left: 0.75rem;
+  }
+  .school-switcher-button {
+    width: 44px;
+    height: 44px;
+  }
+  .school-switcher-panel {
+    width: min(320px, calc(100vw - 5rem));
+  }
+  .hero-badge {
+    margin-top: 1.25rem;
+  }
 }
 
 .hero-h1 {
@@ -1040,6 +1069,13 @@ nav.scrolled {
   padding: 7rem 5vw;
   position: relative;
   z-index: 1;
+}
+
+/* Wrapper de conteúdo das seções: centraliza e limita a largura, alinhando
+   o cabeçalho (.sc) e as grades ao mesmo eixo em qualquer tela */
+.section-inner {
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .stag {
@@ -2225,13 +2261,11 @@ footer {
   .nav-actions {
     gap: 0.35rem !important;
   }
-  .nav-actions .btn-g {
-    padding: 0.4rem 0.7rem !important;
-    font-size: 0.72rem !important;
-  }
+  /* Menu hambúrguer já contém "Sou Docente" e "Sou Responsável" —
+     esconder os CTAs da barra evita a nav espremida/estourando no mobile */
+  .nav-actions .btn-g,
   .nav-actions .btn-p {
-    padding: 0.4rem 0.7rem !important;
-    font-size: 0.72rem !important;
+    display: none !important;
   }
 }
 
@@ -2558,4 +2592,77 @@ body:has(.pa-modal-overlay.open) {
     opacity: 1 !important;
     transform: none !important;
   }
+}
+
+/* ============================================================
+   MODO CLARO OPCIONAL — LANDING
+   A landing tem seu próprio sistema de tokens (neon-dark). Aqui ele é
+   remapeado para uma versão clara coesa quando [data-theme="light"].
+   A maioria das superfícies usa var(--ink*/surface/text/b*), então o
+   remapeamento cobre o grosso; cores fixas escuras são revestidas abaixo.
+   ============================================================ */
+:root[data-theme="light"] {
+  --ink: #ffffff;
+  --ink2: #f8fafc;
+  --ink3: #f1f5f9;
+  --surface: #ffffff;
+  --surface2: #f8fafc;
+  --mid: #e2e8f0;
+  --a: rgba(2, 132, 199, 0.10);
+  --a2: #0284c7;
+  --a3: rgba(15, 23, 42, 0.78);
+  --blue: #eef2f7;
+  --blue2: #e8eef5;
+  --gold: #0891b2;   /* ciano neon → ciano legível sobre claro */
+  --purple: #7c3aed; /* roxo neon → violeta legível */
+  --text: #0f172a;
+  --text2: #334155;
+  --text3: #64748b;
+  --rgb-r: #e11d48;
+  --rgb-g: #059669;
+  --rgb-b: #2563eb;
+  --b: rgba(15, 23, 42, 0.08);
+  --ba: rgba(15, 23, 42, 0.14);
+  --ga: rgba(15, 23, 42, 0.06);
+  --gb: rgba(15, 23, 42, 0.04);
+}
+
+/* Fundo da página + textura de ruído mais sutil no claro */
+:root[data-theme="light"] body {
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.06), transparent 25%),
+    radial-gradient(circle at 85% 15%, rgba(5, 150, 105, 0.05), transparent 18%),
+    radial-gradient(circle at 15% 88%, rgba(225, 29, 72, 0.05), transparent 15%),
+    var(--ink);
+  color: var(--text);
+}
+:root[data-theme="light"] body::before { opacity: 0.28; }
+
+/* Superfícies escritas com cor fixa escura (não usam tokens) */
+:root[data-theme="light"] .school-switcher-button { background: rgba(255, 255, 255, 0.92); color: #334155; }
+:root[data-theme="light"] .btn-g { background: rgba(15, 23, 42, 0.04); }
+:root[data-theme="light"] .btn-h-p {
+  background: linear-gradient(180deg, #f1f5f9, #e2e8f0);
+  color: #0f172a;
+  box-shadow: 0 20px 60px rgba(2, 132, 199, 0.10);
+}
+:root[data-theme="light"] .btn-h-o { background: rgba(15, 23, 42, 0.03); }
+:root[data-theme="light"] .pa-modal-card { background: rgba(255, 255, 255, 0.97); }
+:root[data-theme="light"] .pa-modal-footer { border-top-color: rgba(15, 23, 42, 0.08); }
+
+/* Título do modal usava gradiente branco → invisível no claro */
+:root[data-theme="light"] .pa-modal-header h2 {
+  background: linear-gradient(to right, #0f172a, #475569);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* Badge de funcionalidade "sistema" com ciano neon fixo (#00e5ff) */
+:root[data-theme="light"] .fi-s { background: rgba(2, 132, 199, 0.12); color: #0369a1; }
+
+/* Gatilho flutuante de configurações (system-global.css não é revestido aqui) */
+:root[data-theme="light"] .settings-trigger--floating {
+  background: #ffffff;
+  color: #475569;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.12);
 }

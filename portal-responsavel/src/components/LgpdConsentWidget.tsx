@@ -1,4 +1,5 @@
 import styles from '../styles/portal.module.scss';
+import Icon from './ui/Icon';
 
 interface LgpdConsentWidgetProps {
   accepted: boolean;
@@ -9,7 +10,7 @@ export default function LgpdConsentWidget({ accepted, onSign }: LgpdConsentWidge
   return (
     <div className={`${styles.lgpdConsentBox} ${accepted ? styles.accepted : ''}`}>
       <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-        <i className={accepted ? 'ti ti-shield-check' : 'ti ti-shield-alert'} style={{ fontSize: '1.1rem' }} />
+        <Icon name={accepted ? 'shield-check' : 'shield-alert'} style={{ fontSize: '1.1rem' }} />
         Políticas de Privacidade
       </span>
       {accepted ? (

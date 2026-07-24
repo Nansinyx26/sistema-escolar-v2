@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { updateProfile, ApiError } from '../services/apiService';
 import type { AuthUser } from '../types';
 import styles from '../styles/portal.module.scss';
+import Icon from './ui/Icon';
 
 interface CompletarCadastroProps {
   user: AuthUser;
@@ -193,7 +194,7 @@ export default function CompletarCadastro({ user, onSuccess }: CompletarCadastro
 
         {error && (
           <div className={styles.errorAlert} style={{ margin: '16px' }}>
-            <i className="ti ti-alert-circle" /> {error}
+            <Icon name="alert-circle" /> {error}
           </div>
         )}
 
@@ -201,7 +202,7 @@ export default function CompletarCadastro({ user, onSuccess }: CompletarCadastro
         {step === 0 && (
           <div className={styles.onboardingStep}>
             <div className={styles.stepIcon} style={{ background: 'linear-gradient(135deg, #10b981, #8b5cf6)' }}>
-              <i className="ti ti-confetti" />
+              <Icon name="confetti" />
             </div>
             <h2>Bem-vindo ao Portal do Responsável!</h2>
             <p>
@@ -210,7 +211,7 @@ export default function CompletarCadastro({ user, onSuccess }: CompletarCadastro
             </p>
             <div className={styles.stepFooter}>
               <button className={styles.primaryBtn} onClick={nextStep}>
-                Começar agora <i className="ti ti-arrow-right" />
+                Começar agora <Icon name="arrow-right" />
               </button>
             </div>
           </div>
@@ -219,7 +220,7 @@ export default function CompletarCadastro({ user, onSuccess }: CompletarCadastro
         {/* STEP 1: IDENTIFICATION */}
         {step === 1 && (
           <div className={styles.onboardingStep}>
-            <h3><i className="ti ti-id-badge" /> Identificação da Conta</h3>
+            <h3><Icon name="id-badge" /> Identificação da Conta</h3>
             <div className={styles.accountBadge}>
               <i className={`ti ${user.loginGoogle ? 'ti-brand-google' : 'ti-user-circle'}`} />
               <div>
@@ -230,14 +231,14 @@ export default function CompletarCadastro({ user, onSuccess }: CompletarCadastro
 
             <div className={styles.formSection}>
               <div className={styles.sectionHeader}>
-                <i className="ti ti-user-circle" />
+                <Icon name="user-circle" />
                 <h4>Dados Pessoais</h4>
               </div>
               <div className={styles.formGrid}>
                 <div className={styles.formGroup}>
                   <label>Nome Completo</label>
                   <div className={styles.inputWrapper}>
-                    <i className="ti ti-user" />
+                    <Icon name="user" />
                     <input 
                       type="text" 
                       value={formData.nome} 
@@ -249,7 +250,7 @@ export default function CompletarCadastro({ user, onSuccess }: CompletarCadastro
                 <div className={styles.formGroup}>
                   <label>E-mail</label>
                   <div className={styles.inputWrapper}>
-                    <i className="ti ti-mail" />
+                    <Icon name="mail" />
                     <input 
                       type="email" 
                       value={formData.email} 
@@ -263,14 +264,14 @@ export default function CompletarCadastro({ user, onSuccess }: CompletarCadastro
 
             <div className={styles.formSection}>
               <div className={styles.sectionHeader}>
-                <i className="ti ti-phone-call" />
+                <Icon name="phone-call" />
                 <h4>Contatos</h4>
               </div>
               <div className={styles.formGrid}>
                 <div className={styles.formGroup}>
                   <label>Telefone Principal</label>
                   <div className={styles.inputWrapper}>
-                    <i className="ti ti-phone" />
+                    <Icon name="phone" />
                     <input 
                       type="text" 
                       value={formData.telefone} 
@@ -282,7 +283,7 @@ export default function CompletarCadastro({ user, onSuccess }: CompletarCadastro
                 <div className={styles.formGroup}>
                   <label>WhatsApp (Opcional)</label>
                   <div className={styles.inputWrapper}>
-                    <i className="ti ti-brand-whatsapp" />
+                    <Icon name="brand-whatsapp" />
                     <input 
                       type="text" 
                       value={formData.whatsApp} 
@@ -304,19 +305,19 @@ export default function CompletarCadastro({ user, onSuccess }: CompletarCadastro
         {/* STEP 2: STUDENT LINK */}
         {step === 2 && (
           <div className={styles.onboardingStep}>
-            <h3><i className="ti ti-users-group" /> Vínculo com o Aluno</h3>
+            <h3><Icon name="users-group" /> Vínculo com o Aluno</h3>
             <p>Selecione seu grau de parentesco ou responsabilidade legal.</p>
             
             <div className={styles.formSection}>
               <div className={styles.sectionHeader}>
-                <i className="ti ti-link" />
+                <Icon name="link" />
                 <h4>Grau de Parentesco</h4>
               </div>
               <div className={styles.formGrid}>
                 <div className={styles.formGroup}>
                   <label>Tipo de Responsável</label>
                   <div className={styles.inputWrapper}>
-                    <i className="ti ti-affiliate" />
+                    <Icon name="affiliate" />
                     <select value={formData.vinculoAluno} onChange={e => updateField('vinculoAluno', e.target.value)}>
                       <option value="">Selecione...</option>
                       <option>Pai</option>
@@ -339,7 +340,7 @@ export default function CompletarCadastro({ user, onSuccess }: CompletarCadastro
 
             <div className={styles.formSection}>
               <div className={styles.sectionHeader}>
-                <i className="ti ti-gavel" />
+                <Icon name="gavel" />
                 <h4>Responsabilidade e Guarda</h4>
               </div>
               <div className={styles.checkboxGrid}>
@@ -377,24 +378,24 @@ export default function CompletarCadastro({ user, onSuccess }: CompletarCadastro
         {/* STEP 3: SECOND GUARDIAN (OPTIONAL) */}
         {step === 3 && (
           <div className={styles.onboardingStep}>
-            <h3><i className="ti ti-user-plus" /> Segundo Responsável (Opcional)</h3>
+            <h3><Icon name="user-plus" /> Segundo Responsável (Opcional)</h3>
             <p>Deseja cadastrar uma segunda pessoa de contato?</p>
             
             <div className={styles.formSection}>
               <div className={styles.sectionHeader}>
-                <i className="ti ti-id" />
+                <Icon name="id" />
                 <h4>Identificação do 2º Responsável</h4>
               </div>
               <div className={styles.formGrid}>
                  <div className={styles.formGroup}>
                   <label>Nome Completo</label>
-                  <div className={styles.inputWrapper}><i className="ti ti-user" />
+                  <div className={styles.inputWrapper}><Icon name="user" />
                     <input type="text" value={formData.segundoResponsavel.nome} onChange={e => updateSubField('segundoResponsavel', 'nome', e.target.value)} placeholder="Nome do segundo responsável" />
                   </div>
                 </div>
                 <div className={styles.formGroup}>
                   <label>Vínculo</label>
-                  <div className={styles.inputWrapper}><i className="ti ti-affiliate" />
+                  <div className={styles.inputWrapper}><Icon name="affiliate" />
                     <select value={formData.segundoResponsavel.vinculo} onChange={e => updateSubField('segundoResponsavel', 'vinculo', e.target.value)}>
                       <option value="">Selecione...</option>
                       <option>Pai</option><option>Mãe</option><option>Avô/Avó</option><option>Tio/Tia</option><option>Outros</option>
@@ -406,19 +407,19 @@ export default function CompletarCadastro({ user, onSuccess }: CompletarCadastro
 
             <div className={styles.formSection}>
               <div className={styles.sectionHeader}>
-                <i className="ti ti-device-mobile" />
+                <Icon name="device-mobile" />
                 <h4>Contatos Adicionais</h4>
               </div>
               <div className={styles.formGrid}>
                 <div className={styles.formGroup}>
                   <label>Telefone</label>
-                  <div className={styles.inputWrapper}><i className="ti ti-phone" />
+                  <div className={styles.inputWrapper}><Icon name="phone" />
                     <input type="text" value={formData.segundoResponsavel.telefone} onChange={e => updateSubField('segundoResponsavel', 'telefone', handlePhoneMask(e.target.value))} placeholder="(00) 00000-0000" />
                   </div>
                 </div>
                 <div className={styles.formGroup}>
                   <label>E-mail</label>
-                  <div className={styles.inputWrapper}><i className="ti ti-mail" />
+                  <div className={styles.inputWrapper}><Icon name="mail" />
                     <input type="email" value={formData.segundoResponsavel.email} onChange={e => updateSubField('segundoResponsavel', 'email', e.target.value)} placeholder="email@exemplo.com" />
                   </div>
                 </div>
@@ -435,7 +436,7 @@ export default function CompletarCadastro({ user, onSuccess }: CompletarCadastro
         {/* STEP 4: AUTHORIZED PEOPLE */}
         {step === 4 && (
           <div className={styles.onboardingStep}>
-            <h3><i className="ti ti-key" /> Pessoas Autorizadas a Retirar</h3>
+            <h3><Icon name="key" /> Pessoas Autorizadas a Retirar</h3>
             <p>Quem mais pode buscar o aluno na escola?</p>
 
             <div className={styles.listSection}>
@@ -445,7 +446,7 @@ export default function CompletarCadastro({ user, onSuccess }: CompletarCadastro
                     <strong>{p.nome}</strong>
                     <span>{p.parentesco} • {p.telefone}</span>
                   </div>
-                  <button onClick={() => removeAuthorizedPerson(i)} className={styles.removeBtn}><i className="ti ti-trash" /></button>
+                  <button onClick={() => removeAuthorizedPerson(i)} className={styles.removeBtn}><Icon name="trash" /></button>
                 </div>
               ))}
             </div>
@@ -467,7 +468,7 @@ export default function CompletarCadastro({ user, onSuccess }: CompletarCadastro
         {/* STEP 5: LGPD CONSENTS */}
         {step === 5 && (
           <div className={styles.onboardingStep}>
-            <h3><i className="ti ti-shield-lock" /> Central de Privacidade LGPD</h3>
+            <h3><Icon name="shield-lock" /> Central de Privacidade LGPD</h3>
             <p>Seus dados são tratados com transparência. Defina suas preferências abaixo:</p>
 
             <div className={styles.consentScrollArea}>
@@ -503,13 +504,13 @@ export default function CompletarCadastro({ user, onSuccess }: CompletarCadastro
         {/* STEP 6: TERMS & SIGNATURE */}
         {step === 6 && (
           <div className={styles.onboardingStep}>
-            <h3><i className="ti ti-signature" /> Termos e Assinatura Eletrônica</h3>
+            <h3><Icon name="signature" /> Termos e Assinatura Eletrônica</h3>
             <p>Leia atentamente os documentos abaixo para finalizar.</p>
 
             <div className={styles.termsLinks}>
-              <a href="#" onClick={e => { e.preventDefault(); setViewingPolicy('privacidade'); }}><i className="ti ti-file-text" /> Política de Privacidade</a>
-              <a href="#" onClick={e => { e.preventDefault(); setViewingPolicy('termos'); }}><i className="ti ti-file-check" /> Termo de Uso</a>
-              <a href="#" onClick={e => { e.preventDefault(); setViewingPolicy('lgpd'); }}><i className="ti ti-database" /> Política de Tratamento de Dados</a>
+              <a href="#" onClick={e => { e.preventDefault(); setViewingPolicy('privacidade'); }}><Icon name="file-text" /> Política de Privacidade</a>
+              <a href="#" onClick={e => { e.preventDefault(); setViewingPolicy('termos'); }}><Icon name="file-check" /> Termo de Uso</a>
+              <a href="#" onClick={e => { e.preventDefault(); setViewingPolicy('lgpd'); }}><Icon name="database" /> Política de Tratamento de Dados</a>
             </div>
 
             <div className={styles.signatureMethodToggle}>
@@ -517,13 +518,13 @@ export default function CompletarCadastro({ user, onSuccess }: CompletarCadastro
                 className={signatureMethod === 'digital' ? styles.active : ''} 
                 onClick={() => setSignatureMethod('digital')}
               >
-                <i className="ti ti-signature" /> Assinatura Digital
+                <Icon name="signature" /> Assinatura Digital
               </button>
               <button 
                 className={signatureMethod === 'manual' ? styles.active : ''} 
                 onClick={() => setSignatureMethod('manual')}
               >
-                <i className="ti ti-upload" /> Upload de Documento
+                <Icon name="upload" /> Upload de Documento
               </button>
             </div>
 
@@ -552,7 +553,7 @@ export default function CompletarCadastro({ user, onSuccess }: CompletarCadastro
                     onChange={e => setUploadedFile(e.target.files?.[0] || null)} 
                     style={{ display: 'none' }}
                   />
-                  <i className="ti ti-file-upload" />
+                  <Icon name="file-upload" />
                   {uploadedFile ? (
                     <div className={styles.fileInfo}>
                       <strong>{uploadedFile.name}</strong>
@@ -581,7 +582,7 @@ export default function CompletarCadastro({ user, onSuccess }: CompletarCadastro
         {step === 7 && (
           <div className={styles.onboardingStep} style={{ textAlign: 'center' }}>
             <div className={styles.stepIcon} style={{ background: '#22c55e' }}>
-              <i className="ti ti-checkbox" />
+              <Icon name="checkbox" />
             </div>
             <h2>Cadastro concluído com sucesso!</h2>
             <p>Suas credenciais de acesso foram geradas. Guarde estas informações para futuras consultas.</p>
@@ -618,7 +619,7 @@ export default function CompletarCadastro({ user, onSuccess }: CompletarCadastro
                 onClick={() => onSuccess(finalUser || user)}
                 style={{ width: '100%', maxWidth: '300px' }}
               >
-                Acessar Portal do Responsável <i className="ti ti-arrow-right" />
+                Acessar Portal do Responsável <Icon name="arrow-right" />
               </button>
             </div>
           </div>
@@ -631,11 +632,11 @@ export default function CompletarCadastro({ user, onSuccess }: CompletarCadastro
           <div className={styles.modalContent} onClick={e => e.stopPropagation()} style={{ maxWidth: '600px' }}>
             <div className={styles.modalHeader}>
               <h3>
-                {viewingPolicy === 'privacidade' && <><i className="ti ti-file-text" /> Política de Privacidade</>}
-                {viewingPolicy === 'termos' && <><i className="ti ti-file-check" /> Termos de Uso</>}
-                {viewingPolicy === 'lgpd' && <><i className="ti ti-database" /> Política de Dados (LGPD)</>}
+                {viewingPolicy === 'privacidade' && <><Icon name="file-text" /> Política de Privacidade</>}
+                {viewingPolicy === 'termos' && <><Icon name="file-check" /> Termos de Uso</>}
+                {viewingPolicy === 'lgpd' && <><Icon name="database" /> Política de Dados (LGPD)</>}
               </h3>
-              <button className={styles.modalClose} onClick={() => setViewingPolicy(null)}><i className="ti ti-x" /></button>
+              <button className={styles.modalClose} onClick={() => setViewingPolicy(null)}><Icon name="x" /></button>
             </div>
             <div className={styles.modalMessage} style={{ whiteSpace: 'pre-wrap', maxHeight: '60vh', overflowY: 'auto' }}>
               {viewingPolicy === 'privacidade' && (

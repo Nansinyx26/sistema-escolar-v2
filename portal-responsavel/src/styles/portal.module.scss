@@ -46,21 +46,25 @@
 
   input, select {
     @include input-base;
-    padding-left: 42px;
+    // padding-left precisa vir depois do shorthand "padding" do mixin, então
+    // fica explícito em "& {}" (evita o aviso de decl. após regra aninhada).
+    & { padding-left: 42px; }
   }
 }
 
 .formInput {
   @include input-base;
-  padding-left: 40px;
+  & { padding-left: 40px; }
 }
 
 .submitBtn {
   @include button-primary;
-  width: 100%;
-  padding: 14px 24px;
-  font-size: 0.95rem;
-  margin-top: 4px;
+  & {
+    width: 100%;
+    padding: 14px 24px;
+    font-size: 0.95rem;
+    margin-top: 4px;
+  }
 
   &:disabled {
     opacity: 0.6;
@@ -82,12 +86,14 @@
 
 .retryBtn {
   @include button-ghost;
-  margin-left: auto;
-  font-size: 0.8rem;
-  padding: 4px 12px;
-  border: 1px solid $border-color;
-  border-radius: $radius-sm;
-  color: $accent-cyan;
+  & {
+    margin-left: auto;
+    font-size: 0.8rem;
+    padding: 4px 12px;
+    border: 1px solid $border-color;
+    border-radius: $radius-sm;
+    color: $accent-cyan;
+  }
 
   &:hover {
     background: rgba($accent-cyan, 0.08);
@@ -128,10 +134,12 @@
 
 .registerLink {
   @include button-secondary;
-  width: 100%;
-  text-decoration: none;
-  font-size: 0.9rem;
-  padding: 12px 24px;
+  & {
+    width: 100%;
+    text-decoration: none;
+    font-size: 0.9rem;
+    padding: 12px 24px;
+  }
 }
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
@@ -174,9 +182,8 @@
     height: 48px;
     width: auto;
     object-fit: contain;
-    filter: brightness(1.15) saturate(1.1)
-      drop-shadow(0 0 10px rgba(16, 185, 129, 0.4))
-      drop-shadow(0 0 20px rgba(16, 185, 129, 0.2));
+    filter: brightness(1.04) saturate(1.02)
+      drop-shadow(0 2px 6px rgba(5, 150, 105, 0.22));
   }
 }
 
@@ -205,17 +212,39 @@
 
 .headerActions {
   @include flex-center;
-  gap: 12px;
+  gap: 6px;
+}
+
+/* Agrupa os ícones de utilidade (voz, tour) e os separa do bloco de
+   conta (notificações + perfil + sair) com um divisor discreto — evita
+   que os 5 ícones do cabeçalho leiam como uma fileira única sem hierarquia. */
+.headerUtilityGroup {
+  @include flex-center;
+  gap: 2px;
+}
+
+.headerDivider {
+  width: 1px;
+  height: 22px;
+  background: $border-color;
+  margin: 0 8px;
+  flex-shrink: 0;
+
+  @include respond-to(sm) {
+    margin: 0 4px;
+  }
 }
 
 // Bell
 .notificationBell {
   @include button-ghost;
-  position: relative;
-  padding: 10px;
-  border-radius: 50%;
-  font-size: 1.3rem;
-  color: $text-secondary;
+  & {
+    position: relative;
+    padding: 10px;
+    border-radius: 50%;
+    font-size: 1.3rem;
+    color: $text-secondary;
+  }
 
   &:hover {
     color: $accent-cyan;
@@ -300,15 +329,18 @@
 
 .logoutBtn {
   @include button-danger-outline;
-  padding: 8px 14px;
-  font-size: 0.8rem;
+  & {
+    padding: 8px 14px;
+    font-size: 0.8rem;
+  }
 
   @include respond-to(sm) {
+    padding: 8px;
+    border-radius: 50%;
+
     span {
       display: none;
     }
-    padding: 8px;
-    border-radius: 50%;
   }
 }
 
@@ -329,6 +361,24 @@
 .pageHeader {
   margin-bottom: 32px;
   animation: fadeIn 0.5s ease;
+}
+
+/* Rótulo curto acima do título (kicker) — reforça "onde estou" antes do
+   H1 grande, dando um segundo nível de hierarquia tipográfica na página. */
+.pageEyebrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: $accent-cyan;
+  margin-bottom: 8px;
+
+  i {
+    font-size: 0.85rem;
+  }
 }
 
 .pageTitle {
@@ -434,12 +484,14 @@
 // ─── Student Card ─────────────────────────────────────────────────────────────
 .studentCard {
   @include card;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  position: relative;
-  gap: 16px;
+  & {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    position: relative;
+    gap: 16px;
+  }
 }
 
 .studentAvatar {
@@ -769,9 +821,11 @@
 // ─── Notifications Panel ──────────────────────────────────────────────────────
 .notificationsPanel {
   @include card;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
+  & {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
 
   &:hover {
     transform: none;
@@ -1000,11 +1054,13 @@
 
 .actionBtn {
   @include button-ghost;
-  font-size: 0.78rem;
-  padding: 5px 12px;
-  border: 1px solid $border-color;
-  border-radius: $radius-sm;
-  gap: 4px;
+  & {
+    font-size: 0.78rem;
+    padding: 5px 12px;
+    border: 1px solid $border-color;
+    border-radius: $radius-sm;
+    gap: 4px;
+  }
 
   i {
     font-size: 0.85rem;
@@ -1022,10 +1078,12 @@
 // ─── No notifications placeholder ────────────────────────────────────────────
 .noNotifCard {
   @include card;
-  @include flex-center;
-  flex-direction: column;
-  gap: 12px;
-  color: $text-tertiary;
+  & {
+    @include flex-center;
+    flex-direction: column;
+    gap: 12px;
+    color: $text-tertiary;
+  }
 
   i {
     font-size: 2rem;
@@ -1037,22 +1095,26 @@
 
 .showAllBtn {
   @include button-secondary;
-  font-size: 0.8rem;
-  padding: 8px 16px;
+  & {
+    font-size: 0.8rem;
+    padding: 8px 16px;
+  }
 }
 
 // ─── Card Skeleton ────────────────────────────────────────────────────────────
 .cardSkeleton {
   @include card;
-  min-height: 200px;
-  background: linear-gradient(
-    90deg,
-    $bg-secondary 25%,
-    $bg-tertiary 50%,
-    $bg-secondary 75%
-  );
-  background-size: 800px 100%;
-  animation: shimmer 1.5s infinite;
+  & {
+    min-height: 200px;
+    background: linear-gradient(
+      90deg,
+      $bg-secondary 25%,
+      $bg-tertiary 50%,
+      $bg-secondary 75%
+    );
+    background-size: 800px 100%;
+    animation: shimmer 1.5s infinite;
+  }
 
   &:hover {
     transform: none;
@@ -1073,21 +1135,33 @@
 }
 
 .modalContent {
+  // Radix renderiza Overlay e Content como irmãos, então o Content se
+  // posiciona e centraliza sozinho (antes dependia do flex do overlay).
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 201;
+  width: min(560px, calc(100% - 48px));
   background: $bg-secondary;
   border: 1px solid $border-color;
   border-radius: $radius-xl;
   padding: 32px;
-  max-width: 560px;
-  width: 100%;
   max-height: 80vh;
   overflow-y: auto;
-  animation: slideUp 0.3s ease;
+  animation: modalPop 0.28s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+
+  &:focus { outline: none; }
 
   @include respond-to(sm) {
     padding: 24px 20px;
     border-radius: $radius-lg;
   }
+}
+
+@keyframes modalPop {
+  from { opacity: 0; transform: translate(-50%, -46%) scale(0.97); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
 
 .modalHeader {
@@ -1138,11 +1212,13 @@
 
 .modalClose {
   @include button-ghost;
-  padding: 8px;
-  border-radius: 50%;
-  font-size: 1.1rem;
-  color: $text-tertiary;
-  flex-shrink: 0;
+  & {
+    padding: 8px;
+    border-radius: 50%;
+    font-size: 1.1rem;
+    color: $text-tertiary;
+    flex-shrink: 0;
+  }
 
   &:hover {
     color: $text-primary;
@@ -1190,19 +1266,19 @@
   padding: 24px;
   background-image:
     radial-gradient(
-      circle at 10% 10%,
-      rgba(16, 185, 129, 0.08) 0%,
-      transparent 40%
+      circle at 12% 8%,
+      rgba(5, 150, 105, 0.06) 0%,
+      transparent 42%
     ),
     radial-gradient(
-      circle at 90% 90%,
-      rgba(124, 58, 237, 0.08) 0%,
-      transparent 40%
+      circle at 88% 92%,
+      rgba(13, 148, 136, 0.05) 0%,
+      transparent 42%
     ),
     radial-gradient(
       circle at 50% 50%,
-      rgba(16, 185, 129, 0.03) 0%,
-      transparent 50%
+      rgba(5, 150, 105, 0.02) 0%,
+      transparent 55%
     );
 }
 
@@ -1224,12 +1300,11 @@
   transition: all $transition-smooth;
 
   &:hover {
-    border-color: rgba(16, 185, 129, 0.2);
+    border-color: rgba(5, 150, 105, 0.22);
     box-shadow:
       0 4px 30px rgba(0, 0, 0, 0.3),
       0 24px 70px rgba(0, 0, 0, 0.5),
-      0 0 30px rgba(16, 185, 129, 0.1),
-      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
   }
 
   @include respond-to(sm) {
@@ -1253,15 +1328,14 @@
     width: 100%;
     height: 100%;
     object-fit: contain;
-    filter: brightness(1.15) saturate(1.1)
-      drop-shadow(0 0 15px rgba(16, 185, 129, 0.5))
-      drop-shadow(0 0 30px rgba(16, 185, 129, 0.2));
+    filter: brightness(1.05) saturate(1.03)
+      drop-shadow(0 3px 8px rgba(5, 150, 105, 0.28));
   }
 }
 
 .loginCard:hover .loginLogo {
-  transform: scale(1.06) rotate(3deg);
-  box-shadow: 0 0 25px rgba(16, 185, 129, 0.4);
+  transform: scale(1.04) rotate(2deg);
+  box-shadow: 0 8px 22px rgba(5, 150, 105, 0.22);
 }
 
 .loginTitle {
@@ -1395,9 +1469,11 @@
 .vincularCard {
   @include glass-morphism;
   @include card;
-  max-width: 600px;
-  width: 100%;
-  padding: 30px;
+  & {
+    max-width: 600px;
+    width: 100%;
+    padding: 30px;
+  }
 
   h2 {
     font-size: 1.5rem;
@@ -1430,9 +1506,11 @@
 
   input {
     @include input-base;
-    padding-left: 45px;
-    height: 50px;
-    font-size: 1.05rem;
+    & {
+      padding-left: 45px;
+      height: 50px;
+      font-size: 1.05rem;
+    }
   }
 }
 
@@ -1492,8 +1570,10 @@
 
 .btnVincular {
   @include button-primary;
-  padding: 8px 16px;
-  font-size: 0.9rem;
+  & {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+  }
 }
 
 .badgeVinculado {
@@ -1509,8 +1589,10 @@
 
 .btnCancel {
   @include button-secondary;
-  width: 100%;
-  margin-top: 10px;
+  & {
+    width: 100%;
+    margin-top: 10px;
+  }
 }
 
 .modalStudentCard {
@@ -1634,11 +1716,13 @@
 
 .btnAddChild {
   @include button-secondary;
-  padding: 8px 16px;
-  font-size: 0.85rem;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  & {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
 }
 
 // ─── Profile Sidebar ─────────────────────────────────────────────────────────
@@ -1811,14 +1895,16 @@
 
 .sidebarEditBtn {
   @include button-secondary;
-  width: 100%;
-  padding: 10px;
-  font-size: 0.9rem;
-  margin-top: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  & {
+    width: 100%;
+    padding: 10px;
+    font-size: 0.9rem;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
 }
 
 .sidebarSeparator {
@@ -1918,16 +2004,18 @@
 // ─── Empty Dashboard State ──────────────────────────────────────────────────
 .emptyDashboardCard {
   @include card;
-  text-align: center;
-  padding: 60px 40px;
-  margin: 40px 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
-  box-shadow: $shadow-card;
+  & {
+    text-align: center;
+    padding: 60px 40px;
+    margin: 40px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+    box-shadow: $shadow-card;
+  }
 
   h3 {
     font-family: $font-display;
@@ -2028,8 +2116,8 @@
 .desktopSidebarSchoolCard {
   padding: 14px 16px;
   border-radius: $radius-md;
-  background: rgba(16, 185, 129, 0.05);
-  border: 1px solid rgba(16, 185, 129, 0.18);
+  background: rgba(5, 150, 105, 0.05);
+  border: 1px solid rgba(5, 150, 105, 0.18);
 
   .desktopSidebarSchoolTitle {
     display: flex;
@@ -2039,7 +2127,7 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.4px;
-    color: #10b981;
+    color: #059669;
     margin-bottom: 10px;
 
     i { font-size: 0.95rem; }
@@ -2083,7 +2171,7 @@
     font-size: 0.76rem;
     color: $text-secondary;
 
-    i { font-size: 0.85rem; color: #10b981; }
+    i { font-size: 0.85rem; color: #059669; }
   }
 
   .schoolTurma {
@@ -2169,24 +2257,28 @@
 
   .btnSignLgpd {
     @include button-primary;
-    padding: 6px 12px;
-    font-size: 0.75rem;
-    border-radius: $radius-sm;
-    background: linear-gradient(135deg, $accent-cyan, $accent-purple);
+    & {
+      padding: 6px 12px;
+      font-size: 0.75rem;
+      border-radius: $radius-sm;
+      background: linear-gradient(135deg, $accent-cyan, $accent-purple);
+    }
   }
 }
 
 // ─── Full-page Profile View ───
 .profileViewCard {
   @include card;
-  width: 100%;
-  max-width: 720px;
-  margin: 40px auto;
-  padding: 32px;
-  box-shadow: $shadow-card;
-  background: rgba(26, 29, 43, 0.6);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  & {
+    width: 100%;
+    max-width: 720px;
+    margin: 40px auto;
+    padding: 32px;
+    box-shadow: $shadow-card;
+    background: rgba(26, 29, 43, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
 
   h2 {
     font-family: $font-display;
@@ -2361,6 +2453,8 @@
   align-items: center;
   gap: 12px;
   margin-top: 20px;
+  text-align: left;
+
   .audioControls {
     display: flex;
     align-items: center;
@@ -2375,7 +2469,6 @@
     width: 40px;
     height: 40px;
   }
-  text-align: left;
 
   i {
     font-size: 1.6rem;
@@ -3074,14 +3167,18 @@
 
   input {
     @include input-base;
-    padding: 8px 12px;
-    font-size: 0.85rem;
+    & {
+      padding: 8px 12px;
+      font-size: 0.85rem;
+    }
   }
 
   .addBtn {
     @include button-primary;
-    padding: 8px 16px;
-    font-size: 0.85rem;
+    & {
+      padding: 8px 16px;
+      font-size: 0.85rem;
+    }
   }
 
   @include respond-to(sm) {
@@ -3403,8 +3500,10 @@
 
   .primaryBtn {
     @include button-primary;
-    padding: 12px 32px;
-    flex: initial;
+    & {
+      padding: 12px 32px;
+      flex: initial;
+    }
     @include respond-to(sm) {
       width: 100%;
       padding: 14px;
@@ -3412,8 +3511,10 @@
   }
   .secondaryBtn {
     @include button-ghost;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 12px 24px;
+    & {
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 12px 24px;
+    }
     @include respond-to(sm) {
       width: 100%;
       padding: 14px;
@@ -3661,13 +3762,15 @@
 
 .saveSettingsBtn {
   @include button-primary;
-  margin-top: 24px;
-  width: 100%;
-  padding: 14px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
+  & {
+    margin-top: 24px;
+    width: 100%;
+    padding: 14px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+  }
 
   &.saved {
     background: $success;
@@ -3841,8 +3944,10 @@ input:checked + .slider:before {
 
   .closeBtn {
     @include button-ghost;
-    padding: 4px;
-    font-size: 1.2rem;
+    & {
+      padding: 4px;
+      font-size: 1.2rem;
+    }
   }
 }
 
@@ -3934,14 +4039,18 @@ input:checked + .slider:before {
   input {
     flex: 1;
     @include input-base;
-    padding: 10px 16px;
-    font-size: 0.85rem;
+    & {
+      padding: 10px 16px;
+      font-size: 0.85rem;
+    }
   }
 
   button {
     @include button-primary;
-    padding: 10px;
-    border-radius: 10px;
+    & {
+      padding: 10px;
+      border-radius: 10px;
+    }
     i {
       font-size: 1.1rem;
     }
@@ -4083,11 +4192,24 @@ input:checked + .slider:before {
   inset: 0;
   background: rgba(0, 0, 0, 0.85);
   z-index: 10000;
+  animation: fadeIn 0.2s ease;
+}
+
+// Camada de posicionamento do Radix Content: recria o flex-center que antes
+// vinha do overlay (agora Overlay e Content são irmãos). O card fica intacto.
+.dialogPositioner {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
-  animation: fadeIn 0.2s ease;
+  pointer-events: none; // só o card recebe eventos
+
+  & > * { pointer-events: auto; }
+
+  &:focus { outline: none; }
 
   @media (max-width: 768px) {
     padding: 8px;
@@ -4328,9 +4450,9 @@ input:checked + .slider:before {
 
     &:hover,
     &:focus-visible {
-      border-color: rgba(16, 185, 129, 0.5);
+      border-color: rgba(5, 150, 105, 0.5);
       color: $text-primary;
-      background: rgba(16, 185, 129, 0.06);
+      background: rgba(5, 150, 105, 0.06);
     }
     &:focus-visible {
       outline: 2px solid $accent-cyan;
@@ -4382,13 +4504,13 @@ input:checked + .slider:before {
   border-radius: 10px;
   cursor: pointer;
   color: $accent-cyan;
-  background: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(16, 185, 129, 0.28);
+  background: rgba(5, 150, 105, 0.1);
+  border: 1px solid rgba(5, 150, 105, 0.28);
   transition: background 0.18s ease, border-color 0.18s ease, transform 0.12s ease;
 
   &:hover:not(:disabled) {
-    background: rgba(16, 185, 129, 0.18);
-    border-color: rgba(16, 185, 129, 0.5);
+    background: rgba(5, 150, 105, 0.18);
+    border-color: rgba(5, 150, 105, 0.5);
     transform: translateY(-1px);
   }
   &:active:not(:disabled) { transform: translateY(0); }
@@ -4432,7 +4554,85 @@ input:checked + .slider:before {
   transition: border-color 0.18s ease, background 0.18s ease;
 }
 .infoItem:hover {
-  border-color: rgba(16, 185, 129, 0.25);
+  border-color: rgba(5, 150, 105, 0.25);
+}
+
+/* ── Semáforo IA (StudentCard) — indicador de status pedagógico ──
+   As classes eram referenciadas no JSX mas não existiam: o indicador
+   renderizava sem estilo. Agora é um chip semântico no canto do card. */
+.iaSemaphore {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid $border-color;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.semaphoreLight {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: $text-tertiary;
+}
+
+.iaLabel {
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: $text-secondary;
+  white-space: nowrap;
+}
+
+.iaSemaphore.bom {
+  background: rgba($success, 0.08);
+  border-color: rgba($success, 0.28);
+  .semaphoreLight { background: $success; box-shadow: 0 0 7px rgba($success, 0.6); }
+  .iaLabel { color: $success; }
+}
+
+.iaSemaphore.alerta {
+  background: rgba($warning, 0.08);
+  border-color: rgba($warning, 0.28);
+  .semaphoreLight { background: $warning; box-shadow: 0 0 7px rgba($warning, 0.6); }
+  .iaLabel { color: $warning; }
+}
+
+.iaSemaphore.critico {
+  background: rgba($danger, 0.08);
+  border-color: rgba($danger, 0.28);
+  .semaphoreLight {
+    background: $danger;
+    box-shadow: 0 0 7px rgba($danger, 0.6);
+    animation: pulse 1.8s ease infinite;
+  }
+  .iaLabel { color: $danger; }
+}
+
+/* Texto de insight da IA, logo abaixo do nome do aluno */
+.iaInsightText {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: -8px auto 16px;
+  max-width: 340px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: $text-secondary;
+  text-align: left;
+
+  i {
+    color: $accent-cyan;
+    font-size: 0.95rem;
+    margin-top: 1px;
+    flex-shrink: 0;
+  }
 }
 
 /* ── Redução de movimento ── */
@@ -4443,6 +4643,7 @@ input:checked + .slider:before {
   .infoItem {
     transition: none !important;
   }
+  .iaSemaphore.critico .semaphoreLight { animation: none !important; }
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -4490,7 +4691,7 @@ input:checked + .slider:before {
   position: relative;
 
   &.active {
-    background: rgba(16, 185, 129, 0.1);
+    background: rgba(5, 150, 105, 0.1);
     font-weight: 600;
 
     &::before {

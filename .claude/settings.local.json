@@ -4,7 +4,10 @@
       "Bash(npm install *)",
       "Bash(grep -nB3 \"baixar boletim\" portal-responsavel/src/components/StudentCard.tsx)",
       "Skill(artifact-design)",
-      "Skill(artifact-design:*)"
+      "Skill(artifact-design:*)",
+      "Bash(awk -F: '$1>1900')",
+      "Bash(npm run *)",
+      "Bash(echo \"EXIT:$?\")"
     ]
   }
 }

@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Grade } from '../types';
 import styles from '../styles/portal.module.scss';
+import Icon from './ui/Icon';
 
 interface NotesCardProps {
   grades: Grade[];
@@ -50,7 +51,7 @@ const NotesCard: React.FC<NotesCardProps> = ({ grades }) => {
       {/* Card header */}
       <div className={styles.cardHeader}>
         <h3 id="notes-heading" className={styles.cardTitle}>
-          <i className="ti ti-book" aria-hidden="true" />
+          <Icon name="book" aria-hidden="true" />
           Notas por Disciplina
         </h3>
         <span className={styles.cardSubtitle}>Ano letivo 2026</span>
@@ -58,7 +59,7 @@ const NotesCard: React.FC<NotesCardProps> = ({ grades }) => {
 
       {grades.length === 0 ? (
         <div className={styles.emptyState} role="status">
-          <i className="ti ti-mood-empty" aria-hidden="true" />
+          <Icon name="mood-empty" aria-hidden="true" />
           <p>Nenhuma nota disponível no momento.</p>
         </div>
       ) : (

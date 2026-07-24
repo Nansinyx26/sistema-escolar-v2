@@ -30,7 +30,7 @@
     <link rel="stylesheet" href="css/splash-screen.css?v=1.0" />
     <link rel="stylesheet" href="css/easings.css" />
     <link rel="stylesheet" href="css/index-landing.css" />
-    <link rel="stylesheet" href="css/responsive-global.css?v=1.0" />
+    <link rel="stylesheet" href="css/responsive-global.css?v=1.2" />
     <link rel="stylesheet" href="css/reactions.css?v=1.0" />
     <link rel="stylesheet" href="css/portal-responsavel-modern.css?v=1.0" />
       <meta name="theme-color" content="#09090b">
@@ -433,9 +433,7 @@
         <span class="marquee-item"
           ><span class="mdot"></span>Conformidade LGPD</span
         >
-        <span class="marquee-item"
-          ><span class="mdot"></span>Painel Administrativo</span
-        >
+
         <span class="marquee-item"
           ><span class="mdot"></span>Gestão de Turmas</span
         >
@@ -457,9 +455,7 @@
         <span class="marquee-item"
           ><span class="mdot"></span>Conformidade LGPD</span
         >
-        <span class="marquee-item"
-          ><span class="mdot"></span>Painel Administrativo</span
-        >
+
       </div>
     </div>
 
@@ -624,19 +620,7 @@
               >Acessar portal <i class="bi bi-arrow-right"></i
             ></span>
           </a>
-          <a href="html/login.html" class="portal-card pc-p">
-            <span class="portal-num">05</span>
-            <div class="pi-wrap"><i class="bi bi-shield-check"></i></div>
-            <div class="p-badge">Área restrita</div>
-            <div class="pt">Painel Administrativo</div>
-            <p class="pd">
-              Gerencie usuários, visualize auditorias, configure o sistema e
-              supervisione toda a instituição.
-            </p>
-            <span class="pl"
-              >Área restrita <i class="bi bi-arrow-right"></i
-            ></span>
-          </a>
+
         </div>
       </div>
     </section>
@@ -755,7 +739,7 @@
             <a href="#" aria-label="Enviar e-mail"
               ><i class="bi bi-envelope" aria-hidden="true"></i
             ></a>
-            <a href="#" aria-label="LinkedIn"
+            <a href="https://www.linkedin.com/in/renan-de-oliveira-farias-66a9b412b/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"
               ><i class="bi bi-linkedin" aria-hidden="true"></i
             ></a>
             <a href="#" aria-label="GitHub"
@@ -772,7 +756,7 @@
           <a href="/portal-responsavel/dist/index.html"
             >Portal do Responsável</a
           >
-          <a href="html/login.html">Painel Admin</a>
+
           <a href="html/dashboard.html">Dashboard</a>
         </div>
         <div class="footer-col">
@@ -784,10 +768,7 @@
         </div>
         <div class="footer-col">
           <h4>Suporte</h4>
-          <a href="#">Central de Ajuda</a>
-          <a href="#">Documentação</a>
-          <a href="#">Status do Sistema</a>
-          <a href="#">Contato</a>
+          <a href="https://www.linkedin.com/in/renan-de-oliveira-farias-66a9b412b/" target="_blank" rel="noopener noreferrer">Contato</a>
         </div>
       </div>
       <div class="footer-bottom">
@@ -852,6 +833,19 @@
         let W,
           H,
           ps = [];
+        // Paleta reativa ao tema. As partículas guardam só um "papel" (0/1/2)
+        // e a cor real é resolvida por frame, então alternar o tema reflete na
+        // hora, sem recriar nada. Escuro = neon original; claro = tons legíveis.
+        const PALETTE = {
+          dark: { dots: ["#10b8a8", "#3d74c7", "#2d3d60"], line: "16,184,168", lf: 0.06 },
+          light: { dots: ["#0d9488", "#2563eb", "#94a3b8"], line: "100,116,139", lf: 0.1 },
+        };
+        function palette() {
+          return document.documentElement.getAttribute("data-theme") === "light"
+            ? PALETTE.light
+            : PALETTE.dark;
+        }
+        let pal = palette();
         function resize() {
           W = c.width = window.innerWidth;
           H = c.height = window.innerHeight;
@@ -870,8 +864,7 @@
             this.vy = (Math.random() - 0.5) * 0.22;
             this.a = Math.random() * 0.35 + 0.05;
             const roll = Math.random();
-            this.col =
-              roll > 0.7 ? "#10b8a8" : roll > 0.4 ? "#3d74c7" : "#2d3d60";
+            this.role = roll > 0.7 ? 0 : roll > 0.4 ? 1 : 2;
           }
           update() {
             this.x += this.vx;
@@ -882,13 +875,14 @@
           draw() {
             ctx.beginPath();
             ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
-            ctx.fillStyle = this.col;
+            ctx.fillStyle = pal.dots[this.role];
             ctx.globalAlpha = this.a;
             ctx.fill();
           }
         }
         for (let i = 0; i < 90; i++) ps.push(new P());
         function loop() {
+          pal = palette();
           ctx.clearRect(0, 0, W, H);
           ps.forEach((p) => {
             p.update();
@@ -905,7 +899,7 @@
                 ctx.moveTo(ps[i].x, ps[i].y);
                 ctx.lineTo(ps[j].x, ps[j].y);
                 ctx.strokeStyle =
-                  "rgba(16,184,168," + 0.06 * (1 - d / 85) + ")";
+                  "rgba(" + pal.line + "," + pal.lf * (1 - d / 85) + ")";
                 ctx.lineWidth = 0.5;
                 ctx.stroke();
               }
@@ -1196,5 +1190,8 @@
     <script defer src="js/push-notifications.js"></script>
     <script defer src="js/pwa-install.js"></script>
     <script defer src="js/settings-drawer.js"></script>
+    <!-- Lucide line icons (padronização) + shim de compatibilidade Bootstrap Icons -->
+    <script src="./js/libs/lucide.min.js"></script>
+    <script src="./js/libs/lucide-init.js"></script>
 </body>
 </html>

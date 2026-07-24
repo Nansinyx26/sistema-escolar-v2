@@ -388,7 +388,7 @@ class UIManager {
                     if (spinnerContainer && !document.getElementById('wakeup-img')) {
                         const img = document.createElement('img');
                         img.id = 'wakeup-img';
-                        img.src = '/img/gif/gif.gif';
+                        img.src = '/img/gif/gif.webp';
                         img.style.cssText = 'max-width: 280px; margin-bottom: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); animation: fadeIn 0.5s ease-out; display: block; margin-left: auto; margin-right: auto;';
                         
                         // Insere a imagem ANTES do container do spinner

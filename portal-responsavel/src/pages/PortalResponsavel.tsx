@@ -22,6 +22,7 @@ import Toast from '../components/Toast';
 import LgpdConsentWidget from '../components/LgpdConsentWidget';
 import { PortalTabContent } from '../components/PortalTabs';
 import { getPhotoUrl } from '../utils/photoUtils';
+import Icon from '../components/ui/Icon';
 
 function toGmailUser(u: AuthUser, googleProfile?: GmailUser | null): GmailUser {
   return {
@@ -215,7 +216,7 @@ const PortalResponsavel: React.FC = () => {
 
           {(authError || gmailAuthError) && (
             <div className={styles.errorAlert} role="alert">
-              <i className="ti ti-alert-circle" aria-hidden="true" />
+              <Icon name="alert-circle" aria-hidden="true" />
               {authError || gmailAuthError}
             </div>
           )}
@@ -225,21 +226,21 @@ const PortalResponsavel: React.FC = () => {
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Nome Completo</label>
                 <div className={styles.inputWrapper}>
-                  <i className="ti ti-user" aria-hidden="true" />
+                  <Icon name="user" aria-hidden="true" />
                   <input type="text" className={styles.formInput} placeholder="Seu nome" value={registerForm.nome} onChange={(e) => setRegisterForm({ ...registerForm, nome: e.target.value })} required />
                 </div>
               </div>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>E-mail</label>
                 <div className={styles.inputWrapper}>
-                  <i className="ti ti-mail" aria-hidden="true" />
+                  <Icon name="mail" aria-hidden="true" />
                   <input type="email" className={styles.formInput} placeholder="seu@email.com" value={registerForm.email} onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })} required />
                 </div>
               </div>
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Senha</label>
                 <div className={styles.inputWrapper}>
-                  <i className="ti ti-lock" aria-hidden="true" />
+                  <Icon name="lock" aria-hidden="true" />
                   <input type={showRegisterPassword ? 'text' : 'password'} className={`${styles.formInput} ${styles.passwordInput}`} placeholder="Crie uma senha forte" value={registerForm.senha} onChange={(e) => setRegisterForm({ ...registerForm, senha: e.target.value })} required />
                   <button type="button" className={styles.passwordToggle} onClick={() => setShowRegisterPassword(!showRegisterPassword)} aria-label={showRegisterPassword ? 'Ocultar senha' : 'Mostrar senha'}>
                     <i className={`ti ${showRegisterPassword ? 'ti-eye-off' : 'ti-eye'}`} aria-hidden="true" />
@@ -269,14 +270,14 @@ const PortalResponsavel: React.FC = () => {
                 <div className={styles.formGroup}>
                   <label htmlFor="email" className={styles.formLabel}>E-mail</label>
                   <div className={styles.inputWrapper}>
-                    <i className="ti ti-mail" aria-hidden="true" />
+                    <Icon name="mail" aria-hidden="true" />
                     <input id="email" type="email" className={styles.formInput} placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" aria-label="E-mail do responsável" />
                   </div>
                 </div>
                 <div className={styles.formGroup}>
                   <label htmlFor="senha" className={styles.formLabel}>Senha</label>
                   <div className={styles.inputWrapper}>
-                    <i className="ti ti-lock" aria-hidden="true" />
+                    <Icon name="lock" aria-hidden="true" />
                     <input id="senha" type={showPassword ? 'text' : 'password'} className={`${styles.formInput} ${styles.passwordInput}`} placeholder="••••••••" value={senha} onChange={(e) => setSenha(e.target.value)} required autoComplete="current-password" aria-label="Senha" />
                     <button type="button" className={styles.passwordToggle} onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}>
                       <i className={`ti ${showPassword ? 'ti-eye-off' : 'ti-eye'}`} aria-hidden="true" />
@@ -296,7 +297,7 @@ const PortalResponsavel: React.FC = () => {
                     </>
                   ) : (
                     <>
-                      <i className="ti ti-login" aria-hidden="true" />
+                      <Icon name="login" aria-hidden="true" />
                       Entrar
                     </>
                   )}
@@ -309,7 +310,7 @@ const PortalResponsavel: React.FC = () => {
                     <form onSubmit={(e) => { e.preventDefault(); if (forgotStep === 1) void handleForgotSendCode(); else if (forgotStep === 2) void handleForgotVerifyCode(); else if (forgotStep === 3) void handleForgotResetPassword(); }} noValidate>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                         <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <i className="ti ti-key" style={{ color: '#10b981' }} /> Recuperar Senha
+                          <Icon name="key" style={{ color: '#10b981' }} /> Recuperar Senha
                         </h3>
                         <button type="button" onClick={() => { setShowForgotModal(false); resetForgotModal(); }} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '1.4rem' }}>&times;</button>
                       </div>
@@ -324,7 +325,7 @@ const PortalResponsavel: React.FC = () => {
                           <div className={styles.formGroup} style={{ marginBottom: '24px' }}>
                             <label className={styles.formLabel}>E-mail</label>
                             <div className={styles.inputWrapper}>
-                              <i className="ti ti-mail" aria-hidden="true" />
+                              <Icon name="mail" aria-hidden="true" />
                               <input type="email" className={styles.formInput} placeholder="seu@email.com" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} autoFocus />
                             </div>
                           </div>
@@ -343,7 +344,7 @@ const PortalResponsavel: React.FC = () => {
                           </div>
                           <div style={{ textAlign: 'center', marginBottom: '16px', fontSize: '0.85rem' }}>
                             <p style={{ color: '#64748b', margin: '0 0 8px 0' }}>
-                              <i className="ti ti-clock" /> Código válido por <strong style={{ color: '#10b981' }}>{Math.floor(codeCountdown / 60)}:{String(codeCountdown % 60).padStart(2, '0')}</strong>
+                              <Icon name="clock" /> Código válido por <strong style={{ color: '#10b981' }}>{Math.floor(codeCountdown / 60)}:{String(codeCountdown % 60).padStart(2, '0')}</strong>
                             </p>
                             <div>
                               <span style={{ color: '#64748b' }}>Não recebeu? </span>
@@ -361,13 +362,13 @@ const PortalResponsavel: React.FC = () => {
                       {forgotStep === 3 && (
                         <div className={styles.loginForm}>
                           <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-                            <i className="ti ti-circle-check" style={{ fontSize: '2rem', color: '#10b981' }} />
+                            <Icon name="circle-check" style={{ fontSize: '2rem', color: '#10b981' }} />
                             <p style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '4px' }}>Código validado com sucesso!</p>
                           </div>
                           <div className={styles.formGroup} style={{ marginBottom: '16px' }}>
                             <label className={styles.formLabel}>Nova Senha</label>
                             <div className={styles.inputWrapper}>
-                              <i className="ti ti-lock" aria-hidden="true" />
+                              <Icon name="lock" aria-hidden="true" />
                               <input type={showNewPassword ? 'text' : 'password'} className={styles.formInput} placeholder="Mínimo 8 caracteres" value={forgotNewPassword} onChange={(e) => setForgotNewPassword(e.target.value)} autoFocus />
                               <button type="button" className={styles.passwordToggle} onClick={() => setShowNewPassword(!showNewPassword)}>
                                 <i className={`ti ${showNewPassword ? 'ti-eye-off' : 'ti-eye'}`} aria-hidden="true" />
@@ -397,7 +398,7 @@ const PortalResponsavel: React.FC = () => {
                           <div className={styles.formGroup} style={{ marginBottom: '24px' }}>
                             <label className={styles.formLabel}>Confirmar Senha</label>
                             <div className={styles.inputWrapper}>
-                              <i className="ti ti-lock" aria-hidden="true" />
+                              <Icon name="lock" aria-hidden="true" />
                               <input type={showNewPassword ? 'text' : 'password'} className={styles.formInput} placeholder="••••••••" value={forgotConfirmPassword} onChange={(e) => setForgotConfirmPassword(e.target.value)} />
                             </div>
                           </div>
@@ -499,14 +500,14 @@ const PortalResponsavel: React.FC = () => {
           {students.length > 0 && (
             <div className={styles.desktopSidebarSchoolCard} aria-label="Escola dos filhos vinculados">
               <span className={styles.desktopSidebarSchoolTitle}>
-                <i className="ti ti-school" aria-hidden="true" /> {students.length > 1 ? 'Escolas dos filhos' : 'Escola do filho'}
+                <Icon name="school" aria-hidden="true" /> {students.length > 1 ? 'Escolas dos filhos' : 'Escola do filho'}
               </span>
               <ul className={styles.desktopSidebarSchoolList}>
                 {students.map((student) => (
                   <li key={student.id}>
                     <span className={styles.schoolChildName}>{student.nome} {student.sobrenome}</span>
                     <span className={styles.schoolName}>
-                      <i className="ti ti-building" aria-hidden="true" /> {student.escolaNome || 'Escola Jaguari'}
+                      <Icon name="building" aria-hidden="true" /> {student.escolaNome || 'Escola Jaguari'}
                       {student.turma ? <span className={styles.schoolTurma}> · {student.turma}</span> : null}
                     </span>
                   </li>
@@ -519,24 +520,24 @@ const PortalResponsavel: React.FC = () => {
 
           <nav className={styles.desktopSidebarNav} aria-label="Menu principal">
             <button onClick={() => setCurrentTab('dashboard')} className={`${styles.desktopSidebarNavLink} ${currentTab === 'dashboard' ? styles.active : ''}`}>
-              <i className="ti ti-home" /> Painel Geral
+              <Icon name="home" /> Painel Geral
             </button>
             <button onClick={() => setCurrentTab('ficha')} className={`${styles.desktopSidebarNavLink} ${currentTab === 'ficha' ? styles.active : ''}`}>
-              <i className="ti ti-clipboard-list" /> Ficha &amp; Autorizações
+              <Icon name="clipboard-list" /> Ficha &amp; Autorizações
             </button>
             <button onClick={() => setCurrentTab('linking')} className={`${styles.desktopSidebarNavLink} ${currentTab === 'linking' ? styles.active : ''}`}>
-              <i className="ti ti-user-plus" /> Vincular meu Filho
+              <Icon name="user-plus" /> Vincular meu Filho
             </button>
             <button onClick={() => setCurrentTab('profile')} className={`${styles.desktopSidebarNavLink} ${currentTab === 'profile' ? styles.active : ''}`}>
-              <i className="ti ti-signature" /> {authUser?.consentimentoAceiteEm ? 'Alterar Cadastro / Termo LGPD' : 'Assinar Termo LGPD e Cadastro'}
+              <Icon name="signature" /> {authUser?.consentimentoAceiteEm ? 'Alterar Cadastro / Termo LGPD' : 'Assinar Termo LGPD e Cadastro'}
             </button>
             <button onClick={() => void handlePasswordRecoveryShortcut()} className={styles.desktopSidebarNavLink}>
-              <i className="ti ti-lock" /> Alterar Senha
+              <Icon name="lock" /> Alterar Senha
             </button>
           </nav>
 
           <button className={styles.desktopSidebarLogoutBtn} onClick={() => void handleLogout()}>
-            <i className="ti ti-logout" /> Sair da Conta
+            <Icon name="logout" /> Sair da Conta
           </button>
         </aside>
 
@@ -622,7 +623,7 @@ const PortalResponsavel: React.FC = () => {
         <div className={styles.priorityAlertOverlay}>
           <div className={styles.priorityAlertCard}>
             <div className={styles.priorityAlertHeader}>
-              <i className="ti ti-alert-triangle" />
+              <Icon name="alert-triangle" />
               <span>Comunicado Importante</span>
             </div>
             <h3 className={styles.priorityAlertTitle}>{priorityNotification.titulo}</h3>

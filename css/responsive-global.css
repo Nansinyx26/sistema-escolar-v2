@@ -940,6 +940,19 @@ img, video, canvas, svg {
   height: auto;
 }
 
+/* Blocos de código / saída (diagnóstico, logs, JSON) nunca estouram a
+   largura — rolam internamente e quebram linhas longas. Vale em qualquer tela. */
+pre, code, kbd, samp {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-wrap: break-word;
+  -webkit-overflow-scrolling: touch;
+}
+pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* overflow-x só no mobile: no desktop quebraria position:sticky das
    sidebars. No mobile a página não rola horizontalmente. */
 @media (max-width: 640px) {

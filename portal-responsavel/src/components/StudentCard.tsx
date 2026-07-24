@@ -3,6 +3,7 @@ import type { Student } from '../types';
 import styles from '../styles/portal.module.scss';
 import { getBoletimPdf, getIAAnalysis } from '../services/apiService';
 import { toast } from 'react-hot-toast';
+import Icon from './ui/Icon';
 
 interface StudentCardProps {
   student: Student;
@@ -72,14 +73,14 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, lgpdAccepted = true 
     <article className={styles.studentCard} aria-label={`Dados do aluno ${student.nome}`}>
       {!lgpdAccepted && (
         <div className={styles.lgpdWarning}>
-          <i className="ti ti-shield-lock" aria-hidden="true" />
+          <Icon name="shield-lock" aria-hidden="true" />
           Foto e dados sensíveis ocultos. Por favor, aceite a Política de Privacidade (LGPD).
         </div>
       )}
 
       {/* Status badge */}
       <span className={styles.statusBadge} aria-label="Status: Ativo">
-        <i className="ti ti-circle-check-filled" aria-hidden="true" />
+        <Icon name="circle-check-filled" aria-hidden="true" />
         Ativo
       </span>
 
@@ -102,7 +103,7 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, lgpdAccepted = true 
           />
         ) : (
           <span>
-            {!lgpdAccepted ? <i className="ti ti-lock" /> : getInitials(student.nome, student.sobrenome)}
+            {!lgpdAccepted ? <Icon name="lock" /> : getInitials(student.nome, student.sobrenome)}
           </span>
         )}
       </div>
@@ -116,7 +117,7 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, lgpdAccepted = true 
         {/* IA Insight Text */}
         {iaData && (
           <p className={styles.iaInsightText}>
-            <i className="ti ti-robot" /> {iaData.insight}
+            <Icon name="robot" /> {iaData.insight}
           </p>
         )}
 
@@ -124,7 +125,7 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, lgpdAccepted = true 
         <dl className={styles.infoGrid}>
           <div className={styles.infoItem}>
             <dt className={styles.infoLabel}>
-              <i className="ti ti-users" aria-hidden="true" /> Turma
+              <Icon name="users" aria-hidden="true" /> Turma
             </dt>
             <dd className={styles.infoValue}>{student.turma || 'Não enturmado'}</dd>
           </div>
@@ -132,7 +133,7 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, lgpdAccepted = true 
 
           <div className={styles.infoItem}>
             <dt className={styles.infoLabel}>
-              <i className="ti ti-id-badge" aria-hidden="true" /> Matrícula
+              <Icon name="id-badge" aria-hidden="true" /> Matrícula
             </dt>
             <dd className={styles.infoValue}>{student.matricula || 'N/A'}</dd>
           </div>
@@ -146,7 +147,7 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, lgpdAccepted = true 
             onClick={handleDownloadBoletim}
             disabled={downloading}
           >
-            <i className={downloading ? 'ti ti-loader animate-spin' : 'ti ti-file-download'} aria-hidden="true" />
+            <Icon name={downloading ? 'loader' : 'file-download'} spin={downloading} aria-hidden="true" />
             {downloading ? 'Gerando…' : 'Baixar boletim (PDF)'}
           </button>
         </div>

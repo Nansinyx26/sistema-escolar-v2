@@ -11,6 +11,7 @@
 const ChatbotService = require('../services/ChatbotService');
 const AnalyticsService = require('../services/AnalyticsService');
 const ChatMensagem = require('../models/ChatMensagem');
+const Turma = require('../models/Turma');
 const logger = require('../utils/LoggerService');
 
 // Controladores legados para retrocompatibilidade
@@ -131,6 +132,18 @@ class AnalyticsController {
   static async relatorioTurma(req, res) {
     try {
       const { turmaId, bimestre } = req.params;
+
+      // Multi-escola: fora o admin, ninguém cruza a fronteira da escola ativa.
+      // Sem isto, um diretor da escola A consultava o relatório agregado de uma
+      // turma da escola B apenas trocando o :turmaId.
+      const perfil = String(req.user?.perfil || '').toLowerCase();
+      if (req.escolaId && perfil !== 'admin') {
+        const turma = await Turma.findById(turmaId).select('escolaId').lean();
+        if (turma && turma.escolaId && String(turma.escolaId) !== String(req.escolaId)) {
+          return res.status(403).json({ success: false, error: 'Esta turma pertence a outra escola.' });
+        }
+      }
+
       const relatorio = await AnalyticsService.relatorioTurma(turmaId, parseInt(bimestre, 10) || 1);
 
       if (!relatorio.success) {

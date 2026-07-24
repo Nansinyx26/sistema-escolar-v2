@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="escolar-dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Design System · Sistema Escolar</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../js/libs/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../css/tailwind-built.css">
+    <style>
+        body { font-family: 'Inter', system-ui, sans-serif; background: #0b1512; color: #d1fae5; margin: 0; padding: 2rem clamp(1rem, 5vw, 4rem); }
+        h1 { font-size: 1.6rem; font-weight: 700; }
+        h2 { font-size: 1.15rem; font-weight: 600; margin: 2.5rem 0 1rem; color: #5eead4; }
+        .muted { color: #7dd3c0; font-size: .9rem; }
+        .grid-icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: .5rem; }
+        .icon-cell { display: flex; flex-direction: column; align-items: center; gap: .4rem; padding: 1rem .5rem; border: 1px solid #16302a; border-radius: .75rem; font-size: 1.5rem; }
+        .icon-cell small { font-size: .7rem; color: #7dd3c0; }
+        .row { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+        code { background: #16302a; padding: .15rem .4rem; border-radius: .35rem; font-size: .85em; }
+    </style>
+</head>
+
+<body>
+    <h1><i data-lucide="palette"></i> Design System · Sistema Escolar</h1>
+    <p class="muted">Padrão de UI e ícones padronizados. Ícones: <strong>Lucide</strong> (mesma família do Portal do Responsável).
+        Componentes novos: <strong>daisyUI</strong> com prefixo <code>dui-</code> (não conflita com o CSS legado).</p>
+
+    <h2>1 · Ícones (Lucide line icons)</h2>
+    <p class="muted">Uso: <code>&lt;i data-lucide="graduation-cap"&gt;&lt;/i&gt;</code>. Ícones antigos <code>&lt;i class="bi bi-*"&gt;</code>
+        são convertidos automaticamente pelo shim <code>lucide-init.js</code> — sem reescrever tudo de uma vez.</p>
+    <div class="grid-icons">
+        <div class="icon-cell"><i data-lucide="graduation-cap"></i><small>graduation-cap</small></div>
+        <div class="icon-cell"><i data-lucide="users"></i><small>users</small></div>
+        <div class="icon-cell"><i data-lucide="user-check"></i><small>user-check</small></div>
+        <div class="icon-cell"><i data-lucide="shield-check"></i><small>shield-check</small></div>
+        <div class="icon-cell"><i data-lucide="calendar-check"></i><small>calendar-check</small></div>
+        <div class="icon-cell"><i data-lucide="bar-chart-3"></i><small>bar-chart-3</small></div>
+        <div class="icon-cell"><i data-lucide="bell"></i><small>bell</small></div>
+        <div class="icon-cell"><i data-lucide="settings"></i><small>settings</small></div>
+        <div class="icon-cell"><i data-lucide="file-text"></i><small>file-text</small></div>
+        <div class="icon-cell"><i data-lucide="megaphone"></i><small>megaphone</small></div>
+        <div class="icon-cell"><i data-lucide="log-out"></i><small>log-out</small></div>
+        <div class="icon-cell"><i data-lucide="building-2"></i><small>building-2</small></div>
+    </div>
+    <p class="muted" style="margin-top:1rem">Compatibilidade (Bootstrap → Lucide, convertido no carregamento):
+        <i class="bi bi-mortarboard-fill" style="font-size:1.4rem"></i>
+        <i class="bi bi-people-fill" style="font-size:1.4rem"></i>
+        <i class="bi bi-shield-lock" style="font-size:1.4rem"></i>
+        <i class="bi bi-trash" style="font-size:1.4rem"></i>
+    </p>
+
+    <h2>2 · Botões (daisyUI · <code>dui-btn</code>)</h2>
+    <div class="row">
+        <button class="dui-btn dui-btn-primary"><i data-lucide="check"></i> Primário</button>
+        <button class="dui-btn dui-btn-secondary"><i data-lucide="send"></i> Secundário</button>
+        <button class="dui-btn dui-btn-accent">Destaque</button>
+        <button class="dui-btn dui-btn-outline dui-btn-primary">Contorno</button>
+        <button class="dui-btn dui-btn-ghost">Ghost</button>
+        <button class="dui-btn dui-btn-primary dui-btn-sm">Pequeno</button>
+    </div>
+
+    <h2>3 · Cartões, badges e alertas</h2>
+    <div class="row" style="align-items:stretch">
+        <div class="dui-card bg-base-200 w-72 shadow-md">
+            <div class="dui-card-body">
+                <h3 class="dui-card-title"><i data-lucide="graduation-cap"></i> Turma 3ºA</h3>
+                <p>28 alunos · Ensino Médio</p>
+                <div class="row">
+                    <span class="dui-badge dui-badge-primary">Ativa</span>
+                    <span class="dui-badge dui-badge-ghost">Manhã</span>
+                </div>
+                <div class="dui-card-actions">
+                    <button class="dui-btn dui-btn-primary dui-btn-sm">Abrir</button>
+                </div>
+            </div>
+        </div>
+        <div style="flex:1; min-width:260px; display:flex; flex-direction:column; gap:.75rem">
+            <div class="dui-alert dui-alert-success"><i data-lucide="circle-check"></i> Frequência salva com sucesso.</div>
+            <div class="dui-alert dui-alert-warning"><i data-lucide="triangle-alert"></i> Há justificativas pendentes.</div>
+            <div class="dui-alert dui-alert-info"><i data-lucide="info"></i> Novo comunicado da direção.</div>
+        </div>
+    </div>
+
+    <h2>4 · Formulário</h2>
+    <div class="row">
+        <input type="text" placeholder="Nome do aluno" class="dui-input dui-input-bordered" />
+        <select class="dui-select dui-select-bordered">
+            <option>Turma</option><option>3ºA</option><option>3ºB</option>
+        </select>
+        <input type="checkbox" class="dui-toggle dui-toggle-primary" checked />
+    </div>
+
+    <p class="muted" style="margin-top:3rem">
+        Tema aplicado via <code>data-theme="escolar-dark"</code> no elemento raiz (variante clara: <code>escolar</code>).
+        Para usar daisyUI numa tela legada sem trocar o tema global, envolva o bloco novo em
+        <code>&lt;div data-theme="escolar-dark"&gt;…&lt;/div&gt;</code>.
+    </p>
+
+    <script src="../js/libs/lucide.min.js"></script>
+    <script src="../js/libs/lucide-init.js"></script>
+</body>
+
+</html>

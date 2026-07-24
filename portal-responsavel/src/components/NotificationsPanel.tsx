@@ -12,6 +12,7 @@ import CommentSection from './CommentSection';
 import SpeakButton from './SpeakButton';
 import styles from '../styles/portal.module.scss';
 import { sanitizeHtml } from '../utils/htmlSanitizer';
+import Icon from './ui/Icon';
 
 interface NotificationsPanelProps {
   notifications: Notification[];
@@ -65,7 +66,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
     <section className={styles.notificationsPanel} aria-labelledby="notif-heading">
       <div className={styles.panelHeader}>
         <h3 id="notif-heading" className={styles.cardTitle}>
-          <i className="ti ti-bell" aria-hidden="true" />
+          <Icon name="bell" aria-hidden="true" />
           Notificações
         </h3>
         {unreadCount > 0 && (
@@ -77,7 +78,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
 
       {notifications.length === 0 ? (
         <div className={styles.emptyState} role="status">
-          <i className="ti ti-bell-off" aria-hidden="true" />
+          <Icon name="bell-off" aria-hidden="true" />
           <p>Nenhuma notificação no momento.</p>
         </div>
       ) : (
@@ -154,7 +155,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
                       onClick={(e) => toggleComments(n.id, e)}
                       aria-expanded={showCommentBox}
                     >
-                      <i className="ti ti-message-circle" aria-hidden="true" />
+                      <Icon name="message-circle" aria-hidden="true" />
                       Comentar
                     </button>
                     <SpeakButton text={n.corpoHtml || n.mensagem} />
@@ -176,7 +177,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
                         onClick={(e) => { e.stopPropagation(); onMarkAsRead(n.id); }}
                         aria-label="Marcar como lida"
                       >
-                        <i className="ti ti-check" aria-hidden="true" /> Marcar como lida
+                        <Icon name="check" aria-hidden="true" /> Marcar como lida
                       </button>
                     )}
                     <button
@@ -184,7 +185,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
                       onClick={(e) => { e.stopPropagation(); onDelete(n.id); }}
                       aria-label="Excluir notificação"
                     >
-                      <i className="ti ti-trash" aria-hidden="true" /> Excluir
+                      <Icon name="trash" aria-hidden="true" /> Excluir
                     </button>
                   </div>
                 </article>

@@ -10,6 +10,7 @@ import NotesCard from './NotesCard';
 import FichaAluno from './FichaAluno';
 import DashboardSkeleton from './DashboardSkeleton';
 import styles from '../styles/portal.module.scss';
+import Icon from './ui/Icon';
 
 type PortalTab = 'dashboard' | 'ficha' | 'linking' | 'profile';
 
@@ -89,7 +90,7 @@ export function DashboardTabSection({
   if (students.length === 0) {
     return (
       <div className={styles.emptyDashboardCard}>
-        <i className="ti ti-users" style={{ fontSize: '3.5rem', color: '#60a5fa', marginBottom: '16px' }} />
+        <Icon name="users" style={{ fontSize: '3.5rem', color: '#60a5fa', marginBottom: '16px' }} />
         <h3>Nenhum aluno vinculado</h3>
         <p style={{ margin: '8px 0 24px', color: '#94a3b8' }}>
           Sua conta de responsável não possui nenhum aluno vinculado. Entre em contato com a secretaria/direção da escola para verificar seu cadastro.
@@ -115,6 +116,9 @@ export function DashboardTabSection({
       </div>
 
       <div className={styles.pageHeader}>
+        <span className={styles.pageEyebrow}>
+          <Icon name="layout-dashboard" aria-hidden="true" /> Painel Geral
+        </span>
         <h1 className={styles.pageTitle}>
           Olá, {authUser.nome.split(' ')[0]}! <span aria-hidden="true">👋</span>
         </h1>
@@ -146,7 +150,7 @@ export function DashboardTabSection({
 
       {dataError && (
         <div className={styles.errorAlert} role="alert" style={{ marginBottom: '24px' }}>
-          <i className="ti ti-alert-circle" aria-hidden="true" />
+          <Icon name="alert-circle" aria-hidden="true" />
           {dataError}
           <button className={styles.retryBtn} onClick={onRetry} aria-label="Tentar novamente">
             Tentar novamente
@@ -170,7 +174,7 @@ export function DashboardTabSection({
                 />
               ) : (
                 <div className={styles.noNotifCard}>
-                  <i className="ti ti-bell-off" aria-hidden="true" />
+                  <Icon name="bell-off" aria-hidden="true" />
                   <p>Sem novas notificações</p>
                   <button
                     className={styles.showAllBtn}
@@ -226,7 +230,7 @@ export function FichaTabSection({ activeStudent, students, activeId, onSelectStu
   if (!activeStudent) {
     return (
       <div className={styles.emptyDashboardCard}>
-        <i className="ti ti-clipboard-list" style={{ fontSize: '3rem', color: '#10b981', marginBottom: '12px' }} />
+        <Icon name="clipboard-list" style={{ fontSize: '3rem', color: '#10b981', marginBottom: '12px' }} />
         <h3>Nenhum aluno selecionado</h3>
         <p style={{ margin: '8px 0', color: '#94a3b8' }}>
           Vincule um aluno à sua conta para preencher a ficha e as autorizações escolares.
@@ -254,6 +258,9 @@ export function FichaTabSection({ activeStudent, students, activeId, onSelectStu
       )}
 
       <div className={styles.pageHeader}>
+        <span className={styles.pageEyebrow}>
+          <Icon name="clipboard-list" aria-hidden="true" /> Ficha do Aluno
+        </span>
         <h1 className={styles.pageTitle}>Ficha &amp; Autorizações</h1>
         <p className={styles.pageSubtitle}>
           Dados, autorizações escolares e documento assinado de <strong>{activeStudent.nome} {activeStudent.sobrenome}</strong>

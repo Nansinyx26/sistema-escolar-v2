@@ -16,6 +16,57 @@
     if (window.__settingsDrawerInit) return;
     window.__settingsDrawerInit = true;
 
+    // ---------- TEMA (bootstrap universal) ----------
+    // Este drawer é carregado em todas as páginas; theme.js não é. Por isso o
+    // controle de tema também vive aqui, garantindo que o modo claro opcional
+    // funcione no sistema inteiro. Dark é o padrão; claro é opt-in salvo em
+    // localStorage('theme'). Idempotente com theme.js via ThemeManager.__real.
+    // Páginas com identidade fixa (ex.: landing neon-dark) declaram
+    // data-theme-lock="dark" no <html>: ignoram a preferência do usuário na
+    // exibição, mas a preferência salva continua valendo no restante do app.
+    function lockedTheme() {
+        var l = document.documentElement.getAttribute('data-theme-lock');
+        return l === 'dark' || l === 'light' ? l : null;
+    }
+    function readTheme() {
+        var lock = lockedTheme();
+        if (lock) return lock;
+        try {
+            var v = localStorage.getItem('theme');
+            return v === 'light' || v === 'dark' ? v : 'dark';
+        } catch (e) {
+            return 'dark';
+        }
+    }
+    function setThemeMeta(theme) {
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', theme === 'light' ? '#ffffff' : '#10b981');
+    }
+    function applyTheme(theme, persist) {
+        theme = theme === 'light' ? 'light' : 'dark';
+        // Persiste a escolha do usuário mesmo em página travada (vale no app).
+        if (persist) { try { localStorage.setItem('theme', theme); } catch (e) {} }
+        var effective = lockedTheme() || theme;
+        document.documentElement.setAttribute('data-theme', effective);
+        setThemeMeta(effective);
+        window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: effective } }));
+        return effective;
+    }
+    // Aplica o quanto antes (na avaliação do script) para minimizar flash.
+    (function () {
+        var t = readTheme();
+        document.documentElement.setAttribute('data-theme', t);
+        setThemeMeta(t);
+    })();
+    if (!(window.ThemeManager && window.ThemeManager.__real)) {
+        window.ThemeManager = {
+            __real: true,
+            get: readTheme,
+            set: function (theme) { return applyTheme(theme, true); },
+            toggle: function () { return applyTheme(readTheme() === 'light' ? 'dark' : 'light', true); }
+        };
+    }
+
     // Chaves que NUNCA podem ser apagadas por "Limpar Cache": sessão, escola
     // selecionada e preferências do próprio usuário.
     var PRESERVED_PREFIXES = ['sd_', 'user_', 'pwa_'];
@@ -82,7 +133,30 @@
         'align-items:center;justify-content:center;transition:background-color 200ms,color 200ms}',
         '.sd-step:hover{background:rgba(16,185,129,.15);color:#10b981}',
         '.sd-version{text-align:center;padding:1rem;padding-bottom:calc(1rem + env(safe-area-inset-bottom));',
-        'font-size:.72rem;color:#3f3f46;border-top:1px solid rgba(255,255,255,.04);flex-shrink:0}'
+        'font-size:.72rem;color:#3f3f46;border-top:1px solid rgba(255,255,255,.04);flex-shrink:0}',
+        // --- Modo claro: o drawer usa cores fixas escuras, então reveste-as ---
+        ':root[data-theme="light"] .settings-drawer{background:#ffffff;border-left-color:rgba(15,23,42,.08)}',
+        ':root[data-theme="light"] .sd-header{border-bottom-color:rgba(15,23,42,.08)}',
+        ':root[data-theme="light"] .sd-header h2{color:#0f172a}',
+        ':root[data-theme="light"] .sd-close{background:rgba(15,23,42,.05);border-color:rgba(15,23,42,.08);color:#475569}',
+        ':root[data-theme="light"] .sd-close:hover{background:rgba(220,38,38,.12);color:#dc2626;border-color:rgba(220,38,38,.3)}',
+        ':root[data-theme="light"] .sd-body{scrollbar-color:rgba(15,23,42,.15) transparent}',
+        ':root[data-theme="light"] .sd-section-title{color:#94a3b8;border-bottom-color:rgba(15,23,42,.06)}',
+        ':root[data-theme="light"] .sd-item{color:#334155}',
+        ':root[data-theme="light"] .sd-item:hover{background:rgba(15,23,42,.04);color:#0f172a}',
+        ':root[data-theme="light"] .sd-item>i{color:#94a3b8}',
+        ':root[data-theme="light"] .sd-item:hover>i{color:#059669}',
+        ':root[data-theme="light"] .sd-item-value{color:#94a3b8}',
+        ':root[data-theme="light"] .sd-item--danger{color:#dc2626}:root[data-theme="light"] .sd-item--danger>i{color:#dc2626}',
+        ':root[data-theme="light"] .sd-item--danger:hover{background:rgba(220,38,38,.08);color:#dc2626}',
+        ':root[data-theme="light"] .sd-toggle{background:rgba(15,23,42,.12)}',
+        ':root[data-theme="light"] .sd-toggle::after{background:#94a3b8}',
+        ':root[data-theme="light"] .sd-toggle[aria-checked="true"]{background:rgba(5,150,105,.28)}',
+        ':root[data-theme="light"] .sd-toggle[aria-checked="true"]::after{background:#059669}',
+        ':root[data-theme="light"] .sd-step{background:rgba(15,23,42,.05);border-color:rgba(15,23,42,.08);color:#475569}',
+        ':root[data-theme="light"] .sd-step:hover{background:rgba(5,150,105,.15);color:#059669}',
+        ':root[data-theme="light"] .sd-version{color:#94a3b8;border-top-color:rgba(15,23,42,.06)}',
+        ':root[data-theme="light"] .settings-overlay{background:rgba(15,23,42,.35)}'
     ].join('');
 
     var styleEl = document.createElement('style');
@@ -124,11 +198,7 @@
         // APARÊNCIA
         '<div class="sd-section">' +
         '<h3 class="sd-section-title">Aparência</h3>' +
-        '<div class="sd-item">' +
-        '<i class="bi bi-moon-stars" aria-hidden="true"></i>' +
-        '<span class="sd-item-label">Tema Escuro</span>' +
-        '<span class="sd-item-value" style="color:#10b981;">Ativo</span>' +
-        '</div>' +
+        toggleRow('sd-theme-toggle', 'bi-moon-stars', 'Tema Escuro') +
         '<div class="sd-item">' +
         '<i class="bi bi-type" aria-hidden="true"></i>' +
         '<span class="sd-item-label" id="sd-font-label">Tamanho da Fonte</span>' +
@@ -157,10 +227,12 @@
         '</select></div>' +
         '<div class="sd-item">' +
         '<i class="bi bi-person-standing" aria-hidden="true"></i>' +
-        '<label class="sd-item-label" for="sd-voice-gender">Narrador</label>' +
-        '<select id="sd-voice-gender" class="select-sm" style="width:140px;">' +
-        '<option value="male">Masculino</option>' +
-        '<option value="female">Feminino</option>' +
+        '<label class="sd-item-label" for="sd-voice-name">Voz do Narrador</label>' +
+        '<select id="sd-voice-name" class="select-sm" style="width:160px;">' +
+        '<option value="adam">Adam — Firme</option>' +
+        '<option value="brian">Brian — Tranquilo</option>' +
+        '<option value="eric">Eric — Suave</option>' +
+        '<option value="george">George — Caloroso</option>' +
         '</select></div>' +
         '<div class="sd-item">' +
         '<i class="bi bi-speedometer2" aria-hidden="true"></i>' +
@@ -174,6 +246,7 @@
         '<span class="sd-item-value" id="sd-volume-value">100%</span>' +
         '<input type="range" class="sd-range" id="sd-voice-volume" min="0" max="1" step="0.05" value="1">' +
         '</div>' +
+        toggleRow('sd-click-sound-toggle', 'bi-mouse', 'Som dos Cliques') +
         toggleRow('sd-auto-read-toggle', 'bi-play-circle', 'Leitura Automática') +
         '</div>' +
 
@@ -250,6 +323,9 @@
         drawer.setAttribute('aria-hidden', 'false');
         document.body.style.overflow = 'hidden';
         updateConnection();
+        // Reflete a preferência de voz mais recente (pode ter mudado no seletor legado)
+        var voiceSel = document.getElementById('sd-voice-name');
+        if (voiceSel) voiceSel.value = read('user_elevenlabs_voice', 'adam');
         var first = drawer.querySelector('#sdClose');
         if (first) first.focus();
     }
@@ -363,6 +439,53 @@
             currentScale = applyFontScale(currentScale + 0.05);
         });
 
+        // ----- Tema claro/escuro -----
+        // aria-checked=true representa "Tema Escuro ativo" (padrão do sistema).
+        // Desmarcar aplica o modo claro opcional. O estado é persistido pelo
+        // ThemeManager (localStorage 'theme').
+        (function () {
+            var toggle = document.getElementById('sd-theme-toggle');
+            if (!toggle) return;
+            // Em páginas com tema travado (landing), a troca não tem efeito —
+            // esconde o controle para não parecer que ele está com defeito.
+            if (lockedTheme()) {
+                var row = toggle.closest('.sd-item');
+                if (row) row.style.display = 'none';
+                return;
+            }
+            var iconEl = toggle.parentElement
+                ? toggle.parentElement.querySelector('i.bi')
+                : null;
+            var labelEl = document.getElementById('sd-theme-toggle-label');
+
+            function currentTheme() {
+                return (window.ThemeManager && window.ThemeManager.get)
+                    ? window.ThemeManager.get()
+                    : (document.documentElement.getAttribute('data-theme') || 'dark');
+            }
+            function reflect(theme) {
+                var isDark = theme !== 'light';
+                toggle.setAttribute('aria-checked', String(isDark));
+                if (iconEl) iconEl.className = 'bi ' + (isDark ? 'bi-moon-stars' : 'bi-sun');
+                if (labelEl) labelEl.textContent = isDark ? 'Tema Escuro' : 'Tema Claro';
+            }
+
+            reflect(currentTheme());
+            toggle.addEventListener('click', function () {
+                var next = currentTheme() === 'light' ? 'dark' : 'light';
+                if (window.ThemeManager && window.ThemeManager.set) {
+                    window.ThemeManager.set(next);
+                } else {
+                    applyTheme(next, true);
+                }
+                reflect(next);
+            });
+            // Mantém o toggle em sincronia caso o tema mude por outra via.
+            window.addEventListener('themechange', function (e) {
+                reflect((e.detail && e.detail.theme) || currentTheme());
+            });
+        })();
+
         // ----- Modo leitura -----
         bindToggle('sd-reading-toggle', 'sd_reading_mode', function (on) {
             document.documentElement.classList.toggle('reading-mode', on);
@@ -380,10 +503,24 @@
             }
         });
 
-        var genderSelect = document.getElementById('sd-voice-gender');
-        genderSelect.value = read('user_voice_preference', 'male');
-        genderSelect.addEventListener('change', function () {
-            write('user_voice_preference', genderSelect.value);
+        // ----- Voz do narrador (ElevenLabs) -----
+        // Escreve em `user_elevenlabs_voice`, que é a chave realmente enviada
+        // como voiceId em window.speak(). Sincroniza com o seletor legado
+        // (#voice-provider-select) quando presente na página.
+        var voiceSelect = document.getElementById('sd-voice-name');
+        voiceSelect.value = read('user_elevenlabs_voice', 'adam');
+        voiceSelect.addEventListener('change', function () {
+            var chosen = voiceSelect.value;
+            write('user_elevenlabs_voice', chosen);
+            write('user_voice_preference', 'male'); // backend só possui vozes masculinas
+            var legacy = document.getElementById('voice-provider-select');
+            if (legacy && legacy.value !== chosen) {
+                legacy.value = chosen;
+                legacy.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            window.dispatchEvent(new CustomEvent('voiceChanged', { detail: { voice: chosen } }));
+            // Prévia com a nova voz
+            if (typeof window.speak === 'function') window.speak('Voz alterada com sucesso!');
         });
 
         var speedRange = document.getElementById('sd-voice-speed');
@@ -405,6 +542,22 @@
         });
 
         bindToggle('sd-auto-read-toggle', 'sd_auto_read');
+
+        // ----- Som dos Cliques -----
+        var clickSoundToggle = document.getElementById('sd-click-sound-toggle');
+        if (clickSoundToggle) {
+            var clickOn = read('clickSound', 'on') !== 'off';
+            clickSoundToggle.setAttribute('aria-checked', String(clickOn));
+            clickSoundToggle.addEventListener('click', function () {
+                var next = clickSoundToggle.getAttribute('aria-checked') !== 'true';
+                clickSoundToggle.setAttribute('aria-checked', String(next));
+                write('clickSound', next ? 'on' : 'off');
+                if (window.ClickSound) {
+                    if (next) window.ClickSound.enable();
+                    else window.ClickSound.disable();
+                }
+            });
+        }
 
         // ----- Notificações -----
         bindToggle('sd-push-toggle', 'sd_push_notifications', function (on, restoring) {

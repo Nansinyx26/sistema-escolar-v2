@@ -4,11 +4,13 @@
  */
 
 import React, { useState } from 'react';
+import * as RadixDialog from '@radix-ui/react-dialog';
 import type { Notification } from '../types';
 import styles from '../styles/portal.module.scss';
 import ReactionArea from './ReactionArea';
 import CommentSection from './CommentSection';
 import { sanitizeHtml } from '../utils/htmlSanitizer';
+import Icon from './ui/Icon';
 
 interface NotificationsModalProps {
   isOpen: boolean;
@@ -47,26 +49,29 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className={styles.notificationsModalOverlay}>
-      <div className={styles.notificationsModalCard}>
-        <div className={styles.notificationsModalHeader}>
-          <h2>
-            <i className="ti ti-bell" />
-            Notificações
-          </h2>
-          <button
-            onClick={onClose}
-            className={styles.notificationsModalClose}
-            aria-label="Fechar"
-          >
-            &times;
-          </button>
-        </div>
+    <RadixDialog.Root open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <RadixDialog.Portal>
+        <RadixDialog.Overlay className={styles.notificationsModalOverlay} />
+        <RadixDialog.Content className={styles.dialogPositioner} aria-describedby={undefined}>
+          <div className={styles.notificationsModalCard}>
+            <div className={styles.notificationsModalHeader}>
+              <RadixDialog.Title asChild>
+                <h2>
+                  <Icon name="bell" />
+                  Notificações
+                </h2>
+              </RadixDialog.Title>
+              <RadixDialog.Close asChild>
+                <button className={styles.notificationsModalClose} aria-label="Fechar">
+                  &times;
+                </button>
+              </RadixDialog.Close>
+            </div>
 
         <div className={styles.notificationsModalBody}>
           {notifications.length === 0 ? (
             <div className={styles.emptyState}>
-              <i className="ti ti-bell-off" />
+              <Icon name="bell-off" />
               <p>Nenhuma notificação encontrada.</p>
             </div>
           ) : (
@@ -128,7 +133,7 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({
                         onClick={() => setOpenComments(prev => ({ ...prev, [n.id]: !prev[n.id] }))}
                         aria-expanded={showCommentBox}
                       >
-                        <i className="ti ti-message-circle" aria-hidden="true" />
+                        <Icon name="message-circle" aria-hidden="true" />
                         Comentar
                       </button>
                     </div>
@@ -145,11 +150,11 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({
                     <div className={styles.notifActions}>
                       {!n.lido && (
                         <button className={styles.actionBtn} onClick={() => onMarkAsRead(n.id)}>
-                          <i className="ti ti-check" /> Marcar como lida
+                          <Icon name="check" /> Marcar como lida
                         </button>
                       )}
                       <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => onDelete(n.id)}>
-                        <i className="ti ti-trash" /> Excluir
+                        <Icon name="trash" /> Excluir
                       </button>
                     </div>
                   </article>
@@ -159,11 +164,15 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({
           )}
         </div>
 
-        <div className={styles.notificationsModalFooter}>
-          <button onClick={onClose} className={styles.primaryBtn}>Fechar</button>
-        </div>
-      </div>
-    </div>
+            <div className={styles.notificationsModalFooter}>
+              <RadixDialog.Close asChild>
+                <button className={styles.primaryBtn}>Fechar</button>
+              </RadixDialog.Close>
+            </div>
+          </div>
+        </RadixDialog.Content>
+      </RadixDialog.Portal>
+    </RadixDialog.Root>
   );
 };
 

@@ -156,6 +156,224 @@
     --backdrop-color: rgba(9, 9, 11, 0.8);
 }
 
+/* === MODO CLARO OPCIONAL — SLATE & MINT CLEAN ===
+   Ativado por [data-theme="light"] no <html>. O sistema SEMPRE abre em dark;
+   o modo claro é opt-in e salvo em localStorage('theme'). Como todo o design
+   consome estas variáveis, trocar o atributo reveste o sistema inteiro.
+   A marca vira um tom mais escuro (emerald #059669) porque o #10b981 puro
+   tem contraste insuficiente como texto/ícone sobre fundo branco (WCAG). */
+:root[data-theme="light"] {
+    color-scheme: light;
+
+    /* Base */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8fafc;
+    --bg-tertiary: #f1f5f9;
+    --bg-elevated: #e2e8f0;
+
+    /* Texto */
+    --text-primary: #0f172a;
+    --text-body: #334155;
+    --text-secondary: #475569;
+    --text-accent: #059669;
+    --text-tertiary: #64748b;
+    --text-inverse: #ffffff;
+
+    /* Bordas */
+    --border-primary: rgba(15, 23, 42, 0.06);
+    --border-secondary: rgba(15, 23, 42, 0.10);
+    --border-focus: #059669;
+    --border-dark: rgba(15, 23, 42, 0.08);
+
+    /* Marca (tons mais escuros para contraste sobre claro) */
+    --primary: #059669;
+    --primary-rgb: 5, 150, 105;
+    --primary-color: var(--primary);
+    --primary-dark: #047857;
+    --primary-hover: #10b981;
+    --primary-active: #047857;
+    --primary-light: rgba(5, 150, 105, 0.10);
+
+    --secondary: #0284c7;
+    --secondary-hover: #0ea5e9;
+    --secondary-light: rgba(2, 132, 199, 0.10);
+
+    /* Status */
+    --success: #059669;
+    --success-hover: #047857;
+    --success-light: rgba(5, 150, 105, 0.12);
+    --warning: #b45309;
+    --warning-hover: #92400e;
+    --warning-light: rgba(180, 83, 9, 0.12);
+    --error: #dc2626;
+    --error-hover: #b91c1c;
+    --error-light: rgba(220, 38, 38, 0.10);
+    --info: #0284c7;
+    --info-hover: #0369a1;
+    --info-light: rgba(2, 132, 199, 0.10);
+
+    /* Gradientes / mesh mais discretos */
+    --gradient-surface: linear-gradient(180deg, rgba(15, 23, 42, 0.02) 0%, rgba(15, 23, 42, 0) 100%);
+    --gradient-mesh: radial-gradient(at 0% 0%, rgba(5, 150, 105, 0.06) 0, transparent 40%),
+                     radial-gradient(at 100% 100%, rgba(2, 132, 199, 0.06) 0, transparent 40%);
+
+    /* Sombras suaves e frias para superfícies claras */
+    --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+    --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+    --shadow-lg: 0 12px 24px rgba(15, 23, 42, 0.10);
+    --shadow-xl: 0 32px 64px rgba(15, 23, 42, 0.12);
+    --shadow-2xl: 0 48px 80px rgba(15, 23, 42, 0.14);
+    --shadow-glow: 0 0 20px rgba(5, 150, 105, 0.18);
+    --shadow-glow-lg: 0 0 40px rgba(5, 150, 105, 0.22);
+
+    /* Glass / backdrop / sidebar adaptados ao claro */
+    --glass-bg: rgba(255, 255, 255, 0.65);
+    --glass-border: rgba(15, 23, 42, 0.08);
+    --glass-shadow: 0 8px 32px 0 rgba(15, 23, 42, 0.10);
+    --backdrop-color: rgba(15, 23, 42, 0.35);
+
+    --sidebar-bg: rgba(248, 250, 252, 0.85);
+    --sidebar-border: rgba(15, 23, 42, 0.08);
+    --sidebar-item-hover: rgba(15, 23, 42, 0.04);
+    --sidebar-item-active: linear-gradient(90deg, rgba(5, 150, 105, 0.14) 0%, transparent 100%);
+}
+
+/* Fundos de <body> escritos com cor fixa em alguns CSS de página
+   (main.css, cadastro-aluno.css) — revestidos aqui para o modo claro. */
+:root[data-theme="light"] body {
+    background: var(--bg-primary);
+    background-image: none;
+}
+
+/* Utilitários de glass no modo claro (as classes usam branco fixo) */
+:root[data-theme="light"] .glass {
+    background: rgba(255, 255, 255, 0.70);
+    border-color: rgba(15, 23, 42, 0.08);
+}
+:root[data-theme="light"] .glass-strong {
+    background: rgba(255, 255, 255, 0.85);
+    border-color: rgba(15, 23, 42, 0.10);
+}
+
+/* ======================================================================
+   MODO CLARO — AJUSTES DE COMPONENTES
+   Componentes cujas cores foram escritas fixas (escuras) nos CSS de tela e
+   que não seguem os tokens. Revestidos aqui por [data-theme="light"], cuja
+   especificidade vence os seletores originais independente da ordem de carga.
+   ====================================================================== */
+
+/* --- Selects premium (system-global.css) — universais --- */
+:root[data-theme="light"] select,
+:root[data-theme="light"] select.form-input,
+:root[data-theme="light"] select.form-select {
+    background-color: #ffffff;
+    color: #0f172a;
+    border-color: rgba(15, 23, 42, 0.14);
+    color-scheme: light;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+:root[data-theme="light"] select:hover:not(:disabled) { background-color: #f8fafc; border-color: #059669; }
+:root[data-theme="light"] select:focus { background-color: #ffffff; border-color: #059669; }
+:root[data-theme="light"] select option { background-color: #ffffff; color: #0f172a; }
+:root[data-theme="light"] select option:disabled { color: #94a3b8; }
+
+/* --- Botões de ícone e gatilho de configurações (system-global.css) --- */
+:root[data-theme="light"] .icon-btn,
+:root[data-theme="light"] .settings-trigger {
+    background: rgba(15, 23, 42, 0.04);
+    border-color: rgba(15, 23, 42, 0.10);
+    color: #475569;
+}
+:root[data-theme="light"] .settings-trigger--floating {
+    background: #ffffff;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.12);
+}
+
+/* --- Camada de fundo do dashboard (dashboard.css) --- */
+:root[data-theme="light"] .dashboard-page::before { background: #f1f5f9; }
+
+/* --- Painel de notificações (notifications-panel.css) --- */
+:root[data-theme="light"] #notif-panel {
+    background: #ffffff;
+    border-color: rgba(15, 23, 42, 0.10);
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.14);
+}
+:root[data-theme="light"] .notif-header { border-bottom-color: rgba(15, 23, 42, 0.08); }
+:root[data-theme="light"] .emoji-picker-premium { background: #ffffff; border-color: rgba(15, 23, 42, 0.10); }
+
+/* --- Picker de reações (reactions.css) --- */
+:root[data-theme="light"] .reaction-picker-modal {
+    background: #ffffff;
+    border-color: rgba(15, 23, 42, 0.10);
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.16);
+}
+
+/* --- Mural escolar admin/direção (notificacoes-mural.css) --- */
+:root[data-theme="light"] {
+    --mn-bg: rgba(255, 255, 255, 0.90);
+    --mn-card: rgba(255, 255, 255, 0.95);
+    --mn-border: rgba(15, 23, 42, 0.08);
+}
+:root[data-theme="light"] .mn-header { background: rgba(255, 255, 255, 0.92); }
+:root[data-theme="light"] .mn-header-brand h1 { color: #0f172a; }
+:root[data-theme="light"] .mn-editor-wrap,
+:root[data-theme="light"] .mn-dest-panel { background: rgba(15, 23, 42, 0.03); }
+:root[data-theme="light"] .mn-table th { background: rgba(15, 23, 42, 0.04); color: #64748b; }
+:root[data-theme="light"] .mn-select option { background: #ffffff; color: #0f172a; }
+:root[data-theme="light"] .mn-modal { background: #ffffff; color: #0f172a; }
+:root[data-theme="light"] .mn-toast { background: #ffffff; color: #0f172a; border-color: rgba(15, 23, 42, 0.08); }
+
+/* --- Chatbot IA: barra de input e campo (chatbot-ia.css) --- */
+:root[data-theme="light"] .chatbot-input { background: rgba(15, 23, 42, 0.03); }
+:root[data-theme="light"] .chatbot-input input { background: rgba(15, 23, 42, 0.04); color: #0f172a; }
+
+/* --- Busca do feed social (social-feed.css) --- */
+:root[data-theme="light"] .feed-search-wrapper { background: rgba(15, 23, 42, 0.03); border-color: rgba(15, 23, 42, 0.10); }
+:root[data-theme="light"] .feed-search-wrapper:focus-within { background: rgba(15, 23, 42, 0.05); }
+
+/* --- Painéis de voz (voice-panel.css / bi-pedagogico.css) --- */
+:root[data-theme="light"] .voice-panel,
+:root[data-theme="light"] .voice-panel-hidden { background: rgba(255, 255, 255, 0.98); border-color: rgba(15, 23, 42, 0.10); }
+
+/* --- Cabeçalho de relatórios da turma (turma.css) --- */
+:root[data-theme="light"] .relatorios-header-card {
+    background: linear-gradient(135deg, rgba(241, 245, 249, 0.9), rgba(226, 232, 240, 0.9));
+    border-color: rgba(15, 23, 42, 0.08);
+}
+
+/* --- Sidebar do BI pedagógico no mobile (bi-pedagogico.css) --- */
+:root[data-theme="light"] .bi-sidebar { background: rgba(255, 255, 255, 0.98); }
+
+/* ---------------------------------------------------------------------- */
+/* Telas de entrada (login / splash / selecionar).                         */
+/* Heróis com imagem de fundo permanecem escuros de propósito — hero       */
+/* escuro sobre tema claro é legível e é padrão de design.                 */
+/* ---------------------------------------------------------------------- */
+
+/* --- Campos de formulário .form-input (genérico, todo o app) ---
+   As superfícies específicas do login ficam em login-new.css. */
+:root[data-theme="light"] .form-input {
+    background: rgba(15, 23, 42, 0.04);
+    border-color: rgba(15, 23, 42, 0.10);
+}
+:root[data-theme="light"] .form-input::placeholder { color: rgba(15, 23, 42, 0.40); }
+:root[data-theme="light"] .form-input:focus { background: rgba(15, 23, 42, 0.06); }
+
+/* --- Splash screen (splash-screen.css) --- */
+:root[data-theme="light"] #splashScreen {
+    background: #f8fafc;
+    background-image:
+        radial-gradient(ellipse at 30% 20%, rgba(5, 150, 105, 0.06) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 80%, rgba(2, 132, 199, 0.05) 0%, transparent 50%);
+}
+
+/* --- Seleção de turmas (selecionar.css): hero .page-header fica escuro --- */
+:root[data-theme="light"] .turmas-section {
+    background: rgba(255, 255, 255, 0.70);
+    border-color: rgba(15, 23, 42, 0.06);
+}
+:root[data-theme="light"] .turmas-section h2 { color: #0f172a; text-shadow: none; }
+
 /* === UTILITÁRIOS DE GLASSMORPHISM === */
 .glass {
     background: rgba(255, 255, 255, 0.05);

@@ -92,42 +92,12 @@ async function setupEscolaSelect() {
 
         if (!escolas.length) return; // sem escolas → mantém oculto (fallback do backend)
 
-        // Limpeza e deduplicação (nomes oficiais)
-        const nomesOficiais = {
-            'darcy': 'EMEF Darcy Ribeiro',
-            'florestan': 'EMEF Profª Florestan Fernandes',
-            'jonas': 'EMEF Profº Jonas Corrêa de Arruda Filho',
-            'paulo freire': 'EMEF Paulo Freire',
-            'octavio': 'CIEP Prof. Octávio Cesar Borghi',
-            'octávio': 'CIEP Prof. Octávio Cesar Borghi',
-            'oniva': 'CIEP Profª Oniva de Moura Brizola',
-            'jaguari': 'CIEP Profª Maria Nilde Mascellani',
-            'mascellani': 'CIEP Profª Maria Nilde Mascellani',
-            'anisio': 'CIEP Prof. Anísio Spínola Teixeira',
-            'anísio': 'CIEP Prof. Anísio Spínola Teixeira',
-            'philomena': 'CIEP Profª Philomena Magaly Makluf Rossetti',
-            'rossetti': 'CIEP Profª Philomena Magaly Makluf Rossetti'
-        };
-
-        const escolasLimpas = [];
-        const nomesVistos = new Set();
-
-        escolas.forEach(e => {
-            let nomeLower = (e.nome || '').toLowerCase();
-            let nomeOficial = e.nome;
-            for (const key in nomesOficiais) {
-                if (nomeLower.includes(key)) {
-                    nomeOficial = nomesOficiais[key];
-                    break;
-                }
-            }
-            if (!nomesVistos.has(nomeOficial)) {
-                nomesVistos.add(nomeOficial);
-                escolasLimpas.push({ ...e, nome: nomeOficial });
-            }
-        });
-
-        escolas = escolasLimpas;
+        // Os nomes vêm prontos e oficiais do banco (Escola.nome é unique, semeado
+        // em backend/scripts/seedEscolas.js). NÃO remapeamos mais por um dicionário
+        // hardcoded: além de redundante (mapeava cada nome para ele mesmo), casava
+        // por substring e deduplicava — então uma escola nova cujo nome contivesse
+        // um termo do mapa (ex.: bairro "Jaguari") era renomeada ou sumia do login,
+        // divergindo do modal da landing, que já exibe e.nome direto.
 
         select.innerHTML = '<option value="">Selecione a sua escola...</option>';
 
