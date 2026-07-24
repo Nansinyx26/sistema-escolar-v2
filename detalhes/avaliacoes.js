@@ -166,7 +166,7 @@ async function loadAvaliacoes(user) {
         tr.innerHTML = `
             <td style="font-size: 0.85rem; color: var(--text-muted);">${dataFormatada}</td>
             <td>
-                <div style="font-weight: 500; color: var(--text-white);">${n.alunoNome}</div>
+                <div style="font-weight: 500; color: var(--text-primary);">${n.alunoNome}</div>
             </td>
             <td><span class="badge badge-turma">${n.turmaNome}</span></td>
             <td>

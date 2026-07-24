@@ -161,7 +161,7 @@ function mostrarAvisoSelecao() {
                  style="background: var(--bg-elevated); padding: 15px 25px; border-radius: 12px; border: 1px solid var(--border-secondary); cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s ease; margin-bottom: 10px;">
                 <div style="display: flex; align-items: center; gap: 15px;">
                     <i class="bi bi-people-fill" style="font-size: 1.5rem; color: var(--primary);"></i>
-                    <span style="font-size: 1.2rem; font-weight: 600; color: #fff;">Turma ${t.id}</span>
+                    <span style="font-size: 1.2rem; font-weight: 600; color: var(--text-primary);">Turma ${t.id}</span>
                 </div>
                 <i class="bi bi-chevron-right" style="color: var(--text-muted);"></i>
             </div>
@@ -171,7 +171,7 @@ function mostrarAvisoSelecao() {
             <tr>
                 <td colspan="5" class="text-center" style="padding: 2rem 1rem;">
                     <div style="max-width: 500px; margin: 0 auto; text-align: left;">
-                        <h2 style="color: #fff; margin-bottom: 1.5rem; text-align: center;">Selecione uma Sala na Lista</h2>
+                        <h2 style="color: var(--text-primary); margin-bottom: 1.5rem; text-align: center;">Selecione uma Sala na Lista</h2>
                         ${turmasHtml}
                     </div>
                     <p style="margin-top: 1.5rem; color: var(--text-muted); font-size: 0.9rem;">

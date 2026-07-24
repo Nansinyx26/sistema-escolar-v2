@@ -111,7 +111,7 @@ async function loadTurmas(user) {
 
         tr.innerHTML = `
             <td>
-                <div style="font-weight: 500; font-size: 1.1rem; color: var(--text-white);">${t.id}</div>
+                <div style="font-weight: 500; font-size: 1.1rem; color: var(--text-primary);">${t.id}</div>
             </td>
             <td><span class="badge badge-turma">Ativa</span></td>
             <td><strong>${t.totalAlunos}</strong> alunos</td>
