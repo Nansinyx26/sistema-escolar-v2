@@ -10,7 +10,7 @@
  *  - /api/: nunca interceptado (dados sempre frescos e autenticados).
  */
 
-const VERSION = 'v4';
+const VERSION = 'v5';
 const STATIC_CACHE = `escola-static-${VERSION}`;
 const PAGES_CACHE = `escola-pages-${VERSION}`;
 const CURRENT_CACHES = [STATIC_CACHE, PAGES_CACHE];
