@@ -1033,7 +1033,7 @@
     .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
     .management-card, .sc-modal-card,
     .info-card, .info-box, .lgpd-box, .dpo-box,
-    .login-card, .auth-card, .cadastro-card, .perfil-card,
+    .login-card, .auth-card,
     .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
     .sec-form-card, .sec-quick-card, .sec-stat-card,
     .sala-card, .report-card,
@@ -1054,7 +1054,7 @@
     .glass-card, .glass-card-md, .glass-card-strong, .glass-panel,
     .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
     .management-card, .sc-modal-card,
-    .info-card, .login-card, .auth-card, .cadastro-card, .perfil-card,
+    .info-card, .login-card, .auth-card,
     .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
     .sec-form-card, .sec-quick-card, .sec-stat-card,
     .sala-card, .report-card, .mn-card, .turma-card,
@@ -1071,7 +1071,7 @@
     .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
     .management-card, .sc-modal-card,
     .info-card, .info-box, .lgpd-box, .dpo-box,
-    .login-card, .auth-card, .cadastro-card, .perfil-card,
+    .login-card, .auth-card,
     .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
     .sec-form-card, .sec-quick-card, .sec-stat-card,
     .sala-card, .report-card,
@@ -1098,7 +1098,7 @@
     .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
     .management-card, .sc-modal-card,
     .info-card, .info-box, .lgpd-box, .dpo-box,
-    .login-card, .auth-card, .cadastro-card, .perfil-card,
+    .login-card, .auth-card,
     .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
     .sec-form-card, .sec-quick-card, .sec-stat-card,
     .sala-card, .report-card,
@@ -1119,7 +1119,7 @@
     .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
     .management-card, .sc-modal-card,
     .info-card, .info-box, .lgpd-box, .dpo-box,
-    .login-card, .auth-card, .cadastro-card, .perfil-card,
+    .login-card, .auth-card,
     .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
     .sec-form-card, .sec-quick-card, .sec-stat-card,
     .sala-card, .report-card,
@@ -1136,7 +1136,7 @@
     .glass-card, .glass-card-md, .glass-card-strong, .glass-panel,
     .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
     .info-card, .info-box, .lgpd-box, .dpo-box,
-    .login-card, .auth-card, .cadastro-card, .perfil-card,
+    .login-card, .auth-card,
     .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
     .sec-form-card, .sec-quick-card, .sec-stat-card,
     .sala-card, .report-card,
@@ -1154,7 +1154,7 @@
     .glass-card, .glass-card-md, .glass-card-strong, .glass-panel,
     .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
     .info-card, .info-box, .lgpd-box, .dpo-box,
-    .login-card, .auth-card, .cadastro-card, .perfil-card,
+    .login-card, .auth-card,
     .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
     .sec-form-card, .sec-quick-card, .sec-stat-card,
     .sala-card, .report-card,
@@ -1173,7 +1173,7 @@
     .glass-card, .glass-card-md, .glass-card-strong, .glass-panel,
     .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
     .info-card, .info-box, .lgpd-box, .dpo-box,
-    .login-card, .auth-card, .cadastro-card, .perfil-card,
+    .login-card, .auth-card,
     .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
     .sec-form-card, .sec-quick-card, .sec-stat-card,
     .sala-card, .report-card,
@@ -1293,4 +1293,352 @@
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25) !important;
     background: rgba(255, 255, 255, 0.12) !important;
     outline: none;
+}
+
+/* ======================================================================
+   MODO CLARO ("PÁGINA BRANCA") — PÁGINA DE PERFIL (PROFESSOR / DIRETOR)
+   ====================================================================== */
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) {
+    background: #ffffff !important;
+    border: 1px solid rgba(15, 23, 42, 0.10) !important;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) :is(h1, h2, h3, h4, h5, h6) {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) .section-title {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    border-bottom-color: rgba(15, 23, 42, 0.10) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) .section-title i {
+    color: #059669 !important;
+    -webkit-text-fill-color: #059669 !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) :is(.form-label, label):not([for="star1"]):not([for="star2"]):not([for="star3"]):not([for="star4"]):not([for="star5"]) {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) :is(p, span, small, .text-secondary) {
+    color: #475569 !important;
+    -webkit-text-fill-color: #475569 !important;
+}
+
+/* Campos de entrada no perfil no modo claro */
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) :is(.form-input, .form-textarea, input:not([type="checkbox"]):not([type="radio"]), textarea, select) {
+    background-color: #ffffff !important;
+    background: #ffffff !important;
+    border: 1.5px solid rgba(15, 23, 42, 0.14) !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    caret-color: #059669 !important;
+    color-scheme: light !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) :is(.form-input, .form-textarea, input, textarea, select):focus {
+    background-color: #ffffff !important;
+    border-color: #059669 !important;
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) :is(.form-input, .form-textarea, input, textarea, select):disabled {
+    background-color: #f1f5f9 !important;
+    color: #64748b !important;
+    -webkit-text-fill-color: #64748b !important;
+    border-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) :is(.form-input, .form-textarea, input, textarea, select)::placeholder {
+    color: #94a3b8 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
+    opacity: 1 !important;
+}
+
+/* Área de Upload de Foto */
+:root[data-theme="light"]:not(.high-contrast) .photo-upload {
+    background: #f8fafc !important;
+    border: 1px solid rgba(15, 23, 42, 0.08) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .photo-preview {
+    background: #ffffff !important;
+    border-color: rgba(15, 23, 42, 0.14) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .photo-preview i {
+    color: #94a3b8 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
+}
+
+/* Blocos Destacados dentro do Perfil (Minha Escola, LGPD, Avaliação) */
+:root[data-theme="light"]:not(.high-contrast) #secaoTrocarEscola {
+    background: #f0fdf4 !important;
+    border: 1.5px solid rgba(5, 150, 105, 0.25) !important;
+}
+:root[data-theme="light"]:not(.high-contrast) #secaoTrocarEscola .section-title {
+    color: #059669 !important;
+    -webkit-text-fill-color: #059669 !important;
+}
+:root[data-theme="light"]:not(.high-contrast) #btnMudarEscola {
+    background: #ffffff !important;
+    color: #059669 !important;
+    -webkit-text-fill-color: #059669 !important;
+    border: 1.5px solid #059669 !important;
+    font-weight: 600 !important;
+}
+:root[data-theme="light"]:not(.high-contrast) #btnMudarEscola:hover {
+    background: #059669 !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .form-section:has(.bi-shield-check) {
+    background: #eff6ff !important;
+    border: 1.5px solid rgba(2, 132, 199, 0.25) !important;
+}
+:root[data-theme="light"]:not(.high-contrast) .form-section:has(.bi-shield-check) .section-title {
+    color: #0284c7 !important;
+    -webkit-text-fill-color: #0284c7 !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .form-section:has(.bi-star-fill) {
+    background: #fffbeb !important;
+    border: 1.5px solid rgba(217, 119, 6, 0.25) !important;
+}
+:root[data-theme="light"]:not(.high-contrast) .form-section:has(.bi-star-fill) .section-title {
+    color: #d97706 !important;
+    -webkit-text-fill-color: #d97706 !important;
+}
+:root[data-theme="light"]:not(.high-contrast) #btnEnviarAvaliacao {
+    background: #ffffff !important;
+    color: #d97706 !important;
+    -webkit-text-fill-color: #d97706 !important;
+    border: 1.5px solid #d97706 !important;
+    font-weight: 600 !important;
+}
+:root[data-theme="light"]:not(.high-contrast) #btnEnviarAvaliacao:hover {
+    background: #d97706 !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+/* Botões do Perfil no Modo Claro */
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) .btn-secondary {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    border: 1px solid rgba(15, 23, 42, 0.14) !important;
+}
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) .btn-secondary:hover {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) .btn-outline {
+    background: #ffffff !important;
+    color: #334155 !important;
+    -webkit-text-fill-color: #334155 !important;
+    border: 1px solid rgba(15, 23, 42, 0.2) !important;
+}
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) .btn-outline:hover {
+    background: #f8fafc !important;
+    color: #0f172a !important;
+    border-color: rgba(15, 23, 42, 0.3) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) .btn-primary {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    border: none !important;
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) .form-actions {
+    border-top-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+/* ======================================================================
+   MODO CLARO ("PÁGINA BRANCA") — LISTA DE PROFESSORES
+   O .glass-card da lista de professores sai da "caixa preta" e recebe
+   tratamento branco com tabela legível, inputs claros e texto escuro.
+   ====================================================================== */
+
+/* --- Card principal: fundo branco --- */
+:root[data-theme="light"]:not(.high-contrast) .glass-card {
+    background: #ffffff !important;
+    border: 1px solid rgba(15, 23, 42, 0.10) !important;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+}
+
+/* Texto genérico dentro do glass-card: escuro (vence a regra "caixas pretas"
+   que pinta tudo de branco, graças ao seletor .glass-card extra). */
+:root[data-theme="light"]:not(.high-contrast) .glass-card :is(h1, h2, h3, h4, h5, h6,
+    p, span, small, strong, b, em, i, u, s, a, li, label, legend,
+    div, section, article, header, footer, nav, form, fieldset,
+    button, input, textarea, select, td, th, caption, summary, details, code, kbd, pre, time, output) {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+
+/* --- Títulos e textos dentro do glass-card --- */
+:root[data-theme="light"]:not(.high-contrast) .glass-card .header h2 {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .glass-card .header p {
+    color: #475569 !important;
+    -webkit-text-fill-color: #475569 !important;
+}
+
+/* --- Todos os campos de formulário dentro do glass-card --- */
+:root[data-theme="light"]:not(.high-contrast) .glass-card :is(input:not([type="checkbox"]):not([type="radio"]), textarea, select) {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    border: 1.5px solid rgba(15, 23, 42, 0.14) !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    caret-color: #059669 !important;
+    color-scheme: light !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .glass-card :is(input, textarea, select)::placeholder {
+    color: #94a3b8 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
+    opacity: 1 !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .glass-card :is(input, textarea, select):focus {
+    border-color: #059669 !important;
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15) !important;
+    background: #ffffff !important;
+}
+
+/* --- Textarea de observações gerais --- */
+:root[data-theme="light"]:not(.high-contrast) .glass-card #caixaTexto {
+    background: #ffffff !important;
+    border: 1.5px solid rgba(15, 23, 42, 0.14) !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    caret-color: #059669 !important;
+    color-scheme: light !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .glass-card #caixaTexto::placeholder {
+    color: #94a3b8 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
+    opacity: 1 !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .glass-card #caixaTexto:focus {
+    border-color: #059669 !important;
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15) !important;
+}
+
+/* --- Table wrapper --- */
+:root[data-theme="light"]:not(.high-contrast) .glass-card .table-wrapper {
+    background: #f8fafc !important;
+    border: 1px solid rgba(15, 23, 42, 0.08) !important;
+    border-radius: 12px !important;
+}
+
+/* --- Cabeçalho da tabela --- */
+:root[data-theme="light"]:not(.high-contrast) .glass-card table th {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+    -webkit-text-fill-color: #475569 !important;
+    border-bottom: 2px solid rgba(15, 23, 42, 0.10) !important;
+    font-weight: 700 !important;
+}
+
+/* --- Células da tabela --- */
+:root[data-theme="light"]:not(.high-contrast) .glass-card table td {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.06) !important;
+}
+
+/* Linhas alternadas (zebra) */
+:root[data-theme="light"]:not(.high-contrast) .glass-card table tbody tr:nth-child(even) td {
+    background: #f8fafc !important;
+}
+
+/* Hover nas linhas */
+:root[data-theme="light"]:not(.high-contrast) .glass-card table tbody tr:hover td {
+    background: #eff6ff !important;
+}
+
+/* --- Inputs dentro da tabela --- */
+:root[data-theme="light"]:not(.high-contrast) .glass-card table input[type="text"],
+:root[data-theme="light"]:not(.high-contrast) .glass-card table input[type="number"] {
+    background: #ffffff !important;
+    border: 1.5px solid rgba(15, 23, 42, 0.12) !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    caret-color: #059669 !important;
+    color-scheme: light !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .glass-card table input[type="text"]::placeholder,
+:root[data-theme="light"]:not(.high-contrast) .glass-card table input[type="number"]::placeholder {
+    color: #94a3b8 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
+    opacity: 1 !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .glass-card table input:focus {
+    border-color: #059669 !important;
+    box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.12) !important;
+    background: #ffffff !important;
+}
+
+/* --- Coluna de assinatura --- */
+:root[data-theme="light"]:not(.high-contrast) .glass-card .col-assinatura {
+    color: #94a3b8 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
+}
+
+/* --- Botão de deletar --- */
+:root[data-theme="light"]:not(.high-contrast) .glass-card .btn-delete {
+    background: rgba(239, 68, 68, 0.08) !important;
+    color: #dc2626 !important;
+    -webkit-text-fill-color: #dc2626 !important;
+    border: 1px solid rgba(239, 68, 68, 0.20) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .glass-card .btn-delete:hover {
+    background: #dc2626 !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+/* --- Botões de ação (salvar, adicionar, gerar pdf) --- */
+:root[data-theme="light"]:not(.high-contrast) .glass-card .controls .btn-primary {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .glass-card .controls .btn-success {
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .glass-card .controls .btn-danger {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(220, 38, 38, 0.3) !important;
 }
