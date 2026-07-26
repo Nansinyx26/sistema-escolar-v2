@@ -101,9 +101,18 @@ select.select-sm,
 /* ======================================================================
    2. ÍCONES PADRONIZADOS
    ====================================================================== */
-.bi,
-[class^="bi-"],
-[class*=" bi-"] {
+/* Restrito a <i>/<span>: sem isso, [class^="bi-"] também acertava os
+   elementos de LAYOUT da página BI Pedagógico (.bi-layout, .bi-content,
+   .bi-sidebar, .bi-charts-grid…), transformando <main> e <div> em
+   inline-flex e quebrando a página inteira — a coluna de conteúdo passava
+   de 1500px de largura e estourava a tela.
+   Todos os 921 ícones do projeto usam <i class="bi bi-…">. */
+i.bi,
+span.bi,
+i[class^="bi-"],
+i[class*=" bi-"],
+span[class^="bi-"],
+span[class*=" bi-"] {
     display: inline-flex;
     align-items: center;
     justify-content: center;

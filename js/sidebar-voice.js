@@ -43,8 +43,6 @@ function initSidebar() {
     });
 
     // Mobile logic
-    let scrollLockY = 0;
-
     const createOverlay = () => {
         const overlay = document.createElement('div');
         overlay.className = 'sidebar-overlay';
@@ -60,9 +58,9 @@ function initSidebar() {
     const openMobileSidebar = () => {
         sidebar.classList.add('mobile-open');
         overlay.classList.add('visible');
-        document.body.classList.add('sidebar-open', 'sidebar-lock');
-        scrollLockY = window.scrollY;
-        document.body.style.top = `-${scrollLockY}px`;
+        document.body.classList.add('sidebar-open');
+        // Trava compartilhada: não conflita com modais abertos por cima.
+        window.ScrollLock?.lock('sidebar');
         overlay.setAttribute('aria-hidden', 'false');
         const burger = document.getElementById('mobileHamburger');
         if (burger) {
@@ -75,9 +73,8 @@ function initSidebar() {
     const closeMobileSidebar = () => {
         sidebar.classList.remove('mobile-open');
         overlay.classList.remove('visible');
-        document.body.classList.remove('sidebar-open', 'sidebar-lock');
-        document.body.style.top = '';
-        window.scrollTo(0, scrollLockY);
+        document.body.classList.remove('sidebar-open');
+        window.ScrollLock?.unlock('sidebar');
         overlay.setAttribute('aria-hidden', 'true');
         const burger = document.getElementById('mobileHamburger');
         if (burger) {
@@ -152,26 +149,38 @@ function initSidebar() {
 
 /**
  * Automagically sets .active class based on current URL
+ *
+ * A versão antiga comparava com `currentPath.includes(href)`. Quando o href é
+ * um caminho absoluto completo (`/html/direcao/bi-pedagogico.html`) isso nunca
+ * casa, e como o `.active` de TODOS os itens era removido antes do teste, a
+ * sidebar acabava sem nenhum item destacado — inclusive o que já vinha marcado
+ * como `active` no HTML. Agora resolvemos cada href contra a URL atual e
+ * comparamos caminhos normalizados; sem correspondência, preservamos o que o
+ * HTML declarou.
  */
 function setActiveSidebarItem() {
-    const currentPath = window.location.pathname;
-    const sidebarItems = document.querySelectorAll('.sidebar-item');
-    
-    sidebarItems.forEach(item => {
-        item.classList.remove('active');
+    const normalize = (path) => {
+        const p = path.toLowerCase();
+        return p.endsWith('/') ? p + 'index.html' : p;
+    };
+
+    const currentPath = normalize(window.location.pathname);
+    const sidebarItems = Array.from(document.querySelectorAll('.sidebar-item'));
+
+    const match = sidebarItems.find(item => {
         const href = item.getAttribute('href');
-        
-        if (href && href !== '#' && currentPath.includes(href)) {
-            item.classList.add('active');
-        } else if (href === 'dashboard.html' && (currentPath.endsWith('/') || currentPath.endsWith('index.html'))) {
-            item.classList.add('active');
+        if (!href || href === '#' || href.toLowerCase().startsWith('javascript:')) return false;
+        try {
+            return normalize(new URL(href, window.location.href).pathname) === currentPath;
+        } catch (e) {
+            return false;
         }
     });
 
-    if (currentPath.includes('direcao/index.html')) {
-        const relatoriosLink = document.querySelector('a[onclick*="verRelatorios"]');
-        if (relatoriosLink) relatoriosLink.classList.add('active');
-    }
+    if (!match) return;
+
+    sidebarItems.forEach(item => item.classList.remove('active'));
+    match.classList.add('active');
 }
 
 /**
@@ -382,19 +391,35 @@ function initVoiceToggles() {
             e.stopPropagation();
             panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
         });
-        // Botão "Configurações Voz" do sidebar abre o mesmo painel.
-        // Precisa de stopPropagation próprio: sem isso o clique sobe até o
-        // document e o listener global abaixo fecha o painel no mesmo clique.
-        const sidebarVoiceBtn = document.getElementById('sidebar-voice-btn');
-        if (sidebarVoiceBtn) {
-            sidebarVoiceBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
-            });
-        }
         document.addEventListener('click', () => { if (panel) panel.style.display = 'none'; });
         panel.addEventListener('click', (e) => e.stopPropagation());
+    }
+
+    // Botão "Configurações Voz" da sidebar → abre a gaveta de Configurações,
+    // que tem os controles completos (provedor, voz, velocidade, volume).
+    //
+    // Antes ele apenas alternava o painelzinho do header — um popover de 240px
+    // ancorado no canto superior direito, longe do clique e fora da tela se a
+    // página estivesse rolada. Pior: no dashboard o `onclick` inline do HTML já
+    // clicava em #btn-voice-settings, então este listener alternava de volta no
+    // mesmo clique e o botão parecia completamente morto.
+    //
+    // O bind fica FORA do `if (btnSettings && panel)` porque a gaveta não
+    // depende do painel legado existir na página.
+    const sidebarVoiceBtn = document.getElementById('sidebar-voice-btn');
+    if (sidebarVoiceBtn) {
+        sidebarVoiceBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            // stopPropagation próprio: sem isso o clique sobe até o document e
+            // o listener global acima fecha o painel no mesmo clique.
+            e.stopPropagation();
+            if (typeof window.openSettingsDrawer === 'function') {
+                if (panel) panel.style.display = 'none';
+                window.openSettingsDrawer();
+            } else if (panel) {
+                panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
+            }
+        });
     }
 
     // --- Seletor de voz ElevenLabs ---

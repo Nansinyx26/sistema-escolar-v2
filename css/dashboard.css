@@ -9,6 +9,7 @@
        fazendo a animação "sumir". O preto neutro fica atrás do canvas. */
     background: transparent;
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
 }

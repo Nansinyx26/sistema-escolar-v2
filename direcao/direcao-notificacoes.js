@@ -324,8 +324,8 @@ async function carregarListaTurmas() {
     } catch (e) { console.warn('[Mural] Não foi possível carregar turmas:', e); }
 }
 
-function abrirModal() { document.getElementById('modalConfirm')?.classList.add('open'); document.body.style.overflow = 'hidden'; }
-function fecharModal() { document.getElementById('modalConfirm')?.classList.remove('open'); document.body.style.overflow = ''; }
+function abrirModal() { document.getElementById('modalConfirm')?.classList.add('open'); window.ScrollLock?.lock('modal-confirm'); }
+function fecharModal() { document.getElementById('modalConfirm')?.classList.remove('open'); window.ScrollLock?.unlock('modal-confirm'); }
 
 window.formatDoc = (cmd, val) => { document.execCommand(cmd, false, val); document.getElementById('editorComunicado')?.focus(); };
 window.inserirEmoji = (emoji) => { document.execCommand('insertText', false, emoji); document.getElementById('editorComunicado')?.focus(); };

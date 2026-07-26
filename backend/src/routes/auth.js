@@ -30,12 +30,38 @@ router.get('/me', authJWT, async (req, res) => {
         const userId = req.user?.id || req.user?._id;
         if (!userId) return res.status(401).json({ success: false, error: 'Não autenticado' });
 
-        const user = await Usuario.findById(userId).lean();
+        // ============================================
+        // MINIMIZAÇÃO: ALLOWLIST, não denylist.
+        // Antes era `const { senha, loginAttempts, __v, ...safeUser } = user` —
+        // ou seja, TUDO que não fosse esses três campos ia para a resposta.
+        // Como `.lean()` não passa pelo transform do schema, isso devolvia
+        // lockUntil, tokenVersion, o histórico LGPD com IP/browser, os
+        // pushSubscriptions (com chaves do endpoint push) e qualquer campo
+        // novo adicionado ao modelo no futuro — automaticamente.
+        // Agora só sai o que a UI declaradamente usa.
+        // ============================================
+        const CAMPOS_PUBLICOS = [
+            '_id', 'id', 'nome', 'email', 'perfil', 'foto', 'fotoGoogle',
+            'escola', 'escolaId', 'disciplina', 'turma', 'matricula',
+            'telefone', 'cpf', 'parentesco', 'contaId',
+            'ativo', 'deveMudarSenha', 'profileCompleted', 'emailVerificado',
+            'twoFactorEnabled', 'ultimoLogin', 'criadoEm',
+            'consentimentoAceiteEm', 'consentimentoVersao',
+            'tutorialProfessorConcluido', 'tutorialResponsavelConcluido',
+            'preferenciaNarracao', 'voiceSpeed', 'voiceGender', 'ttsProvider', 'settings',
+            'accessibilityFontSize', 'accessibilityContrast', 'accessibilityReadingMode',
+            'notificacoesPreferencias', 'lgpdConsents'
+        ];
+
+        const user = await Usuario.findById(userId).select(CAMPOS_PUBLICOS.join(' ')).lean();
         if (!user) return res.status(401).json({ success: false, error: 'Usuário não encontrado' });
 
-        const { senha, loginAttempts, __v, ...safeUser } = user;
+        const safeUser = {};
+        CAMPOS_PUBLICOS.forEach(campo => {
+            if (user[campo] !== undefined) safeUser[campo] = user[campo];
+        });
         if (!safeUser.id) safeUser.id = String(user._id);
-        
+
         res.json({ success: true, user: safeUser });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });

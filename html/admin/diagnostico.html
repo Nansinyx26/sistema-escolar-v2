@@ -8,6 +8,9 @@
     <link rel="stylesheet" href="../../css/base.css">
     <link rel="stylesheet" href="../../css/responsive-global.css?v=1.2">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+    <!-- O drawer de ajustes (settings-drawer.js, global) injeta ícones
+         <i class="bi bi-…">; sem esta fonte eles ficavam com 0x0 aqui. -->
+    <link rel="stylesheet" href="../../js/libs/bootstrap-icons.min.css">
     <style>
         :root {
             --bg: var(--bg-primary);
@@ -87,6 +90,9 @@
     <meta name="apple-mobile-web-app-title" content="Escola">
     <meta name="mobile-web-app-capable" content="yes">
     <link rel="stylesheet" href="../../css/system-global.css?v=1.0">
+    <!-- Rolagem e performance mobile — deve ser o ÚLTIMO stylesheet -->
+    <link rel="stylesheet" href="../../css/mobile-scroll.css?v=1.0">
+    <script src="../../js/scroll-lock.js?v=1.0"></script>
 </head>
 <body>
     <!-- Splash Screen (PWA) -->

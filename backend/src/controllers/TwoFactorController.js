@@ -231,30 +231,10 @@ exports.verifyCode = async (req, res) => {
         // O pre-auth é de uso único: consumido, some.
         limparPreAuthToken(res);
 
-        // Gera e seta o cookie JWT com o mesmo nome usado no UserController
-        const token = jwt.sign(
-            {
-                id: usuario._id,
-                email: usuario.email,
-                perfil: usuario.perfil,
-                nome: usuario.nome,
-                deveMudarSenha: usuario.deveMudarSenha,
-                profileCompleted: !!usuario.profileCompleted,
-                // Sem tokenVersion o authJWT invalida o cookie após qualquer troca de senha
-                tokenVersion: usuario.tokenVersion || 0
-            },
-            ACTUAL_JWT_SECRET,
-            { expiresIn: '8h' }
-        );
-
-        const isProduction = process.env.NODE_ENV === 'production';
-        // CORRIGIDO: cookie name 'escola_jwt' (igual ao UserController)
-        res.cookie('escola_jwt', token, {
-            httpOnly: true,
-            secure: isProduction,
-            sameSite: 'Lax',
-            maxAge: 8 * 60 * 60 * 1000
-        });
+        // Gera e seta o cookie JWT pelo emissor central: garante `jti` (sem ele
+        // o logout não consegue revogar esta sessão) e as MESMAS opções de
+        // cookie usadas no UserController.
+        require('../utils/sessionToken').emitirTokenSessao(res, usuario);
 
         // Sessão multi-escola: confirma a escola resolvida no passo de senha
         if (req.session) {

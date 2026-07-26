@@ -12,6 +12,7 @@ const logger       = require('../utils/logger');
 const { PERSONA_PROMPT_PREFIX } = require('./assistantPersona');
 const offlineResponseService    = require('./offlineResponseService');
 const { escolaMatch }           = require('../middleware/filtrarPorEscola');
+const escapeRegex               = require('../utils/escapeRegex');
 
 const DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
@@ -414,8 +415,11 @@ async function resolveAlunoContext({ alunoId, message, alunoFilter }) {
             // Normalize the search term for accent-insensitive regex
             const normalizedTrecho = normalizeText(trecho);
             // Build regex that matches accent-insensitively
+            // ESCAPADO por precaução: hoje `trecho` já vem filtrado a letras
+            // acima, mas o escape torna a query segura por si só, sem depender
+            // de um filtro distante continuar existindo.
             const matches = await Aluno.find(
-                { nome: new RegExp(trecho, 'i'), ...alunoFilter }
+                { nome: new RegExp(escapeRegex(trecho), 'i'), ...alunoFilter }
             ).select('_id nome turma turmaId').lean();
 
             // Rule 3 — Disambiguation
@@ -458,7 +462,10 @@ async function resolveAlunoContext({ alunoId, message, alunoFilter }) {
 async function fetchNotas({ alunoContexto, bimestre, materia }) {
     const query = { alunoId: String(alunoContexto) };
     if (bimestre) query.bimestre = bimestre;
-    if (materia)  query.materiaId = new RegExp(materia, 'i');
+    // ESCAPADO: `materia` sai do texto livre da mensagem do usuário e ia direto
+    // para o RegExp — uma pergunta com metacaracteres catastróficos travava o
+    // event loop do servidor inteiro (ReDoS).
+    if (materia)  query.materiaId = new RegExp(escapeRegex(String(materia)), 'i');
 
     const notas = await Nota.find(query).lean();
     if (!notas.length) {

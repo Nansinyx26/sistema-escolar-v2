@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = require('../utils/jwtConfig');
 const Usuario = require('../models/Usuario');
+const { tokenEstaRevogado } = require('../utils/sessionToken');
 
 module.exports = async function authJWT(req, res, next) {
     // Tenta obter o token do cookie primeiro, depois do header Authorization
@@ -22,7 +23,22 @@ module.exports = async function authJWT(req, res, next) {
     }
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        
+
+        // Um token de propósito diferente (ex.: o 'pre-auth' de 5 min do fluxo
+        // 2FA) é assinado com o MESMO segredo e passaria no verify acima. Sem
+        // esta checagem, o token intermediário do 2FA autenticava sessão
+        // completa — pulando o segundo fator inteiro.
+        if (decoded.purpose && decoded.purpose !== 'session') {
+            return res.status(401).json({ success: false, error: 'Token inválido para esta operação' });
+        }
+
+        // LOGOUT REAL: `clearCookie` só pede ao browser para esquecer o cookie —
+        // o token continuava válido até `exp` e o header Authorization aceitava
+        // a cópia. A denylist por `jti` mata a sessão no servidor.
+        if (await tokenEstaRevogado(decoded)) {
+            return res.status(401).json({ success: false, error: 'Sessão encerrada. Faça login novamente.' });
+        }
+
         // Verificação de invalidação de sessão (senha alterada, conta removida)
         const user = await Usuario.findById(decoded.id || decoded._id)
             .select('tokenVersion ativo perfil')

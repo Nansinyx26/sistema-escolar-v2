@@ -374,7 +374,8 @@ class RegistrationService {
       }
 
       // Verificar se já existe usuário
-      const existingUser = await Usuario.findOne({ email: prof.email.toLowerCase() });
+      // `+senha`: campo é `select: false` no schema (ver models/Usuario.js).
+      const existingUser = await Usuario.findOne({ email: prof.email.toLowerCase() }).select('+senha');
       if (existingUser && existingUser.senha) {
         return {
           success: false,

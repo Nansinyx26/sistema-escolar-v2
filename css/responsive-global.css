@@ -7,17 +7,38 @@
 /* =========================================================
    0. SAFE-AREA + PWA VIEWPORT FIX
    ========================================================= */
-html {
-  /* Ensure PWA fills the entire screen including notch areas */
-  padding: env(safe-area-inset-top) env(safe-area-inset-right)
-    env(safe-area-inset-bottom) env(safe-area-inset-left);
+/* NÃO aplicar padding em <html>: ele é o contêiner de rolagem da página.
+   Insetar a raiz desalinha todo elemento position:fixed (header, sidebar,
+   modais) e soma altura extra, criando rolagem fantasma em toda página.
+   As safe-areas laterais (entalhe em paisagem) ficam no <body>; topo e
+   base já são tratados pelos elementos fixos na seção 6. */
+body {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }
 
-/* Force no horizontal overflow on any page */
-html,
-body {
-  max-width: 100vw;
+/* Sem rolagem horizontal — o recorte fica SÓ na raiz.
+   overflow-x no <body> transforma o body em contêiner de rolagem próprio
+   (o overflow-y usado vira "auto"), o que quebra a inércia de scroll no
+   iOS, cria barra de rolagem duplicada e derruba position:sticky. */
+html {
   overflow-x: hidden;
+}
+
+body {
+  max-width: 100%;
+  overflow-x: visible;
+}
+
+/* Navegadores modernos: "clip" recorta sem criar contêiner de rolagem,
+   preservando position:sticky no desktop. */
+@supports (overflow-x: clip) {
+  html {
+    overflow-x: clip;
+  }
+  body {
+    overflow-x: clip;
+  }
 }
 
 /* Prevent text resize on orientation change (iOS) */
@@ -654,8 +675,9 @@ html {
     bottom: calc(1rem + env(safe-area-inset-bottom, 0px)) !important;
   }
 
-  body {
-    /* Prevent rubber-banding on iOS */
+  html {
+    /* Precisa ficar no elemento que rola (a raiz). No body não tem efeito
+       nenhum, porque quem rola a página é o viewport/raiz. */
     overscroll-behavior-y: contain;
   }
 
@@ -956,9 +978,13 @@ pre {
 /* overflow-x só no mobile: no desktop quebraria position:sticky das
    sidebars. No mobile a página não rola horizontalmente. */
 @media (max-width: 640px) {
-  html, body {
+  /* Recorte só na raiz — ver nota na seção 0. Repetir overflow-x no body
+     recriaria o contêiner de rolagem aninhado que quebra a inércia. */
+  html {
     max-width: 100%;
-    overflow-x: hidden;
+  }
+  body {
+    max-width: 100%;
   }
 
   p, span, td, th, li, a, h1, h2, h3, h4 {
@@ -1074,11 +1100,14 @@ pre {
         animation: none !important;
     }
 
-    /* Momentum scroll + evita “scroll chaining” engasgado */
-    html { scroll-behavior: auto; }
+    /* Momentum scroll + evita “scroll chaining” engasgado.
+       overscroll-behavior vai na RAIZ (quem rola), não no body. */
+    html {
+        scroll-behavior: auto;
+        overscroll-behavior-y: contain;
+    }
     body {
         -webkit-overflow-scrolling: touch;
-        overscroll-behavior-y: none;
     }
 
     /* Containers roláveis com inércia nativa */

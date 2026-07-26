@@ -3,7 +3,6 @@ const path = require('path');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 const compression = require('compression');
 const apiRoutes = require('./routes/api');
 const { sanitizeObject, sanitizeInput } = require('./utils/sanitize');
@@ -31,17 +30,42 @@ app.set('trust proxy', 1);
 // página, o que recarregava o site inteiro de forma intermitente e
 // aparentemente aleatória. Por isso esse middleware foi removido.
 
+// Raiz do frontend estático — definida aqui porque a CSP precisa varrer os
+// HTML servidos para hashear os scripts inline (ver utils/cspHashes.js).
+const frontendRootPath = path.join(__dirname, '../../');
+const { obterHashes } = require('./utils/cspHashes');
+
 // Middleware de Segurança (Helmet)
 // ============================================
-// TODO(security): migrar os poucos <script> inline restantes do frontend
-// legado para arquivos externos ou nonces por rota, permitindo endurecer
-// ainda mais a CSP sem exceções adicionais.
+// `script-src: 'unsafe-inline'` foi REMOVIDO. Ele autorizava QUALQUER script
+// inline, o que anula na prática a defesa da CSP contra XSS: um script
+// injetado executava igual a um legítimo.
+//
+// Os ~31 blocos inline do frontend legado agora são autorizados um a um por
+// hash SHA-256 do próprio conteúdo, calculado dos mesmos arquivos que o
+// servidor entrega. Script com conteúdo diferente (isto é, injetado) não bate
+// com nenhum hash e não executa. Como a política passa a conter hashes, o
+// browser ignora `'unsafe-inline'` mesmo se alguém o reintroduzir por engano.
+//
+// Restam os handlers inline (`onclick=`), cobertos por `script-src-attr` —
+// diretiva separada, endurecida abaixo.
 // ============================================
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             "default-src": ["'self'"],
-            "script-src": ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "unpkg.com", "cdnjs.cloudflare.com", "cdn.tailwindcss.com", "https://accounts.google.com"],
+            // Função: helmet reavalia por resposta, o que permite ao cache de
+            // hashes revalidar por mtime em desenvolvimento (editar um script
+            // inline não exige reiniciar o servidor).
+            "script-src": [
+                "'self'",
+                ...["cdn.jsdelivr.net", "unpkg.com", "cdnjs.cloudflare.com", "cdn.tailwindcss.com", "https://accounts.google.com"],
+                () => obterHashes(frontendRootPath).join(' ')
+            ],
+            // Handlers inline (onclick=...) do HTML legado. Continua sendo uma
+            // exceção, mas MUITO mais estreita que a anterior: vale só para
+            // atributos de evento, nunca para blocos <script>. Fechar isto de
+            // vez exige reescrever os ~174 handlers como addEventListener.
             "script-src-attr": ["'unsafe-inline'"],
             "style-src": ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "fonts.googleapis.com", "unpkg.com", "cdnjs.cloudflare.com", "https://accounts.google.com"],
             "font-src": ["'self'", "cdn.jsdelivr.net", "fonts.gstatic.com", "data:"],
@@ -72,15 +96,39 @@ app.use(helmet({
             "form-action": ["'self'"]       // Previne submissão de formulários para domínios externos
         }
     },
+    // ============================================
+    // CLICKJACKING — defesa explícita em duas camadas
+    // ============================================
+    // `frame-ancestors 'none'` (CSP, acima) é o controle moderno, mas não é
+    // honrado por browsers antigos. O X-Frame-Options cobre esse resto.
+    // Deixado EXPLÍCITO em DENY em vez de herdar o SAMEORIGIN padrão do helmet:
+    // além de ser mais restritivo, torna a intenção auditável e consistente com
+    // o `frame-ancestors 'none'` — antes as duas diretivas discordavam.
+    xFrameOptions: { action: 'deny' },
+
+    // Não vaza a URL completa (que pode conter ids de aluno/turma no path) para
+    // terceiros ao navegar para fora ou carregar recurso externo.
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+
+    // HSTS: 1 ano, subdomínios incluídos. Impede downgrade para HTTP.
+    hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+
     // Necessário para o popup do Google OAuth comunicar de volta com a página pai
     crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
     crossOriginEmbedderPolicy: false, // Desabilitado para compatibilidade com CDNs
 }));
 
+// Cabeçalhos anti-clickjacking também nas respostas de arquivo estático e nas
+// páginas de erro, que em alguns caminhos não passam pela cadeia acima.
+app.use((req, res, next) => {
+    res.setHeader('X-Frame-Options', 'DENY');
+    next();
+});
+
 // ============================================
 // SERVIR ARQUIVOS ESTÁTICOS (Antes de qualquer rate limiter)
 // ============================================
-const frontendRootPath = path.join(__dirname, '../../');
+// `frontendRootPath` já declarado acima (a CSP precisa dele antes do helmet).
 const staticDirectories = [
     'css',
     'js',
@@ -122,60 +170,42 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(frontendRootPath, 'index.html'));
 });
 
-// Rate Limiter Global (Proteção contra DoS em chamadas de API)
+// ============================================
+// RATE LIMITING — por IP **e** por CONTA
+// ============================================
+// Antes todos os limiters eram keyed só por IP, o que não segura brute force
+// de verdade: com um pool de IPs (botnet, VPN rotativa, ou um único /64 IPv6)
+// o atacante martela a mesma conta e cada request cai numa chave nova.
+// Agora os endpoints sensíveis passam por dois limiters em série — um keyed
+// pelo IP (normalizado para /64 em IPv6) e outro pelo e-mail/CPF alvo.
+// Detalhes e limites em middleware/rateLimiters.js.
 const isProduction = process.env.NODE_ENV === 'production';
 const isTest = process.env.NODE_ENV === 'test';
 
-const globalLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: isProduction ? 2000 : 5000,
-    message: { success: false, error: 'Muitas requisições vindas deste IP. Tente novamente mais tarde.' },
-    skip: (req) => isTest || !req.path.startsWith('/api')
-});
+const {
+    globalLimiter,
+    authIpLimiter,
+    authContaLimiter,
+    codeIpLimiter,
+    codeContaLimiter,
+    authPrefixLimiter
+} = require('./middleware/rateLimiters');
 
 // Aplicar o globalLimiter APENAS em rotas /api
 app.use('/api', globalLimiter);
 
-// Rate Limiter Especifico para Autenticacao (Brute Force)
-const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: isProduction ? 15 : 200,
-    skip: () => isTest,
-    message: {
-        success: false,
-        error: 'Muitas tentativas de login ou recuperação. Tente novamente em 15 minutos.'
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-
-// Limiter agressivo para endpoints que validam SEGREDOS curtos
-const codeLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000, // 1 hora
-    max: isProduction ? 30 : 300,
-    skip: () => isTest,
-    message: {
-        success: false,
-        error: 'Muitas tentativas de verificação de código. Tente novamente mais tarde.'
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-
-// Limiter do prefixo /api/auth
-const authPrefixLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: isProduction ? 60 : 600,
-    skip: (req) => isTest || req.method === 'GET' || req.method === 'HEAD',
-    message: {
-        success: false,
-        error: 'Muitas requisições de autenticação. Tente novamente em 15 minutos.'
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-
-// CORS - Configurado para desenvolvimento e produção
+// ============================================
+// CORS — ALLOWLIST ESTRITA (nunca reflete a Origin recebida)
+// ============================================
+// O bloco anterior devolvia `callback(null, true)` para QUALQUER origin sempre
+// que NODE_ENV !== 'production'. Combinado com `credentials: true`, isso é uma
+// origem refletida: o browser passa a autorizar qualquer site a ler respostas
+// autenticadas com o cookie de sessão da vítima — CSRF de leitura completo.
+// E bastava a variável NODE_ENV não chegar exatamente como 'production' num
+// deploy para o buraco valer em produção.
+//
+// Agora a allowlist é a MESMA em todo ambiente. O que muda em dev é apenas a
+// adição explícita de localhost/127.0.0.1 (qualquer porta), nunca um curinga.
 const allowedOrigins = [
     'http://localhost:3000',
     'http://localhost:3001',
@@ -188,27 +218,51 @@ const allowedOrigins = [
     process.env.FRONTEND_URL
 ].filter(Boolean); // Remove undefined/null
 
+// Origens extras liberadas por ambiente (lista separada por vírgula).
+// Permite adicionar um domínio de staging sem reabrir a reflexão geral.
+(process.env.CORS_EXTRA_ORIGINS || '')
+    .split(',')
+    .map(o => o.trim())
+    .filter(Boolean)
+    .forEach(o => allowedOrigins.push(o));
+
+// Apenas fora de produção: loopback em qualquer porta (Vite, Live Server…).
+const LOOPBACK_DEV = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]):\d+$/;
+
+function origemPermitida(origin) {
+    if (allowedOrigins.includes(origin)) return true;
+    if (!isProduction && LOOPBACK_DEV.test(origin)) return true;
+    return false;
+}
+
 app.use(cors({
     origin: function (origin, callback) {
-        // Permitir requisições sem origin (ex: Postman, mobile apps)
+        // Sem header Origin = requisição não-browser (curl, Postman, app mobile,
+        // health check). Não há política de mesma origem a violar e nenhum
+        // cookie é anexado automaticamente, então liberar aqui não expõe nada.
         if (!origin) return callback(null, true);
 
-        // Em desenvolvimento, permite todos
-        if (process.env.NODE_ENV !== 'production') {
+        if (origemPermitida(origin)) {
             return callback(null, true);
         }
 
-        // Em produção, checa lista de permitidos (exata, sem wildcard)
-        if (allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            console.error(`❌ Bloqueado por CORS: ${origin}`);
-            callback(new Error(`Not allowed by CORS (Origin: ${origin})`));
-        }
+        console.error(`❌ Bloqueado por CORS: ${origin}`);
+        // Erro SEM ecoar a origin recebida: a mensagem volta ao cliente pelo
+        // handler global e refletir input do atacante ali é desnecessário.
+        //
+        // `status = 403` é essencial: sem ele o handler global trata como 500 e
+        // dispara um alerta FATAL 'UNHANDLED_ERROR'. Origem bloqueada é o
+        // funcionamento ESPERADO do controle — qualquer um inundaria o canal de
+        // alertas só mandando requests com Origin aleatória.
+        const erro = new Error('Origem não autorizada');
+        erro.status = 403;
+        return callback(erro);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-migration-key', 'X-API-Key', 'X-CSRF-Token']
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-migration-key', 'X-API-Key', 'X-CSRF-Token'],
+    // Sem isso o browser refaz o preflight a cada request.
+    maxAge: 600
 }));
 
 app.use(cookieParser());
@@ -263,7 +317,12 @@ app.use('/api/comunicados', (req, res, next) => (req.method === 'POST' || req.me
 // transforma ?campo[$ne]=x num OBJETO, que ia direto para o filtro Mongo dos
 // controllers (ex.: /api/professores?ativo[$ne]=false devolvia a rede inteira).
 app.use((req, res, next) => {
-    if (req.body) sanitizeObject(req.body);
+    // O body precisa das DUAS passagens: sanitizeObject cuida do XSS nas
+    // strings, removerOperadoresMongoProfundo remove os operadores de consulta.
+    if (req.body) {
+        sanitizeObject(req.body);
+        removerOperadoresMongoProfundo(req.body);
+    }
     if (req.query) removerOperadoresMongo(req.query);
     if (req.params) removerOperadoresMongo(req.params);
     next();
@@ -296,6 +355,45 @@ function removerOperadoresMongo(alvo) {
     });
 }
 
+/**
+ * NoSQL INJECTION NO BODY.
+ *
+ * `sanitizeObject` percorria o body recursivamente mas só limpava HTML das
+ * strings — as CHAVES passavam intactas. Um JSON como
+ *     { "email": { "$ne": null }, "senha": { "$gt": "" } }
+ * chegava inteiro ao controller e virava operador de consulta no Mongo.
+ * (No /login o `email.toLowerCase()` estourava com TypeError → 500, um acidente
+ * feliz; mas qualquer outro handler que jogue um campo do body direto num
+ * filtro estava exposto.)
+ *
+ * Diferente da versão de query/params, aqui NÃO descartamos objetos aninhados:
+ * o body legítimo tem estrutura (segundoResponsavel, lgpdConsents,
+ * pessoasAutorizadas…). Removemos apenas as chaves perigosas, recursivamente:
+ *   - `$...`  → operador de consulta;
+ *   - `a.b`   → notação de caminho, usada para escrever campo aninhado
+ *               arbitrário num $set;
+ *   - chaves de poluição de prototype.
+ */
+const CHAVES_PROIBIDAS = new Set(['__proto__', 'constructor', 'prototype']);
+const PROFUNDIDADE_MAX = 12;
+
+function removerOperadoresMongoProfundo(alvo, profundidade = 0) {
+    if (!alvo || typeof alvo !== 'object' || profundidade > PROFUNDIDADE_MAX) return;
+
+    if (Array.isArray(alvo)) {
+        alvo.forEach(item => removerOperadoresMongoProfundo(item, profundidade + 1));
+        return;
+    }
+
+    Object.keys(alvo).forEach((chave) => {
+        if (chave.startsWith('$') || chave.includes('.') || CHAVES_PROIBIDAS.has(chave)) {
+            delete alvo[chave];
+            return;
+        }
+        removerOperadoresMongoProfundo(alvo[chave], profundidade + 1);
+    });
+}
+
 // ============================================
 // PROTEÇÍO CSRF (Double Submit Cookie)
 // ============================================
@@ -307,17 +405,22 @@ app.use('/api', csrfValidator);
 // Aplicar limiters específicos antes das rotas gerais.
 // Os mais restritivos vêm primeiro: /api/auth/2fa/* precisa do codeLimiter
 // e não apenas do authLimiter herdado do prefixo.
-app.use('/api/auth/2fa/verify', codeLimiter);
-app.use('/api/auth/2fa/send', codeLimiter);
-app.use('/api/auth/validate-code', codeLimiter);
-app.use('/api/auth/verify-recovery-code', codeLimiter);
-app.use('/api/responsavel/vincular', codeLimiter);
-app.use('/api/responsavel/buscar-aluno', codeLimiter);
+//
+// NOTA DE ORDEM: estes limiters ficam DEPOIS do express.json() de propósito —
+// o limiter por conta lê o e-mail/CPF de `req.body` para montar a chave.
+const limitarCodigo = [codeIpLimiter, codeContaLimiter];
+app.use('/api/auth/2fa/verify', limitarCodigo);
+app.use('/api/auth/2fa/send', limitarCodigo);
+app.use('/api/auth/validate-code', limitarCodigo);
+app.use('/api/auth/verify-recovery-code', limitarCodigo);
+app.use('/api/responsavel/vincular', limitarCodigo);
+app.use('/api/responsavel/buscar-aluno', limitarCodigo);
 
 // Os três endpoints historicamente mais atacados mantêm o teto mais baixo
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/forgot-password', authLimiter);
-app.use('/api/auth/reset-password', authLimiter);
+const limitarAuth = [authIpLimiter, authContaLimiter];
+app.use('/api/auth/login', limitarAuth);
+app.use('/api/auth/forgot-password', limitarAuth);
+app.use('/api/auth/reset-password', limitarAuth);
 
 // Todo o restante do prefixo /api/auth — cadastro, ativação e 2FA.
 // Antes só login/forgot/reset eram cobertos, deixando register-diretor,

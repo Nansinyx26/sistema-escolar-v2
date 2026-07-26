@@ -644,38 +644,98 @@ select:focus {
 
 .bi-chart-header {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
+    gap: 1rem;
+    width: 100%;
     margin-bottom: 2rem;
 }
 
 .bi-chart-header h2 {
-    font-size: 1.2rem;
+    flex: 1 1 260px;
+    min-width: 0;
+    font-size: clamp(1rem, 1.6vw, 1.2rem);
+    line-height: 1.3;
     color: #fff;
     margin: 0;
     display: flex;
     align-items: center;
     gap: 12px;
+    overflow-wrap: anywhere;
 }
 
 .bi-chart-header h2 i {
     color: var(--accent-1);
+    flex-shrink: 0;
+    font-size: 1.1em;
 }
 
 .bi-chart-filters {
     display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
     gap: 0.5rem;
+    flex-shrink: 0;
+    margin-left: auto;
 }
 
 .bi-select {
-    background: rgba(255, 255, 255, 0.04);
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-color: rgba(255, 255, 255, 0.04);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
     border: 1px solid rgba(255, 255, 255, 0.08);
     color: var(--muted);
-    padding: 6px 12px;
+    padding: 8px 30px 8px 12px;
     border-radius: 8px;
+    font-family: inherit;
     font-size: 0.8rem;
+    font-weight: 500;
+    line-height: 1.2;
+    height: 34px;
+    min-width: 150px;
+    max-width: 100%;
+    text-overflow: ellipsis;
     outline: none;
     cursor: pointer;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.bi-select:hover {
+    border-color: rgba(16, 185, 129, 0.4);
+}
+
+.bi-select:focus-visible {
+    border-color: var(--accent-1);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.bi-select option {
+    background: #15122a;
+    color: #e2e8f0;
+}
+
+@media (max-width: 640px) {
+    .bi-chart-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+
+    .bi-chart-filters {
+        margin-left: 0;
+        justify-content: flex-start;
+    }
+
+    .bi-select {
+        flex: 1 1 140px;
+        min-width: 0;
+    }
 }
 
 .bi-chart-container {

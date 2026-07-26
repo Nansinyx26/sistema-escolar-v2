@@ -43,6 +43,7 @@
     <link rel="stylesheet" href="../../css/announcement-feed-legacy.css?v=1.0">
     <link rel="stylesheet" href="../../css/sidebar.css?v=1.2">
     <link rel="stylesheet" href="../../css/chatbot-ia.css?v=1.0">
+    <link rel="stylesheet" href="../../css/professores-online.css?v=1.0">
     <!-- React 18 + Framer Motion (Localized) -->
     <script src="../../js/libs/react.min.js"></script>
     <script src="../../js/libs/react-dom.min.js"></script>
@@ -50,6 +51,9 @@
     <link rel="manifest" href="/manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
     <link rel="stylesheet" href="../../css/system-global.css?v=1.0">
+    <!-- Rolagem e performance mobile — deve ser o ÚLTIMO stylesheet -->
+    <link rel="stylesheet" href="../../css/mobile-scroll.css?v=1.0">
+    <script src="../../js/scroll-lock.js?v=1.0"></script>
 </head>
 
 <body>
@@ -94,7 +98,7 @@
             </div>
         </div>
         <nav class="sidebar-nav">
-            <a href="#" class="sidebar-item active" data-page="home">
+            <a href="/html/direcao/index.html" class="sidebar-item active" data-page="home">
                 <i class="bi bi-grid-1x2-fill"></i>
                 <span>Portal de Direção</span>
             </a>
@@ -257,31 +261,7 @@
                     </div>
                 </div>
 
-                <!-- Professores online (tempo real) -->
-                <style>
-                    .profs-online-card{margin-top:2rem;background:var(--bg-card,rgba(255,255,255,.04));border:1px solid var(--border-color,rgba(255,255,255,.08));border-radius:16px;overflow:hidden}
-                    .profs-online-header{width:100%;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.25rem;background:none;border:none;cursor:pointer;color:var(--text-primary,#f1f5f9);font:inherit}
-                    .profs-online-title{display:flex;align-items:center;gap:.6rem;font-size:1.05rem;font-weight:700}
-                    .profs-online-count{font-size:.75rem;font-weight:600;color:#22c55e;background:rgba(34,197,94,.12);padding:.15rem .55rem;border-radius:99px}
-                    .profs-online-chevron{transition:transform .25s ease}
-                    .profs-online-card.collapsed .profs-online-chevron{transform:rotate(-90deg)}
-                    .profs-online-body{padding:0 1rem 1rem}
-                    .profs-online-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.6rem}
-                    .po-item{display:flex;align-items:center;gap:.75rem;padding:.6rem .75rem;border:1px solid var(--border-color,rgba(255,255,255,.06));border-radius:12px;background:var(--bg-elevated,rgba(255,255,255,.03))}
-                    .po-avatar-wrap{position:relative;flex-shrink:0}
-                    .po-avatar{width:42px;height:42px;border-radius:50%;object-fit:cover;display:block;background:#334155}
-                    .po-avatar-fallback{display:flex;align-items:center;justify-content:center;color:#fff;font-size:.8rem;font-weight:700;background:linear-gradient(135deg,#10b981,#0d9488)}
-                    .po-dot{position:absolute;right:-1px;bottom:-1px;width:13px;height:13px;border-radius:50%;border:2px solid var(--bg-card,#111827)}
-                    .po-dot.po-on{background:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.25)}
-                    .po-dot.po-off{background:#f8fafc;border-color:#94a3b8}
-                    .po-info{display:flex;flex-direction:column;min-width:0}
-                    .po-nome{font-weight:600;font-size:.9rem;color:var(--text-primary,#f1f5f9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-                    .po-sala{font-size:.75rem;color:var(--text-secondary,#94a3b8)}
-                    .po-status{margin-left:auto;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
-                    .po-status.po-on{color:#22c55e}
-                    .po-status.po-off{color:#94a3b8}
-                    .po-empty{grid-column:1/-1;padding:1rem;text-align:center;color:var(--text-secondary,#94a3b8);font-size:.9rem}
-                </style>
+                <!-- Professores online (tempo real) — estilos em css/professores-online.css -->
                 <div class="profs-online-card" id="profsOnlineCard">
                     <button class="profs-online-header" id="profsOnlineToggle" aria-expanded="true" aria-controls="profsOnlineBody">
                         <span class="profs-online-title">
@@ -303,10 +283,10 @@
                         <h2><i class="bi bi-graph-up-arrow"></i> Evolução de Desempenho Escolar</h2>
                         <div class="bi-chart-filters">
                             <select id="filtroTurma" class="bi-select">
-                                <option value="">Todas as Turmas</option>
+                                <option value="">Todas as turmas</option>
                             </select>
                             <select id="filtroBimestre" class="bi-select">
-                                <option value="">Todos Bimestres</option>
+                                <option value="">Todos os bimestres</option>
                                 <option value="1">1º Bimestre</option>
                                 <option value="2">2º Bimestre</option>
                                 <option value="3">3º Bimestre</option>
@@ -366,229 +346,6 @@
         <span class="profs-fab-badge" id="profsFabBadge">0</span>
     </button>
 
-    <style>
-    /* === Professores Online FAB === */
-    .profs-fab {
-        position: fixed;
-        bottom: 96px;
-        right: 24px;
-        z-index: 9998;
-        width: 48px;
-        height: 48px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #059669, #10b981);
-        color: #fff;
-        border: none;
-        font-size: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 6px 20px rgba(5, 150, 105, 0.45);
-        cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .profs-fab:hover {
-        transform: scale(1.1);
-        box-shadow: 0 10px 30px rgba(5, 150, 105, 0.6);
-    }
-    .profs-fab-badge {
-        position: absolute;
-        top: -4px;
-        right: -4px;
-        min-width: 20px;
-        height: 20px;
-        padding: 0 5px;
-        border-radius: 10px;
-        background: #22c55e;
-        color: #fff;
-        font-size: 0.65rem;
-        font-weight: 700;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 2px solid var(--bg-primary, #0f172a);
-        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-    }
-
-    /* === Overlay === */
-    .profs-panel-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.3);
-        z-index: 10000;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.3s ease;
-    }
-    .profs-panel-overlay.active {
-        opacity: 1;
-        pointer-events: auto;
-    }
-
-    /* === Painel Lateral === */
-    .profs-panel {
-        position: fixed;
-        bottom: 24px;
-        right: 24px;
-        width: 380px;
-        max-height: calc(100vh - 48px);
-        background: var(--bg-secondary, #1e293b);
-        border: 1px solid var(--border-secondary, rgba(255,255,255,0.08));
-        border-radius: 20px;
-        z-index: 10001;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-        transform: translateY(20px) scale(0.95);
-        opacity: 0;
-        pointer-events: none;
-        transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .profs-panel.open {
-        transform: translateY(0) scale(1);
-        opacity: 1;
-        pointer-events: auto;
-    }
-
-    /* Header */
-    .profs-panel-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 1rem 1.25rem;
-        border-bottom: 1px solid var(--border-secondary, rgba(255,255,255,0.08));
-        background: linear-gradient(135deg, rgba(5,150,105,0.12), transparent);
-    }
-    .profs-panel-title {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-weight: 700;
-        font-size: 1rem;
-        color: var(--text-primary, #f1f5f9);
-    }
-    .profs-panel-title i {
-        color: #10b981;
-        font-size: 1.2rem;
-    }
-    .profs-panel-badge {
-        font-size: 0.7rem;
-        font-weight: 600;
-        color: #22c55e;
-        background: rgba(34,197,94,0.12);
-        padding: 2px 8px;
-        border-radius: 99px;
-    }
-    .profs-panel-close {
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        border: none;
-        background: rgba(255,255,255,0.05);
-        color: var(--text-secondary, #94a3b8);
-        font-size: 14px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s;
-    }
-    .profs-panel-close:hover {
-        background: rgba(220,38,38,0.12);
-        color: #ef4444;
-    }
-
-    /* Body / Lista */
-    .profs-panel-body {
-        flex: 1;
-        overflow-y: auto;
-        padding: 0.75rem;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        max-height: 500px;
-    }
-    .profs-panel-body .po-item {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.6rem 0.75rem;
-        border: 1px solid var(--border-secondary, rgba(255,255,255,0.06));
-        border-radius: 12px;
-        background: var(--bg-elevated, rgba(255,255,255,0.03));
-        transition: background 0.2s;
-    }
-    .profs-panel-body .po-item:hover {
-        background: rgba(16,185,129,0.06);
-    }
-
-    /* Light theme */
-    :root[data-theme="light"] .profs-fab {
-        box-shadow: 0 6px 20px rgba(5,150,105,0.25);
-    }
-    :root[data-theme="light"] .profs-fab-badge {
-        border-color: #ffffff;
-    }
-    :root[data-theme="light"] .profs-panel {
-        background: #ffffff;
-        border-color: rgba(15,23,42,0.08);
-        box-shadow: 0 20px 60px rgba(15,23,42,0.15);
-    }
-    :root[data-theme="light"] .profs-panel-header {
-        border-bottom-color: rgba(15,23,42,0.06);
-        background: linear-gradient(135deg, rgba(5,150,105,0.06), transparent);
-    }
-    :root[data-theme="light"] .profs-panel-title {
-        color: #0f172a;
-    }
-    :root[data-theme="light"] .profs-panel-close {
-        background: rgba(15,23,42,0.04);
-        color: #64748b;
-    }
-    :root[data-theme="light"] .profs-panel-body .po-item {
-        background: #f8fafc;
-        border-color: rgba(15,23,42,0.06);
-    }
-    :root[data-theme="light"] .profs-panel-body .po-nome {
-        color: #0f172a;
-    }
-    :root[data-theme="light"] .profs-panel-body .po-sala {
-        color: #64748b;
-    }
-    :root[data-theme="light"] .profs-panel-overlay.active {
-        background: rgba(15,23,42,0.2);
-    }
-
-    /* Responsivo completo */
-    @media (max-width: 768px) {
-        .profs-panel {
-            width: calc(100vw - 32px);
-            right: 16px;
-            bottom: 80px;
-            max-height: calc(100vh - 120px);
-        }
-        .profs-fab {
-            bottom: 88px;
-            right: 16px;
-            width: 44px;
-            height: 44px;
-            font-size: 18px;
-        }
-    }
-    @media (max-width: 480px) {
-        .profs-panel {
-            width: calc(100vw - 24px);
-            right: 12px;
-            bottom: 76px;
-            border-radius: 16px;
-        }
-        .profs-fab {
-            bottom: 80px;
-            right: 12px;
-        }
-    }
-    </style>
 
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
@@ -601,7 +358,7 @@
     <script src="../../js/voice-orb.js?v=1.0"></script>
     <script src="../../js/sidebar-voice.js?v=4.0"></script>
     <script src="../../direcao/direcao.js"></script>
-    <script src="../../js/professores-online.js"></script>
+    <script src="../../js/professores-online.js?v=1.0"></script>
     <script defer src="../../js/escola-switcher.js"></script>
     <script defer src="../../js/watermark.js"></script>
     <script defer src="../../js/parallax.js"></script>

@@ -240,6 +240,7 @@ nav.scrolled {
 
 .hero {
   min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   grid-template-columns: 1fr;
   gap: 4rem;
@@ -2358,25 +2359,21 @@ footer {
 .pa-modal-overlay.open {
   opacity: 1;
   visibility: visible;
-  /* Impede que o scroll "vaze" do modal para a página atrás
-     e bloqueia gestos de arraste (touch) sobre o overlay */
+  /* Impede que o scroll "vaze" do modal para a página atrás.
+     NÃO usar touch-action: none aqui — isso também bloqueia o gesto
+     de rolar DENTRO do modal em telas baixas, onde o card precisa
+     rolar (ver media query mais abaixo). */
   overscroll-behavior: contain;
-  touch-action: none;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
-/* ── TRAVA TOTAL DE SCROLL com o modal aberto ──────────────────────
-   1. html.pa-lock: classe aplicada pelos botões de abrir/fechar —
-      funciona em qualquer navegador (não depende de :has()).
-   2. :has() fica como reforço para o caso de a classe não ser aplicada.
-   Trava html E body: quando html tem overflow-x definido, o overflow
-   do body deixa de propagar para o viewport — travar só o body falhava. */
-html.pa-lock,
-html.pa-lock body,
-html:has(.pa-modal-overlay.open),
-body:has(.pa-modal-overlay.open) {
-  overflow: hidden !important;
-  height: 100%;
-}
+/* A trava de rolagem da página agora é feita por js/scroll-lock.js
+   (html.scroll-locked em css/mobile-scroll.css), que salva e restaura a
+   posição de rolagem e funciona no iOS Safari. As regras antigas com
+   `overflow: hidden` + `height: 100%` em html/body foram removidas:
+   `overflow: hidden` no body não trava nada no iOS e `height: 100%`
+   colapsava a altura da página ao fechar o modal. */
 
 /* O próprio card também não rola: conteúdo é compacto e deve caber
    inteiro; em telas muito baixas ele encolhe (media query abaixo) */
@@ -2598,8 +2595,9 @@ body:has(.pa-modal-overlay.open) {
    MODO CLARO OPCIONAL — LANDING
    A landing tem seu próprio sistema de tokens (neon-dark). Aqui ele é
    remapeado para uma versão clara coesa quando [data-theme="light"].
-   A maioria das superfícies usa var(--ink*/surface/text/b*), então o
-   remapeamento cobre o grosso; cores fixas escuras são revestidas abaixo.
+   A maioria das superfícies usa as variáveis --ink, --surface, --text e
+   --b (e suas variantes numeradas), então o remapeamento cobre o grosso;
+   cores fixas escuras são revestidas abaixo.
    ============================================================ */
 :root[data-theme="light"] {
   --ink: #ffffff;
@@ -2615,9 +2613,11 @@ body:has(.pa-modal-overlay.open) {
   --blue2: #e8eef5;
   --gold: #0891b2;   /* ciano neon → ciano legível sobre claro */
   --purple: #7c3aed; /* roxo neon → violeta legível */
-  --text: #0f172a;
-  --text2: #334155;
-  --text3: #64748b;
+  /* Modo claro: os três níveis de texto colapsam em PRETO puro — nada de
+     cinza sobre a página branca (ver varredura no fim de variables.css). */
+  --text: #000000;
+  --text2: #000000;
+  --text3: #000000;
   --rgb-r: #e11d48;
   --rgb-g: #059669;
   --rgb-b: #2563eb;

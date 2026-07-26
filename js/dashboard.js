@@ -2,6 +2,20 @@
  * Dashboard Script
  */
 
+// ============================================
+// ESCAPE DE HTML
+// ============================================
+// Este arquivo injeta em innerHTML títulos de notificação, nomes de insígnia e
+// a resposta da IA — todos dados vindos do servidor. Um deles (`title="${...}"`)
+// cai DENTRO de atributo, onde escapar aspas é obrigatório.
+// Local, para não depender da ordem de carregamento dos <script>.
+// Ver js/escape-html.js.
+const _ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' };
+function escHtml(v) {
+    if (v === null || v === undefined) return '';
+    return String(v).replace(/[&<>"'`]/g, c => _ESC_MAP[c]);
+}
+
 // === MAPEAMENTO PROFESSOR → CHAVE DO HORÁRIO ===
 /**
  * Deriva a chave do sistema de horários a partir dos dados do perfil do professor.
@@ -395,7 +409,7 @@ function atualizarListaAvisosMini(notices) {
         <div class="activity-item-mini">
             <div class="activity-dot" style="background: #10b981;"></div>
             <div class="activity-text">
-                <strong>${n.titulo}</strong>
+                <strong>${escHtml(n.titulo)}</strong>
                 <span class="activity-time">${new Date(n.dataCriacao).toLocaleDateString('pt-BR')}</span>
             </div>
         </div>
@@ -417,8 +431,8 @@ function atualizarGridAtividade() {
         <div class="activity-item-mini">
             <div class="activity-dot" style="background: ${a.color};"></div>
             <div class="activity-text">
-                ${a.text}
-                <span class="activity-time">${a.time}</span>
+                ${escHtml(a.text)}
+                <span class="activity-time">${escHtml(a.time)}</span>
             </div>
         </div>
     `).join('');
@@ -547,7 +561,7 @@ async function inicializarWidgets(user, perfil) {
                 if (json && json.success) {
                     iaContent.innerHTML = `
                         <div style="position: relative;">
-                            <p style="line-height:1.4; padding-right: 40px;">${json.data.response}</p>
+                            <p style="line-height:1.4; padding-right: 40px;">${escHtml(json.data.response)}</p>
                             <button id="btn-speak-insight" class="btn btn-sm btn-outline-primary" style="position: absolute; top: 0; right: 0; border: none;">
                                 <i class="bi bi-volume-up-fill"></i>
                             </button>
@@ -560,7 +574,7 @@ async function inicializarWidgets(user, perfil) {
                     iaContent.innerHTML = `<p>Olá! Estou analisando os dados pedagógicos para gerar insights exclusivos em breve.</p>`;
                 }
             } else {
-                iaContent.innerHTML = `<p>Olá, ${user.perfil}! No momento estou processando novos dados da escola para te dar insights exclusivos.</p>`;
+                iaContent.innerHTML = `<p>Olá, ${escHtml(user.perfil)}! No momento estou processando novos dados da escola para te dar insights exclusivos.</p>`;
             }
         } catch (e) {
             console.warn('Erro ao carregar insights:', e);
@@ -585,9 +599,9 @@ async function inicializarWidgets(user, perfil) {
                 
                 if (json.data && json.data.length > 0) {
                     badgesGrid.innerHTML = json.data.map(b => `
-                        <div class="badge-conquest" title="${b.descricao}">
-                            <div class="badge-icon"><i class="bi ${b.icone}"></i></div>
-                            <span style="font-size: 0.65rem; color: #94a3b8; font-weight: 600;">${b.titulo}</span>
+                        <div class="badge-conquest" title="${escHtml(b.descricao)}">
+                            <div class="badge-icon"><i class="bi ${escHtml(b.icone)}"></i></div>
+                            <span style="font-size: 0.65rem; color: #94a3b8; font-weight: 600;">${escHtml(b.titulo)}</span>
                         </div>
                     `).join('');
                 } else {

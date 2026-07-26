@@ -2,6 +2,19 @@
  * Lista de Professores Script
  */
 
+// ============================================
+// ESCAPE DE HTML — obrigatório aqui
+// ============================================
+// Todos os campos abaixo entram em `value="${...}"`, DENTRO de atributo. Um
+// nome contendo aspas fecha o atributo e permite injetar outro no lugar —
+// inclusive um handler de evento, que a CSP ainda aceita (script-src-attr).
+// Ver js/escape-html.js.
+const _ESC_MAP_LP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' };
+function escHtml(v) {
+    if (v === null || v === undefined) return '';
+    return String(v).replace(/[&<>"'`]/g, c => _ESC_MAP_LP[c]);
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     // Inicializa o banco e autenticação
     const connected = await db.init();
@@ -70,16 +83,16 @@ function renderizarTabela(atribuicoes) {
         if (atrib._id) novaLinha.dataset.id = atrib._id;
 
         novaLinha.innerHTML = `
-            <td><input type="text" value="${atrib.nome || ''}" placeholder="Nome do professor"></td>
-            <td><input type="text" value="${atrib.classe || ''}" placeholder="Classe"></td>
-            <td><input type="number" value="${atrib.pontuacao || ''}" placeholder="Pontuação"></td>
-            <td><input type="text" value="${atrib.serieTurma || ''}" placeholder="Série/Turma"></td>
-            <td><input type="number" value="${atrib.ha || '04'}" placeholder="H.A"></td>
-            <td><input type="number" value="${atrib.rp || '04'}" placeholder="R.P"></td>
-            <td><input type="number" value="${atrib.estudoL || '03'}" placeholder="Estudo L"></td>
-            <td><input type="number" value="${atrib.estudoEsc || '02'}" placeholder="Estudo Esc."></td>
-            <td><input type="text" value="${atrib.cargaHoraria || '40h'}" placeholder="Carga"></td>
-            <td><input type="text" value="${atrib.observacoes || ''}" placeholder="Observações"></td>
+            <td><input type="text" value="${escHtml(atrib.nome || '')}" placeholder="Nome do professor"></td>
+            <td><input type="text" value="${escHtml(atrib.classe || '')}" placeholder="Classe"></td>
+            <td><input type="number" value="${escHtml(atrib.pontuacao || '')}" placeholder="Pontuação"></td>
+            <td><input type="text" value="${escHtml(atrib.serieTurma || '')}" placeholder="Série/Turma"></td>
+            <td><input type="number" value="${escHtml(atrib.ha || '04')}" placeholder="H.A"></td>
+            <td><input type="number" value="${escHtml(atrib.rp || '04')}" placeholder="R.P"></td>
+            <td><input type="number" value="${escHtml(atrib.estudoL || '03')}" placeholder="Estudo L"></td>
+            <td><input type="number" value="${escHtml(atrib.estudoEsc || '02')}" placeholder="Estudo Esc."></td>
+            <td><input type="text" value="${escHtml(atrib.cargaHoraria || '40h')}" placeholder="Carga"></td>
+            <td><input type="text" value="${escHtml(atrib.observacoes || '')}" placeholder="Observações"></td>
             <td class="col-assinatura">_____________________</td>
             <td><button class="btn btn-delete btn-sm" onclick="removerLinha(this)"><i class="bi bi-trash"></i></button></td>
         `;

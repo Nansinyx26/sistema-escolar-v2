@@ -3,6 +3,43 @@
     const feedContainer = document.getElementById('announcement-feed-container');
     if (!feedContainer) return;
 
+    // ============================================
+    // ESCAPE — este arquivo renderia conteúdo AUTORADO por usuários
+    // (comunicados e comentários) direto em innerHTML, sem escape nenhum.
+    // Era o caminho de XSS armazenado mais direto do sistema: quem publica
+    // atinge todo mundo que abre o mural.
+    // Definido localmente (e não via js/escape-html.js) para não depender da
+    // ordem de carregamento dos <script> das 53 páginas.
+    // ============================================
+    const _ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' };
+    function esc(v) {
+        if (v === null || v === undefined) return '';
+        return String(v).replace(/[&<>"'`]/g, c => _ESC[c]);
+    }
+
+    /**
+     * URL para `src`/`window.open`.
+     *
+     * O escape de HTML NÃO basta aqui: dentro de `onclick="abrir('${url}')"` o
+     * parser decodifica as entidades ANTES do JS ler a string, então um `&#39;`
+     * vira `'` e fecha a string JS. Rejeitar o valor quando ele contém
+     * aspas/barra invertida remove o problema na origem.
+     *
+     * Bloqueia o que é perigoso em vez de tentar listar todo formato válido:
+     * `audioUrl` no schema é "ID do GridFS ou URL", e uma allowlist de formatos
+     * esconderia áudios legítimos que hoje funcionam.
+     */
+    const ESQUEMA_PERIGOSO = /^\s*(javascript|vbscript|file|about)\s*:/i;
+    function urlSegura(u) {
+        if (!u || typeof u !== 'string') return '';
+        // Caracteres que quebram atributo HTML ou string JS
+        if (/["'`\\<>]/.test(u)) return '';
+        if (ESQUEMA_PERIGOSO.test(u)) return '';
+        // `data:` só para mídia — data:text/html executa script na navegação
+        if (/^\s*data:/i.test(u) && !/^\s*data:(image|audio|video)\//i.test(u)) return '';
+        return u;
+    }
+
     let currentUser = null;
     let socket = null;
 
@@ -75,48 +112,48 @@
         
         div.innerHTML = `
             <div class="comunicado-meta">
-                <span>Direção — ${c.autorNome || 'Escola Jaguari'}</span>
-                <span class="comunicado-data">${dataStr}</span>
+                <span>Direção — ${esc(c.autorNome || 'Escola Jaguari')}</span>
+                <span class="comunicado-data">${esc(dataStr)}</span>
             </div>
-            <h3 class="comunicado-titulo">${c.titulo}</h3>
-            <div class="comunicado-texto">${c.texto}</div>
+            <h3 class="comunicado-titulo">${esc(c.titulo)}</h3>
+            <div class="comunicado-texto">${esc(c.texto)}</div>
             ${c.imagens && c.imagens.length > 0 ? `
                 <div class="comunicado-media">
-                    ${c.imagens.map(img => `<img src="${img}" class="media-item" onclick="window.open('${img}', '_blank')">`).join('')}
+                    ${c.imagens.map(urlSegura).filter(Boolean).map(img => `<img src="${esc(img)}" class="media-item" onclick="window.open('${esc(img)}', '_blank')">`).join('')}
                 </div>
             ` : ''}
             
             <div class="comunicado-actions">
-                <button class="action-btn ${hasReacted ? 'active' : ''}" onclick="window.LegacyFeed.toggleReacao('${c._id}')">
+                <button class="action-btn ${hasReacted ? 'active' : ''}" onclick="window.LegacyFeed.toggleReacao('${esc(c._id)}')">
                     <i class="bi ${hasReacted ? 'bi-heart-fill' : 'bi-heart'}"></i>
                     <span class="reacoes-count">${userReactions.length}</span>
                 </button>
-                <button class="action-btn" onclick="window.LegacyFeed.toggleComentarios('${c._id}')">
+                <button class="action-btn" onclick="window.LegacyFeed.toggleComentarios('${esc(c._id)}')">
                     <i class="bi bi-chat-text"></i>
                     <span>${(c.comentarios && c.comentarios.length) || 0}</span>
                 </button>
             </div>
 
-            <div id="comentarios-${c._id}" class="comentarios-section" style="display: none;">
+            <div id="comentarios-${esc(c._id)}" class="comentarios-section" style="display: none;">
                 <div class="comentarios-list">
                     ${(c.comentarios || []).map(com => `
                         <div class="comentario-item">
                             <div class="comentario-header">
-                                <span class="comentario-autor">${com.autorNome}</span>
-                                <span class="comentario-data">${new Date(com.criadoEm).toLocaleDateString()}</span>
+                                <span class="comentario-autor">${esc(com.autorNome)}</span>
+                                <span class="comentario-data">${esc(new Date(com.criadoEm).toLocaleDateString())}</span>
                             </div>
-                            <div class="comentario-texto">${com.texto || ''}</div>
-                            ${com.audioUrl ? `
+                            <div class="comentario-texto">${esc(com.texto || '')}</div>
+                            ${urlSegura(com.audioUrl) ? `
                                 <div class="comentario-audio">
-                                    <audio src="${com.audioUrl}" controls controlsList="nodownload" class="mini-audio-player"></audio>
+                                    <audio src="${esc(urlSegura(com.audioUrl))}" controls controlsList="nodownload" class="mini-audio-player"></audio>
                                 </div>
                             ` : ''}
                         </div>
                     `).join('')}
                 </div>
                 <div class="comentario-input-group">
-                    <input type="text" placeholder="Escreva um comentário..." class="comentario-input" id="input-${c._id}">
-                    <button class="btn btn-primary btn-sm" onclick="window.LegacyFeed.enviarComentario('${c._id}')">
+                    <input type="text" placeholder="Escreva um comentário..." class="comentario-input" id="input-${esc(c._id)}">
+                    <button class="btn btn-primary btn-sm" onclick="window.LegacyFeed.enviarComentario('${esc(c._id)}')">
                         <i class="bi bi-send"></i>
                     </button>
                 </div>
@@ -179,13 +216,13 @@
                     comDiv.className = 'comentario-item';
                     comDiv.innerHTML = `
                         <div class="comentario-header">
-                            <span class="comentario-autor">${comentario.autorNome}</span>
+                            <span class="comentario-autor">${esc(comentario.autorNome)}</span>
                             <span class="comentario-data">Agora</span>
                         </div>
-                        <div class="comentario-texto">${comentario.texto || ''}</div>
-                        ${comentario.audioUrl ? `
+                        <div class="comentario-texto">${esc(comentario.texto || '')}</div>
+                        ${urlSegura(comentario.audioUrl) ? `
                             <div class="comentario-audio">
-                                <audio src="${comentario.audioUrl}" controls controlsList="nodownload" class="mini-audio-player"></audio>
+                                <audio src="${esc(urlSegura(comentario.audioUrl))}" controls controlsList="nodownload" class="mini-audio-player"></audio>
                             </div>
                         ` : ''}
                     `;
@@ -239,7 +276,7 @@
 
     function mostrarErro(msg) {
         const list = document.getElementById('feed-list');
-        if (list) list.innerHTML = `<div class="alert alert-danger" style="margin: 2rem;">${msg}</div>`;
+        if (list) list.innerHTML = `<div class="alert alert-danger" style="margin: 2rem;">${esc(msg)}</div>`;
     }
 
     // Start

@@ -5,10 +5,11 @@
 
 body {
     min-height: 100vh;
+    min-height: 100dvh;
     background: #000;
     font-family: var(--font-primary, 'Inter', sans-serif);
     color: var(--text-primary, #fafafa);
-    overflow-x: hidden;
+    /* overflow-x fica em <html> — ver responsive-global.css */
 }
 
 /* ── Fundo com orbs animados ── */

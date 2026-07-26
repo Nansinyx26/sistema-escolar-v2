@@ -661,7 +661,7 @@ function setupEventListeners() {
         btnVoiceSettings.addEventListener('click', (e) => {
             e.stopPropagation();
             const isActive = voicePanel.classList.toggle('active');
-            document.body.classList.toggle('no-scroll', isActive);
+            isActive ? window.ScrollLock?.lock('voice-panel') : window.ScrollLock?.unlock('voice-panel');
             if (isActive) {
                 voicePanel.querySelector('select, button')?.focus();
             }
@@ -671,7 +671,7 @@ function setupEventListeners() {
         document.addEventListener('click', (e) => {
             if (!voicePanel.contains(e.target) && e.target !== btnVoiceSettings) {
                 voicePanel.classList.remove('active');
-                document.body.classList.remove('no-scroll');
+                window.ScrollLock?.unlock('voice-panel');
             }
         });
 
@@ -679,7 +679,7 @@ function setupEventListeners() {
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && voicePanel.classList.contains('active')) {
                 voicePanel.classList.remove('active');
-                document.body.classList.remove('no-scroll');
+                window.ScrollLock?.unlock('voice-panel');
             }
         });
     }

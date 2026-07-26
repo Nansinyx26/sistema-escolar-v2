@@ -10,6 +10,18 @@ import students from './students.js';
 import notes from './notes.js';
 import exportManager from './export.js';
 
+// ============================================
+// ESCAPE DE HTML
+// ============================================
+// Nome de professor, matéria, turma e escola vêm do cadastro (dados de um
+// usuário, exibidos para outros) e eram interpolados crus em innerHTML.
+// Ver js/escape-html.js.
+const _ESC_MAP_APP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' };
+function escHtml(v) {
+    if (v === null || v === undefined) return '';
+    return String(v).replace(/[&<>"'`]/g, c => _ESC_MAP_APP[c]);
+}
+
 class App {
     constructor() {
         this.initialized = false;
@@ -616,7 +628,7 @@ class App {
         // Atualiza título com Matéria
         if (document.getElementById('turmaTitle')) {
             const el = document.getElementById('turmaTitle');
-            el.innerHTML = `${turmaId} <span class="badge-materia" style="font-size:0.6em; background:var(--primary); padding:2px 8px; border-radius:12px; vertical-align:middle; margin-left:10px;">${materia}</span>`;
+            el.innerHTML = `${escHtml(turmaId)} <span class="badge-materia" style="font-size:0.6em; background:var(--primary); padding:2px 8px; border-radius:12px; vertical-align:middle; margin-left:10px;">${escHtml(materia)}</span>`;
         }
 
         // Atualiza ícone da turma (quadrado lateral)
@@ -1046,11 +1058,11 @@ class App {
                         <div class="faltas-title-text">
                             <h3>Frequência</h3>
                             <p class="text-secondary" style="margin: 2px 0 0 0; font-size: 0.9rem;">
-                                <strong>${materia}</strong> 
+                                <strong>${escHtml(materia)}</strong> 
                                 <span style="opacity:0.5; margin:0 5px;">|</span> 
-                                <i class="bi bi-person-video3"></i> ${nomeProfessor}
+                                <i class="bi bi-person-video3"></i> ${escHtml(nomeProfessor)}
                                 <span style="opacity:0.5; margin:0 5px;">|</span>
-                                <i class="bi bi-building"></i> ${nomeEscola}
+                                <i class="bi bi-building"></i> ${escHtml(nomeEscola)}
                             </p>
                         </div>
                     </div>

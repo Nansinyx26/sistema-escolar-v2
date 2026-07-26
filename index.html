@@ -35,6 +35,9 @@
     <link rel="stylesheet" href="css/portal-responsavel-modern.css?v=1.0" />
       <meta name="theme-color" content="#09090b">
     <link rel="stylesheet" href="css/system-global.css?v=1.0">
+    <!-- Rolagem e performance mobile — deve ser o ÚLTIMO stylesheet -->
+    <link rel="stylesheet" href="css/mobile-scroll.css?v=1.0">
+    <script src="js/scroll-lock.js?v=1.0"></script>
 </head>
 
   <body>
@@ -271,7 +274,7 @@
                 document
                   .getElementById('modalPrimeiroAcesso')
                   .classList.add('open');
-                document.documentElement.classList.add('pa-lock');
+                window.ScrollLock && window.ScrollLock.lock('modal-primeiro-acesso');
               "
             >
               <i class="bi bi-person-plus"></i> Criar Conta
@@ -287,7 +290,7 @@
                   document
                     .getElementById('modalPrimeiroAcesso')
                     .classList.remove('open');
-                  document.documentElement.classList.remove('pa-lock');
+                  window.ScrollLock && window.ScrollLock.unlock('modal-primeiro-acesso');
                 "
                 aria-label="Fechar"
               >

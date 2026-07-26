@@ -1,3 +1,14 @@
+// ============================================
+// ESCAPE DE HTML
+// ============================================
+// Nome de professor, turma e disciplina são cadastrados por um usuário e
+// exibidos para outros. Ver js/escape-html.js.
+const _ESC_MAP_GH = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' };
+function escHtml(v) {
+    if (v === null || v === undefined) return '';
+    return String(v).replace(/[&<>"'`]/g, c => _ESC_MAP_GH[c]);
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     await db.init();
     await auth.init();
@@ -130,8 +141,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const iconName = MATERIAS_ICONS[materia] || 'bi-journal-bookmark';
 
             content.innerHTML = `
-                <i class="bi ${iconName}" style="font-size: 1.5rem;"></i>
-                <span style="font-size: 0.9rem;">${materia}</span>
+                <i class="bi ${escHtml(iconName)}" style="font-size: 1.5rem;"></i>
+                <span style="font-size: 0.9rem;">${escHtml(materia)}</span>
             `;
 
             label.appendChild(radio);
@@ -273,11 +284,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${nomeProf}</td>
-                <td>${nomeTurma}</td>
-                <td>${item.disciplina}</td>
-                <td>${DIAS[item.diaSemana]}</td>
-                <td>${item.horaInicio} - ${item.horaFim}</td>
+                <td>${escHtml(nomeProf)}</td>
+                <td>${escHtml(nomeTurma)}</td>
+                <td>${escHtml(item.disciplina)}</td>
+                <td>${escHtml(DIAS[item.diaSemana])}</td>
+                <td>${escHtml(item.horaInicio)} - ${escHtml(item.horaFim)}</td>
                 <td>
                     <button class="btn btn-outline btn-sm" onclick="deletarGrade('${item._id}')" style="color: var(--error-color); border-color: var(--error-color);">
                         <i class="bi bi-trash"></i>

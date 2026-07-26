@@ -100,24 +100,31 @@ describe('POST /api/auth/login', () => {
 // ─────────────────────────────────────────────────────────
 describe('Brute-Force: bloqueio de conta', () => {
 
-    it('deve bloquear apos multiplas tentativas incorretas e retornar 403', async () => {
+    it('deve gravar lockUntil apos 5 tentativas incorretas', async () => {
         await criarUsuario({ email: 'bruteforce@escola.test' });
 
         // O controller bloqueia na 5a tentativa (loginAttempts >= 5)
-        // Faz 5 tentativas para forcar o lockout
         for (let i = 0; i < 5; i++) {
             await postLogin({ email: 'bruteforce@escola.test', senha: 'Errada' });
         }
 
-        // Agora bloqueia diretamente no banco para garantir o estado
+        // O bloqueio é observável no BANCO...
         const usuario = await Usuario.findOne({ email: 'bruteforce@escola.test' });
+        expect(usuario.lockUntil).toBeTruthy();
+        expect(usuario.lockUntil.getTime()).toBeGreaterThan(Date.now());
+    });
+
+    it('NAO revela o bloqueio para quem erra a senha (anti-enumeracao)', async () => {
+        const usuario = await criarUsuario({ email: 'bloqueado-silencioso@escola.test' });
         await Usuario.findByIdAndUpdate(usuario._id, {
             lockUntil: new Date(Date.now() + 15 * 60 * 1000)
         });
 
-        // Proxima tentativa deve retornar 403 (conta bloqueada)
-        const res = await postLogin({ email: 'bruteforce@escola.test', senha: 'Errada' });
-        expect(res.status).toBe(403);
+        // ...mas NAO é revelado a quem não prova conhecer a senha: um 403
+        // 'conta bloqueada' aqui confirmaria que a conta existe usando apenas
+        // senhas erradas. A resposta é idêntica à de credencial inválida.
+        const res = await postLogin({ email: 'bloqueado-silencioso@escola.test', senha: 'Errada' });
+        expect(res.status).toBe(401);
     });
 
     it('deve rejeitar login com conta ja bloqueada mesmo com senha correta', async () => {
@@ -268,5 +275,153 @@ describe('POST /api/auth/logout', () => {
         const jwtCookie = cookies.find(c => c.startsWith('escola_jwt'));
         expect(jwtCookie).toBeTruthy();
         expect(jwtCookie).toMatch(/Max-Age=0|expires=Thu, 01 Jan 1970/i);
+    });
+
+    // ─────────────────────────────────────────────────────
+    // O ponto central: limpar o cookie NÃO basta. O token precisa morrer
+    // no SERVIDOR, senão qualquer cópia dele (header Authorization, log de
+    // proxy, máquina compartilhada) continua autenticando até o exp de 8h.
+    // ─────────────────────────────────────────────────────
+    it('deve INVALIDAR o token no servidor, nao apenas limpar o cookie', async () => {
+        await criarUsuario({ email: 'logout-revoga@escola.test' });
+        const login = await postLogin({ email: 'logout-revoga@escola.test', senha: SENHA_TESTE });
+        expect(login.status).toBe(200);
+
+        // Captura a cópia do token, como um atacante faria.
+        const tokenCopiado = (login.headers['set-cookie'] || [])
+            .find(c => c.startsWith('escola_jwt'))
+            .split(';')[0]
+            .split('=')[1];
+
+        // Antes do logout a cópia funciona.
+        const antes = await request(app)
+            .get('/api/auth/me')
+            .set('Authorization', `Bearer ${tokenCopiado}`);
+        expect(antes.status).toBe(200);
+
+        await request(app)
+            .post('/api/auth/logout')
+            .set('Cookie', `escola_jwt=${tokenCopiado}`);
+
+        // Depois do logout a MESMA cópia deve ser rejeitada.
+        const depois = await request(app)
+            .get('/api/auth/me')
+            .set('Authorization', `Bearer ${tokenCopiado}`);
+        expect(depois.status).toBe(401);
+    });
+
+    it('logout de um dispositivo NAO derruba a sessao dos outros', async () => {
+        await criarUsuario({ email: 'logout-multi@escola.test' });
+
+        const pegarToken = async () => {
+            const r = await postLogin({ email: 'logout-multi@escola.test', senha: SENHA_TESTE });
+            return (r.headers['set-cookie'] || [])
+                .find(c => c.startsWith('escola_jwt')).split(';')[0].split('=')[1];
+        };
+
+        const tokenCelular = await pegarToken();
+        const tokenDesktop = await pegarToken();
+
+        await request(app).post('/api/auth/logout').set('Cookie', `escola_jwt=${tokenCelular}`);
+
+        // A revogação é por `jti`, então é cirúrgica: só a sessão deslogada cai.
+        const celular = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${tokenCelular}`);
+        expect(celular.status).toBe(401);
+
+        const desktop = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${tokenDesktop}`);
+        expect(desktop.status).toBe(200);
+    });
+});
+
+// ─────────────────────────────────────────────────────────
+// Senha em texto puro (caminho legado removido)
+// ─────────────────────────────────────────────────────────
+describe('Senhas legadas sem bcrypt', () => {
+
+    it('NAO permite login com senha em texto puro no banco', async () => {
+        const usuario = await criarUsuario({ email: 'legado@escola.test' });
+        // Simula um registro pré-bcrypt: senha gravada em claro.
+        await Usuario.updateOne({ _id: usuario._id }, { $set: { senha: 'SenhaEmTextoPuro123' } });
+
+        const res = await postLogin({ email: 'legado@escola.test', senha: 'SenhaEmTextoPuro123' });
+
+        // Antes isso logava e "migrava" a senha. Agora é recusado: aceitar um
+        // valor lido direto do banco transforma qualquer leitura do Mongo
+        // (backup, dump, injection) em credencial válida.
+        expect(res.status).toBe(401);
+        const cookies = res.headers['set-cookie'] || [];
+        expect(cookies.some(c => c.startsWith('escola_jwt'))).toBe(false);
+    });
+
+    it('nao converte a senha legada em bcrypt as escondidas', async () => {
+        const usuario = await criarUsuario({ email: 'legado2@escola.test' });
+        await Usuario.updateOne({ _id: usuario._id }, { $set: { senha: 'OutroTextoPuro456' } });
+
+        await postLogin({ email: 'legado2@escola.test', senha: 'OutroTextoPuro456' });
+
+        // A conta continua intocada — a correção é rodar a migração explícita,
+        // não deixar o próprio login "consertar" ao primeiro acerto.
+        const depois = await Usuario.findById(usuario._id).select('+senha');
+        expect(depois.senha).toBe('OutroTextoPuro456');
+    });
+});
+
+// ─────────────────────────────────────────────────────────
+// Anti-enumeração de usuário
+// ─────────────────────────────────────────────────────────
+describe('Enumeracao de usuario', () => {
+
+    it('conta inexistente e senha errada devolvem resposta IDENTICA', async () => {
+        await criarUsuario({ email: 'existe@escola.test' });
+
+        const inexistente = await postLogin({ email: 'naoexiste@escola.test', senha: 'Errada123' });
+        const senhaErrada = await postLogin({ email: 'existe@escola.test', senha: 'Errada123' });
+
+        // Mesmo status E mesma mensagem: sem isso dá para varrer e-mails
+        // válidos sem nunca acertar uma senha.
+        expect(inexistente.status).toBe(senhaErrada.status);
+        expect(inexistente.body.error).toBe(senhaErrada.body.error);
+    });
+
+    it('conta inativa nao se distingue de conta inexistente', async () => {
+        await criarUsuario({ email: 'inativa-enum@escola.test', ativo: false });
+
+        const inativa = await postLogin({ email: 'inativa-enum@escola.test', senha: SENHA_TESTE });
+        const inexistente = await postLogin({ email: 'sumiu@escola.test', senha: SENHA_TESTE });
+
+        expect(inativa.status).toBe(inexistente.status);
+        expect(inativa.body.error).toBe(inexistente.body.error);
+    });
+});
+
+// ─────────────────────────────────────────────────────────
+// Vazamento de PII na resposta
+// ─────────────────────────────────────────────────────────
+describe('Minimizacao de dados na resposta', () => {
+
+    it('/api/auth/me NAO devolve hash de senha nem campos de controle', async () => {
+        await criarUsuario({ email: 'pii@escola.test' });
+        const login = await postLogin({ email: 'pii@escola.test', senha: SENHA_TESTE });
+        const cookie = (login.headers['set-cookie'] || [])
+            .find(c => c.startsWith('escola_jwt')).split(';')[0];
+
+        const res = await request(app).get('/api/auth/me').set('Cookie', cookie);
+
+        expect(res.status).toBe(200);
+        expect(res.body.user.senha).toBeUndefined();
+        expect(res.body.user.tokenVersion).toBeUndefined();
+        expect(res.body.user.lockUntil).toBeUndefined();
+        expect(res.body.user.resetToken).toBeUndefined();
+        expect(res.body.user.twoFactorPendingToken).toBeUndefined();
+        // Nenhum valor da resposta pode parecer um hash bcrypt
+        expect(JSON.stringify(res.body)).not.toMatch(/\$2[aby]\$\d{2}\$/);
+    });
+
+    it('resposta do login NAO carrega hash de senha', async () => {
+        await criarUsuario({ email: 'pii-login@escola.test' });
+        const res = await postLogin({ email: 'pii-login@escola.test', senha: SENHA_TESTE });
+
+        expect(res.status).toBe(200);
+        expect(JSON.stringify(res.body)).not.toMatch(/\$2[aby]\$\d{2}\$/);
     });
 });

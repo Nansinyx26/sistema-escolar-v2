@@ -74,10 +74,19 @@ function csrfValidator(req, res, next) {
     }
 
 
-    // Em testes automatizados o CSRF pode ser desabilitado para simplificar fixtures.
-    // Em desenvolvimento e produ��o a prote��o permanece ativa.
-
-    if (process.env.NODE_ENV === 'test') {
+    // ============================================
+    // BYPASS DE TESTE — exige opt-in EXPLÍCITO, não basta NODE_ENV
+    // ============================================
+    // Antes: `if (process.env.NODE_ENV === 'test') return next();`
+    // Isso fazia a proteção CSRF inteira depender de UMA string de ambiente.
+    // Um deploy que herdasse NODE_ENV=test (config errada, container de CI
+    // promovido, script de start copiado) ficava com CSRF completamente
+    // desligado — sem erro, sem log, sem nada visível.
+    //
+    // Agora o bypass exige uma flag dedicada que só o globalSetup do Jest
+    // define, E que NODE_ENV seja 'test'. As duas condições juntas não
+    // acontecem por acidente de configuração de deploy.
+    if (process.env.NODE_ENV === 'test' && process.env.CSRF_DISABLE_FOR_TESTS === 'true') {
         return next();
     }
 

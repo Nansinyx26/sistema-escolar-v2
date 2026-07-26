@@ -95,6 +95,7 @@ body {
     color: var(--text-color);
     line-height: 1.6;
     min-height: 100vh;
+    min-height: 100dvh;
 }
 
 /* ==========================================================================
@@ -135,6 +136,7 @@ a:hover {
 
 .page {
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
 }

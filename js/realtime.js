@@ -596,11 +596,14 @@
         return new Date(dateStr).toLocaleDateString('pt-BR');
     }
 
+    // Escapa texto E atributo. A versão anterior usava textContent→innerHTML,
+    // que não escapa aspas — inseguro em `title="${x}"` e `onclick="f('${x}')"`,
+    // que é exatamente como este arquivo interpola. Ver js/escape-html.js.
     function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+        if (text === null || text === undefined) return '';
+        return String(text).replace(/[&<>"'`]/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c];
+        });
     }
 
     // =============================================

@@ -305,13 +305,10 @@ body.sidebar-open .dev-notice {
     pointer-events: none;
 }
 
-body.sidebar-lock {
-    overflow: hidden;
-    position: fixed;
-    width: 100%;
-    left: 0;
-    right: 0;
-}
+/* A trava de rolagem com a sidebar aberta passou para js/scroll-lock.js
+   (html.scroll-locked, em css/mobile-scroll.css). A regra antiga
+   body.sidebar-lock foi removida porque limpava o deslocamento salvo
+   quando um modal era aberto por cima da sidebar. */
 
 /* Hamburger button */
 .btn-hamburger {

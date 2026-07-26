@@ -13,6 +13,12 @@ const ACTUAL_JWT_SECRET = require('../utils/jwtConfig');
 const RecuperacaoSenha = require('../models/RecuperacaoSenha');
 const EmailService = require('../services/EmailService');
 const { emitirParaPerfis } = require('../utils/realtime');
+// Usado nos dados vindos do Google, que não passam pela sanitização global
+// do app.js (ela cobre req.body/query/params, não payload de OAuth).
+const { sanitizeInput } = require('../utils/sanitize');
+// Emissão de sessão centralizada: garante `jti` em todo token (pré-requisito
+// para o logout conseguir revogar) e opções de cookie idênticas em todo lugar.
+const { emitirTokenSessao } = require('../utils/sessionToken');
 
 const SALT_ROUNDS = 12;
 
@@ -83,6 +89,25 @@ exports.create = async (req, res) => {
         // Se criado por Admin, força mudança de senha no primeiro login
         req.body.deveMudarSenha = true;
 
+        // MASS ASSIGNMENT / CROSS-TENANT: `Usuario.create(req.body)` gravava o
+        // corpo inteiro. Um diretor podia mandar `escolaId` de outra escola
+        // (plantando conta em tenant alheio) ou semear campos de controle
+        // interno como `tokenVersion`, `emailVerificado` e `lockUntil`.
+        // Campos de controle nunca vêm do cliente:
+        ['tokenVersion', 'loginAttempts', 'lockUntil', 'anonimizadoEm',
+         'emailVerificado', 'emailVerificacaoToken', 'resetToken', 'resetTokenExpiry',
+         'twoFactorFixedCode', 'twoFactorSecret', 'twoFactorPendingToken']
+            .forEach(campo => { delete req.body[campo]; });
+
+        // Não-admin só cria dentro da própria escola — o escolaId do corpo é
+        // ignorado em favor do resolvido pela sessão.
+        if (req.user && req.user.perfil !== 'admin') {
+            if (!req.escolaId) {
+                return res.status(403).json({ success: false, error: 'Escola da sessão não identificada. Faça login novamente.' });
+            }
+            req.body.escolaId = String(req.escolaId);
+        }
+
         const user = await Usuario.create(req.body);
 
         await logAction(req, 'CREATE_USER', 'Usuarios', {
@@ -123,8 +148,10 @@ exports.firstAccess = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Dados não encontrados no pré-cadastro da escola.' });
         }
 
-        // 2. Verifica se já existe um Usuário (Login) para este professor
-        const existingUser = await Usuario.findOne({ email: prof.email.toLowerCase() });
+        // 2. Verifica se já existe um Usuário (Login) para este professor.
+        // `+senha`: o campo é `select: false` no schema; aqui precisamos saber
+        // se a conta já tem senha definida (não o valor dela).
+        const existingUser = await Usuario.findOne({ email: prof.email.toLowerCase() }).select('+senha');
         if (existingUser && existingUser.senha) {
             return res.status(400).json({ success: false, error: 'Este e-mail já possui uma conta ativa. Use a recuperação de senha.' });
         }
@@ -156,17 +183,7 @@ exports.firstAccess = async (req, res) => {
         });
 
         // Logar automaticamente gerando cookie JWT (mesmo padrão dos demais cadastros)
-        const token = jwt.sign(
-            { id: user._id, perfil: user.perfil, email: user.email, nome: user.nome, tokenVersion: user.tokenVersion || 0 },
-            ACTUAL_JWT_SECRET,
-            { expiresIn: '8h' }
-        );
-        res.cookie('escola_jwt', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'Lax',
-            maxAge: 8 * 60 * 60 * 1000
-        });
+        emitirTokenSessao(res, user);
 
         res.json({
             success: true,
@@ -266,27 +283,11 @@ exports.registerWithCode = async (req, res) => {
             descricao: `Nova conta criada via Código Secreto por ${email}${escolaResolvida ? ` (escola: ${escolaResolvida.nome})` : ''}`
         });
 
-        // Gera token JWT e define cookie HttpOnly
-        const token = jwt.sign(
-            { 
-              id: user._id, 
-              perfil: user.perfil, 
-              email: user.email, 
-              nome: user.nome, 
-              cpf: user.cpf, 
-              telefone: user.telefone, 
-              profileCompleted: !!user.profileCompleted,
-              tokenVersion: user.tokenVersion || 0 
-            },
-            ACTUAL_JWT_SECRET,
-            { expiresIn: '8h' }
-        );
-        res.cookie('escola_jwt', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'Lax',
-            maxAge: 8 * 60 * 60 * 1000
-        });
+        // Gera token JWT e define cookie HttpOnly.
+        // CPF e telefone saíram do payload: o JWT é apenas assinado, NÃO é
+        // cifrado — qualquer um que o obtenha lê o conteúdo em claro. Não há
+        // motivo para carregar PII num crachá de autorização.
+        emitirTokenSessao(res, user);
 
         // 4. Envia e-mail de verificação em background (não bloqueante)
         const tokenUrl = `${process.env.FRONTEND_URL || 'http://localhost:3001'}/api/auth/verify-email/${emailVerificacaoToken}`;
@@ -321,46 +322,67 @@ function getRedirectPath(user) {
 }
 exports.getRedirectPath = getRedirectPath;
 
+// ============================================
+// ANTI-ENUMERAÇÃO DE USUÁRIO
+// ============================================
+// Toda falha de login devolve EXATAMENTE esta mensagem e este status. Antes
+// havia dois textos distintos — 'Credenciais inválidas ou conta inativa'
+// (usuário inexistente/desativado) e 'Credenciais inválidas' (senha errada) —
+// o que permitia validar e-mails em massa sem nunca acertar uma senha.
+const ERRO_CREDENCIAIS = { success: false, error: 'E-mail ou senha incorretos.' };
+
+// Hash bcrypt descartável, usado só para gastar o mesmo tempo de CPU quando a
+// conta NÃO existe. Sem isso, "usuário inexistente" responde em ~1ms e
+// "senha errada" em ~100ms (custo 12) — um canal lateral de tempo que entrega
+// a mesma informação que a mensagem unificada acabou de esconder.
+const HASH_DUMMY = bcrypt.hashSync('senha-inexistente-para-timing-constante', SALT_ROUNDS);
+
 exports.login = async (req, res) => {
     const { email, senha } = req.body;
 
     try {
-        const user = await Usuario.findOne({ email: email.toLowerCase() });
+        // Tipos coeridos: `email` vindo como objeto/array quebraria o
+        // toLowerCase() com um 500 que também é um oráculo.
+        if (typeof email !== 'string' || typeof senha !== 'string' || !email || !senha) {
+            return res.status(401).json(ERRO_CREDENCIAIS);
+        }
+
+        // `+senha`: o hash é `select: false` no schema.
+        const user = await Usuario.findOne({ email: email.toLowerCase() }).select('+senha');
+
         if (!user || !user.ativo) {
-            return res.status(401).json({ success: false, error: 'Credenciais inválidas ou conta inativa' });
-        }
-
-        // Verifica se a conta está bloqueada
-        if (user.lockUntil && user.lockUntil > Date.now()) {
-            const minutosRestantes = Math.ceil((user.lockUntil - Date.now()) / (60 * 1000));
-            return res.status(403).json({
-                success: false,
-                error: `Conta bloqueada temporariamente devido a múltiplas tentativas falhas. Tente novamente em ${minutosRestantes} minutos.`
-            });
+            // Gasta o tempo de um bcrypt.compare real antes de responder.
+            await bcrypt.compare(senha, HASH_DUMMY);
+            return res.status(401).json(ERRO_CREDENCIAIS);
         }
 
         // ============================================
-        // SEGURANÇA: Validação de senha com migração automática de senhas legadas
+        // SEGURANÇA: SOMENTE bcrypt. O caminho legado foi REMOVIDO.
         // ============================================
+        // Antes, uma senha não-hasheada caía num `user.senha === senha`:
+        //   1. comparação de string comum, não constant-time;
+        //   2. aceitava como válido um valor lido direto do banco — quem
+        //      obtivesse leitura do Mongo (backup, dump, injection) logava sem
+        //      quebrar hash nenhum;
+        //   3. e a "migração automática" só disparava para quem ACERTASSE a
+        //      senha, então uma conta legada nunca acessada ficava exposta
+        //      indefinidamente esperando o atacante chegar primeiro.
+        // Agora: sem hash bcrypt, não há login. As contas legadas restantes
+        // devem ser convertidas com `node scripts/migrar-senhas-bcrypt.js`,
+        // ou o usuário passa pela recuperação de senha.
         let valid = false;
         if (isHashed(user.senha)) {
-            // Senha já está com hash bcrypt — caminho seguro
             valid = await bcrypt.compare(senha, user.senha);
         } else {
-            // LEGADO: Senha em texto puro — compara e migra automaticamente para bcrypt
-            valid = (user.senha === senha);
-            if (valid) {
-                // Migração automática: atualiza para bcrypt hash
-                // Migração automática: atualiza para bcrypt hash via updateOne para evitar ValidationError
-                const senhaBcrypt = await bcrypt.hash(senha, SALT_ROUNDS);
-                await Usuario.updateOne({ _id: user._id }, { $set: { senha: senhaBcrypt } });
-
-                console.log(`🔐 [SECURITY] Senha legada de ${user.email} migrada para bcrypt automaticamente.`);
-                await logAction(req, 'AUTO_MIGRATE_PASSWORD', 'Segurança', {
-                    recursoId: user._id,
-                    descricao: `Senha legada de ${user.email} migrada automaticamente para bcrypt.`
-                });
-            }
+            // Gasta o mesmo tempo do caminho normal: responder rápido aqui
+            // distinguiria "conta com senha legada" de "senha errada".
+            await bcrypt.compare(senha, HASH_DUMMY);
+            valid = false;
+            console.warn(`🔐 [SECURITY] Login barrado: conta ${user.email} sem hash bcrypt. Rode scripts/migrar-senhas-bcrypt.js.`);
+            await logAction(req, 'LOGIN_BLOCKED_LEGACY_HASH', 'Segurança', {
+                recursoId: user._id,
+                descricao: `Login bloqueado: senha de ${user.email} não está em bcrypt.`
+            });
         }
 
         if (!valid) {
@@ -381,13 +403,31 @@ exports.login = async (req, res) => {
                 } catch (err) {
                     console.error('[BRUTE_FORCE] Erro ao notificar admins:', err.message);
                 }
-
-                return res.status(403).json({ success: false, error: 'Múltiplas tentativas falhas. Conta bloqueada por 15 minutos.' });
+            } else {
+                await Usuario.updateOne({ _id: user._id }, { $set: updateData });
             }
 
-            await Usuario.updateOne({ _id: user._id }, { $set: updateData });
             await logAction(req, 'LOGIN_FAILED', 'Auth', { descricao: `Tentativa de login falha para: ${email}` });
-            return res.status(401).json({ success: false, error: 'Credenciais inválidas' });
+            // Mesma resposta do caso "conta não existe" — inclusive quando o
+            // bloqueio acabou de ser aplicado. Um 403 'conta bloqueada' aqui
+            // confirmaria a existência da conta com 5 requests e senha errada.
+            return res.status(401).json(ERRO_CREDENCIAIS);
+        }
+
+        // ============================================
+        // BLOQUEIO POR BRUTE FORCE — verificado DEPOIS da senha, de propósito.
+        // Quando a checagem vinha antes, a resposta 'Conta bloqueada' era um
+        // oráculo de existência: qualquer um descobria contas válidas mandando
+        // 5 senhas erradas e lendo o 403. Agora só quem apresenta a senha
+        // CORRETA descobre que a conta está bloqueada — e quem tem a senha
+        // correta já não precisa desse oráculo.
+        // ============================================
+        if (user.lockUntil && user.lockUntil > Date.now()) {
+            const minutosRestantes = Math.ceil((user.lockUntil - Date.now()) / (60 * 1000));
+            return res.status(403).json({
+                success: false,
+                error: `Conta bloqueada temporariamente devido a múltiplas tentativas falhas. Tente novamente em ${minutosRestantes} minutos.`
+            });
         }
 
         // Login bem sucedido: Reseta tentativas via updateOne (bypass validation)
@@ -539,31 +579,12 @@ exports.login = async (req, res) => {
             });
         }
 
-        // Sem 2FA: emite o cookie JWT normalmente
-        const token = jwt.sign(
-            { 
-              id: user._id, 
-              perfil: user.perfil, 
-              email: user.email, 
-              nome: user.nome, 
-              deveMudarSenha: user.deveMudarSenha, 
-              profileCompleted: !!user.profileCompleted,
-              tokenVersion: user.tokenVersion || 0 
-            },
-            ACTUAL_JWT_SECRET,
-            { expiresIn: '8h' }
-        );
-
         // ============================================
         // SEGURANÇA: Cookie HttpOnly — única forma de armazenar o JWT.
         // O token NÍO é enviado no corpo da resposta JSON (previne roubo via XSS).
         // ============================================
-        res.cookie('escola_jwt', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'Lax',
-            maxAge: 8 * 60 * 60 * 1000 // 8h
-        });
+        // Sem 2FA: emite o cookie JWT normalmente
+        emitirTokenSessao(res, user);
 
         // Sessão multi-escola
         if (req.session) {
@@ -633,16 +654,8 @@ exports.mockGoogleLogin = async (req, res) => {
             tokenVersion: 0
         };
 
-        const token = jwt.sign({ 
-            ...payload, 
-            profileCompleted: user ? !!user.profileCompleted : false 
-        }, ACTUAL_JWT_SECRET, { expiresIn: '8h' });
-
-        res.cookie('escola_jwt', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'Lax',
-            maxAge: 8 * 60 * 60 * 1000
+        emitirTokenSessao(res, user || payload, {
+            profileCompleted: user ? !!user.profileCompleted : false
         });
 
         res.json({ success: true, user: payload });
@@ -656,6 +669,29 @@ exports.getGoogleClientId = async (req, res) => {
     const clientId = process.env.GOOGLE_CLIENT_ID ? process.env.GOOGLE_CLIENT_ID.trim() : DEFAULT_CLIENT_ID;
     res.json({ success: true, clientId });
 };
+
+/**
+ * Aceita apenas URL https absoluta de host do Google para a foto de perfil.
+ * Qualquer outra coisa vira string vazia (o frontend cai no avatar de iniciais).
+ *
+ * A CSP já restringe `img-src` aos hosts lh*.googleusercontent.com, então uma
+ * URL estranha não CARREGA — mas isso não impede que o valor quebre o atributo
+ * no HTML montado por interpolação. A validação aqui trata a segunda metade.
+ */
+function validarUrlFoto(url) {
+    if (!url || typeof url !== 'string') return '';
+    try {
+        const u = new URL(url);
+        if (u.protocol !== 'https:') return '';
+        if (!/(^|\.)googleusercontent\.com$/.test(u.hostname)) return '';
+        // Aspas/sinais de menor nunca aparecem numa URL legítima do Google e
+        // são exatamente o que quebraria `src="..."`.
+        if (/["'<>]/.test(url)) return '';
+        return url;
+    } catch {
+        return '';
+    }
+}
 
 /**
  * REAL GOOGLE LOGIN (OAuth 2.0)
@@ -704,6 +740,26 @@ exports.googleLogin = async (req, res) => {
             picture = googlePayload.picture || '';
         }
 
+        // ============================================
+        // SANITIZAÇÃO DE DADOS DE TERCEIRO (Google)
+        // ============================================
+        // A sanitização global do app.js cobre req.body/query/params. Estes
+        // campos NÃO vêm de lá — vêm de dentro do ID token do Google — então
+        // chegavam ao banco crus.
+        //
+        // O nome de exibição de uma conta Google é escolhido livremente pelo
+        // dono dela. Um atacante criava uma conta chamada
+        // `<img src=x onerror=...>`, logava, e o nome ia parar na notificação
+        // de cadastro que a direção lê — XSS armazenado com origem externa,
+        // sem passar por nenhum campo de formulário.
+        nome = sanitizeInput(String(nome || '')).trim().slice(0, 120);
+        if (!nome) nome = email.split('@')[0];
+
+        // A foto vira atributo `src` no frontend. Além de sanitizar, exigimos
+        // uma URL https absoluta: sem isso um valor com aspas quebra o atributo
+        // e injeta um handler no HTML que a monta.
+        picture = validarUrlFoto(picture);
+
         let user = await Usuario.findOne({ email });
 
         // Se não existe, cria um Responsável automaticamente (SSO onboarding)
@@ -740,34 +796,27 @@ exports.googleLogin = async (req, res) => {
             user = await Usuario.findByIdAndUpdate(user._id, { $set: updateFields }, { new: true });
         }
 
-        const jwtPayload = {
-            id: user._id,
-            perfil: user.perfil,
-            email: user.email,
-            nome: user.nome,
-            cpf: user.cpf,
-            telefone: user.telefone,
-            fotoGoogle: user.fotoGoogle || '',
-            foto: user.foto || '',
-            loginGoogle: true,
-            consentimentoAceiteEm: user.consentimentoAceiteEm,
-            profileCompleted: !!user.profileCompleted,
-            tutorialProfessorConcluido: !!user.tutorialProfessorConcluido,
-            tutorialResponsavelConcluido: !!user.tutorialResponsavelConcluido,
-            tokenVersion: user.tokenVersion || 0
-        };
+        // O TOKEN carrega só o mínimo para autorizar (ver montarPayload).
+        // CPF, telefone e consentimento saíram do JWT: ele é assinado, não
+        // cifrado — quem tiver o token lê tudo em claro.
+        emitirTokenSessao(res, user, { loginGoogle: true });
 
-        const sessionToken = jwt.sign(jwtPayload, ACTUAL_JWT_SECRET, { expiresIn: '8h' });
-
-        res.cookie('escola_jwt', sessionToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'Lax',
-            path: '/',
-            maxAge: 8 * 60 * 60 * 1000
+        // O CORPO da resposta traz o que a UI precisa renderizar — e nada além.
+        res.json({
+            success: true,
+            user: {
+                id: user._id,
+                perfil: user.perfil,
+                email: user.email,
+                nome: user.nome,
+                fotoGoogle: user.fotoGoogle || '',
+                foto: user.foto || '',
+                loginGoogle: true,
+                profileCompleted: !!user.profileCompleted,
+                tutorialProfessorConcluido: !!user.tutorialProfessorConcluido,
+                tutorialResponsavelConcluido: !!user.tutorialResponsavelConcluido
+            }
         });
-
-        res.json({ success: true, user: jwtPayload });
     } catch (e) {
         console.error('Erro na validação do Google Token:', e);
         res.status(401).json({ success: false, error: `Autenticação Google falhou: ${e.message}` });
@@ -776,13 +825,29 @@ exports.googleLogin = async (req, res) => {
 
 
 exports.logout = async (req, res) => {
+    // ============================================
+    // REVOGAÇÃO NO SERVIDOR — não basta limpar o cookie.
+    // `clearCookie` é só um pedido ao browser; o JWT em si continuava válido
+    // pelas 8h restantes e o authJWT também o aceita via header
+    // `Authorization: Bearer`. Qualquer cópia do token (proxy, máquina
+    // compartilhada, XSS anterior) seguia autenticando após o logout.
+    // Agora o `jti` entra na denylist e o token morre de fato.
+    // ============================================
+    const tokenAtual = req.cookies?.escola_jwt
+        || (req.headers.authorization?.startsWith('Bearer ')
+            ? req.headers.authorization.slice(7)
+            : null);
+
+    try {
+        await require('../utils/sessionToken').revogarTokenSessao(tokenAtual);
+    } catch (e) {
+        // Nunca falha o logout por causa disso — o cookie ainda é limpo abaixo.
+        console.error('[LOGOUT] Falha ao revogar token:', e.message);
+    }
+
     // clearCookie precisa das mesmas opções usadas no setCookie, senão o browser ignora.
     // O cookie é emitido com sameSite 'Lax' — usar 'Strict' aqui impedia a limpeza.
-    res.clearCookie('escola_jwt', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'Lax'
-    });
+    require('../utils/sessionToken').limparCookieSessao(res);
     // Descarta qualquer 2FA em andamento junto com a sessão
     require('../utils/preAuthToken').limparPreAuthToken(res);
     // Encerra também a sessão multi-escola
@@ -795,6 +860,41 @@ exports.logout = async (req, res) => {
     }
     res.json({ success: true, message: 'Logout realizado com sucesso' });
 };
+
+/**
+ * IDOR CROSS-TENANT: o diretor pode gerenciar secretaria/professor — mas SÓ da
+ * própria escola. As checagens de perfil sozinhas ('é diretor?', 'o alvo é
+ * professor?') não olhavam a escola: um diretor da Escola A alterava ou
+ * excluía a conta de qualquer professor da rede inteira informando o `_id`
+ * dele (que vaza em listagens, comunicados e no campo `criadoPor`).
+ *
+ * `req.escolaId` é resolvido pelo middleware filtrarPorEscola.
+ *
+ * @returns {boolean} true se o alvo pertence ao tenant de quem chama
+ */
+function mesmoTenant(req, alvo) {
+    if (req.user?.perfil === 'admin') return true;   // admin é global por definição
+
+    // FAIL-CLOSED e deliberado: sem contexto de escola, ou com alvo legado sem
+    // `escolaId`, a resposta é NEGAR. A alternativa ("na dúvida, permite")
+    // reabriria exatamente o IDOR cross-tenant que este guard existe para
+    // fechar — e reabriria justamente nos registros mais antigos, que são os
+    // que ninguém revisa.
+    //
+    // O log existe porque uma negativa silenciosa aqui é indistinguível de um
+    // bug para quem está no suporte: sem ele, "o diretor não consegue editar
+    // este professor" não tem causa observável. Rode
+    // `npm run migrate:multiescola` para preencher os escolaId faltantes.
+    if (!req.escolaId) {
+        console.warn(`[TENANT] Negado: sessão de ${req.user?.email} sem escolaId resolvido.`);
+        return false;
+    }
+    if (!alvo?.escolaId) {
+        console.warn(`[TENANT] Negado: usuário alvo ${alvo?._id} não tem escolaId (registro legado). Rode npm run migrate:multiescola.`);
+        return false;
+    }
+    return String(alvo.escolaId) === String(req.escolaId);
+}
 
 exports.update = async (req, res) => {
     try {
@@ -809,6 +909,10 @@ exports.update = async (req, res) => {
         if (callingUserPerfil !== 'admin' && String(targetId) !== String(callingUserId)) {
             const isDiretorManagingStaff = callingUserPerfil === 'diretor' && ['secretaria', 'professor'].includes(oldData.perfil);
             if (!isDiretorManagingStaff) {
+                return res.status(403).json({ success: false, error: 'Acesso negado. Sem permissão para atualizar esta conta.' });
+            }
+            // ...e o alvo precisa ser da MESMA escola do diretor.
+            if (!mesmoTenant(req, oldData)) {
                 return res.status(403).json({ success: false, error: 'Acesso negado. Sem permissão para atualizar esta conta.' });
             }
         }
@@ -900,7 +1004,10 @@ exports.delete = async (req, res) => {
             const callingUserPerfil = req.user.perfil;
             if (callingUserPerfil !== 'admin') {
                 const isDiretorManagingStaff = callingUserPerfil === 'diretor' && ['secretaria', 'professor'].includes(user.perfil);
-                if (!isDiretorManagingStaff) {
+                // Mesma regra do update: perfil permitido E mesma escola. Sem a
+                // segunda metade, um diretor apagava professores de qualquer
+                // escola da rede só com o `_id` do alvo.
+                if (!isDiretorManagingStaff || !mesmoTenant(req, user)) {
                     return res.status(403).json({ success: false, error: 'Acesso negado. Sem permissão para excluir esta conta.' });
                 }
             }
@@ -1367,17 +1474,7 @@ exports.registerResponsavel = async (req, res) => {
         });
 
         // 6. Logar automaticamente gerando cookie JWT
-        const token = jwt.sign(
-            { id: user._id, perfil: user.perfil, email: user.email, nome: user.nome, tokenVersion: user.tokenVersion || 0 },
-            ACTUAL_JWT_SECRET,
-            { expiresIn: '8h' }
-        );
-        res.cookie('escola_jwt', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'Lax',
-            maxAge: 8 * 60 * 60 * 1000
-        });
+        emitirTokenSessao(res, user);
 
         res.status(201).json({
             success: true,
@@ -1499,17 +1596,7 @@ exports.registerDocente = async (req, res) => {
         });
 
         // 3. Logar automaticamente gerando cookie JWT
-        const token = jwt.sign(
-            { id: user._id, perfil: user.perfil, email: user.email, nome: user.nome, tokenVersion: user.tokenVersion || 0 },
-            ACTUAL_JWT_SECRET,
-            { expiresIn: '8h' }
-        );
-        res.cookie('escola_jwt', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'Lax',
-            maxAge: 8 * 60 * 60 * 1000
-        });
+        emitirTokenSessao(res, user);
 
         // Sessão multi-escola: escola ativa já definida ao entrar no painel
         if (req.session && escolaIdFinal) {
@@ -1955,17 +2042,7 @@ exports.registerDiretor = async (req, res) => {
         });
 
         // 7. JWT auto-login
-        const token = jwt.sign(
-            { id: user._id, perfil: user.perfil, email: user.email, nome: user.nome, tokenVersion: user.tokenVersion || 0 },
-            ACTUAL_JWT_SECRET,
-            { expiresIn: '8h' }
-        );
-        res.cookie('escola_jwt', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'Lax',
-            maxAge: 8 * 60 * 60 * 1000
-        });
+        emitirTokenSessao(res, user);
 
         // Sessão multi-escola
         if (req.session && escolaIdFinal) {
@@ -2083,17 +2160,7 @@ exports.registerSecretaria = async (req, res) => {
         });
 
         // 7. JWT auto-login
-        const token = jwt.sign(
-            { id: user._id, perfil: user.perfil, email: user.email, nome: user.nome, tokenVersion: user.tokenVersion || 0 },
-            ACTUAL_JWT_SECRET,
-            { expiresIn: '8h' }
-        );
-        res.cookie('escola_jwt', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'Lax',
-            maxAge: 8 * 60 * 60 * 1000
-        });
+        emitirTokenSessao(res, user);
 
         // Sessão multi-escola
         if (req.session && escolaIdFinal) {

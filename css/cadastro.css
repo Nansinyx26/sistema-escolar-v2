@@ -5,6 +5,7 @@
 
 .cadastro-page {
     min-height: 100vh;
+    min-height: 100dvh;
     padding: var(--spacing-2xl) var(--spacing-md);
     position: relative;
     overflow-x: hidden;

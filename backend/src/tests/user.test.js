@@ -53,7 +53,8 @@ describe('POST /api/auth/first-access', () => {
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
 
-        const usuario = await Usuario.findOne({ email: 'joana@escola.test' });
+        // `+senha`: o hash é `select: false` no schema (models/Usuario.js)
+        const usuario = await Usuario.findOne({ email: 'joana@escola.test' }).select('+senha');
         expect(usuario).not.toBeNull();
         expect(usuario.ativo).toBe(true);
         expect(usuario.senha).toMatch(/^\$2[ab]\$/);
@@ -128,7 +129,8 @@ describe('POST /api/auth/reset-password', () => {
         expect(recovery.status).toBe('utilizado');
 
         // A senha deve ter sido alterada
-        const usuarioAtualizado = await Usuario.findById(user._id);
+        // `+senha`: o hash é `select: false` no schema (models/Usuario.js)
+        const usuarioAtualizado = await Usuario.findById(user._id).select('+senha');
         const senhaCorreta = await bcrypt.compare(SENHA_TESTE_NOVA, usuarioAtualizado.senha);
         expect(senhaCorreta).toBe(true);
     });

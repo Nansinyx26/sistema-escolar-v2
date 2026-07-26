@@ -30,8 +30,12 @@ body {
     line-height: var(--line-height-normal);
     color: var(--text-primary);
     background-color: var(--bg-primary);
+    /* 100dvh acompanha a barra de endereço do mobile; sem isso o body fica
+       sempre mais alto que a área visível e gera rolagem fantasma. */
     min-height: 100vh;
-    overflow-x: hidden;
+    min-height: 100dvh;
+    /* overflow-x fica em <html> (responsive-global.css). No body ele criaria
+       um contêiner de rolagem aninhado e quebraria a inércia no iOS. */
 }
 
 /* === TIPOGRAFIA === */

@@ -59,6 +59,7 @@
     width: 400px;
     height: 620px;
     max-height: calc(100vh - 120px);
+    max-height: calc(100dvh - 120px);
     background: var(--chat-bg);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
@@ -523,7 +524,9 @@
         right: 0;
         width: 100vw;
         height: 100vh;
+        height: 100dvh;
         max-height: 100vh;
+        max-height: 100dvh;
         border-radius: 0;
         z-index: 10000;
         animation: slideInMobile 0.4s var(--ease-out);

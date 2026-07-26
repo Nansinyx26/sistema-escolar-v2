@@ -173,9 +173,13 @@
         return match ? { 'X-CSRF-Token': decodeURIComponent(match[1]) } : {};
     }
 
+    // Acrescenta aspa simples e crase: `onclick="f('${x}')"` é escapado com
+    // aspa SIMPLES, que a versão anterior não cobria. Ver js/escape-html.js.
     function escapeHtml(str) {
-        if (!str) return '';
-        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        if (str === null || str === undefined) return '';
+        return String(str).replace(/[&<>"'`]/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c];
+        });
     }
 
 })();

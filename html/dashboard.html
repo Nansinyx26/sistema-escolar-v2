@@ -34,6 +34,7 @@
     <link rel="stylesheet" href="../css/dashboard-premium.css?v=1.0">
     <link rel="stylesheet" href="../css/chatbot-ia.css?v=1.0">
     <link rel="stylesheet" href="../css/voice-panel.css?v=1.0">
+    <link rel="stylesheet" href="../css/professores-online.css?v=1.0">
 
     <!-- Bootstrap Icons (Localized) -->
     <link rel="stylesheet" href="../js/libs/bootstrap-icons.min.css">
@@ -49,6 +50,9 @@
     <script src="../js/libs/react.min.js"></script>
     <script src="../js/libs/react-dom.min.js"></script>
     <script src="../js/libs/framer-motion.js"></script>    <link rel="stylesheet" href="../css/system-global.css?v=1.0">
+    <!-- Rolagem e performance mobile — deve ser o ÚLTIMO stylesheet -->
+    <link rel="stylesheet" href="../css/mobile-scroll.css?v=1.0">
+    <script src="../js/scroll-lock.js?v=1.0"></script>
 </head>
 
 <body>
@@ -196,7 +200,10 @@
 
             <!-- GRUPO: SISTEMA -->
             <div class="sidebar-group-label">SISTEMA</div>
-            <a href="#" class="sidebar-item" id="sidebar-voice-btn" onclick="(() => { const b = document.getElementById('btn-voice-settings'); if(b) b.click(); })(); return false;">
+            <!-- Sem onclick inline: js/sidebar-voice.js abre a gaveta de
+                 Configurações. O inline clicava em #btn-voice-settings e o
+                 listener do JS desfazia a alternância no mesmo clique. -->
+            <a href="#" class="sidebar-item" id="sidebar-voice-btn">
                 <i class="bi bi-volume-up-fill"></i>
                 <span>Voz & Acessibilidade</span>
             </a>
@@ -355,6 +362,23 @@
                         </div>
                         <div id="latestNoticesList" class="notices-mini-list" data-stagger data-stagger-step="45">
                             <div class="activity-placeholder">Buscando avisos...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Professores da escola (tempo real) — estilos em css/professores-online.css.
+                     O mesmo conteúdo aparece no painel flutuante do botão flutuante (FAB). -->
+                <div class="profs-online-card" id="profsOnlineCard">
+                    <button class="profs-online-header" id="profsOnlineToggle" aria-expanded="true" aria-controls="profsOnlineBody">
+                        <span class="profs-online-title">
+                            <i class="bi bi-people-fill"></i> Professores da Escola
+                            <span class="profs-online-count" id="profsOnlineCount">0 online</span>
+                        </span>
+                        <i class="bi bi-chevron-down profs-online-chevron"></i>
+                    </button>
+                    <div class="profs-online-body" id="profsOnlineBody">
+                        <div class="profs-online-list" id="profsOnlineList">
+                            <div class="po-empty">Carregando…</div>
                         </div>
                     </div>
                 </div>
@@ -645,6 +669,28 @@
     <!-- Toast Container -->
     <div id="toastContainer" class="toast-container"></div>
 
+    <!-- Painel Flutuante: Professores da Escola (foto, nome, escola e status online) -->
+    <div id="profsPanelOverlay" class="profs-panel-overlay"></div>
+    <div id="profsPanel" class="profs-panel">
+        <div class="profs-panel-header">
+            <div class="profs-panel-title">
+                <i class="bi bi-people-fill"></i>
+                <span>Professores</span>
+                <span class="profs-panel-badge" id="profsPanelCount">0 online</span>
+            </div>
+            <button class="profs-panel-close" id="profsPanelClose" aria-label="Fechar">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="profs-panel-body" id="profsPanelList">
+            <div class="po-empty">Carregando…</div>
+        </div>
+    </div>
+    <button class="profs-fab" id="profsFab" title="Professores Online" aria-label="Ver professores online">
+        <i class="bi bi-people-fill"></i>
+        <span class="profs-fab-badge" id="profsFabBadge">0</span>
+    </button>
+
     <!-- Watermark -->
     <a href="https://www.linkedin.com/in/renan-de-oliveira-farias-66a9b412b/" target="_blank" class="nandev-watermark">
         <div class="cube-container">
@@ -683,6 +729,7 @@
     <script src="../js/voice-orb.js?v=1.0"></script>
     <script src="../js/sidebar-voice.js?v=4.0"></script>
     <script defer src="../js/dashboard.js?v=3"></script>
+    <script defer src="../js/professores-online.js?v=1.0"></script>
     <script defer src="../js/escola-switcher.js"></script>
     <script defer src="../js/parallax.js"></script>
     <script defer src="../js/changelog.js"></script>

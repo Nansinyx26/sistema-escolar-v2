@@ -344,7 +344,9 @@ exports.listSecretCodes = async (req, res) => {
 
         if (turma) {
             if (turma.startsWith('SERIE_')) {
-                const serie = turma.replace('SERIE_', '');
+                // ESCAPADO: `serie` vem cru de ?turma=SERIE_... e ia direto para
+                // o $regex. `?turma=SERIE_(a+)+$` travava o event loop (ReDoS).
+                const serie = escapeRegex(turma.replace('SERIE_', ''));
                 query.$or = [
                     { turmaId: { $regex: `^${serie}`, $options: 'i' } },
                     { turma: { $regex: `^${serie}`, $options: 'i' } }

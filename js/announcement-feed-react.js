@@ -327,7 +327,10 @@
                                 className: 'avatar-sm',
                                 onError: (e) => {
                                     e.target.style.display = 'none';
-                                    e.target.parentElement.innerHTML = `<div class="avatar-placeholder avatar-sm">${window.utils?.getInitials(comment.usuarioNome) || '?'}</div>`;
+                                    // Iniciais vêm de nome de usuário: remove
+                                    // qualquer caractere de markup antes de ir
+                                    // para innerHTML (React não escapa aqui).
+                                    e.target.parentElement.innerHTML = `<div class="avatar-placeholder avatar-sm">${String(window.utils?.getInitials(comment.usuarioNome) || '?').replace(/[&<>"'`]/g, '')}</div>`;
                                 }
                             });
                         })()
@@ -624,7 +627,8 @@
                                 alt: comunicado.diretorNome,
                                 onError: (e) => { 
                                     e.target.style.display = 'none'; 
-                                    e.target.parentElement.innerHTML = `<div class="avatar-placeholder avatar-md">${window.utils?.getInitials(comunicado.diretorNome || "D") || "D"}</div>`; 
+                                    // Ver comentário equivalente no avatar de comentário.
+                                    e.target.parentElement.innerHTML = `<div class="avatar-placeholder avatar-md">${String(window.utils?.getInitials(comunicado.diretorNome || "D") || "D").replace(/[&<>"'`]/g, '')}</div>`;
                                 }
                             });
                         })()

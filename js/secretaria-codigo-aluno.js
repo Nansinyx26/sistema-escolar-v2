@@ -80,7 +80,7 @@
     function abrir() {
         criarModal();
         modal.style.display = 'flex';
-        document.documentElement.style.overflow = 'hidden';
+        if (window.ScrollLock) window.ScrollLock.lock('codigo-aluno');
         modal.querySelector('#mcaBusca').focus();
         carregar('');
     }
@@ -88,7 +88,7 @@
     function fechar() {
         if (!modal) return;
         modal.style.display = 'none';
-        document.documentElement.style.overflow = '';
+        if (window.ScrollLock) window.ScrollLock.unlock('codigo-aluno');
     }
 
     // ── Lista de alunos ──────────────────────────────────────────────────

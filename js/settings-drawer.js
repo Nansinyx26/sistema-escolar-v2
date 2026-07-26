@@ -321,7 +321,9 @@
         overlay.classList.add('open');
         drawer.classList.add('open');
         drawer.setAttribute('aria-hidden', 'false');
-        document.body.style.overflow = 'hidden';
+        // body.style.overflow não trava a rolagem no iOS e apagava a trava
+        // de outros overlays. ScrollLock conta referências.
+        if (window.ScrollLock) window.ScrollLock.lock('settings-drawer');
         updateConnection();
         // Reflete a preferência de voz mais recente (pode ter mudado no seletor legado)
         var voiceSel = document.getElementById('sd-voice-name');
@@ -334,7 +336,7 @@
         overlay.classList.remove('open');
         drawer.classList.remove('open');
         drawer.setAttribute('aria-hidden', 'true');
-        document.body.style.overflow = '';
+        if (window.ScrollLock) window.ScrollLock.unlock('settings-drawer');
         if (lastFocused && typeof lastFocused.focus === 'function') lastFocused.focus();
         lastFocused = null;
     }

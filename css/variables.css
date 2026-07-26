@@ -171,13 +171,21 @@
     --bg-tertiary: #f1f5f9;
     --bg-elevated: #e2e8f0;
 
-    /* Texto */
-    --text-primary: #0f172a;
-    --text-body: #334155;
-    --text-secondary: #475569;
+    /* Texto — no modo claro TODO texto é PRETO puro. Nada de cinza/branco:
+       primário, corpo, secundário e terciário colapsam em #000000. O único
+       token claro que sobra é --text-inverse (texto sobre superfície colorida
+       ou escura, ex.: botão primário) e --text-accent (verde da marca). */
+    --text-primary: #000000;
+    --text-body: #000000;
+    --text-secondary: #000000;
     --text-accent: #059669;
-    --text-tertiary: #64748b;
+    --text-tertiary: #000000;
     --text-inverse: #ffffff;
+    /* Tokens de texto fixos declarados em outros CSS (main.css etc.) —
+       remapeados aqui para preto no modo claro. */
+    --text-white: #000000;
+    --text-muted: #000000;
+    --text-light: #000000;
 
     /* Bordas */
     --border-primary: rgba(15, 23, 42, 0.06);
@@ -664,4 +672,344 @@
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
     }
+}
+
+/* ======================================================================
+   MODO CLARO ("PÁGINA BRANCA") — TIPOGRAFIA 100% PRETA
+   ======================================================================
+   Regra geral do sistema no tema claro: NENHUM texto pode ser branco ou
+   cinza. Todo texto, título, rótulo, ícone de fonte e legenda de botão vira
+   PRETO puro (#000000) — inclusive em estados de :hover, :focus, durante
+   transições e dentro de animações.
+
+   Esta é a ÚLTIMA seção do arquivo de tokens, então vence por ordem de
+   cascata as regras claras declaradas acima; e usa !important + alta
+   especificidade para vencer também os CSS de página carregados depois
+   (turma.css, login-new.css, index-landing.css, tailwind-built.css…),
+   incluindo os que usam !important.
+
+   As ÚNICAS exceções são as superfícies que continuam propositalmente
+   ESCURAS no tema claro (decisões de design já registradas neste arquivo)
+   e os controles de fundo colorido sólido — ali o texto claro é o correto,
+   e por isso eles ficam de fora da varredura via :not().
+   ====================================================================== */
+
+/* O modo de alto contraste (.high-contrast no <html>, ligado no drawer de
+   configurações) é preto com texto branco por definição — a varredura é
+   desligada nele para não apagar o texto. */
+:root[data-theme="light"]:not(.high-contrast) :is(
+    body, h1, h2, h3, h4, h5, h6, p, span, small, strong, b, em, i, u, s,
+    a, li, dt, dd, td, th, caption, label, legend, figcaption, blockquote,
+    summary, details, address, code, kbd, samp, pre, time, mark, output, abbr,
+    div, section, article, header, footer, main, aside, nav, form, fieldset,
+    button, input, textarea, select, option, optgroup, svg
+):not(
+    /* --- superfícies mantidas ESCURAS de propósito no tema claro --- */
+    .how-visual, .how-visual *,
+    .comunicado-card-premium, .comunicado-card-premium *,
+    .stat-card, .stat-card *,
+    .turma-card .turma-info, .turma-card .turma-info *,
+    .role-card-content, .role-card-content *,
+    .checkbox-card-content, .checkbox-card-content *,
+    /* --- controles de fundo colorido sólido: texto claro é o legível --- */
+    [class*="btn-primary"], [class*="btn-primary"] *,
+    [class*="btn-danger"], [class*="btn-danger"] *,
+    [class*="btn-success"], [class*="btn-success"] *,
+    [class*="btn-warning"], [class*="btn-warning"] *,
+    [class*="btn-error"], [class*="btn-error"] *,
+    [class*="btn-cta"], [class*="btn-cta"] *,
+    .comment-submit-legacy, .comment-submit-legacy *,
+    /* --- ícones dentro de quadrado colorido, selos e toasts --- */
+    [class*="card-icon"], [class*="card-icon"] *,
+    [class*="toast"], [class*="toast"] *,
+    .badge, .badge *
+) {
+    color: #000000 !important;
+    /* Vence os títulos com gradiente recortado (background-clip: text), que
+       ficavam brancos/transparentes e sumiam no fundo branco. */
+    -webkit-text-fill-color: #000000 !important;
+    /* Brilhos e sombras de texto brancas (usadas em heróis e animações de
+       destaque) não têm função sobre fundo branco. */
+    text-shadow: none !important;
+}
+
+/* Estados ativos de navegação continuam com a cor da marca — verde e índigo
+   não são cinza nem branco, então são reafirmados depois da varredura.
+   O `[class]` final é só um ajuste de especificidade: sem ele estas regras
+   empatariam com a varredura no elemento e o item ativo ficaria preto. */
+:root[data-theme="light"]:not(.high-contrast) :is(.sidebar-item, .bottom-nav-item).active[class],
+:root[data-theme="light"]:not(.high-contrast) :is(.sidebar-item, .bottom-nav-item).active :is(i, span) {
+    color: var(--primary) !important;
+    -webkit-text-fill-color: var(--primary) !important;
+}
+:root[data-theme="light"]:not(.high-contrast) .feed-filter-tab.active[class] {
+    color: #4f46e5 !important;
+    -webkit-text-fill-color: #4f46e5 !important;
+}
+
+/* --- Navegação (sidebar / header / navbar) fica CLARA no modo claro ---
+   parallax-glass.css força fundo escuro nesses elementos com !important e
+   não conhece o tema claro; nas páginas que o carregam (detalhes/*, admin/*,
+   graficos, ata…) a barra ficava escura e, com o texto agora preto, sumiria.
+   Aqui a chrome de navegação volta a ser clara com texto preto. */
+:root[data-theme="light"]:not(.high-contrast) :is(
+    .sidebar, .app-sidebar, .header, .app-header, .navbar, .top-nav
+) {
+    background: rgba(255, 255, 255, 0.92) !important;
+    border-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+/* ======================================================================
+   MODO CLARO ("PÁGINA BRANCA") — CAIXAS PRETAS
+   ======================================================================
+   A página (canvas) fica BRANCA e o texto sobre ela PRETO (varredura acima).
+   Já as CAIXAS — cards, painéis de conteúdo, seções em bloco e modais, que
+   apareciam cinza/branco-lavado sobre o branco — passam a ser PRETAS, e o
+   texto dentro delas volta a ser BRANCO.
+
+   Só vale no tema claro: no escuro nada aqui é aplicado.
+
+   Fora da lista de propósito: a navegação (sidebar, header, bottom-nav) e os
+   popovers flutuantes (painel de notificações, seletor de emoji, painel de
+   voz, seletor de escola), que já têm tratamento claro coeso; e o painel do
+   docente .how-visual, que já é escuro por conta própria.
+   ====================================================================== */
+
+:root[data-theme="light"]:not(.high-contrast) :is(
+    .card, .card-glass, .glass, .glass-strong,
+    .glass-card, .glass-card-md, .glass-card-strong, .glass-panel,
+    .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
+    .info-card, .info-box, .lgpd-box, .dpo-box,
+    .login-card, .auth-card, .cadastro-card, .perfil-card,
+    .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
+    .sec-form-card, .sec-quick-card, .sec-stat-card,
+    .sala-card, .report-card,
+    .mn-card, .mn-form-card, .mn-sidebar-card, .mn-dest-panel, .mn-editor-wrap, .mn-modal,
+    .relatorios-header-card, .ca-section,
+    .welcome-section, .turmas-section, .turma-card,
+    .role-card-content, .checkbox-card-content, .comunicado-card-premium,
+    .modal-content, .pa-modal-card
+) {
+    /* shorthand zera também gradientes/imagens de fundo herdados do tema escuro */
+    background: #000000 !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18) !important;
+}
+
+/* Hover das caixas: a regra acima é !important e apagaria o realce de hover
+   original, então ele é redeclarado como um preto levemente elevado. */
+:root[data-theme="light"]:not(.high-contrast) :is(
+    .card, .card-glass, .glass, .glass-strong,
+    .glass-card, .glass-card-md, .glass-card-strong, .glass-panel,
+    .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
+    .info-card, .login-card, .auth-card, .cadastro-card, .perfil-card,
+    .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
+    .sec-form-card, .sec-quick-card, .sec-stat-card,
+    .sala-card, .report-card, .mn-card, .turma-card,
+    .role-card-content, .checkbox-card-content, .comunicado-card-premium
+):hover {
+    background: #121212 !important;
+    border-color: rgba(255, 255, 255, 0.22) !important;
+}
+
+/* Texto dentro das caixas pretas: BRANCO.
+   Mesma especificidade da varredura preta (0,5,1), mas declarado depois —
+   por isso vence dentro das caixas e só dentro delas. */
+:root[data-theme="light"]:not(.high-contrast) :is(
+    .card, .card-glass, .glass, .glass-strong,
+    .glass-card, .glass-card-md, .glass-card-strong, .glass-panel,
+    .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
+    .info-card, .info-box, .lgpd-box, .dpo-box,
+    .login-card, .auth-card, .cadastro-card, .perfil-card,
+    .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
+    .sec-form-card, .sec-quick-card, .sec-stat-card,
+    .sala-card, .report-card,
+    .mn-card, .mn-form-card, .mn-sidebar-card, .mn-dest-panel, .mn-editor-wrap, .mn-modal,
+    .relatorios-header-card, .ca-section,
+    .welcome-section, .turmas-section, .turma-card,
+    .role-card-content, .checkbox-card-content, .comunicado-card-premium,
+    .modal-content, .pa-modal-card
+) :is(
+    h1, h2, h3, h4, h5, h6, p, span, small, strong, b, em, i, u, s,
+    a, li, dt, dd, td, th, caption, label, legend, figcaption, blockquote,
+    summary, details, address, code, kbd, pre, time, output,
+    div, section, article, header, footer, nav, form, fieldset,
+    button, input, textarea, select, option, optgroup, svg
+):not(.turma-icon) {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+/* Controles de formulário dentro de caixa preta: fundo escuro, texto branco,
+   cursor e contorno claros. Sem isto o tratamento claro global os deixaria
+   brancos — e o texto (já branco pela regra acima) sumiria. A lista de
+   caixas é a MESMA das regras anteriores: qualquer caixa de fora criaria um
+   campo branco com texto branco. */
+:root[data-theme="light"]:not(.high-contrast) :is(
+    .card, .card-glass, .glass, .glass-strong,
+    .glass-card, .glass-card-md, .glass-card-strong, .glass-panel,
+    .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
+    .info-card, .info-box, .lgpd-box, .dpo-box,
+    .login-card, .auth-card, .cadastro-card, .perfil-card,
+    .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
+    .sec-form-card, .sec-quick-card, .sec-stat-card,
+    .sala-card, .report-card,
+    .mn-card, .mn-form-card, .mn-sidebar-card, .mn-dest-panel, .mn-editor-wrap, .mn-modal,
+    .relatorios-header-card, .ca-section,
+    .welcome-section, .turmas-section, .turma-card,
+    .role-card-content, .checkbox-card-content, .comunicado-card-premium,
+    .modal-content, .pa-modal-card
+) :is(input:not([type="checkbox"]):not([type="radio"]), textarea, select, .form-input) {
+    background: rgba(255, 255, 255, 0.07) !important;
+    background-color: rgba(255, 255, 255, 0.07) !important;
+    border-color: rgba(255, 255, 255, 0.18) !important;
+    caret-color: #ffffff !important;
+    color-scheme: dark;
+}
+:root[data-theme="light"]:not(.high-contrast) :is(
+    .card, .card-glass, .glass, .glass-strong,
+    .glass-card, .glass-card-md, .glass-card-strong, .glass-panel,
+    .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
+    .info-card, .info-box, .lgpd-box, .dpo-box,
+    .login-card, .auth-card, .cadastro-card, .perfil-card,
+    .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
+    .sec-form-card, .sec-quick-card, .sec-stat-card,
+    .sala-card, .report-card,
+    .mn-card, .mn-form-card, .mn-sidebar-card, .mn-dest-panel, .mn-editor-wrap, .mn-modal,
+    .relatorios-header-card, .ca-section,
+    .welcome-section, .turmas-section, .turma-card,
+    .role-card-content, .checkbox-card-content, .comunicado-card-premium,
+    .modal-content, .pa-modal-card
+) option {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+}
+:root[data-theme="light"]:not(.high-contrast) :is(
+    .card, .card-glass, .glass, .glass-strong,
+    .glass-card, .glass-card-md, .glass-card-strong, .glass-panel,
+    .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
+    .info-card, .info-box, .lgpd-box, .dpo-box,
+    .login-card, .auth-card, .cadastro-card, .perfil-card,
+    .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
+    .sec-form-card, .sec-quick-card, .sec-stat-card,
+    .sala-card, .report-card,
+    .mn-card, .mn-form-card, .mn-sidebar-card, .mn-dest-panel, .mn-editor-wrap, .mn-modal,
+    .relatorios-header-card, .ca-section,
+    .welcome-section, .turmas-section, .turma-card,
+    .role-card-content, .checkbox-card-content, .comunicado-card-premium,
+    .modal-content, .pa-modal-card
+) ::placeholder {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    opacity: 0.55;
+}
+:root[data-theme="light"]:not(.high-contrast) :is(
+    .card, .card-glass, .glass, .glass-strong,
+    .glass-card, .glass-card-md, .glass-card-strong, .glass-panel,
+    .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
+    .info-card, .info-box, .lgpd-box, .dpo-box,
+    .login-card, .auth-card, .cadastro-card, .perfil-card,
+    .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
+    .sec-form-card, .sec-quick-card, .sec-stat-card,
+    .sala-card, .report-card,
+    .mn-card, .mn-form-card, .mn-sidebar-card, .mn-dest-panel, .mn-editor-wrap, .mn-modal,
+    .relatorios-header-card, .ca-section,
+    .welcome-section, .turmas-section, .turma-card,
+    .role-card-content, .checkbox-card-content, .comunicado-card-premium,
+    .modal-content, .pa-modal-card
+) :is(input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus) {
+    -webkit-text-fill-color: #ffffff !important;
+    -webkit-box-shadow: 0 0 0 1000px #0a0a0a inset !important;
+}
+
+/* Bordas internas (tabelas, divisores, botões neutros, caixas de seleção)
+   eram escuras sobre claro — sobre a caixa preta precisam ser claras. */
+:root[data-theme="light"]:not(.high-contrast) :is(
+    .card, .card-glass, .glass, .glass-strong,
+    .glass-card, .glass-card-md, .glass-card-strong, .glass-panel,
+    .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
+    .info-card, .info-box, .lgpd-box, .dpo-box,
+    .login-card, .auth-card, .cadastro-card, .perfil-card,
+    .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
+    .sec-form-card, .sec-quick-card, .sec-stat-card,
+    .sala-card, .report-card,
+    .mn-card, .mn-form-card, .mn-sidebar-card, .mn-dest-panel, .mn-editor-wrap, .mn-modal,
+    .relatorios-header-card, .ca-section,
+    .welcome-section, .turmas-section, .turma-card,
+    .role-card-content, .checkbox-card-content, .comunicado-card-premium,
+    .modal-content, .pa-modal-card
+) :is(table, thead, tbody, tr, th, td, hr, .divider,
+      .btn-secondary, .btn-outline, .icon-btn,
+      input[type="checkbox"], input[type="radio"]) {
+    border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+/* Aba ativa do login: o fundo branco herdado do tema claro deixaria o texto
+   branco invisível dentro do card preto. */
+:root[data-theme="light"]:not(.high-contrast) .login-card .login-tab.active {
+    background: rgba(255, 255, 255, 0.14) !important;
+    border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+/* Marcas d'água decorativas (a letra gigante atrás do card de turma):
+   como o card agora é preto, ela volta a ser branca bem translúcida. */
+:root[data-theme="light"]:not(.high-contrast) .turma-card .turma-icon[class] {
+    color: rgba(255, 255, 255, 0.08) !important;
+    -webkit-text-fill-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Campos de formulário: texto digitado, cursor, placeholder e autopreencher
+   do navegador — todos em preto. */
+:root[data-theme="light"] :is(input, textarea, select, [contenteditable]) {
+    caret-color: #000000 !important;
+}
+:root[data-theme="light"] ::placeholder {
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+    opacity: 0.55;
+}
+:root[data-theme="light"] input:-webkit-autofill,
+:root[data-theme="light"] input:-webkit-autofill:hover,
+:root[data-theme="light"] input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #000000 !important;
+    -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+}
+:root[data-theme="light"] ::selection {
+    background: rgba(0, 0, 0, 0.14);
+    color: #000000;
+}
+
+/* --- Animações de carregamento (skeleton/shimmer) ---
+   O gradiente cinza-claro sobre branco ficava invisível: no tema claro o
+   shimmer passa a ser um pulso preto translúcido. */
+:root[data-theme="light"] .skeleton {
+    background: linear-gradient(90deg,
+            rgba(0, 0, 0, 0.06) 0%,
+            rgba(0, 0, 0, 0.16) 50%,
+            rgba(0, 0, 0, 0.06) 100%);
+    background-size: 200% 100%;
+}
+
+/* --- Hero de "selecionar turma" (selecionar.css) ---
+   O cabeçalho era uma imagem com overlay escuro; com o título agora preto,
+   o overlay passa a ser claro para manter o contraste. Os brilhos brancos
+   animados (::before/::after) viram escuros e discretos. */
+:root[data-theme="light"] .page-header {
+    background:
+        linear-gradient(135deg, rgba(248, 250, 252, 0.94) 0%, rgba(226, 232, 240, 0.90) 100%),
+        url('../img/triangles-bg.webp');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-blend-mode: normal;
+    border-bottom-color: rgba(15, 23, 42, 0.10);
+    box-shadow: 0 10px 40px rgba(15, 23, 42, 0.10);
+}
+:root[data-theme="light"] .page-header::before {
+    opacity: 0.35;
+    filter: invert(1) grayscale(1);
+}
+:root[data-theme="light"] .page-header::after {
+    opacity: 0.10;
+    filter: grayscale(1) brightness(0.2);
 }

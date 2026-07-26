@@ -4,7 +4,13 @@ const UsuarioSchema = new mongoose.Schema({
     _id: { type: String, default: () => new mongoose.Types.ObjectId().toString() },
     id: { type: mongoose.Schema.Types.Mixed, index: true }, // Legacy ID support
     email: { type: String, required: true, unique: true },
-    senha: { type: String }, // Opcional para logins sociais (Google)
+    // `select: false` — o hash NUNCA sai numa query por padrão.
+    // Antes o campo era selecionável e a proteção dependia de cada controller
+    // lembrar de `.select('-senha')`. Só 3 dos ~40 call sites faziam isso, então
+    // qualquer endpoint que devolvesse um usuário vazava o hash bcrypt junto.
+    // Quem precisa do hash (login, checagem de conta existente) pede
+    // explicitamente com `.select('+senha')`.
+    senha: { type: String, select: false }, // Opcional para logins sociais (Google)
     nome: { type: String, required: true },
     telefone: { type: String, required: true }, // Telefone obrigatório para recuperação de senha
     cpf: { type: String, unique: true, sparse: true }, // CPF opcional/sparse para novos cadastros
@@ -181,6 +187,45 @@ const UsuarioSchema = new mongoose.Schema({
     strict: true,
     collection: 'usuarios'
 });
+
+// ============================================
+// MINIMIZAÇÃO NA SERIALIZAÇÃO (LGPD + defesa em profundidade)
+// ============================================
+// Segunda camada, independente do `select: false`: mesmo que um campo sensível
+// seja carregado de propósito (ex.: `+senha` no login), ele não escapa por um
+// `res.json(usuario)` distraído. Vale para toJSON e toObject.
+//
+// LIMITE IMPORTANTE: isto NÃO se aplica a `.lean()`, que devolve objeto puro
+// sem os métodos do Mongoose. É por isso que o `select: false` acima é a
+// proteção primária — este transform é a rede de segurança.
+const CAMPOS_NUNCA_SERIALIZADOS = [
+    'senha',
+    'resetToken',
+    'resetTokenExpiry',
+    'emailVerificacaoToken',
+    'emailVerificacaoExpiry',
+    'twoFactorSecret',
+    'twoFactorPendingToken',
+    'twoFactorPendingExpiry',
+    'twoFactorFixedCode',
+    'twoFactorAttempts',
+    'twoFactorLockUntil',
+    'vinculoAttempts',
+    'vinculoLockUntil',
+    'loginAttempts',
+    'lockUntil',
+    'tokenVersion',
+    'pushSubscriptions', // contém chaves criptográficas do endpoint push
+    '__v'
+];
+
+function removerCamposSensiveis(doc, ret) {
+    CAMPOS_NUNCA_SERIALIZADOS.forEach(campo => { delete ret[campo]; });
+    return ret;
+}
+
+UsuarioSchema.set('toJSON', { transform: removerCamposSensiveis });
+UsuarioSchema.set('toObject', { transform: removerCamposSensiveis });
 
 // Índice de performance: busca por perfil (ex: listar todos os professores)
 UsuarioSchema.index({ perfil: 1, ativo: 1 });

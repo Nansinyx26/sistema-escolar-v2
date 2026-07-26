@@ -20,4 +20,10 @@ module.exports = async function () {
     process.env.JWT_SECRET = 'test-secret-jwt-for-jest-only';
     process.env.NODE_ENV = 'test';
     process.env.EMAIL_HOST = 'smtp.ethereal.email'; // SMTP falso — não envia nada
+
+    // Opt-in EXPLÍCITO para dispensar o token CSRF nas fixtures.
+    // A proteção não depende mais só de NODE_ENV: um ambiente que herde
+    // NODE_ENV=test por engano continua com CSRF ativo, porque esta flag
+    // existe apenas aqui. Ver middleware/csrfProtection.js.
+    process.env.CSRF_DISABLE_FOR_TESTS = 'true';
 };

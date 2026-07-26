@@ -3,11 +3,31 @@
  * Layout exato conforme imagem "PLANILHA DO CONSELHO DE CLASSE"
  */
 
-
 import db from './db.js';
 // auth is global via window.auth (loaded via script tag)
 import students from './students.js';
 import ui from './ui.js';
+
+// ============================================
+// ESCAPE DE HTML
+// ============================================
+// Nome de aluno e observações do conselho são escritos por um usuário
+// (secretaria/professor) e lidos por outros — XSS aqui atravessa contas.
+// A foto entra em `src="${...}"`, dentro de atributo. Ver js/escape-html.js.
+const _ESC_MAP_ATA = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' };
+function escHtml(v) {
+    if (v === null || v === undefined) return '';
+    return String(v).replace(/[&<>"'`]/g, c => _ESC_MAP_ATA[c]);
+}
+
+/** Bloqueia esquemas perigosos em src de imagem sem restringir formatos legítimos. */
+function fotoSegura(u) {
+    if (!u || typeof u !== 'string') return '';
+    if (/["'`\\<>]/.test(u)) return '';
+    if (/^\s*(javascript|vbscript|file|about)\s*:/i.test(u)) return '';
+    if (/^\s*data:/i.test(u) && !/^\s*data:image\//i.test(u)) return '';
+    return u;
+}
 
 let alunosCarregados = [];
 let turmasCache = [];
@@ -467,8 +487,8 @@ function renderStudentList() {
         div.onclick = () => selectStudent(aluno.id);
         const hasInfo = aluno.recupMat || aluno.recupLP || (aluno.observacoes && aluno.observacoes.length > 2);
         div.innerHTML = `
-            <div class="student-avatar">${aluno.foto ? `<img src="${aluno.foto}">` : '👤'}</div>
-            <div class="student-name">${aluno.nome} ${hasInfo ? '●' : ''}</div>
+            <div class="student-avatar">${fotoSegura(aluno.foto) ? `<img src="${escHtml(fotoSegura(aluno.foto))}">` : '👤'}</div>
+            <div class="student-name">${escHtml(aluno.nome)} ${hasInfo ? '●' : ''}</div>
         `;
         container.appendChild(div);
     });
@@ -619,11 +639,13 @@ function getRecuperacaoHTML(aluno) {
     else if (niv === 'SA' || niv === '3') { circleClass = 'level-blue'; colorHex = '#3399ff'; }
     else if (niv === 'A' || niv === '4') { circleClass = 'level-green'; colorHex = '#2eb82e'; }
 
-    const nivelHTML = circleClass 
-        ? `<span style="border: 2px solid #000; padding: 2px 6px; border-radius: 4px; display:inline-flex; align-items:center; gap: 6px;"><span class="level-circle ${circleClass}" style="width:14px; height:14px; display:inline-block; border-radius:50%; background-color:${colorHex}; margin:0;"></span><span style="font-weight:bold; color:${colorHex};">${niv}</span></span>` 
-        : niv;
-    const condText = (aluno.condicao && aluno.condicao !== '') ? aluno.condicao : 'Nenhuma';
-    const faltasText = (aluno.faltas !== '' && aluno.faltas !== null && aluno.faltas !== undefined && parseInt(aluno.faltas) > 0) ? `<br><strong>Faltas:</strong> ${aluno.faltas}` : '';
+    // `circleClass` e `colorHex` vêm de um conjunto fixo acima — seguros.
+    // `niv`, `condicao` e `faltas` vêm do registro do aluno e são escapados.
+    const nivelHTML = circleClass
+        ? `<span style="border: 2px solid #000; padding: 2px 6px; border-radius: 4px; display:inline-flex; align-items:center; gap: 6px;"><span class="level-circle ${circleClass}" style="width:14px; height:14px; display:inline-block; border-radius:50%; background-color:${colorHex}; margin:0;"></span><span style="font-weight:bold; color:${colorHex};">${escHtml(niv)}</span></span>`
+        : escHtml(niv);
+    const condText = (aluno.condicao && aluno.condicao !== '') ? escHtml(aluno.condicao) : 'Nenhuma';
+    const faltasText = (aluno.faltas !== '' && aluno.faltas !== null && aluno.faltas !== undefined && parseInt(aluno.faltas) > 0) ? `<br><strong>Faltas:</strong> ${escHtml(aluno.faltas)}` : '';
 
     return `
         <div style="line-height:1.6; font-size: 11pt;">
@@ -656,15 +678,15 @@ function renderPreview() {
             <tr>
                 <td style="width: 25%; vertical-align: middle; padding: 10px;">
                     <div style="display:flex; align-items:center; gap: 10px;">
-                        ${aluno.foto ? `<img src="${aluno.foto}" style="width:60px; height:70px; object-fit:cover; border:1px solid #000;">` : ''}
-                        <strong>${aluno.nome}</strong>
+                        ${fotoSegura(aluno.foto) ? `<img src="${escHtml(fotoSegura(aluno.foto))}" style="width:60px; height:70px; object-fit:cover; border:1px solid #000;">` : ''}
+                        <strong>${escHtml(aluno.nome)}</strong>
                     </div>
                 </td>
                 <td style="width: 35%; vertical-align: top; padding: 10px;">
                     ${getRecuperacaoHTML(aluno)}
                 </td>
                 <td style="width: 40%; vertical-align: top; padding: 10px; word-break: break-word; overflow-wrap: break-word;">
-                    ${obs.replace(/\n/g, '<br>')}
+                    ${escHtml(obs).replace(/\n/g, '<br>')}
                 </td>
             </tr>
         `;
@@ -674,15 +696,15 @@ function renderPreview() {
         <div style="border: 2px solid #000; padding: 15px; font-family: 'Arial', sans-serif;">
             <div style="text-align:center; margin-bottom: 20px;">
                 <h3 style="margin:0 0 5px 0; font-size: 11pt; font-weight:bold; text-decoration: underline;">
-                    SECRETARIA DE EDUCAÇÍO DE AMERICANA – MAPEAMENTO DA ESCOLA – ${bimestre.toUpperCase()} - ${ano}
+                    SECRETARIA DE EDUCAÇÍO DE AMERICANA – MAPEAMENTO DA ESCOLA – ${escHtml(bimestre.toUpperCase())} - ${escHtml(ano)}
                 </h3>
                 <h2 style="margin:0; font-size: 14pt; font-weight:bold;">PLANILHA DO CONSELHO DE CLASSE</h2>
             </div>
             
             <div style="margin-bottom: 20px; font-size: 11pt; border-bottom: 2px solid #000; padding-bottom: 10px;">
-                <p style="margin: 5px 0;"><strong>Escola:</strong> ${escola}</p>
-                <p style="margin: 5px 0;"><strong>Professor(a):</strong> ${professor}</p>
-                <p style="margin: 5px 0;"><strong>Ano/Turma:</strong> ${turma}</p>
+                <p style="margin: 5px 0;"><strong>Escola:</strong> ${escHtml(escola)}</p>
+                <p style="margin: 5px 0;"><strong>Professor(a):</strong> ${escHtml(professor)}</p>
+                <p style="margin: 5px 0;"><strong>Ano/Turma:</strong> ${escHtml(turma)}</p>
             </div>
 
             <table style="width:100%; border-collapse: collapse; border: 2px solid #000; table-layout: fixed;">

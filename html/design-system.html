@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Design System · Sistema Escolar</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,6 +11,10 @@
     <link rel="stylesheet" href="../js/libs/bootstrap-icons.min.css">
     <link rel="stylesheet" href="../css/tailwind-built.css">
     <style>
+        /* Esta página não carrega base.css, então o reset global não chega
+           aqui e os elementos ficavam em content-box: o padding somava à
+           largura e os .dui-alert estouravam a tela em ~14px no celular. */
+        *, *::before, *::after { box-sizing: border-box; }
         body { font-family: 'Inter', system-ui, sans-serif; background: #0b1512; color: #d1fae5; margin: 0; padding: 2rem clamp(1rem, 5vw, 4rem); }
         h1 { font-size: 1.6rem; font-weight: 700; }
         h2 { font-size: 1.15rem; font-weight: 600; margin: 2.5rem 0 1rem; color: #5eead4; }
@@ -21,6 +25,9 @@
         .row { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
         code { background: #16302a; padding: .15rem .4rem; border-radius: .35rem; font-size: .85em; }
     </style>
+    <!-- Rolagem e performance mobile — deve ser o ÚLTIMO stylesheet -->
+    <link rel="stylesheet" href="../css/mobile-scroll.css?v=1.0">
+    <script src="../js/scroll-lock.js?v=1.0"></script>
 </head>
 
 <body>

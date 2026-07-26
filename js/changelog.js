@@ -274,11 +274,14 @@
     }
 
     // ── Utilitários ───────────────────────────────────────────────────────────
+    // Escapa texto E atributo — a versão com textContent→innerHTML não escapa
+    // aspas, logo não protegia interpolação dentro de atributo.
+    // Ver js/escape-html.js.
     function escapeHtml(str) {
-        if (!str) return '';
-        const el = document.createElement('span');
-        el.textContent = str;
-        return el.innerHTML;
+        if (str === null || str === undefined) return '';
+        return String(str).replace(/[&<>"'`]/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c];
+        });
     }
 
     function capitalize(str) {

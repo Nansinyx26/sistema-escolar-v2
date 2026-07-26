@@ -11,7 +11,8 @@ const gestao = authorize('admin', 'diretor', 'secretaria');
 
 router.get('/', equipe, TeacherController.list);
 // Status online — precisa vir ANTES de '/:id' para não ser capturada como id.
-router.get('/status-online', authorize('admin', 'diretor', 'secretaria'), TeacherController.statusOnline);
+// A equipe toda vê o card (o docente também): expõe só nome, foto, escola e sala.
+router.get('/status-online', equipe, TeacherController.statusOnline);
 router.get('/:id', equipe, TeacherController.get);
 router.post('/', gestao, TeacherController.create);
 router.put('/:id', equipe, TeacherController.update);

@@ -17,13 +17,13 @@ body {
     margin: 0;
     font-family: var(--font-main);
     min-height: 100vh;
+    min-height: 100dvh;
     position: relative;
     background-image: radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.1) 0%, transparent 40%), radial-gradient(circle at 100% 100%, rgba(168, 85, 247, 0.1) 0%, transparent 40%);
 }
 
-body.no-scroll {
-    overflow: hidden;
-}
+/* A trava de rolagem passou para js/scroll-lock.js (html.scroll-locked).
+   body.no-scroll usava overflow:hidden, que nao trava scroll no iOS Safari. */
 
 
 /* Background animated orbs - Modern aesthetic */
@@ -69,12 +69,14 @@ body::after {
     display: grid;
     grid-template-columns: minmax(240px, 280px) 1fr;
     min-height: 100vh;
+    min-height: 100dvh;
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
 }
 
 .bi-sidebar {
     min-height: 100vh;
+    min-height: 100dvh;
 }
 
 .heatmap-grid {
@@ -957,6 +959,7 @@ body::after {
     left: 0;
     width: 100vw;
     height: 100vh;
+    height: 100dvh;
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(4px);
     z-index: 998;
@@ -975,11 +978,20 @@ body::after {
 @media (max-width: 1024px) {
     body {
         height: auto;
-        overflow: auto;
+        /* `overflow: auto` transformava o body em contêiner de rolagem
+           próprio — rolagem aninhada, sem inércia no iOS. A página rola
+           na raiz. */
+        overflow: visible;
     }
     .bi-layout {
         grid-template-columns: 1fr;
         height: auto;
+    }
+    /* Item de grid tem min-width: auto por padrão, então um filho largo
+       (grade de gráficos, tabela) estica a coluna e estoura a tela.
+       min-width: 0 permite que a coluna encolha até a largura real. */
+    .bi-layout > * {
+        min-width: 0;
     }
     .bi-mobile-bar {
         display: flex;
@@ -990,6 +1002,7 @@ body::after {
         left: -320px;
         width: 280px;
         height: 100vh;
+        height: 100dvh;
         z-index: 999;
         transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         background: rgba(10, 11, 15, 0.98);

@@ -271,23 +271,50 @@ exports.delete = async (req, res) => {
 
 /**
  * GET /api/professores/status-online
- * Lista os professores da escola ativa com foto, sala e status online.
- * Usado pelo card em tempo real do painel do diretor.
+ * Lista os professores da escola ativa com foto, nome, escola, sala e status
+ * online. Usado pelo card em tempo real dos painéis de diretor e professor.
  */
 exports.statusOnline = async (req, res) => {
     try {
         const presence = require('../realtime/presence');
+        const Escola = require('../models/Escola');
         const escopo = escopoEscola(req) || {};
         const profs = await Professor.find(escopo)
-            .select('nome foto salaPrincipal idUsuario')
+            .select('nome foto salaPrincipal idUsuario escola vinculos')
             .lean();
 
         const escolaId = req.escolaId;
+
+        // Nome da escola: os vínculos guardam só o id. Uma consulta resolve
+        // todos (o admin, sem escola ativa, vê docentes de escolas diferentes).
+        const ehObjectId = (v) => /^[0-9a-fA-F]{24}$/.test(String(v || ''));
+        const ids = new Set();
+        if (ehObjectId(escolaId)) ids.add(String(escolaId));
+        profs.forEach((p) => (p.vinculos || []).forEach((v) => {
+            // Vínculo legado ('default', vazio) quebraria o cast de _id.
+            if (ehObjectId(v?.escolaId)) ids.add(String(v.escolaId));
+        }));
+        const nomePorEscolaId = new Map();
+        if (ids.size > 0) {
+            const escolas = await Escola.find({ _id: { $in: [...ids] } }).select('nome').lean();
+            escolas.forEach((e) => nomePorEscolaId.set(String(e._id), e.nome));
+        }
+
+        /** Escola exibida: a ativa da sessão, senão o primeiro vínculo, senão o campo legado. */
+        const nomeDaEscola = (p) => {
+            const vinculos = Array.isArray(p.vinculos) ? p.vinculos : [];
+            const alvo = escolaId && vinculos.some((v) => String(v.escolaId) === String(escolaId))
+                ? String(escolaId)
+                : (vinculos[0]?.escolaId ? String(vinculos[0].escolaId) : null);
+            return (alvo && nomePorEscolaId.get(alvo)) || p.escola || '—';
+        };
+
         const lista = profs.map((p) => ({
             id: String(p._id),
             userId: p.idUsuario ? String(p.idUsuario) : null,
             nome: p.nome,
             foto: p.foto || null,
+            escola: nomeDaEscola(p),
             sala: p.salaPrincipal || '—',
             online: escolaId ? presence.isOnline(escolaId, p.idUsuario) : false,
         }));

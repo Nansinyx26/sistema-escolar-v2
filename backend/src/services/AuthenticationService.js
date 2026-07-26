@@ -20,6 +20,19 @@ const logger = require('../utils/logger');
 
 const SALT_ROUNDS = 12;
 
+// ============================================
+// ANTI-ENUMERAÇÃO DE USUÁRIO
+// ============================================
+// Resposta única para toda falha de credencial. Textos diferentes por causa
+// ('conta inativa' vs 'senha inválida') permitiam varrer e-mails válidos.
+const ERRO_CREDENCIAIS = {
+  error: 'E-mail ou senha incorretos.',
+  code: 'INVALID_CREDENTIALS'
+};
+
+// Hash descartável para igualar o tempo de resposta quando a conta não existe.
+const HASH_DUMMY = bcrypt.hashSync('senha-inexistente-para-timing-constante', SALT_ROUNDS);
+
 class AuthenticationService {
   /**
    * Valida se uma senha está em formato bcrypt hash
@@ -50,17 +63,34 @@ class AuthenticationService {
         };
       }
 
-      // 2. Busca o usuário
-      const user = await Usuario.findOne({ email: email.toLowerCase() });
+      // 2. Busca o usuário. `+senha`: o hash é `select: false` no schema.
+      const user = await Usuario.findOne({ email: email.toLowerCase() }).select('+senha');
       if (!user || !user.ativo) {
+        // Consome o mesmo tempo de um bcrypt.compare real: sem isso, a
+        // diferença de latência entre "conta inexistente" e "senha errada"
+        // enumera usuários mesmo com a mensagem unificada.
+        await bcrypt.compare(String(senha), HASH_DUMMY);
         return {
           success: false,
-          error: 'Credenciais inválidas ou conta inativa',
-          code: 'INVALID_CREDENTIALS'
+          ...ERRO_CREDENCIAIS
         };
       }
 
-      // 3. Validação de portal
+      // 3. Validar senha ANTES de qualquer verificação específica da conta.
+      // As checagens de portal abaixo revelam não só que a conta existe, mas
+      // também qual é o perfil dela — por isso ficam atrás da prova de senha.
+      const isValid = await this._validatePassword(user, senha);
+
+      if (!isValid) {
+        // Incrementar tentativas de login falha
+        await this._handleFailedLogin(user);
+        return {
+          success: false,
+          ...ERRO_CREDENCIAIS
+        };
+      }
+
+      // 4. Validação de portal (só para quem já provou saber a senha)
       if (portal === 'responsavel' && user.perfil !== 'responsavel') {
         return {
           success: false,
@@ -77,7 +107,10 @@ class AuthenticationService {
         };
       }
 
-      // 4. Verificar se conta está bloqueada (proteção contra brute force)
+      // 5. Conta bloqueada — checado DEPOIS da senha, de propósito.
+      // Antes vinha antes da validação, e o 'ACCOUNT_LOCKED' confirmava a
+      // existência da conta para quem só mandasse 5 senhas erradas. Agora o
+      // aviso de bloqueio só chega a quem já provou saber a senha.
       if (user.lockUntil && user.lockUntil > Date.now()) {
         const minutosRestantes = Math.ceil((user.lockUntil - Date.now()) / (60 * 1000));
         return {
@@ -85,19 +118,6 @@ class AuthenticationService {
           error: `Conta bloqueada temporariamente. Tente novamente em ${minutosRestantes} minutos.`,
           code: 'ACCOUNT_LOCKED',
           minutosRestantes
-        };
-      }
-
-      // 5. Validar senha
-      const isValid = await this._validatePassword(user, senha);
-
-      if (!isValid) {
-        // Incrementar tentativas de login falha
-        await this._handleFailedLogin(user);
-        return {
-          success: false,
-          error: 'Credenciais inválidas',
-          code: 'INVALID_PASSWORD'
         };
       }
 
@@ -282,26 +302,28 @@ class AuthenticationService {
    */
 
   /**
-   * Valida senha com migração automática de senhas legadas
+   * Valida senha. SOMENTE bcrypt — o caminho legado foi REMOVIDO.
+   *
+   * A comparação em texto puro (`user.senha === senhaPlain`) não era
+   * constant-time e, pior, aceitava como credencial válida um valor lido
+   * direto do banco: qualquer leitura do Mongo (backup, dump, injection)
+   * virava login sem quebrar hash nenhum. A "migração automática" também só
+   * acontecia para quem ACERTASSE a senha — contas legadas nunca acessadas
+   * ficavam expostas esperando um atacante chegar antes do dono.
+   *
+   * Contas sem bcrypt devem ser convertidas com
+   * `node scripts/migrar-senhas-bcrypt.js` ou passar pela recuperação de senha.
    */
   static async _validatePassword(user, senhaPlain) {
     if (this.isHashed(user.senha)) {
-      // Senha com hash bcrypt — caminho seguro
       return await bcrypt.compare(senhaPlain, user.senha);
-    } else {
-      // LEGADO: Senha em texto puro
-      const valid = user.senha === senhaPlain;
-      if (valid) {
-        // Migração automática para bcrypt
-        const senhaBcrypt = await bcrypt.hash(senhaPlain, SALT_ROUNDS);
-        await Usuario.updateOne(
-          { _id: user._id },
-          { $set: { senha: senhaBcrypt } }
-        );
-        logger.info(`🔐 [SECURITY] Senha legada de ${user.email} migrada para bcrypt`);
-      }
-      return valid;
     }
+
+    // Consome o mesmo tempo do caminho normal para não distinguir
+    // "conta com senha legada" de "senha errada".
+    await bcrypt.compare(String(senhaPlain), HASH_DUMMY);
+    logger.warn(`🔐 [SECURITY] Login barrado: conta ${user.email} sem hash bcrypt. Rode scripts/migrar-senhas-bcrypt.js.`);
+    return false;
   }
 
   /**
