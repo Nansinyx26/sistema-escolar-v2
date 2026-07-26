@@ -1261,3 +1261,36 @@
     opacity: 0.10;
     filter: grayscale(1) brightness(0.2);
 }
+
+/* ======================================================================
+   REGRA DE OURO PARA MODAIS ESCUROS (.sc-modal-card, .sc-modal)
+   Garante que todos os rótulos, dados digitados, placeholders e textos de dicas
+   sejam 100% brancos e visíveis em qualquer tema (escuro/claro).
+   ====================================================================== */
+.sc-modal-card,
+.sc-modal-card h1, .sc-modal-card h2, .sc-modal-card h3, .sc-modal-card h4,
+.sc-modal-card p, .sc-modal-card span, .sc-modal-card small,
+.sc-modal-card .sc-label, .sc-modal-card label,
+.sc-modal-card .sc-hint,
+.sc-modal-card .sc-input, .sc-modal-card input, .sc-modal-card select {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+.sc-modal-card .sc-input::placeholder,
+.sc-modal-card input::placeholder,
+.sc-modal-card select::placeholder,
+.sc-modal-card ::placeholder {
+    color: rgba(255, 255, 255, 0.85) !important;
+    -webkit-text-fill-color: rgba(255, 255, 255, 0.85) !important;
+    opacity: 1 !important;
+}
+
+.sc-modal-card .sc-input:focus,
+.sc-modal-card input:focus,
+.sc-modal-card select:focus {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25) !important;
+    background: rgba(255, 255, 255, 0.12) !important;
+    outline: none;
+}
