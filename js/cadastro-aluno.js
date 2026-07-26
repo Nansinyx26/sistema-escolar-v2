@@ -220,11 +220,15 @@ async function uploadDocumentos(alunoId) {
     if (_docs.length === 0) return;
     const formData = new FormData();
     _docs.forEach(d => formData.append('documentos', d.file));
-    const token = localStorage.getItem('token') || '';
     const apiBase = (window.API_BASE_URL || '/api').replace(/\/$/, '');
+    // SEGURANÇA: sem Bearer de localStorage — a autenticação vai no cookie
+    // HttpOnly enviado por credentials: 'include'. O X-CSRF-Token é obrigatório
+    // em POST (double submit cookie); sem ele o backend responde 403.
+    // Content-Type fica a cargo do browser por causa do boundary do FormData.
+    const csrf = window.getCookie ? window.getCookie('csrf_token') : null;
     const res = await fetch(`${apiBase}/upload/documento`, {
         method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers: csrf ? { 'X-CSRF-Token': csrf } : {},
         credentials: 'include',
         body: formData
     });

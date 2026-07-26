@@ -10,6 +10,24 @@ import type { GmailUser, UseGmailAuthReturn } from '../types';
 
 const STORAGE_KEY = 'gmailUser';
 
+/**
+ * SEGURANÇA: o access_token do Google NUNCA é persistido.
+ * localStorage é legível por qualquer script da origem — um XSS levaria um
+ * token OAuth válido embora. O token só existe em memória (state), o tempo
+ * necessário para trocá-lo pelo cookie JWT HttpOnly em /auth/google-login.
+ * O que fica no storage é apenas o perfil de exibição (nome/e-mail/foto).
+ */
+type PerfilPersistido = Omit<GmailUser, 'accessToken'>;
+
+function persistirPerfil(user: GmailUser): void {
+  const perfil: PerfilPersistido = {
+    email: user.email,
+    name: user.name,
+    picture: user.picture,
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(perfil));
+}
+
 const PLACEHOLDER_CLIENT_IDS = new Set([
   'seu_client_id.apps.googleusercontent.com',
   '',
@@ -88,9 +106,19 @@ export function useGmailAuth(): UseGmailAuthReturn {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        const parsed = JSON.parse(stored) as GmailUser;
-        if (parsed.email && parsed.accessToken) {
-          setUser(parsed);
+        const parsed = JSON.parse(stored) as PerfilPersistido & { accessToken?: string };
+        if (parsed.email) {
+          // accessToken sempre vazio ao restaurar: a sessão real é o cookie
+          // HttpOnly, validado pelo useAuth via /auth/me.
+          const restaurado: GmailUser = {
+            email: parsed.email,
+            name: parsed.name,
+            picture: parsed.picture,
+            accessToken: '',
+          };
+          setUser(restaurado);
+          // Migração: apaga o token que versões anteriores gravaram aqui.
+          if (parsed.accessToken) persistirPerfil(restaurado);
         } else {
           localStorage.removeItem(STORAGE_KEY);
         }
@@ -106,7 +134,7 @@ export function useGmailAuth(): UseGmailAuthReturn {
     try {
       const authenticatedUser = await fetchGoogleProfile(tokenResponse.access_token);
       setUser(authenticatedUser);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(authenticatedUser));
+      persistirPerfil(authenticatedUser);
       setError(null);
       loginResolveRef.current?.(authenticatedUser);
     } catch (err) {

@@ -587,16 +587,12 @@ async function inicializarWidgets(user, perfil) {
         try {
             const al = await db.findByIndex('alunos', 'responsavelEmail', user.email);
             if (al) {
-                // Recalcula e busca
-                await fetch(`/api/gamificacao/recalcular/${al._id || al.id}`, { 
-                    method: 'POST', 
-                    headers: { 'Authorization': `Bearer ${sessionStorage.getItem('token')}` } 
-                });
-                const res = await fetch(`/api/gamificacao/aluno/${al._id || al.id}`, {
-                    headers: { 'Authorization': `Bearer ${sessionStorage.getItem('token')}` }
-                });
-                const json = await res.json();
-                
+                // Recalcula e busca — apiFetch autentica pelo cookie HttpOnly
+                // (JWT) e anexa o CSRF; nenhum token sai de storage.
+                const alunoId = al._id || al.id;
+                await apiFetch(`/gamificacao/recalcular/${alunoId}`, { method: 'POST' });
+                const json = await apiFetch(`/gamificacao/aluno/${alunoId}`);
+
                 if (json.data && json.data.length > 0) {
                     badgesGrid.innerHTML = json.data.map(b => `
                         <div class="badge-conquest" title="${escHtml(b.descricao)}">

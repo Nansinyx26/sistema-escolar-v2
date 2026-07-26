@@ -383,9 +383,6 @@
                         else throw new Error(json.error);
                     } else if (source === 'IndexedDB') {
                         success = await deleteFromIndexedDB(id);
-                    } else if (source === 'LocalStorage') {
-                        localStorage.removeItem('escola_session');
-                        success = true;
                     }
 
                     if (success) {
@@ -419,13 +416,9 @@
                     });
                 } catch (e) { }
 
-                // 3. LocalStorage
-                const sessao = localStorage.getItem('escola_session');
-                if (sessao) {
-                    const u = JSON.parse(sessao);
-                    const exists = allUsers.find(ex => ex.email === u.email && ex.source === 'MongoDB');
-                    allUsers.push({ ...u, source: 'LocalStorage', id: 'session', isDuplicate: !!exists });
-                }
+                // 3. LocalStorage — removido: sessão não vive mais em localStorage
+                // (o JWT é cookie HttpOnly). O logout ainda limpa a chave legada
+                // 'escola_session' em auth.js/api-config.js.
 
                 window.allUsersCache = allUsers;
                 renderTable(allUsers);
