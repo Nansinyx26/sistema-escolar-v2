@@ -708,6 +708,8 @@
     .how-visual, .how-visual *,
     .comunicado-card-premium, .comunicado-card-premium *,
     .stat-card, .stat-card *,
+    .management-card, .management-card *,
+    .sc-modal-card, .sc-modal-card *,
     .turma-card .turma-info, .turma-card .turma-info *,
     .role-card-content, .role-card-content *,
     .checkbox-card-content, .checkbox-card-content *,
@@ -747,6 +749,32 @@
     -webkit-text-fill-color: #4f46e5 !important;
 }
 
+/* Estrelas de avaliação: o ouro aqui é o ESTADO (nota escolhida), não enfeite.
+   A varredura pintava todas de preto e a estrela marcada ficava igual à vazia.
+   Reafirmadas depois dela: vazia em cinza claro, marcada — e a prévia do hover
+   — em âmbar, que continua legível sobre o branco. */
+:root[data-theme="light"]:not(.high-contrast) :is(
+    .star-rating .star,
+    .review-stars-small .bi-star,
+    .avg-stars .bi-star,
+    #ratingStars label .bi-star
+) {
+    color: #cbd5e1 !important;
+    -webkit-text-fill-color: #cbd5e1 !important;
+}
+/* O `[class]` sobe a especificidade acima da regra da estrela vazia (que o
+   `#ratingStars` do perfil já eleva por conter um id), garantindo o âmbar. */
+:root[data-theme="light"]:not(.high-contrast) :is(
+    .star-rating .star.active,
+    .star-rating .star.hover-preview,
+    .review-stars-small .bi-star-fill,
+    .avg-stars .bi-star-fill,
+    #ratingStars label .bi-star-fill
+)[class] {
+    color: #f59e0b !important;
+    -webkit-text-fill-color: #f59e0b !important;
+}
+
 /* --- Navegação (sidebar / header / navbar) fica CLARA no modo claro ---
    parallax-glass.css força fundo escuro nesses elementos com !important e
    não conhece o tema claro; nas páginas que o carregam (detalhes/*, admin/*,
@@ -779,6 +807,7 @@
     .card, .card-glass, .glass, .glass-strong,
     .glass-card, .glass-card-md, .glass-card-strong, .glass-panel,
     .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
+    .management-card, .sc-modal-card,
     .info-card, .info-box, .lgpd-box, .dpo-box,
     .login-card, .auth-card, .cadastro-card, .perfil-card,
     .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
@@ -802,6 +831,7 @@
     .card, .card-glass, .glass, .glass-strong,
     .glass-card, .glass-card-md, .glass-card-strong, .glass-panel,
     .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
+    .management-card, .sc-modal-card,
     .info-card, .login-card, .auth-card, .cadastro-card, .perfil-card,
     .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
     .sec-form-card, .sec-quick-card, .sec-stat-card,
@@ -819,6 +849,7 @@
     .card, .card-glass, .glass, .glass-strong,
     .glass-card, .glass-card-md, .glass-card-strong, .glass-panel,
     .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
+    .management-card, .sc-modal-card,
     .info-card, .info-box, .lgpd-box, .dpo-box,
     .login-card, .auth-card, .cadastro-card, .perfil-card,
     .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
@@ -849,6 +880,7 @@
     .card, .card-glass, .glass, .glass-strong,
     .glass-card, .glass-card-md, .glass-card-strong, .glass-panel,
     .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
+    .management-card, .sc-modal-card,
     .info-card, .info-box, .lgpd-box, .dpo-box,
     .login-card, .auth-card, .cadastro-card, .perfil-card,
     .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
@@ -859,7 +891,7 @@
     .welcome-section, .turmas-section, .turma-card,
     .role-card-content, .checkbox-card-content, .comunicado-card-premium,
     .modal-content, .pa-modal-card
-) :is(input:not([type="checkbox"]):not([type="radio"]), textarea, select, .form-input) {
+) :is(input:not([type="checkbox"]):not([type="radio"]), textarea, select, .form-input, .sc-input) {
     background: rgba(255, 255, 255, 0.07) !important;
     background-color: rgba(255, 255, 255, 0.07) !important;
     border-color: rgba(255, 255, 255, 0.18) !important;
@@ -870,6 +902,7 @@
     .card, .card-glass, .glass, .glass-strong,
     .glass-card, .glass-card-md, .glass-card-strong, .glass-panel,
     .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
+    .management-card, .sc-modal-card,
     .info-card, .info-box, .lgpd-box, .dpo-box,
     .login-card, .auth-card, .cadastro-card, .perfil-card,
     .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,

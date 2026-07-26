@@ -26,6 +26,53 @@ function isHashed(senha) {
     return senha && senha.startsWith('$2');
 }
 
+/**
+ * Cria (ou completa) o perfil da coleção `secretarias` com o vínculo da escola.
+ *
+ * É esse documento que `vinculosDoUsuario()` lê para resolver req.escolaId no
+ * login. Idempotente: se o perfil já existe, apenas garante o vínculo.
+ *
+ * @param {Object} user documento de Usuario já criado (precisa de escolaId)
+ * @param {string} [nomeEscola] nome legível da escola (default: user.escola)
+ */
+async function criarPerfilSecretaria(user, nomeEscola) {
+    const mongoose = require('mongoose');
+    const Secretaria = require('../models/Secretaria');
+    // Modo legado (nenhuma escola cadastrada ainda): o perfil é criado sem
+    // vínculo — filtrarPorEscola segue sem filtro nesse cenário.
+    const escolaId = user.escolaId ? String(user.escolaId) : null;
+    const email = String(user.email).toLowerCase();
+
+    const existente = await Secretaria.findOne({
+        $or: [{ idUsuario: String(user._id) }, { email }]
+    });
+
+    if (existente) {
+        const jaVinculado = !escolaId || (existente.vinculos || [])
+            .some(v => String(v.escolaId) === escolaId);
+        if (!jaVinculado) {
+            existente.vinculos = [...(existente.vinculos || []), { escolaId, cargo: 'secretaria' }];
+            existente.escolaId = escolaId;
+            await existente.save();
+        }
+        return existente;
+    }
+
+    return Secretaria.create({
+        _id: new mongoose.Types.ObjectId().toString(),
+        idUsuario: String(user._id),
+        nome: user.nome,
+        email,
+        telefone: user.telefone,
+        escola: nomeEscola || user.escola || undefined,
+        escolaId: escolaId || undefined,
+        vinculos: escolaId ? [{ escolaId, cargo: 'secretaria' }] : [],
+        setor: 'Secretaria Geral',
+        cargo: 'Secretário(a)',
+        ativo: user.ativo !== false
+    });
+}
+
 // Configuração do transportador de e-mail
 // Usa Resend SMTP como padrão. Para usar Gmail, defina EMAIL_HOST=smtp.gmail.com e EMAIL_PORT=587
 const isResend = !process.env.EMAIL_HOST || process.env.EMAIL_HOST === 'smtp.resend.com';
@@ -109,6 +156,20 @@ exports.create = async (req, res) => {
         }
 
         const user = await Usuario.create(req.body);
+
+        // Perfil de equipe + VÍNCULO da escola. Sem este doc, vinculosDoUsuario()
+        // devolve [] no login e filtrarPorEscola cai no fallback "escola ativa
+        // única" — que numa rede com várias escolas deixa req.escolaId vazio e
+        // faz escolaMatch() liberar a rede inteira para a conta nova.
+        if (user.perfil === 'secretaria') {
+            try {
+                await criarPerfilSecretaria(user);
+            } catch (e) {
+                // A conta de login já existe — não desfaz o cadastro por causa
+                // do perfil estendido, só registra para correção manual.
+                console.error('[CREATE_USER] Falha ao criar perfil de secretaria:', e.message);
+            }
+        }
 
         await logAction(req, 'CREATE_USER', 'Usuarios', {
             recursoId: user._id,
@@ -1020,6 +1081,15 @@ exports.delete = async (req, res) => {
             // falhar no meio, a conta já não consegue mais usar o cookie antigo.
             await Usuario.updateOne({ _id: user._id }, { $inc: { tokenVersion: 1 } });
             await Usuario.findByIdAndDelete(req.params.id);
+
+            // Remove o perfil estendido junto. `secretarias.email` é unique —
+            // o órfão impedia recadastrar a mesma pessoa depois.
+            if (user.perfil === 'secretaria') {
+                const Secretaria = require('../models/Secretaria');
+                await Secretaria.deleteOne({
+                    $or: [{ idUsuario: String(user._id) }, { email: String(user.email).toLowerCase() }]
+                }).catch(e => console.error('[DELETE_USER] Perfil de secretaria órfão:', e.message));
+            }
         }
         res.json({ success: true });
     } catch (error) {
@@ -2105,12 +2175,17 @@ exports.registerSecretaria = async (req, res) => {
         const senhaHash = await bcrypt.hash(senha, SALT_ROUNDS);
 
         const now = new Date();
+        // `escolaId` é OBRIGATÓRIO aqui: UserController.list filtra a coleção
+        // `usuarios` por escolaMatch(req.escolaId). Sem o carimbo, a conta
+        // existia mas ficava invisível em "Gerenciar Secretaria" — o diretor
+        // via a lista vazia mesmo com secretarias cadastradas na escola dele.
         const user = await Usuario.create({
             nome,
             email: email.toLowerCase(),
             senha: senhaHash,
             telefone,
-            escola: escola || undefined,
+            escola: escolaResolvida ? escolaResolvida.nome : (escola || undefined),
+            escolaId: escolaIdFinal || undefined,
             perfil: 'secretaria',
             ativo: true,
             ultimoLogin: now,
@@ -2118,23 +2193,9 @@ exports.registerSecretaria = async (req, res) => {
             consentimentoAceiteEm: now
         });
 
-        // 4. Auto-criação do registro na coleção 'secretarias'
-        const mongoose = require('mongoose');
-        const Secretaria = require('../models/Secretaria');
-
-        await Secretaria.create({
-            _id: new mongoose.Types.ObjectId().toString(),
-            idUsuario: user._id.toString(),
-            nome: user.nome,
-            email: user.email.toLowerCase(),
-            telefone: user.telefone || telefone,
-            escola: escolaResolvida ? escolaResolvida.nome : (escola || 'default'),
-            setor: 'Secretaria Geral',
-            cargo: 'Secretário(a)',
-            ativo: true,
-            vinculos: escolaIdFinal ? [{ escolaId: escolaIdFinal, cargo: 'secretaria' }] : [],
-            escolaId: escolaIdFinal || undefined
-        });
+        // 4. Auto-criação do registro na coleção 'secretarias' (com o vínculo
+        //    da escola — é por ele que o login resolve o tenant da conta)
+        await criarPerfilSecretaria(user, escolaResolvida ? escolaResolvida.nome : escola);
 
         // 5. Notificação persistente
         const hourStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });

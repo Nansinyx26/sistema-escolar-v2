@@ -86,6 +86,57 @@ async function main() {
         console.log(`   ${collection}: ${r.modifiedCount} perfil(is) vinculados à Jaguari como "${cargo}"`);
     }
 
+    // 4. Carimba escolaId na coleção `usuarios` (contas de login).
+    //    Sem isso, UserController.list — que filtra por escolaMatch — devolvia
+    //    lista VAZIA em telas como "Gerenciar Secretaria": as contas existiam,
+    //    mas nenhuma casava com a escola da sessão do diretor.
+    //    A escola sai do perfil de equipe (vínculo real) quando houver; senão
+    //    cai na Jaguari, igual ao resto dos dados legados.
+    console.log('\n── Contas de login (usuarios) ───────────');
+    if (!existentes.has('usuarios')) {
+        console.log('   usuarios: collection não existe — pulada');
+    } else {
+        // 4a. Pelo vínculo declarado no perfil de equipe
+        const porVinculo = new Map(); // escolaId -> [emails]
+        for (const { collection } of PERFIS_EQUIPE) {
+            if (!existentes.has(collection)) continue;
+            const perfis = await db.collection(collection)
+                .find({ 'vinculos.0': { $exists: true } })
+                .project({ email: 1, vinculos: 1 })
+                .toArray();
+            for (const p of perfis) {
+                if (!p.email) continue;
+                const alvo = String(p.vinculos[0].escolaId);
+                if (!porVinculo.has(alvo)) porVinculo.set(alvo, []);
+                porVinculo.get(alvo).push(String(p.email).toLowerCase());
+            }
+        }
+
+        let viaVinculo = 0;
+        for (const [alvo, emails] of porVinculo) {
+            const r = await db.collection('usuarios').updateMany(
+                {
+                    email: { $in: emails },
+                    $or: [{ escolaId: { $exists: false } }, { escolaId: null }, { escolaId: '' }, { escolaId: 'default' }]
+                },
+                { $set: { escolaId: alvo } }
+            );
+            viaVinculo += r.modifiedCount;
+        }
+        console.log(`   usuarios: ${viaVinculo} conta(s) carimbadas pelo vínculo do perfil de equipe`);
+
+        // 4b. Resto (contas sem perfil de equipe) → Jaguari.
+        //     Admin fica de fora: é uma conta global da rede, não de um tenant.
+        const r = await db.collection('usuarios').updateMany(
+            {
+                perfil: { $ne: 'admin' },
+                $or: [{ escolaId: { $exists: false } }, { escolaId: null }, { escolaId: '' }, { escolaId: 'default' }]
+            },
+            { $set: { escolaId } }
+        );
+        console.log(`   usuarios: ${r.modifiedCount} conta(s) restantes atribuídas à Jaguari`);
+    }
+
     console.log('\n✅ Migração concluída. Todos os dados legados pertencem agora à Escola Jaguari.');
     await mongoose.disconnect();
 }

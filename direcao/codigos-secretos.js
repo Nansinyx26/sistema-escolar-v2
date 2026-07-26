@@ -98,14 +98,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             tbody.innerHTML = json.data.map(item => {
                 const statusBadge = item.vinculado
-                    ? '<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(34,197,94,0.12);color:#22c55e;padding:3px 10px;border-radius:20px;font-size:0.78rem;font-weight:600;"><i class="bi bi-link-45deg"></i> Vinculado</span>'
-                    : '<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(251,191,36,0.12);color:#fbbf24;padding:3px 10px;border-radius:20px;font-size:0.78rem;font-weight:600;"><i class="bi bi-clock-history"></i> Aguardando</span>';
+                    ? '<span class="status-pill status-pill--vinculado"><i class="bi bi-link-45deg"></i> Vinculado</span>'
+                    : '<span class="status-pill status-pill--aguardando"><i class="bi bi-clock-history"></i> Aguardando</span>';
 
                 return `
                     <tr>
                         <td style="font-weight:600;">${item.nome}</td>
                         <td>
-                            <code style="background:rgba(16,185,129,0.1);color:#34d399;padding:4px 10px;border-radius:6px;font-weight:700;letter-spacing:1.5px;font-size:0.9rem;">${item.codigoSecreto || '------'}</code>
+                            <code class="codigo-secreto">${item.codigoSecreto || '------'}</code>
                         </td>
                         <td>${item.ano || '-'}</td>
                         <td>${item.turma || '-'}</td>

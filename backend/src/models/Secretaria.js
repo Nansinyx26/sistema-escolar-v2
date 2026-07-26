@@ -8,7 +8,10 @@ const SecretariaSchema = new mongoose.Schema({
     email: { type: String, unique: true },
     telefone: String,
     escola: String,
-    // Multi-escola: vínculos do usuário com escolas (escolaId = _id de Escola)
+    // Multi-escola: vínculos do usuário com escolas (escolaId = _id de Escola).
+    // `escolaId` é a escola principal; o schema é strict, então sem declarar o
+    // campo aqui o valor era silenciosamente descartado na criação.
+    escolaId: { type: String, index: true },
     vinculos: [{ escolaId: { type: String, index: true }, cargo: String, _id: false }],
     setor: { type: String, default: 'Secretaria Geral' }, // Ex: 'Secretaria Geral', 'Secretaria Acadêmica'
     cargo: { type: String, default: 'Secretário(a)' },

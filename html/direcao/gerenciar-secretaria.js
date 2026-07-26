@@ -44,9 +44,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     const emailSenhaInput = document.getElementById('emailSenha');
     const novaSenhaInput = document.getElementById('novaSenha');
 
+    const escolaBadge = document.getElementById('escolaAtivaBadge');
+    const escolaBadgeTexto = document.getElementById('escolaAtivaNomeTexto');
+    const escolaHint = document.getElementById('escolaHint');
+    const statTotal = document.getElementById('statTotal');
+    const statAtivas = document.getElementById('statAtivas');
+    const statSuspensas = document.getElementById('statSuspensas');
+
     const BASE_URL = window.API_BASE_URL || (window.location.origin + '/api');
 
     let secretariasCache = [];
+    // Escola ativa da sessão — a lista do backend já vem filtrada por ela, então
+    // é o mesmo escopo mostrado no badge e herdado por cadastros novos.
+    let escolaAtiva = null;
 
     // Celular/Telefone mask helper
     telefoneInput.addEventListener('input', (e) => {
@@ -57,34 +67,145 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.target.value = v;
     });
 
+    // Nome, e-mail e escola vêm do banco e são injetados via innerHTML —
+    // escapar evita que um cadastro com `<img onerror=...>` execute script.
+    function esc(valor) {
+        return String(valor == null ? '' : valor)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // 2b. Contexto multi-escola: identifica em qual escola o diretor está.
+    //     O backend já isola a listagem por essa escola — aqui é só para deixar
+    //     explícito na tela de qual instituição são as contas exibidas.
+    async function carregarEscolaAtiva() {
+        try {
+            const res = await fetch(`${BASE_URL}/escolas/minhas`, {
+                headers: { 'Accept': 'application/json' },
+                credentials: 'include'
+            });
+            if (!res.ok) return;
+
+            const json = await res.json();
+            if (!json.success || !Array.isArray(json.data) || !json.data.length) return;
+
+            escolaAtiva = json.data.find(e => String(e._id) === String(json.escolaAtivaId))
+                || (json.data.length === 1 ? json.data[0] : null);
+
+            if (escolaAtiva && escolaBadge) {
+                escolaBadgeTexto.textContent = escolaAtiva.nome;
+                escolaBadge.hidden = false;
+            }
+        } catch (err) {
+            // Contexto é informativo: sem ele a página continua funcionando
+            console.warn('Não foi possível identificar a escola ativa:', err);
+        }
+    }
+
+    // Mensagem de estado (vazio / erro) ocupando a tabela inteira
+    function renderEstado({ icone, titulo, texto, erro = false, acao = false }) {
+        listaSecretarias.innerHTML = `
+            <tr>
+                <td colspan="5">
+                    <div class="empty-box${erro ? ' is-error' : ''}">
+                        <div class="empty-icon"><i class="bi ${icone}"></i></div>
+                        <h4>${titulo}</h4>
+                        <p>${texto}</p>
+                        ${acao ? `<button type="button" class="btn btn-primary" id="btnEmptyCadastro">
+                            <i class="bi bi-person-plus-fill"></i> Cadastrar primeira secretaria
+                        </button>` : ''}
+                    </div>
+                </td>
+            </tr>`;
+
+        const btn = document.getElementById('btnEmptyCadastro');
+        if (btn) btn.addEventListener('click', abrirNovoCadastro);
+    }
+
+    function atualizarStats(lista) {
+        const ativas = lista.filter(s => s.ativo).length;
+        statTotal.textContent = lista.length;
+        statAtivas.textContent = ativas;
+        statSuspensas.textContent = lista.length - ativas;
+    }
+
     // 3. Inicializar e Listar
     async function carregarSecretarias() {
-        listaSecretarias.innerHTML = `<tr><td colspan="5" class="empty-state"><i class="bi bi-arrow-repeat spin"></i> Carregando contas...</td></tr>`;
+        renderEstado({
+            icone: 'bi-arrow-repeat spin',
+            titulo: 'Carregando contas...',
+            texto: 'Buscando as contas de secretaria vinculadas a esta escola.'
+        });
 
         try {
             const res = await fetch(`${BASE_URL}/usuarios?perfil=secretaria`, {
                 headers: { 'Accept': 'application/json' },
                 credentials: 'include'
             });
-            const resData = await res.json();
+            const resData = await res.json().catch(() => ({}));
 
-            if (!resData.success) {
+            // 409: o diretor tem vínculo com mais de uma escola e a sessão ainda
+            // não sabe em qual ele está — sem escolher, não há lista para exibir.
+            if (res.status === 409 && resData.requiresEscolha) {
+                atualizarStats([]);
+                renderEstado({
+                    icone: 'bi-buildings',
+                    titulo: 'Selecione a escola',
+                    texto: 'Você tem vínculo com mais de uma escola. Escolha no seletor da barra lateral em qual deseja trabalhar para ver as contas de secretaria dela.'
+                });
+                return;
+            }
+
+            if (res.status === 401 || res.status === 403) {
+                window.location.href = '../login.html';
+                return;
+            }
+
+            if (!res.ok || !resData.success) {
                 throw new Error(resData.error || 'Erro ao carregar secretarias.');
             }
 
             secretariasCache = resData.data || [];
+            atualizarStats(secretariasCache);
             renderTabela(secretariasCache);
 
         } catch (err) {
             console.error(err);
             showToast(err.message || 'Erro ao carregar dados da secretaria.', 'error');
-            listaSecretarias.innerHTML = `<tr><td colspan="5" class="empty-state" style="color: #ef4444;"><i class="bi bi-exclamation-triangle"></i> Falha na conexão com o servidor.</td></tr>`;
+            atualizarStats([]);
+            renderEstado({
+                icone: 'bi-exclamation-triangle',
+                titulo: 'Não foi possível carregar as contas',
+                texto: esc(err.message) || 'Falha na conexão com o servidor. Verifique sua internet e tente novamente.',
+                erro: true
+            });
         }
     }
 
     function renderTabela(lista) {
         if (lista.length === 0) {
-            listaSecretarias.innerHTML = `<tr><td colspan="5" class="empty-state"><i class="bi bi-person-badge-fill"></i> Nenhuma conta de secretaria encontrada.</td></tr>`;
+            // Distingue "não existe nenhuma" de "o filtro não achou nada" —
+            // eram a mesma caixa vazia antes, e a segunda parecia erro.
+            const filtrando = filtroNome && filtroNome.value.trim();
+            if (filtrando) {
+                renderEstado({
+                    icone: 'bi-search',
+                    titulo: 'Nenhum resultado',
+                    texto: `Nenhuma conta corresponde a "${esc(filtroNome.value.trim())}". Tente outro nome ou e-mail.`
+                });
+            } else {
+                renderEstado({
+                    icone: 'bi-person-badge-fill',
+                    titulo: 'Nenhuma conta de secretaria ainda',
+                    texto: escolaAtiva
+                        ? `A escola ${esc(escolaAtiva.nome)} ainda não tem contas de secretaria. Cadastre a primeira para liberar o acesso ao painel administrativo.`
+                        : 'Cadastre a primeira conta de secretaria para liberar o acesso ao painel administrativo.',
+                    acao: true
+                });
+            }
             return;
         }
 
@@ -107,13 +228,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                             ${sec.nome ? sec.nome.charAt(0).toUpperCase() : 'S'}
                         </div>
                         <div>
-                            <div style="font-weight:600; color:#fff;">${sec.nome}</div>
-                            <span style="font-size:0.8rem; color:#64748b;">${sec.escola || 'Escola Geral'}</span>
+                            <div style="font-weight:600; color:#fff;">${esc(sec.nome)}</div>
+                            <span style="font-size:0.8rem; color:#64748b;">${esc(sec.escola || (escolaAtiva && escolaAtiva.nome) || 'Escola Geral')}</span>
                         </div>
                     </div>
                 </td>
-                <td>${sec.email}</td>
-                <td>${telFormatado}</td>
+                <td>${esc(sec.email)}</td>
+                <td>${esc(telFormatado)}</td>
                 <td>${badgeHTML}</td>
                 <td style="text-align:right;">
                     <div style="display:inline-flex; gap:0.5rem;">
@@ -163,15 +284,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // 5. Cadastro & Edição Modais
-    btnNovaSecretaria.addEventListener('click', () => {
+    function abrirNovoCadastro() {
         formSecretaria.reset();
         userIdInput.value = '';
         modalTitle.textContent = 'Novo Cadastro de Secretaria';
         senhaGroup.style.display = 'block';
         senhaInput.required = true;
         statusGroup.style.display = 'none';
+        emailInput.readOnly = false;
+
+        // A conta sempre nasce na escola ativa da sessão (o backend ignora
+        // qualquer escolaId enviado pelo cliente). Deixar o campo livre dava a
+        // impressão de que dava pra cadastrar em outra escola daqui.
+        if (escolaAtiva) {
+            escolaInput.value = escolaAtiva.nome;
+            escolaInput.readOnly = true;
+            if (escolaHint) escolaHint.hidden = false;
+        } else {
+            escolaInput.readOnly = false;
+            if (escolaHint) escolaHint.hidden = true;
+        }
+
         modalCadastro.classList.add('open');
-    });
+    }
+
+    btnNovaSecretaria.addEventListener('click', abrirNovoCadastro);
 
     window.fecharModal = () => {
         modalCadastro.classList.remove('open');
@@ -189,12 +326,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         nomeInput.value = sec.nome || '';
         emailInput.value = sec.email || '';
         telefoneInput.value = sec.telefone || '';
-        escolaInput.value = sec.escola || '';
+        escolaInput.value = sec.escola || (escolaAtiva ? escolaAtiva.nome : '');
         modalTitle.textContent = 'Editar Conta de Secretaria';
         senhaGroup.style.display = 'none';
         senhaInput.required = false;
         statusGroup.style.display = 'block';
         statusSelect.value = String(sec.ativo);
+
+        // E-mail e escola são identidade/tenant da conta: o backend descarta
+        // alterações neles vindas do diretor. Campos editáveis aqui davam a
+        // impressão de que a mudança foi salva quando nada acontecia.
+        emailInput.readOnly = true;
+        escolaInput.readOnly = true;
+        if (escolaHint) escolaHint.hidden = true;
 
         modalCadastro.classList.add('open');
     }
@@ -377,6 +521,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         setTimeout(() => toast.remove(), 4000);
     }
 
-    // Executa primeira carga
-    carregarSecretarias();
+    // Executa primeira carga — a escola ativa vem antes para que o estado
+    // vazio e o modal de cadastro já saibam de qual instituição se trata.
+    (async () => {
+        await carregarEscolaAtiva();
+        await carregarSecretarias();
+    })();
 });
