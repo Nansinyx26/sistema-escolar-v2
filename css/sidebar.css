@@ -227,6 +227,19 @@
     padding: 12px;
 }
 
+/* Item destrutivo (Sair) — antes era um style inline no HTML, que o tema
+   claro não conseguia revestir. */
+.sidebar-item-danger,
+.sidebar-item-danger i,
+.sidebar-item-danger span,
+.sidebar-item-danger:hover {
+    color: #ef4444;
+}
+
+.sidebar-item-danger:hover {
+    background: rgba(239, 68, 68, 0.08);
+}
+
 /* Bottom Actions */
 .sidebar-footer {
     padding: 1rem 12px;

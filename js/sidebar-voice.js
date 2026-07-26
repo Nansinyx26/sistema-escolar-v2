@@ -20,26 +20,39 @@ function initSidebar() {
     
     if (!sidebar || !toggle) return;
 
+    // Troca o chevron do botão de recolher.
+    //
+    // O js/libs/lucide-init.js SUBSTITUI a tag `<i class="bi bi-chevron-left">`
+    // por um `<svg>` (replaceChild). Depois disso `toggle.querySelector('i')`
+    // volta null e o `.classList.replace(...)` antigo estourava um TypeError
+    // não tratado a cada clique — o erro que o `window.onerror` do
+    // js/dashboard.js transformava no toast "Erro interno no Dashboard".
+    // Além disso, trocar a classe no `<svg>` não redesenharia o traço: o
+    // caminho já foi renderizado. Recriamos o `<i>` e mandamos o Lucide
+    // desenhar de novo.
+    const setToggleIcon = (collapsed) => {
+        const icon = toggle.querySelector('i, svg');
+        if (!icon) return;
+        const novo = document.createElement('i');
+        novo.className = collapsed ? 'bi bi-chevron-right' : 'bi bi-chevron-left';
+        icon.replaceWith(novo);
+        if (typeof window.renderLucideIcons === 'function') window.renderLucideIcons();
+    };
+
     // Load state
     const isCollapsed = localStorage.getItem('sidebar_collapsed') === 'true';
     if (isCollapsed) {
         sidebar.classList.add('collapsed');
         wrapper?.classList.add('collapsed');
-        toggle.querySelector('i').classList.replace('bi-chevron-left', 'bi-chevron-right');
+        setToggleIcon(true);
     }
 
     toggle.addEventListener('click', () => {
         const collapsed = sidebar.classList.toggle('collapsed');
         wrapper?.classList.toggle('collapsed');
         localStorage.setItem('sidebar_collapsed', collapsed);
-        
-        // Update icon
-        const icon = toggle.querySelector('i');
-        if (collapsed) {
-            icon.classList.replace('bi-chevron-left', 'bi-chevron-right');
-        } else {
-            icon.classList.replace('bi-chevron-right', 'bi-chevron-left');
-        }
+
+        setToggleIcon(collapsed);
     });
 
     // Mobile logic

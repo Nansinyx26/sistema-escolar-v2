@@ -1207,6 +1207,61 @@
     caret-color: #000000 !important;
 }
 
+/* ======================================================================
+   SIDEBAR NO TEMA CLARO — RÓTULOS SEMPRE LEGÍVEIS
+   ======================================================================
+   O fundo da sidebar é claro no tema claro (--sidebar-bg), mas os rótulos
+   ainda saíam brancos e sumiam. O bloco da linha ~600 não segura os dois
+   casos abaixo, porque perde em especificidade ou em !important:
+
+     - `.high-contrast span { color: #fff !important }` (system-global.css)
+       continua valendo com o Alto Contraste ligado — justamente quando a
+       varredura preta (`:not(.high-contrast)`) NÃO roda;
+     - as cores do tema escuro de sidebar.css (#94a3b8 no item, #fff no
+       hover), herdadas pelo <span> e pelo <i> dentro do item.
+
+   As cores repetem as do bloco da sidebar, agora com !important e
+   especificidade suficiente para vencer as duas.
+   ====================================================================== */
+:root[data-theme="light"] .sidebar .sidebar-logo,
+:root[data-theme="light"] .sidebar .sidebar-logo span,
+:root[data-theme="light"] .sidebar .user-fullname {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+
+:root[data-theme="light"] .sidebar .user-role-tag,
+:root[data-theme="light"] .sidebar .sidebar-group-label {
+    color: #475569 !important;
+    -webkit-text-fill-color: #475569 !important;
+}
+
+/* Item de navegação (texto + ícone, seja <i> da Bootstrap Icons ou o <svg>
+   do Lucide, que pinta com currentColor). O `:not()` preserva o verde do
+   item atual e o vermelho do Sair, tratados logo abaixo. */
+:root[data-theme="light"] .sidebar .sidebar-item:not(.active):not(.sidebar-item-danger),
+:root[data-theme="light"] .sidebar .sidebar-item:not(.active):not(.sidebar-item-danger) :is(span, i, svg) {
+    color: #1e293b !important;
+    -webkit-text-fill-color: #1e293b !important;
+}
+
+:root[data-theme="light"] .sidebar .sidebar-item.active,
+:root[data-theme="light"] .sidebar .sidebar-item.active :is(span, i, svg) {
+    color: #059669 !important;
+    -webkit-text-fill-color: #059669 !important;
+}
+
+:root[data-theme="light"] .sidebar .sidebar-item-danger,
+:root[data-theme="light"] .sidebar .sidebar-item-danger :is(span, i, svg) {
+    color: #ef4444 !important;
+    -webkit-text-fill-color: #ef4444 !important;
+}
+
+:root[data-theme="light"] .sidebar .sidebar-toggle,
+:root[data-theme="light"] .sidebar .sidebar-toggle :is(i, svg) {
+    color: #1e293b !important;
+}
+
 :root[data-theme="light"] ::placeholder {
     color: #000000 !important;
     -webkit-text-fill-color: #000000 !important;
