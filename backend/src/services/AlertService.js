@@ -384,7 +384,7 @@ module.exports = alertService;
  *   const metrics = {
  *     dbHealth: health.database.ok,
  *     cacheHealth: health.cache.ok,
- *     memoryUsage: process.memoryUsage().heapUsed / process.memoryUsage().heapTotal,
+ *     memoryUsage: monitoring.getMemoryUsageRatio(),
  *     errorRate: health.metrics.errors / health.metrics.requests,
  *     responseTime: health.metrics.avgResponseTime,
  *   };

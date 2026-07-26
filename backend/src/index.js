@@ -58,7 +58,7 @@ const startServer = async () => {
                     const metrics = {
                         dbHealth: health.database?.ok ?? false,
                         cacheHealth: health.cache?.ok ?? false,
-                        memoryUsage: process.memoryUsage().heapUsed / process.memoryUsage().heapTotal,
+                        memoryUsage: monitoringService.getMemoryUsageRatio(),
                         errorRate: health.metrics.requests > 0 ? (health.metrics.errors / health.metrics.requests) : 0,
                         responseTime: health.metrics.avgResponseTime || 0,
                     };

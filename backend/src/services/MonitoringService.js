@@ -9,6 +9,7 @@
  */
 
 const os = require('os');
+const v8 = require('v8');
 const mongoose = require('mongoose');
 const { CacheService } = require('./CacheService');
 const logger = require('../utils/LoggerService');
@@ -136,6 +137,18 @@ class MonitoringService {
   }
 
   /**
+   * Fração do heap realmente consumida (0 a 1).
+   *
+   * O denominador é o limite do heap (--max-old-space-size), não o heapTotal:
+   * heapTotal é apenas o heap que o V8 reservou até agora e cresce sob demanda,
+   * então heapUsed/heapTotal beira 95% em qualquer processo saudável antes de
+   * cada ciclo de GC — o que gerava alertas HIGH_MEMORY falsos.
+   */
+  getMemoryUsageRatio() {
+    return process.memoryUsage().heapUsed / v8.getHeapStatistics().heap_size_limit;
+  }
+
+  /**
    * Verificar saúde do sistema
    */
   checkSystem() {
@@ -145,7 +158,8 @@ class MonitoringService {
       const cpuUsage = process.cpuUsage();
       const systemUptime = os.uptime();
 
-      const memPercentage = memUsage.heapUsed / memUsage.heapTotal;
+      const heapLimit = v8.getHeapStatistics().heap_size_limit;
+      const memPercentage = memUsage.heapUsed / heapLimit;
       const nodeVersion = process.version;
       const platform = os.platform();
       const cpus = os.cpus().length;
@@ -160,12 +174,17 @@ class MonitoringService {
       }
 
       return {
-        ok: memPercentage < 0.95, // Alertar se > 95%
+        // Memória alta é sinal de aviso (já emitido acima), não de indisponibilidade.
+        // Reprovar o health check por isso faria load balancers e monitores de uptime
+        // tirarem o processo do ar mesmo com banco e cache saudáveis.
+        ok: true,
         status: 'operational',
         memory: {
           used: Math.round(memUsage.heapUsed / 1024 / 1024) + ' MB',
-          total: Math.round(memUsage.heapTotal / 1024 / 1024) + ' MB',
+          total: Math.round(heapLimit / 1024 / 1024) + ' MB',
           percentage: (memPercentage * 100).toFixed(2) + '%',
+          heapReserved: Math.round(memUsage.heapTotal / 1024 / 1024) + ' MB',
+          rss: Math.round(memUsage.rss / 1024 / 1024) + ' MB',
         },
         cpu: {
           system: Math.round(cpuUsage.system / 1000) + ' ms',
