@@ -211,6 +211,6 @@ async function diagnosticar() {
 
 diagnosticar().catch(async (e) => {
     console.error('\n❌ Falha no diagnóstico:', e.message);
-    try { await mongoose.disconnect(); } catch (_) {}
+    try { await mongoose.disconnect(); } catch (_) { }
     process.exit(1);
 });
