@@ -148,14 +148,18 @@ router.use('/auth', require('./auth'));
 router.use('/escolas', require('./escolas')); // GET público (modal) + troca de escola (auth interna)
 router.use('/responsavel', authJWT, require('./responsavel'));
 router.use('/notificacoes', authJWT, filtrarPorEscola, require('./notificacoes'));
-router.use('/security', authJWT, require('./security'));
+// `filtrarPorEscola`: é o req.escolaId que faz o SecurityController escopar o
+// código de cadastro à escola do diretor em vez do código global da rede.
+router.use('/security', authJWT, filtrarPorEscola, require('./security'));
 router.use('/audit', authJWT, filtrarPorEscola, require('./audit'));
 router.use('/usuarios', authJWT, filtrarPorEscola, require('./usuarios'));
 router.use('/meus-dados', authJWT, require('./meus-dados'));
 router.use('/atribuicoes', authJWT, require('./atribuicoes'));
 router.use('/alunos', authJWT, horizontalFilter, filtrarPorEscola, require('./alunos'));
 router.use('/professores', authJWT, horizontalFilter, filtrarPorEscola, require('./professores'));
-router.use('/diretores', authJWT, require('./diretores'));
+// `filtrarPorEscola` é o que resolve req.escolaId — sem ele o escopo de escola
+// do DirectorController vira no-op e a listagem volta a varrer a rede inteira.
+router.use('/diretores', authJWT, filtrarPorEscola, require('./diretores'));
 router.use('/turmas', authJWT, horizontalFilter, filtrarPorEscola, require('./turmas'));
 router.use('/faltas', authJWT, horizontalFilter, filtrarPorEscola, require('./faltas'));
 router.use('/frequencia-professores', authJWT, horizontalFilter, require('./frequencia-professores'));
@@ -168,7 +172,9 @@ router.use('/reviews', authJWT, require('./reviews'));
 router.use('/reactions', authJWT, require('./reactions'));
 router.use('/notifications/realtime', authJWT, require('./realtime-notifications'));
 router.use('/comunicados', authJWT, filtrarPorEscola, require('./comunicados'));
-router.use('/comentarios', authJWT, require('./comentarios'));
+// `filtrarPorEscola` aqui pelo mesmo motivo de /comunicados: sem req.escolaId
+// o escopo de tenant do guard de thread (assertAcessoAThread) vira no-op.
+router.use('/comentarios', authJWT, filtrarPorEscola, require('./comentarios'));
 router.use('/relatorios', authJWT, horizontalFilter, filtrarPorEscola, require('./relatorios'));
 router.use('/audio', require('./audio'));
 router.use('/tts', authJWT, require('./tts'));

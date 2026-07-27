@@ -232,3 +232,85 @@ describe('GET /api/responsavel/frequencia/:alunoId', () => {
         expect(res.body.data.percentual).toBe(84); // Math.round((56/67)*100) = 84
     });
 });
+
+// ─────────────────────────────────────────────────────────
+// PUT /api/responsavel/aluno/:alunoId/dados
+// Um responsável não pode revogar o acesso do OUTRO responsável:
+// `responsaveis[].email` e `responsavelDados.email` são os campos que o
+// próprio verifyOwnership consulta para autorizar quem vê a ficha.
+// ─────────────────────────────────────────────────────────
+describe('PUT /api/responsavel/aluno/:alunoId/dados — não revoga acesso alheio', () => {
+    const MAE = 'mae@escola.test';
+    const PAI = 'pai@escola.test';
+
+    async function alunoComDoisResponsaveis() {
+        return Aluno.create({
+            nome: 'Aluno', sobrenome: 'Teste', turma: '1A',
+            responsaveis: [
+                { nome: 'Mãe', email: MAE },
+                { nome: 'Pai', email: PAI }
+            ]
+        });
+    }
+
+    it('NÃO deixa remover o outro responsável da lista', async () => {
+        const aluno = await alunoComDoisResponsaveis();
+        const cookie = await cookieResponsavel(MAE);
+
+        const res = await request(app)
+            .put(`/api/responsavel/aluno/${aluno._id}/dados`)
+            .set('Cookie', cookie)
+            .send({ responsaveis: [{ nome: 'Mãe', email: MAE }] }); // pai sumiu
+
+        expect(res.status).toBe(403);
+
+        const depois = await Aluno.findById(aluno._id).lean();
+        const emails = depois.responsaveis.map(r => r.email);
+        expect(emails).toContain(PAI);
+    });
+
+    it('NÃO deixa trocar o e-mail do outro responsável por um terceiro', async () => {
+        const aluno = await alunoComDoisResponsaveis();
+        const cookie = await cookieResponsavel(MAE);
+
+        const res = await request(app)
+            .put(`/api/responsavel/aluno/${aluno._id}/dados`)
+            .set('Cookie', cookie)
+            .send({
+                responsaveis: [
+                    { nome: 'Mãe', email: MAE },
+                    { nome: 'Pai', email: 'atacante@escola.test' }
+                ]
+            });
+
+        expect(res.status).toBe(403);
+
+        const depois = await Aluno.findById(aluno._id).lean();
+        const emails = depois.responsaveis.map(r => r.email);
+        expect(emails).toContain(PAI);
+        expect(emails).not.toContain('atacante@escola.test');
+    });
+
+    it('PERMITE editar os próprios dados sem remover ninguém', async () => {
+        const aluno = await alunoComDoisResponsaveis();
+        const cookie = await cookieResponsavel(MAE);
+
+        const res = await request(app)
+            .put(`/api/responsavel/aluno/${aluno._id}/dados`)
+            .set('Cookie', cookie)
+            .send({
+                responsaveis: [
+                    { nome: 'Mãe Atualizada', email: MAE },
+                    { nome: 'Pai', email: PAI }
+                ],
+                guardaLegal: 'compartilhada'
+            });
+
+        expect(res.status).toBe(200);
+
+        const depois = await Aluno.findById(aluno._id).lean();
+        expect(depois.responsaveis.find(r => r.email === MAE).nome).toBe('Mãe Atualizada');
+        expect(depois.responsaveis.map(r => r.email)).toContain(PAI);
+        expect(depois.guardaLegal).toBe('compartilhada');
+    });
+});

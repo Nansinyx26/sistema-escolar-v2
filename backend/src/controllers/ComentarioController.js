@@ -6,6 +6,70 @@ const logger = require('../utils/logger');
 const mongoose = require('mongoose');
 const { emitirParaMensagem } = require('../utils/realtime');
 
+/**
+ * ACESSO À THREAD (comunicado ou notificação).
+ *
+ * As rotas de comentário recebiam só o id da mensagem e devolviam/aceitavam
+ * comentários sem verificar NADA além de estar autenticado: qualquer conta lia
+ * a thread de qualquer comunicado — inclusive de outra escola, e inclusive de
+ * comunicados internos endereçados só à direção — bastando o `_id`, que vaza em
+ * listagem, notificação e no payload do Socket.IO.
+ *
+ * A regra de quem enxerga a thread é a MESMA de quem enxerga a mensagem, então
+ * ela é importada do ComunicadoController em vez de reescrita aqui.
+ *
+ * @returns {Promise<{ok: true} | {ok: false, status: number, error: string}>}
+ */
+async function assertAcessoAThread(req, { comunicadoId, notificacaoId }) {
+    const perfil = String(req.user?.perfil || '').toLowerCase();
+
+    if (comunicadoId) {
+        const { podeVerComunicado, escopoEscola } = require('./ComunicadoController');
+
+        const comunicado = await Comunicado.findOne(
+            escopoEscola(req, { _id: String(comunicadoId), ativo: true })
+        ).lean().catch(() => null);
+
+        // 404 (e não 403) quando o comunicado é de outra escola: distinguir os
+        // dois casos confirmaria a existência do id no outro tenant.
+        if (!comunicado) {
+            return { ok: false, status: 404, error: 'Comunicado não encontrado.' };
+        }
+        if (!(await podeVerComunicado(comunicado, req.user))) {
+            return { ok: false, status: 403, error: 'Você não tem acesso a este comunicado.' };
+        }
+        return { ok: true };
+    }
+
+    if (notificacaoId) {
+        const Notificacao = require('../models/Notificacao');
+        const notificacao = await Notificacao.findOne(buildNotifQuery(notificacaoId)).lean().catch(() => null);
+        if (!notificacao) {
+            return { ok: false, status: 404, error: 'Notificação não encontrada.' };
+        }
+
+        // Notificação não tem a regra de destinatários modelada como o
+        // comunicado (o campo é Mixed e cada emissor grava num formato). O que
+        // dá para impor com segurança aqui é a fronteira de tenant, que é
+        // justamente o que faltava. Admin é global por definição.
+        if (perfil !== 'admin' && req.escolaId && notificacao.escolaId
+            && String(notificacao.escolaId) !== String(req.escolaId)) {
+            return { ok: false, status: 404, error: 'Notificação não encontrada.' };
+        }
+        return { ok: true };
+    }
+
+    return { ok: false, status: 400, error: 'Informe o comunicado ou a notificação.' };
+}
+
+/** Filtro que casa a notificação por _id (quando ObjectId) ou pelo `id` textual. */
+function buildNotifQuery(notificacaoId) {
+    const valor = String(notificacaoId);
+    return mongoose.Types.ObjectId.isValid(valor)
+        ? { $or: [{ _id: valor }, { id: valor }] }
+        : { id: valor };
+}
+
 exports.add = async (req, res) => {
     try {
         const { comunicadoId, notificacaoId, texto, audioUrl, parentId } = req.body;
@@ -14,7 +78,14 @@ exports.add = async (req, res) => {
         if ((!comunicadoId && !notificacaoId) || (!texto && !audioUrl)) {
             return res.status(400).json({ success: false, error: 'ID (comunicado ou notificação) e conteúdo (texto ou áudio) são obrigatórios.' });
         }
- 
+
+        // Só comenta quem enxerga a mensagem. Sem isto, qualquer autenticado
+        // injetava comentário na thread de qualquer comunicado da rede.
+        const acesso = await assertAcessoAThread(req, { comunicadoId, notificacaoId });
+        if (!acesso.ok) {
+            return res.status(acesso.status).json({ success: false, error: acesso.error });
+        }
+
         const usuario = await Usuario.findById(usuarioId).lean();
         if (!usuario) {
             return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
@@ -133,7 +204,12 @@ exports.update = async (req, res) => {
 exports.getByComunicado = async (req, res) => {
     try {
         const { comunicadoId } = req.params;
-        
+
+        const acesso = await assertAcessoAThread(req, { comunicadoId });
+        if (!acesso.ok) {
+            return res.status(acesso.status).json({ success: false, error: acesso.error });
+        }
+
         // Busca robusta: tenta por ObjectId e por string para cobrir ambos os casos
         const queries = [{ comunicadoId, ativo: true }];
         if (mongoose.Types.ObjectId.isValid(comunicadoId)) {
@@ -167,6 +243,12 @@ exports.getByComunicado = async (req, res) => {
 exports.getByNotificacao = async (req, res) => {
     try {
         const { notificacaoId } = req.params;
+
+        const acesso = await assertAcessoAThread(req, { notificacaoId });
+        if (!acesso.ok) {
+            return res.status(acesso.status).json({ success: false, error: acesso.error });
+        }
+
         let comentarios = await Comentario.find({ notificacaoId, ativo: true })
             .populate('usuarioId', 'nome foto fotoGoogle perfil')
             .sort({ dataCriacao: 1 })

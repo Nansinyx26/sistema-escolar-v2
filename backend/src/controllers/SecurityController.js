@@ -6,35 +6,55 @@ const { notificarRotacaoCodigo } = require('../utils/emailNotifications');
 
 class SecurityController {
     /**
-     * Gera um novo código aleatório de 10 caracteres
-     * Contém: maiúsculas, minúsculas, números e caracteres especiais
+     * Gera um novo código de cadastro.
+     *
+     * O ALFABETO NÃO TEM CARACTERES ESPECIAIS — de propósito.
+     * ======================================================
+     * A versão anterior sorteava de `!@#$%&*_+-=`. Como o código sempre chega
+     * ao servidor DENTRO DO CORPO da requisição (validate-code,
+     * register-diretor, register-secretaria, escolas/mudar), ele passa antes
+     * pela sanitização global do app.js, que roda `sanitize-html` em toda
+     * string do body. E ali:
+     *     'aB3&xY9'  →  'aB3&amp;xY9'      (reescrito)
+     *     'k#7$mQ<w' →  'k#7$mQ'           (truncado!)
+     * O valor comparado em `validateCode` nunca batia com o gravado no banco.
+     * Com `&` no alfabeto de 73 chars e 10 posições, ~13% dos códigos gerados
+     * nasciam INUTILIZÁVEIS — o cadastro rejeitava um código correto e não
+     * havia sintoma que apontasse para a causa.
+     *
+     * Este é o mesmo alfabeto de `gerarCodigoEscola` (routes/escolas.js) e do
+     * seed: sem caracteres ambíguos (0/O, 1/I/l), porque o código é ditado por
+     * telefone e transcrito à mão. 53^10 ≈ 2^57 de espaço — entropia de sobra
+     * para um segredo rotacionável.
      */
     generateCode(length = 10) {
-        const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        const lower = 'abcdefghijklmnopqrstuvwxyz';
-        const digits = '0123456789';
-        const special = '!@#$%&*_+-=';
-        const all = upper + lower + digits + special;
-
-        // Garante pelo menos 1 de cada tipo
+        const ALFABETO = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
         let code = '';
-        code += upper[crypto.randomInt(upper.length)];
-        code += lower[crypto.randomInt(lower.length)];
-        code += digits[crypto.randomInt(digits.length)];
-        code += special[crypto.randomInt(special.length)];
-
-        // Preenche o restante aleatoriamente
-        for (let i = code.length; i < length; i++) {
-            code += all[crypto.randomInt(all.length)];
+        for (let i = 0; i < length; i++) {
+            code += ALFABETO[crypto.randomInt(ALFABETO.length)];
         }
+        return code;
+    }
 
-        // Embaralha para não ter padrão previsível (Fisher-Yates)
-        const arr = code.split('');
-        for (let i = arr.length - 1; i > 0; i--) {
-            const j = crypto.randomInt(i + 1);
-            [arr[i], arr[j]] = [arr[j], arr[i]];
-        }
-        return arr.join('');
+    /**
+     * ESCOPO DO CÓDIGO — por que diretor e admin veem coisas diferentes
+     * ================================================================
+     * `CONFIG_GERAL` é o código GLOBAL de transição: `validateCode` o aceita
+     * para criar conta de diretor E de secretaria na escola ativa. Enquanto
+     * getStatus/forceRotate operavam nele para qualquer perfil, o diretor de
+     * QUALQUER escola lia e rotacionava a credencial que cria contas de nível
+     * gestor — e a rotação afetava a rede inteira.
+     *
+     * Agora: admin continua no código global; diretor/secretaria operam no
+     * `codigoSecreto` da PRÓPRIA escola (mesmo campo que o painel do admin
+     * gerencia em /api/escolas/:id/codigo-secreto). O formato da resposta não
+     * muda — o frontend segue lendo `data.codigo`.
+     */
+    async escolaDaSessao(req) {
+        if (String(req.user?.perfil || '').toLowerCase() === 'admin') return null;
+        if (!req.escolaId) return null;
+        const Escola = require('../models/Escola');
+        return Escola.findById(String(req.escolaId)).select('+codigoSecreto nome ativo').catch(() => null);
     }
 
     /**
@@ -42,8 +62,37 @@ class SecurityController {
      */
     async getStatus(req, res) {
         try {
+            // Diretor/secretaria: código da própria escola.
+            const escola = await this.escolaDaSessao(req);
+            if (escola) {
+                if (!escola.codigoSecreto) {
+                    escola.codigoSecreto = this.generateCode();
+                    await escola.save();
+                }
+                return res.json({
+                    success: true,
+                    data: {
+                        codigo: escola.codigoSecreto,
+                        escopo: 'escola',
+                        escolaNome: escola.nome,
+                        rotacaoAtiva: false
+                    }
+                });
+            }
+
+            // Falha FECHADA, igual ao forceRotate: sem escola resolvida, um
+            // não-admin não cai no código global. LER esse código já é o
+            // suficiente para se cadastrar como diretor — é credencial, não
+            // informação de status.
+            if (String(req.user?.perfil || '').toLowerCase() !== 'admin') {
+                return res.status(409).json({
+                    success: false,
+                    error: 'Não foi possível identificar sua escola. Faça login novamente para ver o código de cadastro.'
+                });
+            }
+
             let config = await SecurityConfig.findOne({ chave: 'CONFIG_GERAL' });
-            
+
             if (!config) {
                 config = await SecurityConfig.create({
                     codigoSecretoEscola: this.generateCode(),
@@ -77,19 +126,56 @@ class SecurityController {
     }
 
     /**
-     * Força a rotação do código (Apenas Admin)
+     * Força a rotação do código.
+     * Admin → código global (CONFIG_GERAL). Diretor/secretaria → código da
+     * própria escola. Ver a nota de escopo em `escolaDaSessao`.
      */
     async forceRotate(req, res) {
         try {
-            const config = await SecurityConfig.findOne({ chave: 'CONFIG_GERAL' });
+            // Diretor/secretaria: rotaciona SOMENTE a própria escola.
+            const escola = await this.escolaDaSessao(req);
+            if (escola) {
+                escola.codigoSecreto = this.generateCode();
+                await escola.save();
+
+                await logAction(req, 'ROTATE_SECRET_CODE', 'Segurança', {
+                    recursoId: String(escola._id),
+                    descricao: `Código secreto da escola "${escola.nome}" foi alterado manualmente.`
+                });
+
+                return res.json({
+                    success: true,
+                    message: `Novo código gerado para ${escola.nome}.`,
+                    data: { codigo: escola.codigoSecreto, escopo: 'escola', escolaNome: escola.nome }
+                });
+            }
+
+            // Sem contexto de escola resolvido e não sendo admin: falha fechada.
+            // Cair no código global aqui era exatamente o furo — um diretor sem
+            // tenant resolvido rotacionava a credencial de cadastro da rede.
+            if (String(req.user?.perfil || '').toLowerCase() !== 'admin') {
+                return res.status(409).json({
+                    success: false,
+                    error: 'Não foi possível identificar sua escola. Faça login novamente antes de gerar um novo código.'
+                });
+            }
+
+            let config = await SecurityConfig.findOne({ chave: 'CONFIG_GERAL' });
+            if (!config) {
+                config = await SecurityConfig.create({
+                    codigoSecretoEscola: this.generateCode(),
+                    dataUltimaRotacao: new Date(),
+                    rotacaoAutomatica: true
+                });
+            }
             await this.rotateCodeInternal(config, req.user.nome);
-            
+
             await logAction(req, 'ROTATE_SECRET_CODE', 'Segurança', {
-                descricao: 'Código secreto da escola foi alterado manualmente'
+                descricao: 'Código secreto GLOBAL foi alterado manualmente'
             });
 
-            res.json({ 
-                success: true, 
+            res.json({
+                success: true,
                 message: 'Novo código gerado com sucesso',
                 data: {
                     codigo: config.codigoSecretoEscola
@@ -216,44 +302,15 @@ class SecurityController {
         }
     }
 
-    // --------------------------------------------------
-    // Diretor: gerar código personalizado para cadastro de professores
-    // --------------------------------------------------
-    async generateDirectorCode(req, res) {
-        try {
-            // Apenas diretores autenticados podem acessar (middleware garante)
-            const { length = 8 } = req.body; // opcional, tamanho do código
-            const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=';
-            let code = '';
-            for (let i = 0; i < length; i++) {
-                const randomIdx = crypto.randomInt(charset.length);
-                code += charset[randomIdx];
-            }
-            // Atualiza a configuração geral com o novo código
-            let config = await SecurityConfig.findOne({ chave: 'CONFIG_GERAL' });
-            if (!config) {
-                config = await SecurityConfig.create({
-                    codigoSecretoEscola: code,
-                    dataUltimaRotacao: new Date(),
-                    rotacaoAutomatica: false
-                });
-            } else {
-                config.codigoSecretoEscola = code;
-                config.dataUltimaRotacao = new Date();
-                config.rotacaoAutomatica = false;
-                await config.save();
-            }
-            console.log(`🔐 [SECURITY] Diretor gerou código personalizado: ${code}`);
-            // Notifica admins sobre a geração do código
-            const admins = await Usuario.find({ perfil: 'admin', ativo: true }).select('email').lean();
-            const adminEmails = admins.map(a => a.email);
-            await notificarRotacaoCodigo(adminEmails, code, req.user.nome || 'Diretor');
-            res.json({ success: true, codigo: code, mensagem: 'Código gerado com sucesso.' });
-        } catch (e) {
-            console.error('[SECURITY] Erro ao gerar código pelo diretor:', e);
-            res.status(500).json({ success: false, error: e.message });
-        }
-    }
+    // NOTA: `generateDirectorCode` foi REMOVIDO.
+    //
+    // Era um handler nunca roteado (nenhuma rota, nenhum caller no backend nem
+    // no frontend) que sobrescrevia o código GLOBAL de cadastro e ainda desligava
+    // a rotação automática (`rotacaoAutomatica: false`), deixando o código
+    // congelado indefinidamente. Handler privilegiado e órfão é só um convite
+    // a ser religado sem revisão. Quem precisa gerar código por escola usa
+    // `forceRotate` (escopado acima) ou, como admin,
+    // POST /api/escolas/:escolaId/codigo-secreto.
 }
 
 module.exports = new SecurityController();

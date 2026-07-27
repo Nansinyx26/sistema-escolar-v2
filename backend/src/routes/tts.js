@@ -6,15 +6,43 @@ const authJWT = require('../middleware/authJWT');
 const TtsAudioCache = require('../models/TtsAudioCache');
 const TTSService = require('../services/TTSService');
 const voiceService = require('../services/voiceService');
+const { ttsUsuarioLimiter, ttsIpLimiter } = require('../middleware/rateLimiters');
+
+// ============================================
+// COTA DE API EXTERNA PAGA
+// ============================================
+// Cada chamada de síntese consome cota da ElevenLabs/Gemini, faturada ao
+// projeto. Antes o único freio era o globalLimiter (2000 req/15min por IP), o
+// que deixava qualquer conta autenticada queimar a cota inteira — e o texto
+// sintetizado vinha do corpo, sem teto de tamanho. Não é vazamento de dado; é
+// negação de serviço com custo financeiro.
+const limitarTTS = [ttsIpLimiter, ttsUsuarioLimiter];
+
+// Teto de caracteres por chamada. O provedor cobra por caractere, então um
+// único POST com megabytes de texto valia por milhares de requisições.
+const MAX_CARACTERES_TTS = 5000;
+
+function textoDentroDoLimite(res, texto) {
+    if (String(texto).length <= MAX_CARACTERES_TTS) return true;
+    res.status(413).json({
+        success: false,
+        error: `Texto muito longo para narração (máximo ${MAX_CARACTERES_TTS} caracteres).`
+    });
+    return false;
+}
 
 /**
  * POST /api/tts/speak — Gera texto via Gemini e Áudio via ElevenLabs
  * Se 'prompt' for enviado, gera o texto antes. Se 'text' for enviado, sintetiza direto.
  */
-router.post('/speak', authJWT, async (req, res) => {
+router.post('/speak', authJWT, limitarTTS, async (req, res) => {
     let { text, prompt, voiceId } = req.body;
 
     try {
+        // Valida ANTES de chamar o Gemini: o prompt também é entrada paga.
+        if (typeof prompt === 'string' && !textoDentroDoLimite(res, prompt)) return;
+        if (typeof text === 'string' && !textoDentroDoLimite(res, text)) return;
+
         // 1. Gerar texto via Gemini se houver prompt
         if (prompt && !text) {
             text = await voiceService.generateInsightText(prompt);
@@ -65,9 +93,10 @@ router.post('/speak', authJWT, async (req, res) => {
 /**
  * POST /api/tts — Legado/Simples (Sintetiza direto)
  */
-router.post('/', authJWT, async (req, res) => {
+router.post('/', authJWT, limitarTTS, async (req, res) => {
     const { text } = req.body;
     if (!text) return res.status(400).json({ success: false, error: 'Texto obrigatório' });
+    if (!textoDentroDoLimite(res, text)) return;
 
     try {
         const result = await TTSService.synthesize(text);

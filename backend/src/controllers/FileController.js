@@ -59,6 +59,15 @@ async function autorizarArquivo(req, fileDoc) {
         return { ok: false, status: 403, error: 'Arquivo de outra escola.' };
     }
 
+    // Mensagem de voz de comentário: destinada à audiência do comunicado, não
+    // só a quem gravou. Restringir ao dono quebraria o áudio dos comentários.
+    // A fronteira que importa aqui já foi aplicada acima (mesma escola); o que
+    // esta regra NÃO faz é liberar qualquer outro arquivo do bucket — quem
+    // chama por /api/audio ainda precisa passar pelo filtro de contentType.
+    if (meta.type === 'voice_message') {
+        return { ok: true };
+    }
+
     if (meta.alunoId) {
         const acesso = await assertAcessoAoAluno(req, String(meta.alunoId));
         if (!acesso.ok) return { ok: false, status: 403, error: 'Acesso negado a este documento.' };
@@ -78,6 +87,12 @@ async function autorizarArquivo(req, fileDoc) {
     }
     return { ok: true };
 }
+
+// Reexportados para que QUALQUER rota que sirva bytes do bucket 'uploads' use
+// a mesma decisão de autorização. O bucket é único: uma rota que leia dele por
+// conta própria (era o caso de /api/audio/:id) contorna todo este arquivo.
+exports.autorizarArquivo = autorizarArquivo;
+exports.findFileDoc = findFileDoc;
 
 /**
  * Serve um arquivo do GridFS (rotas autenticadas — fotos e documentos).

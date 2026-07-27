@@ -48,6 +48,12 @@ async function podeVerComunicado(comunicado, user) {
     return destinatarios.some(d => alvos.includes(d));
 }
 
+// Reexportados para o ComentarioController: quem pode LER/COMENTAR um
+// comunicado é exatamente quem pode vê-lo. Duplicar a regra lá significaria
+// duas definições de visibilidade que divergem com o tempo.
+exports.podeVerComunicado = podeVerComunicado;
+exports.escopoEscola = escopoEscola;
+
 exports.create = async (req, res) => {
     try {
         const { titulo, conteudo, imagens, destinatarios, categoria, prioridade, arquivos, dataAgendada } = req.body;

@@ -777,6 +777,47 @@ exports.updateAlunoDados = async (req, res) => {
             return res.status(400).json({ success: false, error: 'Máximo de 2 responsáveis por aluno.' });
         }
 
+        // ============================================
+        // O RESPONSÁVEL NÃO REVOGA O ACESSO DE OUTRO
+        // ============================================
+        // `responsaveis[].email` e `responsavelDados.email` são exatamente os
+        // campos que `verifyOwnership` consulta para decidir quem pode ver a
+        // ficha do aluno. Como esta rota deixava o responsável reescrevê-los à
+        // vontade, ele podia sobrescrever a lista e DERRUBAR o acesso do outro
+        // responsável à ficha do próprio filho — sem passar pela escola.
+        // Num sistema que modela `guardaLegal`, isso é munição para disputa de
+        // guarda, não um detalhe teórico.
+        //
+        // Regra: pode adicionar e editar dados, não pode fazer um e-mail já
+        // cadastrado DESAPARECER. Remoção é ato da secretaria/direção, pelas
+        // rotas de /api/alunos.
+        if (update.responsaveis !== undefined || update.responsavelDados !== undefined) {
+            const atual = await Aluno.findOne({ $or: [{ _id: alunoId }, { id: alunoId }] })
+                .select('responsaveis responsavelDados').lean();
+
+            const emailsDe = (doc) => {
+                const lista = Array.isArray(doc?.responsaveis) ? doc.responsaveis : [];
+                const emails = lista.map(r => String(r?.email || '').toLowerCase()).filter(Boolean);
+                const principal = String(doc?.responsavelDados?.email || '').toLowerCase();
+                if (principal) emails.push(principal);
+                return emails;
+            };
+
+            const antes = new Set(emailsDe(atual));
+            const depois = new Set(emailsDe({
+                responsaveis: update.responsaveis !== undefined ? update.responsaveis : atual?.responsaveis,
+                responsavelDados: update.responsavelDados !== undefined ? update.responsavelDados : atual?.responsavelDados
+            }));
+
+            const removidos = [...antes].filter(e => !depois.has(e));
+            if (removidos.length > 0) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Não é possível remover um responsável já cadastrado. Solicite a alteração à secretaria da escola.'
+                });
+            }
+        }
+
         const aluno = await Aluno.findOneAndUpdate(
             { $or: [{ _id: alunoId }, { id: alunoId }] },
             { $set: update },

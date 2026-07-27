@@ -116,6 +116,31 @@ function limiterPorConta({ windowMs, maxProd, maxDev, mensagem }) {
     });
 }
 
+/**
+ * Fábrica de limiter keyed pelo USUÁRIO AUTENTICADO.
+ *
+ * Diferente de `limiterPorConta` (que lê o alvo do corpo, para rotas
+ * pré-autenticação), este usa `req.user` — serve para rotas já autenticadas
+ * cujo custo não é de segurança e sim de RECURSO: cada chamada gasta cota de
+ * uma API externa paga. Sem ele, o teto efetivo era só o globalLimiter
+ * (milhares de req/15min por IP), o que torna trivial queimar a cota de
+ * ElevenLabs/Gemini do projeto com uma única conta válida.
+ *
+ * Sem usuário resolvido, cai no limiter por IP que roda em série.
+ */
+function limiterPorUsuario({ windowMs, maxProd, maxDev, mensagem }) {
+    const idDoUsuario = (req) => String(req.user?.id || req.user?._id || '');
+    return rateLimit({
+        windowMs,
+        max: isProduction ? maxProd : maxDev,
+        keyGenerator: (req) => `user:${idDoUsuario(req)}`,
+        skip: (req) => isTest || !idDoUsuario(req),
+        message: mensagem || RESPOSTA_PADRAO,
+        standardHeaders: true,
+        legacyHeaders: false
+    });
+}
+
 const QUINZE_MIN = 15 * 60 * 1000;
 const UMA_HORA = 60 * 60 * 1000;
 
@@ -202,6 +227,30 @@ const authPrefixLimiter = limiterPorIp({
     pular: (req) => isTest || req.method === 'GET' || req.method === 'HEAD'
 });
 
+// ── Síntese de voz (TTS) — cota de API externa PAGA ──────────────────────────
+// Teto por conta (não por IP): o custo é por chamada e pertence ao projeto,
+// não à rede de origem. 60/hora cobre com folga a narração de uma sessão de uso
+// real; ajustável por RATE_LIMIT_TTS_USUARIO.
+const ttsUsuarioLimiter = limiterPorUsuario({
+    windowMs: UMA_HORA,
+    maxProd: tetoEnv('RATE_LIMIT_TTS_USUARIO', 60),
+    maxDev: 600,
+    mensagem: {
+        success: false,
+        error: 'Limite de narrações por hora atingido. Tente novamente mais tarde.'
+    }
+});
+
+const ttsIpLimiter = limiterPorIp({
+    windowMs: UMA_HORA,
+    maxProd: tetoEnv('RATE_LIMIT_TTS_IP', 120),
+    maxDev: 1200,
+    mensagem: {
+        success: false,
+        error: 'Limite de narrações por hora atingido. Tente novamente mais tarde.'
+    }
+});
+
 module.exports = {
     globalLimiter,
     authIpLimiter,
@@ -209,6 +258,8 @@ module.exports = {
     codeIpLimiter,
     codeContaLimiter,
     authPrefixLimiter,
+    ttsUsuarioLimiter,
+    ttsIpLimiter,
     // exportados para teste
     chaveIp,
     identificadorDaConta
