@@ -73,7 +73,7 @@ exports.list = async (req, res) => {
 
             if (!existingProf) {
                 console.log(`🔧 [AUTO-HEAL] Sincronizando perfil pedagógico de Professor em falta para: ${u.nome} (${u.email})`);
-                const materiasEspeciais = ['Inglês', 'Educação Física', 'Artes', 'SEBRAE', 'Oficina de Leitura'];
+                const materiasEspeciais = ['Inglês', 'Educação Física', 'Artes', 'SEBRAE', 'Oficina de Leitura', 'Of. Maker'];
                 const disc = u.disciplina || 'Geral';
                 const isEspecial = materiasEspeciais.includes(disc);
                 const t = u.turma || '';
@@ -271,62 +271,135 @@ exports.delete = async (req, res) => {
 
 /**
  * GET /api/professores/status-online
- * Lista os professores da escola ativa com foto, nome, escola, sala e status
- * online. Usado pelo card em tempo real dos painéis de diretor e professor.
+ * Lista a equipe escolar (professores e diretores) da escola ativa com foto,
+ * nome, cargo, escola, sala, mensagens não lidas e status online.
+ * Usado pelo card em tempo real dos painéis de diretor e professor.
  */
 exports.statusOnline = async (req, res) => {
     try {
         const presence = require('../realtime/presence');
         const Escola = require('../models/Escola');
+        const Diretor = require('../models/Diretor');
+        const ChatDireto = require('../models/ChatDireto');
+
         const escopo = escopoEscola(req) || {};
+        const escolaId = req.escolaId;
+
+        // Busca professores da escola
         const profs = await Professor.find(escopo)
             .select('nome foto salaPrincipal idUsuario escola vinculos')
             .lean();
 
-        const escolaId = req.escolaId;
+        // Busca diretores da escola
+        const escopoDiretores = escolaId ? { 'vinculos.escolaId': String(escolaId) } : {};
+        const diretores = await Diretor.find(escopoDiretores)
+            .select('nome foto idUsuario escola vinculos')
+            .lean();
 
-        // Nome da escola: os vínculos guardam só o id. Uma consulta resolve
-        // todos (o admin, sem escola ativa, vê docentes de escolas diferentes).
+        // Contagem de mensagens não lidas enviadas para o usuário logado
+        const meuId = String(req.user?.id || req.user?._id || '');
+        const unreadsAgg = meuId ? await ChatDireto.aggregate([
+            { $match: { destinatarioId: meuId, lida: false } },
+            { $group: { _id: '$remetenteId', count: { $sum: 1 } } }
+        ]) : [];
+
+        const unreadsMap = new Map();
+        unreadsAgg.forEach(u => unreadsMap.set(String(u._id), u.count));
+
+        // Mapeia nomes das escolas
         const ehObjectId = (v) => /^[0-9a-fA-F]{24}$/.test(String(v || ''));
         const ids = new Set();
         if (ehObjectId(escolaId)) ids.add(String(escolaId));
         profs.forEach((p) => (p.vinculos || []).forEach((v) => {
-            // Vínculo legado ('default', vazio) quebraria o cast de _id.
             if (ehObjectId(v?.escolaId)) ids.add(String(v.escolaId));
         }));
+        diretores.forEach((d) => (d.vinculos || []).forEach((v) => {
+            if (ehObjectId(v?.escolaId)) ids.add(String(v.escolaId));
+        }));
+
         const nomePorEscolaId = new Map();
         if (ids.size > 0) {
             const escolas = await Escola.find({ _id: { $in: [...ids] } }).select('nome').lean();
             escolas.forEach((e) => nomePorEscolaId.set(String(e._id), e.nome));
         }
 
-        /** Escola exibida: a ativa da sessão, senão o primeiro vínculo, senão o campo legado. */
-        const nomeDaEscola = (p) => {
-            const vinculos = Array.isArray(p.vinculos) ? p.vinculos : [];
+        const nomeDaEscola = (item) => {
+            const vinculos = Array.isArray(item.vinculos) ? item.vinculos : [];
             const alvo = escolaId && vinculos.some((v) => String(v.escolaId) === String(escolaId))
                 ? String(escolaId)
                 : (vinculos[0]?.escolaId ? String(vinculos[0].escolaId) : null);
-            return (alvo && nomePorEscolaId.get(alvo)) || p.escola || '—';
+            return (alvo && nomePorEscolaId.get(alvo)) || item.escola || '—';
         };
 
-        const lista = profs.map((p) => ({
-            id: String(p._id),
-            userId: p.idUsuario ? String(p.idUsuario) : null,
-            nome: p.nome,
-            foto: p.foto || null,
-            escola: nomeDaEscola(p),
-            sala: p.salaPrincipal || '—',
-            online: escolaId ? presence.isOnline(escolaId, p.idUsuario) : false,
-        }));
+        // Presença agregada: 'online' | 'ausente' | 'offline', desde quando
+        // está online e último acesso conhecido (ver realtime/presence.js).
+        const presencaDe = (uid) => (
+            escolaId
+                ? presence.infoDe(escolaId, uid)
+                : { status: 'offline', online: false, onlineDesde: null, ultimoAcesso: null }
+        );
 
-        // Online primeiro, depois alfabético.
-        lista.sort((a, b) => (Number(b.online) - Number(a.online)) || a.nome.localeCompare(b.nome, 'pt-BR'));
+        const listaProfs = profs.map((p) => {
+            const uid = p.idUsuario ? String(p.idUsuario) : String(p._id);
+            const pres = presencaDe(uid);
+            return {
+                id: String(p._id),
+                userId: uid,
+                nome: p.nome,
+                cargo: 'Professor',
+                foto: p.foto || null,
+                escola: nomeDaEscola(p),
+                sala: p.salaPrincipal || '—',
+                online: pres.online,
+                status: pres.status,
+                onlineDesde: pres.onlineDesde,
+                ultimoAcesso: pres.ultimoAcesso,
+                unreadsCount: unreadsMap.get(uid) || 0
+            };
+        });
+
+        const listaDiretores = diretores.map((d) => {
+            const uid = d.idUsuario ? String(d.idUsuario) : String(d._id);
+            const pres = presencaDe(uid);
+            return {
+                id: String(d._id),
+                userId: uid,
+                nome: d.nome,
+                cargo: 'Diretor',
+                foto: d.foto || null,
+                escola: nomeDaEscola(d),
+                sala: 'Direção Geral',
+                online: pres.online,
+                status: pres.status,
+                onlineDesde: pres.onlineDesde,
+                ultimoAcesso: pres.ultimoAcesso,
+                unreadsCount: unreadsMap.get(uid) || 0
+            };
+        });
+
+        // Junta Professores e Diretores
+        const lista = [...listaDiretores, ...listaProfs];
+
+        // Evita duplicatas se um diretor também tiver registro de professor
+        const vistos = new Set();
+        const listaUnica = lista.filter(item => {
+            if (!item.userId || vistos.has(item.userId)) return false;
+            vistos.add(item.userId);
+            return true;
+        });
+
+        // Ordena: Online primeiro, depois Diretor primeiro, depois alfabético
+        listaUnica.sort((a, b) => {
+            if (Number(b.online) !== Number(a.online)) return Number(b.online) - Number(a.online);
+            if (a.cargo !== b.cargo) return a.cargo === 'Diretor' ? -1 : 1;
+            return a.nome.localeCompare(b.nome, 'pt-BR');
+        });
 
         res.json({
             success: true,
-            data: lista,
-            online: lista.filter((p) => p.online).length,
-            total: lista.length,
+            data: listaUnica,
+            online: listaUnica.filter((p) => p.online).length,
+            total: listaUnica.length,
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });

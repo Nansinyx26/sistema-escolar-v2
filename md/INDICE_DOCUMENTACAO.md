@@ -56,6 +56,19 @@
 
 ---
 
+### 3️⃣.1 Chat Interno em Tempo Real
+**[CHAT_INTERNO_TEMPO_REAL.md](CHAT_INTERNO_TEMPO_REAL.md)**
+- ✅ Mapa dos arquivos (card online, janelas flutuantes, API, presença)
+- ✅ Endpoints REST e eventos Socket.IO
+- ✅ Status online / ausente / offline e "visto por último"
+- ✅ Anexos, áudio, reações, encaminhar, busca e lazy loading
+- ✅ Responsividade, tema claro/escuro e regras de segurança
+- ✅ Como abrir uma conversa de outra página (`window.abrirChatCom`)
+
+**Quando ler:** Ao mexer no chat direto ou no card de usuários online
+
+---
+
 ### 4️⃣ Resumo Executivo
 **[RESUMO_IMPLEMENTACOES.md](RESUMO_IMPLEMENTACOES.md)**
 - ✅ Resumo de P0 + P1

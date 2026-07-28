@@ -43,7 +43,8 @@
     <link rel="stylesheet" href="../../css/announcement-feed-legacy.css?v=1.0">
     <link rel="stylesheet" href="../../css/sidebar.css?v=1.2">
     <link rel="stylesheet" href="../../css/chatbot-ia.css?v=1.0">
-    <link rel="stylesheet" href="../../css/professores-online.css?v=1.0">
+    <link rel="stylesheet" href="../../css/professores-online.css?v=2.0">
+    <link rel="stylesheet" href="../../css/chat-flutuante.css?v=2.0">
     <!-- React 18 + Framer Motion (Localized) -->
     <script src="../../js/libs/react.min.js"></script>
     <script src="../../js/libs/react-dom.min.js"></script>
@@ -117,6 +118,10 @@
             <a href="/html/meus-dados.html" class="sidebar-item" data-page="dados">
                 <i class="bi bi-shield-check"></i>
                 <span>Meus Dados</span>
+            </a>
+            <a href="/html/planilha-faltas.html" class="sidebar-item" data-page="planilha-faltas">
+                <i class="bi bi-journal-check"></i>
+                <span>Planilha de Faltas</span>
             </a>
             <a href="/direcao/codigos-secretos.html" class="sidebar-item" data-page="codigos">
                 <i class="bi bi-key-fill"></i>
@@ -324,13 +329,13 @@
         </div>
     </div>
 
-    <!-- Painel Flutuante: Professores Online -->
+    <!-- Painel Flutuante: Equipe da Escola (Professores e Diretores) -->
     <div id="profsPanelOverlay" class="profs-panel-overlay"></div>
     <div id="profsPanel" class="profs-panel">
         <div class="profs-panel-header">
             <div class="profs-panel-title">
                 <i class="bi bi-people-fill"></i>
-                <span>Professores</span>
+                <span>Equipe Escolar</span>
                 <span class="profs-panel-badge" id="profsPanelCount">0 online</span>
             </div>
             <button class="profs-panel-close" id="profsPanelClose" aria-label="Fechar">
@@ -341,7 +346,7 @@
             <div class="po-empty">Carregando…</div>
         </div>
     </div>
-    <button class="profs-fab" id="profsFab" title="Professores Online" aria-label="Ver professores online">
+    <button class="profs-fab" id="profsFab" title="Equipe Online" aria-label="Ver professores e diretores online">
         <i class="bi bi-people-fill"></i>
         <span class="profs-fab-badge" id="profsFabBadge">0</span>
     </button>
@@ -358,7 +363,12 @@
     <script src="../../js/voice-orb.js?v=1.0"></script>
     <script src="../../js/sidebar-voice.js?v=4.0"></script>
     <script src="../../direcao/direcao.js"></script>
-    <script src="../../js/professores-online.js?v=1.0"></script>
+    <!-- realtime.js cria o window.socket. Sem ele o chat do painel da Direção
+         ficava só no polling: mensagem nova, "digitando" e presença nunca
+         chegavam em tempo real. Precisa vir antes dos módulos que o consomem. -->
+    <script defer src="../../js/realtime.js"></script>
+    <script src="../../js/professores-online.js?v=2.0"></script>
+    <script src="../../js/chat-direto-manager.js?v=2.0"></script>
     <script defer src="../../js/escola-switcher.js"></script>
     <script defer src="../../js/watermark.js"></script>
     <script defer src="../../js/parallax.js"></script>

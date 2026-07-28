@@ -52,27 +52,121 @@
     ));
   }
 
+  /** Apresentação do status agregado vindo do backend (realtime/presence.js). */
+  const STATUS_UI = {
+    online:  { texto: '🟢 Online',  classe: 'po-on',   titulo: 'Online' },
+    ausente: { texto: '🟡 Ausente', classe: 'po-away', titulo: 'Ausente' },
+    offline: { texto: '🔴 Offline', classe: 'po-off',  titulo: 'Offline' }
+  };
+
+  function statusDe(p) {
+    const bruto = String(p.status || (p.online ? 'online' : 'offline')).toLowerCase();
+    return STATUS_UI[bruto] || STATUS_UI.offline;
+  }
+
+  /** "há 12 min" / "há 2 h" a partir do instante em que o usuário ficou online. */
+  function tempoOnline(desde) {
+    if (!desde) return '';
+    const inicio = new Date(desde);
+    if (isNaN(inicio.getTime())) return '';
+    const min = Math.floor((Date.now() - inicio.getTime()) / 60000);
+    if (min < 1) return 'agora mesmo';
+    if (min < 60) return `há ${min} min`;
+    const h = Math.floor(min / 60);
+    if (h < 24) return `há ${h} h`;
+    return `há ${Math.floor(h / 24)} d`;
+  }
+
   function itemHtml(p) {
     const url = fotoUrl(p);
-    const nome = esc(p.nome || 'Professor');
+    const nome = esc(p.nome || 'Usuário');
+    const cargo = esc(p.cargo || 'Professor');
+    const cargoClass = cargo === 'Diretor' ? 'diretor' : 'professor';
     const escola = esc(p.escola || '—');
     const sala = esc(p.sala || '');
+    const userId = esc(p.userId || p.id || '');
+    const st = statusDe(p);
+    const unreadCount = Number(p.unreadsCount || 0);
+
     const avatar = url
       ? `<img src="${esc(url)}" alt="" class="po-avatar" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'po-avatar po-avatar-fallback',textContent:'${initials(p.nome)}'}))">`
       : `<div class="po-avatar po-avatar-fallback">${initials(p.nome)}</div>`;
+
+    const unreadBadge = unreadCount > 0
+      ? `<span class="po-unread-badge" title="${unreadCount} mensagem(ns) não lida(s)">💬 ${unreadCount}</span>`
+      : '';
+
+    // Tempo online: só faz sentido enquanto a pessoa está conectada.
+    const tempo = p.status !== 'offline' && p.online ? tempoOnline(p.onlineDesde) : '';
+    const tempoHtml = tempo ? `<span class="po-tempo-online" title="Conectado ${tempo}"><i class="bi bi-clock"></i> ${esc(tempo)}</span>` : '';
+
+    // Dados do contato viajam em data-* e são lidos por delegação de evento.
+    // Antes iam interpolados dentro de um `onclick` inline: um nome com
+    // apóstrofo (D'Ávila) fechava a string JS e quebrava o botão.
     return (
-      `<div class="po-item" data-user="${esc(p.userId || '')}">` +
-        `<div class="po-avatar-wrap">${avatar}` +
-          `<span class="po-dot ${p.online ? 'po-on' : 'po-off'}" title="${p.online ? 'Online' : 'Offline'}"></span>` +
+      `<div class="po-item" data-user="${userId}">` +
+        `<div class="po-item-main">` +
+          `<div class="po-avatar-wrap">${avatar}` +
+            `<span class="po-dot ${st.classe}" title="${st.titulo}"></span>` +
+          `</div>` +
+          `<div class="po-info">` +
+            `<div class="po-nome-row">` +
+              `<span class="po-nome">${nome}</span>` +
+              `<span class="po-cargo-tag ${cargoClass}">${cargo}</span>` +
+            `</div>` +
+            `<span class="po-escola" title="${escola}"><i class="bi bi-building"></i>${escola}</span>` +
+            (sala && sala !== '—' ? `<span class="po-sala">Sala ${sala}</span>` : '') +
+            `<div class="po-status-row">` +
+              `<span class="po-status-badge ${st.classe}">${st.texto}</span>` +
+              tempoHtml +
+              unreadBadge +
+            `</div>` +
+          `</div>` +
         `</div>` +
-        `<div class="po-info">` +
-          `<span class="po-nome">${nome}</span>` +
-          `<span class="po-escola" title="${escola}"><i class="bi bi-building"></i>${escola}</span>` +
-          (sala && sala !== '—' ? `<span class="po-sala">Sala ${sala}</span>` : '') +
+        `<div class="po-actions">` +
+          `<button type="button" class="btn-po-conversar" ` +
+            `data-chat-user="${userId}" data-chat-nome="${nome}" ` +
+            `data-chat-foto="${esc(url || '')}" data-chat-cargo="${cargo}" ` +
+            `data-chat-status="${esc(p.status || (p.online ? 'online' : 'offline'))}" ` +
+            `aria-label="Conversar com ${nome}">` +
+            `<i class="bi bi-chat-text-fill"></i> 💬 Conversar` +
+          `</button>` +
         `</div>` +
-        `<span class="po-status ${p.online ? 'po-on' : 'po-off'}">${p.online ? 'online' : 'offline'}</span>` +
       `</div>`
     );
+  }
+
+  /**
+   * Um único listener delegado no documento cobre o card embutido e o painel
+   * flutuante, e sobrevive a cada re-render da lista.
+   */
+  let cliqueBound = false;
+  function bindConversarDelegado() {
+    if (cliqueBound) return;
+    cliqueBound = true;
+    document.addEventListener('click', (ev) => {
+      const btn = ev.target.closest && ev.target.closest('.btn-po-conversar');
+      if (!btn) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+
+      const dados = {
+        nome: btn.dataset.chatNome || 'Conversa',
+        foto: btn.dataset.chatFoto || '',
+        cargo: btn.dataset.chatCargo || '',
+        status: btn.dataset.chatStatus || 'offline'
+      };
+
+      if (window.chatManager) {
+        window.chatManager.openChat(btn.dataset.chatUser, dados);
+        // No celular o chat abre em tela cheia; fechar o painel evita a lista
+        // rolando atrás da conversa.
+        document.getElementById('profsPanel')?.classList.remove('open');
+        document.getElementById('profsPanelOverlay')?.classList.remove('active');
+      } else {
+        alert('Carregando sistema de chat...');
+      }
+    });
   }
 
   function render(list) {
@@ -151,8 +245,54 @@
     const s = window.socket;
     if (s && typeof s.on === 'function') {
       s.on('presence:professor', debouncedRefresh);
+      // Nova mensagem recebida: o contador de não lidas do card vem da mesma
+      // rota, então basta recarregar a lista.
+      s.on('chat:mensagem', debouncedRefresh);
+      s.on('chat:lidas', debouncedRefresh);
       socketBound = true;
+      iniciarDeteccaoAusencia(s);
     }
+  }
+
+  /**
+   * Status 🟡 Ausente: sem interação nem foco por AUSENTE_MS, a aba avisa o
+   * servidor; qualquer atividade (ou voltar para a aba) traz de volta a online.
+   * O servidor só considera o usuário ausente quando TODAS as abas dele estão
+   * ociosas — ver backend/src/realtime/presence.js.
+   */
+  const AUSENTE_MS = 5 * 60 * 1000;
+  let idleBound = false;
+  function iniciarDeteccaoAusencia(socket) {
+    if (idleBound) return;
+    idleBound = true;
+
+    let ausente = false;
+    let timer = null;
+
+    const avisar = (novoEstado) => {
+      if (novoEstado === ausente) return;
+      ausente = novoEstado;
+      try { socket.emit('presence:idle', { ausente }); } catch (e) { /* socket caiu */ }
+    };
+
+    const reiniciar = () => {
+      avisar(false);
+      clearTimeout(timer);
+      timer = setTimeout(() => avisar(true), AUSENTE_MS);
+    };
+
+    ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'focus']
+      .forEach((ev) => window.addEventListener(ev, reiniciar, { passive: true }));
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { clearTimeout(timer); avisar(true); }
+      else reiniciar();
+    });
+
+    // Reconexão zera o estado do servidor: reafirma o que a aba sabe.
+    socket.on('connect', () => { ausente = false; reiniciar(); });
+
+    reiniciar();
   }
 
   function initCollapse() {
@@ -204,11 +344,16 @@
 
     initCollapse();
     initFloatingPanel();
+    bindConversarDelegado();
     refresh();
     setInterval(() => { tryBindSocket(); refresh(); }, POLL_MS);
     tryBindSocket();
     setTimeout(tryBindSocket, 3000);
   }
+
+  // Exposto para o chat flutuante atualizar o badge de não lidas assim que
+  // uma mensagem chega (chat-direto-manager.js já chamava este nome).
+  window.refreshProfsOnline = debouncedRefresh;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', start);

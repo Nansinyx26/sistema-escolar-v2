@@ -67,12 +67,25 @@
 /* === Item (usado no card e no painel) === */
 .po-item {
     display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    padding: .75rem;
+    border: 1px solid var(--border-color, rgba(255, 255, 255, .08));
+    border-radius: 14px;
+    background: var(--bg-elevated, rgba(255, 255, 255, .03));
+    transition: all 0.25s ease;
+}
+
+.po-item:hover {
+    border-color: rgba(16, 185, 129, 0.3);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+}
+
+.po-item-main {
+    display: flex;
     align-items: center;
     gap: .75rem;
-    padding: .6rem .75rem;
-    border: 1px solid var(--border-color, rgba(255, 255, 255, .06));
-    border-radius: 12px;
-    background: var(--bg-elevated, rgba(255, 255, 255, .03))
+    width: 100%;
 }
 
 .po-avatar-wrap {
@@ -81,12 +94,13 @@
 }
 
 .po-avatar {
-    width: 42px;
-    height: 42px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     object-fit: cover;
     display: block;
-    background: #334155
+    background: #334155;
+    border: 2px solid rgba(255, 255, 255, 0.1);
 }
 
 .po-avatar-fallback {
@@ -94,7 +108,7 @@
     align-items: center;
     justify-content: center;
     color: #fff;
-    font-size: .8rem;
+    font-size: .85rem;
     font-weight: 700;
     background: linear-gradient(135deg, #10b981, #0d9488)
 }
@@ -114,25 +128,60 @@
     box-shadow: 0 0 0 2px rgba(34, 197, 94, .25)
 }
 
+.po-dot.po-away {
+    background: #eab308;
+    box-shadow: 0 0 0 2px rgba(234, 179, 8, .25)
+}
+
 .po-dot.po-off {
-    background: #f8fafc;
-    border-color: #94a3b8
+    background: #ef4444;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, .2)
 }
 
 .po-info {
     display: flex;
     flex-direction: column;
     min-width: 0;
-    gap: 1px
+    gap: 2px;
+    flex: 1;
+}
+
+.po-nome-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
 }
 
 .po-nome {
     font-weight: 600;
-    font-size: .9rem;
+    font-size: .92rem;
     color: var(--text-primary, #f1f5f9);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis
+}
+
+.po-cargo-tag {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+}
+
+.po-cargo-tag.diretor {
+    background: rgba(139, 92, 246, 0.15);
+    color: #a78bfa;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.po-cargo-tag.professor {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
 .po-escola {
@@ -161,21 +210,97 @@
     text-overflow: ellipsis
 }
 
-.po-status {
-    margin-left: auto;
-    font-size: .68rem;
+/* Linha de status: badge + tempo online + não lidas */
+.po-status-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+    flex-wrap: wrap;
+}
+
+.po-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+/* Há quanto tempo a pessoa está conectada (opcional, some quando offline) */
+.po-tempo-online {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.65rem;
+    color: var(--text-secondary, #94a3b8);
+    opacity: 0.85;
+    white-space: nowrap;
+}
+
+.po-status-badge.po-on {
+    color: #22c55e;
+}
+
+.po-status-badge.po-away {
+    color: #eab308;
+}
+
+.po-status-badge.po-off {
+    color: #94a3b8;
+}
+
+.po-unread-badge {
+    background: #ef4444;
+    color: #fff;
+    font-size: 0.65rem;
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-    flex-shrink: 0
+    padding: 2px 7px;
+    border-radius: 99px;
+    margin-left: auto;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+    animation: pulseBadge 2s infinite;
 }
 
-.po-status.po-on {
-    color: #22c55e
+@keyframes pulseBadge {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+    100% { transform: scale(1); }
 }
 
-.po-status.po-off {
-    color: #94a3b8
+.po-actions {
+    width: 100%;
+    margin-top: 2px;
+}
+
+.btn-po-conversar {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: linear-gradient(135deg, #059669, #10b981);
+    color: #ffffff;
+    border: none;
+    padding: 7px 12px;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+
+.btn-po-conversar:hover {
+    background: linear-gradient(135deg, #047857, #059669);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+}
+
+.btn-po-conversar:active {
+    transform: translateY(0);
 }
 
 .po-empty {

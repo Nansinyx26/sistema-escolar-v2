@@ -68,6 +68,22 @@ async function autorizarArquivo(req, fileDoc) {
         return { ok: true };
     }
 
+    // Anexo/áudio do chat direto: a regra de `meta.usuarioId` abaixo liberaria
+    // só o remetente, deixando o destinatário com 403 no próprio arquivo que
+    // acabou de receber. Aqui os dois lados da conversa (e só eles) passam.
+    if (meta.type === 'chat_anexo') {
+        const meuId = String(req.user?.id || req.user?._id || '');
+        const participantes = [
+            String(meta.usuarioId || ''),
+            String(meta.destinatarioId || ''),
+            // Encaminhamento acrescenta o novo destinatário aqui — sem isso ele
+            // recebe a mensagem e tropeça num 403 no próprio anexo.
+            ...(Array.isArray(meta.compartilhadoCom) ? meta.compartilhadoCom.map(String) : [])
+        ];
+        if (participantes.includes(meuId)) return { ok: true };
+        return { ok: false, status: 403, error: 'Este anexo pertence a outra conversa.' };
+    }
+
     if (meta.alunoId) {
         const acesso = await assertAcessoAoAluno(req, String(meta.alunoId));
         if (!acesso.ok) return { ok: false, status: 403, error: 'Acesso negado a este documento.' };

@@ -11,7 +11,33 @@ const ChatDiretoSchema = new mongoose.Schema({
         tipo: { type: String, enum: ['FALTA', 'NOTA', 'PEDAGOGICO', 'GERAL'], default: 'GERAL' },
         referenciaId: String // ID da falta ou nota relacionada
     },
-    mensagem: { type: String, required: true },
+    mensagem: { type: String, default: '' },
+    anexo: {
+        url: String,
+        nome: String,
+        tipo: String,
+        tamanho: Number,
+        gridfsId: String,
+        miniatura: String
+    },
+    audio: {
+        url: String,
+        duracao: Number,
+        gridfsId: String
+    },
+    editada: { type: Boolean, default: false },
+    editadaEm: Date,
+    encaminhada: { type: Boolean, default: false },
+    apagadaParaTodos: { type: Boolean, default: false },
+    apagadaPara: [{ type: String }],
+    respostaParaId: { type: String },
+    reacoes: [{
+        usuarioId: String,
+        usuarioNome: String,
+        emoji: String,
+        criadoEm: { type: Date, default: Date.now }
+    }],
+    status: { type: String, enum: ['enviada', 'entregue', 'lida'], default: 'enviada' },
     lida: { type: Boolean, default: false },
     dataEnvio: { type: Date, default: Date.now }
 }, {
