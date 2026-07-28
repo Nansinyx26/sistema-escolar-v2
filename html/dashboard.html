@@ -34,7 +34,8 @@
     <link rel="stylesheet" href="../css/dashboard-premium.css?v=1.0">
     <link rel="stylesheet" href="../css/chatbot-ia.css?v=1.0">
     <link rel="stylesheet" href="../css/voice-panel.css?v=1.0">
-    <link rel="stylesheet" href="../css/professores-online.css?v=1.0">
+    <link rel="stylesheet" href="../css/professores-online.css?v=2.0">
+    <link rel="stylesheet" href="../css/chat-flutuante.css?v=2.0">
 
     <!-- Bootstrap Icons (Localized) -->
     <link rel="stylesheet" href="../js/libs/bootstrap-icons.min.css">
@@ -192,6 +193,10 @@
             <a href="frequencia-professores.html" class="sidebar-item teacher-only" style="display: none;">
                 <i class="bi bi-calendar-check-fill"></i>
                 <span>Frequência</span>
+            </a>
+            <a href="planilha-faltas.html" class="sidebar-item director-teacher-shared" id="sidebar-planilha-faltas">
+                <i class="bi bi-journal-check"></i>
+                <span>Planilha de Faltas</span>
             </a>
             <a href="meu-horario.html" class="sidebar-item teacher-only" id="sidebar-horario" style="display: none;">
                 <i class="bi bi-clock-fill"></i>
@@ -669,13 +674,13 @@
     <!-- Toast Container -->
     <div id="toastContainer" class="toast-container"></div>
 
-    <!-- Painel Flutuante: Professores da Escola (foto, nome, escola e status online) -->
+    <!-- Painel Flutuante: Equipe da Escola (Professores e Diretores) -->
     <div id="profsPanelOverlay" class="profs-panel-overlay"></div>
     <div id="profsPanel" class="profs-panel">
         <div class="profs-panel-header">
             <div class="profs-panel-title">
                 <i class="bi bi-people-fill"></i>
-                <span>Professores</span>
+                <span>Equipe Escolar</span>
                 <span class="profs-panel-badge" id="profsPanelCount">0 online</span>
             </div>
             <button class="profs-panel-close" id="profsPanelClose" aria-label="Fechar">
@@ -686,7 +691,7 @@
             <div class="po-empty">Carregando…</div>
         </div>
     </div>
-    <button class="profs-fab" id="profsFab" title="Professores Online" aria-label="Ver professores online">
+    <button class="profs-fab" id="profsFab" title="Equipe Online" aria-label="Ver professores e diretores online">
         <i class="bi bi-people-fill"></i>
         <span class="profs-fab-badge" id="profsFabBadge">0</span>
     </button>
@@ -729,7 +734,8 @@
     <script src="../js/voice-orb.js?v=1.0"></script>
     <script src="../js/sidebar-voice.js?v=4.1"></script>
     <script defer src="../js/dashboard.js?v=3"></script>
-    <script defer src="../js/professores-online.js?v=1.0"></script>
+    <script defer src="../js/professores-online.js?v=2.0"></script>
+    <script defer src="../js/chat-direto-manager.js?v=2.0"></script>
     <script defer src="../js/escola-switcher.js"></script>
     <script defer src="../js/parallax.js"></script>
     <script defer src="../js/changelog.js"></script>
@@ -739,6 +745,11 @@
     <script defer src="../js/realtime.js"></script>
     <script defer src="../js/reactions.js"></script>
     <script defer src="../js/onboarding-tour.js?v=2.2"></script>
+    <!-- Filtro de linguagem imprópria — precisa vir ANTES de qualquer tela
+         com campo de texto (mural, avaliações). O bloqueio definitivo é do
+         servidor; estes dois arquivos só avisam e travam o botão. -->
+    <script defer src="../js/filtro-palavroes.js?v=1.0"></script>
+    <script defer src="../js/filtro-palavroes-ui.js?v=1.0"></script>
     <!-- Mural da Comunidade -->
     <script defer src="../js/announcement-feed-react.js?v=3.1"></script>
     <script defer src="../js/mural-dashboard.js?v=1.0"></script>

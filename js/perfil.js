@@ -706,6 +706,13 @@ function setupAvaliacao() {
         });
     }
 
+    // Aviso de linguagem imprópria enquanto digita (o bloqueio real é do
+    // servidor — ver backend/src/middleware/bloquearPalavroes.js).
+    const campoAvaliacao = document.getElementById('avaliacaoTexto');
+    if (campoAvaliacao && window.FiltroPalavroesUI) {
+        window.FiltroPalavroesUI.proteger(campoAvaliacao, { botao: btnEnviar });
+    }
+
     btnEnviar.addEventListener('click', async () => {
         const starSelecionada = document.querySelector('input[name="estrelas"]:checked');
         const texto = document.getElementById('avaliacaoTexto').value.trim();
@@ -716,6 +723,10 @@ function setupAvaliacao() {
         }
         if (!texto) {
             showToast('Por favor, deixe um comentário', 'warning');
+            return;
+        }
+        if (window.FiltroPalavroesUI
+            && !window.FiltroPalavroesUI.validarAntesDeEnviar(texto, { campo: campoAvaliacao })) {
             return;
         }
 

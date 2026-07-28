@@ -74,6 +74,41 @@
             return tmp.textContent || tmp.innerText || "";
         };
 
+        // --- FILTRO DE LINGUAGEM IMPRÓPRIA ---
+        // O bloqueio de verdade é do servidor (middleware bloquearPalavroes);
+        // aqui só avisamos e travamos o botão para a pessoa não descobrir o
+        // problema só depois de escrever o comentário inteiro e apertar enviar.
+        // Se o script do filtro não tiver carregado, o feed segue funcionando
+        // normalmente — quem barra é o backend.
+        const LIMPO = { limpo: true, bloquear: false, nivel: null, mensagem: null, termos: [] };
+
+        const analisarLinguagem = (texto) => {
+            if (!window.FiltroPalavroes || typeof texto !== 'string') return LIMPO;
+            try {
+                return window.FiltroPalavroes.analisar(texto);
+            } catch (e) {
+                console.error('[FiltroPalavroes] Falha ao analisar texto:', e);
+                return LIMPO;
+            }
+        };
+
+        /** Faixa de aviso exibida sob o campo de texto. */
+        const AvisoLinguagem = ({ resultado }) => (
+            !resultado || resultado.limpo ? null : h('div', {
+                className: 'aviso-linguagem-impropria',
+                'data-nivel': resultado.nivel,
+                role: 'alert'
+            }, (resultado.bloquear ? '🚫 ' : '⚠️ ') + resultado.mensagem)
+        );
+
+        /** Porteiro do envio: `true` libera, `false` barra e avisa. */
+        const podeEnviarTexto = (texto) => {
+            const resultado = analisarLinguagem(texto);
+            if (!resultado.bloquear) return true;
+            showFeedToast(resultado.mensagem, 'error');
+            return false;
+        };
+
         // --- COMPONENTE DE ÁUDIO CUSTOMIZADO (ROADMAP 3.0) ---
         function CustomAudioPlayer({ text }) {
             const [playing, setPlaying] = useState(false);
@@ -295,8 +330,12 @@
 
             const replies = allComments.filter(c => normalizeId(c.parentId) === normalizeId(comment._id));
 
+            const avisoResposta = useMemo(() => analisarLinguagem(replyText), [replyText]);
+            const avisoEdicao = useMemo(() => analisarLinguagem(editText), [editText]);
+
             const handleReplySubmit = () => {
                 if (!replyText.trim()) return;
+                if (!podeEnviarTexto(replyText)) return;
                 onReply(comment._id, replyText);
                 setReplyText('');
                 setShowReplyInput(false);
@@ -304,6 +343,7 @@
 
             const handleEditSubmit = () => {
                 if (!editText.trim()) return;
+                if (!podeEnviarTexto(editText)) return;
                 onEdit(comment._id, editText);
                 setIsEditing(false);
             };
@@ -343,14 +383,21 @@
                             )
                         ),
                         isEditing ? h('div', null,
-                            h('textarea', { 
-                                className: 'comment-input-legacy', 
-                                value: editText, 
+                            h('textarea', {
+                                className: `comment-input-legacy ${avisoEdicao.bloquear ? 'campo-linguagem-impropria' : ''}`,
+                                value: editText,
                                 onChange: e => setEditText(e.target.value),
+                                'aria-invalid': avisoEdicao.bloquear ? 'true' : undefined,
                                 style: { width: '100%', minHeight: '60px', marginTop: '0.5rem' }
                             }),
+                            h(AvisoLinguagem, { resultado: avisoEdicao }),
                             h('div', { style: { display: 'flex', gap: '0.5rem', marginTop: '0.5rem' } },
-                                h('button', { className: 'action-btn-legacy active', onClick: handleEditSubmit }, 'Salvar'),
+                                h('button', {
+                                    className: 'action-btn-legacy active',
+                                    onClick: handleEditSubmit,
+                                    disabled: avisoEdicao.bloquear,
+                                    title: avisoEdicao.bloquear ? avisoEdicao.mensagem : undefined
+                                }, 'Salvar'),
                                 h('button', { className: 'action-btn-legacy', onClick: () => setIsEditing(false) }, 'Cancelar')
                             )
                         ) : h('div', null,
@@ -368,14 +415,21 @@
                     )
                 ),
                 showReplyInput && h('div', { className: 'reply-input-wrapper' },
-                    h('input', { 
-                        className: 'comment-input-legacy', 
-                        placeholder: 'Escreva uma resposta...', 
-                        value: replyText, 
+                    h('input', {
+                        className: `comment-input-legacy ${avisoResposta.bloquear ? 'campo-linguagem-impropria' : ''}`,
+                        placeholder: 'Escreva uma resposta...',
+                        value: replyText,
                         onChange: e => setReplyText(e.target.value),
+                        'aria-invalid': avisoResposta.bloquear ? 'true' : undefined,
                         onKeyPress: e => e.key === 'Enter' && handleReplySubmit()
                     }),
-                    h('button', { className: 'comment-submit-legacy', onClick: handleReplySubmit }, h('i', { className: 'bi bi-send' }))
+                    h('button', {
+                        className: 'comment-submit-legacy',
+                        onClick: handleReplySubmit,
+                        disabled: avisoResposta.bloquear,
+                        title: avisoResposta.bloquear ? avisoResposta.mensagem : undefined
+                    }, h('i', { className: 'bi bi-send' })),
+                    h(AvisoLinguagem, { resultado: avisoResposta })
                 ),
                 replies.length > 0 && h('div', { className: 'replies-thread' },
                     replies.map(r => h(CommentItem, { key: r._id, comment: r, allComments, onReply, onDelete, onEdit }))
@@ -458,6 +512,12 @@
 
             const postComment = async (parentId = null, texto) => {
                 if (!texto || !texto.trim() || submitting) return;
+                // Vale para o comentário principal E para as respostas: o
+                // CommentItem chama esta mesma função via `onReply`.
+                if (!podeEnviarTexto(texto)) {
+                    setFeedback({ type: 'error', text: analisarLinguagem(texto).mensagem });
+                    return;
+                }
                 setSubmitting(true);
                 setFeedback(null);
                 try {
@@ -514,6 +574,7 @@
             };
 
             const editComment = async (id, texto) => {
+                if (!podeEnviarTexto(texto)) return;
                 try {
                     const res = await fetch(`${BASE_URL}/comentarios/${id}`, {
                         method: 'PUT',
@@ -535,6 +596,7 @@
             };
 
             const rootComments = comments.filter(c => !c.parentId);
+            const avisoPrincipal = useMemo(() => analisarLinguagem(mainText), [mainText]);
 
             const readAllComments = () => {
                 if (!window.speak || comments.length === 0) return;
@@ -569,13 +631,15 @@
                             onReply: postComment, onDelete: deleteComment, onEdit: editComment
                         }))
                 ),
+                h(AvisoLinguagem, { resultado: avisoPrincipal }),
                 h('div', { className: 'comment-form-legacy' },
                     h('textarea', {
                         ref: inputRef,
-                        className: 'comment-input-legacy',
+                        className: `comment-input-legacy ${avisoPrincipal.bloquear ? 'campo-linguagem-impropria' : ''}`,
                         placeholder: 'Escreva um comentário público...',
                         value: mainText,
                         onChange: e => setMainText(e.target.value),
+                        'aria-invalid': avisoPrincipal.bloquear ? 'true' : undefined,
                         onKeyDown: e => {
                             if (e.key === 'Enter' && !e.shiftKey) {
                                 e.preventDefault();
@@ -585,9 +649,10 @@
                         rows: 2
                     }),
                     h('button', {
-                        className: 'comment-submit-legacy',
+                        className: `comment-submit-legacy ${avisoPrincipal.bloquear ? 'bloqueado-por-linguagem' : ''}`,
                         onClick: () => postComment(null, mainText),
-                        disabled: !mainText.trim() || submitting
+                        disabled: !mainText.trim() || submitting || avisoPrincipal.bloquear,
+                        title: avisoPrincipal.bloquear ? avisoPrincipal.mensagem : undefined
                     }, h('i', { className: `bi ${submitting ? 'bi-hourglass-split' : 'bi-send-fill'}` }))
                 )
             );
