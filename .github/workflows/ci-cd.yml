@@ -7,7 +7,7 @@ on:
     branches: [main, develop]
 
 env:
-  NODE_VERSION: "18"
+  NODE_VERSION: "22"
   REGISTRY: ghcr.io
   HAS_SLACK: ${{ secrets.SLACK_WEBHOOK }}
   HAS_RENDER_DEV: ${{ secrets.RENDER_SERVICE_ID_DEV }}
@@ -27,7 +27,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        # sharp >=0.35 exige Node >=20.9; vite 8 exige >=20.19
+        node-version: [20.x, 22.x]
 
     steps:
       - name: 📥 Checkout code
