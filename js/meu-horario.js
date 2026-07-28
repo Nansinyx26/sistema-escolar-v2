@@ -73,7 +73,7 @@ const EMOJI_PROF = {
 
 const ABREV_DISC = {
     EF: 'Educação Física', I: 'Inglês', A: 'Artes',
-    MK: 'Maker', OL: 'Leitura', DSE: 'Sebrae/DSE',
+    MK: 'Of. Maker', OL: 'Leitura', DSE: 'Sebrae/DSE',
     Lima: 'PROERD', PEF: 'Reunião EF', PAR: 'Reunião Artes'
 };
 

@@ -3523,7 +3523,7 @@ function gerarTabelaGeralHTML() {
                 <div class="leg-item"><span class="color-box ef-marjorie">EF</span> Educação Física - Marjorie</div>
                 <div class="leg-item"><span class="color-box ingles">I</span> Inglês - Marcelo</div>
                 <div class="leg-item"><span class="color-box artes-mirian">A</span> Artes - Mirian</div>
-                <div class="leg-item"><span class="color-box maker">MK</span> Maker - Sirlene</div>
+                <div class="leg-item"><span class="color-box maker">MK</span> Of. Maker - Sirlene</div>
                 <div class="leg-item"><span class="color-box artes-bianca">A</span> Artes - Bianca</div>
                 <div class="leg-item"><span class="color-box sebrae">DS</span> Desenvolvimento SócioEmocional - Cherlane</div>
                 <div class="leg-item"><span class="color-box leitura">OL</span> Oficina de Leitura e Expressão - Raquel Castelaneli</div>
@@ -3616,7 +3616,7 @@ function gerarTabelaGeralHTML() {
                 <button onclick="mostrarTabela('ARTES1ANO', 'prof')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Bianca (Artes 1º)</button>
                 <button onclick="mostrarTabela('INGLS', 'prof')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Marcelo (Inglês)</button>
                 <button onclick="mostrarTabela('OFLEITURA', 'prof')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Raquel (Leitura)</button>
-                <button onclick="mostrarTabela('OFMAKER', 'prof')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Sirlene (Maker)</button>
+                <button onclick="mostrarTabela('OFMAKER', 'prof')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Sirlene (Of. Maker)</button>
                 <button onclick="mostrarTabela('OFSEBRAE', 'prof')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Cherlane (Sebrae)</button>
                 <button onclick="mostrarTabela('PAMARCIA', 'prof')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Marcia (PA)</button>
                 <button onclick="mostrarTabela('PADIRCEU', 'prof')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Dirceu (PA)</button>

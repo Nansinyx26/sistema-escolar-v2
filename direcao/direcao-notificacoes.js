@@ -194,6 +194,14 @@ async function publicarMural(e) {
     const dataAgend = document.getElementById('dataAgend')?.value || null;
     if (!titulo) { showToast('Informe o título do aviso.', 'warning'); document.getElementById('tituloNotif').focus(); return; }
     if (!conteudo || document.getElementById('editorComunicado').innerText.trim() === '') { showToast('Escreva o conteúdo do aviso.', 'warning'); document.getElementById('editorComunicado').focus(); return; }
+    // Filtro de linguagem imprópria. O editor é rich text, então analisamos o
+    // texto visível (innerText) — no `innerHTML` as tags separariam as letras
+    // do palavrão e mascarariam a detecção.
+    if (window.FiltroPalavroesUI) {
+        const textoVisivel = document.getElementById('editorComunicado').innerText;
+        if (!window.FiltroPalavroesUI.validarAntesDeEnviar(titulo, { campo: document.getElementById('tituloNotif') })) { document.getElementById('tituloNotif').focus(); return; }
+        if (!window.FiltroPalavroesUI.validarAntesDeEnviar(textoVisivel, { campo: document.getElementById('editorComunicado') })) { document.getElementById('editorComunicado').focus(); return; }
+    }
     const destinatarios = [];
     if (document.getElementById('destTodosProfs')?.checked) destinatarios.push('professores');
     if (document.getElementById('destTodosResps')?.checked) destinatarios.push('responsaveis');

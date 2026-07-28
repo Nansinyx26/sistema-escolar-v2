@@ -71,7 +71,19 @@ exports.recalcularBadges = async (req, res) => {
                     { upsate: true, new: true, upsert: true }
                 );
             } catch (err) {
-                // Ignora erros de duplicidade (único)
+                // O índice único faz a duplicidade ser esperada (E11000) — só essa
+                // é ignorável. Qualquer outro erro significa badge não concedida,
+                // e antes desaparecia sem deixar rastro.
+                if (err && err.code === 11000) {
+                    logger.debug('Badge já concedida (duplicidade ignorada)', {
+                        alunoId: String(alunoId), tipo: c.tipo, nivel: c.nivel,
+                    });
+                } else {
+                    logger.error('Falha ao conceder badge', {
+                        err, alunoId: String(alunoId), tipo: c.tipo, nivel: c.nivel,
+                        action: 'gamificacao.concederBadge',
+                    });
+                }
             }
         }
 

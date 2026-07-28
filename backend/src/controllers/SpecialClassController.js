@@ -2,7 +2,7 @@ const Especial = require('../models/Especial');
 // Helper to determine category based on subject name
 function getCategoria(nome) {
     const peb2 = ['Inglês', 'Artes', 'Educação Física'];
-    const oficina = ['Oficina de Leitura', 'SEBRAE', 'Desenvolvimento', 'Socioemocional'];
+    const oficina = ['Oficina de Leitura', 'SEBRAE', 'Desenvolvimento', 'Socioemocional', 'Of. Maker'];
     if (peb2.includes(nome)) return 'PEB2';
     if (oficina.includes(nome)) return 'Oficina';
     return 'PEB2';

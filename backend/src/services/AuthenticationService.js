@@ -358,7 +358,9 @@ class AuthenticationService {
     });
 
     // TODO: Enviar por email (usar EmailService)
-    logger.info(`🔐 [2FA] Código gerado para ${email}: ${codigo}`);
+    // NUNCA logar `codigo`: o log é o segundo fator. Quem lê o log (operador,
+    // agregador, backup) contornaria o 2FA de qualquer conta. Só o evento.
+    logger.info('🔐 [2FA] Código gerado', { userId: String(userId), action: '2fa.gerar' });
 
     return {
       codigo,

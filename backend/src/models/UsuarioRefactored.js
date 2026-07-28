@@ -61,9 +61,7 @@ const UsuarioAuthSchema = new mongoose.Schema({
 
 // Indices
 UsuarioAuthSchema.index({ email: 1, ativo: 1 });
-// `{ cpf: 1 }` NÃO é declarado aqui: o campo já traz `unique: true, sparse: true`,
-// o que cria exatamente este índice — e de forma mais forte. A linha duplicada
-// (sem `unique`) só rendia o aviso de índice duplicado a cada boot.
+UsuarioAuthSchema.index({ cpf: 1 }, { sparse: true });
 UsuarioAuthSchema.index({ perfil: 1, ativo: 1 });
 
 // ======================

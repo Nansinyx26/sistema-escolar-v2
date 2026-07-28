@@ -1616,7 +1616,7 @@ exports.registerDocente = async (req, res) => {
         // Auto-criação do registro na coleção 'professores' para vincular a turma e disciplina ao painel do professor
         const mongoose = require('mongoose');
         const Professor = require('../models/Professor');
-        const materiasEspeciais = ['Inglês', 'Educação Física', 'Artes', 'SEBRAE', 'Oficina de Leitura'];
+        const materiasEspeciais = ['Inglês', 'Educação Física', 'Artes', 'SEBRAE', 'Oficina de Leitura', 'Of. Maker'];
         const isEspecial = materiasEspeciais.includes(disciplina);
         
         const salaPrincipal = isEspecial ? 'VARIADOS' : turma;

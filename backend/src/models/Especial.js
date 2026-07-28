@@ -7,7 +7,7 @@ const NotaEspecialSchema = new mongoose.Schema({
 }, { _id: false });
 
 const EspecialSchema = new mongoose.Schema({
-    nome: String, // "Inglês", "Artes", "Educação Física", "SEBRAE", "Oficina de Leitura", "Desenvolvimento", "Socioemocional"
+    nome: String, // "Inglês", "Artes", "Educação Física", "SEBRAE", "Oficina de Leitura", "Of. Maker", "Desenvolvimento", "Socioemocional"
     turma: String, // "1A" (turma alvo)
     professor: { type: mongoose.Schema.Types.Mixed, ref: 'Professor' },
     notas: [NotaEspecialSchema],

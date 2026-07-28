@@ -275,7 +275,7 @@ class NotesManager {
     async getMediaSalaPrincipal(alunoId, bimestre = null, preloadedNotas = null) {
         try {
             let notas = preloadedNotas ? preloadedNotas.filter(n => n.alunoId === alunoId) : await this.getByAluno(alunoId);
-            const materiasEspeciais = ['Artes', 'Inglês', 'Educação Física', 'SEBRAE', 'Oficina de Leitura'];
+            const materiasEspeciais = ['Artes', 'Inglês', 'Educação Física', 'SEBRAE', 'Oficina de Leitura', 'Of. Maker'];
 
             // Filtra notas que NÍO são de matérias especiais
             notas = notas.filter(n => !materiasEspeciais.includes(n.materiaNome) && !materiasEspeciais.includes(n.materiaId)); // Verify property usage

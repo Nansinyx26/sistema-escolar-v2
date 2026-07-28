@@ -372,6 +372,34 @@ body.sidebar-open .dev-notice {
     pointer-events: none;
 }
 
+/* ==========================================
+   TEMA CLARO
+   Sidebar fica com fundo claro (definido em themes/light.css). Aqui:
+   - item selecionado: contorno azul + letra preta (pedido do usuário);
+   - hover: texto escuro (o padrão usa #fff, que sumiria no fundo claro).
+   ========================================== */
+:root[data-theme="light"] .sidebar-item:hover {
+    background: rgba(15, 23, 42, 0.04);
+    color: var(--text-primary);
+}
+
+:root[data-theme="light"] .sidebar-item.active {
+    background: rgba(2, 132, 199, 0.08);
+    color: var(--text-primary);
+    border-color: var(--secondary);
+    font-weight: 600;
+}
+
+:root[data-theme="light"] .sidebar-item.active::before {
+    background: var(--secondary);
+    box-shadow: 0 0 10px rgba(2, 132, 199, 0.45);
+}
+
+/* Ícone do item ativo acompanha o azul do contorno; a letra permanece preta */
+:root[data-theme="light"] .sidebar-item.active i {
+    color: var(--secondary);
+}
+
 .voice-btn-active .wave {
     animation: pulseWave 1.5s infinite;
 }

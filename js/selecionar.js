@@ -255,7 +255,7 @@ const SelecionarPage = {
         const principal = profs ? profs.principal : null;
         const outros = profs ? profs.outros : [];
         
-        const materias = ['Sala Principal', 'Artes', 'Inglês', 'Educação Física', 'SEBRAE', 'Oficina de Leitura'];
+        const materias = ['Sala Principal', 'Artes', 'Inglês', 'Educação Física', 'SEBRAE', 'Oficina de Leitura', 'Of. Maker'];
 
         // Helper para renderizar a linha do professor
         const renderProfLine = (p, label) => {
@@ -313,7 +313,8 @@ const SelecionarPage = {
             'Inglês': 'bi-translate',
             'Educação Física': 'bi-bicycle',
             'SEBRAE': 'bi-lightbulb-fill',
-            'Oficina de Leitura': 'bi-book-half'
+            'Oficina de Leitura': 'bi-book-half',
+            'Of. Maker': 'bi-tools'
         };
         return icons[m] || 'bi-book';
     },

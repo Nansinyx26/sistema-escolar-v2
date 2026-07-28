@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const https = require('https');
+const logger = require('./logger');
 
 // Salva o createTransport original do nodemailer
 const originalCreateTransport = nodemailer.createTransport;
@@ -16,7 +17,7 @@ nodemailer.createTransport = function(...args) {
 
         // Se o Host for do Brevo e tiver a API Key no EMAIL_PASS, redireciona via HTTP API
         if (host.includes('brevo') && pass && (pass.startsWith('xsmtpsib-') || pass.startsWith('xkeysib-'))) {
-            console.log(`🚀 [Nodemailer Patch] Brevo detectado no host. Enviando via API HTTP (porta 443) para contornar o bloqueio SMTP do Render.`);
+            logger.debug('🚀 [Nodemailer Patch] Brevo detectado — enviando via API HTTP (contorna bloqueio SMTP do Render)', { action: 'email.enviar' });
 
             // Extrai nome e e-mail do remetente (FROM)
             let senderName = 'Sistema Escolar';
@@ -74,19 +75,28 @@ nodemailer.createTransport = function(...args) {
                     res.on('data', (chunk) => data += chunk);
                     res.on('end', () => {
                         let resJson = {};
-                        try { resJson = JSON.parse(data); } catch (e) {}
+                        try {
+                            resJson = JSON.parse(data);
+                        } catch (e) {
+                            // Resposta não-JSON (HTML de erro do proxy, corpo vazio):
+                            // sem isto, o motivo real vira "HTTP 500" sem explicação.
+                            logger.warn('[Nodemailer Patch] Resposta da Brevo não é JSON', {
+                                status: res.statusCode, amostra: String(data).slice(0, 200),
+                                action: 'email.enviar',
+                            });
+                        }
                         if (res.statusCode >= 200 && res.statusCode < 300) {
-                            console.log('✅ [Nodemailer Patch] E-mail enviado com sucesso via Brevo HTTP API! ID:', resJson.messageId);
+                            logger.info('✅ [Nodemailer Patch] E-mail enviado via Brevo HTTP API', { messageId: resJson.messageId, action: 'email.enviar' });
                             resolve({ messageId: resJson.messageId });
                         } else {
-                            console.error('❌ [Nodemailer Patch] Erro na API do Brevo:', resJson);
+                            logger.error('❌ [Nodemailer Patch] Erro na API do Brevo', { status: res.statusCode, resposta: resJson, action: 'email.enviar' });
                             reject(new Error(resJson.message || `HTTP ${res.statusCode}`));
                         }
                     });
                 });
 
                 req.on('error', (err) => {
-                    console.error('❌ [Nodemailer Patch] Falha HTTP na requisição para Brevo:', err);
+                    logger.error('❌ [Nodemailer Patch] Falha HTTP na requisição para Brevo', { err, action: 'email.enviar' });
                     reject(err);
                 });
 
@@ -107,4 +117,4 @@ nodemailer.createTransport = function(...args) {
     return transporter;
 };
 
-console.log('🛡️ [Nodemailer Patch] Brevo HTTP API bypass active.');
+logger.debug('🛡️ [Nodemailer Patch] Brevo HTTP API bypass ativo.');

@@ -3,11 +3,7 @@ const mongoose = require('mongoose');
 const SecretariaSchema = new mongoose.Schema({
     _id: { type: String, default: () => new mongoose.Types.ObjectId().toString() },
     id: { type: mongoose.Schema.Types.Mixed, index: true },
-    // Sem `index: true` aqui de propósito: o índice deste campo é declarado
-    // abaixo com `unique: true`. Ter os dois criava DUAS definições para
-    // {idUsuario: 1} e o Mongoose avisava a cada boot. Mantida a declaração
-    // explícita, que é a mais forte — a do campo não garantia unicidade.
-    idUsuario: { type: String, required: true }, // Vínculo com Usuario._id
+    idUsuario: { type: String, index: true, required: true }, // Vínculo com Usuario._id
     nome: { type: String, required: true },
     email: { type: String, unique: true },
     telefone: String,

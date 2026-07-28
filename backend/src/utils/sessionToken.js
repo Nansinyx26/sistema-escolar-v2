@@ -104,7 +104,9 @@ async function revogarTokenSessao(token) {
                 return { revogado: true, escopo: 'usuario' };
             }
         } catch (e) {
-            require('./logger').error(`[LOGOUT] Falha ao revogar por tokenVersion: ${e.message}`);
+            require('./logger').error('[LOGOUT] Falha ao revogar por tokenVersion', {
+                err: e, usuarioId, action: 'auth.logout',
+            });
         }
         return { revogado: false, escopo: 'nenhum' };
     }
@@ -123,7 +125,9 @@ async function revogarTokenSessao(token) {
         );
         return { revogado: true, escopo: 'token' };
     } catch (e) {
-        require('./logger').error(`[LOGOUT] Falha ao gravar denylist: ${e.message}`);
+        require('./logger').error('[LOGOUT] Falha ao gravar denylist', {
+            err: e, usuarioId, jti: payload.jti, action: 'auth.logout',
+        });
         // Não conseguimos gravar a denylist — degrada para revogação total da
         // conta em vez de deixar o token vivo.
         try {
@@ -132,7 +136,15 @@ async function revogarTokenSessao(token) {
                 await Usuario.updateOne({ _id: usuarioId }, { $inc: { tokenVersion: 1 } });
                 return { revogado: true, escopo: 'usuario' };
             }
-        } catch (_) { /* já logado acima */ }
+        } catch (e2) {
+            // Os DOIS caminhos de revogação falharam: o token do usuário continua
+            // válido até expirar. É falha de segurança, não detalhe operacional —
+            // o log anterior falava da denylist, não desta degradação.
+            require('./logger').alert('LOGOUT_NAO_EFETIVADO',
+                'Logout não pôde ser efetivado — token segue válido até expirar', {
+                    err: e2, usuarioId, jti: payload.jti, action: 'auth.logout',
+                });
+        }
         return { revogado: false, escopo: 'nenhum' };
     }
 }
@@ -150,7 +162,9 @@ async function tokenEstaRevogado(payload) {
         const encontrado = await TokenRevogado.exists({ jti: payload.jti });
         return !!encontrado;
     } catch (e) {
-        require('./logger').error(`[AUTH] Falha ao consultar denylist de tokens: ${e.message}`);
+        require('./logger').error('[AUTH] Falha ao consultar denylist de tokens (fail-closed)', {
+            err: e, jti: payload.jti, action: 'auth.verificarRevogacao',
+        });
         return true;
     }
 }

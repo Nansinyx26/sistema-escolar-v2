@@ -246,6 +246,14 @@
             const texto = input?.value?.trim();
             if (!texto) return;
 
+            // Filtro de linguagem imprópria. `validarAntesDeEnviar` já mostra o
+            // aviso e grifa o campo; o servidor recusa de qualquer forma, isto
+            // aqui é só para a pessoa saber por quê antes de mandar.
+            if (window.FiltroPalavroesUI
+                && !window.FiltroPalavroesUI.validarAntesDeEnviar(texto, { campo: input })) {
+                return;
+            }
+
             try {
                 const res = await fetch(`${API_BASE_URL}/comunicados/${id}/comentarios`, {
                     method: 'POST',
@@ -255,6 +263,14 @@
                 });
                 if (res.ok) {
                     input.value = '';
+                    return;
+                }
+                // O servidor recusa o que o filtro do navegador deixou passar
+                // (script bloqueado, versão antiga em cache, envio por API).
+                const json = await res.json().catch(() => null);
+                if (json && json.error) {
+                    if (window.FiltroPalavroesUI) window.FiltroPalavroesUI.notificar(json.error);
+                    else console.warn('[Feed Legacy] Comentário recusado:', json.error);
                 }
             } catch (e) {
                 console.error('[Feed Legacy] Erro ao comentar:', e);

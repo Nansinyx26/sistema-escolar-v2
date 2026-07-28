@@ -333,6 +333,8 @@
             textarea.addEventListener('input', () => {
                 charCount.textContent = `${textarea.value.length}/500`;
             });
+            // Aviso de linguagem imprópria enquanto digita + trava do botão.
+            window.FiltroPalavroesUI?.proteger(textarea, { botao: '#btnSubmitReview' });
         }
 
         // Submit
@@ -340,6 +342,8 @@
             const comment = textarea.value.trim();
             if (selectedRating === 0) return showToast?.('Selecione de 1 a 5 estrelas', 'warning');
             if (!comment) return showToast?.('Escreva um comentário', 'warning');
+            if (window.FiltroPalavroesUI
+                && !window.FiltroPalavroesUI.validarAntesDeEnviar(comment, { campo: textarea })) return;
 
             const btn = document.getElementById('btnSubmitReview');
             btn.disabled = true;

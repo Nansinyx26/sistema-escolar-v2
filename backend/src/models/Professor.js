@@ -22,7 +22,7 @@ const ProfessorSchema = new mongoose.Schema({
     vinculos: [{ escolaId: { type: String, index: true }, cargo: String, _id: false }],
     disciplina: String,
     materias: [String], // ["Portugues", "Matematica"]
-    tipoEspecial: Boolean, // Inglês, Artes, Ed. Física, SEBRAE, Oficina de Leitura
+    tipoEspecial: Boolean, // Inglês, Artes, Ed. Física, SEBRAE, Oficina de Leitura, Of. Maker
 
     turmas: [String], // Helper field para unificar salaPrincipal + salasAdicionais
 

@@ -267,7 +267,7 @@ class RegistrationService {
       });
 
       // Criar registro de professor
-      const materiaEspecial = ['Inglês', 'Educação Física', 'Artes', 'SEBRAE', 'Oficina de Leitura'].includes(disciplina);
+      const materiaEspecial = ['Inglês', 'Educação Física', 'Artes', 'SEBRAE', 'Oficina de Leitura', 'Of. Maker'].includes(disciplina);
       const salaPrincipal = materiaEspecial ? 'VARIADOS' : turma;
       const salasAdicionais = materiaEspecial ? [turma] : [];
 

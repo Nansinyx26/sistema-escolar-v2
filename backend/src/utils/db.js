@@ -165,7 +165,12 @@ async function _ensureCollectionsExist() {
                 try {
                     require(path.join(modelsDir, file));
                 } catch (e) {
-                    // Ignora silenciosamente erros de carregamento individual na importação inicial
+                    // Falha aqui NÃO pode ser silenciosa: o model some do registro do
+                    // Mongoose e o sintoma aparece muito depois, como "Schema hasn't
+                    // been registered" numa rota sem relação com o erro real.
+                    logger.error(`Falha ao carregar model ${file} — coleção não será registrada`, {
+                        err: e, model: file, action: 'db.carregarModels',
+                    });
                 }
             }
         });

@@ -279,7 +279,7 @@ function getSalasAdicionaisSelecionadas() {
 }
 
 // Matérias que podem ser lecionadas
-const MATERIAS_ESPECIAIS = ['Inglês', 'Educação Física', 'Artes', 'SEBRAE', 'Oficina de Leitura'];
+const MATERIAS_ESPECIAIS = ['Inglês', 'Educação Física', 'Artes', 'SEBRAE', 'Oficina de Leitura', 'Of. Maker'];
 
 function getMateriasSelecionadas() {
     const checkboxes = document.querySelectorAll('input[name="materia"]:checked');

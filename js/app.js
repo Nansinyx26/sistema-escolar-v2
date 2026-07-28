@@ -307,7 +307,7 @@ class App {
                     const fotoRegente = turma.professorRegente && turma.professorRegente.foto ? turma.professorRegente.foto : null;
 
                     // Materias buttons
-                    const materias = ['Sala Principal', 'Artes', 'Inglês', 'Educação Física', 'SEBRAE', 'Oficina de Leitura'];
+                    const materias = ['Sala Principal', 'Artes', 'Inglês', 'Educação Física', 'SEBRAE', 'Oficina de Leitura', 'Of. Maker'];
 
                     return `
                         <div class="turma-card" id="card-${turma.id}">
@@ -362,7 +362,8 @@ class App {
             'Inglês': 'bi-translate',
             'Educação Física': 'bi-bicycle',
             'SEBRAE': 'bi-lightbulb-fill',
-            'Oficina de Leitura': 'bi-book-half'
+            'Oficina de Leitura': 'bi-book-half',
+            'Of. Maker': 'bi-tools'
         };
         return icons[mat] || 'bi-book';
     }
@@ -396,7 +397,7 @@ class App {
                 console.log('  -> Professor:', prof.nome, '| Sala:', prof.salaPrincipal);
 
                 // Verifica se é professor especial (Artes, Ed. Física, Inglês)
-                const materiasEspeciais = ['Inglês', 'Educação Física', 'Artes', 'SEBRAE', 'Oficina de Leitura'];
+                const materiasEspeciais = ['Inglês', 'Educação Física', 'Artes', 'SEBRAE', 'Oficina de Leitura', 'Of. Maker'];
                 const ehEspecial = prof.tipoEspecial ||
                     (prof.materias && prof.materias.some(m => materiasEspeciais.includes(m)));
 
