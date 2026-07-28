@@ -4,6 +4,13 @@
 const { validarAmbiente } = require('./config/env');
 validarAmbiente();
 
+// Redireciona `console.*` legado para o logger estruturado ANTES de qualquer
+// outro require: a partir daqui nenhuma linha de log escapa da sanitização,
+// mesmo nos arquivos ainda não migrados. Desligável com CONSOLE_GUARD=false.
+if (process.env.CONSOLE_GUARD !== 'false') {
+    require('./utils/consoleGuard').instalar();
+}
+
 // Patch global do nodemailer para contornar bloqueio de porta SMTP no Render
 require('./utils/nodemailerPatch');
 
@@ -180,12 +187,14 @@ const startServer = async () => {
             // escola × perfil para não vazar eventos entre tenants
             if (socket.escolaId) socket.join(`escola:${socket.escolaId}`);
 
-            // Presença online: o diretor vê professores online/offline em tempo real.
+            // Presença online: a equipe (professores e diretores) é notificada em tempo real.
             if (socket.escolaId) {
-                const ficouOnline = presence.addUser(socket.escolaId, uid);
-                if (ficouOnline && user.perfil === 'professor') {
+                const ficouOnline = presence.addUser(socket.escolaId, uid, socket.id);
+                if (ficouOnline) {
                     io.to(`escola:${socket.escolaId}`).emit('presence:professor', {
-                        userId: String(uid), online: true
+                        userId: String(uid), online: true,
+                        status: presence.statusDe(socket.escolaId, uid),
+                        perfil: user.perfil
                     });
                 }
             }
@@ -196,10 +205,49 @@ const startServer = async () => {
                 escola: socket.escolaId || 'n/d'
             });
 
+            // Eventos de digitação e gravação de áudio em tempo real.
+            // O destinatário sai do próprio mapa de presença da escola: assim
+            // um socket não consegue disparar "digitando" para usuários de
+            // outro tenant só informando um id arbitrário.
+            const mesmoTenant = (destinatarioId) => (
+                !!socket.escolaId && presence.isOnline(socket.escolaId, destinatarioId)
+            );
+
+            socket.on('chat:typing', (data) => {
+                if (!data || !data.destinatarioId) return;
+                if (!mesmoTenant(data.destinatarioId)) return;
+                io.to(`user:${data.destinatarioId}`).emit('chat:typing', {
+                    remetenteId: String(uid),
+                    isTyping: !!data.isTyping
+                });
+            });
+
+            socket.on('chat:recording', (data) => {
+                if (!data || !data.destinatarioId) return;
+                if (!mesmoTenant(data.destinatarioId)) return;
+                io.to(`user:${data.destinatarioId}`).emit('chat:recording', {
+                    remetenteId: String(uid),
+                    isRecording: !!data.isRecording
+                });
+            });
+
+            // Status 🟡 Ausente: a aba avisa quando o usuário fica ocioso
+            // (sem foco/interação) e quando volta. Só vira "ausente" quando
+            // TODAS as abas dele estão ociosas — ver realtime/presence.js.
+            socket.on('presence:idle', (data) => {
+                if (!socket.escolaId) return;
+                const ausente = !!(data && data.ausente);
+                const mudou = presence.setAusente(socket.escolaId, uid, socket.id, ausente);
+                if (mudou) {
+                    io.to(`escola:${socket.escolaId}`).emit('presence:professor', {
+                        userId: String(uid), online: true,
+                        status: presence.statusDe(socket.escolaId, uid),
+                        perfil: user.perfil
+                    });
+                }
+            });
+
             // Evento: usuário quer entrar em sala de mensagem específica.
-            // SEGURANÇA: o handler antigo aceitava qualquer messageId do
-            // cliente — bastava iterar IDs para acompanhar reações e
-            // comentários de conversas de outras escolas.
             socket.on('join:message', async (messageId) => {
                 if (!socket.user || !messageId) return;
                 try {
@@ -217,10 +265,11 @@ const startServer = async () => {
             socket.on('disconnect', () => {
                 logger.debug(`❌ [Socket.IO] ${user.nome || 'Usuário'} desconectado`);
                 if (socket.escolaId) {
-                    const ficouOffline = presence.removeUser(socket.escolaId, uid);
-                    if (ficouOffline && user.perfil === 'professor') {
+                    const ficouOffline = presence.removeUser(socket.escolaId, uid, socket.id);
+                    if (ficouOffline) {
                         io.to(`escola:${socket.escolaId}`).emit('presence:professor', {
-                            userId: String(uid), online: false
+                            userId: String(uid), online: false, status: 'offline',
+                            perfil: user.perfil
                         });
                     }
                 }
@@ -365,7 +414,13 @@ async function _runVoiceMigrationSilent() {
             { expiraEm: { $exists: false } },
             { $set: { expiraEm: trintaDias } }
         );
-    } catch (_) { /* índice já existe ou coleção vazia — ok */ }
+    } catch (e) {
+        // Caso normal: índice já existe ou coleção vazia. Fica em debug para não
+        // poluir o boot, mas deixa de ser invisível quando a migração falha.
+        logger.debug('[VoiceMigration] Passo de TTL/índice ignorado', {
+            err: e, action: 'migracao.voice',
+        });
+    }
 
     if (total > 0) {
         logger.info(`[VoiceMigration] Concluída — ${total} campo(s) preenchidos no total.`);

@@ -16,13 +16,31 @@ const SENHA_TESTE_NOVA = 'Fixture' + '#Nova' + '2026';   // para fluxos de troca
 const CODIGO_ESCOLA_TESTE = 'FIXTURE' + '-COD-' + 'JEST';
 
 /**
+ * Nome do banco desta execução — um por WORKER do Jest.
+ *
+ * O `globalSetup` sobe UM MongoDB in-memory e todos os workers recebiam a
+ * mesma URI, ou seja, o mesmo banco `test`. Como o Jest roda suites em
+ * paralelo, o `limparBanco()` de uma suite apagava as coleções no meio do
+ * teste de outra, e duas suites inserindo a mesma fixture colidiam no índice
+ * único (`E11000 ... escolas index: nome_1 dup key`). Era a origem das ~98
+ * falhas intermitentes, sem relação com o código de produção.
+ *
+ * Um banco por worker mantém o paralelismo e devolve o isolamento: dentro de
+ * um worker as suites rodam em série, e cada uma continua limpando o seu.
+ */
+function nomeDoBanco() {
+    const worker = process.env.JEST_WORKER_ID || '1';
+    return `test_w${worker}`;
+}
+
+/**
  * Conecta ao banco de teste (MongoDB in-memory).
  * Deve ser chamado no beforeAll de cada suite.
  */
 async function conectarBanco() {
     const uri = process.env.MONGODB_URI || process.env.MONGODB_URI_TEST;
     if (mongoose.connection.readyState === 0) {
-        await mongoose.connect(uri);
+        await mongoose.connect(uri, { dbName: nomeDoBanco() });
     }
 }
 
@@ -65,4 +83,4 @@ async function criarUsuario(overrides = {}) {
     return Usuario.create({ ...defaults, ...overrides });
 }
 
-module.exports = { conectarBanco, limparBanco, desconectarBanco, criarUsuario, SENHA_TESTE, SENHA_TESTE_NOVA, CODIGO_ESCOLA_TESTE };
+module.exports = { conectarBanco, limparBanco, desconectarBanco, criarUsuario, nomeDoBanco, SENHA_TESTE, SENHA_TESTE_NOVA, CODIGO_ESCOLA_TESTE };

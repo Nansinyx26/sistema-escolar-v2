@@ -163,6 +163,10 @@ router.use('/diretores', authJWT, filtrarPorEscola, require('./diretores'));
 router.use('/turmas', authJWT, horizontalFilter, filtrarPorEscola, require('./turmas'));
 router.use('/faltas', authJWT, horizontalFilter, filtrarPorEscola, require('./faltas'));
 router.use('/frequencia-professores', authJWT, horizontalFilter, require('./frequencia-professores'));
+// Planilha de faltas dos funcionários — `filtrarPorEscola` é obrigatório: é ele
+// que resolve req.escolaId, usado tanto para listar o quadro quanto para isolar
+// a planilha por escola.
+router.use('/faltas-funcionarios', authJWT, filtrarPorEscola, require('./faltas-funcionarios'));
 router.use('/notas', authJWT, horizontalFilter, filtrarPorEscola, require('./notas'));
 router.use('/dashboard', require('./dashboard'));
 router.use('/tabela-geral', authJWT, require('./tabela-geral'));
@@ -190,9 +194,41 @@ router.get('/gamificacao/aluno/:alunoId', authJWT, horizontalFilter, filtrarPorE
 router.post('/gamificacao/recalcular/:alunoId', authJWT, horizontalFilter, filtrarPorEscola, authorize('admin', 'diretor', 'secretaria', 'professor'), requireAcessoAoAluno('alunoId'), GamificacaoController.recalcularBadges);
 
 // --- 6. Chat Direto ---
+// `bloquearPalavroes` fica antes do controller: a conversa direta entre
+// responsável e equipe escolar é o canal mais exposto a xingamento, e uma vez
+// gravada a mensagem já está entregue.
 const ChatDiretoController = require('../controllers/ChatDiretoController');
-router.post('/chat-direto/enviar', authJWT, filtrarPorEscola, ChatDiretoController.enviarMensagem);
+const bloquearPalavroes = require('../middleware/bloquearPalavroes');
+router.post('/chat-direto/enviar', authJWT, filtrarPorEscola,
+    bloquearPalavroes('mensagem', { recurso: 'chat-direto' }),
+    ChatDiretoController.enviarMensagem);
 router.get('/chat-direto/historico/:outroUsuarioId', authJWT, ChatDiretoController.getHistorico);
 router.patch('/chat-direto/lida/:mensagemId', authJWT, ChatDiretoController.marcarComoLida);
+router.patch('/chat-direto/lidas/:outroUsuarioId', authJWT, ChatDiretoController.marcarConversaComoLida);
+router.put('/chat-direto/mensagem/:mensagemId', authJWT, bloquearPalavroes('novaMensagem', { recurso: 'chat-direto' }), ChatDiretoController.editarMensagem);
+router.delete('/chat-direto/mensagem/:mensagemId', authJWT, ChatDiretoController.apagarMensagem);
+router.post('/chat-direto/reagir', authJWT, ChatDiretoController.reagirMensagem);
+router.post('/chat-direto/encaminhar', authJWT, filtrarPorEscola, ChatDiretoController.encaminharMensagem);
+router.get('/chat-direto/presenca/:outroUsuarioId', authJWT, filtrarPorEscola, ChatDiretoController.getPresenca);
+
+// Anexos/áudios do chat: bucket próprio de mimetypes (Word, Excel, ZIP, vídeo,
+// audio/webm) e metadata com os dois lados da conversa — o download reusa o
+// `serveFile`, que autoriza remetente e destinatário via FileController.
+const uploadChat = require('../middleware/uploadChat');
+// Erro do multer (tipo não permitido / arquivo grande) vira 400 legível em vez
+// de cair no handler genérico como 500.
+const receberAnexosChat = (req, res, next) => {
+    uploadChat.array('arquivos', 5)(req, res, (err) => {
+        if (!err) return next();
+        const grande = err.code === 'LIMIT_FILE_SIZE';
+        return res.status(400).json({
+            success: false,
+            error: grande ? 'Arquivo acima do limite de 25 MB.' : (err.message || 'Falha no upload.')
+        });
+    });
+};
+router.post('/chat-direto/upload', authJWT, filtrarPorEscola,
+    receberAnexosChat, ChatDiretoController.uploadAnexo);
+router.get('/chat-direto/anexo/:id', authJWT, filtrarPorEscola, FileController.serveFile);
 
 module.exports = router;
