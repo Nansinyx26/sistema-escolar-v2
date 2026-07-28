@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Planilha de Faltas — Funcionários | Sistema Escolar</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="../css/variables.css">
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components-new.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <link rel="stylesheet" href="../css/planilha-faltas.css?v=1.0">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="../js/libs/bootstrap-icons.min.css">
+
+    <link rel="stylesheet" href="../css/responsive-global.css?v=1.2">
+    <link rel="stylesheet" href="../css/splash-screen.css?v=1.0">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/img/icons/apple-touch-icon-180.png">
+    <meta name="theme-color" content="#09090b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Escola">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="stylesheet" href="../css/system-global.css?v=1.0">
+    <!-- Rolagem e performance mobile — deve ser o ÚLTIMO stylesheet -->
+    <link rel="stylesheet" href="../css/mobile-scroll.css?v=1.0">
+    <script src="../js/scroll-lock.js?v=1.0"></script>
+</head>
+
+<body>
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Sistema Escolar</h2>
+            <p class="splash-subtitle">Planilha de Faltas — Funcionários</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="../js/splash-screen.js"></script>
+
+    <div class="dashboard-page">
+        <header class="dashboard-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <div class="header-logo">
+                        <i class="bi bi-mortarboard-fill"></i>
+                        <span>Sistema Escolar</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="dashboard-main">
+            <div class="dashboard-container pf-page">
+
+                <div class="page-header pf-no-print"
+                    style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:2rem;">
+                    <div>
+                        <h1>Planilha de Faltas</h1>
+                        <p class="text-secondary">Controle mensal de faltas do quadro de funcionários</p>
+                    </div>
+                    <div style="display:flex; gap:.75rem; flex-wrap:wrap;">
+                        <button class="btn btn-outline" id="btnImprimir" type="button">
+                            <i class="bi bi-printer"></i> Imprimir
+                        </button>
+                        <button class="btn btn-outline" id="btnVoltar" type="button">
+                            <i class="bi bi-arrow-left"></i> Voltar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Cabeçalho da folha: escola, título e competência vêm do banco -->
+                <section class="pf-folha-header">
+                    <h2 class="pf-escola-nome" id="pfEscolaNome">Carregando escola...</h2>
+                    <p class="pf-escola-meta" id="pfEscolaMeta"></p>
+                    <div class="pf-folha-titulo">
+                        <i class="bi bi-journal-check"></i> Planilha de Faltas — FUNCIONÁRIOS
+                    </div>
+                    <div class="pf-competencia" id="pfCompetencia">—</div>
+                    <div class="pf-funcionario-tag" id="pfFuncionarioTag"></div>
+                </section>
+
+                <div class="pf-aviso pf-no-print">
+                    <i class="bi bi-info-circle-fill"></i>
+                    <div id="pfAvisoTexto">
+                        A partir do mês de julho, todos os funcionários podem programar e acompanhar
+                        suas faltas através dessa planilha.
+                    </div>
+                </div>
+
+                <!-- Navegação: ano + páginas dinâmicas por mês -->
+                <section class="pf-toolbar pf-no-print">
+                    <div class="pf-toolbar-linha">
+                        <span class="pf-toolbar-label">Ano</span>
+                        <div class="pf-ano-nav">
+                            <button class="pf-icon-btn" id="pfAnoAnterior" type="button" aria-label="Ano anterior">
+                                <i class="bi bi-chevron-left"></i>
+                            </button>
+                            <span class="pf-ano-valor" id="pfAnoValor">—</span>
+                            <button class="pf-icon-btn" id="pfAnoProximo" type="button" aria-label="Próximo ano">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                        </div>
+
+                        <div class="pf-spacer"></div>
+
+                        <div id="pfFuncionarioWrap" style="display:none; align-items:center; gap:.6rem;">
+                            <span class="pf-toolbar-label">Funcionário</span>
+                            <select class="pf-select" id="pfFuncionarioSelect" aria-label="Funcionário"></select>
+                        </div>
+                    </div>
+
+                    <div class="pf-toolbar-linha">
+                        <span class="pf-toolbar-label">Mês</span>
+                        <div class="pf-meses" id="pfMeses"></div>
+                    </div>
+                </section>
+
+                <!-- Totais do mês -->
+                <section class="pf-totais" id="pfTotais" style="display:none;"></section>
+
+                <!-- Planilha -->
+                <section class="pf-tabela-wrap">
+                    <table class="pf-tabela" id="pfTabela">
+                        <thead>
+                            <tr>
+                                <th class="pf-col-dia">Dia</th>
+                                <th class="pf-col-calendario">Calendário</th>
+                                <th>Abonadas</th>
+                                <th>Atestado</th>
+                                <th>Desconto Horas</th>
+                                <th>T.R.E.</th>
+                                <th>(In) Justificadas</th>
+                                <th>Observações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pfTabelaBody">
+                            <tr>
+                                <td colspan="8">
+                                    <div class="pf-estado">
+                                        <i class="bi bi-hourglass-split"></i>
+                                        <h3>Carregando planilha...</h3>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot id="pfTabelaFoot" style="display:none;">
+                            <tr>
+                                <td colspan="2">Totais do mês</td>
+                                <td id="pfTotalAbonadas">0</td>
+                                <td id="pfTotalAtestado">0</td>
+                                <td id="pfTotalHoras">0</td>
+                                <td id="pfTotalTre">0</td>
+                                <td id="pfTotalInjustificadas">0</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </section>
+
+                <div class="pf-acoes pf-no-print">
+                    <button class="btn btn-primary" id="btnSalvarPlanilha" type="button" disabled>
+                        <i class="bi bi-save"></i> Salvar Planilha
+                    </button>
+                    <span class="pf-status" id="pfStatus"></span>
+                </div>
+
+                <div class="pf-legenda">
+                    <span><strong>Abonadas</strong> — falta abonada pela direção</span>
+                    <span><strong>Atestado</strong> — falta coberta por atestado médico</span>
+                    <span><strong>Desconto Horas</strong> — horas descontadas no dia</span>
+                    <span><strong>T.R.E.</strong> — Tempo de Reposição/Estudo</span>
+                    <span><strong>(In) Justificadas</strong> — falta sem justificativa aceita</span>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="../js/api-config.js"></script>
+    <script src="../js/escape-html.js"></script>
+    <script defer src="../js/database.js"></script>
+    <script defer src="../js/auth.js"></script>
+    <script defer src="../js/utils.js"></script>
+    <script defer src="../js/planilha-faltas.js?v=1.0"></script>
+    <script defer src="../js/push-notifications.js"></script>
+    <script defer src="../js/pwa-install.js"></script>
+    <script defer src="../js/settings-drawer.js"></script>
+    <script src="../js/click-sound.js" defer></script>
+    <!-- Lucide line icons (padronização) + shim de compatibilidade Bootstrap Icons -->
+    <script src="../js/libs/lucide.min.js"></script>
+    <script src="../js/libs/lucide-init.js"></script>
+</body>
+
+</html>

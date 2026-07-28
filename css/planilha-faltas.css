@@ -1,0 +1,660 @@
+/**
+ * planilha-faltas.css — Planilha de Faltas FUNCIONÁRIOS.
+ *
+ * A tela imita a planilha impressa (cabeçalho com escola/mês, uma linha por dia
+ * do mês, colunas de marcação) mas com os controles de um formulário. Tokens do
+ * design system, nada de cor solta — a página funciona em dark e light.
+ */
+
+.pf-page {
+    --pf-surface: var(--bg-secondary, #0f0f12);
+    --pf-surface-alt: var(--bg-tertiary, #18181b);
+    --pf-line: var(--border-secondary, rgba(255, 255, 255, .08));
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 0 4rem;
+}
+
+/* ── Cabeçalho da planilha ──────────────────────────────── */
+.pf-folha-header {
+    background: var(--pf-surface);
+    border: 1px solid var(--pf-line);
+    border-radius: var(--radius-lg, .75rem);
+    padding: 1.75rem 2rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.pf-folha-header::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: var(--gradient-primary, linear-gradient(90deg, #10b981, #0ea5e9));
+}
+
+.pf-escola-nome {
+    font-size: clamp(1.25rem, 2.6vw, 1.75rem);
+    font-weight: var(--font-weight-bold, 700);
+    letter-spacing: .01em;
+    color: var(--text-primary, #fafafa);
+    margin: 0 0 .35rem;
+    text-transform: uppercase;
+}
+
+.pf-escola-meta {
+    font-size: var(--font-size-sm, .875rem);
+    color: var(--text-tertiary, #a1a1aa);
+    margin: 0 0 1rem;
+}
+
+.pf-folha-titulo {
+    display: inline-flex;
+    align-items: center;
+    gap: .55rem;
+    font-size: var(--font-size-lg, 1.125rem);
+    font-weight: var(--font-weight-semibold, 600);
+    color: var(--text-primary, #fafafa);
+    padding: .45rem 1.1rem;
+    border: 1px solid var(--pf-line);
+    border-radius: var(--radius-full, 9999px);
+    background: var(--pf-surface-alt);
+}
+
+.pf-competencia {
+    margin-top: 1rem;
+    font-size: clamp(1.1rem, 2.2vw, 1.4rem);
+    font-weight: var(--font-weight-bold, 700);
+    color: var(--primary, #10b981);
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.pf-funcionario-tag {
+    margin-top: .5rem;
+    font-size: var(--font-size-sm, .875rem);
+    color: var(--text-secondary, #d4d4d8);
+}
+
+.pf-aviso {
+    display: flex;
+    gap: .75rem;
+    align-items: flex-start;
+    background: var(--primary-light, rgba(16, 185, 129, .08));
+    border: 1px solid rgba(var(--primary-rgb, 16, 185, 129), .3);
+    border-radius: var(--radius-md, .5rem);
+    padding: .9rem 1.1rem;
+    margin-bottom: 1.5rem;
+    font-size: var(--font-size-sm, .875rem);
+    color: var(--text-secondary, #d4d4d8);
+    line-height: var(--line-height-normal, 1.6);
+}
+
+.pf-aviso i {
+    color: var(--primary, #10b981);
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+/* ── Barra de navegação de meses ────────────────────────── */
+.pf-toolbar {
+    background: var(--pf-surface);
+    border: 1px solid var(--pf-line);
+    border-radius: var(--radius-lg, .75rem);
+    padding: 1.1rem 1.25rem;
+    margin-bottom: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.pf-toolbar-linha {
+    display: flex;
+    align-items: center;
+    gap: .85rem;
+    flex-wrap: wrap;
+}
+
+.pf-toolbar-label {
+    font-size: var(--font-size-xs, .75rem);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-tertiary, #a1a1aa);
+    font-weight: var(--font-weight-semibold, 600);
+}
+
+.pf-ano-nav {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+.pf-ano-valor {
+    font-size: var(--font-size-lg, 1.125rem);
+    font-weight: var(--font-weight-bold, 700);
+    min-width: 4.5rem;
+    text-align: center;
+    color: var(--text-primary, #fafafa);
+}
+
+.pf-icon-btn {
+    width: 2.25rem;
+    height: 2.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md, .5rem);
+    border: 1px solid var(--pf-line);
+    background: var(--pf-surface-alt);
+    color: var(--text-secondary, #d4d4d8);
+    cursor: pointer;
+    transition: var(--transition-colors, 200ms ease);
+}
+
+.pf-icon-btn:hover:not(:disabled) {
+    border-color: var(--primary, #10b981);
+    color: var(--primary, #10b981);
+}
+
+.pf-icon-btn:disabled {
+    opacity: .35;
+    cursor: not-allowed;
+}
+
+.pf-meses {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+}
+
+.pf-mes-btn {
+    padding: .5rem .9rem;
+    border-radius: var(--radius-md, .5rem);
+    border: 1px solid var(--pf-line);
+    background: var(--pf-surface-alt);
+    color: var(--text-secondary, #d4d4d8);
+    font-size: var(--font-size-sm, .875rem);
+    font-weight: var(--font-weight-medium, 500);
+    cursor: pointer;
+    transition: transform var(--transition-fast, 150ms ease), var(--transition-colors, 200ms ease);
+}
+
+.pf-mes-btn:hover:not(:disabled) {
+    border-color: rgba(var(--primary-rgb, 16, 185, 129), .5);
+    color: var(--text-primary, #fafafa);
+    transform: translateY(-1px);
+}
+
+.pf-mes-btn.is-active {
+    background: var(--primary, #10b981);
+    border-color: var(--primary, #10b981);
+    color: var(--text-inverse, #09090b);
+    font-weight: var(--font-weight-semibold, 600);
+}
+
+.pf-mes-btn:disabled {
+    opacity: .3;
+    cursor: not-allowed;
+}
+
+.pf-mes-btn:disabled::after {
+    content: ' \F47A'; /* cadeado (bootstrap-icons) */
+    font-family: 'bootstrap-icons';
+    font-size: .7em;
+}
+
+.pf-select {
+    background: var(--pf-surface-alt);
+    border: 1px solid var(--pf-line);
+    border-radius: var(--radius-md, .5rem);
+    color: var(--text-primary, #fafafa);
+    padding: .5rem .75rem;
+    font-size: var(--font-size-sm, .875rem);
+    font-family: inherit;
+    min-width: 16rem;
+    max-width: 100%;
+}
+
+.pf-select:focus {
+    outline: none;
+    border-color: var(--border-focus, #10b981);
+}
+
+.pf-spacer {
+    flex: 1 1 auto;
+}
+
+/* ── Totais ─────────────────────────────────────────────── */
+.pf-totais {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: .85rem;
+    margin-bottom: 1.25rem;
+}
+
+.pf-total-card {
+    background: var(--pf-surface);
+    border: 1px solid var(--pf-line);
+    border-radius: var(--radius-lg, .75rem);
+    padding: 1rem 1.1rem;
+}
+
+.pf-total-label {
+    font-size: var(--font-size-xs, .75rem);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--text-tertiary, #a1a1aa);
+    margin-bottom: .35rem;
+}
+
+.pf-total-valor {
+    font-size: var(--font-size-2xl, 1.5rem);
+    font-weight: var(--font-weight-bold, 700);
+    color: var(--text-primary, #fafafa);
+    line-height: 1.1;
+}
+
+.pf-total-card.is-alerta .pf-total-valor {
+    color: var(--error, #ef4444);
+}
+
+/* ── Tabela ─────────────────────────────────────────────── */
+.pf-tabela-wrap {
+    background: var(--pf-surface);
+    border: 1px solid var(--pf-line);
+    border-radius: var(--radius-lg, .75rem);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.pf-tabela {
+    width: 100%;
+    min-width: 900px;
+    border-collapse: collapse;
+    font-size: var(--font-size-sm, .875rem);
+}
+
+.pf-tabela thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--pf-surface-alt);
+    color: var(--text-tertiary, #a1a1aa);
+    font-size: var(--font-size-xs, .75rem);
+    font-weight: var(--font-weight-semibold, 600);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    padding: .85rem .6rem;
+    border-bottom: 1px solid var(--pf-line);
+    white-space: nowrap;
+    text-align: center;
+}
+
+.pf-tabela thead th:first-child,
+.pf-tabela thead th:nth-child(2) {
+    text-align: left;
+}
+
+.pf-tabela tbody td {
+    padding: .35rem .6rem;
+    border-bottom: 1px solid var(--border-primary, rgba(255, 255, 255, .04));
+    text-align: center;
+    vertical-align: middle;
+}
+
+.pf-tabela tbody tr:hover {
+    background: rgba(var(--primary-rgb, 16, 185, 129), .04);
+}
+
+.pf-tabela tbody tr.is-hoje {
+    background: rgba(var(--primary-rgb, 16, 185, 129), .09);
+}
+
+.pf-tabela tbody tr.is-nao-letivo {
+    color: var(--text-tertiary, #a1a1aa);
+}
+
+.pf-tabela tbody tr.is-nao-letivo .pf-dia-num {
+    opacity: .55;
+}
+
+.pf-col-dia {
+    width: 5.5rem;
+    text-align: left !important;
+}
+
+.pf-dia-num {
+    font-weight: var(--font-weight-bold, 700);
+    font-size: var(--font-size-base, 1rem);
+    color: var(--text-primary, #fafafa);
+    margin-right: .4rem;
+}
+
+.pf-dia-semana {
+    font-size: var(--font-size-xs, .75rem);
+    color: var(--text-tertiary, #a1a1aa);
+}
+
+.pf-col-calendario {
+    width: 11rem;
+    text-align: left !important;
+}
+
+.pf-cal-tag {
+    display: inline-block;
+    padding: .2rem .55rem;
+    border-radius: var(--radius-full, 9999px);
+    font-size: var(--font-size-xs, .75rem);
+    font-weight: var(--font-weight-medium, 500);
+    border: 1px solid transparent;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pf-cal-tag[data-tipo="aula"] {
+    background: rgba(var(--primary-rgb, 16, 185, 129), .1);
+    border-color: rgba(var(--primary-rgb, 16, 185, 129), .3);
+    color: var(--primary, #10b981);
+}
+
+.pf-cal-tag[data-tipo="fim_de_semana"] {
+    background: rgba(255, 255, 255, .04);
+    border-color: var(--pf-line);
+    color: var(--text-tertiary, #a1a1aa);
+}
+
+.pf-cal-tag[data-tipo="feriado"],
+.pf-cal-tag[data-tipo="recesso"] {
+    background: var(--warning-light, rgba(245, 158, 11, .1));
+    border-color: rgba(245, 158, 11, .35);
+    color: var(--warning, #f59e0b);
+}
+
+.pf-cal-tag[data-tipo="prova"],
+.pf-cal-tag[data-tipo="conselho_classe"],
+.pf-cal-tag[data-tipo="reuniao_pais"],
+.pf-cal-tag[data-tipo="formacao"],
+.pf-cal-tag[data-tipo="evento"],
+.pf-cal-tag[data-tipo="matricula"],
+.pf-cal-tag[data-tipo="outro"] {
+    background: var(--info-light, rgba(14, 165, 233, .1));
+    border-color: rgba(14, 165, 233, .35);
+    color: var(--info, #0ea5e9);
+}
+
+/* Marcação tipo "X" da planilha impressa */
+.pf-marca {
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: var(--radius-sm, .375rem);
+    border: 1px solid var(--pf-line);
+    background: transparent;
+    color: transparent;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .95rem;
+    font-weight: var(--font-weight-bold, 700);
+    transition: var(--transition-colors, 200ms ease), transform var(--transition-fast, 150ms ease);
+}
+
+.pf-marca:hover:not(:disabled) {
+    border-color: var(--primary, #10b981);
+    transform: scale(1.08);
+}
+
+.pf-marca[aria-pressed="true"] {
+    background: var(--primary, #10b981);
+    border-color: var(--primary, #10b981);
+    color: var(--text-inverse, #09090b);
+}
+
+.pf-marca[data-campo="atestado"][aria-pressed="true"] {
+    background: var(--info, #0ea5e9);
+    border-color: var(--info, #0ea5e9);
+    color: #04121c;
+}
+
+.pf-marca[data-campo="injustificadas"][aria-pressed="true"] {
+    background: var(--error, #ef4444);
+    border-color: var(--error, #ef4444);
+    color: #1a0505;
+}
+
+.pf-marca[data-campo="tre"][aria-pressed="true"] {
+    background: var(--warning, #f59e0b);
+    border-color: var(--warning, #f59e0b);
+    color: #1a1102;
+}
+
+.pf-marca:disabled {
+    opacity: .35;
+    cursor: not-allowed;
+}
+
+.pf-horas {
+    width: 4.5rem;
+    padding: .35rem .4rem;
+    text-align: center;
+    background: var(--pf-surface-alt);
+    border: 1px solid var(--pf-line);
+    border-radius: var(--radius-sm, .375rem);
+    color: var(--text-primary, #fafafa);
+    font-family: inherit;
+    font-size: var(--font-size-sm, .875rem);
+}
+
+.pf-obs {
+    width: 100%;
+    min-width: 12rem;
+    padding: .35rem .55rem;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm, .375rem);
+    color: var(--text-secondary, #d4d4d8);
+    font-family: inherit;
+    font-size: var(--font-size-sm, .875rem);
+}
+
+.pf-obs::placeholder {
+    color: var(--text-tertiary, #a1a1aa);
+    opacity: .5;
+}
+
+.pf-obs:hover:not(:disabled) {
+    border-color: var(--pf-line);
+}
+
+.pf-horas:focus,
+.pf-obs:focus {
+    outline: none;
+    border-color: var(--border-focus, #10b981);
+    background: var(--pf-surface-alt);
+}
+
+.pf-horas:disabled,
+.pf-obs:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+.pf-tabela tfoot td {
+    padding: .8rem .6rem;
+    text-align: center;
+    font-weight: var(--font-weight-bold, 700);
+    color: var(--text-primary, #fafafa);
+    background: var(--pf-surface-alt);
+    border-top: 2px solid var(--pf-line);
+}
+
+.pf-tabela tfoot td:first-child {
+    text-align: left;
+    text-transform: uppercase;
+    font-size: var(--font-size-xs, .75rem);
+    letter-spacing: .06em;
+    color: var(--text-tertiary, #a1a1aa);
+}
+
+/* ── Rodapé de ações ────────────────────────────────────── */
+.pf-acoes {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 1.25rem;
+}
+
+.pf-status {
+    font-size: var(--font-size-sm, .875rem);
+    color: var(--text-tertiary, #a1a1aa);
+}
+
+.pf-status.is-dirty {
+    color: var(--warning, #f59e0b);
+}
+
+.pf-status.is-salvo {
+    color: var(--primary, #10b981);
+}
+
+/* ── Estados vazios / bloqueados ────────────────────────── */
+.pf-estado {
+    text-align: center;
+    padding: 3.5rem 1.5rem;
+    color: var(--text-tertiary, #a1a1aa);
+}
+
+.pf-estado i {
+    font-size: 2.5rem;
+    display: block;
+    margin-bottom: .75rem;
+    opacity: .5;
+}
+
+.pf-estado h3 {
+    color: var(--text-primary, #fafafa);
+    margin: 0 0 .4rem;
+    font-size: var(--font-size-lg, 1.125rem);
+}
+
+/* ── Legenda ────────────────────────────────────────────── */
+.pf-legenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    margin-top: 1.25rem;
+    padding: 1rem 1.25rem;
+    background: var(--pf-surface);
+    border: 1px solid var(--pf-line);
+    border-radius: var(--radius-lg, .75rem);
+    font-size: var(--font-size-xs, .75rem);
+    color: var(--text-tertiary, #a1a1aa);
+}
+
+.pf-legenda strong {
+    color: var(--text-secondary, #d4d4d8);
+    font-weight: var(--font-weight-semibold, 600);
+}
+
+/* ── Responsivo ─────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .pf-folha-header {
+        padding: 1.25rem 1rem;
+    }
+
+    .pf-toolbar {
+        padding: 1rem;
+    }
+
+    .pf-select {
+        min-width: 100%;
+    }
+
+    .pf-meses {
+        gap: .35rem;
+    }
+
+    .pf-mes-btn {
+        padding: .45rem .65rem;
+        font-size: var(--font-size-xs, .75rem);
+    }
+
+    .pf-acoes {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
+/* ── Impressão: vira a planilha de papel ────────────────── */
+@media print {
+    body {
+        background: #fff !important;
+        color: #000 !important;
+    }
+
+    .sidebar,
+    .dashboard-header,
+    .pf-toolbar,
+    .pf-acoes,
+    .pf-aviso,
+    #splashScreen,
+    .toast-container,
+    .nandev-watermark,
+    .pf-no-print {
+        display: none !important;
+    }
+
+    .pf-page {
+        max-width: none;
+        padding: 0;
+    }
+
+    .pf-folha-header,
+    .pf-tabela-wrap,
+    .pf-total-card,
+    .pf-legenda {
+        background: #fff !important;
+        border-color: #999 !important;
+        color: #000 !important;
+    }
+
+    .pf-escola-nome,
+    .pf-folha-titulo,
+    .pf-competencia,
+    .pf-dia-num,
+    .pf-total-valor,
+    .pf-tabela tfoot td {
+        color: #000 !important;
+    }
+
+    .pf-tabela {
+        min-width: 0;
+    }
+
+    .pf-tabela thead th,
+    .pf-tabela tbody td {
+        border: 1px solid #999 !important;
+        color: #000 !important;
+    }
+
+    .pf-marca {
+        border-color: #666 !important;
+    }
+
+    .pf-marca[aria-pressed="true"] {
+        background: #fff !important;
+        color: #000 !important;
+    }
+
+    .pf-horas,
+    .pf-obs {
+        background: transparent !important;
+        border-color: transparent !important;
+        color: #000 !important;
+    }
+}
