@@ -2,6 +2,7 @@ const Aluno = require('../models/Aluno');
 const Nota = require('../models/Nota');
 const Falta = require('../models/Falta');
 const { escolaMatch } = require('../middleware/filtrarPorEscola');
+const logger = require('../utils/logger');
 
 exports.getPublicSummary = async (req, res) => {
     try {
@@ -26,7 +27,13 @@ exports.getPublicSummary = async (req, res) => {
         try {
             const Escola = require('../models/Escola');
             totalEscolas = await Escola.countDocuments();
-        } catch (e) { /* opcional — landing tem fallback */ }
+        } catch (e) {
+            // Métrica opcional: a landing tem fallback, então não propaga o erro —
+            // mas um Mongo fora do ar não pode passar despercebido.
+            logger.warn('Falha ao contar escolas para a landing (usando fallback 0)', {
+                err: e, action: 'dashboard.metricasPublicas',
+            });
+        }
 
         res.json({
             success: true,
@@ -622,7 +629,7 @@ exports.getTeacherPanel = async (req, res) => {
                     'EF': 'Ed. Física',
                     'I': 'Inglês',
                     'A': 'Artes',
-                    'MK': 'Oficina Maker',
+                    'MK': 'Of. Maker',
                     'OL': 'Oficina de Leitura',
                     'DSE': 'Oficina Sebrae/DSE',
                     'PROERD': 'PROERD',

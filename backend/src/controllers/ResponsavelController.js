@@ -16,6 +16,7 @@ const Nota = require('../models/Nota');
 const Falta = require('../models/Falta');
 const FrequenciaProfessor = require('../models/FrequenciaProfessor');
 const escapeRegex = require('../utils/escapeRegex');
+const logger = require('../utils/logger');
 
 // Trava por conta contra varredura do código secreto do aluno
 const MAX_TENTATIVAS_VINCULO = 5;
@@ -111,7 +112,13 @@ exports.getAlunos = async (req, res) => {
                 const Escola = require('../models/Escola');
                 const escolas = await Escola.find({ _id: { $in: escolaIds } }).select('nome').lean();
                 escolas.forEach(e => { escolaNomePorId[String(e._id)] = e.nome; });
-            } catch (_) { /* segue com fallback */ }
+            } catch (e) {
+                // Segue com fallback (nome da escola em branco), mas registra:
+                // o responsável veria a tela sem saber que ela está incompleta.
+                logger.warn('Falha ao resolver nomes das escolas (portal do responsável)', {
+                    err: e, escolaIds: escolaIds.length, action: 'responsavel.listarAlunos',
+                });
+            }
         }
 
         // Retorna todos os dados para o frontend usar (dados pessoais, médicos, etc)

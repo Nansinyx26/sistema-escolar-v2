@@ -2,6 +2,8 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = require('../utils/jwtConfig');
 const Usuario = require('../models/Usuario');
 const { tokenEstaRevogado } = require('../utils/sessionToken');
+const logger = require('../utils/logger');
+const logContext = require('../utils/logContext');
 
 module.exports = async function authJWT(req, res, next) {
     // Tenta obter o token do cookie primeiro, depois do header Authorization
@@ -60,8 +62,26 @@ module.exports = async function authJWT(req, res, next) {
         // O perfil vem do BANCO, não do token: um rebaixamento de privilégio
         // passa a valer na requisição seguinte, sem esperar novo login.
         req.user = { ...decoded, perfil: user.perfil };
+
+        // A partir daqui todo log da requisição sai identificado.
+        logContext.set({
+            userId: String(decoded.id || decoded._id || ''),
+            perfil: user.perfil,
+            escolaId: decoded.escolaId ? String(decoded.escolaId) : undefined,
+        });
+
         next();
     } catch (e) {
+        // O cliente recebe sempre a mesma mensagem (não revela qual token falhou),
+        // mas o motivo real precisa existir no log: sem isso, um pico de 401 é
+        // indistinguível entre expiração normal, relógio dessincronizado e
+        // segredo JWT trocado num deploy.
+        logger.warn('Falha na verificação do JWT', {
+            reason: e.name === 'TokenExpiredError' ? 'expirado'
+                : e.name === 'JsonWebTokenError' ? 'assinatura_invalida'
+                : 'erro_inesperado',
+            errName: e.name,
+        });
         return res.status(401).json({ success: false, error: 'Token inválido ou expirado' });
     }
 };

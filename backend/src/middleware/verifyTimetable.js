@@ -1,6 +1,7 @@
 const GradeHoraria = require('../models/GradeHoraria');
 const Professor = require('../models/Professor');
 const Turma = require('../models/Turma');
+const logger = require('../utils/logger');
 
 // Helper to convert time "HH:mm" to minutes
 const timeToMinutes = (timeStr) => {
@@ -57,7 +58,11 @@ const verifyTimetable = async (req, res, next) => {
         }
 
         if (!targetProfessorId) {
-            console.warn('[Validation] Professor não identificado no payload:', req.body);
+            // Loga só as chaves recebidas — o body inteiro traria dados do aluno.
+            logger.warn('[Validation] Professor não identificado no payload', {
+                action: 'grade.validar',
+                camposRecebidos: Object.keys(req.body || {}),
+            });
             return res.status(400).json({
                 success: false,
                 error: 'Não foi possível identificar o professor para validação de horário (ID ausente).'
@@ -65,7 +70,10 @@ const verifyTimetable = async (req, res, next) => {
         }
 
         if (!targetTurmaId) {
-            console.warn('[Validation] Turma não identificada no payload:', req.body);
+            logger.warn('[Validation] Turma não identificada no payload', {
+                action: 'grade.validar',
+                camposRecebidos: Object.keys(req.body || {}),
+            });
             return res.status(400).json({
                 success: false,
                 error: 'Não foi possível identificar a turma para validação de horário.'
@@ -85,8 +93,9 @@ const verifyTimetable = async (req, res, next) => {
             $or: turmaConditions.length > 0 ? turmaConditions : [{ turmaId: "NENHUMA" }]
         };
 
-        console.log('[Middleware Verify] Query Grade:', JSON.stringify(finalQuery));
-        console.log('  -> Dia Semana:', diaSemana, 'Minutos:', minutosAtuais);
+        logger.debug('[Middleware Verify] Consultando grade horária', {
+            action: 'grade.validar', query: finalQuery, diaSemana, minutosAtuais,
+        });
 
         const grades = await GradeHoraria.find(finalQuery);
 
@@ -139,7 +148,7 @@ const verifyTimetable = async (req, res, next) => {
         }
 
     } catch (error) {
-        console.error('Erro no middleware de validação:', error);
+        logger.error('Erro no middleware de validação de horário', { err: error, action: 'grade.validar' });
         return res.status(500).json({ success: false, error: 'Erro interno na validação de horário.' });
     }
 };

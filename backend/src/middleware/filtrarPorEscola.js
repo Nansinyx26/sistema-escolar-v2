@@ -14,6 +14,8 @@
  * Deve rodar APÓS authJWT (usa req.user).
  */
 const Escola = require('../models/Escola');
+const logger = require('../utils/logger');
+const logContext = require('../utils/logContext');
 
 const CARGO_MODEL = {
     professor: () => require('../models/Professor'),
@@ -48,11 +50,21 @@ async function vinculosDoUsuario(user) {
     return (doc && doc.vinculos) || [];
 }
 
+/**
+ * Fixa a escola na requisição E no contexto de log. Todo log emitido daqui em
+ * diante carrega `escolaId`, o que torna auditável — pelo próprio log — se uma
+ * requisição tocou dados de outra escola.
+ */
+function definirEscola(req, escolaId) {
+    req.escolaId = escolaId;
+    logContext.set({ escolaId: escolaId ? String(escolaId) : undefined });
+}
+
 module.exports = async function filtrarPorEscola(req, res, next) {
     try {
         // 1. Sessão já tem escola ativa
         if (req.session && req.session.escolaAtivaId) {
-            req.escolaId = req.session.escolaAtivaId;
+            definirEscola(req, req.session.escolaAtivaId);
             return next();
         }
 
@@ -64,7 +76,7 @@ module.exports = async function filtrarPorEscola(req, res, next) {
         // 2. Vínculo único do usuário
         const vinculos = await vinculosDoUsuario(req.user);
         if (vinculos.length === 1) {
-            req.escolaId = vinculos[0].escolaId;
+            definirEscola(req, vinculos[0].escolaId);
             if (req.session) req.session.escolaAtivaId = req.escolaId;
             return next();
         }
@@ -79,7 +91,7 @@ module.exports = async function filtrarPorEscola(req, res, next) {
 
         // 3. Perfis sem vínculo (admin, responsavel, aluno) — escola ativa única
         if (estado.ativaUnicaId) {
-            req.escolaId = estado.ativaUnicaId;
+            definirEscola(req, estado.ativaUnicaId);
             if (req.session) req.session.escolaAtivaId = req.escolaId;
         }
         return next();
@@ -87,11 +99,19 @@ module.exports = async function filtrarPorEscola(req, res, next) {
         // SEGURANÇA: falha FECHADA. Seguir sem req.escolaId fazia todos os
         // controllers (padrão `if (req.escolaId) query.escolaId = ...`)
         // simplesmente abandonarem o filtro e varrerem a rede inteira.
-        console.error('[filtrarPorEscola] erro:', e.message);
+        logger.error('[filtrarPorEscola] não foi possível resolver a escola da sessão', {
+            err: e, action: 'tenant.resolver',
+        });
         try {
             const estado = await estadoEscolas();
             if (estado.total === 0) return next(); // pré-migração/testes: sem multi-tenant
-        } catch (_) { /* estado indisponível → trata como multi-tenant ativo */ }
+        } catch (e2) {
+            // Estado indisponível → trata como multi-tenant ativo (falha fechada).
+            // Precisa aparecer: é o caminho que devolve 503 ao usuário.
+            logger.warn('[filtrarPorEscola] estado de escolas indisponível — assumindo multi-tenant ativo', {
+                err: e2, action: 'tenant.resolver',
+            });
+        }
         return res.status(503).json({
             success: false,
             error: 'Não foi possível determinar a escola desta sessão. Faça login novamente.'

@@ -12,7 +12,7 @@ const ChatbotService = require('../services/ChatbotService');
 const AnalyticsService = require('../services/AnalyticsService');
 const ChatMensagem = require('../models/ChatMensagem');
 const Turma = require('../models/Turma');
-const logger = require('../utils/LoggerService');
+const logger = require('../utils/logger');
 
 // Controladores legados para retrocompatibilidade
 const PedagogicoController = require('./PedagogicoController');

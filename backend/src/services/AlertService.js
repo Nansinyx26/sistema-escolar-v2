@@ -8,7 +8,7 @@
  * @version 1.0
  */
 
-const logger = require('../utils/LoggerService');
+const logger = require('../utils/logger');
 
 class AlertService {
   constructor() {

@@ -10,7 +10,7 @@
 
 const ChatbotService = require('../services/ChatbotService');
 const AnalyticsService = require('../services/AnalyticsService');
-const logger = require('../utils/LoggerService');
+const logger = require('../utils/logger');
 
 /**
  * Chatbot Controller

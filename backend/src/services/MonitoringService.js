@@ -12,7 +12,7 @@ const os = require('os');
 const v8 = require('v8');
 const mongoose = require('mongoose');
 const { CacheService } = require('./CacheService');
-const logger = require('../utils/LoggerService');
+const logger = require('../utils/logger');
 
 class MonitoringService {
   constructor() {

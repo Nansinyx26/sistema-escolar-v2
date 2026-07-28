@@ -3,6 +3,7 @@ const ImageProcessor = require('../utils/imageProcessor');
 const { saveToGridFS, deleteFile } = require('../utils/gridfs');
 const escapeRegex = require('../utils/escapeRegex');
 const { generateUniqueSecretCode } = require('../utils/secretCodeHelper');
+const logger = require('../utils/logger');
 const assertAcessoAoAluno = require('../middleware/assertAcessoAoAluno');
 
 // Whitelist de campos permitidos para o Aluno (Prevenção de Injeção de Parâmetros)
@@ -242,7 +243,15 @@ exports.update = async (req, res) => {
                 const oldStudent = await Aluno.findOne({ _id: req.params.id }).select('foto');
                 if (oldStudent && oldStudent.foto && oldStudent.foto.startsWith('gridfs:')) {
                     const oldId = oldStudent.foto.split(':')[1];
-                    try { await deleteFile(oldId); } catch (e) { /* ignore */ }
+                    try {
+                        await deleteFile(oldId);
+                    } catch (e) {
+                        // Não bloqueia a troca de foto, mas cada falha aqui deixa
+                        // um arquivo órfão ocupando espaço no GridFS para sempre.
+                        logger.warn('Não foi possível remover a foto antiga do GridFS (arquivo órfão)', {
+                            err: e, gridfsId: oldId, action: 'aluno.trocarFoto',
+                        });
+                    }
                 }
                 
                 req.body.foto = `gridfs:${fileId}`;

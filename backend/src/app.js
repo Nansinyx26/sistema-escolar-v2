@@ -452,20 +452,14 @@ app.use((err, req, res, next) => {
 
     const statusCode = err.status || 500;
 
-    logger.error(`[Error Handler] ${err.message}`, {
-        requestId: req.requestId,
-        method: req.method,
-        path: req.originalUrl,
-        status: statusCode,
-        stack: process.env.NODE_ENV !== 'production' ? err.stack : undefined,
-    });
+    // O stack vai para o LOG em produção também — é lá que ele é indispensável.
+    // O que não pode vazar é para a RESPOSTA, e isso é tratado abaixo.
+    // requestId/userId/escolaId entram sozinhos pelo contexto da requisição.
+    logger.error(`[Error Handler] ${err.message}`, { err, status: statusCode });
 
     // Alerta automático para erros 5xx no handler global
     if (statusCode >= 500) {
-        logger.alert('UNHANDLED_ERROR', err.message, {
-            requestId: req.requestId,
-            path: req.originalUrl,
-        });
+        logger.alert('UNHANDLED_ERROR', err.message, { status: statusCode });
     }
     
     const isProduction = process.env.NODE_ENV === 'production';

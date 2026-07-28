@@ -1,112 +1,88 @@
 /**
- * requestLogger.js — Middleware de Métricas HTTP (Roadmap #6 — Observabilidade)
+ * requestLogger.js — Métricas HTTP + escopo de contexto de log
  *
- * Registra cada requisição HTTP com:
- *   - Método, rota, status code, duração (ms)
- *   - Tamanho da resposta, IP do cliente
- *   - Alertas automáticos para erros 5xx e requisições lentas
+ * Duas responsabilidades:
+ *   1. Abre o escopo do AsyncLocalStorage para a requisição. A partir daqui,
+ *      QUALQUER `logger.*()` chamado na pilha — controller, service, model —
+ *      sai carimbado com requestId/userId/escolaId sem receber `req`.
+ *   2. Registra a linha de acesso no `finish` (status, duração, tamanho) e
+ *      dispara alertas para 5xx e requisições lentas.
  *
- * Uso em app.js:
- *   const { requestLogger } = require('./middleware/requestLogger');
- *   app.use(requestLogger);
+ * Ordem em app.js: este middleware precisa vir ANTES das rotas e do authJWT,
+ * para que o contexto já exista quando o auth preencher o userId.
  */
 
 const logger = require('../utils/logger');
+const logContext = require('../utils/logContext');
 const monitoring = require('../services/MonitoringService');
 
-/**
- * Calcula a duração da requisição usando process.hrtime.
- */
+/** Duração em ms com relógio monotônico (imune a ajuste de hora do sistema). */
 function getDurationMs(start) {
     const diff = process.hrtime(start);
     return Math.round((diff[0] * 1e3) + (diff[1] / 1e6));
 }
 
-/**
- * Middleware principal de logging de requisições.
- */
 function requestLogger(req, res, next) {
-    // Ignora health checks e assets estáticos para não poluir os logs
+    // Health checks e assets não geram linha de acesso (ruído puro), mas ainda
+    // assim recebem contexto — um erro dentro deles precisa ser rastreável.
     const skipPaths = ['/api/health', '/api/ping', '/favicon'];
-    if (skipPaths.some(p => req.path.startsWith(p))) {
-        return next();
-    }
+    const silent = skipPaths.some(p => req.path.startsWith(p));
 
     const start = process.hrtime();
-    const requestId = generateRequestId();
+    const requestId = logContext.generateRequestId();
 
-    // Injeta o requestId no objeto req para rastreabilidade nos controllers
     req.requestId = requestId;
+    // Devolve o id ao cliente: um usuário que reporta erro traz o id do incidente.
+    res.setHeader('X-Request-Id', requestId);
 
-    // Captura o evento 'finish' da resposta para logar métricas finais
-    res.on('finish', () => {
-        const durationMs = getDurationMs(start);
-        const statusCode = res.statusCode;
+    const baseContext = {
+        requestId,
+        method: req.method,
+        path: req.originalUrl || req.url,
+    };
 
-        // Registrar métricas no serviço de monitoramento
-        monitoring.recordRequest(statusCode, durationMs);
-        const contentLength = res.getHeader('content-length') || 0;
+    logContext.run(baseContext, () => {
+        res.on('finish', () => {
+            if (silent) return;
 
-        // Extrai o IP real (respeitando proxy reverso do Render)
-        const clientIp = (req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || '0.0.0.0')
-            .split(',')[0].trim();
+            const durationMs = getDurationMs(start);
+            const statusCode = res.statusCode;
 
-        const meta = {
-            requestId,
-            method: req.method,
-            path: req.originalUrl || req.url,
-            status: statusCode,
-            durationMs,
-            contentLength: Number(contentLength),
-            ip: clientIp,
-            userAgent: req.headers['user-agent']?.substring(0, 120),
-        };
+            monitoring.recordRequest(statusCode, durationMs);
 
-        // Adiciona identificação do usuário autenticado (se disponível)
-        if (req.user) {
-            meta.userId = req.user.id || req.user._id;
-            meta.userPerfil = req.user.perfil;
-        }
+            const clientIp = String(
+                req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || '0.0.0.0'
+            ).split(',')[0].trim();
 
-        // Nível do log baseado no status code
-        if (statusCode >= 500) {
-            logger.error(`${req.method} ${req.originalUrl} → ${statusCode} (${durationMs}ms)`, meta);
-
-            // Alerta automático para erros 5xx
-            logger.alert('HTTP_5XX', `Erro ${statusCode} em ${req.method} ${req.originalUrl}`, {
-                requestId,
-                method: req.method,
-                path: req.originalUrl,
+            const meta = {
                 status: statusCode,
                 durationMs,
-            });
+                contentLength: Number(res.getHeader('content-length') || 0),
+                ip: clientIp,
+                userAgent: String(req.headers['user-agent'] || '').substring(0, 120),
+            };
+            // requestId/userId/escolaId entram sozinhos pelo contexto — não repetir aqui.
 
-        } else if (statusCode >= 400) {
-            logger.warn(`${req.method} ${req.originalUrl} → ${statusCode} (${durationMs}ms)`, meta);
+            const line = `${req.method} ${req.originalUrl} → ${statusCode} (${durationMs}ms)`;
 
-        } else {
-            logger.info(`${req.method} ${req.originalUrl} → ${statusCode} (${durationMs}ms)`, meta);
-        }
+            if (statusCode >= 500) {
+                logger.error(line, meta);
+                logger.alert('HTTP_5XX', `Erro ${statusCode} em ${req.method} ${req.originalUrl}`, meta);
+            } else if (statusCode >= 400) {
+                logger.warn(line, meta);
+            } else {
+                logger.info(line, meta);
+            }
 
-        // Alerta para requisições muito lentas (> 5 segundos)
-        if (durationMs > 5000) {
-            logger.alert('SLOW_REQUEST', `Requisição lenta: ${durationMs}ms em ${req.method} ${req.originalUrl}`, {
-                requestId,
-                durationMs,
-                threshold: 5000,
-            });
-        }
+            if (durationMs > 5000) {
+                logger.alert('SLOW_REQUEST', `Requisição lenta em ${req.method} ${req.originalUrl}`, {
+                    durationMs, threshold: 5000,
+                });
+            }
+        });
+
+        next();
     });
-
-    next();
-}
-
-/**
- * Gera um ID único curto para rastrear requisições nos logs.
- * Formato: 8 caracteres hexadecimais (ex: "a3f8b2c1")
- */
-function generateRequestId() {
-    return Math.random().toString(16).substring(2, 10);
 }
 
 module.exports = { requestLogger };
