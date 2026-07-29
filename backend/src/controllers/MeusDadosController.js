@@ -22,7 +22,105 @@
 const Usuario = require('../models/Usuario');
 const Aluno = require('../models/Aluno');
 const AuditLog = require('../models/AuditLog');
+const ChatDireto = require('../models/ChatDireto');
+const IaConversa = require('../models/IaConversa');
 const { logAction } = require('../utils/auditHelper');
+
+// Teto do pacote de conversas. Uma exportação não pode virar um dump de
+// centenas de MB que trava o processo (memoryStorage do Render é pequeno).
+// Acima disso o titular é orientado a pedir o restante ao suporte.
+const LIMITE_MENSAGENS_EXPORTACAO = 5000;
+
+/**
+ * Monta o histórico do chat interno do titular para a exportação.
+ *
+ * Inclui as mensagens que ele ENVIOU e as que RECEBEU — as duas pontas são
+ * dado pessoal dele. O que ele apagou só para si fica de fora, coerente com o
+ * que ele enxerga no portal.
+ *
+ * O conteúdo de mensagem apagada para todos NÃO é reexposto aqui: ela foi
+ * removida da vista de ambos e o registro do que havia mora na trilha de
+ * auditoria, que é acessível só à gestão.
+ */
+async function montarHistoricoChat(userId) {
+    const id = String(userId);
+
+    const mensagens = await ChatDireto.find({
+        $or: [{ remetenteId: id }, { destinatarioId: id }],
+        apagadaPara: { $ne: id }
+    })
+        .sort({ createdAt: -1 })
+        .limit(LIMITE_MENSAGENS_EXPORTACAO + 1)
+        .lean();
+
+    const truncado = mensagens.length > LIMITE_MENSAGENS_EXPORTACAO;
+    const lista = truncado ? mensagens.slice(0, LIMITE_MENSAGENS_EXPORTACAO) : mensagens;
+
+    // Resolve os nomes dos interlocutores numa consulta só, para o pacote não
+    // sair cheio de ObjectIds que não dizem nada ao titular.
+    const outrosIds = [...new Set(lista.map((m) =>
+        String(m.remetenteId) === id ? String(m.destinatarioId) : String(m.remetenteId)
+    ))];
+    const pessoas = await Usuario.find({ _id: { $in: outrosIds } })
+        .select('nome perfil')
+        .lean();
+    const nomePorId = new Map(pessoas.map((p) => [String(p._id), p.nome]));
+
+    return {
+        total: lista.length,
+        truncado,
+        observacao: truncado
+            ? `Exportação limitada às ${LIMITE_MENSAGENS_EXPORTACAO} mensagens mais recentes. Para o histórico completo, solicite à secretaria da escola.`
+            : undefined,
+        mensagens: lista.map((m) => {
+            const souRemetente = String(m.remetenteId) === id;
+            const outroId = souRemetente ? String(m.destinatarioId) : String(m.remetenteId);
+            return {
+                data: m.createdAt,
+                direcao: souRemetente ? 'enviada' : 'recebida',
+                interlocutor: nomePorId.get(outroId) || 'Usuário removido',
+                conteudo: m.apagadaParaTodos ? '[mensagem apagada]' : (m.mensagem || ''),
+                anexo: m.anexo && m.anexo.nome ? m.anexo.nome : undefined,
+                audio: m.audio && m.audio.url ? `mensagem de voz (${m.audio.duracao || 0}s)` : undefined,
+                editada: m.editada || false
+            };
+        })
+    };
+}
+
+/**
+ * Monta as conversas do titular com o copiloto para a exportação.
+ *
+ * Mesma razão do chat interno: é conversa do titular com a escola, dado pessoal
+ * dele, e precisa sair no pacote de portabilidade.
+ *
+ * O `resumo` comprimido também entra — ele é derivado das mensagens dele e, do
+ * ponto de vista do titular, é conteúdo que a escola guarda a respeito dele.
+ */
+async function montarConversasCopiloto(userId) {
+    const conversas = await IaConversa.find({ usuarioId: String(userId) })
+        .sort({ atualizadoEm: -1 })
+        .lean();
+
+    return {
+        total: conversas.length,
+        observacao: 'Conversas com o assistente da escola. Expiram automaticamente após o período de retenção configurado.',
+        conversas: conversas.map((c) => ({
+            titulo: c.titulo,
+            criadoEm: c.criadoEm,
+            atualizadoEm: c.atualizadoEm,
+            resumoDeTrechosAntigos: c.resumo || undefined,
+            mensagens: (c.mensagens || []).map((m) => ({
+                data: m.em,
+                autor: m.papel === 'usuario' ? 'você' : 'assistente',
+                conteudo: m.texto,
+                // Só os nomes das consultas feitas — o retorno delas nunca é
+                // persistido (ver o cabeçalho de models/IaConversa.js).
+                consultasRealizadas: m.ferramentas
+            }))
+        }))
+    };
+}
 
 // --------------------------------------------------
 // GET /api/meus-dados
@@ -80,7 +178,14 @@ exports.exportarMeusDados = async (req, res) => {
                 recurso: log.recurso,
                 descricao: log.detalhes?.descricao,
                 data: log.data
-            }))
+            })),
+            // As conversas do chat interno são dado pessoal do titular e
+            // faltavam no pacote: ele recebia tudo menos o que efetivamente
+            // conversou com a escola.
+            chatInterno: await montarHistoricoChat(userId),
+            // Mesma razão do chat interno: conversa do titular com a escola é
+            // dado pessoal dele e precisa sair no pacote de portabilidade.
+            assistenteEscola: await montarConversasCopiloto(userId)
         };
 
         // Registra a exportação no audit log
@@ -117,10 +222,20 @@ exports.solicitarExclusao = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
         }
 
+        // Quantas conversas serão afetadas — o admin precisa saber o alcance
+        // antes de executar, e o titular tem direito de saber o que some.
+        const mensagensDoTitular = await ChatDireto.countDocuments({
+            remetenteId: String(userId), apagadaParaTodos: { $ne: true }
+        });
+        const conversasDoTitular = await IaConversa.countDocuments({ usuarioId: String(userId) });
+
         // Registra a solicitação no audit log para o admin processar
         await logAction(req, 'LGPD_SOLICITAR_EXCLUSAO', 'MeusDados', {
             recursoId: userId,
-            descricao: `SOLICITAÇÍO DE EXCLUSÍO LGPD — Titular: ${usuario.email}${motivo ? ` | Motivo: ${motivo}` : ''}. Admin deve processar manualmente em /api/usuarios/${userId}/anonymize.`
+            descricao: `SOLICITAÇÃO DE EXCLUSÃO LGPD — Titular: ${usuario.email}${motivo ? ` | Motivo: ${motivo}` : ''}. `
+                + `Inclui ${mensagensDoTitular} mensagem(ns) do chat interno `
+                + `e ${conversasDoTitular} conversa(s) com o assistente (estas serão excluídas). `
+                + `Admin deve processar manualmente em /api/usuarios/${userId}/anonymize.`
         });
 
         console.log(`⚠️  [LGPD] Solicitação de exclusão recebida de: ${usuario.email}`);
@@ -128,7 +243,12 @@ exports.solicitarExclusao = async (req, res) => {
         return res.json({
             success: true,
             message: 'Sua solicitação foi recebida e será processada em até 15 dias úteis, conforme previsto na LGPD.',
-            protocolo: `LGPD-${Date.now()}-${userId.toString().slice(-6)}`
+            protocolo: `LGPD-${Date.now()}-${userId.toString().slice(-6)}`,
+            abrangencia: {
+                mensagensDoChat: mensagensDoTitular,
+                observacao: 'O conteúdo das suas mensagens será removido. O registro da conversa permanece '
+                    + 'sem conteúdo, porque também é dado do outro participante e registro da escola.'
+            }
         });
 
     } catch (err) {

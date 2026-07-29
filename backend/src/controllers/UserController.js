@@ -1127,12 +1127,49 @@ exports.anonymize = async (req, res) => {
             $inc: { tokenVersion: 1 }
         });
 
-        await logAction(req, 'ANONYMIZE_USER', 'Usuarios', {
-            recursoId: user._id,
-            descricao: `Dados do usuário ${emailOriginal} foram anonimizados conforme LGPD.`
+        // As conversas do chat ficavam intactas: anonimizar o cadastro e
+        // deixar o texto das mensagens preservava justamente o conteúdo mais
+        // pessoal (nomes de alunos, situações familiares).
+        //
+        // O conteúdo é apagado, o documento permanece. Excluir a mensagem
+        // inteira mutilaria a conversa do OUTRO participante — que é registro
+        // legítimo da escola e dado dele também.
+        const ChatDireto = require('../models/ChatDireto');
+        const mensagensAnonimizadas = await ChatDireto.updateMany(
+            { remetenteId: String(user._id), apagadaParaTodos: { $ne: true } },
+            {
+                $set: {
+                    mensagem: 'Mensagem removida a pedido do titular (LGPD).',
+                    apagadaParaTodos: true
+                },
+                $unset: { anexo: '', audio: '' }
+            }
+        );
+
+        // As conversas com o copiloto são EXCLUÍDAS, não esvaziadas.
+        //
+        // A diferença para o chat interno acima é que ali existe um segundo
+        // participante humano, e o documento precisa sobreviver para não mutilar
+        // a conversa dele. Aqui o outro lado é o assistente: não há registro de
+        // terceiro a preservar, então mantém-se apenas um invólucro vazio sem
+        // função — enquanto o texto pode citar nome e nota de aluno.
+        const IaConversa = require('../models/IaConversa');
+        const conversasRemovidas = await IaConversa.deleteMany({
+            usuarioId: String(user._id)
         });
 
-        res.json({ success: true, message: 'Usuário anonimizado com sucesso.' });
+        await logAction(req, 'ANONYMIZE_USER', 'Usuarios', {
+            recursoId: user._id,
+            descricao: `Dados do usuário ${emailOriginal} foram anonimizados conforme LGPD. `
+                + `${mensagensAnonimizadas.modifiedCount} mensagem(ns) do chat tiveram o conteúdo removido. `
+                + `${conversasRemovidas.deletedCount} conversa(s) com o assistente foram excluídas.`
+        });
+
+        res.json({
+            success: true,
+            message: 'Usuário anonimizado com sucesso.',
+            mensagensAnonimizadas: mensagensAnonimizadas.modifiedCount
+        });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }

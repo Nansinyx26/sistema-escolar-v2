@@ -163,6 +163,58 @@ exports.notify = async ({
 };
 
 /**
+ * Envia um Web Push direto a um usuário, sem criar registro em Notificacao.
+ *
+ * Usado pelo chat interno: a conversa já tem histórico próprio (ChatDireto),
+ * então gravar uma Notificacao a cada mensagem duplicaria os dados e encheria
+ * o sino de avisos. O que faltava era só o alcance — com o portal fechado o
+ * Socket.IO não entrega nada, e a mensagem só aparecia no próximo acesso.
+ *
+ * Respeita `notificacoesPreferencias.push` e remove inscrições expiradas.
+ *
+ * @returns {Promise<number>} quantidade de dispositivos que receberam o push.
+ */
+exports.pushParaUsuario = async (usuarioId, { title, body, url = '/', tag } = {}) => {
+    if (!usuarioId || !title) return 0;
+
+    try {
+        const user = await Usuario.findById(usuarioId)
+            .select('pushSubscriptions notificacoesPreferencias ativo')
+            .lean();
+
+        if (!user || user.ativo === false) return 0;
+
+        const prefs = user.notificacoesPreferencias || {};
+        if (prefs.push === false) return 0;
+        if (!Array.isArray(user.pushSubscriptions) || user.pushSubscriptions.length === 0) return 0;
+
+        const payload = {
+            title,
+            body,
+            icon: '/img/icons/icon-192.png',
+            data: { url, id: tag }
+        };
+
+        let entregues = 0;
+        for (const sub of user.pushSubscriptions) {
+            const resultado = await WebPushService.sendPushNotification(sub, payload);
+            if (resultado === true) entregues++;
+            else if (resultado === 'expired') {
+                await Usuario.findByIdAndUpdate(usuarioId, {
+                    $pull: { pushSubscriptions: { endpoint: sub.endpoint } }
+                });
+            }
+        }
+        return entregues;
+    } catch (error) {
+        // Push é entrega auxiliar: falhar aqui não pode derrubar a ação que
+        // originou o aviso (enviar a mensagem, publicar o comunicado).
+        logger.error(`[NotificationService.pushParaUsuario] ${error.message}`);
+        return 0;
+    }
+};
+
+/**
  * Auxiliar para converter string de destinatários em lista de usuários.
  */
 exports.getTargetUsers = async (destinatarios, escolaId = null) => {
