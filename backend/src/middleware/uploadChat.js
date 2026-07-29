@@ -67,12 +67,22 @@ const fileFilter = (req, file, cb) => {
     }
 };
 
+// 10 MB por arquivo. O teto anterior (25 MB) × 5 arquivos permitia 125 MB numa
+// requisição só, tudo carregado em memória (memoryStorage) antes de ir para o
+// GridFS — num plano pequeno do Render isso derruba o processo.
+const LIMITE_ARQUIVO = 10 * 1024 * 1024;
+// Áudio de voz tem teto próprio e menor: 5 minutos de gravação do navegador
+// ficam bem abaixo disso, então passar de 5 MB indica arquivo indevido.
+const LIMITE_AUDIO = 5 * 1024 * 1024;
+
 const uploadChat = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 25 * 1024 * 1024, files: 5 },
+    limits: { fileSize: LIMITE_ARQUIVO, files: 5 },
     fileFilter
 });
 
 module.exports = uploadChat;
 module.exports.EXT_POR_MIME = EXT_POR_MIME;
+module.exports.LIMITE_ARQUIVO = LIMITE_ARQUIVO;
+module.exports.LIMITE_AUDIO = LIMITE_AUDIO;
 module.exports.ALLOWED = ALLOWED;

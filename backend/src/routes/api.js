@@ -11,6 +11,9 @@ const authorize = require('../middleware/authorize');
 const upload = require('../middleware/upload');
 const uploadDocument = require('../middleware/uploadDocument');
 const { convertToWebP } = require('../middleware/upload');
+// Confere os BYTES do arquivo contra o mimetype declarado. Usado tanto aqui
+// (documentos de aluno) quanto nos anexos do chat, mais abaixo.
+const { validarAssinatura } = require('../utils/assinaturaArquivo');
 
 // Controllers Auxiliares (mantidos para rotas gerais da raiz)
 const ConfigController = require('../controllers/ConfigController');
@@ -91,6 +94,25 @@ router.post('/upload/documento', authJWT, horizontalFilter, filtrarPorEscola, up
     if (!req.files || req.files.length === 0) {
         return res.status(400).json({ success: false, error: 'Nenhum arquivo enviado' });
     }
+
+    // O `fileFilter` do uploadDocument só olha `file.mimetype`, que é o
+    // Content-Type que o CLIENTE mandou. O anexo do chat já era conferido byte a
+    // byte; aqui não era — e este é o caminho que grava RG/CPF/comprovante de
+    // criança. Um `payload.exe` renomeado para `rg.pdf` entrava no GridFS e
+    // depois era baixado pela secretaria como se fosse o documento.
+    //
+    // Diferente de /api/upload/photo, aqui não há reencode (o sharp do WebP é o
+    // que barra o disfarce naquela rota): o byte enviado é o byte guardado.
+    for (const arquivo of req.files) {
+        const veredito = validarAssinatura(arquivo.buffer, arquivo.mimetype);
+        if (!veredito.ok) {
+            return res.status(400).json({
+                success: false,
+                error: `"${arquivo.originalname}": ${veredito.motivo}`
+            });
+        }
+    }
+
     try {
         // O documento é vinculado a um aluno já no upload — é esse metadata
         // que o FileController usa depois para decidir quem pode baixá-lo.
@@ -199,16 +221,28 @@ router.post('/gamificacao/recalcular/:alunoId', authJWT, horizontalFilter, filtr
 // gravada a mensagem já está entregue.
 const ChatDiretoController = require('../controllers/ChatDiretoController');
 const bloquearPalavroes = require('../middleware/bloquearPalavroes');
+// Teto de envio (30/min por conta, 120/min por IP). Vem DEPOIS do authJWT
+// porque a chave é o usuário autenticado, e ANTES do filtro de palavrões e do
+// controller para que o flood seja barrado antes de gastar banco.
+const { chatMensagemLimiter, chatUploadLimiter, chatIpLimiter } = require('../middleware/rateLimiters');
+// `detalhado: false` só aqui e na edição: nos comentários e avaliações o front
+// mostra o nível e o termo detectado, e mudar isso quebraria aquelas telas. No
+// chat, devolver o termo exato do dicionário só ajuda quem está caçando uma
+// grafia que o filtro não pegue.
 router.post('/chat-direto/enviar', authJWT, filtrarPorEscola,
-    bloquearPalavroes('mensagem', { recurso: 'chat-direto' }),
+    chatIpLimiter, chatMensagemLimiter,
+    bloquearPalavroes('mensagem', { recurso: 'chat-direto', detalhado: false }),
     ChatDiretoController.enviarMensagem);
 router.get('/chat-direto/historico/:outroUsuarioId', authJWT, ChatDiretoController.getHistorico);
 router.patch('/chat-direto/lida/:mensagemId', authJWT, ChatDiretoController.marcarComoLida);
 router.patch('/chat-direto/lidas/:outroUsuarioId', authJWT, ChatDiretoController.marcarConversaComoLida);
-router.put('/chat-direto/mensagem/:mensagemId', authJWT, bloquearPalavroes('novaMensagem', { recurso: 'chat-direto' }), ChatDiretoController.editarMensagem);
+router.put('/chat-direto/mensagem/:mensagemId', authJWT, bloquearPalavroes('novaMensagem', { recurso: 'chat-direto', detalhado: false }), ChatDiretoController.editarMensagem);
 router.delete('/chat-direto/mensagem/:mensagemId', authJWT, ChatDiretoController.apagarMensagem);
 router.post('/chat-direto/reagir', authJWT, ChatDiretoController.reagirMensagem);
-router.post('/chat-direto/encaminhar', authJWT, filtrarPorEscola, ChatDiretoController.encaminharMensagem);
+// Encaminhar cria N mensagens × M destinatários numa requisição só — é o
+// caminho mais barato para gerar volume, então entra no mesmo orçamento.
+router.post('/chat-direto/encaminhar', authJWT, filtrarPorEscola,
+    chatMensagemLimiter, ChatDiretoController.encaminharMensagem);
 router.get('/chat-direto/presenca/:outroUsuarioId', authJWT, filtrarPorEscola, ChatDiretoController.getPresenca);
 
 // Anexos/áudios do chat: bucket próprio de mimetypes (Word, Excel, ZIP, vídeo,
@@ -219,16 +253,40 @@ const uploadChat = require('../middleware/uploadChat');
 // de cair no handler genérico como 500.
 const receberAnexosChat = (req, res, next) => {
     uploadChat.array('arquivos', 5)(req, res, (err) => {
-        if (!err) return next();
-        const grande = err.code === 'LIMIT_FILE_SIZE';
-        return res.status(400).json({
-            success: false,
-            error: grande ? 'Arquivo acima do limite de 25 MB.' : (err.message || 'Falha no upload.')
-        });
+        if (err) {
+            const grande = err.code === 'LIMIT_FILE_SIZE';
+            return res.status(400).json({
+                success: false,
+                error: grande ? 'Arquivo acima do limite de 10 MB.' : (err.message || 'Falha no upload.')
+            });
+        }
+
+        // O fileFilter do multer confia no Content-Type que o CLIENTE mandou.
+        // Aqui os bytes são conferidos de verdade: um .exe renomeado para .pdf
+        // passava pela lista branca e ia parar no GridFS.
+        for (const arquivo of req.files || []) {
+            // Áudio tem teto próprio (5 MB), menor que o dos demais anexos.
+            if (String(arquivo.mimetype).startsWith('audio/') && arquivo.size > uploadChat.LIMITE_AUDIO) {
+                return res.status(400).json({
+                    success: false,
+                    error: `"${arquivo.originalname}": áudio acima do limite de 5 MB.`
+                });
+            }
+
+            const veredito = validarAssinatura(arquivo.buffer, arquivo.mimetype);
+            if (!veredito.ok) {
+                return res.status(400).json({
+                    success: false,
+                    error: `"${arquivo.originalname}": ${veredito.motivo}`
+                });
+            }
+        }
+
+        return next();
     });
 };
 router.post('/chat-direto/upload', authJWT, filtrarPorEscola,
-    receberAnexosChat, ChatDiretoController.uploadAnexo);
+    chatUploadLimiter, receberAnexosChat, ChatDiretoController.uploadAnexo);
 router.get('/chat-direto/anexo/:id', authJWT, filtrarPorEscola, FileController.serveFile);
 
 module.exports = router;

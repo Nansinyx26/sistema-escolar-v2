@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const ChatDireto = require('../models/ChatDireto');
 const Usuario = require('../models/Usuario');
 const logger = require('../utils/logger');
+const NotificationService = require('../services/NotificationService');
 const { EXT_POR_MIME } = require('../middleware/uploadChat');
 
 const PERFIS_GESTAO = ['admin', 'diretor', 'secretaria'];
@@ -75,14 +76,50 @@ async function validarAudio(bruto, remetenteId) {
 }
 
 /**
+ * MATRIZ DE PERMISSÃO DE CONVERSA — lista branca explícita.
+ *
+ * Antes a regra era por exclusão: negava alguns pares e liberava o resto por
+ * omissão. Um perfil novo no enum de Usuario passaria a conversar com todo
+ * mundo sem ninguém decidir isso. Aqui vale o inverso — par que não estiver
+ * declarado abaixo é negado.
+ *
+ * A matriz é SIMÉTRICA: declarar A→B já autoriza B→A (ver `paresPermitidos`).
+ *
+ *   professor   ↔ professor, diretor, secretaria, responsavel
+ *   diretor     ↔ diretor, secretaria, responsavel
+ *   secretaria  ↔ secretaria, responsavel
+ *   responsavel ↔ (apenas equipe escolar — nunca outro responsável)
+ *
+ * `admin` é tratado à parte: conversa com qualquer perfil e atravessa escolas,
+ * porque é o papel de suporte da rede.
+ */
+const MATRIZ_CONVERSA = {
+    professor: ['professor', 'diretor', 'secretaria', 'responsavel'],
+    diretor: ['diretor', 'secretaria', 'responsavel', 'professor'],
+    secretaria: ['secretaria', 'responsavel', 'professor', 'diretor'],
+    // Responsável não inicia nem recebe conversa de outro responsável: a escola
+    // é sempre a intermediária entre duas famílias.
+    responsavel: ['professor', 'diretor', 'secretaria']
+};
+
+/** true se o par de perfis está na matriz, em qualquer direção. */
+function paresPermitidos(perfilA, perfilB) {
+    if (perfilA === 'admin' || perfilB === 'admin') return true;
+    const deA = MATRIZ_CONVERSA[perfilA];
+    const deB = MATRIZ_CONVERSA[perfilB];
+    if (!deA || !deB) return false; // perfil desconhecido nunca conversa
+    return deA.includes(perfilB) && deB.includes(perfilA);
+}
+
+/**
  * Verifica se dois usuários podem trocar mensagens diretas.
  *
  * Antes, `enviarMensagem` aceitava qualquer destinatarioId — sem validar
  * vínculo, perfil ou escola —, então qualquer conta autenticada mandava
  * mensagem para qualquer outra da rede inteira.
  *
- * Regra: precisam estar na mesma escola. Responsável só fala com a equipe
- * escolar (professor/diretor/secretaria), nunca com outro responsável.
+ * Duas barreiras, nesta ordem: mesma escola (multi-tenant) e par de perfis
+ * presente na MATRIZ_CONVERSA.
  */
 async function podeConversar(remetente, destinatarioId) {
     const destinatario = await Usuario.findById(String(destinatarioId))
@@ -104,15 +141,62 @@ async function podeConversar(remetente, destinatarioId) {
         }
     }
 
-    const equipe = ['professor', ...PERFIS_GESTAO];
-    if (perfilRemetente === 'responsavel' && !equipe.includes(perfilDestino)) {
-        return { ok: false, status: 403, error: 'Responsáveis só podem falar com a equipe escolar.' };
-    }
-    if (perfilDestino === 'responsavel' && !equipe.includes(perfilRemetente)) {
-        return { ok: false, status: 403, error: 'Apenas a equipe escolar pode iniciar conversa com responsáveis.' };
+    if (!paresPermitidos(perfilRemetente, perfilDestino)) {
+        // Mensagem específica para o caso de longe mais comum, genérica para o resto.
+        const erro = (perfilRemetente === 'responsavel' && perfilDestino === 'responsavel')
+            ? 'Responsáveis não conversam entre si. Fale com a equipe escolar.'
+            : 'Este tipo de conversa não é permitido.';
+        return { ok: false, status: 403, error: erro };
     }
 
     return { ok: true, destinatario };
+}
+
+// Janelas de tempo para mexer numa mensagem já entregue. Ambas contam a partir
+// de `createdAt` e são verificadas NO SERVIDOR — esconder o botão no cliente
+// não impede um POST direto.
+const JANELA_EDICAO_MS = 15 * 60 * 1000;        // 15 minutos
+const JANELA_APAGAR_TODOS_MS = 60 * 60 * 1000;  // 1 hora
+
+/** true se `criadaEm` já passou do prazo. Data ausente conta como fora. */
+function foraDaJanela(criadaEm, janelaMs) {
+    if (!criadaEm) return true;
+    const t = new Date(criadaEm).getTime();
+    if (!Number.isFinite(t)) return true;
+    return Date.now() - t > janelaMs;
+}
+
+/** Prévia curta do que chegou — texto, ou o tipo do anexo quando não há texto. */
+function previaDaMensagem({ mensagem, anexo, audio }) {
+    const texto = String(mensagem || '').replace(/\s+/g, ' ').trim();
+    if (texto) return texto.length > 120 ? `${texto.slice(0, 120).trimEnd()}…` : texto;
+    if (audio) return '🎤 Mensagem de voz';
+    if (anexo) return anexo.nome ? `📎 ${anexo.nome}` : '📎 Anexo';
+    return 'Nova mensagem';
+}
+
+/**
+ * Dispara o push do chat para a barra de notificações do celular.
+ *
+ * Vai SEMPRE, mesmo com o destinatário conectado por Socket.IO: estar com uma
+ * aba aberta no computador não significa que a pessoa está olhando para ela, e
+ * o celular no bolso é justamente o canal que faltava. O `tag` por remetente
+ * faz o Service Worker substituir a notificação anterior em vez de empilhar
+ * uma por mensagem numa rajada.
+ *
+ * Nunca lança: é chamada sem await e uma falha aqui não pode afetar o envio.
+ */
+function notificarNoCelular({ destinatarioId, remetenteId, remetenteNome, mensagem, anexo, audio }) {
+    NotificationService.pushParaUsuario(destinatarioId, {
+        title: remetenteNome,
+        body: previaDaMensagem({ mensagem, anexo, audio }),
+        // Abre direto na conversa de quem mandou (ver abrirConversaDaUrl em
+        // js/chat-direto-manager.js), não num dashboard genérico.
+        url: `/html/dashboard.html?chat=${encodeURIComponent(remetenteId)}`,
+        tag: `chat-${remetenteId}`
+    }).catch((err) => {
+        logger.warn(`[ChatDireto] Push não entregue a ${destinatarioId}: ${err.message}`);
+    });
 }
 
 exports.enviarMensagem = async (req, res) => {
@@ -165,6 +249,17 @@ exports.enviarMensagem = async (req, res) => {
             global.io.to(`user:${remetenteId}`).emit('chat:mensagem', evento);
         }
 
+        // Notificação no celular. Sem await: a resposta do envio não espera o
+        // serviço de push externo, que pode levar segundos ou estar fora do ar.
+        notificarNoCelular({
+            destinatarioId,
+            remetenteId,
+            remetenteNome: req.user.nome || 'Nova mensagem',
+            mensagem: novaMensagem.mensagem,
+            anexo: anexoValidado,
+            audio: audioValidado
+        });
+
         res.json({ success: true, data: novaMensagem });
     } catch (error) {
         logger.error(`[ChatDireto] Erro: ${error.message}`);
@@ -187,6 +282,28 @@ exports.getHistorico = async (req, res) => {
                 { remetenteId: String(outroUsuarioId), destinatarioId: meuId }
             ]
         }];
+
+        // Moderação: o que não foi aprovado não chega ao DESTINATÁRIO por aqui.
+        // Sem esta cláusula todo o resto da moderação é decorativo — bastava
+        // recarregar a conversa para receber o que o envio bloqueou.
+        //
+        // O REMETENTE continua vendo as próprias mensagens retidas, com o
+        // estado em `moderacao.status`, porque é assim que ele descobre que algo
+        // ficou em análise e é dali que sai o botão de contestar (cláusula 9 do
+        // Termo de Uso). Esconder dele também transformaria bloqueio em sumiço
+        // silencioso.
+        //
+        // O `$exists: false` não é redundante: o default 'aprovada' do schema só
+        // vale para documento gravado DEPOIS desta mudança. As conversas que já
+        // estão no banco não têm o campo, e sem este ramo o histórico inteiro
+        // anterior à moderação desapareceria para o destinatário.
+        condicoes.push({
+            $or: [
+                { 'moderacao.status': 'aprovada' },
+                { 'moderacao.status': { $exists: false } },
+                { remetenteId: meuId }
+            ]
+        });
 
         const query = { $and: condicoes, apagadaPara: { $ne: meuId } };
 
@@ -323,6 +440,24 @@ exports.editarMensagem = async (req, res) => {
             return res.status(400).json({ success: false, error: 'O novo conteúdo da mensagem é obrigatório.' });
         }
 
+        // Janela de edição: passado o prazo, a mensagem é registro da conversa.
+        // Sem isso, o autor reescrevia uma mensagem de meses atrás e o outro
+        // lado via o texto novo como se sempre tivesse sido aquele.
+        const original = await ChatDireto.findOne({
+            _id: String(mensagemId), remetenteId: meuId, apagadaParaTodos: { $ne: true }
+        }).select('createdAt mensagem').lean();
+        const textoAnterior = original ? original.mensagem : '';
+
+        if (!original) {
+            return res.status(404).json({ success: false, error: 'Mensagem não encontrada ou sem permissão para editar.' });
+        }
+        if (foraDaJanela(original.createdAt, JANELA_EDICAO_MS)) {
+            return res.status(403).json({
+                success: false,
+                error: `Mensagens só podem ser editadas nos primeiros ${JANELA_EDICAO_MS / 60000} minutos.`
+            });
+        }
+
         const atualizada = await ChatDireto.findOneAndUpdate(
             { _id: String(mensagemId), remetenteId: meuId, apagadaParaTodos: { $ne: true } },
             { mensagem: novaMensagem.trim(), editada: true, editadaEm: new Date() },
@@ -332,6 +467,16 @@ exports.editarMensagem = async (req, res) => {
         if (!atualizada) {
             return res.status(404).json({ success: false, error: 'Mensagem não encontrada ou sem permissão para editar.' });
         }
+
+        // Edição altera um registro que a outra pessoa já leu — fica na trilha.
+        const { logAction } = require('../utils/auditHelper');
+        await logAction(req, 'CHAT_EDIT_MESSAGE', 'ChatDireto', {
+            recursoId: String(atualizada._id),
+            escolaId: atualizada.escolaId,
+            valorAnterior: textoAnterior,
+            valorNovo: atualizada.mensagem,
+            descricao: `Mensagem editada na conversa com ${atualizada.destinatarioId}.`
+        });
 
         if (global.io) {
             global.io.to(`user:${atualizada.destinatarioId}`).emit('chat:editada', atualizada);
@@ -366,6 +511,27 @@ exports.apagarMensagem = async (req, res) => {
             if (String(msg.remetenteId) !== meuId) {
                 return res.status(403).json({ success: false, error: 'Apenas o autor pode apagar a mensagem para todos.' });
             }
+            // "Apagar para todos" reescreve o que a outra pessoa já leu, então
+            // vale só logo após o envio. Passada a janela, resta "apagar para
+            // mim", que não altera o lado do destinatário.
+            if (foraDaJanela(msg.createdAt, JANELA_APAGAR_TODOS_MS)) {
+                return res.status(403).json({
+                    success: false,
+                    error: `Só é possível apagar para todos na primeira hora. Você ainda pode apagar apenas para você.`
+                });
+            }
+            // Auditoria ANTES de sobrescrever: registrar depois guardaria o
+            // placeholder, não o que foi de fato removido da vista do outro.
+            const { logAction } = require('../utils/auditHelper');
+            await logAction(req, 'CHAT_DELETE_FOR_ALL', 'ChatDireto', {
+                recursoId: String(msg._id),
+                escolaId: msg.escolaId,
+                valorAnterior: previaDaMensagem({
+                    mensagem: msg.mensagem, anexo: msg.anexo, audio: msg.audio
+                }),
+                descricao: `Mensagem apagada para todos na conversa com ${msg.destinatarioId}.`
+            });
+
             msg.mensagem = 'Esta mensagem foi apagada.';
             msg.anexo = undefined;
             msg.audio = undefined;
@@ -535,7 +701,21 @@ exports.encaminharMensagem = async (req, res) => {
         const originais = await ChatDireto.find({
             _id: { $in: ids.map(String) },
             apagadaParaTodos: { $ne: true },
-            $or: [{ remetenteId: meuId }, { destinatarioId: meuId }]
+            $or: [{ remetenteId: meuId }, { destinatarioId: meuId }],
+            // Encaminhar é o caminho mais curto para transformar UM conteúdo
+            // retido em vinte cópias entregues: `liberarAnexoPara` acrescenta
+            // cada novo destinatário ao metadata do arquivo no GridFS, então o
+            // que estava esperando decisão passaria a ser acessível por gente
+            // que nem participava da conversa original.
+            //
+            // Vale tanto para o que está bloqueado quanto para o que está em
+            // análise. Mensagem sem o campo é anterior à moderação e passa.
+            $and: [{
+                $or: [
+                    { 'moderacao.status': 'aprovada' },
+                    { 'moderacao.status': { $exists: false } }
+                ]
+            }]
         }).sort({ createdAt: 1 }).lean();
 
         if (originais.length === 0) {
@@ -572,6 +752,19 @@ exports.encaminharMensagem = async (req, res) => {
                     global.io.to(`user:${destinatarioId}`).emit('chat:mensagem', evento);
                     global.io.to(`user:${meuId}`).emit('chat:mensagem', evento);
                 }
+
+                // Encaminhada também precisa alcançar o celular. O `tag` por
+                // remetente garante uma notificação só, mesmo encaminhando
+                // várias mensagens de uma vez.
+                notificarNoCelular({
+                    destinatarioId,
+                    remetenteId: meuId,
+                    remetenteNome: req.user.nome || 'Nova mensagem',
+                    mensagem: nova.mensagem,
+                    anexo: nova.anexo,
+                    audio: nova.audio
+                });
+
                 criadas.push(nova);
             }
         }
@@ -580,7 +773,22 @@ exports.encaminharMensagem = async (req, res) => {
             return res.status(403).json({ success: false, error: 'Nenhum destinatário permitido.' });
         }
 
-        res.json({ success: true, data: criadas, total: criadas.length });
+        // Encaminhar 3 e ver 2 chegarem, sem explicação, é pior do que o
+        // bloqueio em si. `ignoradas` deixa o front avisar. O texto não diz
+        // QUAL mensagem nem por quê — quem encaminha pode nem ser o autor do
+        // conteúdo retido, e o motivo não é assunto dele.
+        const ignoradas = ids.length - originais.length;
+        res.json({
+            success: true,
+            data: criadas,
+            total: criadas.length,
+            ...(ignoradas > 0 ? {
+                ignoradas,
+                aviso: ignoradas === 1
+                    ? 'Uma mensagem não pôde ser encaminhada.'
+                    : `${ignoradas} mensagens não puderam ser encaminhadas.`
+            } : {})
+        });
     } catch (error) {
         logger.error(`[ChatDireto] Falha ao encaminhar: ${error.message}`);
         res.status(500).json({ success: false, error: 'Erro ao encaminhar mensagem.' });

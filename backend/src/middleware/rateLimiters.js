@@ -251,6 +251,84 @@ const ttsIpLimiter = limiterPorIp({
     }
 });
 
+// ── Chat interno ─────────────────────────────────────────────────────────────
+// O envio de mensagem não tinha teto nenhum: uma conta válida conseguia
+// inundar a caixa de outra pessoa (e, desde que o push existe, a barra de
+// notificações do celular dela) no ritmo que a rede aguentasse.
+//
+// Chave por USUÁRIO, não por IP: o abuso aqui parte de uma conta autenticada,
+// e a escola inteira costuma sair pelo mesmo IP — limitar por IP puniria a
+// sala de professores toda por causa de um usuário.
+//
+// 30/minuto é folgado para conversa humana (uma mensagem a cada 2s sustentada)
+// e corta o flood automatizado.
+const UM_MINUTO = 60 * 1000;
+
+const chatMensagemLimiter = limiterPorUsuario({
+    windowMs: UM_MINUTO,
+    maxProd: tetoEnv('RATE_LIMIT_CHAT_MENSAGENS', 30),
+    maxDev: 300,
+    mensagem: {
+        success: false,
+        error: 'Você enviou muitas mensagens em pouco tempo. Aguarde um minuto.'
+    }
+});
+
+// Upload é ordens de grandeza mais caro que texto (banda + GridFS), então tem
+// orçamento próprio e mais apertado.
+const chatUploadLimiter = limiterPorUsuario({
+    windowMs: UM_MINUTO * 5,
+    maxProd: tetoEnv('RATE_LIMIT_CHAT_UPLOADS', 20),
+    maxDev: 200,
+    mensagem: {
+        success: false,
+        error: 'Muitos arquivos enviados em sequência. Aguarde alguns minutos.'
+    }
+});
+
+// Rede como um todo: se o limiter por usuário for contornado com várias contas,
+// o teto por IP ainda segura o volume vindo de uma única origem.
+const chatIpLimiter = limiterPorIp({
+    windowMs: UM_MINUTO,
+    maxProd: tetoEnv('RATE_LIMIT_CHAT_IP', 120),
+    maxDev: 1200,
+    mensagem: {
+        success: false,
+        error: 'Muitas mensagens vindas desta rede. Aguarde um minuto.'
+    }
+});
+
+// ── Copiloto de IA ───────────────────────────────────────────────────────────
+// Mesma natureza do TTS: cada mensagem gasta cota de uma API externa PAGA, e o
+// custo pertence ao projeto. Por isso o teto principal é por CONTA — o
+// globalLimiter (2000/15min por IP) é grande demais para servir de freio aqui.
+//
+// 20/minuto cobre com folga uma conversa humana (ninguém digita mais que isso)
+// e inviabiliza o laço automatizado que queimaria a cota do modelo com uma
+// única credencial válida.
+const iaChatUsuarioLimiter = limiterPorUsuario({
+    windowMs: UM_MINUTO,
+    maxProd: tetoEnv('RATE_LIMIT_IA_USUARIO', 20),
+    maxDev: 200,
+    mensagem: {
+        success: false,
+        error: 'Você enviou muitas mensagens seguidas ao assistente. Aguarde alguns instantes.'
+    }
+});
+
+// `limiterPorConta`/`limiterPorUsuario` se auto-desligam quando não conseguem
+// resolver o identificador. Este par por IP é a rede de segurança para esse
+// caso — sem ele o endpoint ficaria sem teto próprio.
+const iaChatIpLimiter = limiterPorIp({
+    windowMs: UM_MINUTO,
+    maxProd: tetoEnv('RATE_LIMIT_IA_IP', 40),
+    maxDev: 400,
+    mensagem: {
+        success: false,
+        error: 'Muitas mensagens ao assistente vindas desta rede. Aguarde um minuto.'
+    }
+});
+
 module.exports = {
     globalLimiter,
     authIpLimiter,
@@ -260,6 +338,11 @@ module.exports = {
     authPrefixLimiter,
     ttsUsuarioLimiter,
     ttsIpLimiter,
+    chatMensagemLimiter,
+    chatUploadLimiter,
+    chatIpLimiter,
+    iaChatUsuarioLimiter,
+    iaChatIpLimiter,
     // exportados para teste
     chaveIp,
     identificadorDaConta

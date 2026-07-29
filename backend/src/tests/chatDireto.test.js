@@ -10,6 +10,7 @@
  *   - ninguém lê a conversa alheia nem cruza a fronteira da escola.
  */
 const request = require('supertest');
+const mongoose = require('mongoose');
 const app = require('../app');
 const {
     conectarBanco, limparBanco, desconectarBanco, criarUsuario, SENHA_TESTE
@@ -18,6 +19,7 @@ const {
 const Escola = require('../models/Escola');
 const Professor = require('../models/Professor');
 const ChatDireto = require('../models/ChatDireto');
+const Usuario = require('../models/Usuario');
 
 let escolaA, escolaB;
 
@@ -52,11 +54,51 @@ async function professorLogado(email, escola) {
     return { agent, user, id: String(user._id) };
 }
 
+/**
+ * Assinaturas reais por mimetype. O upload valida os primeiros bytes
+ * (utils/assinaturaArquivo.js), então um buffer de texto qualquer declarado
+ * como PDF é recusado — como deve ser. As fixtures precisam ser plausíveis.
+ */
+const ASSINATURAS = {
+    'application/pdf': [0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x37], // %PDF-1.7
+    'image/png': [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A],
+    'image/jpeg': [0xFF, 0xD8, 0xFF, 0xE0],
+    'audio/webm': [0x1A, 0x45, 0xDF, 0xA3],
+    'video/webm': [0x1A, 0x45, 0xDF, 0xA3],
+    'application/zip': [0x50, 0x4B, 0x03, 0x04],
+    'application/msword': [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1],
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': [0x50, 0x4B, 0x03, 0x04]
+};
+
+/** Buffer com a assinatura correta do tipo, preenchido até `tamanho`. */
+function arquivoValido(tipo, tamanho = 64) {
+    const assinatura = ASSINATURAS[tipo];
+    // Tipos de texto não têm assinatura: basta conteúdo textual de verdade.
+    if (!assinatura) return Buffer.from('conteudo de texto para teste\n');
+    const buf = Buffer.alloc(tamanho, 0x20);
+    Buffer.from(assinatura).copy(buf, 0);
+    return buf;
+}
+
+/**
+ * Recua o `createdAt` da mensagem para simular passagem de tempo.
+ *
+ * Vai pelo driver bruto: o middleware de timestamps do Mongoose sobrescreve
+ * `createdAt` num findByIdAndUpdate normal, e a mensagem continuaria "nova".
+ */
+async function envelhecer(mensagemId, msAtras) {
+    await ChatDireto.collection.updateOne(
+        { _id: new mongoose.Types.ObjectId(String(mensagemId)) },
+        { $set: { createdAt: new Date(Date.now() - msAtras) } }
+    );
+}
+
 /** Sobe um arquivo pela rota do chat e devolve o objeto `anexo` do backend. */
-async function subirAnexo(agent, destinatarioId, { nome = 'relatorio.pdf', tipo = 'application/pdf', conteudo = 'conteudo-fake' } = {}) {
+async function subirAnexo(agent, destinatarioId, { nome = 'relatorio.pdf', tipo = 'application/pdf', conteudo = null } = {}) {
+    const buffer = conteudo ? Buffer.from(conteudo) : arquivoValido(tipo);
     const res = await agent.post('/api/chat-direto/upload')
         .field('destinatarioId', destinatarioId)
-        .attach('arquivos', Buffer.from(conteudo), { filename: nome, contentType: tipo });
+        .attach('arquivos', buffer, { filename: nome, contentType: tipo });
     expect(res.status).toBe(200);
     return res.body.data[0];
 }
@@ -434,6 +476,94 @@ describe('Editar e apagar', () => {
 
         const histAna = await ana.agent.get(`/api/chat-direto/historico/${bruno.id}`);
         expect(histAna.body.data).toHaveLength(1);
+    });
+
+    it('a matriz é lista branca: perfil desconhecido não conversa com ninguém', async () => {
+        // Simula um perfil fora da MATRIZ_CONVERSA (ex.: enum ampliado no
+        // futuro sem alguém decidir as permissões dele). A regra antiga, por
+        // exclusão, liberaria; a lista branca nega.
+        const ana = await professorLogado('ana28@escola.test', escolaA);
+        const estranho = await Usuario.create({
+            nome: 'Perfil Novo', email: 'novo28@escola.test', senha: 'x',
+            perfil: 'professor', ativo: true, escolaId: String(escolaA._id),
+            cpf: 'c28', telefone: 't'
+        });
+        // Força um perfil que não existe na matriz, direto no banco.
+        await Usuario.collection.updateOne(
+            { _id: estranho._id }, { $set: { perfil: 'estagiario' } }
+        );
+
+        const res = await ana.agent.post('/api/chat-direto/enviar')
+            .send({ destinatarioId: String(estranho._id), mensagem: 'oi' });
+        expect(res.status).toBe(403);
+        expect(res.body.error).toMatch(/não é permitido/i);
+    });
+
+    it('editar expira depois de 15 minutos', async () => {
+        const ana = await professorLogado('ana25@escola.test', escolaA);
+        const bruno = await professorLogado('bruno25@escola.test', escolaA);
+
+        const envio = await ana.agent.post('/api/chat-direto/enviar')
+            .send({ destinatarioId: bruno.id, mensagem: 'mensagem antiga' });
+        const id = envio.body.data._id;
+
+        // Envelhece a mensagem direto no banco: 16 minutos atrás.
+        await envelhecer(id, 16 * 60 * 1000);
+
+        const tardia = await ana.agent.put(`/api/chat-direto/mensagem/${id}`)
+            .send({ novaMensagem: 'reescrevendo o passado' });
+        expect(tardia.status).toBe(403);
+
+        // O conteúdo original permanece intacto.
+        const registro = await ChatDireto.findById(id).lean();
+        expect(registro.mensagem).toBe('mensagem antiga');
+        expect(registro.editada).toBe(false);
+    });
+
+    it('editar e apagar para todos entram na trilha de auditoria', async () => {
+        const AuditLog = require('../models/AuditLog');
+        const ana = await professorLogado('ana27@escola.test', escolaA);
+        const bruno = await professorLogado('bruno27@escola.test', escolaA);
+
+        const envio = await ana.agent.post('/api/chat-direto/enviar')
+            .send({ destinatarioId: bruno.id, mensagem: 'texto original' });
+        const id = envio.body.data._id;
+
+        await ana.agent.put(`/api/chat-direto/mensagem/${id}`)
+            .send({ novaMensagem: 'texto corrigido' });
+        await ana.agent.delete(`/api/chat-direto/mensagem/${id}?tipo=para_todos`);
+
+        const edicao = await AuditLog.findOne({ acao: 'CHAT_EDIT_MESSAGE', recursoId: String(id) }).lean();
+        expect(edicao).toBeTruthy();
+        expect(edicao.detalhes.valorAnterior).toBe('texto original');
+        expect(edicao.detalhes.valorNovo).toBe('texto corrigido');
+
+        // O log guarda o que foi removido, não o placeholder.
+        const exclusao = await AuditLog.findOne({ acao: 'CHAT_DELETE_FOR_ALL', recursoId: String(id) }).lean();
+        expect(exclusao).toBeTruthy();
+        expect(exclusao.detalhes.valorAnterior).toBe('texto corrigido');
+    });
+
+    it('apagar para todos expira em 1 hora, mas apagar para mim continua valendo', async () => {
+        const ana = await professorLogado('ana26@escola.test', escolaA);
+        const bruno = await professorLogado('bruno26@escola.test', escolaA);
+
+        const envio = await ana.agent.post('/api/chat-direto/enviar')
+            .send({ destinatarioId: bruno.id, mensagem: 'faz tempo' });
+        const id = envio.body.data._id;
+
+        await envelhecer(id, 61 * 60 * 1000);
+
+        const tardia = await ana.agent.delete(`/api/chat-direto/mensagem/${id}?tipo=para_todos`);
+        expect(tardia.status).toBe(403);
+
+        const registro = await ChatDireto.findById(id).lean();
+        expect(registro.apagadaParaTodos).toBe(false);
+        expect(registro.mensagem).toBe('faz tempo');
+
+        // A saída que sobra para o autor não tem prazo.
+        const paraMim = await ana.agent.delete(`/api/chat-direto/mensagem/${id}?tipo=para_mim`);
+        expect(paraMim.status).toBe(200);
     });
 });
 
