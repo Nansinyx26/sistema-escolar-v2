@@ -26,7 +26,9 @@
 
   const API = () => (window.API_BASE_URL || '/api').replace(/\/$/, '');
   const PREF_SOM = 'chatSomAtivo';       // preferência persistida do som
-  const MAX_UPLOAD_MB = 25;
+  const PREF_AVISO_LGPD = 'chatAvisoLgpdVisto'; // ciência do aviso de armazenamento
+  const MAX_UPLOAD_MB = 10;       // espelha LIMITE_ARQUIVO do backend
+  const MAX_AUDIO_MB = 5;         // espelha LIMITE_AUDIO do backend
   const IMG_MAX_LADO = 1600;             // px — teto para compressão de imagem
   const IMG_QUALIDADE = 0.82;
   const COMPRIMIR_ACIMA_DE = 300 * 1024; // só comprime imagem maior que isso
@@ -37,8 +39,13 @@
    * Utilitários
    * ------------------------------------------------------------------ */
 
-  /** Som de notificação via Web Audio API (sem depender de arquivo externo). */
+  /**
+   * Sons do chat. A síntese vive em js/som-notificacao.js (contexto de áudio
+   * único e compartilhado com o mural). O fallback abaixo mantém o chat
+   * sonoro em páginas que ainda não carregam aquele arquivo.
+   */
   function playNotificationSound() {
+    if (window.SomNotificacao) return window.SomNotificacao.receber();
     if (!somAtivo()) return;
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -56,12 +63,66 @@
     } catch (e) { /* áudio desativado */ }
   }
 
+  /** Confirmação sonora do envio — timbre distinto do som de chegada. */
+  function playSendSound() {
+    if (window.SomNotificacao) window.SomNotificacao.enviar();
+  }
+
   /** Som configurável: ligado por padrão, alternável pelo ícone do cabeçalho. */
   function somAtivo() {
     try { return localStorage.getItem(PREF_SOM) !== '0'; } catch (e) { return true; }
   }
   function definirSom(ativo) {
     try { localStorage.setItem(PREF_SOM, ativo ? '1' : '0'); } catch (e) { /* storage off */ }
+  }
+
+  /**
+   * Formato de gravação suportado pelo navegador.
+   *
+   * `new MediaRecorder(stream)` sem mimeType usa o padrão do navegador, e o
+   * código gravava o Blob fixo como 'audio/webm'. No Safari/iOS o padrão é
+   * audio/mp4 — o arquivo saía rotulado errado, era recusado pela validação de
+   * assinatura do servidor e o áudio simplesmente não ia. Aqui o formato é
+   * negociado e o rótulo acompanha o conteúdo real.
+   *
+   * @returns {{mimeType: string, extensao: string}|null} null se o navegador
+   *          não suporta gravação — nesse caso o botão de microfone some.
+   */
+  function formatoDeGravacao() {
+    if (typeof MediaRecorder === 'undefined') return null;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return null;
+
+    const candidatos = [
+      { mimeType: 'audio/webm;codecs=opus', extensao: 'webm' }, // Chrome, Edge, Firefox
+      { mimeType: 'audio/webm', extensao: 'webm' },
+      { mimeType: 'audio/mp4', extensao: 'm4a' },               // Safari / iOS
+      { mimeType: 'audio/ogg;codecs=opus', extensao: 'ogg' },
+      { mimeType: 'audio/ogg', extensao: 'ogg' }
+    ];
+
+    // isTypeSupported não existe em navegadores mais antigos que expõem
+    // MediaRecorder; nesse caso deixamos o navegador escolher o padrão dele.
+    if (typeof MediaRecorder.isTypeSupported !== 'function') {
+      return { mimeType: '', extensao: 'webm' };
+    }
+
+    const escolhido = candidatos.find((c) => MediaRecorder.isTypeSupported(c.mimeType));
+    return escolhido || { mimeType: '', extensao: 'webm' };
+  }
+
+  /** Teto de gravação: 5 minutos, alinhado ao limite de 5 MB do servidor. */
+  const MAX_GRAVACAO_SEG = 5 * 60;
+
+  // Espelham as janelas do ChatDiretoController. Aqui servem só para não
+  // oferecer um botão que o servidor vai recusar — a regra que vale é a de lá.
+  const JANELA_EDICAO_MS = 15 * 60 * 1000;
+  const JANELA_APAGAR_TODOS_MS = 60 * 60 * 1000;
+
+  function dentroDaJanela(criadaEm, janelaMs) {
+    if (!criadaEm) return false;
+    const t = new Date(criadaEm).getTime();
+    if (!Number.isFinite(t)) return false;
+    return Date.now() - t <= janelaMs;
   }
 
   function esc(txt) {
@@ -249,6 +310,10 @@
       const w = document.createElement('div');
       w.className = 'chat-window';
       w.id = `chatWindow_${this.targetUserId}`;
+      // Janela flutuante sem semântica nenhuma: o leitor de tela lia um monte
+      // de divs soltas sem dizer que aquilo era uma conversa nem com quem.
+      w.setAttribute('role', 'dialog');
+      w.setAttribute('aria-label', `Conversa com ${this.targetUserData.nome || 'contato'}`);
 
       const avatarUrl = resolverFoto(this.targetUserData.foto);
       const initials = iniciais(this.targetUserData.nome);
@@ -272,17 +337,17 @@
             </div>
           </div>
           <div class="chat-header-actions">
-            <button class="chat-btn-icon" id="btnToggleSom_${this.targetUserId}" title="Som das notificações"><i class="bi ${somAtivo() ? 'bi-volume-up' : 'bi-volume-mute'}"></i></button>
-            <button class="chat-btn-icon" id="btnToggleSearch_${this.targetUserId}" title="Buscar na conversa"><i class="bi bi-search"></i></button>
-            <button class="chat-btn-icon" id="btnMinimize_${this.targetUserId}" title="Minimizar"><i class="bi bi-dash-lg"></i></button>
-            <button class="chat-btn-icon close" id="btnClose_${this.targetUserId}" title="Fechar"><i class="bi bi-x-lg"></i></button>
+            <button class="chat-btn-icon" id="btnToggleSom_${this.targetUserId}" title="Som das notificações" aria-label="Som das notificações"><i class="bi ${somAtivo() ? 'bi-volume-up' : 'bi-volume-mute'}"></i></button>
+            <button class="chat-btn-icon" id="btnToggleSearch_${this.targetUserId}" title="Buscar na conversa" aria-label="Buscar na conversa"><i class="bi bi-search"></i></button>
+            <button class="chat-btn-icon" id="btnMinimize_${this.targetUserId}" title="Minimizar" aria-label="Minimizar"><i class="bi bi-dash-lg"></i></button>
+            <button class="chat-btn-icon close" id="btnClose_${this.targetUserId}" title="Fechar" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
           </div>
         </div>
 
         <div class="chat-search-bar" id="searchBar_${this.targetUserId}" hidden>
           <div class="chat-search-row">
             <input type="text" class="chat-search-input" id="searchInput_${this.targetUserId}" placeholder="Buscar por palavra...">
-            <button class="chat-btn-icon" id="btnCloseSearch_${this.targetUserId}" title="Fechar busca"><i class="bi bi-x"></i></button>
+            <button class="chat-btn-icon" id="btnCloseSearch_${this.targetUserId}" title="Fechar busca" aria-label="Fechar busca"><i class="bi bi-x"></i></button>
           </div>
           <div class="chat-search-row">
             <input type="date" class="chat-search-input chat-search-date" id="searchDate_${this.targetUserId}" title="Buscar por data">
@@ -292,25 +357,32 @@
               <option value="imagens">Imagens</option>
               <option value="audios">Áudios</option>
             </select>
-            <button class="chat-btn-icon" id="btnClearSearch_${this.targetUserId}" title="Limpar filtros"><i class="bi bi-eraser"></i></button>
+            <button class="chat-btn-icon" id="btnClearSearch_${this.targetUserId}" title="Limpar filtros" aria-label="Limpar filtros"><i class="bi bi-eraser"></i></button>
           </div>
         </div>
 
         <div class="chat-selection-bar" id="selectionBar_${this.targetUserId}" hidden>
-          <button class="chat-btn-icon" id="btnCancelSel_${this.targetUserId}" title="Cancelar seleção"><i class="bi bi-x-lg"></i></button>
+          <button class="chat-btn-icon" id="btnCancelSel_${this.targetUserId}" title="Cancelar seleção" aria-label="Cancelar seleção"><i class="bi bi-x-lg"></i></button>
           <span class="chat-selection-count" id="selCount_${this.targetUserId}">0 selecionada(s)</span>
-          <button class="chat-btn-icon" id="btnSelCopy_${this.targetUserId}" title="Copiar texto"><i class="bi bi-clipboard"></i></button>
-          <button class="chat-btn-icon" id="btnSelForward_${this.targetUserId}" title="Encaminhar"><i class="bi bi-arrow-right-circle"></i></button>
-          <button class="chat-btn-icon" id="btnSelDelete_${this.targetUserId}" title="Apagar para mim" style="color:#ef4444;"><i class="bi bi-trash"></i></button>
+          <button class="chat-btn-icon" id="btnSelCopy_${this.targetUserId}" title="Copiar texto" aria-label="Copiar texto"><i class="bi bi-clipboard"></i></button>
+          <button class="chat-btn-icon" id="btnSelForward_${this.targetUserId}" title="Encaminhar" aria-label="Encaminhar"><i class="bi bi-arrow-right-circle"></i></button>
+          <button class="chat-btn-icon" id="btnSelDelete_${this.targetUserId}" title="Apagar para mim" aria-label="Apagar para mim" style="color:#ef4444;"><i class="bi bi-trash"></i></button>
         </div>
 
-        <div class="chat-body" id="chatBody_${this.targetUserId}">
+        <div class="chat-body" id="chatBody_${this.targetUserId}" role="log" aria-label="Mensagens da conversa">
           <div class="chat-loading">Carregando histórico...</div>
         </div>
 
+        <!-- Região exclusiva para anunciar mensagem NOVA ao leitor de tela.
+             Marcar a lista inteira como aria-live faria o leitor despejar as
+             30 mensagens do histórico a cada abertura; aqui entra só o que
+             chega depois, uma linha por vez. -->
+        <div class="sr-only" aria-live="polite" aria-atomic="true"
+             id="chatAnuncio_${this.targetUserId}"></div>
+
         <div class="chat-reply-preview" id="replyPreview_${this.targetUserId}" hidden>
           <span id="replyText_${this.targetUserId}">Citação...</span>
-          <button class="chat-btn-icon" id="btnCancelReply_${this.targetUserId}" title="Cancelar"><i class="bi bi-x"></i></button>
+          <button class="chat-btn-icon" id="btnCancelReply_${this.targetUserId}" title="Cancelar" aria-label="Cancelar"><i class="bi bi-x"></i></button>
         </div>
 
         <div class="chat-attach-preview" id="attachPreview_${this.targetUserId}" hidden></div>
@@ -321,27 +393,27 @@
 
         <div class="chat-footer">
           <div class="chat-input-row" id="inputRowNormal_${this.targetUserId}">
-            <button class="chat-btn-icon" id="btnAttach_${this.targetUserId}" title="Anexar arquivo"><i class="bi bi-paperclip"></i></button>
-            <button class="chat-btn-icon" id="btnEmoji_${this.targetUserId}" title="Emojis"><i class="bi bi-emoji-smile"></i></button>
+            <button class="chat-btn-icon" id="btnAttach_${this.targetUserId}" title="Anexar arquivo" aria-label="Anexar arquivo"><i class="bi bi-paperclip"></i></button>
+            <button class="chat-btn-icon" id="btnEmoji_${this.targetUserId}" title="Emojis" aria-label="Emojis"><i class="bi bi-emoji-smile"></i></button>
             <textarea class="chat-textarea" id="chatInput_${this.targetUserId}" rows="1" placeholder="Digite uma mensagem..." aria-label="Mensagem"></textarea>
-            <button class="chat-btn-icon chat-btn-mic" id="btnMic_${this.targetUserId}" title="Gravar áudio"><i class="bi bi-mic-fill"></i></button>
-            <button class="chat-btn-send" id="btnSend_${this.targetUserId}" title="Enviar"><i class="bi bi-send-fill"></i></button>
+            <button class="chat-btn-icon chat-btn-mic" id="btnMic_${this.targetUserId}" title="Gravar áudio" aria-label="Gravar áudio"><i class="bi bi-mic-fill"></i></button>
+            <button class="chat-btn-send" id="btnSend_${this.targetUserId}" title="Enviar" aria-label="Enviar"><i class="bi bi-send-fill"></i></button>
           </div>
 
           <div class="chat-audio-recorder-bar" id="recorderBar_${this.targetUserId}" hidden>
             <div class="chat-rec-dot"></div>
             <span class="chat-rec-timer" id="recTimer_${this.targetUserId}">00:00</span>
             <span class="chat-rec-label">Gravando áudio...</span>
-            <button class="chat-btn-icon" id="btnCancelRec_${this.targetUserId}" title="Cancelar" style="color:#ef4444;"><i class="bi bi-trash"></i></button>
-            <button class="chat-btn-icon" id="btnStopRec_${this.targetUserId}" title="Parar e ouvir"><i class="bi bi-stop-fill"></i></button>
+            <button class="chat-btn-icon" id="btnCancelRec_${this.targetUserId}" title="Cancelar" aria-label="Cancelar" style="color:#ef4444;"><i class="bi bi-trash"></i></button>
+            <button class="chat-btn-icon" id="btnStopRec_${this.targetUserId}" title="Parar e ouvir" aria-label="Parar e ouvir"><i class="bi bi-stop-fill"></i></button>
           </div>
 
           <div class="chat-audio-preview-bar" id="audioPreviewBar_${this.targetUserId}" hidden>
-            <button class="chat-btn-icon" id="btnPlayPreview_${this.targetUserId}" title="Ouvir"><i class="bi bi-play-fill"></i></button>
+            <button class="chat-btn-icon" id="btnPlayPreview_${this.targetUserId}" title="Ouvir" aria-label="Ouvir"><i class="bi bi-play-fill"></i></button>
             <span class="chat-rec-timer" id="previewTimer_${this.targetUserId}">00:00</span>
             <span class="chat-rec-label">Ouça antes de enviar</span>
-            <button class="chat-btn-icon" id="btnDiscardPreview_${this.targetUserId}" title="Descartar" style="color:#ef4444;"><i class="bi bi-trash"></i></button>
-            <button class="chat-btn-send" id="btnSendAudio_${this.targetUserId}" title="Enviar áudio"><i class="bi bi-send-fill"></i></button>
+            <button class="chat-btn-icon" id="btnDiscardPreview_${this.targetUserId}" title="Descartar" aria-label="Descartar" style="color:#ef4444;"><i class="bi bi-trash"></i></button>
+            <button class="chat-btn-send" id="btnSendAudio_${this.targetUserId}" title="Enviar áudio" aria-label="Enviar áudio"><i class="bi bi-send-fill"></i></button>
           </div>
 
           <input type="file" id="fileInput_${this.targetUserId}" hidden multiple
@@ -440,6 +512,42 @@
         }
       });
 
+      // Escape fecha o que estiver aberto, do mais interno para o mais externo.
+      // Antes só existia saída por clique: quem navega por teclado ficava preso
+      // no seletor de emoji e na barra de busca.
+      w.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        e.stopPropagation();
+
+        if (!emojiPicker.hidden) { emojiPicker.hidden = true; this.inputEl.focus(); return; }
+        if (this.audioPreview) { this.descartarPreviaAudio(); return; }
+        if (this.isRecording) { this.cancelRecording(); return; }
+        if (this.replyingToMsg) { this.cancelReply(); return; }
+        const searchBar = this.q('searchBar');
+        if (searchBar && !searchBar.hidden) {
+          searchBar.hidden = true;
+          this.limparBusca();
+          this.inputEl.focus();
+          return;
+        }
+        this.close();
+      });
+
+      // Seletor de emoji operável por teclado: os itens eram <span> sem foco
+      // nem papel, invisíveis para quem navega com Tab.
+      emojiPicker.querySelectorAll('.chat-emoji-item').forEach((item) => {
+        item.setAttribute('role', 'button');
+        item.setAttribute('tabindex', '0');
+        item.setAttribute('aria-label', `Emoji ${item.textContent}`);
+        item.addEventListener('keydown', (ev) => {
+          if (ev.key !== 'Enter' && ev.key !== ' ') return;
+          ev.preventDefault();
+          this.inputEl.value += item.textContent;
+          this.inputEl.focus();
+          emojiPicker.hidden = true;
+        });
+      });
+
       // Anexos: seleção, arrastar-e-soltar e colar da área de transferência
       const fileInput = this.q('fileInput');
       this.q('btnAttach').addEventListener('click', () => fileInput.click());
@@ -476,8 +584,15 @@
         }
       });
 
-      // Gravador de voz
-      this.q('btnMic').addEventListener('click', () => this.startRecording());
+      // Gravador de voz. Sem suporte a MediaRecorder (Safari antigo, WebView
+      // restrita), o botão some em vez de abrir um erro no clique.
+      const btnMic = this.q('btnMic');
+      if (formatoDeGravacao()) {
+        btnMic.addEventListener('click', () => this.startRecording());
+      } else {
+        btnMic.hidden = true;
+        btnMic.setAttribute('aria-hidden', 'true');
+      }
       this.q('btnCancelRec').addEventListener('click', () => this.cancelRecording());
       this.q('btnStopRec').addEventListener('click', () => this.pararGravacaoParaPrevia());
       this.q('btnPlayPreview').addEventListener('click', () => this.tocarPreviaAudio());
@@ -622,6 +737,57 @@
         this.marcarConversaLida();
       } catch (e) {
         this.bodyEl.innerHTML = `<div class="chat-erro">Falha ao carregar mensagens.</div>`;
+      }
+    }
+
+    /**
+     * Recupera as mensagens perdidas enquanto o socket esteve fora do ar.
+     *
+     * O Socket.IO reconecta sozinho, mas o que passou durante a queda não é
+     * reenviado: a janela ficava aberta mostrando um histórico furado até o
+     * usuário fechar e reabrir a conversa. No plano free do Render, que
+     * hiberna por inatividade, isso não é exceção — é rotina.
+     *
+     * Busca a página mais recente e deixa o `appendMessage` decidir o que é
+     * novo (ele já deduplica por _id, insere só a bolha nova e preserva a
+     * rolagem de quem está lendo mensagem antiga).
+     */
+    async resincronizar() {
+      // Com busca ativa a lista está filtrada de propósito; recarregar aqui
+      // jogaria mensagens fora do recorte que o usuário pediu.
+      if (this.buscaAtiva || this._resincronizando) return;
+      this._resincronizando = true;
+
+      try {
+        const res = await fetch(
+          `${API()}/chat-direto/historico/${this.targetUserId}${this.paramsBusca()}`,
+          { credentials: 'include' }
+        );
+        if (!res.ok) return;
+        const json = await res.json();
+
+        const conhecidas = new Set(this.messages.map((m) => String(m._id)));
+        const perdidas = (json.data || []).filter((m) => !conhecidas.has(String(m._id)));
+        if (perdidas.length === 0) return;
+
+        // Chegam em ordem cronológica: appendMessage empilha no fim na ordem certa.
+        perdidas.forEach((m) => this.appendMessage(m));
+
+        // Só avisa se havia mensagem do OUTRO lado — reconexão silenciosa
+        // quando não perdeu nada relevante.
+        const deOutrem = perdidas.some((m) => String(m.remetenteId) !== this.manager.meuId);
+        if (deOutrem) {
+          this.manager.toast(
+            perdidas.length === 1
+              ? 'Você recebeu 1 mensagem enquanto estava offline.'
+              : `Você recebeu ${perdidas.length} mensagens enquanto estava offline.`
+          );
+          playNotificationSound();
+        }
+      } catch (e) {
+        /* rede ainda instável — a próxima reconexão tenta de novo */
+      } finally {
+        this._resincronizando = false;
       }
     }
 
@@ -963,8 +1129,8 @@
         ${!msg.apagadaParaTodos && msg.mensagem ? `<button type="button" class="menu-opt" data-acao="copiar"><i class="bi bi-clipboard"></i> Copiar texto</button>` : ''}
         ${!msg.apagadaParaTodos ? `<button type="button" class="menu-opt" data-acao="encaminhar"><i class="bi bi-arrow-right-circle"></i> Encaminhar</button>` : ''}
         <button type="button" class="menu-opt" data-acao="selecionar"><i class="bi bi-check2-square"></i> Selecionar</button>
-        ${isSent && !msg.apagadaParaTodos && msg.mensagem ? `<button type="button" class="menu-opt" data-acao="editar"><i class="bi bi-pencil-fill"></i> Editar</button>` : ''}
-        ${isSent && !msg.apagadaParaTodos ? `<button type="button" class="menu-opt perigo" data-acao="apagar-todos"><i class="bi bi-trash-fill"></i> Apagar para todos</button>` : ''}
+        ${isSent && !msg.apagadaParaTodos && msg.mensagem && dentroDaJanela(msg.createdAt, JANELA_EDICAO_MS) ? `<button type="button" class="menu-opt" data-acao="editar"><i class="bi bi-pencil-fill"></i> Editar</button>` : ''}
+        ${isSent && !msg.apagadaParaTodos && dentroDaJanela(msg.createdAt, JANELA_APAGAR_TODOS_MS) ? `<button type="button" class="menu-opt perigo" data-acao="apagar-todos"><i class="bi bi-trash-fill"></i> Apagar para todos</button>` : ''}
         <button type="button" class="menu-opt perigo" data-acao="apagar-mim"><i class="bi bi-trash"></i> Apagar para mim</button>
       `;
       document.body.appendChild(menu);
@@ -1195,8 +1361,10 @@
           body: JSON.stringify({ destinatarioId: this.targetUserId, mensagem: text, respostaParaId })
         });
         const json = await res.json();
-        if (json.success && json.data) this.appendMessage(json.data);
-        else {
+        if (json.success && json.data) {
+          this.appendMessage(json.data);
+          playSendSound();
+        } else {
           this.inputEl.value = text; // devolve o texto para não perder a digitação
           this.manager.toast(json.error || 'Erro ao enviar mensagem.');
         }
@@ -1255,7 +1423,7 @@
               <span class="chat-pending-nome">${nome}</span>
               <span class="chat-pending-size">${tamanho}</span>
             </div>
-            <button type="button" class="chat-btn-icon chat-pending-remove" data-idx="${i}" title="Remover"><i class="bi bi-x-lg"></i></button>
+            <button type="button" class="chat-btn-icon chat-pending-remove" data-idx="${i}" title="Remover" aria-label="Remover"><i class="bi bi-x-lg"></i></button>
           </div>`;
       }).join('') + `<div class="chat-pending-dica">Pressione enviar para confirmar</div>`;
 
@@ -1298,8 +1466,10 @@
             })
           });
           const json = await res.json();
-          if (json.success && json.data) this.appendMessage(json.data);
-          else this.manager.toast(json.error || `Falha ao enviar ${p.file.name}.`);
+          if (json.success && json.data) {
+            this.appendMessage(json.data);
+            playSendSound();
+          } else this.manager.toast(json.error || `Falha ao enviar ${p.file.name}.`);
         } catch (e) {
           this.manager.toast(e.message || `Erro no envio de ${p.file.name}.`);
         } finally {
@@ -1334,9 +1504,24 @@
       // Gravar de novo por cima de uma prévia não enviada descartava o áudio
       // antigo com a URL de blob vazando; limpa explicitamente antes.
       if (this.audioPreview) this.descartarPreviaAudio();
+      const formato = formatoDeGravacao();
+      if (!formato) {
+        this.manager.toast('Este navegador não permite gravar áudio.');
+        return;
+      }
+
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        this.mediaRecorder = new MediaRecorder(stream);
+        // mimeType vazio = deixa o navegador escolher (caminho dos antigos).
+        this.mediaRecorder = formato.mimeType
+          ? new MediaRecorder(stream, { mimeType: formato.mimeType })
+          : new MediaRecorder(stream);
+        // O tipo REAL sai do recorder, não do que pedimos: se o navegador
+        // ignorou a preferência, o Blob ainda é rotulado corretamente.
+        this.gravacaoFormato = {
+          mimeType: (this.mediaRecorder.mimeType || formato.mimeType || 'audio/webm').split(';')[0],
+          extensao: formato.extensao
+        };
         this.audioChunks = [];
         this.isRecording = true;
 
@@ -1355,6 +1540,12 @@
         this.recTimerInterval = setInterval(() => {
           this.recSeconds++;
           timerEl.textContent = formatDuracao(this.recSeconds);
+          // Corta em 5 minutos abrindo a prévia: o usuário não perde o que já
+          // gravou, e o arquivo não estoura o limite de 5 MB do servidor.
+          if (this.recSeconds >= MAX_GRAVACAO_SEG) {
+            this.manager.toast('Limite de 5 minutos de gravação atingido.');
+            this.pararGravacaoParaPrevia();
+          }
         }, 1000);
 
         window.socket?.emit('chat:recording', { destinatarioId: this.targetUserId, isRecording: true });
@@ -1390,7 +1581,8 @@
       const duracao = this.recSeconds;
 
       this.mediaRecorder.onstop = () => {
-        const blob = new Blob(this.audioChunks, { type: 'audio/webm' });
+        const tipo = this.gravacaoFormato?.mimeType || 'audio/webm';
+        const blob = new Blob(this.audioChunks, { type: tipo });
         this.audioPreview = { blob, url: URL.createObjectURL(blob), duracao };
 
         this.q('recorderBar').hidden = true;
@@ -1430,7 +1622,16 @@
       this.descartarPreviaAudio();
 
       try {
-        const arquivo = new File([blob], `audio_${Date.now()}.webm`, { type: 'audio/webm' });
+        // Nome e tipo acompanham o formato realmente gravado (webm no Chrome,
+        // m4a no Safari) — o servidor confere a assinatura contra o mimetype.
+        const ext = this.gravacaoFormato?.extensao || 'webm';
+        const tipo = blob.type || this.gravacaoFormato?.mimeType || 'audio/webm';
+        const arquivo = new File([blob], `audio_${Date.now()}.${ext}`, { type: tipo });
+
+        if (blob.size > MAX_AUDIO_MB * 1024 * 1024) {
+          this.manager.toast(`O áudio excede ${MAX_AUDIO_MB} MB. Grave um trecho menor.`);
+          return;
+        }
         const enviado = await this.uploadArquivo(arquivo);
 
         const res = await fetch(`${API()}/chat-direto/enviar`, {
@@ -1444,8 +1645,10 @@
           })
         });
         const json = await res.json();
-        if (json.success && json.data) this.appendMessage(json.data);
-        else this.manager.toast(json.error || 'Falha ao enviar áudio.');
+        if (json.success && json.data) {
+          this.appendMessage(json.data);
+          playSendSound();
+        } else this.manager.toast(json.error || 'Falha ao enviar áudio.');
       } catch (e) {
         this.manager.toast(e.message || 'Falha ao enviar áudio.');
       }
@@ -1473,7 +1676,32 @@
       this.anexarBolha(msg, anterior);
       if (souRemetente || naBase) this.scrollToBottom();
 
+      if (!souRemetente) this.anunciarParaLeitorDeTela(msg);
       if (String(msg.destinatarioId) === this.manager.meuId) this.marcarConversaLida();
+    }
+
+    /**
+     * Dita a mensagem recebida na região aria-live.
+     *
+     * Sem isto, quem usa leitor de tela só descobria que chegou mensagem se
+     * navegasse manualmente até o fim da lista — o som avisa que ALGO chegou,
+     * mas não de quem nem o quê.
+     */
+    anunciarParaLeitorDeTela(msg) {
+      const regiao = this.q('chatAnuncio');
+      if (!regiao) return;
+
+      const quem = this.targetUserData.nome || 'Contato';
+      const conteudo = msg.mensagem
+        ? msg.mensagem
+        : (msg.audio && msg.audio.url) ? 'enviou uma mensagem de voz'
+          : (msg.anexo && msg.anexo.nome) ? `enviou o arquivo ${msg.anexo.nome}`
+            : 'enviou um anexo';
+
+      // Texto idêntico em sequência não é reanunciado por parte dos leitores;
+      // limpar antes garante que duas mensagens iguais sejam ditas as duas vezes.
+      regiao.textContent = '';
+      requestAnimationFrame(() => { regiao.textContent = `${quem}: ${conteudo}`; });
     }
 
     /**
@@ -1577,11 +1805,70 @@
 
       const instance = new ChatWindowInstance(uid, targetUserData, this);
       this.activeWindows.set(uid, instance);
+      this.avisarSobreArmazenamento();
       return instance;
+    }
+
+    /**
+     * Aviso LGPD, uma única vez por dispositivo.
+     *
+     * As conversas ficam gravadas no servidor e podem citar alunos pelo nome —
+     * quem escreve precisa saber disso ANTES de escrever, não depois. Some
+     * sozinho e não bloqueia a conversa; a ciência fica registrada localmente.
+     */
+    avisarSobreArmazenamento() {
+      try {
+        if (localStorage.getItem(PREF_AVISO_LGPD) === '1') return;
+      } catch (e) { return; } // sem storage, não insiste a cada abertura
+      if (document.getElementById('chatAvisoLgpd')) return;
+
+      const aviso = document.createElement('div');
+      aviso.id = 'chatAvisoLgpd';
+      aviso.className = 'chat-aviso-lgpd';
+      aviso.setAttribute('role', 'status');
+      aviso.innerHTML = `
+        <i class="bi bi-shield-lock-fill"></i>
+        <div class="chat-aviso-lgpd-texto">
+          <strong>Suas mensagens ficam registradas</strong>
+          <small>As conversas são armazenadas no sistema da escola e podem ser
+          consultadas em auditoria. Evite dados sensíveis desnecessários sobre alunos.</small>
+        </div>
+        <button type="button" class="chat-aviso-lgpd-ok">Entendi</button>`;
+
+      aviso.querySelector('.chat-aviso-lgpd-ok').addEventListener('click', () => {
+        try { localStorage.setItem(PREF_AVISO_LGPD, '1'); } catch (e) { /* storage off */ }
+        aviso.remove();
+      });
+
+      // O banner de push (js/push-notifications.js) ancora no mesmo ponto —
+      // rodapé centralizado. Sem desviar, os dois se sobrepõem e o de baixo
+      // fica ilegível. Quem chega depois sobe.
+      if (document.getElementById('push-enable-banner')) {
+        aviso.classList.add('acima-do-banner');
+      }
+
+      document.body.appendChild(aviso);
+
+      // `requestAnimationFrame` não dispara em aba de segundo plano: o aviso
+      // era anexado e ficava em opacity:0 para sempre — presente no DOM,
+      // invisível na tela. Ler offsetWidth força o reflow que a transição
+      // precisa, sem depender do agendador de quadros.
+      void aviso.offsetWidth;
+      aviso.classList.add('visivel');
     }
 
     removeWindow(targetUserId) {
       this.activeWindows.delete(String(targetUserId));
+    }
+
+    /**
+     * Manda toda janela aberta buscar o que perdeu durante a queda do socket.
+     * Também atualiza a lista de quem está online, porque a presença é
+     * mantida em memória no servidor e o refCount foi zerado na desconexão.
+     */
+    resincronizarTudo() {
+      this.activeWindows.forEach((w) => w.resincronizar());
+      if (window.refreshProfsOnline) window.refreshProfsOnline();
     }
 
     sincronizarIconeSom() {
@@ -1615,8 +1902,10 @@
      * Aqui vão três camadas: som, um cartão clicável que abre a conversa e —
      * apenas se a permissão JÁ existir — a notificação do sistema.
      */
-    notificarMensagem(msg) {
-      playNotificationSound();
+    notificarMensagem(msg, opcoes) {
+      // `som: false` quando quem chamou já tocou (mensagem em conversa aberta),
+      // para não disparar o mesmo aviso duas vezes.
+      if (!opcoes || opcoes.som !== false) playNotificationSound();
 
       const nome = msg.remetenteNome || 'Nova mensagem';
       const previa = msg.mensagem
@@ -1671,7 +1960,14 @@
       });
 
       box.appendChild(card);
-      requestAnimationFrame(() => card.classList.add('visivel'));
+
+      // Mesmo motivo do aviso LGPD, e aqui o efeito é pior: este cartão só é
+      // mostrado quando a aba está em segundo plano (ver notificarMensagem),
+      // que é justamente quando o navegador congela o requestAnimationFrame.
+      // O aviso de mensagem nova entrava no DOM e nunca aparecia; 6 segundos
+      // depois o setTimeout o removia sem que ninguém tivesse visto nada.
+      void card.offsetWidth;
+      card.classList.add('visivel');
 
       setTimeout(() => {
         card.classList.remove('visivel');
@@ -1753,7 +2049,14 @@
             body: JSON.stringify({ mensagemIds, destinatarioIds: [...escolhidos] })
           });
           const json = await res.json();
-          this.toast(json.success ? `${json.total} mensagem(ns) encaminhada(s).` : (json.error || 'Falha ao encaminhar.'));
+          // `aviso` só vem quando a moderação reteve alguma das selecionadas.
+          // Sem ele, encaminhar 3 e ver o toast dizer "2" é sumiço sem
+          // explicação. O backend manda o texto pronto e genérico de propósito:
+          // não diz qual mensagem nem por quê, porque quem encaminha pode nem
+          // ser o autor do conteúdo retido.
+          const sucesso = `${json.total} mensagem(ns) encaminhada(s).`
+            + (json.aviso ? ` ${json.aviso}` : '');
+          this.toast(json.success ? sucesso : (json.error || 'Falha ao encaminhar.'));
         } catch (e) {
           this.toast('Falha ao encaminhar.');
         }
@@ -1774,6 +2077,23 @@
         if (this._socketBound === s) return;
         this._socketBound = s;
 
+        // Reconexão: o 'connect' também dispara na PRIMEIRA conexão, quando
+        // o loadHistory de cada janela já vai buscar tudo. Só a partir da
+        // segunda vez é que houve uma janela de tempo sem entrega.
+        s.on('connect', () => {
+          if (this._jaConectou) this.resincronizarTudo();
+          this._jaConectou = true;
+        });
+
+        // Se o socket cai enquanto a janela está aberta, avisa em vez de
+        // deixar a conversa parecendo simplesmente silenciosa.
+        s.on('disconnect', (motivo) => {
+          // 'io client disconnect' é saída deliberada (logout, close) — não é falha.
+          if (motivo !== 'io client disconnect' && this.activeWindows.size > 0) {
+            this.toast('Conexão perdida. Reconectando…');
+          }
+        });
+
         s.on('chat:mensagem', (msg) => {
           const meuId = this.meuId || this.getMeuId();
           const souDestinatario = String(msg.destinatarioId) === meuId;
@@ -1782,12 +2102,18 @@
           const win = this.activeWindows.get(outroId);
           if (win) {
             win.appendMessage(msg);
-            // Janela minimizada ou aba em segundo plano: a mensagem entrou na
-            // lista, mas o usuário não está olhando — precisa ser avisado.
-            if (souDestinatario && (win.isMinimized || document.hidden)) {
-              this.notificarMensagem(msg);
-              win.el.classList.add('tem-novidade');
-              setTimeout(() => win.el.classList.remove('tem-novidade'), 3000);
+            if (souDestinatario) {
+              // Som sempre que chega algo para mim, inclusive com a conversa
+              // aberta e em foco — é o retorno de que a mensagem chegou.
+              playNotificationSound();
+              // Janela minimizada ou aba em segundo plano: a mensagem entrou na
+              // lista, mas o usuário não está olhando — precisa do cartão e da
+              // notificação do sistema, não só do som.
+              if (win.isMinimized || document.hidden) {
+                this.notificarMensagem(msg, { som: false });
+                win.el.classList.add('tem-novidade');
+                setTimeout(() => win.el.classList.remove('tem-novidade'), 3000);
+              }
             }
           } else if (souDestinatario) {
             this.notificarMensagem(msg);
@@ -1842,6 +2168,31 @@
     window.chatManager = new ChatManager();
     // Atalho estável para outros módulos abrirem uma conversa.
     window.abrirChatCom = (userId, dados) => window.chatManager.openChat(userId, dados);
+    abrirConversaDaUrl();
+  }
+
+  /**
+   * `?chat=<usuarioId>` abre a conversa daquele remetente.
+   *
+   * É o destino do clique na notificação do celular: sem isso o push levava
+   * o usuário ao dashboard genérico e ele ainda tinha que procurar quem
+   * mandou a mensagem. O parâmetro sai da barra de endereços depois de usado
+   * para o F5 não reabrir a janela indefinidamente.
+   */
+  function abrirConversaDaUrl() {
+    let id;
+    try {
+      id = new URLSearchParams(window.location.search).get('chat');
+    } catch (e) { return; }
+    if (!id) return;
+
+    window.chatManager.openChat(String(id));
+
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('chat');
+      window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+    } catch (e) { /* history indisponível */ }
   }
 
   if (document.readyState === 'loading') {

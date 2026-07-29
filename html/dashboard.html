@@ -140,10 +140,6 @@
                 <i class="bi bi-person-gear"></i>
                 <span>Gerenciar Secretaria</span>
             </a>
-            <a href="direcao/ia-assistant.html" class="sidebar-item director-only" style="display: none;">
-                <i class="bi bi-stars"></i>
-                <span>Assistente IA</span>
-            </a>
             <a href="direcao/bi-pedagogico.html" class="sidebar-item director-only" style="display: none;">
                 <i class="bi bi-bar-chart-line"></i>
                 <span>BI Pedagógico</span>
@@ -186,6 +182,16 @@
 
             <!-- GRUPO: PROFESSOR & DIREÇÃO (Shared) -->
             <div class="sidebar-group-label director-teacher-shared">ENSINO</div>
+            <!-- O copiloto saiu de "COMUNICAÇÃO E GESTÃO" (director-only) para
+                 cá: o backend autoriza diretor, professor e secretaria, e o
+                 `director-teacher-shared` é justamente a classe que
+                 atualizarVisibilidadeSidebar() exibe para esses três perfis.
+                 Antes, um professor tinha permissão no servidor e nenhum
+                 caminho na interface para chegar até ela. -->
+            <a href="direcao/ia-assistant.html" class="sidebar-item director-teacher-shared" data-page="ia-assistant">
+                <i class="bi bi-stars"></i>
+                <span>Assistente da Escola</span>
+            </a>
             <a href="selecionar.html" class="sidebar-item director-teacher-shared" id="sidebar-turmas-btn">
                 <i class="bi bi-people-fill"></i>
                 <span>Turmas</span>
@@ -735,6 +741,9 @@
     <script src="../js/sidebar-voice.js?v=4.1"></script>
     <script defer src="../js/dashboard.js?v=3"></script>
     <script defer src="../js/professores-online.js?v=2.0"></script>
+    <!-- Sons de enviar/receber mensagem e de aviso do mural. Precisa vir antes
+         do chat e do realtime.js, que são quem os dispara. -->
+    <script defer src="../js/som-notificacao.js?v=1.0"></script>
     <script defer src="../js/chat-direto-manager.js?v=2.0"></script>
     <script defer src="../js/escola-switcher.js"></script>
     <script defer src="../js/parallax.js"></script>

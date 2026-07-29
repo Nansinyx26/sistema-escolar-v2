@@ -54,6 +54,17 @@
         scriptEl.onload = () => {
             initSocketConnection();
         };
+        // Sem isto a falha era muda: o script não carregava, initSocketConnection
+        // nunca rodava, e o chat/mural simplesmente paravam de atualizar sem
+        // nenhuma pista no console de por quê.
+        scriptEl.onerror = () => {
+            console.error(
+                '[Realtime] Falha ao carregar o Socket.IO de ' + SOCKET_URL +
+                '. Chat e avisos em tempo real ficarão indisponíveis.'
+            );
+            // Permite nova tentativa numa chamada posterior de connectSocket().
+            scriptEl.remove();
+        };
         document.head.appendChild(scriptEl);
     }
 
@@ -68,8 +79,17 @@
             withCredentials: true,
             transports: ['websocket', 'polling'],
             reconnection: true,
+            // Backoff exponencial: começa em 2s e cresce até 30s entre as
+            // tentativas (o Socket.IO ainda aplica randomizationFactor de 0.5
+            // por cima, evitando que todos os clientes voltem no mesmo instante
+            // e derrubem a instância que acabou de subir).
             reconnectionDelay: 2000,
-            reconnectionAttempts: 10
+            reconnectionDelayMax: 30000,
+            // Antes eram 10 tentativas: esgotavam em menos de um minuto e o
+            // usuário ficava sem realtime até dar F5. A instância free do
+            // Render hiberna e pode levar mais que isso para acordar, então o
+            // cliente insiste indefinidamente com o intervalo crescendo.
+            reconnectionAttempts: Infinity
         });
 
         window.socket = socket; // Expor globalmente para outros componentes (ex: Feed)
@@ -558,10 +578,54 @@
     }
 
     function showNotifPopup(notification) {
-        // Toast notification
+        // Som de aviso — timbre diferente do som de mensagem do chat, para o
+        // usuário distinguir "recado do mural" de "alguém falou comigo".
+        window.SomNotificacao?.aviso();
+
+        // Título sozinho não diz do que se trata. O resumo (já truncado em 150
+        // caracteres pelo backend, ver ComunicadoController) entra junto.
+        const titulo = notification.title || notification.titulo || 'Nova notificação';
+        const resumo = resumirTexto(notification.message || notification.mensagem, 110);
+
         if (typeof showToast === 'function') {
-            showToast(`${notification.icon || '🔔'} ${notification.title}`, 'info');
+            const texto = resumo ? `${titulo} — ${resumo}` : titulo;
+            showToast(`${notification.icon || '🔔'} ${texto}`, 'info');
         }
+
+        mostrarNotificacaoDoSistema(titulo, resumo, notification);
+    }
+
+    /** Tira HTML, normaliza espaços e corta no limite pedido. */
+    function resumirTexto(texto, limite) {
+        if (!texto) return '';
+        const limpo = String(texto).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        if (limpo.length <= limite) return limpo;
+        return limpo.slice(0, limite).trimEnd() + '…';
+    }
+
+    /**
+     * Notificação nativa (barra do sistema) para o aviso do mural.
+     *
+     * Só dispara com a aba fora de foco e permissão já concedida — a permissão
+     * em si é pedida pelo fluxo de js/push-notifications.js. Com o app fechado
+     * quem entrega é o Web Push pelo Service Worker; isto aqui cobre o caso de
+     * o portal estar aberto numa aba em segundo plano.
+     */
+    function mostrarNotificacaoDoSistema(titulo, resumo, notification) {
+        if (!document.hidden) return;
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+        try {
+            const n = new Notification(titulo, {
+                body: resumo || 'Novo aviso da escola.',
+                icon: '/img/icons/icon-192.png',
+                tag: `notif-${notification._id || Date.now()}`
+            });
+            n.onclick = () => {
+                window.focus();
+                if (notification.link) window.location.href = notification.link;
+                n.close();
+            };
+        } catch (e) { /* navegador exige service worker */ }
     }
 
     async function markRead(id) {

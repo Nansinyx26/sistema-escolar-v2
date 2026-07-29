@@ -23,21 +23,23 @@
         if (typeof io === 'undefined') {
             console.warn('[WS] Socket.IO client não carregado. Carregando dinamicamente...');
             const script = document.createElement('script');
-            // Tenta carregar do backend, se falhar usa CDN
             script.src = `${SOCKET_URL}/socket.io/socket.io.js`;
             script.onload = () => {
                 console.log('[WS] Socket.IO client carregado do backend. Conectando...');
                 initSocket();
             };
+            // Não há fallback para CDN, e isso é intencional. O que existia
+            // aqui baixava a BIBLIOTECA de cdn.socket.io e em seguida chamava
+            // io(SOCKET_URL) — o mesmo backend que acabou de falhar em servir
+            // um arquivo estático. Servidor que não entrega um .js também não
+            // aceita WebSocket, então o fallback resolvia a metade errada do
+            // problema. (Além disso o CSP do app não permite cdn.socket.io,
+            // então o script era bloqueado e a falha ficava silenciosa.)
             script.onerror = () => {
-                console.warn('[WS] Falha ao carregar Socket.IO do backend. Tentando CDN...');
-                const cdnScript = document.createElement('script');
-                cdnScript.src = 'https://cdn.socket.io/4.7.2/socket.io.min.js';
-                cdnScript.onload = () => {
-                    console.log('[WS] Socket.IO client carregado via CDN. Conectando...');
-                    initSocket();
-                };
-                document.head.appendChild(cdnScript);
+                console.error(
+                    '[WS] Não foi possível carregar o Socket.IO de ' + SOCKET_URL +
+                    '. As notificações em tempo real ficarão indisponíveis nesta sessão.'
+                );
             };
             document.head.appendChild(script);
             return;
@@ -92,6 +94,9 @@
      * Exibe um toast de notificação em tempo real no canto superior direito.
      */
     function showRealtimeToast(message, data) {
+        // Mesmo timbre de aviso usado pelo mural (js/som-notificacao.js).
+        window.SomNotificacao?.aviso();
+
         // Cria o container se não existir
         let container = document.getElementById('ws-toast-container');
         if (!container) {

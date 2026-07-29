@@ -10,7 +10,10 @@
  *  - /api/: nunca interceptado (dados sempre frescos e autenticados).
  */
 
-const VERSION = 'v5';
+// Bump obrigatório a cada mudança em JS já cacheado: os assets usam
+// stale-while-revalidate, então sem trocar a versão o usuário recebe o arquivo
+// antigo no primeiro acesso após o deploy.
+const VERSION = 'v6';
 const STATIC_CACHE = `escola-static-${VERSION}`;
 const PAGES_CACHE = `escola-pages-${VERSION}`;
 const CURRENT_CACHES = [STATIC_CACHE, PAGES_CACHE];

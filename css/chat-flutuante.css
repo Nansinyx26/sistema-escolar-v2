@@ -1485,3 +1485,88 @@
     }
     .chat-window { width: 320px; }
 }
+
+/* ============================================================
+   AVISO LGPD — armazenamento das conversas
+   Aparece uma vez por dispositivo, na primeira abertura do chat.
+   ============================================================ */
+.chat-aviso-lgpd {
+    position: fixed;
+    left: 50%;
+    bottom: 20px;
+    transform: translate(-50%, 16px);
+    z-index: 10110;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    width: calc(100% - 32px);
+    max-width: 440px;
+    padding: 14px 16px;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    border-left: 4px solid #38bdf8;
+    border-radius: 14px;
+    background: rgba(15, 23, 42, 0.97);
+    color: #f1f5f9;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    transition: opacity .25s ease, transform .25s ease;
+}
+
+.chat-aviso-lgpd.visivel {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+/* Sobe acima do banner "Notificações no celular", que ancora no mesmo rodapé
+   centralizado. Sem isto os dois cartões ficam empilhados um sobre o outro. */
+.chat-aviso-lgpd.acima-do-banner {
+    bottom: 110px;
+}
+
+.chat-aviso-lgpd > .bi {
+    font-size: 1.3rem;
+    color: #38bdf8;
+    line-height: 1.2;
+}
+
+.chat-aviso-lgpd-texto {
+    flex: 1;
+    line-height: 1.4;
+}
+
+.chat-aviso-lgpd-texto strong {
+    display: block;
+    font-size: .88rem;
+    margin-bottom: 2px;
+}
+
+.chat-aviso-lgpd-texto small {
+    font-size: .76rem;
+    color: #cbd5e1;
+}
+
+.chat-aviso-lgpd-ok {
+    align-self: center;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 10px;
+    background: #38bdf8;
+    color: #04202e;
+    font-weight: 700;
+    font-size: .8rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.chat-aviso-lgpd-ok:hover { background: #7dd3fc; }
+
+:root[data-theme="light"] .chat-aviso-lgpd {
+    background: rgba(255, 255, 255, 0.98);
+    color: #0f172a;
+}
+
+:root[data-theme="light"] .chat-aviso-lgpd-texto small { color: #475569; }
+
+@media (prefers-reduced-motion: reduce) {
+    .chat-aviso-lgpd { transition: none; }
+}
