@@ -50,6 +50,63 @@ function buildNotifQuery(id) {
 }
 
 /**
+ * Todos os valores de `destinatarios` que alcançam este aluno.
+ *
+ * O campo é gravado ora como string, ora como número, ora como `turma:X` —
+ * daí a lista em vez de uma comparação só. Extraído de `getNotificacoes` para
+ * que a LEITURA e as ESCRITAS (marcar lida / ocultar) usem exatamente o mesmo
+ * critério de "esta notificação é deste aluno".
+ */
+function destinatariosDoAluno(aluno, alunoId) {
+    const turmaId = aluno.turma || aluno.turmaId;
+    const lista = ['todos', 'responsaveis', turmaId, `turma:${turmaId}`].filter(Boolean);
+
+    const acrescentar = (valor) => {
+        if (valor === undefined || valor === null || valor === '') return;
+        lista.push(String(valor));
+        if (!isNaN(Number(valor))) lista.push(Number(valor));
+    };
+
+    acrescentar(alunoId);
+    if (aluno._id) lista.push(String(aluno._id));
+    acrescentar(aluno.id);
+
+    return lista;
+}
+
+/**
+ * Carrega uma notificação garantindo que ela seja MESMO endereçada ao aluno.
+ *
+ * `verifyOwnership` só responde "este aluno é seu?". As rotas de marcar-lida e
+ * ocultar paravam aí e buscavam a notificação apenas pelo `:id` da URL: com um
+ * aluno legítimo no corpo, um responsável escrevia em QUALQUER notificação do
+ * sistema — inclusive as de `paraResponsavel: false` (avisos internos de
+ * staff), que ele nem pode ler. O efeito é limitado (empurra um id para `lido`
+ * ou `ocultadoPor`), mas é escrita em documento fora do seu escopo, e o
+ * `ocultadoPor` é o mesmo array que a leitura usa para filtrar.
+ *
+ * Devolve `null` quando a notificação não existe OU não alcança este aluno —
+ * a rota responde 404 nos dois casos, sem revelar qual foi.
+ */
+async function carregarNotificacaoDoAluno(id, alunoId) {
+    const Notificacao = require('../models/Notificacao');
+
+    // `_id` só entra no $or se for ObjectId válido — senão o Mongoose lança
+    // CastError e a ação vira 500 em vez de 404.
+    const orAluno = [{ id: alunoId }];
+    if (mongoose.Types.ObjectId.isValid(alunoId)) orAluno.push({ _id: alunoId });
+
+    const aluno = await Aluno.findOne({ $or: orAluno }).lean();
+    if (!aluno) return null;
+
+    return Notificacao.findOne({
+        ...buildNotifQuery(id),
+        paraResponsavel: true,
+        destinatarios: { $in: destinatariosDoAluno(aluno, alunoId) }
+    });
+}
+
+/**
  * Encontra o aluno vinculado ao e-mail do responsável.
  * O campo `responsavel` no modelo Aluno armazena o nome ou e-mail do responsável.
  * Também aceita busca por matrícula passada como query param.
@@ -619,25 +676,10 @@ exports.getNotificacoes = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Aluno não encontrado' });
         }
 
-        const turmaId = aluno.turma || aluno.turmaId;
-
-        // Monta lista de destinatários possíveis para evitar type-mismatches do MongoDB (String vs Number)
-        const destinatariosList = ['todos', 'responsaveis', turmaId, `turma:${turmaId}`].filter(Boolean);
-        if (alunoId) {
-            destinatariosList.push(String(alunoId));
-            if (!isNaN(Number(alunoId))) {
-                destinatariosList.push(Number(alunoId));
-            }
-        }
-        if (aluno._id) {
-            destinatariosList.push(String(aluno._id));
-        }
-        if (aluno.id) {
-            destinatariosList.push(String(aluno.id));
-            if (!isNaN(Number(aluno.id))) {
-                destinatariosList.push(Number(aluno.id));
-            }
-        }
+        // Mesma lista usada por `carregarNotificacaoDoAluno` nas rotas de
+        // escrita — ler e escrever precisam concordar sobre o que é "deste
+        // aluno", senão o escopo de uma some sem a outra perceber.
+        const destinatariosList = destinatariosDoAluno(aluno, alunoId);
 
         const ocultadosList = [String(alunoId)];
         if (aluno._id) ocultadosList.push(String(aluno._id));
@@ -709,8 +751,10 @@ exports.marcarComoLida = async (req, res) => {
             return res.status(403).json({ success: false, error: 'Acesso negado. Aluno não vinculado à sua conta.' });
         }
 
-        const Notificacao = require('../models/Notificacao');
-        const notificacao = await Notificacao.findOne(buildNotifQuery(id));
+        // Escopo: só notificação endereçada a ESTE aluno. Sem isto, `:id` era
+        // livre — bastava um aluno próprio no corpo para escrever em qualquer
+        // notificação do banco.
+        const notificacao = await carregarNotificacaoDoAluno(id, alunoId);
         if (!notificacao) {
             return res.status(404).json({ success: false, error: 'Notificação não encontrada.' });
         }
@@ -745,8 +789,10 @@ exports.ocultarNotificacao = async (req, res) => {
             return res.status(403).json({ success: false, error: 'Acesso negado. Aluno não vinculado à sua conta.' });
         }
 
-        const Notificacao = require('../models/Notificacao');
-        const notificacao = await Notificacao.findOne(buildNotifQuery(id));
+        // Mesmo escopo do marcar-como-lida: `ocultadoPor` é o array que a
+        // LEITURA usa para filtrar, então escrever nele fora do próprio escopo
+        // mexe no que outras pessoas veem.
+        const notificacao = await carregarNotificacaoDoAluno(id, alunoId);
         if (!notificacao) {
             return res.status(404).json({ success: false, error: 'Notificação não encontrada.' });
         }

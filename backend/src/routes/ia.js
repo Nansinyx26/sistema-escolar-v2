@@ -1,9 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const IAController = require('../controllers/IAController');
+const IaCopilotoController = require('../controllers/IaCopilotoController');
 const RelatorioController = require('../controllers/RelatorioController');
 const authorize = require('../middleware/authorize');
 const { requireAcessoAoAluno } = require('../middleware/assertAcessoAoAluno');
+const { iaChatUsuarioLimiter, iaChatIpLimiter } = require('../middleware/rateLimiters');
 
 // SEGURANÇA: as três rotas abaixo recebiam :alunoId e o repassavam direto ao
 // AnalyticsService — um responsável iterava IDs e montava o perfil de
@@ -31,6 +33,67 @@ router.get('/relatorio-bi', authorize(['diretor', 'admin']), RelatorioController
 
 // Rota de Insights Globais (Sumário Narrativo - Legado/Mantido)
 router.get('/insights-global', authorize(['diretor', 'admin']), IAController.getGlobalInsights);
+
+// ============================================
+// COPILOTO — conversa em streaming (SSE)
+// ============================================
+// Este router já é montado em api.js com `authJWT + horizontalFilter +
+// filtrarPorEscola`, então quando a requisição chega aqui `req.user` está
+// verificado e `req.escolaId` resolvido. O ContextBuilder lê SÓ desses dois —
+// nunca do corpo da requisição.
+//
+// O `authorize` abaixo lista todos os perfis válidos do sistema
+// (Usuario.perfil): não restringe nada hoje, mas deixa a lista de acesso
+// auditável em um lugar só e é onde a Fase 2 encosta o filtro por cargo.
+//
+// Os limiters vêm ANTES do authorize de propósito: uma rajada de requisições
+// não autorizadas também gasta CPU, e o teto por IP precisa valer para ela.
+const PERFIS_COPILOTO = ['diretor', 'professor', 'secretaria', 'responsavel', 'admin'];
+
+router.post('/chat',
+    iaChatIpLimiter,
+    iaChatUsuarioLimiter,
+    authorize(PERFIS_COPILOTO),
+    IaCopilotoController.chat);
+
+// Execução de ação confirmada. Mantém o limiter por IP: é o único endpoint do
+// copiloto que ESCREVE, e um laço de tentativas com tokens forjados não deve
+// sair de graça. O teto por usuário fica de fora porque uma sessão legítima
+// pode confirmar várias ações seguidas sem gastar cota do modelo.
+router.post('/confirmar',
+    iaChatIpLimiter,
+    authorize(PERFIS_COPILOTO),
+    IaCopilotoController.confirmar);
+
+router.post('/cancelar',
+    authorize(PERFIS_COPILOTO),
+    IaCopilotoController.cancelar);
+
+// Histórico de conversas. Sem limiter de IA: são leituras baratas no Mongo, já
+// cobertas pelo globalLimiter — o teto de 20/min existe para a cota do modelo,
+// e aplicá-lo aqui faria a sidebar travar durante um uso normal.
+router.get('/conversas',
+    authorize(PERFIS_COPILOTO),
+    IaCopilotoController.listarConversas);
+
+router.get('/conversas/:id',
+    authorize(PERFIS_COPILOTO),
+    IaCopilotoController.obterConversa);
+
+router.delete('/conversas/:id',
+    authorize(PERFIS_COPILOTO),
+    IaCopilotoController.removerConversa);
+
+// Paleta de comandos rápidos — a lista é filtrada por cargo no servidor.
+router.get('/comandos',
+    authorize(PERFIS_COPILOTO),
+    IaCopilotoController.listarComandos);
+
+// Exportação da conversa (PDF/TXT/DOCX). O escopo dono+escola é o mesmo da
+// leitura, então não há como exportar o histórico de outra pessoa.
+router.post('/exportar/:id',
+    authorize(PERFIS_COPILOTO),
+    IaCopilotoController.exportarConversa);
 
 // Rota de Chatbot (ChatbotController / Refatorado)
 router.post('/chatbot', authorize(['diretor', 'professor', 'responsavel', 'admin', 'coordenador', 'secretaria']), IAController.ChatbotController.sendMessage);

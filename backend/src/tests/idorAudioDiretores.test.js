@@ -70,6 +70,20 @@ async function gravarArquivo({ contentType, metadata, conteudo = 'conteudo-de-te
 }
 
 /**
+ * Corpo da resposta como texto, seja ela JSON ou binária.
+ *
+ * O superagent só preenche `res.text` para tipos textuais; uma resposta
+ * `image/*` chega como Buffer em `res.body`. Sem isto, um
+ * `expect(res.text).not.toContain(...)` passaria de graça justamente no caso
+ * que interessa — o do arquivo vazando de verdade, que é binário.
+ */
+function corpoDe(res) {
+    if (Buffer.isBuffer(res.body)) return res.body.toString();
+    if (typeof res.text === 'string') return res.text;
+    return JSON.stringify(res.body || {});
+}
+
+/**
  * Agent autenticado como responsável (perfil sem 2FA obrigatório) vinculado a
  * uma escola. Responsável é justamente o perfil de menor privilégio que
  * conseguia baixar o bucket inteiro pela rota de áudio.
@@ -214,6 +228,77 @@ describe('GET /api/audio/:id — não é porta dos fundos do bucket "uploads"', 
         expect(res.status).toBe(200);
         expect(res.headers['cache-control']).toContain('private');
         expect(res.headers['cache-control']).not.toContain('public');
+    });
+});
+
+// ─────────────────────────────────────────────────────────
+// 1b. GET /api/files/:id — a rota PÚBLICA de imagem
+// ─────────────────────────────────────────────────────────
+// `/api/files/:id` não tem authJWT (é o `src` das tags <img> de avatar) e
+// barrava apenas o que não fosse `image/*` ou tivesse `metadata.alunoId`.
+// A foto que um responsável manda dentro do chat é `image/jpeg` e não tem
+// alunoId: saía inteira para qualquer um com o id, e ainda com
+// `Cache-Control: public`. Aqui a fronteira é o `metadata.type`.
+describe('GET /api/files/:id — rota pública não vaza arquivo de contexto privado', () => {
+    it('NÃO entrega anexo de imagem do chat direto sem autenticação', async () => {
+        const anexoId = await gravarArquivo({
+            contentType: 'image/jpeg',
+            metadata: {
+                type: 'chat_anexo',
+                usuarioId: 'remetente-id',
+                destinatarioId: 'destinatario-id',
+                escolaId: String(escolaA._id)
+            },
+            conteudo: 'FOTO-PRIVADA-DA-CONVERSA'
+        });
+
+        // Sem agent: requisição anônima, exatamente como um <img> de fora.
+        const res = await request(app).get(`/api/files/${anexoId}`);
+
+        expect(res.status).toBe(403);
+        expect(corpoDe(res)).not.toContain('FOTO-PRIVADA-DA-CONVERSA');
+    });
+
+    it('NÃO entrega áudio/imagem de comentário (voice_message) sem autenticação', async () => {
+        const vozId = await gravarArquivo({
+            contentType: 'image/png',
+            metadata: { type: 'voice_message', usuarioId: 'autor-id', escolaId: String(escolaA._id) },
+            conteudo: 'ANEXO-DE-COMENTARIO'
+        });
+
+        const res = await request(app).get(`/api/files/${vozId}`);
+
+        expect(res.status).toBe(403);
+        expect(corpoDe(res)).not.toContain('ANEXO-DE-COMENTARIO');
+    });
+
+    it('CONTINUA entregando o avatar público (upload de foto grava metadata sem `type`)', async () => {
+        const avatarId = await gravarArquivo({
+            contentType: 'image/webp',
+            metadata: { usuarioId: 'dono-do-avatar', escolaId: String(escolaA._id) },
+            conteudo: 'BYTES-DO-AVATAR'
+        });
+
+        const res = await request(app).get(`/api/files/${avatarId}`);
+
+        expect(res.status).toBe(200);
+        // Resposta de imagem volta como Buffer em `res.body` (o superagent só
+        // preenche `res.text` para tipos textuais) — as respostas 403 dos casos
+        // acima são JSON e por isso aparecem em `res.text`.
+        expect(corpoDe(res)).toContain('BYTES-DO-AVATAR');
+    });
+
+    it('a rota legada /api/public/photo/:id aplica a mesma regra', async () => {
+        const anexoId = await gravarArquivo({
+            contentType: 'image/jpeg',
+            metadata: { type: 'chat_anexo', usuarioId: 'a', destinatarioId: 'b' },
+            conteudo: 'FOTO-PRIVADA-LEGADA'
+        });
+
+        const res = await request(app).get(`/api/public/photo/${anexoId}`);
+
+        expect(res.status).toBe(403);
+        expect(corpoDe(res)).not.toContain('FOTO-PRIVADA-LEGADA');
     });
 });
 

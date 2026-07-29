@@ -640,7 +640,8 @@ const PortalResponsavel: React.FC = () => {
         </div>
       )}
 
-      <ChatbotIA alunoId={activeStudent?.id} />
+      {/* Sem `alunoId`: o copiloto resolve o vínculo pela sessão no servidor. */}
+      <ChatbotIA />
     </div>
   );
 };

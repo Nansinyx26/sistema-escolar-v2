@@ -3,967 +3,535 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>AI Voice Chat | Inteligência Escolar Premium</title>
+    <title>Assistente da Escola | Portal do Docente</title>
 
-    <!-- Icons -->
     <link rel="stylesheet" href="../../js/libs/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="../../css/responsive-global.css?v=1.2" />
 
     <style>
-      /* Fallback for Inter font if not localized yet */
-      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap");
-
-      *,
-      *::before,
-      *::after {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
+      /* ═══════════════════════════════════════════════════════════════
+         Copiloto — paleta VERDE INSTITUCIONAL do DESIGN-SYSTEM.md
+         (esmeralda #10b981 + teal #0d9488). Sem roxo/neon.
+         ═══════════════════════════════════════════════════════════════ */
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
       :root {
-        --bg: #0a0a0f;
-        --surface: #12121a;
-        --surface2: #1a1a26;
-        --border: rgba(255, 255, 255, 0.07);
-        --text: #e8e8f0;
-        --muted: #6b6b80;
-        --accent: #7c5cfc;
-        --accent2: #a78bfa;
-        --accent3: #c4b5fd;
-        --glow: rgba(124, 92, 252, 0.4);
-        --glow2: rgba(167, 139, 250, 0.2);
-        --orb-size: 180px;
+        --bg: #0b0f0e;
+        --surface: #121917;
+        --surface2: #18201e;
+        --border: rgba(255, 255, 255, 0.08);
+        --text: #e6efec;
+        --muted: #7d908a;
+        --accent: #10b981;
+        --accent2: #0d9488;
+        --accent3: #6ee7b7;
+        --glow: rgba(16, 185, 129, 0.35);
+        --glow2: rgba(13, 148, 136, 0.18);
+        --erro: #f87171;
+        --orb-size: 160px;
+        --raio: 14px;
       }
 
-      html,
-      body {
+      html, body {
         height: 100%;
         background: var(--bg);
         color: var(--text);
-        font-family:
-          "Inter",
-          -apple-system,
-          BlinkMacSystemFont,
-          sans-serif;
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         overflow: hidden;
       }
 
-      /* ── Layout ── */
-      .app {
-        display: grid;
-        grid-template-columns: 1fr 380px;
-        height: 100vh;
-      }
+      /* ── Layout ─────────────────────────────────────────────────── */
+      .app { display: grid; grid-template-columns: 1fr minmax(420px, 34%); height: 100vh; }
 
-      /* ── Left panel — orb stage ── */
       .stage {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 40px;
-        position: relative;
-        overflow: hidden;
-        background: radial-gradient(
-          ellipse 60% 50% at 50% 50%,
-          rgba(124, 92, 252, 0.08) 0%,
-          transparent 70%
-        );
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 32px; position: relative; overflow: hidden;
+        background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(16, 185, 129, 0.08) 0%, transparent 70%);
       }
 
-      .stage::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background:
-          radial-gradient(
-            circle 1px at 20% 30%,
-            rgba(255, 255, 255, 0.15) 0%,
-            transparent 1px
-          ),
-          radial-gradient(
-            circle 1px at 75% 20%,
-            rgba(255, 255, 255, 0.1) 0%,
-            transparent 1px
-          ),
-          radial-gradient(
-            circle 1px at 40% 70%,
-            rgba(255, 255, 255, 0.12) 0%,
-            transparent 1px
-          ),
-          radial-gradient(
-            circle 1px at 85% 60%,
-            rgba(255, 255, 255, 0.08) 0%,
-            transparent 1px
-          ),
-          radial-gradient(
-            circle 1px at 10% 80%,
-            rgba(255, 255, 255, 0.1) 0%,
-            transparent 1px
-          ),
-          radial-gradient(
-            circle 1px at 60% 85%,
-            rgba(255, 255, 255, 0.06) 0%,
-            transparent 1px
-          ),
-          radial-gradient(
-            circle 1px at 92% 40%,
-            rgba(255, 255, 255, 0.09) 0%,
-            transparent 1px
-          );
-        pointer-events: none;
-      }
+      /* ── Orb ────────────────────────────────────────────────────── */
+      .orb-wrap { position: relative; display: grid; place-items: center; }
 
-      /* ── Orb wrapper ── */
-      .orb-wrap {
-        position: relative;
-        width: var(--orb-size);
-        height: var(--orb-size);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      /* Orbit rings */
-      .ring {
-        position: absolute;
-        border-radius: 50%;
-        border: 1px solid transparent;
-        animation: spin linear infinite;
-        pointer-events: none;
-      }
-      .ring-1 {
-        width: 220px;
-        height: 220px;
-        border-color: rgba(124, 92, 252, 0.3);
-        animation-duration: 8s;
-      }
-      .ring-2 {
-        width: 270px;
-        height: 270px;
-        border-color: rgba(167, 139, 250, 0.15);
-        animation-duration: 14s;
-        animation-direction: reverse;
-      }
-      .ring-3 {
-        width: 320px;
-        height: 320px;
-        border-color: rgba(196, 181, 253, 0.08);
-        animation-duration: 22s;
-      }
-      /* Dot on ring */
-      .ring::after {
-        content: "";
-        position: absolute;
-        top: -3px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: var(--accent2);
-        box-shadow: 0 0 8px 2px var(--accent);
-      }
-      .ring-2::after {
-        width: 4px;
-        height: 4px;
-        background: var(--accent3);
-        top: -2px;
-      }
-      .ring-3::after {
-        display: none;
-      }
-
-      @keyframes spin {
-        from {
-          transform: rotate(0deg);
-        }
-        to {
-          transform: rotate(360deg);
-        }
-      }
-
-      /* ── The orb itself ── */
       .orb {
-        width: var(--orb-size);
-        height: var(--orb-size);
-        border-radius: 50%;
-        position: relative;
-        cursor: pointer;
-        transition: transform 0.3s ease;
+        width: var(--orb-size); height: var(--orb-size); border-radius: 50%;
+        background: radial-gradient(circle at 35% 30%, var(--accent3) 0%, var(--accent) 45%, var(--accent2) 100%);
+        box-shadow: 0 0 60px var(--glow), inset 0 0 40px rgba(255, 255, 255, 0.12);
+        cursor: pointer; transition: transform 0.3s ease, box-shadow 0.3s ease;
+      }
+      .orb:hover { transform: scale(1.03); }
+      .orb.pensando { animation: pulsar 1.6s ease-in-out infinite; }
+      .orb.falando { animation: pulsar 0.8s ease-in-out infinite; }
 
-        background:
-          radial-gradient(
-            circle at 35% 35%,
-            rgba(196, 181, 253, 0.25) 0%,
-            transparent 50%
-          ),
-          radial-gradient(
-            circle at 65% 65%,
-            rgba(124, 92, 252, 0.15) 0%,
-            transparent 50%
-          ),
-          radial-gradient(
-            circle at 50% 50%,
-            #1a1030 0%,
-            #0d0820 40%,
-            #070512 100%
-          );
-
-        box-shadow:
-          0 0 40px 10px rgba(124, 92, 252, 0.35),
-          0 0 80px 20px rgba(124, 92, 252, 0.15),
-          0 0 140px 40px rgba(124, 92, 252, 0.06),
-          inset 0 1px 0 rgba(196, 181, 253, 0.2),
-          inset 0 -2px 8px rgba(0, 0, 0, 0.6);
-
-        border: 1px solid rgba(167, 139, 250, 0.25);
-        animation: orb-idle 4s ease-in-out infinite;
+      @keyframes pulsar {
+        0%, 100% { transform: scale(1); box-shadow: 0 0 60px var(--glow); }
+        50% { transform: scale(1.06); box-shadow: 0 0 90px var(--glow); }
       }
 
-      .orb::before {
-        content: "";
-        position: absolute;
-        top: 12%;
-        left: 20%;
-        width: 45%;
-        height: 30%;
-        border-radius: 50%;
-        background: radial-gradient(
-          ellipse,
-          rgba(255, 255, 255, 0.12) 0%,
-          transparent 70%
-        );
-        transform: rotate(-20deg);
+      .ring {
+        position: absolute; border: 1px solid var(--glow2); border-radius: 50%;
+        pointer-events: none;
       }
+      .ring-1 { width: calc(var(--orb-size) * 1.4); height: calc(var(--orb-size) * 1.4); }
+      .ring-2 { width: calc(var(--orb-size) * 1.9); height: calc(var(--orb-size) * 1.9); }
+      .ring-3 { width: calc(var(--orb-size) * 2.5); height: calc(var(--orb-size) * 2.5); }
 
-      .orb:hover {
-        transform: scale(1.04);
-      }
-      .orb:active {
-        transform: scale(0.97);
-      }
+      .bars { display: flex; gap: 5px; align-items: flex-end; height: 34px; opacity: 0.25; transition: opacity 0.3s; }
+      .bars.active { opacity: 1; }
+      .bars .bar { width: 4px; height: 10px; border-radius: 2px; background: var(--accent); }
+      .bars.active .bar { animation: onda 0.9s ease-in-out infinite; }
+      .bars.active .bar:nth-child(2) { animation-delay: 0.1s; }
+      .bars.active .bar:nth-child(3) { animation-delay: 0.2s; }
+      .bars.active .bar:nth-child(4) { animation-delay: 0.3s; }
+      .bars.active .bar:nth-child(5) { animation-delay: 0.4s; }
+      .bars.active .bar:nth-child(6) { animation-delay: 0.5s; }
+      .bars.active .bar:nth-child(7) { animation-delay: 0.6s; }
+      @keyframes onda { 0%, 100% { height: 10px; } 50% { height: 30px; } }
 
-      @keyframes orb-idle {
-        0%,
-        100% {
-          box-shadow:
-            0 0 40px 10px rgba(124, 92, 252, 0.35),
-            0 0 80px 20px rgba(124, 92, 252, 0.15),
-            0 0 140px 40px rgba(124, 92, 252, 0.06),
-            inset 0 1px 0 rgba(196, 181, 253, 0.2),
-            inset 0 -2px 8px rgba(0, 0, 0, 0.6);
-        }
-        50% {
-          box-shadow:
-            0 0 55px 15px rgba(124, 92, 252, 0.45),
-            0 0 100px 30px rgba(124, 92, 252, 0.2),
-            0 0 180px 60px rgba(124, 92, 252, 0.08),
-            inset 0 1px 0 rgba(196, 181, 253, 0.25),
-            inset 0 -2px 8px rgba(0, 0, 0, 0.6);
-        }
-      }
-
-      /* Speaking state - ONLY for AI */
-      .orb.speaking {
-        animation: orb-speak 0.6s ease-in-out infinite alternate;
-      }
-      @keyframes orb-speak {
-        from {
-          box-shadow:
-            0 0 50px 14px rgba(124, 92, 252, 0.5),
-            0 0 100px 30px rgba(124, 92, 252, 0.25),
-            0 0 180px 60px rgba(124, 92, 252, 0.1),
-            inset 0 1px 0 rgba(196, 181, 253, 0.3),
-            inset 0 -2px 8px rgba(0, 0, 0, 0.5);
-          transform: scale(1);
-        }
-        to {
-          box-shadow:
-            0 0 70px 20px rgba(124, 92, 252, 0.65),
-            0 0 140px 50px rgba(124, 92, 252, 0.3),
-            0 0 220px 80px rgba(124, 92, 252, 0.12),
-            inset 0 1px 0 rgba(196, 181, 253, 0.4),
-            inset 0 -2px 8px rgba(0, 0, 0, 0.4);
-          transform: scale(1.05);
-        }
-      }
-
-      /* Listening state - Static for user, just color indicator */
-      .orb.listening {
-        border-color: rgba(167, 139, 250, 0.6);
-      }
-
-      /* Thinking state */
-      .orb.thinking {
-        animation: orb-think 2s linear infinite;
-      }
-      @keyframes orb-think {
-        from {
-          filter: hue-rotate(0deg);
-        }
-        to {
-          filter: hue-rotate(30deg);
-        }
-      }
-
-      /* ── Audio bars ── */
-      .bars {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        height: 32px;
-        opacity: 0;
-        transition: opacity 0.3s;
-      }
-      .bars.active {
-        opacity: 1;
-      }
-      .bar {
-        width: 3px;
-        border-radius: 3px;
-        background: linear-gradient(to top, var(--accent), var(--accent3));
-        animation: bar-bounce 0.8s ease-in-out infinite alternate;
-        min-height: 4px;
-      }
-      .bar:nth-child(1) {
-        animation-delay: 0s;
-        height: 8px;
-      }
-      .bar:nth-child(2) {
-        animation-delay: 0.1s;
-        height: 18px;
-      }
-      .bar:nth-child(3) {
-        animation-delay: 0.2s;
-        height: 28px;
-      }
-      .bar:nth-child(4) {
-        animation-delay: 0.05s;
-        height: 22px;
-      }
-      .bar:nth-child(5) {
-        animation-delay: 0.15s;
-        height: 14px;
-      }
-      .bar:nth-child(6) {
-        animation-delay: 0.25s;
-        height: 24px;
-      }
-      .bar:nth-child(7) {
-        animation-delay: 0.1s;
-        height: 10px;
-      }
-
-      @keyframes bar-bounce {
-        from {
-          transform: scaleY(0.2);
-          opacity: 0.5;
-        }
-        to {
-          transform: scaleY(1);
-          opacity: 1;
-        }
-      }
-
-      /* ── Status pill ── */
       .status-pill {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 7px 16px;
-        border-radius: 100px;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid var(--border);
-        font-size: 12px;
-        font-weight: 500;
-        color: var(--muted);
-        letter-spacing: 0.03em;
-        transition: all 0.3s ease;
-        user-select: none;
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 7px 16px; border-radius: 999px;
+        background: var(--surface); border: 1px solid var(--border);
+        font-size: 13px; color: var(--muted);
       }
-      .status-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: var(--muted);
-        transition: all 0.3s ease;
+      .status-pill .status-dot {
+        width: 7px; height: 7px; border-radius: 50%; background: var(--muted);
       }
-      .status-pill.idle .status-dot {
-        background: var(--muted);
-        box-shadow: none;
-      }
-      .status-pill.listening .status-dot {
-        background: #4ade80;
-        box-shadow: 0 0 6px 2px rgba(74, 222, 128, 0.5);
-        animation: dot-pulse 1s ease-in-out infinite;
-      }
-      .status-pill.thinking .status-dot {
-        background: #fbbf24;
-        box-shadow: 0 0 6px 2px rgba(251, 191, 36, 0.5);
-        animation: dot-pulse 0.7s ease-in-out infinite;
-      }
-      .status-pill.speaking .status-dot {
-        background: var(--accent2);
-        box-shadow: 0 0 6px 2px var(--glow);
-        animation: dot-pulse 0.5s ease-in-out infinite;
-      }
-      @keyframes dot-pulse {
-        0%,
-        100% {
-          transform: scale(1);
-          opacity: 1;
-        }
-        50% {
-          transform: scale(1.4);
-          opacity: 0.7;
-        }
-      }
+      .status-pill.pensando .status-dot,
+      .status-pill.falando .status-dot { background: var(--accent); }
 
-      /* ── Mic button (on stage) ── */
-      .mic-btn {
-        width: 52px;
-        height: 52px;
-        border-radius: 50%;
-        border: 1px solid var(--border);
-        background: rgba(255, 255, 255, 0.04);
-        color: var(--muted);
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s ease;
-        font-size: 20px;
+      .stage-btn {
+        position: absolute; top: 20px;
+        width: 40px; height: 40px; display: grid; place-items: center;
+        border-radius: 50%; border: 1px solid var(--border); background: var(--surface);
+        color: var(--text); cursor: pointer; text-decoration: none;
+        transition: background 0.2s, border-color 0.2s;
       }
-      .mic-btn:hover {
-        background: rgba(124, 92, 252, 0.15);
-        border-color: var(--accent);
-        color: var(--accent2);
-      }
-      .mic-btn.active {
-        background: rgba(124, 92, 252, 0.25);
-        border-color: var(--accent2);
-        color: var(--accent2);
-        box-shadow: 0 0 16px var(--glow);
-      }
+      .stage-btn:hover { background: var(--surface2); border-color: var(--accent); }
+      .stage-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .back-btn { left: 20px; }
+      .gear-btn { right: 20px; }
 
-      /* ── Right panel — chat ── */
+      /* ── Painel de conversa ─────────────────────────────────────── */
       .chat-panel {
-        display: flex;
-        flex-direction: column;
-        border-left: 1px solid var(--border);
-        background: var(--surface);
+        display: flex; flex-direction: column; height: 100vh;
+        background: var(--surface); border-left: 1px solid var(--border);
       }
 
       .chat-header {
-        padding: 20px 24px;
-        border-bottom: 1px solid var(--border);
-        display: flex;
-        align-items: center;
-        gap: 12px;
+        display: flex; align-items: center; gap: 12px;
+        padding: 16px 18px; border-bottom: 1px solid var(--border); flex-shrink: 0;
       }
       .chat-header-orb {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: radial-gradient(
-          circle at 35% 35%,
-          rgba(196, 181, 253, 0.3),
-          #1a1030
-        );
-        border: 1px solid rgba(167, 139, 250, 0.3);
-        box-shadow: 0 0 12px rgba(124, 92, 252, 0.4);
-        flex-shrink: 0;
+        width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+        background: radial-gradient(circle at 35% 30%, var(--accent3), var(--accent2));
       }
-      .chat-header-info h2 {
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--text);
-      }
+      .chat-header-info { flex: 1; min-width: 0; }
+      .chat-header-info h1 { font-size: 15px; font-weight: 600; }
       .chat-header-info p {
-        font-size: 11px;
-        color: var(--muted);
-        margin-top: 1px;
+        font-size: 12px; color: var(--muted);
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
       }
-      .chat-header-badge {
-        margin-left: auto;
-        font-size: 10px;
-        padding: 3px 8px;
-        border-radius: 100px;
-        background: rgba(124, 92, 252, 0.15);
-        color: var(--accent3);
-        border: 1px solid rgba(124, 92, 252, 0.3);
-        font-weight: 500;
+      .header-btn {
+        width: 34px; height: 34px; display: grid; place-items: center; flex-shrink: 0;
+        border-radius: 9px; border: 1px solid var(--border); background: transparent;
+        color: var(--muted); cursor: pointer; transition: color 0.2s, border-color 0.2s;
       }
+      .header-btn:hover { color: var(--accent); border-color: var(--accent); }
+      .header-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-      /* ── Messages ── */
+      /* ── Mensagens ──────────────────────────────────────────────── */
       .messages {
-        flex: 1;
-        overflow-y: auto;
-        padding: 20px;
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-        scrollbar-width: thin;
-        scrollbar-color: rgba(255, 255, 255, 0.06) transparent;
-      }
-      .messages::-webkit-scrollbar {
-        width: 4px;
-      }
-      .messages::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      .messages::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.06);
-        border-radius: 4px;
+        flex: 1; overflow-y: auto; overscroll-behavior: contain;
+        padding: 20px 18px; display: flex; flex-direction: column; gap: 18px;
       }
 
-      .msg {
-        display: flex;
-        flex-direction: column;
-        max-width: 85%;
-        animation: msg-in 0.25s ease both;
+      .ia-vazio { margin: auto; text-align: center; max-width: 340px; color: var(--muted); }
+      .ia-vazio-icone {
+        width: 52px; height: 52px; margin: 0 auto 14px; display: grid; place-items: center;
+        border-radius: 50%; background: rgba(16, 185, 129, 0.12); color: var(--accent);
       }
-      @keyframes msg-in {
-        from {
-          opacity: 0;
-          transform: translateY(10px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
+      .ia-vazio h2 { font-size: 17px; color: var(--text); margin-bottom: 6px; }
+      .ia-vazio p { font-size: 13px; line-height: 1.6; }
+      .ia-sugestoes { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 18px; }
+      .ia-sugestao {
+        padding: 7px 13px; border-radius: 999px; font-size: 12.5px;
+        border: 1px solid var(--border); background: var(--surface2);
+        color: var(--text); cursor: pointer; transition: border-color 0.2s;
+      }
+      .ia-sugestao:hover { border-color: var(--accent); }
+      .ia-sugestao:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+      .ia-msg { display: flex; flex-direction: column; max-width: 88%; }
+      .ia-msg-usuario { align-self: flex-end; align-items: flex-end; }
+      .ia-msg-assistente { align-self: flex-start; align-items: flex-start; max-width: 100%; }
+
+      .ia-bolha {
+        padding: 11px 14px; border-radius: var(--raio);
+        font-size: 14px; line-height: 1.65; word-wrap: break-word;
+      }
+      .ia-msg-usuario .ia-bolha {
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+        color: #04120e; font-weight: 500; border-bottom-right-radius: 4px;
+        white-space: pre-wrap;
+      }
+      .ia-msg-assistente .ia-bolha {
+        background: var(--surface2); border: 1px solid var(--border);
+        border-bottom-left-radius: 4px; width: 100%;
       }
 
-      .msg.user {
-        align-self: flex-end;
-        align-items: flex-end;
-      }
-      .msg.ai {
-        align-self: flex-start;
-        align-items: flex-start;
-      }
+      .ia-hora { font-size: 10.5px; color: var(--muted); margin-top: 5px; }
 
-      .msg-bubble {
-        padding: 10px 14px;
-        border-radius: 16px;
-        font-size: 13.5px;
-        line-height: 1.55;
-        font-weight: 400;
+      /* ── Markdown ───────────────────────────────────────────────── */
+      .ia-markdown > *:first-child { margin-top: 0; }
+      .ia-markdown > *:last-child { margin-bottom: 0; }
+      .ia-markdown p { margin: 0 0 10px; }
+      .ia-markdown h1, .ia-markdown h2, .ia-markdown h3,
+      .ia-markdown h4, .ia-markdown h5, .ia-markdown h6 {
+        margin: 16px 0 8px; line-height: 1.3; color: var(--accent3);
       }
-      .msg.user .msg-bubble {
-        background: var(--accent);
-        color: #fff;
-        border-radius: 16px 16px 4px 16px;
-      }
-      .msg.ai .msg-bubble {
-        background: var(--surface2);
-        color: var(--text);
-        border: 1px solid var(--border);
-        border-radius: 16px 16px 16px 4px;
-      }
-
-      .msg-time {
-        font-size: 10px;
+      .ia-markdown h1 { font-size: 18px; }
+      .ia-markdown h2 { font-size: 16px; }
+      .ia-markdown h3 { font-size: 14.5px; }
+      .ia-markdown h4, .ia-markdown h5, .ia-markdown h6 { font-size: 13.5px; }
+      .ia-markdown ul, .ia-markdown ol { margin: 0 0 10px; padding-left: 20px; }
+      .ia-markdown li { margin-bottom: 4px; }
+      .ia-markdown a { color: var(--accent3); text-decoration: underline; }
+      .ia-markdown a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .ia-markdown blockquote {
+        margin: 0 0 10px; padding: 6px 12px;
+        border-left: 3px solid var(--accent); background: rgba(16, 185, 129, 0.06);
         color: var(--muted);
-        margin-top: 4px;
-        padding: 0 4px;
+      }
+      .ia-markdown hr { border: 0; border-top: 1px solid var(--border); margin: 14px 0; }
+      .ia-markdown code {
+        font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+        font-size: 12.5px; padding: 1px 5px; border-radius: 5px;
+        background: rgba(16, 185, 129, 0.12); color: var(--accent3);
+      }
+      .ia-markdown pre {
+        margin: 0 0 10px; padding: 12px 14px; border-radius: 10px;
+        background: #0a100e; border: 1px solid var(--border);
+        overflow-x: auto; /* o bloco rola em si; a página nunca rola na horizontal */
+      }
+      .ia-markdown pre code { background: none; padding: 0; color: var(--text); font-size: 12.5px; line-height: 1.55; }
+
+      /* Tabela larga rola dentro do próprio contêiner. */
+      .ia-tabela-wrap { overflow-x: auto; margin: 0 0 10px; }
+      .ia-markdown table { border-collapse: collapse; width: 100%; font-size: 13px; }
+      .ia-markdown th, .ia-markdown td {
+        border: 1px solid var(--border); padding: 7px 10px; text-align: left;
+      }
+      .ia-markdown th { background: rgba(16, 185, 129, 0.1); color: var(--accent3); font-weight: 600; }
+
+      /* ── Estados da resposta ────────────────────────────────────── */
+      .ia-pensando { display: flex; gap: 5px; padding: 4px 0; }
+      .ia-pensando span {
+        width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+        animation: saltar 1.3s ease-in-out infinite;
+      }
+      .ia-pensando span:nth-child(2) { animation-delay: 0.18s; }
+      .ia-pensando span:nth-child(3) { animation-delay: 0.36s; }
+      @keyframes saltar { 0%, 60%, 100% { opacity: 0.3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-4px); } }
+
+      /* ── Conversas anteriores ───────────────────────────────────── */
+      .ia-sidebar {
+        flex-shrink: 0; max-height: 42vh; overflow-y: auto;
+        border-bottom: 1px solid var(--border); background: var(--bg);
+      }
+      .ia-sidebar-lista { padding: 8px; display: flex; flex-direction: column; gap: 3px; }
+      .ia-sidebar-vazio { padding: 18px 12px; text-align: center; font-size: 12.5px; color: var(--muted); }
+
+      .ia-conversa {
+        display: flex; align-items: center; gap: 4px;
+        border-radius: 9px; transition: background 0.15s;
+      }
+      .ia-conversa:hover { background: var(--surface2); }
+      .ia-conversa.ativa { background: rgba(16, 185, 129, 0.12); }
+
+      .ia-conversa-abrir {
+        flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;
+        padding: 8px 10px; border: 0; background: transparent;
+        color: var(--text); font-family: inherit; text-align: left; cursor: pointer;
+      }
+      .ia-conversa-titulo {
+        font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
+      .ia-conversa-quando { font-size: 11px; color: var(--muted); }
+
+      .ia-conversa-apagar {
+        width: 28px; height: 28px; flex-shrink: 0; margin-right: 6px;
+        display: grid; place-items: center;
+        border: 0; border-radius: 7px; background: transparent;
+        color: var(--muted); cursor: pointer; opacity: 0;
+        transition: opacity 0.15s, color 0.15s;
+      }
+      .ia-conversa:hover .ia-conversa-apagar,
+      .ia-conversa-apagar:focus-visible { opacity: 1; }
+      .ia-conversa-apagar:hover { color: var(--erro); }
+      .ia-conversa-abrir:focus-visible,
+      .ia-conversa-apagar:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+      .ia-conversa-apagar i, .ia-conversa-apagar svg { width: 14px; height: 14px; }
+
+      /* ── Paleta de comandos ─────────────────────────────────────── */
+      .input-wrap { position: relative; }
+      .ia-paleta {
+        position: absolute; bottom: calc(100% + 8px); left: 16px; right: 16px;
+        z-index: 20; max-height: 260px; overflow-y: auto;
+        border-radius: 11px; padding: 5px;
+        background: var(--surface2); border: 1px solid var(--border);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+      }
+      .ia-comando {
+        display: flex; align-items: baseline; gap: 10px;
+        padding: 8px 10px; border-radius: 8px; cursor: pointer;
+      }
+      .ia-comando.ativo { background: rgba(16, 185, 129, 0.14); }
+      .ia-comando-nome { font-size: 13px; font-weight: 600; color: var(--accent3); flex-shrink: 0; }
+      .ia-comando-desc {
+        font-size: 12px; color: var(--muted);
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
       }
 
-      /* Typing indicator */
-      .typing-bubble {
-        display: flex;
-        gap: 4px;
-        align-items: center;
-        padding: 12px 16px;
-        background: var(--surface2);
-        border: 1px solid var(--border);
-        border-radius: 16px 16px 16px 4px;
-        width: fit-content;
-      }
-      .typing-dot {
-        width: 5px;
-        height: 5px;
-        border-radius: 50%;
-        background: var(--muted);
-        animation: typing 1.2s ease-in-out infinite;
-      }
-      .typing-dot:nth-child(2) {
-        animation-delay: 0.2s;
-      }
-      .typing-dot:nth-child(3) {
-        animation-delay: 0.4s;
-      }
-      @keyframes typing {
-        0%,
-        80%,
-        100% {
-          transform: scale(0.7);
-          opacity: 0.4;
-        }
-        40% {
-          transform: scale(1);
-          opacity: 1;
-        }
-      }
-
-      /* ── Input area ── */
-      .input-wrap {
-        padding: 16px 20px;
-        border-top: 1px solid var(--border);
-        display: flex;
-        align-items: flex-end;
-        gap: 10px;
-      }
-      .input-box {
-        flex: 1;
-        background: var(--surface2);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 11px 14px;
-        color: var(--text);
-        font-family: inherit;
-        font-size: 13.5px;
-        line-height: 1.5;
-        resize: none;
-        outline: none;
-        min-height: 44px;
-        max-height: 120px;
+      /* ── Exportação ─────────────────────────────────────────────── */
+      .ia-export-ajuda { font-size: 12.5px; color: var(--muted); margin-bottom: 14px; }
+      .ia-formatos { display: flex; flex-direction: column; gap: 8px; }
+      .ia-formato {
+        padding: 11px 14px; border-radius: 9px; cursor: pointer; text-align: left;
+        background: var(--surface2); border: 1px solid var(--border);
+        color: var(--text); font-family: inherit; font-size: 13.5px;
         transition: border-color 0.2s;
       }
-      .input-box::placeholder {
-        color: var(--muted);
-      }
-      .input-box:focus {
-        border-color: rgba(124, 92, 252, 0.4);
-      }
+      .ia-formato:hover:not(:disabled) { border-color: var(--accent); }
+      .ia-formato:disabled { opacity: 0.6; cursor: wait; }
+      .ia-formato:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-      .send-btn,
-      .voice-btn {
-        width: 40px;
-        height: 40px;
-        border-radius: 12px;
-        border: 1px solid var(--border);
-        background: transparent;
-        color: var(--muted);
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s ease;
-        flex-shrink: 0;
-      }
-      .send-btn:hover {
-        background: var(--accent);
-        border-color: var(--accent);
-        color: #fff;
-      }
-      .voice-btn:hover {
-        background: rgba(124, 92, 252, 0.15);
-        border-color: var(--accent);
-        color: var(--accent2);
-      }
-      .voice-btn.recording {
-        background: rgba(239, 68, 68, 0.2);
-        border-color: #ef4444;
-        color: #ef4444;
-        animation: voice-pulse 0.8s ease-in-out infinite;
-      }
-
-      @keyframes voice-pulse {
-        0%,
-        100% {
-          box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3);
-        }
-        50% {
-          box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
-        }
-      }
-
-      /* ── Config panel ── */
-      .config-overlay {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.7);
-        backdrop-filter: blur(4px);
-        z-index: 100;
-        align-items: center;
-        justify-content: center;
-      }
-      .config-overlay.open {
-        display: flex;
-      }
-      .config-box {
-        background: var(--surface);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 20px;
-        padding: 28px;
-        width: 400px;
-        max-width: 90vw;
-      }
-      .config-box h3 {
-        font-size: 15px;
-        font-weight: 600;
-        margin-bottom: 20px;
-      }
-      .config-field {
-        margin-bottom: 16px;
-      }
-      .config-field label {
-        display: block;
-        font-size: 11px;
-        color: var(--muted);
-        font-weight: 500;
-        margin-bottom: 6px;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
-      }
-      .config-field input,
-      .config-field select {
-        width: 100%;
+      /* ── Card de confirmação de ação ────────────────────────────── */
+      .ia-confirmacao {
+        align-self: flex-start; width: 100%; max-width: 100%;
+        margin-top: 2px; padding: 14px;
+        border-radius: var(--raio);
         background: var(--surface2);
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        padding: 10px 12px;
-        color: var(--text);
-        font-family: inherit;
-        font-size: 13px;
-        outline: none;
+        /* Borda âmbar: é uma parada deliberada, não mais uma bolha de conversa. */
+        border: 1px solid rgba(251, 191, 36, 0.35);
       }
-      .config-field input:focus,
-      .config-field select:focus {
-        border-color: rgba(124, 92, 252, 0.4);
+      .ia-confirmacao-cabecalho {
+        display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+        font-size: 13.5px; color: #fbbf24;
       }
-      .config-field select option {
-        background: #1a1a26;
-      }
-      .config-btns {
-        display: flex;
-        gap: 10px;
-        margin-top: 20px;
-      }
-      .btn-save {
-        flex: 1;
-        padding: 11px;
-        border-radius: 12px;
-        border: none;
-        background: var(--accent);
-        color: #fff;
-        font-family: inherit;
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: opacity 0.2s;
-      }
-      .btn-save:hover {
-        opacity: 0.85;
-      }
-      .btn-cancel {
-        padding: 11px 20px;
-        border-radius: 12px;
-        border: 1px solid var(--border);
-        background: transparent;
-        color: var(--muted);
-        font-family: inherit;
-        font-size: 13px;
-        cursor: pointer;
-        transition: all 0.2s;
-      }
-      .btn-cancel:hover {
-        background: rgba(255, 255, 255, 0.04);
-        color: var(--text);
-      }
+      .ia-confirmacao-cabecalho i, .ia-confirmacao-cabecalho svg { width: 16px; height: 16px; }
+      .ia-confirmacao-resumo { font-size: 14px; line-height: 1.5; margin-bottom: 10px; }
 
-      /* Gear button */
-      .gear-btn {
-        position: absolute;
-        top: 20px;
-        right: 20px;
-        width: 36px;
-        height: 36px;
-        border-radius: 10px;
-        border: 1px solid var(--border);
-        background: transparent;
-        color: var(--muted);
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s;
-        font-size: 16px;
-      }
-      .gear-btn:hover {
-        background: rgba(255, 255, 255, 0.05);
-        color: var(--text);
-      }
-      /* Volta ao painel: mesmo formato do gear, ancorado à esquerda. */
-      .gear-btn.back-btn {
-        right: auto;
-        left: 20px;
-        text-decoration: none;
-      }
-
-      /* Empty state */
-      .empty-state {
-        text-align: center;
-        color: var(--muted);
-        font-size: 12px;
-        padding: 20px;
-        line-height: 1.6;
-      }
-      .empty-state strong {
-        display: block;
-        color: rgba(255, 255, 255, 0.25);
-        font-size: 13px;
-        margin-bottom: 6px;
-      }
-
-      /* Error toast */
-      .toast {
-        position: fixed;
-        bottom: 24px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(239, 68, 68, 0.15);
-        border: 1px solid rgba(239, 68, 68, 0.3);
-        color: #fca5a5;
-        padding: 10px 20px;
-        border-radius: 12px;
+      .ia-confirmacao-dados {
+        display: grid; grid-template-columns: auto 1fr; gap: 5px 12px;
+        margin-bottom: 14px; padding: 10px 12px;
+        border-radius: 9px; background: rgba(0, 0, 0, 0.22);
         font-size: 12.5px;
-        z-index: 200;
-        opacity: 0;
-        transition: opacity 0.3s;
-        pointer-events: none;
-        white-space: nowrap;
       }
-      .toast.show {
-        opacity: 1;
+      .ia-confirmacao-dados dt { color: var(--muted); }
+      .ia-confirmacao-dados dd { color: var(--text); word-break: break-word; white-space: pre-wrap; }
+
+      .ia-confirmacao-acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+      .ia-confirmacao-acoes button {
+        padding: 8px 16px; border-radius: 9px; cursor: pointer;
+        font-family: inherit; font-size: 13px; font-weight: 500;
+      }
+      .ia-confirmacao-acoes button:disabled { opacity: 0.5; cursor: not-allowed; }
+      .ia-confirmacao-acoes button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .ia-btn-confirmar {
+        border: 0; color: #04120e;
+        background: linear-gradient(135deg, var(--accent), var(--accent2));
+      }
+      .ia-btn-editar, .ia-btn-cancelar {
+        background: transparent; border: 1px solid var(--border); color: var(--text);
+      }
+      .ia-btn-cancelar:hover { border-color: var(--erro); color: var(--erro); }
+
+      /* Estados finais do card */
+      .ia-confirmacao-ok {
+        border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.08);
+      }
+      .ia-confirmacao-ok p { color: var(--accent3); font-size: 13.5px; }
+      .ia-confirmacao-erro {
+        border-color: rgba(248, 113, 113, 0.4); background: rgba(248, 113, 113, 0.08);
+      }
+      .ia-confirmacao-erro p { color: var(--erro); font-size: 13.5px; }
+      .ia-confirmacao-cancelado p { color: var(--muted); font-size: 13.5px; }
+
+      /* Trilha de consultas feitas ao sistema durante a resposta */
+      .ia-ferramentas { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 7px; }
+      .ia-ferramenta {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 3px 10px; border-radius: 999px; font-size: 11.5px;
+        background: rgba(16, 185, 129, 0.1); color: var(--accent3);
+        border: 1px solid rgba(16, 185, 129, 0.22);
+      }
+      .ia-ferramenta::before {
+        content: ""; width: 5px; height: 5px; border-radius: 50%;
+        background: var(--accent); animation: piscar 1.2s ease-in-out infinite;
+      }
+      /* No histórico a consulta já terminou — o ponto para de piscar. */
+      .ia-ferramenta-feita { opacity: 0.7; }
+      .ia-ferramenta-feita::before { animation: none; }
+
+      .ia-cursor {
+        display: inline-block; width: 7px; height: 14px; margin-left: 2px;
+        background: var(--accent); vertical-align: text-bottom;
+        animation: piscar 1s step-end infinite;
+      }
+      @keyframes piscar { 50% { opacity: 0; } }
+
+      .ia-aviso { font-size: 13px; padding: 8px 11px; border-radius: 9px; margin-top: 8px; }
+      .ia-aviso-erro { background: rgba(248, 113, 113, 0.12); color: var(--erro); border: 1px solid rgba(248, 113, 113, 0.3); }
+      .ia-aviso-info { background: rgba(255, 255, 255, 0.05); color: var(--muted); border: 1px solid var(--border); }
+      .ia-sem-resposta { color: var(--muted); font-style: italic; }
+
+      .ia-acoes { display: flex; align-items: center; gap: 4px; margin-top: 7px; }
+      .ia-acao {
+        width: 27px; height: 27px; display: grid; place-items: center;
+        border: 0; border-radius: 7px; background: transparent;
+        color: var(--muted); cursor: pointer; transition: color 0.2s, background 0.2s;
+      }
+      .ia-acao:hover { color: var(--accent); background: rgba(16, 185, 129, 0.1); }
+      .ia-acao:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+      .ia-acao-ok { color: var(--accent); }
+      .ia-acao i, .ia-acao svg { width: 15px; height: 15px; }
+      .ia-acoes .ia-hora { margin: 0 0 0 auto; }
+
+      /* ── Caixa de entrada ───────────────────────────────────────── */
+      .input-wrap {
+        display: flex; align-items: flex-end; gap: 9px;
+        padding: 14px 16px; border-top: 1px solid var(--border); flex-shrink: 0;
+      }
+      .input-box {
+        flex: 1; resize: none; max-height: 160px;
+        padding: 11px 13px; border-radius: 11px;
+        background: var(--surface2); border: 1px solid var(--border);
+        color: var(--text); font-family: inherit; font-size: 14px; line-height: 1.5;
+      }
+      .input-box:focus { outline: none; border-color: var(--accent); }
+      .input-box:disabled { opacity: 0.55; }
+      .input-box::placeholder { color: var(--muted); }
+
+      .send-btn, .stop-btn {
+        width: 42px; height: 42px; flex-shrink: 0; display: grid; place-items: center;
+        border: 0; border-radius: 11px; cursor: pointer; transition: opacity 0.2s;
+      }
+      .send-btn { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #04120e; }
+      .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+      .stop-btn { background: rgba(248, 113, 113, 0.15); color: var(--erro); border: 1px solid rgba(248, 113, 113, 0.35); }
+      .send-btn:focus-visible, .stop-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+      /* ── Painel de voz ──────────────────────────────────────────── */
+      .config-overlay {
+        position: fixed; inset: 0; z-index: 60; display: none;
+        place-items: center; padding: 20px;
+        background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(4px);
+      }
+      .config-overlay.open { display: grid; }
+      .config-box {
+        width: 100%; max-width: 380px; padding: 22px;
+        border-radius: 16px; background: var(--surface); border: 1px solid var(--border);
+      }
+      .config-box h2 { font-size: 16px; margin-bottom: 16px; }
+      .config-field { margin-bottom: 13px; }
+      .config-field label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 5px; }
+      .config-field select {
+        width: 100%; padding: 9px 11px; border-radius: 9px;
+        background: var(--surface2); border: 1px solid var(--border);
+        color: var(--text); font-family: inherit; font-size: 13.5px;
+      }
+      .config-field select:focus { outline: none; border-color: var(--accent); }
+      .config-btns { display: flex; gap: 9px; margin-top: 18px; }
+      .config-btns button {
+        flex: 1; padding: 10px; border-radius: 9px; cursor: pointer;
+        font-family: inherit; font-size: 13.5px; font-weight: 500;
+      }
+      .btn-cancel { background: transparent; border: 1px solid var(--border); color: var(--text); }
+      .btn-save { background: linear-gradient(135deg, var(--accent), var(--accent2)); border: 0; color: #04120e; }
+
+      /* ── Toast ──────────────────────────────────────────────────── */
+      .toast {
+        position: fixed; bottom: 22px; left: 50%; transform: translate(-50%, 16px);
+        z-index: 70; max-width: min(440px, calc(100vw - 40px));
+        padding: 11px 17px; border-radius: 11px; font-size: 13px;
+        background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+        opacity: 0; pointer-events: none; transition: opacity 0.25s, transform 0.25s;
+      }
+      .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+      /* ── Responsivo ─────────────────────────────────────────────── */
+      @media (max-width: 1024px) {
+        .app { grid-template-columns: 1fr; grid-template-rows: minmax(220px, 30vh) 1fr; }
+        .chat-panel { border-left: 0; border-top: 1px solid var(--border); height: auto; min-height: 0; }
+        :root { --orb-size: 110px; }
+        .ring-3 { display: none; }
       }
 
-      /* ── RESPONSIVE ── */
-      @media (max-width: 900px) {
-        /* A página rola na raiz. `overflow: auto` também no body faria dele
-           um contêiner de rolagem próprio — rolagem aninhada e sem inércia
-           no iOS. */
-        html {
-          overflow-x: hidden;
-          overflow-y: auto;
-          height: auto;
-        }
-        body {
-          overflow: visible;
-          height: auto;
-          min-height: 100%;
-        }
-        .app {
-          grid-template-columns: 1fr;
-          grid-template-rows: auto auto;
-          height: auto;
-          min-height: 100dvh;
-        }
-        .stage {
-          min-height: 300px;
-          padding: 24px 16px;
-        }
-        .chat-panel {
-          border-left: none;
-          border-top: 1px solid var(--border);
-          /* garante área utilizável sem esconder o input atrás da barra do navegador */
-          min-height: 70dvh;
-        }
-        :root {
-          --orb-size: 140px;
-        }
-        .gear-btn {
-          top: 12px;
-          right: 12px;
-        }
-        .gear-btn.back-btn {
-          right: auto;
-          left: 12px;
-        }
+      @media (max-width: 640px) {
+        .app { grid-template-rows: 0 1fr; }
+        /* No celular a tela inteira é a conversa: o orb vira só o cabeçalho. */
+        .stage { display: none; }
+        .messages { padding: 16px 13px; gap: 15px; }
+        .ia-msg { max-width: 94%; }
+        .input-wrap { padding: 11px 13px; }
       }
 
-      @media (max-width: 600px) {
-        .stage {
-          min-height: 240px;
-          gap: 24px;
-        }
-        .chat-header {
-          padding: 14px 16px;
-        }
-        .chat-header-info h2 {
-          font-size: 13px;
-        }
-        .messages {
-          padding: 16px;
-        }
-        .msg {
-          max-width: 92%;
-        }
-        .msg-bubble {
-          font-size: 13px;
-        }
-        .input-wrap {
-          padding: 12px 14px;
-          gap: 8px;
-        }
+      @media (prefers-reduced-motion: reduce) {
+        .orb, .orb.pensando, .orb.falando,
+        .bars.active .bar, .ia-pensando span, .ia-cursor { animation: none !important; }
+        * { transition-duration: 0.01ms !important; }
       }
     </style>
-      <link rel="stylesheet" href="../../css/splash-screen.css?v=1.0">
-    <link rel="stylesheet" href="../../css/reactions.css?v=1.0">
-    <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="/img/icons/apple-touch-icon-180.png">
-    <meta name="theme-color" content="#09090b">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Escola">
-    <meta name="mobile-web-app-capable" content="yes">
-    <link rel="stylesheet" href="../../css/system-global.css?v=1.0">
+
+    <link rel="stylesheet" href="../../css/splash-screen.css?v=1.0" />
+    <link rel="stylesheet" href="../../css/reactions.css?v=1.0" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/img/icons/apple-touch-icon-180.png" />
+    <meta name="theme-color" content="#0b0f0e" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Escola" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <link rel="stylesheet" href="../../css/system-global.css?v=1.0" />
     <!-- Rolagem e performance mobile — deve ser o ÚLTIMO stylesheet -->
-    <link rel="stylesheet" href="../../css/mobile-scroll.css?v=1.0">
+    <link rel="stylesheet" href="../../css/mobile-scroll.css?v=1.0" />
     <script src="../../js/scroll-lock.js?v=1.0"></script>
-</head>
+  </head>
+
   <body>
     <!-- Splash Screen (PWA) -->
     <div id="splashScreen">
-        <div class="splash-logo-container">
-            <div class="splash-logo">
-                <i class="bi bi-mortarboard-fill"></i>
-            </div>
-            <div class="splash-logo-ring"></div>
-        </div>
-        <div class="splash-text">
-            <h2 class="splash-title">Sistema Escolar</h2>
-            <p class="splash-subtitle">AI Voice Chat | Inteligência Escolar Premium</p>
-        </div>
-        <div class="splash-progress-container">
-            <div class="splash-progress-track">
-                <div class="splash-progress-bar"></div>
-            </div>
-            <div class="splash-progress-text">Inicializando sistema...</div>
-        </div>
-        <div class="splash-version">v3.0</div>
+      <div class="splash-logo-container">
+        <div class="splash-logo"><i class="bi bi-mortarboard-fill"></i></div>
+        <div class="splash-logo-ring"></div>
+      </div>
+      <div class="splash-text">
+        <h2 class="splash-title">Sistema Escolar</h2>
+        <p class="splash-subtitle">Assistente da Escola</p>
+      </div>
+      <div class="splash-progress-container">
+        <div class="splash-progress-track"><div class="splash-progress-bar"></div></div>
+        <div class="splash-progress-text">Inicializando sistema...</div>
+      </div>
+      <div class="splash-version">v3.0</div>
     </div>
     <script src="../../js/splash-screen.js"></script>
 
-    <!-- Config overlay -->
-    <div class="config-overlay" id="configOverlay">
+    <!-- Preferências de voz -->
+    <div class="config-overlay" id="configOverlay" role="dialog" aria-modal="true" aria-labelledby="cfgTitulo">
       <div class="config-box">
-        <h3>⚙️ Configuração da Assistente</h3>
+        <h2 id="cfgTitulo">Preferências de voz</h2>
 
         <div class="config-field">
-          <label>Voz Geral</label>
+          <label for="cfgVoice">Voz</label>
           <select id="cfgVoice">
-            <option value="male">Voz Masculina (Neural2)</option>
-            <option value="off">Desativado</option>
+            <option value="male">Voz masculina (Neural2)</option>
+            <option value="off">Desativada</option>
           </select>
         </div>
 
         <div class="config-field">
-          <label>Idioma da Interação</label>
+          <label for="cfgLang">Idioma da interação</label>
           <select id="cfgLang">
             <option value="pt-BR">Português (Brasil)</option>
             <option value="en-US">English (US)</option>
@@ -972,420 +540,134 @@
         </div>
 
         <div class="config-field">
-          <label>Provedor de Voz</label>
+          <label for="cfgProvider">Qualidade da narração</label>
           <select id="cfgProvider">
-            <option value="auto">Auto (Recomendado)</option>
-            <option value="elevenlabs">ElevenLabs (High Quality)</option>
-            <option value="google-cloud">Google Cloud (Neural2)</option>
+            <option value="auto">Automática (recomendada)</option>
+            <option value="elevenlabs">Alta qualidade</option>
+            <option value="google-cloud">Padrão</option>
           </select>
         </div>
 
         <div class="config-btns">
-          <button class="btn-cancel" onclick="closeConfig()">Cancelar</button>
-          <button class="btn-save" onclick="saveConfig()">
-            Salvar e fechar
-          </button>
+          <button type="button" class="btn-cancel" id="cfgCancel">Cancelar</button>
+          <button type="button" class="btn-save" id="cfgSave">Salvar e fechar</button>
         </div>
       </div>
     </div>
 
-    <!-- Error toast -->
-    <div class="toast" id="toast"></div>
+    <!-- Escolha do formato de exportação -->
+    <div class="config-overlay" id="exportOverlay" role="dialog" aria-modal="true" aria-labelledby="expTitulo">
+      <div class="config-box">
+        <h2 id="expTitulo">Exportar conversa</h2>
+        <p class="ia-export-ajuda">Escolha o formato do arquivo.</p>
+        <div class="ia-formatos" id="exportFormatos"></div>
+        <div class="config-btns">
+          <button type="button" class="btn-cancel" id="expCancel">Fechar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <div class="app">
-      <!-- Left: orb stage -->
+      <!-- Painel visual -->
       <div class="stage">
-        <a class="gear-btn back-btn" href="/html/direcao/index.html" title="Voltar ao Painel de Direção">
-          <i class="bi bi-arrow-left"></i>
+        <!-- href/title são reescritos por perfil em pagina-ia-assistant.js:
+             a página é compartilhada por diretor, professor e secretaria. -->
+        <a class="stage-btn back-btn" id="backBtn" href="/html/dashboard.html" title="Voltar ao painel" aria-label="Voltar ao painel">
+          <i class="bi bi-arrow-left" aria-hidden="true"></i>
         </a>
 
-        <button class="gear-btn" onclick="openConfig()" title="Configurações">
-          ⚙
+        <button type="button" class="stage-btn gear-btn" id="gearBtn" title="Preferências de voz" aria-label="Preferências de voz">
+          <i class="bi bi-gear" aria-hidden="true"></i>
         </button>
 
         <div class="orb-wrap">
           <div class="ring ring-1"></div>
           <div class="ring ring-2"></div>
           <div class="ring ring-3"></div>
-          <div class="orb" id="orb" onclick="toggleMic()"></div>
+          <div class="orb" id="orb" role="presentation"></div>
         </div>
 
-        <div class="bars" id="bars">
-          <div class="bar"></div>
-          <div class="bar"></div>
-          <div class="bar"></div>
-          <div class="bar"></div>
-          <div class="bar"></div>
-          <div class="bar"></div>
+        <div class="bars" id="bars" aria-hidden="true">
+          <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+          <div class="bar"></div><div class="bar"></div><div class="bar"></div>
           <div class="bar"></div>
         </div>
 
-        <div class="status-pill idle" id="statusPill">
+        <div class="status-pill" id="statusPill">
           <div class="status-dot"></div>
-          <span id="statusText">Toca para falar</span>
+          <span id="statusText">Pronto para ajudar</span>
         </div>
       </div>
 
-      <!-- Right: chat -->
+      <!-- Conversa -->
       <div class="chat-panel">
-        <div class="chat-header">
-          <div class="chat-header-orb"></div>
+        <header class="chat-header">
+          <div class="chat-header-orb" aria-hidden="true"></div>
           <div class="chat-header-info">
-            <h2>Assistente IA Local</h2>
-            <p>Inteligência Integrada ao Sistema</p>
+            <h1 id="greeting">Assistente da escola</h1>
+            <p id="ctxBadge">Carregando contexto...</p>
           </div>
-          <div class="chat-header-badge" id="modelBadge">Padrão</div>
-        </div>
+          <button type="button" class="header-btn" id="exportBtn" title="Exportar conversa" aria-label="Exportar conversa">
+            <i data-lucide="download" aria-hidden="true"></i>
+          </button>
+          <button type="button" class="header-btn" id="historyBtn" title="Conversas anteriores" aria-label="Conversas anteriores" aria-expanded="false">
+            <i data-lucide="history" aria-hidden="true"></i>
+          </button>
+          <button type="button" class="header-btn" id="newChatBtn" title="Nova conversa" aria-label="Nova conversa">
+            <i data-lucide="plus" aria-hidden="true"></i>
+          </button>
+        </header>
 
-        <div class="messages" id="messages">
-          <div class="empty-state">
-            <strong>Olá 👋</strong>
-            Toca no orb ou digita uma pergunta sobre rendimento, frequência ou
-            funcionamento da escola.
-          </div>
-        </div>
+        <!-- Conversas anteriores. Fica recolhida por padrão: o uso comum é
+             continuar conversando, não navegar no histórico. -->
+        <nav class="ia-sidebar" id="iaSidebar" hidden aria-label="Conversas anteriores">
+          <div class="ia-sidebar-lista" id="iaSidebarLista"></div>
+        </nav>
+
+        <!-- aria-live: o texto parcial fica em aria-busy e só é anunciado ao fim -->
+        <main class="messages" id="messages" aria-live="polite" aria-label="Conversa com o assistente"></main>
 
         <div class="input-wrap">
-          <textarea
-            class="input-box"
-            id="inputBox"
-            placeholder="Digita uma mensagem..."
-            rows="1"
-            onkeydown="handleKey(event)"
-            oninput="autoResize(this)"
-          ></textarea>
-          <button
-            class="voice-btn"
-            id="voiceBtn"
-            onclick="toggleMic()"
-            title="Microfone"
-          >
-            <i class="bi bi-mic-fill" style="font-size: 1.1rem"></i>
+          <label class="sr-only" for="inputBox" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Mensagem para o assistente</label>
+
+          <!-- Paleta de comandos: listbox controlada pela caixa de texto, para
+               as setas navegarem sem tirar o foco de quem está digitando. -->
+          <div class="ia-paleta" id="iaPaleta" role="listbox" aria-label="Comandos rápidos" hidden></div>
+
+          <textarea class="input-box" id="inputBox" rows="1"
+            role="combobox" aria-expanded="false" aria-controls="iaPaleta" aria-autocomplete="list"
+            placeholder="Pergunte alguma coisa, ou digite / para os comandos"></textarea>
+          <button type="button" class="stop-btn" id="stopBtn" hidden title="Parar geração" aria-label="Parar geração">
+            <i data-lucide="square" aria-hidden="true"></i>
           </button>
-          <button class="send-btn" onclick="sendMessage()" title="Enviar">
-            <i class="bi bi-send-fill" style="font-size: 1.1rem"></i>
+          <button type="button" class="send-btn" id="sendBtn" title="Enviar" aria-label="Enviar mensagem">
+            <i data-lucide="send" aria-hidden="true"></i>
           </button>
         </div>
       </div>
     </div>
 
-    <!-- Essential Scripts -->
+    <!-- Scripts base (clássicos: definem window.API_BASE_URL, db, auth, speak) -->
     <script src="../../js/api-config.js"></script>
     <script src="../../js/database.js"></script>
     <script src="../../js/auth.js"></script>
     <script src="../../js/utils.js"></script>
+    <script src="../../js/libs/purify.min.js"></script>
     <script src="../../js/sidebar-voice.js?v=4.0"></script>
-    <script src="../../js/ia-logic.js"></script>
 
-    <script>
-      // ── Config ──────────────────────────────────────────────────────
-      let cfg = {
-        voice: localStorage.getItem("user_voice_preference") || "male",
-        lang: "pt-BR",
-      };
+    <!-- Ícones antes do módulo: pagina-ia-assistant.js chama renderLucideIcons -->
+    <script src="../../js/libs/lucide.min.js"></script>
+    <script src="../../js/libs/lucide-init.js"></script>
 
-      function loadConfig() {
-        try {
-          const saved = JSON.parse(
-            localStorage.getItem("aichat_cfg_local") || "{}",
-          );
-          cfg = { ...cfg, ...saved };
-          document.getElementById("cfgVoice").value = cfg.voice;
-          document.getElementById("cfgLang").value = cfg.lang;
-          document.getElementById("cfgProvider").value =
-            cfg.provider ||
-            localStorage.getItem("user_tts_provider") ||
-            "elevenlabs";
-          updateBadge();
-        } catch (e) {}
-      }
+    <!-- Copiloto (ES modules). Módulos são adiados por padrão, então rodam
+         depois de todos os scripts clássicos acima. -->
+    <script type="module" src="../../js/ia/pagina-ia-assistant.js"></script>
 
-      function saveConfig() {
-        cfg.voice = document.getElementById("cfgVoice").value;
-        cfg.lang = document.getElementById("cfgLang").value;
-        cfg.provider = document.getElementById("cfgProvider").value;
-        localStorage.setItem("aichat_cfg_local", JSON.stringify(cfg));
-        localStorage.setItem("user_voice_preference", cfg.voice);
-        localStorage.setItem("user_tts_provider", cfg.provider);
-        updateBadge();
-        closeConfig();
-
-        // Persistir no MongoDB (source of truth)
-        const apiBase = (window.API_BASE_URL || "/api").replace(/\/$/, "");
-        fetch(`${apiBase}/auth/settings/tts`, {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ttsProvider: cfg.provider,
-            voicePreference: cfg.voice,
-            speed: Number(localStorage.getItem("user_voice_speed") || 1.0),
-            narrationMode:
-              localStorage.getItem("user_narration_mode") || "texto_audio",
-          }),
-        }).catch((err) =>
-          console.warn("[IA Chat] Erro ao salvar TTS no MongoDB:", err),
-        );
-      }
-
-      function updateBadge() {
-        document.getElementById("modelBadge").textContent = "Gemini + ElevenLabs";
-      }
-
-      function openConfig() {
-        document.getElementById("configOverlay").classList.add("open");
-      }
-      function closeConfig() {
-        document.getElementById("configOverlay").classList.remove("open");
-      }
-
-      // ── State ────────────────────────────────────────────────────────
-      // idle | thinking | speaking
-      let state = "idle";
-      let currentAudio = null;
-      let isRecording = false;
-
-      const statusTexts = {
-        idle: "Toca para falar",
-        listening: "A ouvir...",
-        thinking: "A pensar...",
-        speaking: "A falar...",
-      };
-
-      function setState(s) {
-        state = s;
-        const orb = document.getElementById("orb");
-        const pill = document.getElementById("statusPill");
-        const bars = document.getElementById("bars");
-        const statusText = document.getElementById("statusText");
-
-        // Orb animations ONLY during speaking or thinking
-        // listening is now static as requested (clarification: Orb is for IA, not user)
-        orb.className =
-          "orb " +
-          (s === "speaking" || s === "thinking"
-            ? s
-            : s === "listening"
-              ? "listening"
-              : "");
-
-        pill.className = "status-pill " + s;
-        statusText.textContent = statusTexts[s] || s;
-        bars.className = "bars " + (s === "speaking" ? "active" : "");
-      }
-
-      // ── Toast ────────────────────────────────────────────────────────
-      let toastTimer;
-      function showToast(msg) {
-        const t = document.getElementById("toast");
-        t.textContent = msg;
-        t.classList.add("show");
-        clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => t.classList.remove("show"), 3500);
-      }
-
-      // ── Messages ─────────────────────────────────────────────────────
-      function clearEmpty() {
-        const empty = document.querySelector(".empty-state");
-        if (empty) empty.remove();
-      }
-
-      function addMessage(role, text) {
-        clearEmpty();
-        const msgs = document.getElementById("messages");
-        const div = document.createElement("div");
-        div.className = "msg " + role;
-
-        const now = new Date();
-        const time =
-          now.getHours().toString().padStart(2, "0") +
-          ":" +
-          now.getMinutes().toString().padStart(2, "0");
-
-        div.innerHTML = `
-        <div class="msg-bubble">${escapeHtml(text)}</div>
-        <div class="msg-time">${time}</div>
-    `;
-        msgs.appendChild(div);
-        msgs.scrollTop = msgs.scrollHeight;
-        return div;
-      }
-
-      function addTypingIndicator() {
-        clearEmpty();
-        const msgs = document.getElementById("messages");
-        const div = document.createElement("div");
-        div.className = "msg ai";
-        div.id = "typing";
-        div.innerHTML = `<div class="typing-bubble">
-        <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
-    </div>`;
-        msgs.appendChild(div);
-        msgs.scrollTop = msgs.scrollHeight;
-        msgs.scrollTop = msgs.scrollHeight;
-      }
-
-      function removeTypingIndicator() {
-        const t = document.getElementById("typing");
-        if (t) t.remove();
-      }
-
-      function escapeHtml(text) {
-        return text
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;");
-      }
-
-      // ── Backend AI Integration via Gemini ───────────────────────────────
-      async function callIA(userText) {
-        // Simula atraso de pensamento
-        await new Promise((r) => setTimeout(r, 600));
-
-        const apiBase = (window.API_BASE_URL || "/api").replace(/\/$/, "");
-        try {
-          const response = await fetch(`${apiBase}/ia/chatbot`, {
-            method: "POST",
-            credentials: "include",
-            headers: {
-              "Content-Type": "application/json",
-              "X-CSRF-Token":
-                document.cookie.match(/csrf_token=([^;]+)/)?.[1] || "",
-            },
-            body: JSON.stringify({ message: userText }),
-          });
-
-          if (!response.ok) {
-            throw new Error(`Servidor de IA indisponível (${response.status})`);
-          }
-
-          const json = await response.json();
-          if (json.success && json.data?.response) {
-            return json.data.response;
-          }
-
-          throw new Error(json.error || "Resposta inválida do servidor de IA.");
-        } catch (err) {
-          console.warn("[IA Assistant] Gemini backend falhou, usando fallback local:", err.message);
-          showToast("Gemini indisponível. Usando assistente local de fallback.");
-          try {
-            const userStr = sessionStorage.getItem("currentUser");
-            const user = userStr ? JSON.parse(userStr) : {};
-            const role = user.perfil || "direcao";
-            if (window.IaEngine) {
-              return window.IaEngine.getResponse(userText, role);
-            }
-          } catch (e) {
-            console.warn("[IA Assistant] fallback local falhou:", e.message);
-          }
-          return "Desculpe, não consegui obter resposta do assistente no momento.";
-        }
-      }
-
-      // ── Backend TTS Integration ──────────────────────────────────────
-      // Usar serviço global window.speak (definido em sidebar-voice.js)
-      // removendo a função speak local redundante para evitar vozes femininas de baixa qualidade
-
-      // ── Full flow ─────────────────────────────────────────────────────
-      async function processUserInput(text) {
-        if (!text.trim()) return;
-
-        // Stop any current audio
-        if (window.stopTtsAudio) window.stopTtsAudio();
-
-        addMessage("user", text);
-        addTypingIndicator();
-        setState("thinking");
-
-        try {
-          const reply = await callIA(text);
-          removeTypingIndicator();
-          if (!reply) {
-            setState("idle");
-            return;
-          }
-          addMessage("ai", reply);
-
-          // Voz é opcional: uma falha no TTS não deve invalidar a resposta de texto.
-          if (typeof window.speak === "function") {
-            try {
-              setState("speaking");
-              const audio = await window.speak(reply);
-              if (audio && typeof audio.onended !== "undefined") {
-                audio.onended = () => setState("idle");
-              } else {
-                setState("idle");
-              }
-            } catch (voiceErr) {
-              console.warn("[IA Assistant] TTS indisponível:", voiceErr?.message);
-              setState("idle");
-            }
-          } else {
-            setState("idle");
-          }
-        } catch (err) {
-          removeTypingIndicator();
-          console.error(err);
-          showToast("❌ Erro no processamento");
-          setState("idle");
-        }
-      }
-
-      // ── Text input ────────────────────────────────────────────────────
-      function sendMessage() {
-        const box = document.getElementById("inputBox");
-        const text = box.value.trim();
-        if (!text || state === "thinking") return;
-        box.value = "";
-        autoResize(box);
-        processUserInput(text);
-      }
-
-      function handleKey(e) {
-        if (e.key === "Enter" && !e.shiftKey) {
-          e.preventDefault();
-          sendMessage();
-        }
-      }
-
-      function autoResize(el) {
-        el.style.height = "auto";
-        el.style.height = Math.min(el.scrollHeight, 120) + "px";
-      }
-
-      // ── Voice input desativado por política ────────────────────────────
-      function toggleMic() {
-        if (state === "speaking" && window.stopTtsAudio) {
-          window.stopTtsAudio();
-          setState("idle");
-          return;
-        }
-        showToast(
-          "💡 O reconhecimento de voz foi desativado por segurança. Por favor, use o teclado.",
-        );
-      }
-
-      // ── Init ──────────────────────────────────────────────────────────
-      (async () => {
-        // Initialize auth so API calls are authenticated
-        if (typeof db !== 'undefined') await db.init();
-        if (typeof auth !== 'undefined') await auth.init();
-        if (typeof auth !== 'undefined' && !auth.isAuthenticated()) {
-          window.location.href = '../login.html';
-          return;
-        }
-        loadConfig();
-      })();
-    </script>
-  
-<script src="../../js/click-sound.js" defer></script>
-    <script defer src="../../js/reactions.js"></script>
+    <script src="../../js/click-sound.js" defer></script>
     <script defer src="../../js/push-notifications.js"></script>
     <script defer src="../../js/pwa-install.js"></script>
     <script defer src="../../js/settings-drawer.js"></script>
-    <!-- Lucide line icons (padronização) + shim de compatibilidade Bootstrap Icons -->
-    <script src="../../js/libs/lucide.min.js"></script>
-    <script src="../../js/libs/lucide-init.js"></script>
-</body>
+  </body>
 </html>

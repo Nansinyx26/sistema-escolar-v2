@@ -45,6 +45,21 @@ const startServer = async () => {
             logger.warn('[Boot] Migração de voz falhou silenciosamente:', err.message)
         );
 
+        // Retenção das conversas do assistente: o TTL fica gravado dentro do
+        // índice, então mudar IA_RETENCAO_DIAS não teria efeito sem este
+        // alinhamento — a política de exclusão ficaria congelada em silêncio.
+        try {
+            const { sincronizarRetencao } = require('./models/IaConversa');
+            const r = await sincronizarRetencao();
+            if (r.acao === 'atualizado') {
+                logger.info(`[Boot] Retenção das conversas do assistente: ${r.de}s → ${r.para}s.`);
+            } else if (r.acao === 'criado') {
+                logger.info(`[Boot] Índice de retenção das conversas criado (${r.para}s).`);
+            }
+        } catch (err) {
+            logger.error('[Boot] Falha ao alinhar a retenção das conversas do assistente', { err });
+        }
+
         // 2. Iniciar Servidor somente se o banco estiver OK
         const server = app.listen(PORT, () => {
             logger.info(`✅ Servidor iniciado`, { mode: process.env.NODE_ENV, port: PORT });
@@ -121,6 +136,12 @@ const startServer = async () => {
             pingTimeout: 60000,
             pingInterval: 25000
         });
+
+        // Adapter compartilhado. Com uma instância só (plano free do Render) ele
+        // fica desligado; a partir de duas, sem isto as salas ficam presas ao
+        // processo e mensagem/presença não cruzam entre instâncias.
+        const { instalarAdapter } = require('./realtime/adapter');
+        await instalarAdapter(io);
 
         // Middleware de autenticação Socket.IO
         // Replica as MESMAS checagens do authJWT: só verificar a assinatura

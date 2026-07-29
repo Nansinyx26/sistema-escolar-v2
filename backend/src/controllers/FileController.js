@@ -10,12 +10,17 @@ const PERFIS_GESTAO = ['admin', 'diretor', 'secretaria'];
  * Retorna null se não existir.
  */
 async function findFileDoc(fileId) {
+    if (!fileId) return null;
+    let cleanId = String(fileId);
+    if (cleanId.startsWith('gridfs:')) {
+        cleanId = cleanId.slice('gridfs:'.length);
+    }
     const bucket = new GridFSBucket(mongoose.connection.db, { bucketName: 'uploads' });
     let query;
-    if (mongoose.Types.ObjectId.isValid(fileId)) {
-        query = { $or: [{ _id: new mongoose.Types.ObjectId(fileId) }, { filename: fileId }] };
+    if (mongoose.Types.ObjectId.isValid(cleanId)) {
+        query = { $or: [{ _id: new mongoose.Types.ObjectId(cleanId) }, { filename: cleanId }, { filename: fileId }] };
     } else {
-        query = { filename: fileId };
+        query = { filename: cleanId };
     }
     const docs = await bucket.find(query).limit(1).toArray();
     return docs[0] || null;
@@ -104,11 +109,54 @@ async function autorizarArquivo(req, fileDoc) {
     return { ok: true };
 }
 
+/**
+ * Quarentena de moderação.
+ *
+ * O upload do chat grava no GridFS e devolve a URL na mesma resposta — ou seja,
+ * o arquivo é servível no instante em que termina de subir. Qualquer análise de
+ * conteúdo (nudez, violência) leva segundos e só pode acontecer DEPOIS de os
+ * bytes estarem no bucket. Sem esta checagem, a janela entre gravar e decidir é
+ * uma janela em que a imagem já está entregue e a decisão chega tarde.
+ *
+ * Por isso a moderação marca `metadata.moderacao.status` e o acesso passa a
+ * depender dele. Arquivo sem o campo é arquivo anterior a este código: liberado,
+ * senão todo anexo já existente quebraria.
+ *
+ * A resposta é IGUAL para remetente e destinatário. Devolver 403 a um e 404 a
+ * outro (ou variar a mensagem) entrega o veredito da moderação por diferença de
+ * comportamento, que é justamente o que a cláusula de feedback ao usuário
+ * manda evitar.
+ */
+function checarQuarentena(fileDoc) {
+    const status = fileDoc?.metadata?.moderacao?.status;
+
+    if (!status || status === 'aprovada') return { ok: true };
+
+    if (status === 'bloqueado' || status === 'bloqueada') {
+        return {
+            ok: false,
+            status: 403,
+            codigo: 'ANEXO_BLOQUEADO',
+            error: 'Este anexo não segue as regras de uso do chat.'
+        };
+    }
+
+    // 'pendente' | 'em_revisao' — 409 e não 403: o front precisa distinguir
+    // "ainda não" de "não", para mostrar o aviso de análise em vez do de recusa.
+    return {
+        ok: false,
+        status: 409,
+        codigo: 'ANEXO_EM_ANALISE',
+        error: 'Este anexo está em análise e será liberado em breve.'
+    };
+}
+
 // Reexportados para que QUALQUER rota que sirva bytes do bucket 'uploads' use
 // a mesma decisão de autorização. O bucket é único: uma rota que leia dele por
 // conta própria (era o caso de /api/audio/:id) contorna todo este arquivo.
 exports.autorizarArquivo = autorizarArquivo;
 exports.findFileDoc = findFileDoc;
+exports.checarQuarentena = checarQuarentena;
 
 /**
  * Serve um arquivo do GridFS (rotas autenticadas — fotos e documentos).
@@ -123,12 +171,35 @@ exports.serveFile = async (req, res) => {
             return res.status(permissao.status).json({ success: false, error: permissao.error });
         }
 
+        // Depois da autorização, de propósito: quem não é da conversa toma 403
+        // de acesso e não fica sabendo sequer que o arquivo está em moderação.
+        const quarentena = checarQuarentena(fileDoc);
+        if (!quarentena.ok) {
+            return res.status(quarentena.status).json({
+                success: false,
+                codigo: quarentena.codigo,
+                error: quarentena.error
+            });
+        }
+
         streamFile(res, fileDoc);
     } catch (error) {
         console.error('Erro no serveFile:', error);
         res.status(500).json({ success: false, error: 'Erro ao servir arquivo' });
     }
 };
+
+/**
+ * `metadata.type` marca os arquivos que pertencem a um CONTEXTO PRIVADO —
+ * hoje o anexo do chat direto ('chat_anexo') e o áudio de comentário
+ * ('voice_message'). Nenhum deles pode sair pela rota pública.
+ *
+ * A regra é uma ALLOWLIST vazia de propósito: o único upload que alimenta a
+ * rota pública é o avatar de /api/upload/photo, que grava metadata SEM `type`.
+ * Assim, qualquer `type` novo criado no futuro nasce privado por padrão em vez
+ * de vazar até alguém lembrar de bloqueá-lo aqui.
+ */
+const TIPOS_PUBLICOS = new Set();
 
 /**
  * Serve APENAS imagens (rota pública /api/files/:id, usada por <img> de avatar).
@@ -145,9 +216,21 @@ exports.servePublicImage = async (req, res) => {
             return res.status(403).json({ success: false, error: 'Este arquivo requer autenticação.' });
         }
 
+        const meta = fileDoc.metadata || {};
+
         // Documentos de aluno enviados como imagem (foto do RG, por exemplo)
         // NUNCA saem pela rota pública, mesmo sendo image/*.
-        if (fileDoc.metadata && fileDoc.metadata.alunoId) {
+        if (meta.alunoId) {
+            return res.status(403).json({ success: false, error: 'Este arquivo requer autenticação.' });
+        }
+
+        // O filtro de contentType acima só barra o que NÃO é imagem — e a foto
+        // que um responsável manda no chat é image/jpeg como qualquer avatar.
+        // Sem esta checagem, `/api/files/:id` entregava o anexo de uma conversa
+        // privada a quem não estava logado, e ainda com `Cache-Control: public`.
+        // A autorização por participante existe, mas mora no `serveFile` — esta
+        // rota não passa por ela.
+        if (meta.type && !TIPOS_PUBLICOS.has(meta.type)) {
             return res.status(403).json({ success: false, error: 'Este arquivo requer autenticação.' });
         }
 

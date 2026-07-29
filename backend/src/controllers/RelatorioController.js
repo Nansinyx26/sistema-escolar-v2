@@ -4,6 +4,7 @@ const Aluno = require('../models/Aluno');
 const Nota = require('../models/Nota');
 const Falta = require('../models/Falta');
 const logger = require('../utils/logger');
+const { escolaMatch } = require('../middleware/filtrarPorEscola');
 
 // ── Resolução robusta das fontes pdfmake ──────────────────────────────────────
 // Tenta múltiplos caminhos em disco; se nenhum existir, cai para os buffers
@@ -76,6 +77,15 @@ try {
 } catch (e) {
     logger.error(`[PDF] Falha ao inicializar PdfPrinter: ${e.message}`);
 }
+
+/**
+ * Expõe o printer já configurado para outros módulos (ferramenta de relatório
+ * do copiloto). A resolução das fontes Roboto acima é frágil por natureza —
+ * depende de caminhos em disco com fallback para os buffers do vfs — e
+ * duplicá-la significaria manter dois lugares que quebram de formas diferentes.
+ * @returns {Object|null} null quando o pdfmake não pôde ser inicializado.
+ */
+exports.obterPrinter = () => printer || null;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 // Paleta alinhada ao design system do portal: fundo escuro + acento emerald #10b981.
@@ -322,14 +332,26 @@ exports.gerarRelatorioBI = async (req, res) => {
 
     try {
         // 1. Coleta dados agregados (Mapa de Calor)
+        //
+        // SEGURANÇA (multi-tenant): a agregação NÃO tinha filtro de escola.
+        // O relatório de um diretor somava as notas de TODA a rede — médias de
+        // turmas de outras escolas apareciam no PDF que ele baixava. O
+        // `escolaMatch` é o mesmo filtro usado no resto do sistema.
+        //
+        // ROBUSTEZ: `$toDouble` ESTOURA em lançamento conceitual (ex.:
+        // "Satisfatório"), que existe na base por herança do modelo antigo —
+        // uma única nota textual derrubava o relatório inteiro com 500.
+        // `$convert` com `onError: null` descarta o registro em vez de abortar.
         const pipeline = [
-            { $addFields: { notaNum: { $toDouble: "$nota" } } },
-            { 
-                $group: { 
-                    _id: { materia: "$materiaId", turma: "$turmaId" }, 
+            { $match: escolaMatch(req.escolaId) },
+            { $addFields: { notaNum: { $convert: { input: "$nota", to: "double", onError: null, onNull: null } } } },
+            { $match: { notaNum: { $ne: null } } },
+            {
+                $group: {
+                    _id: { materia: "$materiaId", turma: "$turmaId" },
                     media: { $avg: "$notaNum" },
                     total: { $sum: 1 }
-                } 
+                }
             },
             { $sort: { "_id.turma": 1, "_id.materia": 1 } }
         ];

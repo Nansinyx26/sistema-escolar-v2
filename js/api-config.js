@@ -53,15 +53,20 @@ window.getPhotoUrl = function(foto, fotoGoogle = '') {
 
     // 3. Se for um ID do GridFS ou caminho relativo da nossa API
     if (!isEmpty(foto)) {
-        const photoId = typeof foto === 'object' && foto.$oid ? foto.$oid : foto;
+        let photoId = typeof foto === 'object' && foto.$oid ? foto.$oid : foto;
         
-        // Se já for uma URL completa da nossa API, não mexe
+        if (typeof photoId === 'string' && photoId.startsWith('gridfs:')) {
+            photoId = photoId.slice('gridfs:'.length);
+        }
+
+        // Se já for uma URL completa da nossa API, limpa qualquer gridfs: solto
         if (typeof photoId === 'string' && (photoId.startsWith('/api/files/') || photoId.startsWith('/api/upload/photo/'))) {
-            return `${window.API_BASE_URL.replace('/api', '')}${photoId}`;
+            const cleaned = photoId.replace(/gridfs:/g, '');
+            return `${window.API_BASE_URL.replace('/api', '')}${cleaned}`;
         }
         
         if (typeof photoId === 'string' && (photoId.includes('/api/files/') || photoId.includes('/api/upload/photo/'))) {
-            return photoId;
+            return photoId.replace(/gridfs:/g, '');
         }
 
         // Constrói a URL usando a rota pública /files/:id

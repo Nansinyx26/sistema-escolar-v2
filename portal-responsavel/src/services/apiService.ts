@@ -302,6 +302,90 @@ export async function postChatbotMessage(
   });
 }
 
+/**
+ * Conversa com o copiloto (`POST /api/ia/chat`), consumindo o stream SSE.
+ *
+ * Substitui o `/ia/chatbot` legado nesta tela: o copiloto aplica o filtro de
+ * ferramentas por cargo e o `PermissionGuard`, então um responsável só alcança
+ * dados dos próprios filhos — o mesmo limite que já vale nas outras telas.
+ *
+ * Usa `fetch` + leitor de stream, e não `EventSource`, porque a rota é POST e
+ * passa pelo validador CSRF (que exige um cabeçalho, o que EventSource não
+ * envia).
+ *
+ * @param onDelta recebe cada pedaço de texto conforme chega
+ * @returns o texto completo e o id da conversa, para continuar no turno seguinte
+ */
+export async function streamCopiloto(
+  mensagem: string,
+  conversaId: string | null,
+  onDelta: (texto: string) => void,
+  signal?: AbortSignal
+): Promise<{ texto: string; conversaId: string | null }> {
+  const csrf = getCsrfToken();
+
+  const res = await fetch(`${BASE_URL}/ia/chat`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+      ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
+    },
+    body: JSON.stringify({ mensagem, conversaId: conversaId || undefined }),
+    signal,
+  });
+
+  if (!res.ok || !res.body) {
+    const erro = await res.json().catch(() => ({} as { error?: string }));
+    throw new ApiError(erro.error || 'Não foi possível falar com o assistente agora.', res.status);
+  }
+
+  const leitor = res.body.getReader();
+  const decodificador = new TextDecoder();
+  let buffer = '';
+  let texto = '';
+  let idConversa: string | null = conversaId;
+
+  for (;;) {
+    const { done, value } = await leitor.read();
+    if (done) break;
+
+    buffer += decodificador.decode(value, { stream: true });
+
+    // Eventos SSE são separados por linha em branco; o resto do buffer é um
+    // evento partido ao meio e fica para a próxima leitura.
+    const blocos = buffer.split('\n\n');
+    buffer = blocos.pop() ?? '';
+
+    for (const bloco of blocos) {
+      for (const linha of bloco.split('\n')) {
+        if (!linha.startsWith('data:')) continue; // ':' = keepalive
+        const carga = linha.slice(5).trim();
+        if (!carga) continue;
+
+        let evento: { tipo?: string; texto?: string; mensagem?: string; id?: string };
+        try {
+          evento = JSON.parse(carga);
+        } catch {
+          continue;
+        }
+
+        if (evento.tipo === 'delta' && evento.texto) {
+          texto += evento.texto;
+          onDelta(evento.texto);
+        } else if (evento.tipo === 'conversa' && evento.id) {
+          idConversa = evento.id;
+        } else if (evento.tipo === 'erro') {
+          throw new ApiError(evento.mensagem || 'Erro ao gerar a resposta.', 502);
+        }
+      }
+    }
+  }
+
+  return { texto, conversaId: idConversa };
+}
+
 /** Get IA Pedagogical Analysis (Traffic Light). */
 export async function getIAAnalysis(alunoId: string): Promise<any> {
   return apiFetch<any>(`/ia/analise/${alunoId}`);

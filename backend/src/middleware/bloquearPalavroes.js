@@ -25,6 +25,14 @@
  * O front usa `codigo` para destacar o campo; `error` é o texto já pronto para
  * o usuário. Os `trechos` devolvidos são os do PRÓPRIO texto enviado — servem
  * para o front grifar o que precisa ser removido.
+ *
+ * MODO ENXUTO (`{ detalhado: false }`): omite `nivel` e `termos` da resposta.
+ * Os `trechos` continuam, porque são o texto que o próprio usuário digitou e
+ * sem eles não dá para grifar nada. Já `termos` diz qual entrada do dicionário
+ * disparou e `nivel` diz onde está o limiar — juntos, encurtam muito a tentativa
+ * e erro de quem está procurando uma grafia que escape. Nos recursos abertos
+ * (comentário, avaliação) o detalhe vale a UX; no chat direto entre responsável
+ * e escola, não vale. Servidor continua registrando tudo em `registrarTentativa`.
  */
 
 const filtroPalavroes = require('../utils/filtroPalavroes');
@@ -37,6 +45,10 @@ const filtroPalavroes = require('../utils/filtroPalavroes');
  *                                       string — o padrão é ignorar campos
  *                                       ausentes (comentário só de áudio,
  *                                       edição parcial etc.).
+ * @param {boolean} [opcoes.detalhado]   Se false, omite `nivel` e `termos` da
+ *                                       resposta. Padrão true — mudar o padrão
+ *                                       quebraria as telas que já leem esses
+ *                                       campos.
  */
 module.exports = function bloquearPalavroes(campos, opcoes = {}) {
     const lista = Array.isArray(campos) ? campos : [campos];
@@ -69,16 +81,20 @@ module.exports = function bloquearPalavroes(campos, opcoes = {}) {
                 recurso: opcoes.recurso
             });
 
+            const detalhes = {
+                campo,
+                trechos: resultado.ocorrencias.map(o => o.trecho)
+            };
+            if (opcoes.detalhado !== false) {
+                detalhes.nivel = resultado.nivel;
+                detalhes.termos = resultado.termos;
+            }
+
             return res.status(400).json({
                 success: false,
                 codigo: 'CONTEUDO_IMPROPRIO',
                 error: resultado.mensagem,
-                detalhes: {
-                    campo,
-                    nivel: resultado.nivel,
-                    termos: resultado.termos,
-                    trechos: resultado.ocorrencias.map(o => o.trecho)
-                }
+                detalhes
             });
         }
 

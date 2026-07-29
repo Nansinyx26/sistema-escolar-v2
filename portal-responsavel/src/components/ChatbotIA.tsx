@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { postChatbotMessage } from '../services/apiService';
+import { streamCopiloto } from '../services/apiService';
 import { useTTS } from '../hooks/useTTS';
 import VoiceOrb from './VoiceOrb';
 import styles from '../styles/portal.module.scss';
@@ -12,9 +12,16 @@ interface Message {
   options?: { label: string; value?: string; alunoId?: string }[];
 }
 
-interface ChatbotIAProps {
-  alunoId?: string;
-}
+/**
+ * Sem props de contexto de aluno.
+ *
+ * O chatbot legado recebia `alunoId` do portal e o repassava ao backend para
+ * saber de qual filho se falava. O copiloto não aceita esse parâmetro por
+ * decisão de segurança: identidade, escola e vínculo saem sempre da sessão no
+ * servidor, e o `buscarAluno` já limita o resultado aos filhos do responsável.
+ * Manter a prop aqui seria sugerir uma influência que ela não tem.
+ */
+type ChatbotIAProps = Record<string, never>;
 
 // Vozes ElevenLabs disponíveis (masculinas)
 const ELEVENLABS_VOICES = [
@@ -26,7 +33,7 @@ const ELEVENLABS_VOICES = [
 
 type VoiceId = typeof ELEVENLABS_VOICES[number]['id'];
 
-const ChatbotIA: React.FC<ChatbotIAProps> = ({ alunoId }: ChatbotIAProps) => {
+const ChatbotIA: React.FC<ChatbotIAProps> = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([
@@ -34,9 +41,9 @@ const ChatbotIA: React.FC<ChatbotIAProps> = ({ alunoId }: ChatbotIAProps) => {
   ]);
   const [loading, setLoading] = useState(false);
   const [activeMessageIndex, setActiveMessageIndex] = useState<number | null>(null);
-  // alunoId resolvido pelo backend (mantém contexto entre turnos)
-  const [currentAlunoId, setCurrentAlunoId] = useState<string | undefined>(alunoId);
-  // última pergunta enviada (para reenviar com alunoId ao clicar num botão)
+  // Ponteiro da conversa no servidor. O conteúdo do histórico é lido do banco;
+  // o cliente não reenvia turnos anteriores.
+  const [conversaId, setConversaId] = useState<string | null>(null);
   const lastMessageRef = React.useRef<string>('');
 
   // Voz ElevenLabs selecionada (padrão: adam) — provedor sempre ElevenLabs
@@ -76,48 +83,94 @@ const ChatbotIA: React.FC<ChatbotIAProps> = ({ alunoId }: ChatbotIAProps) => {
     setMessages((prev: Message[]) => [...prev, { text: userMsg, isAi: false, timestamp: new Date() }]);
     setLoading(true);
 
+    // Bolha vazia do assistente: os pedaços do stream vão sendo escritos nela.
+    const indiceResposta = messages.length + 1;
+    setMessages(prev => [...prev, { text: '', isAi: true, timestamp: new Date() }]);
+
     try {
-      const res = await postChatbotMessage(userMsg, currentAlunoId);
-      // persiste o alunoId resolvido para o próximo turno
-      if (res.alunoId) setCurrentAlunoId(res.alunoId);
-      const aiMsg: Message = {
-        text: res.response,
-        isAi: true,
-        timestamp: new Date(),
-        options: res.options,
-      };
-      const newIndex = messages.length + 1;
-      setMessages(prev => [...prev, aiMsg]);
-      if (autoPlay) {
-        setTimeout(() => handlePlayAudio(res.response, newIndex), 100);
+      // Copiloto (`/ia/chat`) no lugar do `/ia/chatbot` legado: aqui valem o
+      // filtro de ferramentas por cargo e o PermissionGuard, então a conversa
+      // alcança só os dados dos próprios filhos.
+      const { texto, conversaId: novoId } = await streamCopiloto(
+        userMsg,
+        conversaId,
+        (pedaco) => {
+          setMessages(prev => {
+            const copia = [...prev];
+            const ultima = copia[copia.length - 1];
+            if (ultima && ultima.isAi) {
+              copia[copia.length - 1] = { ...ultima, text: ultima.text + pedaco };
+            }
+            return copia;
+          });
+        }
+      );
+
+      // O histórico agora é do servidor; o cliente guarda só o ponteiro.
+      setConversaId(novoId);
+
+      if (autoPlay && texto) {
+        setTimeout(() => handlePlayAudio(texto, indiceResposta), 100);
       }
     } catch (err) {
-      setMessages(prev => [...prev, { text: 'Desculpe, estou com dificuldades técnicas agora.', isAi: true, timestamp: new Date() }]);
+      setMessages(prev => {
+        const copia = [...prev];
+        const ultima = copia[copia.length - 1];
+        const aviso = err instanceof Error && err.message
+          ? err.message
+          : 'Desculpe, estou com dificuldades técnicas agora.';
+        // Reaproveita a bolha vazia em vez de deixar um balão em branco na tela.
+        if (ultima && ultima.isAi && !ultima.text) {
+          copia[copia.length - 1] = { ...ultima, text: aviso };
+          return copia;
+        }
+        return [...prev, { text: aviso, isAi: true, timestamp: new Date() }];
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  // Layer 1, Rule 4: click resolution uses ID (value), never re-searches by name
+  /**
+   * Clique nos botões de opção (herança do chatbot legado, que os produzia
+   * quando havia mais de um filho com o mesmo nome).
+   *
+   * O copiloto não devolve `options` — ele resolve a ambiguidade conversando,
+   * e o `buscarAluno` já limita o resultado aos filhos do responsável. O
+   * handler segue aqui porque conversas antigas ainda podem ter botões
+   * renderizados na tela: o clique vira uma mensagem comum.
+   */
   const handleOptionClick = async (option: { label: string; value?: string; alunoId?: string }) => {
     if (loading) return;
-    const resolvedId = option.value || option.alunoId || '';
-    setCurrentAlunoId(resolvedId);
-    const userMsg = lastMessageRef.current || option.label;
-    setMessages(prev => [...prev, { text: option.label, isAi: false, timestamp: new Date() }]);
+    setMessages(prev => [...prev, { text: option.label, isAi: false, timestamp: new Date() }, { text: '', isAi: true, timestamp: new Date() }]);
     setLoading(true);
+
     try {
-      const res = await postChatbotMessage(userMsg, resolvedId);
-      if (res.alunoId) setCurrentAlunoId(res.alunoId);
-      const aiMsg: Message = {
-        text: res.response,
-        isAi: true,
-        timestamp: new Date(),
-        options: res.options,
-      };
-      setMessages(prev => [...prev, aiMsg]);
+      const { conversaId: novoId } = await streamCopiloto(
+        option.label,
+        conversaId,
+        (pedaco) => {
+          setMessages(prev => {
+            const copia = [...prev];
+            const ultima = copia[copia.length - 1];
+            if (ultima && ultima.isAi) {
+              copia[copia.length - 1] = { ...ultima, text: ultima.text + pedaco };
+            }
+            return copia;
+          });
+        }
+      );
+      setConversaId(novoId);
     } catch {
-      setMessages(prev => [...prev, { text: 'Desculpe, estou com dificuldades técnicas agora.', isAi: true, timestamp: new Date() }]);
+      setMessages(prev => {
+        const copia = [...prev];
+        const ultima = copia[copia.length - 1];
+        if (ultima && ultima.isAi && !ultima.text) {
+          copia[copia.length - 1] = { ...ultima, text: 'Desculpe, estou com dificuldades técnicas agora.' };
+          return copia;
+        }
+        return [...prev, { text: 'Desculpe, estou com dificuldades técnicas agora.', isAi: true, timestamp: new Date() }];
+      });
     } finally {
       setLoading(false);
     }
