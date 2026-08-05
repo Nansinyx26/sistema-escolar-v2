@@ -342,7 +342,14 @@ exports.delete = async (req, res) => {
 };
 
 // ─── GET /api/alunos/codigos-secretos ────────────────────────────────────────
-// Restrito a diretores/admin — lista todos os alunos com seus códigos secretos
+// Restrito a diretores/admin/secretaria — lista todos os alunos com seus códigos secretos.
+//
+// PERFORMANCE: a versão anterior gerava códigos inline para cada aluno sem
+// código (N+1 queries — findById + save + findOne por unicidade POR ALUNO),
+// fazendo a rota travar quando havia muitos alunos sem código. Agora a rota
+// retorna os dados imediatamente com uma única query e dispara a geração de
+// códigos faltantes em background (fire-and-forget). Um reload subsequente
+// já traz os códigos gerados.
 exports.listSecretCodes = async (req, res) => {
     try {
         const { turma, q } = req.query;
@@ -388,29 +395,42 @@ exports.listSecretCodes = async (req, res) => {
             }
         }
 
+        // ── Query única ──────────────────────────────────────────────────────
         const students = await Aluno.find(query)
             .select('nome sobrenome turma turmaId codigoSecreto responsavel matricula')
             .sort({ turma: 1, nome: 1 })
             .lean();
 
-        const missingCodeStudents = students.filter(student => !student.codigoSecreto || ['N/A', 'n/a', ''].includes(String(student.codigoSecreto).trim()));
-        if (missingCodeStudents.length > 0) {
-            for (const student of missingCodeStudents) {
-                const studentDoc = await Aluno.findById(student._id);
-                if (studentDoc) {
-                    studentDoc.codigoSecreto = undefined;
-                    await studentDoc.save();
+        // ── Geração de códigos em background (fire-and-forget) ───────────────
+        // Identifica alunos sem código válido e gera de forma assíncrona.
+        // A resposta não espera — o frontend mostra "Gerando..." e um auto-
+        // refresh traz os códigos quando prontos.
+        const missingIds = students
+            .filter(s => !s.codigoSecreto || ['N/A', 'n/a', ''].includes(String(s.codigoSecreto).trim()))
+            .map(s => s._id);
+
+        if (missingIds.length > 0) {
+            // Fire-and-forget: não bloqueia a resposta HTTP
+            (async () => {
+                try {
+                    for (const id of missingIds) {
+                        const doc = await Aluno.findById(id);
+                        if (doc) {
+                            doc.codigoSecreto = undefined; // triggers pre-save → gera código
+                            await doc.save();
+                        }
+                    }
+                    console.log(`🔑 [SECRET-CODES] ${missingIds.length} código(s) gerado(s) em background.`);
+                } catch (err) {
+                    console.error('❌ [SECRET-CODES] Erro ao gerar códigos em background:', err.message);
                 }
-            }
+            })();
         }
 
-        const studentsWithCodes = await Aluno.find(query)
-            .select('nome sobrenome turma turmaId codigoSecreto responsavel matricula')
-            .sort({ turma: 1, nome: 1 })
-            .lean();
-
+        // ── Mapear turmas para exibição ──────────────────────────────────────
         const Turma = require('../models/Turma');
-        const turmas = await Turma.find({}).lean();
+        const turmaQuery = req.escolaId ? { escolaId: req.escolaId } : {};
+        const turmas = await Turma.find(turmaQuery).lean();
         const turmaMap = {};
         turmas.forEach(t => {
             const key = (t.nome || t.id || '').toUpperCase();
@@ -419,7 +439,11 @@ exports.listSecretCodes = async (req, res) => {
             }
         });
 
-        const data = studentsWithCodes.map(s => {
+        // ── Montar resposta ──────────────────────────────────────────────────
+        const hasPending = missingIds.length > 0;
+        const missingIdSet = new Set(missingIds.map(String));
+
+        const data = students.map(s => {
             const studentTurmaKey = (s.turma || s.turmaId || '').toUpperCase();
             const tInfo = turmaMap[studentTurmaKey] || {};
             
@@ -437,19 +461,23 @@ exports.listSecretCodes = async (req, res) => {
                 }
             }
 
+            // Se o aluno está na lista de pendentes, mostra "Gerando..."
+            const isMissing = missingIdSet.has(String(s._id));
+            const codigoExibido = isMissing ? 'Gerando...' : (s.codigoSecreto || 'N/A');
+
             return {
                 id: s._id,
                 nome: `${s.nome}${s.sobrenome ? ' ' + s.sobrenome : ''}`,
                 ano,
                 turma: turmaNome,
-                codigoSecreto: s.codigoSecreto || 'N/A',
+                codigoSecreto: codigoExibido,
                 matricula: s.matricula || '-',
                 vinculado: !!s.responsavel,
                 responsavelEmail: s.responsavel || null
             };
         });
 
-        res.json({ success: true, data });
+        res.json({ success: true, data, pendingCodes: hasPending });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }

@@ -19,6 +19,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         ? 'http://localhost:3001/api'
         : (window.location.origin + '/api');
 
+    // ── Timer de auto-refresh para códigos pendentes ─────────────────────
+    let autoRefreshTimer = null;
+    let autoRefreshCount = 0;
+    const MAX_AUTO_REFRESH = 12; // máx 12 tentativas (1 minuto)
+
+    function startAutoRefresh() {
+        stopAutoRefresh();
+        autoRefreshCount = 0;
+        autoRefreshTimer = setInterval(async () => {
+            autoRefreshCount++;
+            if (autoRefreshCount >= MAX_AUTO_REFRESH) {
+                stopAutoRefresh();
+                return;
+            }
+            await carregarCodigos(true); // silent = true (sem mostrar "Carregando...")
+        }, 5000); // a cada 5 segundos
+    }
+
+    function stopAutoRefresh() {
+        if (autoRefreshTimer) {
+            clearInterval(autoRefreshTimer);
+            autoRefreshTimer = null;
+        }
+    }
+
     async function popularTurmas() {
         const select = document.getElementById('filtroTurmaCodigosSecretos');
         if (!select) return;
@@ -74,7 +99,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    async function carregarCodigos() {
+    async function carregarCodigos(silent) {
         const tbody = document.getElementById('secretCodesTableBody');
         if (!tbody) return;
 
@@ -85,7 +110,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (q) params.set('q', q);
         if (turma) params.set('turma', turma);
 
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-message">Carregando códigos...</td></tr>';
+        // Só mostra "Carregando..." no primeiro load (não no auto-refresh)
+        if (!silent) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-message">Carregando códigos...</td></tr>';
+        }
 
         try {
             const res = await fetch(`${baseUrl}/alunos/codigos-secretos?${params.toString()}`, { credentials: 'include' });
@@ -93,20 +121,30 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (!json.success || !Array.isArray(json.data) || json.data.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="5" class="empty-message">Nenhum aluno encontrado.</td></tr>';
+                stopAutoRefresh();
                 return;
             }
 
             tbody.innerHTML = json.data.map(item => {
+                // ── Status ───────────────────────────────────────────────
                 const statusBadge = item.vinculado
                     ? '<span class="status-pill status-pill--vinculado"><i class="bi bi-link-45deg"></i> Vinculado</span>'
                     : '<span class="status-pill status-pill--aguardando"><i class="bi bi-clock-history"></i> Aguardando</span>';
 
+                // ── Código secreto ───────────────────────────────────────
+                let codigoHTML;
+                if (item.codigoSecreto === 'Gerando...') {
+                    codigoHTML = '<span class="codigo-secreto" style="opacity:0.6;animation:pulse-mint 1.2s infinite;"><i class="bi bi-arrow-repeat" style="margin-right:4px;"></i>Gerando...</span>';
+                } else if (!item.codigoSecreto || item.codigoSecreto === 'N/A') {
+                    codigoHTML = '<code class="codigo-secreto" style="opacity:0.5;">------</code>';
+                } else {
+                    codigoHTML = `<code class="codigo-secreto">${item.codigoSecreto}</code>`;
+                }
+
                 return `
                     <tr>
                         <td style="font-weight:600;">${item.nome}</td>
-                        <td>
-                            <code class="codigo-secreto">${item.codigoSecreto || '------'}</code>
-                        </td>
+                        <td>${codigoHTML}</td>
                         <td>${item.ano || '-'}</td>
                         <td>${item.turma || '-'}</td>
                         <td>${statusBadge}</td>
@@ -118,19 +156,30 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (paginationEl) {
                 paginationEl.innerHTML = `<span style="font-size:0.8rem;color:var(--text-secondary);">${json.data.length} aluno(s) encontrado(s)</span>`;
             }
+
+            // Se há códigos pendentes, inicia auto-refresh para buscar atualizações
+            if (json.pendingCodes) {
+                if (!autoRefreshTimer) {
+                    startAutoRefresh();
+                }
+            } else {
+                stopAutoRefresh();
+            }
         } catch (error) {
             console.error('Erro ao carregar códigos secretos:', error);
-            tbody.innerHTML = '<tr><td colspan="5" class="empty-message">Erro ao carregar dados.</td></tr>';
+            if (!silent) {
+                tbody.innerHTML = '<tr><td colspan="5" class="empty-message">Erro ao carregar dados.</td></tr>';
+            }
         }
     }
 
     let searchTimer = null;
     document.getElementById('searchCodigosSecretos')?.addEventListener('input', () => {
         clearTimeout(searchTimer);
-        searchTimer = setTimeout(carregarCodigos, 300);
+        searchTimer = setTimeout(() => carregarCodigos(false), 300);
     });
-    document.getElementById('filtroTurmaCodigosSecretos')?.addEventListener('change', carregarCodigos);
+    document.getElementById('filtroTurmaCodigosSecretos')?.addEventListener('change', () => carregarCodigos(false));
 
     await popularTurmas();
-    await carregarCodigos();
+    await carregarCodigos(false);
 });
