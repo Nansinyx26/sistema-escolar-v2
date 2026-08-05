@@ -4,7 +4,7 @@
  * user avatar and logout button. Fully responsive.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { GmailUser, Notification } from '../types';
 import styles from '../styles/portal.module.scss';
 import schoolLogo from '../assets/logo-jaguari.png';
@@ -159,6 +159,38 @@ const VoiceSelector: React.FC = () => {
   );
 };
 
+const ThemeToggle: React.FC = () => {
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('theme') as 'dark' | 'light') || 'dark';
+  });
+
+  useEffect(() => {
+    const saved = (localStorage.getItem('theme') as 'dark' | 'light') || 'dark';
+    document.documentElement.setAttribute('data-theme', saved);
+    setTheme(saved);
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === 'light' ? 'dark' : 'light';
+    setTheme(next);
+    localStorage.setItem('theme', next);
+    document.documentElement.setAttribute('data-theme', next);
+    window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: next } }));
+  };
+
+  return (
+    <button
+      className={styles.notificationBell}
+      onClick={toggleTheme}
+      title={theme === 'light' ? 'Modo Escuro' : 'Modo Claro'}
+      aria-label={theme === 'light' ? 'Alternar para Modo Escuro' : 'Alternar para Modo Claro'}
+      style={{ color: theme === 'light' ? '#d97706' : '#10b981' }}
+    >
+      <i className={`ti ${theme === 'light' ? 'ti-sun' : 'ti-moon'}`} style={{ fontSize: '1.4rem' }} />
+    </button>
+  );
+};
+
 const Header: React.FC<HeaderProps> = ({ user, notifications, onLogout, onBellClick, onProfileClick }) => {
   const unreadCount = notifications.filter((n) => !n.lido).length;
   const userPhoto = getPhotoUrl(user.picture);
@@ -178,6 +210,7 @@ const Header: React.FC<HeaderProps> = ({ user, notifications, onLogout, onBellCl
         <div className={styles.headerActions}>
           <div className={styles.headerUtilityGroup}>
             <VoiceSelector />
+            <ThemeToggle />
 
             {/* Botão Ver Tour Guiado */}
             <button

@@ -2835,7 +2835,8 @@
 .onboardingContainer {
   position: fixed;
   inset: 0;
-  background: rgba($bg-primary, 0.98);
+  background: var(--bg-primary);
+  opacity: 0.98;
   backdrop-filter: blur(15px);
   z-index: 9999;
   display: flex;
@@ -3918,7 +3919,7 @@ input:checked + .slider:before {
 .chatbotHeader {
   @include flex-between;
   padding: 16px 20px;
-  background: rgba($bg-secondary, 0.5);
+  background: var(--bg-tertiary);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 
   .headerInfo {

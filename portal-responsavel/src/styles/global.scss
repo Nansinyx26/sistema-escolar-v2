@@ -11,22 +11,34 @@
 
 // ─── CSS Custom Properties ────────────────────────────────────────────────────
 :root {
-  --bg-primary:    #{$bg-primary};
-  --bg-secondary:  #{$bg-secondary};
-  --bg-tertiary:   #{$bg-tertiary};
-  --text-primary:  #{$text-primary};
-  --text-secondary:#{$text-secondary};
-  --text-tertiary: #{$text-tertiary};
-  --border-color:  #{$border-color};
-  --accent-cyan:   #{$accent-cyan};
-  --accent-purple: #{$accent-purple};
-  --success:       #{$success};
-  --warning:       #{$warning};
-  --danger:        #{$danger};
-  --transition:    #{$transition-smooth};
-  --radius-sm:     #{$radius-sm};
-  --radius-md:     #{$radius-md};
-  --radius-lg:     #{$radius-lg};
+  --bg-primary:    #0a0e0d;
+  --bg-secondary:  #121815;
+  --bg-tertiary:   #1a211d;
+  --text-primary:  #f4f6f5;
+  --text-secondary:#cdd4d1;
+  --text-tertiary: #97a29d;
+  --border-color:  rgba(255, 255, 255, 0.08);
+  --accent-cyan:   #059669;
+  --accent-purple: #0d9488;
+  --success:       #16a34a;
+  --warning:       #d97706;
+  --danger:        #dc2626;
+  --transition:    300ms ease;
+  --radius-sm:     6px;
+  --radius-md:     12px;
+  --radius-lg:     16px;
+}
+
+:root[data-theme="light"],
+html[data-theme="light"],
+body[data-theme="light"] {
+  --bg-primary:    #f8faf9;
+  --bg-secondary:  #ffffff;
+  --bg-tertiary:   #eef3f0;
+  --text-primary:  #0f172a;
+  --text-secondary:#334155;
+  --text-tertiary: #64748b;
+  --border-color:  rgba(15, 23, 42, 0.12);
 }
 
 // ─── Reset ────────────────────────────────────────────────────────────────────
@@ -46,11 +58,12 @@ html {
 
 body {
   font-family: $font-sans;
-  background-color: $bg-primary;
-  color: $text-primary;
+  background-color: var(--bg-primary, #0a0e0d);
+  color: var(--text-primary, #f4f6f5);
   line-height: 1.6;
   min-height: 100vh;
   overflow-x: hidden;
+  transition: background-color var(--transition), color var(--transition);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

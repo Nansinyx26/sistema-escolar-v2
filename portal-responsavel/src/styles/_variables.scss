@@ -4,22 +4,20 @@
  * Import this file first in any SCSS that needs design tokens.
  */
 
-// ─── Color Palette (Dark Theme – Verde Institucional Refinado) ────────────────
-// Base grafite com um leve toque esverdeado; acento esmeralda sóbrio + teal.
-// (Antes: verde-neon #10b981 + roxo #7c3aed com glows fortes.)
-$bg-primary:    #0a0e0d;
-$bg-secondary:  #121815;
-$bg-tertiary:   #1a211d;
+// ─── Color Palette (CSS Custom Properties - Dark por padrão, Light opcional) ──
+$bg-primary:    var(--bg-primary, #0a0e0d);
+$bg-secondary:  var(--bg-secondary, #121815);
+$bg-tertiary:   var(--bg-tertiary, #1a211d);
 
-$text-primary:   #f4f6f5;
-$text-secondary: #cdd4d1;
-$text-tertiary:  #97a29d;
+$text-primary:   var(--text-primary, #f4f6f5);
+$text-secondary: var(--text-secondary, #cdd4d1);
+$text-tertiary:  var(--text-tertiary, #97a29d);
 
-$border-color: rgba(255, 255, 255, 0.08);
+$border-color: var(--border-color, rgba(255, 255, 255, 0.08));
 
-// Marca: esmeralda sóbria como cor primária, teal como secundária (substitui o roxo).
-$accent-cyan:   #059669; // primária (mantém o nome por compatibilidade do design system)
-$accent-purple: #0d9488; // secundária (teal) — usada nos gradientes no lugar do antigo roxo
+// Marca: esmeralda sóbria como cor primária, teal como secundária.
+$accent-cyan:   #059669;
+$accent-purple: #0d9488;
 
 // Semânticas em tom "semáforo" mais institucional (menos saturadas que o neon).
 $success: #16a34a;
