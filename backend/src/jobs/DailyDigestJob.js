@@ -2,13 +2,15 @@
 
 /**
  * DailyDigestJob.js
- * Executa todos os dias às 16h (horário de Brasília = UTC-3 → 19:00 UTC).
- * Cria uma Notificacao de resumo do dia para todos os usuários.
+ * Executa todos os dias às 16h (horário de Brasília).
+ * Cria uma Notificacao de resumo do dia para todos os usuários via NotificationService
+ * (enviando via Socket.IO para o sininho e Web Push para celulares).
  */
 
 const cron = require('node-cron');
 const Comunicado = require('../models/Comunicado');
 const Notificacao = require('../models/Notificacao');
+const NotificationService = require('../services/NotificationService');
 const logger = require('../utils/logger');
 
 /**
@@ -19,6 +21,10 @@ async function gerarResumo() {
     const inicioDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 0, 0, 0);
     const fimDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59);
 
+    const dataFormatada = hoje.toLocaleDateString('pt-BR', {
+        day: '2-digit', month: 'long', year: 'numeric',
+    });
+
     // Comunicados publicados hoje
     const comunicados = await Comunicado.find({
         ativo: true,
@@ -26,12 +32,12 @@ async function gerarResumo() {
     }).select('titulo categoria').lean();
 
     if (comunicados.length === 0) {
-        return null; // Nada novo hoje, não envia notificação
+        return {
+            titulo: `Resumo do dia — ${dataFormatada}`,
+            mensagem: `Olá! Não houve novos comunicados cadastrados hoje. Seu painel escolar permanece atualizado.`,
+            total: 0,
+        };
     }
-
-    const dataFormatada = hoje.toLocaleDateString('pt-BR', {
-        day: '2-digit', month: 'long', year: 'numeric',
-    });
 
     const listaTexto = comunicados
         .map((c, i) => `${i + 1}. ${c.titulo}${c.categoria ? ` (${c.categoria})` : ''}`)
@@ -45,7 +51,7 @@ async function gerarResumo() {
 }
 
 /**
- * Cria a notificação de resumo no banco.
+ * Cria a notificação de resumo no banco e dispara no sininho / celular.
  */
 async function enviarDigest() {
     try {
@@ -70,8 +76,7 @@ async function enviarDigest() {
             return;
         }
 
-        await Notificacao.create({
-            id: `digest_${Date.now()}`,
+        await NotificationService.notify({
             tipo: 'resumo_diario',
             categoria: 'direcao',
             prioridade: 'normal',
@@ -80,8 +85,7 @@ async function enviarDigest() {
             destinatarios: 'todos',   // Todos os usuários
             paraResponsavel: true,    // Visível também para responsáveis
             criadoPor: 'Sistema',
-            escolaId: 'default',
-            status: 'enviado',
+            escolaId: null,           // Visível globalmente para todas as escolas
         });
 
         logger.info(`[DailyDigest] Resumo diário enviado com ${resumo.total} comunicado(s).`);
@@ -92,14 +96,13 @@ async function enviarDigest() {
 
 /**
  * Inicializa o job.
- * Horário: 19:00 UTC = 16:00 BRT (UTC-3)
+ * Horário: 16:00 BRT (America/Sao_Paulo)
  */
 function iniciarDailyDigest() {
-    // '0 19 * * *' = todo dia às 19:00 UTC (16:00 Brasília)
-    cron.schedule('0 19 * * *', () => {
+    cron.schedule('0 16 * * *', () => {
         enviarDigest();
     }, {
-        timezone: 'UTC',
+        timezone: 'America/Sao_Paulo',
     });
 
     logger.info('[DailyDigest] Job agendado: resumo diário às 16h (BRT).');

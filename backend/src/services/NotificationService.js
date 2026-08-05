@@ -77,39 +77,42 @@ exports.notify = async ({
         });
         await novaNotif.save();
 
-        // 2. Entrega em Tempo Real (Socket.io) — DIRECIONADA por sala em vez
-        // de broadcast global (antes toda a rede recebia todo aviso). Cada
-        // destinatário recebe só o que lhe pertence; escolaId no payload
-        // permite ao cliente descartar avisos de outra escola.
+        // 2. Entrega em Tempo Real (Socket.io) — DIRECIONADA por sala
         if (global.io) {
             const populada = await Notificacao.findById(novaNotif._id)
                 .populate('criadoPor', 'nome foto fotoGoogle perfil')
                 .lean();
             const payload = { ...populada, link, escolaId: escolaId || null };
 
-            // Salas de destino conforme a lista de destinatários
-            const rooms = new Set();
-            for (const d of destList) {
-                if (d === 'todos') { rooms.add('role:professor'); rooms.add('role:responsavel'); rooms.add('role:diretor'); rooms.add('role:admin'); rooms.add('role:secretaria'); }
-                else if (d === 'professores') rooms.add('role:professor');
-                else if (d === 'responsaveis') rooms.add('role:responsavel');
-                else if (d === 'diretores' || d === 'diretor') { rooms.add('role:diretor'); rooms.add('role:admin'); }
-                else if (String(d).startsWith('usuario:')) rooms.add(`user:${String(d).split(':')[1]}`);
-                else if (String(d).startsWith('turma:')) { rooms.add('role:responsavel'); rooms.add('role:professor'); }
-            }
+            const isBroadcastAll = destList.some(d => d === 'todos');
 
-            if (rooms.size > 0) {
-                // Interseção com a sala da escola: as salas `role:` sozinhas
-                // alcançavam o mesmo perfil em TODAS as escolas da rede.
-                let emitter = global.io;
-                if (escolaId) emitter = emitter.to(`escola:${escolaId}`);
-                rooms.forEach(r => { emitter = emitter.to(r); });
-                emitter.emit('notification:new', payload);
-            } else if (escolaId) {
-                // Sem sala de perfil resolvida, entrega no máximo à escola —
-                // nunca um broadcast global (o fallback anterior mandava o
-                // aviso interno para todos os sockets conectados).
-                global.io.to(`escola:${escolaId}`).emit('notification:new', payload);
+            if (isBroadcastAll) {
+                if (escolaId) {
+                    global.io.to(`escola:${escolaId}`).emit('notification:new', payload);
+                } else {
+                    global.io.emit('notification:new', payload);
+                }
+            } else {
+                const rooms = new Set();
+                for (const d of destList) {
+                    if (d === 'professores') rooms.add('role:professor');
+                    else if (d === 'responsaveis') rooms.add('role:responsavel');
+                    else if (d === 'diretores' || d === 'diretor') { rooms.add('role:diretor'); rooms.add('role:admin'); }
+                    else if (String(d).startsWith('usuario:')) rooms.add(`user:${String(d).split(':')[1]}`);
+                    else if (String(d).startsWith('turma:')) { rooms.add('role:responsavel'); rooms.add('role:professor'); }
+                }
+
+                if (rooms.size > 0) {
+                    rooms.forEach(r => {
+                        if (escolaId) {
+                            global.io.to(`escola:${escolaId}`).to(r).emit('notification:new', payload);
+                        } else {
+                            global.io.to(r).emit('notification:new', payload);
+                        }
+                    });
+                } else if (escolaId) {
+                    global.io.to(`escola:${escolaId}`).emit('notification:new', payload);
+                }
             }
         }
 
@@ -134,11 +137,11 @@ exports.notify = async ({
             }
 
             // Push
-            if (prefs.push && user.pushSubscriptions && user.pushSubscriptions.length > 0) {
+            if (prefs.push !== false && user.pushSubscriptions && user.pushSubscriptions.length > 0) {
                 const payload = {
                     title: titulo,
                     body: mensagem,
-                    icon: '/favicon/favicon.png',
+                    icon: '/img/icons/icon-192.png',
                     data: { url: link, id: novaNotif._id }
                 };
 
