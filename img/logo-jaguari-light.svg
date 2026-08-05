@@ -1,0 +1,30 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Logo Sistema Escolar">
+  <defs>
+    <linearGradient id="jg-grad" x1="96" y1="120" x2="416" y2="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#10b981"/>
+      <stop offset="0.55" stop-color="#0ea5e9"/>
+      <stop offset="1" stop-color="#6366f1"/>
+    </linearGradient>
+    <linearGradient id="jg-bar" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#0ea5e9"/>
+      <stop offset="1" stop-color="#10b981"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Cubo / badge arredondado -->
+  <rect x="88" y="120" width="336" height="300" rx="56"
+        fill="#ffffff" stroke="url(#jg-grad)" stroke-width="14"/>
+
+  <!-- Barras de crescimento (BI pedagógico) -->
+  <rect x="176" y="300" width="34" height="64"  rx="10" fill="url(#jg-bar)"/>
+  <rect x="239" y="266" width="34" height="98"  rx="10" fill="url(#jg-bar)"/>
+  <rect x="302" y="228" width="34" height="136" rx="10" fill="url(#jg-bar)"/>
+
+  <!-- Capelo (formatura) -->
+  <path d="M256 150 L360 194 L256 238 L152 194 Z" fill="#0f172a"/>
+  <path d="M256 238 L332 206 V246 C332 268 298 282 256 282 C214 282 180 268 180 246 V206 Z"
+        fill="#1e293b"/>
+  <!-- Borla -->
+  <line x1="360" y1="194" x2="360" y2="252" stroke="#0f172a" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="360" cy="258" r="11" fill="url(#jg-grad)"/>
+</svg>

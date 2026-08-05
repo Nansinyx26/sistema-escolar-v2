@@ -1,0 +1,78 @@
+services:
+  - type: web
+    name: sistema-escolar-backend
+    runtime: node
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # sharp >=0.35 (correção libvips) exige Node >=20.9
+      - key: NODE_VERSION
+        value: "22"
+
+      # ── Banco de dados ──────────────────────────────────────────────────────
+      - key: MONGODB_URI
+        sync: false # Configure no painel do Render → Environment
+      - key: MONGODB_DB_NAME
+        value: test
+
+      # ── Segurança ───────────────────────────────────────────────────────────
+      - key: JWT_SECRET
+        sync: false # Gere com: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+      - key: SESSION_SECRET
+        sync: false # Sessão multi-escola (express-session) — gere como o JWT_SECRET
+      - key: METRICS_TOKEN
+        sync: false # Opcional: protege GET /api/metrics em produção
+
+      # ── URLs ────────────────────────────────────────────────────────────────
+      - key: FRONTEND_URL
+        value: https://sistema-escolar-bfty.onrender.com
+
+      # ── Google OAuth (login com Google) ─────────────────────────────────────
+      - key: GOOGLE_CLIENT_ID
+        sync: false # Console do Google Cloud → APIs & Services → Credentials
+
+      # ── E-mail (Recuperação de senha via Resend) ─────────────────────────────
+      - key: EMAIL_USER
+        value: resend
+      - key: EMAIL_PASS
+        sync: false # Chave da API do Resend: https://resend.com/api-keys
+
+      # ── TTS: Google Gemini ───────────────────────────────────────────────────
+      - key: GOOGLE_TTS_API_KEY
+        sync: false # Google AI Studio: https://aistudio.google.com/app/apikey
+
+      # ── TTS: ElevenLabs (opcional — fallback do Gemini) ──────────────────────
+      - key: ELEVENLABS_API_KEY
+        sync: false # ElevenLabs: https://elevenlabs.io/app/settings/api-keys
+
+      # ── Chat interno ─────────────────────────────────────────────────────────
+      # Adapter compartilhado do Socket.IO. Este serviço roda em `plan: free`,
+      # que é UMA instância — nesse cenário o adapter só adicionaria escrita no
+      # banco sem benefício, então fica desligado.
+      #
+      # ATENÇÃO: ao subir de plano e passar a ter mais de uma instância, defina
+      # SOCKET_ADAPTER=mongo NO MESMO deploy. Sem isso as salas do Socket.IO
+      # ficam presas a cada processo e mensagens, presença e "digitando" param
+      # de cruzar entre as instâncias — sem erro visível, só sumindo.
+      # - key: SOCKET_ADAPTER
+      #   value: mongo
+
+      # Retenção LGPD das conversas (dias). Sem a variável nada expira, que é o
+      # padrão: apagar comunicação escolar automaticamente sem a instituição
+      # definir o prazo destruiria registro de conselho de classe e ocorrência.
+      # Ex.: 730 = 2 anos.
+      # - key: CHAT_RETENCAO_DIAS
+      #   value: "730"
+
+      # Tetos de uso do chat (opcionais — os padrões do código já valem).
+      # - key: RATE_LIMIT_CHAT_MENSAGENS
+      #   value: "30"   # mensagens por minuto, por conta
+      # - key: RATE_LIMIT_CHAT_UPLOADS
+      #   value: "20"   # arquivos por 5 minutos, por conta
+      # - key: RATE_LIMIT_CHAT_IP
+      #   value: "120"  # mensagens por minuto, por IP

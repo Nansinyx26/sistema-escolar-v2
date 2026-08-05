@@ -1,0 +1,215 @@
+.orbContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+  user-select: none;
+
+  &:hover {
+    transform: scale(1.05);
+  }
+
+  &.large {
+    width: 100%;
+    height: auto;
+    padding: 24px 0;
+    gap: 20px;
+
+    .orbWrapper {
+      width: 200px;
+      height: 200px;
+    }
+  }
+
+  &.fab {
+    width: 80px;
+    height: 80px;
+
+    .orbWrapper {
+      width: 80px;
+      height: 80px;
+    }
+
+    .middleRing, .outerRing {
+      display: none; // Simpler FAB
+    }
+
+    .core {
+      width: 64px;
+      height: 64px;
+    }
+  }
+
+  // Global FAB position only when explicitly requested (outside chat)
+  &.fab.global {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 999;
+  }
+}
+
+.orbWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.outerRing {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  animation: rotateClockwise 20s linear infinite;
+  
+  .dotsSvg {
+    width: 100%;
+    height: 100%;
+    
+    .dot {
+      fill: #fff;
+      opacity: 0.4;
+      animation: pulseDot 2s ease-in-out infinite;
+    }
+  }
+}
+
+.middleRing {
+  position: absolute;
+  top: 25px; left: 25px; right: 25px; bottom: 25px;
+  border-radius: 50%;
+  border: 1.5px dotted rgba(255, 255, 255, 0.2);
+  animation: rotateCounterClockwise 15s linear infinite;
+}
+
+.core {
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: radial-gradient(circle at center, #1e1b4b 0%, #0c0a09 100%);
+  box-shadow: 0 0 40px rgba(79, 70, 229, 0.3);
+}
+
+.coreGlow {
+  position: absolute;
+  top: -50%; left: -50%; right: -50%; bottom: -50%;
+  background: radial-gradient(circle at center, rgba(99, 102, 241, 0.2) 0%, transparent 60%);
+  animation: rotateClockwise 10s linear infinite;
+}
+
+.coreCenter {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Voice Label Pill */
+.voiceLabel {
+  background: rgba(255, 255, 255, 0.08); /* Exact prompt value */
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 16px;
+  border-radius: 100px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 500;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+
+  .statusDot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #10b981; // Green for idle
+    box-shadow: 0 0 10px #10b981;
+  }
+}
+
+/* Animations based on state */
+.playing {
+  .core {
+    box-shadow: 0 0 60px rgba(99, 102, 241, 0.5);
+    animation: rgbPulse 2s linear infinite; // Adding the "Python-style" RGB energy
+  }
+  
+  .statusDot {
+    background: #f43f5e; // Pink/Red for talking
+    box-shadow: 0 0 10px #f43f5e;
+    animation: pulseDot 1s infinite;
+  }
+
+  .bar {
+    animation: equalize 1s ease-in-out infinite;
+  }
+}
+
+.loading {
+  .spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: rotateClockwise 0.8s linear infinite;
+  }
+}
+
+/* Equalizer Styles */
+.equalizer {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 20px;
+
+  .bar {
+    width: 4px;
+    background: #fff;
+    border-radius: 2px;
+    height: 40%;
+    transition: height 0.3s ease;
+
+    &:nth-child(2) { animation-delay: 0.2s; height: 60%; }
+    &:nth-child(3) { animation-delay: 0.4s; height: 30%; }
+  }
+}
+
+@keyframes rotateClockwise {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes rotateCounterClockwise {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.5); }
+}
+
+@keyframes equalize {
+  0%, 100% { height: 40%; }
+  50% { height: 100%; }
+}
+
+@keyframes rgbPulse {
+    0% { box-shadow: 0 0 50px rgba(255, 0, 128, 0.6); }   // Rose
+    20% { box-shadow: 0 0 50px rgba(160, 32, 240, 0.6); } // Purple
+    40% { box-shadow: 0 0 50px rgba(0, 0, 255, 0.6); }    // Blue
+    60% { box-shadow: 0 0 50px rgba(0, 255, 255, 0.6); }  // Cyan
+    80% { box-shadow: 0 0 50px rgba(255, 255, 0, 0.6); }  // Yellow
+    100% { box-shadow: 0 0 50px rgba(255, 0, 128, 0.6); } // back to Rose
+}

@@ -1,0 +1,313 @@
+/* ==========================================
+   ATA PAGE STYLES (Refined for Final Layout)
+   ========================================== */
+
+/* Layout & Grid */
+.workspace-grid {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 1.5rem;
+    min-height: 500px;
+}
+
+@media (max-width: 768px) {
+    .workspace-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Coluna Esquerda: Lista */
+.student-list-panel {
+    background: var(--bg-medium);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.scrolly-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 500px;
+    padding-right: 0.5rem;
+}
+
+/* Scrollbar Custom */
+.scrolly-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.scrolly-list::-webkit-scrollbar-track {
+    background: var(--bg-dark);
+    border-radius: 4px;
+}
+
+.scrolly-list::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+.student-list-item {
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    transition: all 0.2s;
+}
+
+.student-list-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.student-list-item.active {
+    background: rgba(124, 58, 237, 0.1);
+    border-color: var(--primary);
+}
+
+.student-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    overflow: hidden;
+}
+
+.student-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.student-name {
+    font-size: 0.9rem;
+    color: var(--text-white);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Coluna Direita: Editor */
+.student-editor-panel {
+    background: var(--bg-medium);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    position: relative;
+    box-shadow: var(--shadow-md);
+}
+
+.form-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(11, 11, 16, 0.8);
+    backdrop-filter: blur(2px);
+    z-index: 10;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
+    border-radius: var(--radius-lg);
+    color: var(--text-muted);
+}
+
+.form-overlay.active {
+    display: flex;
+}
+
+/* Preview Section (Paper) */
+.preview-section {
+    background: #525659;
+    padding: 2rem;
+    margin-top: 2rem;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+}
+
+.preview-paper {
+    background: white;
+    color: black;
+    width: 210mm;
+    min-height: 297mm;
+    padding: 20mm;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    font-family: 'Arial', sans-serif;
+    font-size: 11pt;
+    line-height: 1.4;
+}
+
+.preview-paper table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.preview-paper td, .preview-paper th {
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+
+#studentObs {
+    resize: none;
+    overflow-y: hidden;
+    transition: height 0.1s ease;
+}
+
+/* Specific Paper Styles overriding Dark Mode */
+.preview-paper h2,
+.preview-paper h3 {
+    color: black !important;
+}
+
+.preview-paper strong {
+    color: black !important;
+    font-weight: bold;
+}
+
+.preview-paper td {
+    color: black !important;
+}
+
+.preview-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #666;
+    font-style: italic;
+}
+
+/* Utils */
+.hidden {
+    display: none;
+}
+
+.mt-sm {
+    margin-top: 0.5rem;
+}
+
+.mt-md {
+    margin-top: 1rem;
+}
+
+.mt-lg {
+    margin-top: 2rem;
+}
+
+.w-full {
+    width: 100%;
+}
+
+.text-primary {
+    color: var(--primary-light);
+}
+
+/* Convert Dropdown Menu */
+.convert-menu {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    left: 0;
+    background: var(--bg-medium);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    min-width: 220px;
+    z-index: 1000;
+    overflow: hidden;
+    animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.convert-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.875rem 1rem;
+    background: transparent;
+    border: none;
+    color: var(--text-white);
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+}
+
+.convert-option:hover {
+    background: rgba(124, 58, 237, 0.15);
+    color: var(--primary-light);
+}
+
+.convert-option i {
+    font-size: 1.1rem;
+}
+
+/* Pulsating Logo */
+.pulsate-logo {
+    filter: drop-shadow(0 0 1px white);
+    /* White outline base */
+    animation: pulsateGlow 2s infinite ease-in-out;
+}
+
+@keyframes pulsateGlow {
+    0% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.8));
+    }
+
+    50% {
+        transform: scale(1.1);
+        filter: drop-shadow(0 0 8px rgba(255, 255, 255, 1));
+    }
+
+    100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.8));
+    }
+}
+
+/* Níveis de Leitura - Cores */
+.level-circle {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 5px;
+    border: 1px solid rgba(0,0,0,0.1);
+}
+
+.level-red { background-color: #ff4d4d !important; }
+.level-orange { background-color: #ff9900 !important; }
+.level-yellow { background-color: #ffcc00 !important; }
+.level-blue { background-color: #3399ff !important; }
+.level-green { background-color: #2eb82e !important; }
+
+/* Ajuste para preview papel branco */
+.preview-paper .level-circle {
+    border: 1px solid #000;
+}

@@ -1,0 +1,407 @@
+const Professor = require('../models/Professor');
+const ImageProcessor = require('../utils/imageProcessor');
+
+const PERFIS_GESTAO = ['admin', 'diretor', 'secretaria'];
+
+// Filtros de query aceitos na listagem. Qualquer outro parâmetro é ignorado.
+const ALLOWED_FILTERS = ['nome', 'email', 'idUsuario', 'disciplina', 'salaPrincipal', 'tipoEspecial', 'role', 'ativo'];
+
+// Campos que o próprio docente pode editar no seu cadastro. As turmas
+// (salaPrincipal/salasAdicionais/turmas) e os vínculos de escola definem o
+// escopo horizontal — só a gestão os altera.
+const CAMPOS_PROPRIOS = [
+    'nome', 'telefone', 'idade', 'biografia', 'atividadesPessoais',
+    'ideiasParaAno', 'foto'
+];
+const CAMPOS_GESTAO = [
+    'email', 'disciplina', 'materias', 'tipoAtuacao', 'tipoEspecial', 'professorKey',
+    'salaPrincipal', 'salasAdicionais', 'escola', 'vinculos', 'ativo'
+];
+
+/** Restringe a consulta à escola ativa (Professor usa vinculos[].escolaId). */
+function escopoEscola(req) {
+    if (!req.escolaId || req.user?.perfil === 'admin') return null;
+    return { 'vinculos.escolaId': String(req.escolaId) };
+}
+
+/** true se o cadastro pertence à escola ativa da sessão (ou não há escopo). */
+function pertenceAEscola(req, teacher) {
+    if (!req.escolaId || req.user?.perfil === 'admin') return true;
+    const vinculos = Array.isArray(teacher.vinculos) ? teacher.vinculos : [];
+    if (vinculos.length === 0) return true; // legado sem vínculo — migração pendente
+    return vinculos.some(v => String(v.escolaId) === String(req.escolaId));
+}
+
+/** true se o usuário logado é o dono do cadastro pedagógico. */
+function ehDonoDoCadastro(user, teacher) {
+    if (!user || !teacher) return false;
+    const meuId = String(user.id || user._id || '');
+    if (teacher.idUsuario && String(teacher.idUsuario) === meuId) return true;
+    const meuEmail = String(user.email || '').toLowerCase();
+    return !!meuEmail && String(teacher.email || '').toLowerCase() === meuEmail;
+}
+
+exports.list = async (req, res) => {
+    try {
+        const filters = { ativo: { $ne: false } };
+
+        // SEGURANÇA: whitelist + coerção para String. Antes, todo parâmetro de
+        // query virava filtro Mongo — ?ativo[$ne]=false devolvia a rede inteira.
+        Object.keys(req.query).forEach(key => {
+            if (!ALLOWED_FILTERS.includes(key)) return;
+            const valor = req.query[key];
+            if (valor === null || valor === undefined || valor === '' || typeof valor === 'object') return;
+            filters[key] = key === 'ativo' || key === 'tipoEspecial'
+                ? String(valor) === 'true'
+                : String(valor);
+        });
+
+        // Mecanismo de auto-correção: garante que todo Usuario com perfil 'professor' tenha um registro na coleção 'professores'
+        const Usuario = require('../models/Usuario');
+        const mongoose = require('mongoose');
+        const filtroUsuarios = { perfil: 'professor', ativo: { $ne: false } };
+        if (req.escolaId && req.user?.perfil !== 'admin') filtroUsuarios.escolaId = String(req.escolaId);
+        const usuariosProfessores = await Usuario.find(filtroUsuarios).lean();
+
+        for (const u of usuariosProfessores) {
+            const existingProf = await Professor.findOne({
+                $or: [
+                    { idUsuario: u._id.toString() },
+                    { email: u.email.toLowerCase() }
+                ]
+            });
+
+            if (!existingProf) {
+                console.log(`🔧 [AUTO-HEAL] Sincronizando perfil pedagógico de Professor em falta para: ${u.nome} (${u.email})`);
+                const materiasEspeciais = ['Inglês', 'Educação Física', 'Artes', 'SEBRAE', 'Oficina de Leitura', 'Of. Maker'];
+                const disc = u.disciplina || 'Geral';
+                const isEspecial = materiasEspeciais.includes(disc);
+                const t = u.turma || '';
+
+                const salaPrincipal = isEspecial ? 'VARIADOS' : t;
+                const salasAdicionais = isEspecial && t ? [t] : [];
+                const materias = [disc];
+
+                await Professor.create({
+                    _id: new mongoose.Types.ObjectId().toString(),
+                    idUsuario: u._id.toString(),
+                    nome: u.nome,
+                    email: u.email.toLowerCase(),
+                    telefone: u.telefone || '(00) 00000-0000',
+                    disciplina: disc,
+                    salaPrincipal: salaPrincipal,
+                    salasAdicionais: salasAdicionais,
+                    turmas: t ? [t] : [],
+                    materias: materias,
+                    tipoEspecial: isEspecial,
+                    role: 'professor',
+                    ativo: true,
+                    // Multi-escola: herda a escola da conta; nunca grava 'default'
+                    escola: u.escolaId ? String(u.escolaId) : undefined,
+                    vinculos: u.escolaId ? [{ escolaId: String(u.escolaId), cargo: 'professor' }] : []
+                });
+            }
+        }
+
+        const escopo = escopoEscola(req);
+        const teachers = await Professor.find(escopo ? { $and: [filters, escopo] } : filters).lean();
+
+        // Normalização para o frontend. Dados de contato completos só para a
+        // gestão; docentes entre si veem o essencial pedagógico.
+        const ehGestao = PERFIS_GESTAO.includes(String(req.user?.perfil || '').toLowerCase());
+        const normalizedTeachers = teachers.map(t => {
+            const base = { ...t, id: t.id || t._id };
+            if (!ehGestao) {
+                delete base.telefone;
+                delete base.cpf;
+                delete base.idade;
+                delete base.vinculos;
+            }
+            return base;
+        });
+
+        res.json({ success: true, data: normalizedTeachers });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+exports.get = async (req, res) => {
+    try {
+        const teacher = await Professor.findOne({ $or: [{ _id: req.params.id }, { id: req.params.id }] }).lean();
+        if (!teacher) return res.status(404).json({ success: false, error: 'Professor não encontrado' });
+
+        // Multi-escola: não devolve cadastro de docente de outra escola
+        if (!pertenceAEscola(req, teacher)) {
+            return res.status(403).json({ success: false, error: 'Este professor pertence a outra escola.' });
+        }
+
+        const ehGestao = PERFIS_GESTAO.includes(String(req.user?.perfil || '').toLowerCase());
+        const ehProprio = ehDonoDoCadastro(req.user, teacher);
+        const data = { ...teacher };
+        if (!ehGestao && !ehProprio) {
+            delete data.telefone;
+            delete data.idade;
+            delete data.vinculos;
+        }
+        res.json({ success: true, data });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+exports.create = async (req, res) => {
+    try {
+        const dados = {};
+        [...CAMPOS_PROPRIOS, ...CAMPOS_GESTAO, 'idUsuario'].forEach(campo => {
+            if (req.body[campo] !== undefined) dados[campo] = req.body[campo];
+        });
+
+        // Conversão automática de imagem para WebP
+        if (dados.foto && ImageProcessor.isBase64Image(dados.foto)) {
+            try {
+                dados.foto = await ImageProcessor.convertToWebPBase64(dados.foto);
+            } catch (imgError) {
+                console.warn('Falha ao converter imagem do professor para WebP:', imgError);
+            }
+        }
+
+        // Calcula turmas unificadas
+        const principal = dados.salaPrincipal;
+        const adicionais = Array.isArray(dados.salasAdicionais) ? dados.salasAdicionais : [];
+        dados.turmas = principal && principal !== 'VARIADOS' ? [principal, ...adicionais] : adicionais;
+
+        // Multi-escola: o novo docente nasce vinculado à escola ativa da sessão.
+        // O vínculo NUNCA vem do corpo da requisição.
+        if (req.escolaId) {
+            dados.vinculos = [{ escolaId: String(req.escolaId), cargo: 'professor' }];
+            dados.escola = String(req.escolaId);
+        } else {
+            delete dados.vinculos;
+        }
+
+        const teacher = new Professor(dados);
+        await teacher.save();
+        res.status(201).json({ success: true, data: teacher });
+    } catch (error) {
+        res.status(400).json({ success: false, error: error.message });
+    }
+};
+
+exports.update = async (req, res) => {
+    try {
+        const existente = await Professor.findOne({
+            $or: [{ _id: req.params.id }, { id: req.params.id }]
+        }).lean();
+        if (!existente) return res.status(404).json({ success: false, error: 'Professor não encontrado' });
+
+        // Multi-escola: nunca edita cadastro de outra escola
+        if (!pertenceAEscola(req, existente)) {
+            return res.status(403).json({ success: false, error: 'Este professor pertence a outra escola.' });
+        }
+
+        const perfil = String(req.user?.perfil || '').toLowerCase();
+        const ehGestao = PERFIS_GESTAO.includes(perfil);
+        const ehProprio = ehDonoDoCadastro(req.user, existente);
+
+        // SEGURANÇA: um docente só edita o PRÓPRIO cadastro, e apenas campos
+        // descritivos. Antes, req.body inteiro ia para o findOneAndUpdate — um
+        // professor reescrevia salaPrincipal/salasAdicionais/turmas/vinculos de
+        // qualquer registro e passava a enxergar toda a rede.
+        if (!ehGestao && !ehProprio) {
+            return res.status(403).json({ success: false, error: 'Você só pode editar o seu próprio cadastro.' });
+        }
+
+        const permitidos = ehGestao ? [...CAMPOS_PROPRIOS, ...CAMPOS_GESTAO] : CAMPOS_PROPRIOS;
+        const dados = {};
+        permitidos.forEach(campo => {
+            if (req.body[campo] !== undefined) dados[campo] = req.body[campo];
+        });
+
+        // Conversão automática de imagem para WebP
+        if (dados.foto && ImageProcessor.isBase64Image(dados.foto)) {
+            try {
+                if (!dados.foto.startsWith('data:image/webp')) {
+                    dados.foto = await ImageProcessor.convertToWebPBase64(dados.foto);
+                }
+            } catch (imgError) {
+                console.warn('Falha ao converter imagem do professor para WebP:', imgError);
+            }
+        }
+
+        // Só a gestão remonta as turmas (elas definem o escopo de acesso)
+        if (ehGestao && (dados.salaPrincipal !== undefined || dados.salasAdicionais !== undefined)) {
+            const principal = dados.salaPrincipal !== undefined ? dados.salaPrincipal : existente.salaPrincipal;
+            const adicionais = Array.isArray(dados.salasAdicionais)
+                ? dados.salasAdicionais
+                : (existente.salasAdicionais || []);
+            dados.turmas = principal && principal !== 'VARIADOS' ? [principal, ...adicionais] : adicionais;
+        }
+
+        // Vínculos de escola só mudam por admin — nem diretor move docente entre escolas pelo body
+        if (dados.vinculos !== undefined && perfil !== 'admin') delete dados.vinculos;
+
+        const teacher = await Professor.findOneAndUpdate(
+            { $or: [{ _id: req.params.id }, { id: req.params.id }] },
+            { $set: dados },
+            { new: true }
+        );
+        if (!teacher) return res.status(404).json({ success: false, error: 'Professor não encontrado' });
+        res.json({ success: true, data: teacher });
+    } catch (error) {
+        res.status(400).json({ success: false, error: error.message });
+    }
+};
+
+exports.delete = async (req, res) => {
+    try {
+        const existente = await Professor.findOne({
+            $or: [{ _id: req.params.id }, { id: req.params.id }]
+        }).lean();
+        if (!existente) return res.json({ success: true, message: 'Professor removido' });
+        if (!pertenceAEscola(req, existente)) {
+            return res.status(403).json({ success: false, error: 'Este professor pertence a outra escola.' });
+        }
+        await Professor.findOneAndDelete({ $or: [{ _id: req.params.id }, { id: req.params.id }] });
+        res.json({ success: true, message: 'Professor removido' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+/**
+ * GET /api/professores/status-online
+ * Lista a equipe escolar (professores e diretores) da escola ativa com foto,
+ * nome, cargo, escola, sala, mensagens não lidas e status online.
+ * Usado pelo card em tempo real dos painéis de diretor e professor.
+ */
+exports.statusOnline = async (req, res) => {
+    try {
+        const presence = require('../realtime/presence');
+        const Escola = require('../models/Escola');
+        const Diretor = require('../models/Diretor');
+        const ChatDireto = require('../models/ChatDireto');
+
+        const escopo = escopoEscola(req) || {};
+        const escolaId = req.escolaId;
+
+        // Busca professores da escola
+        const profs = await Professor.find(escopo)
+            .select('nome foto salaPrincipal idUsuario escola vinculos')
+            .lean();
+
+        // Busca diretores da escola
+        const escopoDiretores = escolaId ? { 'vinculos.escolaId': String(escolaId) } : {};
+        const diretores = await Diretor.find(escopoDiretores)
+            .select('nome foto idUsuario escola vinculos')
+            .lean();
+
+        // Contagem de mensagens não lidas enviadas para o usuário logado
+        const meuId = String(req.user?.id || req.user?._id || '');
+        const unreadsAgg = meuId ? await ChatDireto.aggregate([
+            { $match: { destinatarioId: meuId, lida: false } },
+            { $group: { _id: '$remetenteId', count: { $sum: 1 } } }
+        ]) : [];
+
+        const unreadsMap = new Map();
+        unreadsAgg.forEach(u => unreadsMap.set(String(u._id), u.count));
+
+        // Mapeia nomes das escolas
+        const ehObjectId = (v) => /^[0-9a-fA-F]{24}$/.test(String(v || ''));
+        const ids = new Set();
+        if (ehObjectId(escolaId)) ids.add(String(escolaId));
+        profs.forEach((p) => (p.vinculos || []).forEach((v) => {
+            if (ehObjectId(v?.escolaId)) ids.add(String(v.escolaId));
+        }));
+        diretores.forEach((d) => (d.vinculos || []).forEach((v) => {
+            if (ehObjectId(v?.escolaId)) ids.add(String(v.escolaId));
+        }));
+
+        const nomePorEscolaId = new Map();
+        if (ids.size > 0) {
+            const escolas = await Escola.find({ _id: { $in: [...ids] } }).select('nome').lean();
+            escolas.forEach((e) => nomePorEscolaId.set(String(e._id), e.nome));
+        }
+
+        const nomeDaEscola = (item) => {
+            const vinculos = Array.isArray(item.vinculos) ? item.vinculos : [];
+            const alvo = escolaId && vinculos.some((v) => String(v.escolaId) === String(escolaId))
+                ? String(escolaId)
+                : (vinculos[0]?.escolaId ? String(vinculos[0].escolaId) : null);
+            return (alvo && nomePorEscolaId.get(alvo)) || item.escola || '—';
+        };
+
+        // Presença agregada: 'online' | 'ausente' | 'offline', desde quando
+        // está online e último acesso conhecido (ver realtime/presence.js).
+        const presencaDe = (uid) => (
+            escolaId
+                ? presence.infoDe(escolaId, uid)
+                : { status: 'offline', online: false, onlineDesde: null, ultimoAcesso: null }
+        );
+
+        const listaProfs = profs.map((p) => {
+            const uid = p.idUsuario ? String(p.idUsuario) : String(p._id);
+            const pres = presencaDe(uid);
+            return {
+                id: String(p._id),
+                userId: uid,
+                nome: p.nome,
+                cargo: 'Professor',
+                foto: p.foto || null,
+                escola: nomeDaEscola(p),
+                sala: p.salaPrincipal || '—',
+                online: pres.online,
+                status: pres.status,
+                onlineDesde: pres.onlineDesde,
+                ultimoAcesso: pres.ultimoAcesso,
+                unreadsCount: unreadsMap.get(uid) || 0
+            };
+        });
+
+        const listaDiretores = diretores.map((d) => {
+            const uid = d.idUsuario ? String(d.idUsuario) : String(d._id);
+            const pres = presencaDe(uid);
+            return {
+                id: String(d._id),
+                userId: uid,
+                nome: d.nome,
+                cargo: 'Diretor',
+                foto: d.foto || null,
+                escola: nomeDaEscola(d),
+                sala: 'Direção Geral',
+                online: pres.online,
+                status: pres.status,
+                onlineDesde: pres.onlineDesde,
+                ultimoAcesso: pres.ultimoAcesso,
+                unreadsCount: unreadsMap.get(uid) || 0
+            };
+        });
+
+        // Junta Professores e Diretores
+        const lista = [...listaDiretores, ...listaProfs];
+
+        // Evita duplicatas se um diretor também tiver registro de professor
+        const vistos = new Set();
+        const listaUnica = lista.filter(item => {
+            if (!item.userId || vistos.has(item.userId)) return false;
+            vistos.add(item.userId);
+            return true;
+        });
+
+        // Ordena: Online primeiro, depois Diretor primeiro, depois alfabético
+        listaUnica.sort((a, b) => {
+            if (Number(b.online) !== Number(a.online)) return Number(b.online) - Number(a.online);
+            if (a.cargo !== b.cargo) return a.cargo === 'Diretor' ? -1 : 1;
+            return a.nome.localeCompare(b.nome, 'pt-BR');
+        });
+
+        res.json({
+            success: true,
+            data: listaUnica,
+            online: listaUnica.filter((p) => p.online).length,
+            total: listaUnica.length,
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};

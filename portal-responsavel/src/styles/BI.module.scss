@@ -1,0 +1,55 @@
+.heatmapSkeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.skeletonHeader {
+  height: 40px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%);
+  background-size: 200% 100%;
+  animation: skeletonPulse 1.5s infinite;
+  border-radius: 8px;
+}
+
+.skeletonRow {
+  height: 32px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.02) 25%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.02) 75%);
+  background-size: 200% 100%;
+  animation: skeletonPulse 1.5s infinite;
+  border-radius: 4px;
+}
+
+.insightsSkeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 10px 0;
+}
+
+.skeletonLine {
+  height: 14px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 7px;
+  animation: skeletonPulse 1.5s infinite;
+}
+
+.skeletonBadges {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.skeletonBadge {
+  width: 120px;
+  height: 32px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 8px;
+  animation: skeletonPulse 1.5s infinite;
+}
+
+@keyframes skeletonPulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

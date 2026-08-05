@@ -1,0 +1,476 @@
+/**
+ * mobile-scroll.css
+ * Sistema Escolar — Camada definitiva de rolagem e performance mobile.
+ *
+ * DEVE ser o ÚLTIMO stylesheet carregado em cada página: várias folhas
+ * (sidebar.css, dashboard-premium.css, tailwind-built.css, system-global.css)
+ * carregam depois de responsive-global.css e sobrescreviam as correções.
+ *
+ * Princípios:
+ *  1. UM único contêiner de rolagem vertical na página (a raiz). Nada de
+ *     scroll dentro de scroll sem necessidade.
+ *  2. Contêineres que realmente rolam (modal, drawer, painel, tabela) contêm
+ *     o próprio scroll — não empurram a página atrás deles.
+ *  3. Nada que repinte a cada frame durante o scroll no mobile.
+ *
+ * Reversível: remova o <link> desta folha para voltar ao comportamento antigo.
+ */
+
+/* =========================================================
+   1. O SCROLLER DA PÁGINA
+   ========================================================= */
+
+/* A raiz é a única a rolar verticalmente. `height: auto` é essencial:
+   qualquer `height: 100%` em html/body congela a página no tamanho da
+   viewport e o conteúdo abaixo fica inalcançável. */
+html {
+    height: auto;
+    /* Sem "smooth" no mobile: rolagem programática suave briga com o
+       gesto de toque e produz travadas. Reativado só em ponteiro fino. */
+    scroll-behavior: auto;
+}
+
+body {
+    height: auto;
+    /* min-height nunca em 100vh: no mobile 100vh = viewport COM a barra de
+       endereço escondida, então o body fica sempre mais alto que a área
+       visível e toda página ganha alguns pixels de rolagem fantasma. */
+    min-height: 100dvh;
+    /* Gesto vertical sempre disponível; zoom por pinça preservado. */
+    touch-action: pan-y pinch-zoom;
+}
+
+/* ANDROID (Chrome / MIUI Browser): sem isto, passar do topo dispara o
+   "puxar para atualizar". No meio de uma rolagem rápida ele engata sozinho,
+   a página congela e aparece o spinner — é o que mais parece travamento em
+   aparelhos Xiaomi. `contain` mata o pull-to-refresh e mantém a rolagem
+   normal (diferente de `none`, que também remove o efeito de fim de lista). */
+html {
+    overscroll-behavior-y: contain;
+}
+
+/* Rolagem suave só onde não há gesto de toque (mouse/trackpad). */
+@media (pointer: fine) {
+    html {
+        scroll-behavior: smooth;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+}
+
+/* Wrappers de página não podem virar scroller próprio nem travar a altura.
+   Este é o padrão que mais quebra rolagem no mobile: um .dashboard-page com
+   height:100vh + overflow:hidden engole todo o conteúdo abaixo da dobra. */
+@media (max-width: 1024px) {
+    .dashboard-page,
+    .dashboard-container,
+    .page-wrap,
+    .content-wrap,
+    .sec-page,
+    .main-content,
+    .app-shell {
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+}
+
+/* =========================================================
+   2. CONTÊINERES QUE REALMENTE ROLAM
+   Inércia nativa + o scroll não "vaza" para a página atrás
+   (scroll chaining), que é o que causa a sensação de engasgo
+   ao chegar no fim de um modal ou painel.
+   ========================================================= */
+.modal-content,
+.modal-body,
+.sidebar-nav,
+.feed-list,
+.chatbot-body,
+.sd-body,
+.settings-drawer,
+#notif-panel,
+#notif-list,
+#voice-settings-panel,
+.table-responsive,
+.table-wrapper,
+.tabela-scroll,
+.pa-modal-content,
+[data-scrollable] {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+
+/* Barras de rolagem discretas nos painéis internos (não afetam o gesto). */
+@media (pointer: coarse) {
+    .modal-body::-webkit-scrollbar,
+    .sidebar-nav::-webkit-scrollbar,
+    #notif-list::-webkit-scrollbar,
+    .sd-body::-webkit-scrollbar {
+        width: 3px;
+        height: 3px;
+    }
+}
+
+/* =========================================================
+   3. MODAIS, DRAWERS E PAINÉIS NO MOBILE
+   Regra: o overlay centraliza e rola; o cartão tem altura
+   máxima em dvh e só o corpo rola. Nunca dois níveis de
+   rolagem vertical no mesmo modal.
+   ========================================================= */
+@media (max-width: 768px) {
+    .modal,
+    .modal-overlay,
+    .pa-modal-overlay {
+        /* dvh acompanha a barra de endereço — com 100vh o rodapé do modal
+           fica embaixo da barra do navegador e o botão some. */
+        height: 100dvh;
+        max-height: 100dvh;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
+        padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+    }
+
+    .modal-content,
+    .pa-modal-content {
+        max-height: calc(100dvh - 1rem);
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Cabeçalho e rodapé fixos, só o miolo rola: evita o modal inteiro
+       rolar junto e o usuário perder o botão de fechar. */
+    .modal-header,
+    .modal-footer {
+        flex: 0 0 auto;
+    }
+
+    .modal-body {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        min-height: 0; /* sem isso o flex item não encolhe e não rola */
+    }
+
+    /* Painel de notificações e drawer de ajustes viram folha inferior. */
+    #notif-panel {
+        max-height: 75dvh !important;
+        overflow-y: auto;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    .settings-drawer {
+        max-height: 100dvh;
+        overflow-y: auto;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+}
+
+/* Sidebar mobile: o menu em si rola, a página atrás fica parada. */
+@media (max-width: 768px) {
+    .sidebar {
+        height: 100dvh;
+        max-height: 100dvh;
+    }
+
+    .sidebar-nav {
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    }
+}
+
+/* =========================================================
+   4. TRAVA DE ROLAGEM (modal/menu aberto)
+   Aplicada por js/scroll-lock.js. `overflow: hidden` no body
+   NÃO trava o scroll no iOS Safari — só position:fixed trava.
+   O deslocamento salvo é reposto no unlock, sem pulo.
+   ========================================================= */
+html.scroll-locked {
+    overflow: hidden;
+    /* Impede o "rubber band" da página raiz por trás do overlay. */
+    overscroll-behavior: none;
+}
+
+html.scroll-locked body {
+    position: fixed;
+    top: var(--scroll-lock-top, 0px);
+    left: 0;
+    right: 0;
+    width: 100%;
+    overflow: hidden;
+}
+
+/* =========================================================
+   5. TABELAS
+   Tabela larga rola na horizontal, mas o deslize VERTICAL
+   precisa continuar rolando a página — senão o dedo "cola"
+   dentro da tabela e a página trava.
+   ========================================================= */
+@media (max-width: 640px) {
+    table:not(.no-responsive),
+    .table-responsive,
+    .table-wrapper,
+    .tabela-scroll {
+        touch-action: pan-x pan-y;
+        overscroll-behavior-x: contain;
+        overscroll-behavior-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* Faixas de filtros/chips que rolam na horizontal: mesma regra. */
+.feed-filters-bar,
+.mn-cat-filters,
+.chips-row,
+.tabs-scroll {
+    touch-action: pan-x pan-y;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* =========================================================
+   6. RESPOSTA AO TOQUE
+   ========================================================= */
+@media (pointer: coarse) {
+    /* Remove o atraso de ~300ms do duplo-toque em elementos interativos. */
+    a,
+    button,
+    input,
+    select,
+    textarea,
+    label,
+    [role="button"],
+    .btn,
+    .card,
+    .dashboard-card,
+    .sidebar-item {
+        touch-action: manipulation;
+    }
+
+    /* Flash cinza do Android no toque. */
+    a,
+    button,
+    [role="button"],
+    .btn {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    /* iOS dá zoom automático em campo com fonte < 16px ao focar, e o
+       zoom desalinha a página inteira. */
+    input,
+    select,
+    textarea {
+        font-size: max(16px, 1rem);
+    }
+}
+
+/* =========================================================
+   7. PERFORMANCE — nada repinta durante o scroll
+   ========================================================= */
+@media (max-width: 768px) {
+    /* backdrop-filter é o maior vilão: recompõe a camada a cada frame.
+       Reforçado aqui porque tailwind-built.css e system-global.css
+       carregam depois de responsive-global.css. */
+    *,
+    *::before,
+    *::after {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
+    /* O seletor universal acima NÃO basta sozinho: parallax-glass.css
+       declara o blur com !important em seletores de CLASSE, e entre duas
+       declarações !important vence a de maior especificidade — .navbar
+       (0,1,0) ganha de * (0,0,0). Por isso os mesmos seletores precisam
+       ser repetidos aqui com a especificidade equivalente; como esta folha
+       carrega por último, o empate é decidido a favor dela.
+       (parallax-glass.css "reduzia" para blur(12–24px) no mobile, o que
+       num Redmi a DPR 3 ainda custa caro em cada quadro de rolagem.) */
+    .login-card,
+    .glass-card,
+    .glass-card-md,
+    .modal-content,
+    .toast,
+    .sidebar,
+    .app-sidebar,
+    .header,
+    .app-header,
+    .navbar,
+    .top-nav {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
+    /* Marca d'água NanDev: um cubo 3D em rotação com partículas orbitando,
+       varredura holográfica e linhas animadas — ~12 animações infinitas
+       rodando em TODA página, sem parar, inclusive durante a rolagem.
+       Em aparelhos Xiaomi de linha básica isso concorre direto com o
+       scroll. A marca continua visível, só deixa de animar.
+       (watermark.css só as desligava em prefers-reduced-motion.) */
+    .nandev-watermark *,
+    .nandev-watermark *::before,
+    .nandev-watermark *::after {
+        animation: none !important;
+    }
+
+    /* Animações decorativas em loop: paradas. Elas repintam mesmo fora
+       da tela e disputam GPU com o scroll. */
+    .orb,
+    .gradient-orb,
+    [class*="orb-"],
+    .dashboard-bg,
+    .login-background,
+    .page-bg,
+    .parallax-layer,
+    .parallax-grid,
+    .glow,
+    .aurora,
+    .particles,
+    .marquee-inner {
+        animation: none !important;
+    }
+
+    /* Canvas de fundo (three.js) não tem função no mobile e custa GPU
+       + bateria continuamente. */
+    #bg-canvas,
+    canvas.background-fx {
+        display: none !important;
+    }
+
+    /* Sombras muito difusas são caras de rasterizar em cada scroll. */
+    .card,
+    .dashboard-card,
+    .modal-content,
+    .feat-card,
+    .portal-card,
+    .test-card {
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+    }
+
+    /* `will-change` permanente mantém camadas de composição vivas e come
+       memória de vídeo — no mobile isso piora o scroll em vez de ajudar. */
+    * {
+        will-change: auto !important;
+    }
+
+    /* position: fixed decorativo vira estático: cada elemento fixo obriga
+       o navegador a repintar durante o scroll. */
+    .parallax-layer,
+    .decorative-fixed {
+        position: absolute !important;
+    }
+
+    /* Isola cartões para o navegador não recalcular layout da página
+       inteira quando um deles muda. */
+    .dashboard-card,
+    .card,
+    .feed-item,
+    .notif-item {
+        contain: layout style paint;
+    }
+
+    /* Transições longas parecem travamento em tela pequena. */
+    .card,
+    .dashboard-card,
+    .btn,
+    .sidebar-item,
+    .feed-item {
+        transition-duration: 0.15s !important;
+    }
+}
+
+/* Em telas pequenas, hover fica "grudado" após o toque. */
+@media (hover: none) {
+    .card:hover,
+    .dashboard-card:hover,
+    .portal-card:hover,
+    .feat-card:hover,
+    .test-card:hover,
+    .btn:hover,
+    .listen-content-btn:hover {
+        transform: none !important;
+    }
+}
+
+/* =========================================================
+   7.5 ITENS DE GRID/FLEX QUE NÃO ENCOLHEM
+   Um item de grid/flex tem min-width: auto por padrão, então ele
+   nunca fica menor que seu conteúdo e estoura a tela em vez de
+   quebrar linha. Aplicado aos contêineres de layout do projeto.
+   ========================================================= */
+@media (max-width: 768px) {
+    .dui-alert,
+    .main-grid > *,
+    .dashboard-grid > *,
+    .stats-grid > *,
+    .cards-grid > *,
+    .premium-kpis > * {
+        min-width: 0;
+    }
+}
+
+/* =========================================================
+   7.6 ANDROID / XIAOMI (MIUI · HyperOS)
+   Aparelhos Xiaomi de linha média (Redmi Note, POCO) juntam
+   tela de 120Hz com GPU modesta (Adreno 610/Mali-G52): o
+   orçamento por quadro cai para ~8ms, então qualquer pintura
+   extra durante a rolagem vira engasgo visível.
+   ========================================================= */
+@media (max-width: 900px) {
+    /* Só transform e opacity são compostos na GPU. Animar largura, altura,
+       top/left ou box-shadow força recálculo de layout/pintura a cada
+       quadro — em 120Hz isso não fecha o orçamento. */
+    .card,
+    .dashboard-card,
+    .feed-item,
+    .sidebar-item,
+    .btn,
+    .modal-content,
+    .settings-drawer,
+    .sidebar {
+        transition-property: transform, opacity;
+    }
+
+    /* Sombras com raio grande são caras de rasterizar em telas de alta
+       densidade (Xiaomi costuma usar DPR 2.75–3): a área borrada cresce
+       com o quadrado do raio em pixels físicos. */
+    .modal-content,
+    .settings-drawer,
+    .sidebar,
+    #notif-panel {
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+    }
+
+    /* Barra de gestos do MIUI/HyperOS: sem isto, o rodapé da página e os
+       botões de ação de modais ficam embaixo da "pílula" de navegação. */
+    body {
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    .modal-footer,
+    .settings-drawer,
+    #notif-panel {
+        padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    }
+}
+
+/* =========================================================
+   8. SEGURANÇA CONTRA ALTURA TRAVADA
+   Último recurso: se alguma folha antiga ainda deixar um
+   ancestral com overflow:hidden + altura fixa, o conteúdo
+   fica inalcançável. Estes seletores são os casos reais
+   encontrados no projeto.
+   ========================================================= */
+@media (max-width: 768px) {
+    body > .container,
+    body > main,
+    body > .wrapper {
+        overflow: visible !important;
+        height: auto !important;
+    }
+}

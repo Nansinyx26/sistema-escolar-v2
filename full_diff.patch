@@ -1,0 +1,917 @@
+diff --git a/backend/src/app.js b/backend/src/app.js
+index 431e490..dc3dceb 100644
+--- a/backend/src/app.js
++++ b/backend/src/app.js
+@@ -33,20 +33,16 @@ app.set('trust proxy', 1);
+ 
+ // Middleware de Segurança (Helmet)
+ // ============================================
+-// NOTA DE SEGURANÇA (Atualizado — Roadmap Backlog #1):
+-// - 'unsafe-inline' REMOVIDO de script-src e script-src-attr.
+-//   Todos os atributos onclick= foram migrados para addEventListener em
+-//   arquivos separados (js/events/*.js), viabilizando esta CSP estrita.
+-// - 'unsafe-inline' é mantido em style-src pois o frontend usa estilos inline
+-// - 'unsafe-eval' não existe — foi mantido removido
++// TODO(security): migrar os poucos <script> inline restantes do frontend
++// legado para arquivos externos ou nonces por rota, permitindo endurecer
++// ainda mais a CSP sem exceções adicionais.
+ // ============================================
+ app.use(helmet({
+     contentSecurityPolicy: {
+         directives: {
+             "default-src": ["'self'"],
+-            // Adicionado 'unsafe-inline' para permitir funcionamento correto do Google Identity e scripts do portal em produção
+-            "script-src": ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "unpkg.com", "cdnjs.cloudflare.com", "cdn.tailwindcss.com", "https://accounts.google.com"],
+-            "script-src-attr": ["'unsafe-inline'"], // Permite atributos inline de forma compatível
++            "script-src": ["'self'", "cdn.jsdelivr.net", "unpkg.com", "cdnjs.cloudflare.com", "cdn.tailwindcss.com", "https://accounts.google.com"],
++            "script-src-attr": ["'none'"],
+             "style-src": ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "fonts.googleapis.com", "unpkg.com", "cdnjs.cloudflare.com", "https://accounts.google.com"],
+             "font-src": ["'self'", "cdn.jsdelivr.net", "fonts.gstatic.com", "data:"],
+             // Google profile photos (lh3.googleusercontent.com) + blobs/data URIs
+@@ -187,49 +183,47 @@ app.use('/api', apiRoutes);
+ // ============================================
+ // SERVIR ARQUIVOS ESTÁTICOS — RESTRITO
+ // ============================================
+-// SEGURANÇA: Serve apenas arquivos públicos do frontend.
+-// Antes servia toda a raiz do projeto, expondo .env.example, README, etc.
+-// Agora usa uma lista explícita de extensões e pastas permitidas.
+-const frontendPath = path.join(__dirname, '../../');
+-
+-// Bloqueia acesso a arquivos sensíveis
+-app.use((req, res, next) => {
+-    const blockedPatterns = [
+-        /\.env/i,
+-        /\.git/i,
+-        /\.npmrc/i,
+-        /node_modules/i,
+-        /package\.json/i,
+-        /package-lock\.json/i,
+-        /\.md$/i,
+-        /\.py$/i,
+-        /\.yml$/i,
+-        /\.yaml$/i,
+-        /backend\//i,
+-        /scratch\//i,
+-        /\.claude\//i,
+-        /scripts\//i
+-    ];
+-
+-    if (blockedPatterns.some(pattern => pattern.test(req.path))) {
+-        return res.status(403).json({ success: false, error: 'Acesso negado' });
++const frontendRootPath = path.join(__dirname, '../../');
++const staticDirectories = [
++    'css',
++    'js',
++    'img',
++    'html',
++    'detalhes',
++    'direcao',
++    'portal-responsavel/dist'
++];
++const staticFiles = [
++    'index.html',
++    'manifest.json',
++    'sw.js',
++    'service-worker.js',
++    'favicon.ico',
++    'favicon.svg'
++];
++const staticOptions = {
++    setHeaders: (res, filePath) => {
++        if (filePath.endsWith('.woff2')) res.setHeader('Content-Type', 'font/woff2');
++        if (filePath.endsWith('.woff')) res.setHeader('Content-Type', 'font/woff');
+     }
+-    next();
++};
++
++staticDirectories.forEach((directory) => {
++    app.use(`/${directory}`, express.static(path.join(frontendRootPath, directory), staticOptions));
+ });
+ 
+-app.use(express.static(frontendPath, {
+-  setHeaders: (res, path) => {
+-    if (path.endsWith('.woff2')) res.setHeader('Content-Type', 'font/woff2');
+-    if (path.endsWith('.woff'))  res.setHeader('Content-Type', 'font/woff');
+-  }
+-}));
++staticFiles.forEach((file) => {
++    app.get(`/${file}`, (req, res) => {
++        res.sendFile(path.join(frontendRootPath, file));
++    });
++});
+ 
+ // Catch-all para SPA: Qualquer rota não-API retorna o index.html
+ app.get('*', (req, res) => {
+     if (req.path.startsWith('/api')) {
+         return res.status(404).json({ success: false, error: 'Endpoint não encontrado' });
+     }
+-    res.sendFile(path.join(frontendPath, 'index.html'));
++    res.sendFile(path.join(frontendRootPath, 'index.html'));
+ });
+ 
+ // Tratamento de Erro (Opaco em Produção — não vaza stack traces)
+diff --git a/backend/src/controllers/IAController.js b/backend/src/controllers/IAController.js
+index 8c7d458..2f050ce 100644
+--- a/backend/src/controllers/IAController.js
++++ b/backend/src/controllers/IAController.js
+@@ -1,315 +1,13 @@
+-const Aluno = require('../models/Aluno');
+-const Nota = require('../models/Nota');
+-const Falta = require('../models/Falta');
+-const Professor = require('../models/Professor');
+-const Comunicado = require('../models/Comunicado');
+-const GradeHoraria = require('../models/GradeHoraria');
+-const PedagogicoService = require('../services/PedagogicoService');
+-const logger = require('../utils/logger');
+-const ChatMensagem = require('../models/ChatMensagem');
+-const voiceService = require('../services/voiceService');
+-const ChatbotService = require('../services/ChatbotService');
+-
+-// ─── Helpers de dados e Processamento ──────────────────────────────────────────
+-
+-/** 
+- * Verifica se a mensagem contém pelo menos uma palavra de um conjunto de termos
+- */
+-function matchKeywords(msg, keywords) {
+-    return keywords.some(k => msg.includes(k.toLowerCase()));
+-}
+-
+-const subjectTranslations = {
+-    'Math': 'Matemática',
+-    'Physics': 'Física',
+-    'Chemistry': 'Química',
+-    'History': 'História',
+-    'Geography': 'Geografia',
+-    'English': 'Inglês',
+-    'Biology': 'Biologia',
+-    'Portuguese': 'Português',
+-    'Arts': 'Artes',
+-    'Science': 'Ciências'
+-};
+-
+-function translateSubject(s) {
+-    return subjectTranslations[s] || s;
+-}
+-
+-/**
+- * Detecta risco de abandono (evasão) baseado em padrões de faltas
+- */
+-async function detectDropoutRisk(alunoId) {
+-    const faltas = await Falta.find({
+-        $or: [{ aluno: String(alunoId) }, { aluno: alunoId }]
+-    }).sort({ data: -1 }).limit(10).lean();
+-
+-    if (faltas.length === 0) return { risk: 'baixo', reason: 'Sem faltas registradas' };
+-
+-    const consecutivas = faltas.slice(0, 3).every(f => !f.presente);
+-    if (consecutivas && faltas.length >= 3) {
+-        return { risk: 'crítico', reason: '3 faltas consecutivas detectadas nos últimos dias' };
+-    }
+-
+-    const totalFaltas = faltas.filter(f => !f.presente).length;
+-    const frequencia = ((faltas.length - totalFaltas) / faltas.length) * 100;
+-
+-    if (frequencia < 70) return { risk: 'alto', reason: `Frequência recente de ${frequencia.toFixed(0)}% está muito baixa` };
+-    if (frequencia < 85) return { risk: 'médio', reason: 'Frequência em declínio gradual' };
+-
+-    return { risk: 'baixo', reason: 'Frequência regular' };
+-}
+-
+-/**
+- * IAController - Inteligência Pedagógica (Redesign 3.0)
+- */
+-
+-exports.analisarDesempenho = async(req, res) => {
+-    try {
+-        const { alunoId } = req.params;
+-        const al = await Aluno.findById(alunoId).lean();
+-        if (!al) return res.status(404).json({ success: false, error: 'Aluno não encontrado' });
+-
+-        const [notas, faltas] = await Promise.all([
+-            Nota.find({ alunoId }).sort({ data: 1 }).lean(),
+-            Falta.find({ aluno: alunoId }).lean()
+-        ]);
+-
+-        const notasNumericas = notas.map(n => parseFloat(n.nota)).filter(v => !isNaN(v));
+-        let tendencia = 'estavel';
+-        let status = 'verde';
+-        let insight = 'Desempenho dentro do esperado.';
+-
+-        if (notasNumericas.length >= 2) {
+-            const recentes = notasNumericas.slice(-2);
+-            const anteriores = notasNumericas.slice(0, -2);
+-            const mediaRecente = recentes.reduce((a, b) => a + b, 0) / recentes.length;
+-            const mediaAnterior = anteriores.length > 0 ? (anteriores.reduce((a, b) => a + b, 0) / anteriores.length) : mediaRecente;
+-
+-            if (mediaRecente < mediaAnterior - 1.5) { tendencia = 'queda';
+-                status = 'vermelho';
+-                insight = 'Queda significativa de rendimento.'; } else if (mediaRecente < mediaAnterior - 0.5) { tendencia = 'alerta';
+-                status = 'amarelo';
+-                insight = 'Leve queda de rendimento.'; } else if (mediaRecente > mediaAnterior + 0.5) { tendencia = 'subida';
+-                insight = 'Evolução positiva detectada!'; }
+-        }
+-
+-        const totalAulas = faltas.length;
+-        const totalFaltas = faltas.filter(f => !f.presente).length;
+-        const frequencia = totalAulas > 0 ? ((totalAulas - totalFaltas) / totalAulas) * 100 : 100;
+-
+-        if (frequencia < 75) { status = 'vermelho';
+-            insight += ' Alerta: Frequência crítica (<75%).'; } else if (frequencia < 85) { if (status !== 'vermelho') status = 'amarelo';
+-            insight += ' Frequência em observação.'; }
+-
+-        const prediction = await PedagogicoService.predictFinalGrade(alunoId);
+-
+-        res.json({
+-            success: true,
+-            data: {
+-                aluno: al.nome,
+-                status,
+-                tendencia,
+-                metrics: {
+-                    mediaGeral: notasNumericas.length > 0 ? (notasNumericas.reduce((a, b) => a + b, 0) / notasNumericas.length).toFixed(1) : '-',
+-                    frequencia: `${frequencia.toFixed(1)}%`,
+-                    prediction: prediction.prediction
+-                },
+-                analise: insight,
+-                sugestao: status === 'vermelho' ? 'Reunião com responsáveis e reforço.' : 'Monitoramento contínuo.'
+-            }
+-        });
+-    } catch (error) {
+-        res.status(500).json({ success: false, error: error.message });
+-    }
+-};
+-
+-/**
+- * Geração de Insights Globais para o Dashboard BI
+- */
+-exports.getGlobalInsights = async(req, res) => {
+-    try {
+-        const insights = await PedagogicoService.getGlobalInsights();
+-        res.json({ success: true, data: insights });
+-    } catch (error) {
+-        logger.error(`[IAController] Error in getGlobalInsights: ${error.message}`);
+-        res.status(500).json({ success: false, error: 'Erro ao gerar insights pedagógicos.' });
+-    }
+-};
+-
+-/**
+- * Chatbot Inteligente - Integrado com Gemini
+- */
+-exports.chatbot = async(req, res) => {
+-    try {
+-        let { message, alunoId } = req.body;
+-        const perfil = (req.user?.perfil || '').toLowerCase();
+-        const userId = req.user?.id || req.user?._id;
+-        const nomeUsuario = req.user?.nome || 'Usuário';
+-
+-        // 16.1 — validate message
+-        if (!message || !message.trim()) {
+-            return res.status(400).json({ success: false, error: 'Mensagem vazia.' });
+-        }
+-
+-        // 16.2 — validate perfil
+-        if (!perfil) {
+-            return res.status(403).json({ success: false, error: 'Perfil de usuário não autorizado.' });
+-        }
+-
+-        // 16.4 — truncate message if > 1000 chars
+-        if (message.length > 1000) {
+-            logger.warn(`[Chatbot] Mensagem truncada de ${message.length} para 1000 chars`);
+-            message = message.substring(0, 1000);
+-        }
+-
+-        // 17.1 — delegate to ChatbotService
+-        const { response, alunoId: resolvedAlunoId, options } = await ChatbotService.process({
+-            message,
+-            alunoId,
+-            perfil,
+-            userId,
+-            nomeUsuario,
+-            userEmail: req.user?.email,
+-        });
+-        logger.warn(`[IAController] response="${response?.substring(0,60)}" options=${JSON.stringify(options)}`);
+-
+-        // 15.1 — persist history (silent failure per 15.2)
+-        const perfilParaSalvar = ['admin', 'diretor', 'professor', 'responsavel'].includes(perfil) ?
+-            perfil :
+-            'admin';
+-        await ChatMensagem.create({
+-            usuarioId: String(userId),
+-            usuarioPerfil: perfilParaSalvar,
+-            usuarioNome: nomeUsuario,
+-            alunoId: resolvedAlunoId || null,
+-            pergunta: message,
+-            resposta: response,
+-        }).catch(e => logger.warn(`[Chatbot] Erro ao salvar histórico: ${e.message}`));
+-
+-        // 17.1 — return response (inclui options quando houver ambiguidade)
+-        return res.json({ success: true, data: { response, alunoId: resolvedAlunoId, options: options || null } });
+-
+-    } catch (error) {
+-        // 16.3 — catch-all; no stack trace exposed
+-        logger.error(`[Chatbot] Erro: ${error.message}`);
+-        return res.status(500).json({ success: false, error: 'Não foi possível processar sua pergunta. Tente novamente.' });
+-    }
+-};
+-
+-// ─── GERAÇÃO COM GEMINI ───────────────────────────────────────────────────────
+-
+-exports.gerarPlanoAula = async(req, res) => {
+-    try {
+-        const { tema, materia, ano, objetivos } = req.body;
+-        if (!tema || !materia || !ano) return res.status(400).json({ success: false, error: 'Campos obrigatórios ausentes.' });
+-
+-        const prompt = `Gere um plano de aula em HTML (sem tags body/html) para: ${materia}, ${ano}, Tema: ${tema}. Objetivos: ${objetivos || 'Gerais'}. Inclua Metodologia, Recursos e Avaliação.`;
+-        const planoHtml = await voiceService.generateInsightText(prompt);
+-        res.json({ success: true, data: { planoHtml } });
+-    } catch (error) {
+-        res.status(500).json({ success: false, error: error.message });
+-    }
+-};
+-
+-exports.gerarPlanoEstudo = async(req, res) => {
+-    try {
+-        const { alunoId, objetivos } = req.body;
+-        const al = await Aluno.findById(alunoId).lean();
+-        if (!al) return res.status(404).json({ success: false, error: 'Aluno não encontrado' });
+-
+-        const prediction = await PedagogicoService.predictFinalGrade(alunoId);
+-        const prompt = `Crie um Plano de Estudos Individualizado (PEI) em HTML para o aluno ${al.nome} (${al.turma}). Objetivos: ${objetivos || 'Melhorar notas'}. Predição de nota: ${prediction.prediction || 'N/A'}.`;
+-
+-        const planoHtml = await voiceService.generateInsightText(prompt);
+-        res.json({ success: true, data: { planoHtml } });
+-    } catch (error) {
+-        res.status(500).json({ success: false, error: error.message });
+-    }
+-};
+-
+-/**
+- * Analisar desempenho global de uma turma (Diretor/Admin)
+- */
+-exports.analisarTurma = async(req, res) => {
+-    try {
+-        const { turmaId } = req.params;
+-
+-        // 1. Coleta dados da turma
+-        const alunos = await Aluno.find({ turmaId }).select('_id nome').lean();
+-        if (alunos.length === 0) return res.status(404).json({ success: false, error: 'Nenhum aluno encontrado nesta turma.' });
+-
+-        const alunoIds = alunos.map(a => String(a._id));
+-
+-        const [notas, faltas] = await Promise.all([
+-            Nota.find({ alunoId: { $in: alunoIds } }).lean(),
+-            Falta.find({ aluno: { $in: alunoIds } }).lean()
+-        ]);
+-
+-        const totalNotas = notas.length;
+-        const mediaGeral = totalNotas > 0 ? (notas.reduce((acc, n) => acc + (parseFloat(n.nota) || 0), 0) / totalNotas) : 0;
+-
+-        const totalAulas = faltas.length;
+-        const totalFaltas = faltas.filter(f => !f.presente).length;
+-        const frequencia = totalAulas > 0 ? (((totalAulas - totalFaltas) / totalAulas) * 100) : 100;
+-
+-        // 2. prompt para Gemini
+-        const prompt = `Analise a Turma ${turmaId}: Média Geral ${mediaGeral.toFixed(1)}, Frequência ${frequencia.toFixed(1)}%. Gere um insight pedagógico curto (máx 3 frases) em Português-BR.`;
+-        const insight = await voiceService.generateInsightText(prompt);
+-
+-        res.json({
+-            success: true,
+-            data: {
+-                turmaId,
+-                metrics: {
+-                    mediaGeral: mediaGeral.toFixed(1),
+-                    frequencia: `${frequencia.toFixed(1)}%`,
+-                    totalAlunos: alunos.length
+-                },
+-                insight
+-            }
+-        });
+-    } catch (error) {
+-        logger.error(`[IAController] Erro em analisarTurma: ${error.message}`);
+-        res.status(500).json({ success: false, error: 'Erro ao analisar a turma.' });
+-    }
+-};
+-
+-/**
+- * Gera dados para o Mapa de Calor (Agregação Global)
+- * Retorna: [{ materia, turma, media, totalNotas }]
+- */
+-exports.gerarMapaCalor = async(req, res) => {
+-    try {
+-        const pipeline = [
+-            // Garante que nota seja numérica
+-            { $addFields: { notaNum: { $toDouble: "$nota" } } },
+-            // Remove documentos onde a conversão falhou (nota inválida)
+-            { $match: { notaNum: { $ne: null }, materiaId: { $exists: true, $ne: null }, turmaId: { $exists: true, $ne: null } } },
+-            {
+-                $group: {
+-                    _id: { materia: "$materiaId", turma: "$turmaId" },
+-                    media: { $avg: "$notaNum" },
+-                    totalNotas: { $sum: 1 }
+-                }
+-            },
+-            { $sort: { "_id.turma": 1, "_id.materia": 1 } }
+-        ];
+-
+-        const aggregatedData = await Nota.aggregate(pipeline);
+-
+-        // Normaliza para o formato esperado pelo frontend
+-        const data = aggregatedData.map(item => ({
+-            materia: item._id.materia,
+-            turma: item._id.turma,
+-            media: item.media != null ? parseFloat(item.media.toFixed(2)) : 0,
+-            totalNotas: item.totalNotas || 0
+-        }));
+-
+-        logger.info(`[MapaCalor] ${data.length} combinações matéria×turma retornadas.`);
+-        res.json({ success: true, data });
+-    } catch (error) {
+-        logger.error(`[IAController] Erro em gerarMapaCalor: ${error.message}`);
+-        res.status(500).json({ success: false, error: 'Erro ao gerar mapa de calor.' });
+-    }
++const ChatbotController = require('./ChatbotController');
++const PedagogicoController = require('./PedagogicoController');
++const MapaCalorController = require('./MapaCalorController');
++
++module.exports = {
++    chatbot: ChatbotController.chatbot,
++    analisarDesempenho: PedagogicoController.analisarDesempenho,
++    getGlobalInsights: PedagogicoController.getGlobalInsights,
++    gerarPlanoAula: PedagogicoController.gerarPlanoAula,
++    gerarPlanoEstudo: PedagogicoController.gerarPlanoEstudo,
++    analisarTurma: PedagogicoController.analisarTurma,
++    gerarMapaCalor: MapaCalorController.gerarMapaCalor,
+ };
+\ No newline at end of file
+diff --git a/backend/src/index.js b/backend/src/index.js
+index dd5a3c6..bb37e4e 100644
+--- a/backend/src/index.js
++++ b/backend/src/index.js
+@@ -98,40 +98,35 @@ const startServer = async () => {
+                     || socket.handshake.query?.token;
+ 
+                 if (!token) {
+-                    // Permite conexão anônima mas sem rooms privadas
+-                    socket.user = null;
+-                    return next();
++                    return next(new Error('Authentication required'));
+                 }
+ 
+                 const decoded = jwt.verify(token, JWT_SECRET);
+                 socket.user = decoded;
+                 next();
+             } catch (err) {
+-                // Permite conexão mas sem auth (para landing page etc)
+-                socket.user = null;
+-                next();
++                next(new Error('Invalid authentication token'));
+             }
+         });
+ 
+         io.on('connection', (socket) => {
+             const user = socket.user;
+-            if (user) {
+-                // Entra na sala do usuário individual
+-                socket.join(`user:${user.id || user._id}`);
+-                // Entra na sala do perfil (professor, diretor, admin, responsavel)
+-                socket.join(`role:${user.perfil}`);
+-                logger.debug(`🔌 [Socket.IO] ${user.nome || 'Usuário'} conectado`, { perfil: user.perfil, room: `user:${user.id || user._id}` });
+-            }
++            // Entra na sala do usuário individual
++            socket.join(`user:${user.id || user._id}`);
++            // Entra na sala do perfil (professor, diretor, admin, responsavel)
++            socket.join(`role:${user.perfil}`);
++            logger.debug(`🔌 [Socket.IO] ${user.nome || 'Usuário'} conectado`, { perfil: user.perfil, room: `user:${user.id || user._id}` });
+ 
+             // Evento: usuário quer entrar em sala de mensagem específica
+             socket.on('join:message', (messageId) => {
++                if (!socket.user) {
++                    return;
++                }
+                 socket.join(`message:${messageId}`);
+             });
+ 
+             socket.on('disconnect', () => {
+-                if (user) {
+-                    logger.debug(`❌ [Socket.IO] ${user.nome || 'Usuário'} desconectado`);
+-                }
++                logger.debug(`❌ [Socket.IO] ${user.nome || 'Usuário'} desconectado`);
+             });
+         });
+ 
+diff --git a/backend/src/middleware/csrfProtection.js b/backend/src/middleware/csrfProtection.js
+index cc51073..67b9846 100644
+--- a/backend/src/middleware/csrfProtection.js
++++ b/backend/src/middleware/csrfProtection.js
+@@ -67,11 +67,11 @@ function csrfValidator(req, res, next) {
+         return next();
+     }
+ 
+-    // ── Bypass em testes e desenvolvimento local ─────────────────────────────
+-    // Em testes Jest e no desenvolvimento local (cross-origin Vite), 
+-    // desabilitamos a validação CSRF para permitir a comunicação local.
+-    // A proteção permanece 100% ativa em ambiente de Produção.
+-    if (process.env.NODE_ENV !== 'production') {
++
++    // Em testes automatizados o CSRF pode ser desabilitado para simplificar fixtures.
++    // Em desenvolvimento e produ��o a prote��o permanece ativa.
++
++    if (process.env.NODE_ENV === 'test') {
+         return next();
+     }
+ 
+@@ -91,3 +91,6 @@ function csrfValidator(req, res, next) {
+ }
+ 
+ module.exports = { csrfCookieSetter, csrfValidator };
++
++
++
+diff --git a/backend/src/routes/ia.js b/backend/src/routes/ia.js
+index 22b2251..9707f63 100644
+--- a/backend/src/routes/ia.js
++++ b/backend/src/routes/ia.js
+@@ -1,31 +1,33 @@
+ const express = require('express');
+ const router = express.Router();
+-const IAController = require('../controllers/IAController');
++const ChatbotController = require('../controllers/ChatbotController');
++const PedagogicoController = require('../controllers/PedagogicoController');
++const MapaCalorController = require('../controllers/MapaCalorController');
+ const RelatorioController = require('../controllers/RelatorioController');
+ const authorize = require('../middleware/authorize');
+ 
+ // Rota de análise preditiva do aluno
+-router.get('/analise/:alunoId', authorize(['diretor', 'professor', 'admin']), IAController.analisarDesempenho);
++router.get('/analise/:alunoId', authorize(['diretor', 'professor', 'admin']), PedagogicoController.analisarDesempenho);
+ 
+ // Rota de análise global da turma
+-router.get('/turma/:turmaId', authorize(['diretor', 'admin']), IAController.analisarTurma);
++router.get('/turma/:turmaId', authorize(['diretor', 'admin']), PedagogicoController.analisarTurma);
+ 
+ // Rota de Mapa de Calor (Matriz Disciplina x Turma)
+-router.get('/mapa-calor', authorize(['diretor', 'admin']), IAController.gerarMapaCalor);
++router.get('/mapa-calor', authorize(['diretor', 'admin']), MapaCalorController.gerarMapaCalor);
+ 
+ // Rota de Relatório BI (PDF global)
+ router.get('/relatorio-bi', authorize(['diretor', 'admin']), RelatorioController.gerarRelatorioBI);
+ 
+ // Rota de Insights Globais (Sumário Narrativo)
+-router.get('/insights-global', authorize(['diretor', 'admin']), IAController.getGlobalInsights);
++router.get('/insights-global', authorize(['diretor', 'admin']), PedagogicoController.getGlobalInsights);
+ 
+ // Rota de Chatbot (Todos os perfis — incluindo coordenador e secretaria)
+-router.post('/chatbot', authorize(['diretor', 'professor', 'responsavel', 'admin', 'coordenador', 'secretaria']), IAController.chatbot);
++router.post('/chatbot', authorize(['diretor', 'professor', 'responsavel', 'admin', 'coordenador', 'secretaria']), ChatbotController.chatbot);
+ 
+ // Rota de Plano de Aula (Diretor, Professor, Admin)
+-router.post('/plano-aula', authorize(['diretor', 'professor', 'admin']), IAController.gerarPlanoAula);
++router.post('/plano-aula', authorize(['diretor', 'professor', 'admin']), PedagogicoController.gerarPlanoAula);
+ 
+ // Rota de Plano de Estudos Personalizado (Todos os perfis autorizados)
+-router.post('/plano-estudo', authorize(['diretor', 'professor', 'responsavel', 'admin']), IAController.gerarPlanoEstudo);
++router.post('/plano-estudo', authorize(['diretor', 'professor', 'responsavel', 'admin']), PedagogicoController.gerarPlanoEstudo);
+ 
+ module.exports = router;
+diff --git a/backend/src/utils/db.js b/backend/src/utils/db.js
+index 451ca1e..a574ade 100644
+--- a/backend/src/utils/db.js
++++ b/backend/src/utils/db.js
+@@ -4,7 +4,7 @@ const logger = require('./logger');
+ const connectDB = async () => {
+   try {
+     let uri = process.env.MONGODB_URI;
+-    const dbName = 'test'; // Enforce 'test' database name globally
++    const dbName = process.env.MONGODB_DB_NAME || undefined;
+     
+     if (!uri) {
+         if (process.env.NODE_ENV !== 'production') {
+@@ -19,41 +19,20 @@ const connectDB = async () => {
+         }
+     }
+ 
+-    // Programmatically ensure that the URI path points to '/test'
+-    if (uri && !global.__MONGOD__) {
+-        const protocolEndIndex = uri.indexOf('://');
+-        if (protocolEndIndex !== -1) {
+-            const afterProtocol = uri.slice(protocolEndIndex + 3);
+-            const slashIndex = afterProtocol.indexOf('/');
+-            if (slashIndex !== -1) {
+-                const absoluteSlashIndex = protocolEndIndex + 3 + slashIndex;
+-                const queryIndex = uri.indexOf('?', absoluteSlashIndex);
+-                if (queryIndex !== -1) {
+-                    uri = uri.slice(0, absoluteSlashIndex) + '/test' + uri.slice(queryIndex);
+-                } else {
+-                    uri = uri.slice(0, absoluteSlashIndex) + '/test';
+-                }
+-            } else {
+-                const queryIndex = afterProtocol.indexOf('?');
+-                if (queryIndex !== -1) {
+-                    const absoluteQueryIndex = protocolEndIndex + 3 + queryIndex;
+-                    uri = uri.slice(0, absoluteQueryIndex) + '/test' + uri.slice(absoluteQueryIndex);
+-                } else {
+-                    uri = uri + '/test';
+-                }
+-            }
+-        }
+-    }
+-
+     // Log para conferência (seguro — credenciais mascaradas)
+     const maskedUri = uri.replace(/:([^@]+)@/, ':****@');
+     logger.info('🔌 Conectando ao banco de dados', { dbName, uri: maskedUri });
+ 
+     try {
+-        await mongoose.connect(uri, {
+-          dbName: dbName,
++        const connectionOptions = {
+           serverSelectionTimeoutMS: 5000 // Limite de 5 segundos para falha
+-        });
++        };
++
++        if (dbName) {
++            connectionOptions.dbName = dbName;
++        }
++
++        await mongoose.connect(uri, connectionOptions);
+         logger.info('✅ MongoDB conectado com sucesso', { dbName });
+         // Auto-criação de todas as coleções esperadas no startup
+         await _ensureCollectionsExist();
+diff --git a/portal-responsavel/package-lock.json b/portal-responsavel/package-lock.json
+index 7465c82..159eccf 100644
+--- a/portal-responsavel/package-lock.json
++++ b/portal-responsavel/package-lock.json
+@@ -9,7 +9,9 @@
+       "version": "1.0.0",
+       "dependencies": {
+         "@react-oauth/google": "^0.13.5",
++        "@types/dompurify": "^3.0.5",
+         "date-fns": "^4.4.0",
++        "dompurify": "^3.4.11",
+         "lucide-react": "^1.17.0",
+         "react": "^18.2.0",
+         "react-dom": "^18.2.0",
+@@ -1067,6 +1069,15 @@
+         "@babel/types": "^7.28.2"
+       }
+     },
++    "node_modules/@types/dompurify": {
++      "version": "3.0.5",
++      "resolved": "https://registry.npmjs.org/@types/dompurify/-/dompurify-3.0.5.tgz",
++      "integrity": "sha512-1Wg0g3BtQF7sSb27fJQAKck1HECM6zV1EB66j8JH9i3LCjYabJa0FSdiSgsD5K/RbrsR0SiraKacLB+T8ZVYAg==",
++      "license": "MIT",
++      "dependencies": {
++        "@types/trusted-types": "*"
++      }
++    },
+     "node_modules/@types/node": {
+       "version": "25.9.0",
+       "resolved": "https://registry.npmjs.org/@types/node/-/node-25.9.0.tgz",
+@@ -1105,6 +1116,12 @@
+         "@types/react": "^18.0.0"
+       }
+     },
++    "node_modules/@types/trusted-types": {
++      "version": "2.0.7",
++      "resolved": "https://registry.npmjs.org/@types/trusted-types/-/trusted-types-2.0.7.tgz",
++      "integrity": "sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==",
++      "license": "MIT"
++    },
+     "node_modules/@vitejs/plugin-react": {
+       "version": "4.7.0",
+       "resolved": "https://registry.npmjs.org/@vitejs/plugin-react/-/plugin-react-4.7.0.tgz",
+@@ -1260,6 +1277,15 @@
+         "node": ">=8"
+       }
+     },
++    "node_modules/dompurify": {
++      "version": "3.4.11",
++      "resolved": "https://registry.npmjs.org/dompurify/-/dompurify-3.4.11.tgz",
++      "integrity": "sha512-zhlUV12GsaRzMsf9q5M254YhA4+VuF0fG+QFqu6aYpoGlKtz+w8//jBcGVYBgQkR5GHjUomejY84AV+/uPbWdw==",
++      "license": "(MPL-2.0 OR Apache-2.0)",
++      "optionalDependencies": {
++        "@types/trusted-types": "^2.0.7"
++      }
++    },
+     "node_modules/electron-to-chromium": {
+       "version": "1.5.357",
+       "resolved": "https://registry.npmjs.org/electron-to-chromium/-/electron-to-chromium-1.5.357.tgz",
+diff --git a/portal-responsavel/package.json b/portal-responsavel/package.json
+index 90ef621..c4aad89 100644
+--- a/portal-responsavel/package.json
++++ b/portal-responsavel/package.json
+@@ -11,7 +11,9 @@
+   },
+   "dependencies": {
+     "@react-oauth/google": "^0.13.5",
++    "@types/dompurify": "^3.0.5",
+     "date-fns": "^4.4.0",
++    "dompurify": "^3.4.11",
+     "lucide-react": "^1.17.0",
+     "react": "^18.2.0",
+     "react-dom": "^18.2.0",
+diff --git a/portal-responsavel/src/components/AnnouncementCard.tsx b/portal-responsavel/src/components/AnnouncementCard.tsx
+index ee66752..c9846ac 100644
+--- a/portal-responsavel/src/components/AnnouncementCard.tsx
++++ b/portal-responsavel/src/components/AnnouncementCard.tsx
+@@ -9,6 +9,7 @@ import { ptBR } from 'date-fns/locale';
+ import { MessageCircle } from 'lucide-react';
+ import { socket } from '../services/socket';
+ import { getPhotoUrl } from '../utils/photoUtils';
++import { sanitizeHtml } from '../utils/htmlSanitizer';
+ 
+ interface Props {
+   comunicado: Comunicado;
+@@ -17,6 +18,7 @@ interface Props {
+ const AnnouncementCard: React.FC<Props> = ({ comunicado }) => {
+   const [showComments, setShowComments] = useState(false);
+   const [commentsCount, setCommentsCount] = useState(comunicado.comentariosCount || 0);
++  const sanitizedContent = sanitizeHtml(comunicado.conteudo);
+ 
+   useEffect(() => {
+     setCommentsCount(comunicado.comentariosCount || 0);
+@@ -107,7 +109,7 @@ const AnnouncementCard: React.FC<Props> = ({ comunicado }) => {
+         <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>{comunicado.titulo}</h2>
+         <div
+           style={{ color: '#d4d4d8', fontSize: '0.875rem', lineHeight: 1.625 }}
+-          dangerouslySetInnerHTML={{ __html: comunicado.conteudo }}
++          dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+         />
+       </div>
+ 
+diff --git a/portal-responsavel/src/components/Header.tsx b/portal-responsavel/src/components/Header.tsx
+index 964ad1f..d519219 100644
+--- a/portal-responsavel/src/components/Header.tsx
++++ b/portal-responsavel/src/components/Header.tsx
+@@ -10,6 +10,21 @@ import styles from '../styles/portal.module.scss';
+ import schoolLogo from '../assets/logo-jaguari.png';
+ import { getPhotoUrl } from '../utils/photoUtils';
+ 
++interface TtsSettingsResponse {
++  success?: boolean;
++  user?: GmailUser;
++}
++
++interface WindowBridge {
++  apiFetch?: (input: string, init?: RequestInit) => Promise<TtsSettingsResponse>;
++  auth?: {
++    updateSession?: (user: GmailUser) => void;
++  };
++  startTourManual?: () => void | Promise<void>;
++}
++
++const windowBridge = window as Window & WindowBridge;
++
+ interface HeaderProps {
+   user: GmailUser;
+   notifications: Notification[];
+@@ -45,15 +60,15 @@ const VoiceSelector: React.FC = () => {
+     { id: 'audio', label: 'Apenas Áudio', icon: 'ti-music-alt' }
+   ];
+ 
+-  const saveSettings = async (updates: any) => {
++  const saveSettings = async (updates: { voicePreference?: string; narrationMode?: string }) => {
+     try {
+-      if ((window as any).apiFetch) {
+-        const res = await (window as any).apiFetch('/auth/settings/tts', {
++      if (windowBridge.apiFetch) {
++        const res = await windowBridge.apiFetch('/auth/settings/tts', {
+           method: 'POST',
+           body: JSON.stringify(updates)
+         });
+-        if (res.success && res.user && (window as any).auth?.updateSession) {
+-          (window as any).auth.updateSession(res.user);
++        if (res.success && res.user && windowBridge.auth?.updateSession) {
++          windowBridge.auth.updateSession(res.user);
+         }
+       }
+     } catch (e) {
+@@ -175,7 +190,7 @@ const Header: React.FC<HeaderProps> = ({ user, notifications, onLogout, onBellCl
+           {/* Botão Ver Tour Guiado */}
+           <button
+             className={styles.notificationBell}
+-            onClick={() => (window as any).startTourManual && (window as any).startTourManual()}
++            onClick={() => windowBridge.startTourManual?.()}
+             title="Ver Tour Guiado"
+             aria-label="Ver Tour Guiado"
+             style={{ marginRight: '8px' }}
+diff --git a/portal-responsavel/src/components/Modal.tsx b/portal-responsavel/src/components/Modal.tsx
+index bf99bfb..c746660 100644
+--- a/portal-responsavel/src/components/Modal.tsx
++++ b/portal-responsavel/src/components/Modal.tsx
+@@ -10,6 +10,7 @@ import ReactionArea from './ReactionArea';
+ import CommentSection from './CommentSection';
+ import SpeakButton from './SpeakButton';
+ import styles from '../styles/portal.module.scss';
++import { sanitizeHtml } from '../utils/htmlSanitizer';
+ 
+ interface ModalProps {
+   notification: Notification | null;
+@@ -58,6 +59,7 @@ const Modal: React.FC<ModalProps> = ({ notification, onClose }) => {
+     hour: '2-digit',
+     minute: '2-digit',
+   });
++  const sanitizedBodyHtml = sanitizeHtml(notification.corpoHtml);
+ 
+   return (
+     <div
+@@ -109,8 +111,8 @@ const Modal: React.FC<ModalProps> = ({ notification, onClose }) => {
+         </div>
+ 
+         <div id="modal-message" className={styles.modalMessage} style={{ marginBottom: '1.25rem' }}>
+-          {notification.corpoHtml ? (
+-            <div dangerouslySetInnerHTML={{ __html: notification.corpoHtml }} />
++          {sanitizedBodyHtml ? (
++            <div dangerouslySetInnerHTML={{ __html: sanitizedBodyHtml }} />
+           ) : (
+             <p style={{ whiteSpace: 'pre-wrap' }}>{notification.mensagem}</p>
+           )}
+diff --git a/portal-responsavel/src/components/NotificationsModal.tsx b/portal-responsavel/src/components/NotificationsModal.tsx
+index 06bb9fd..1334669 100644
+--- a/portal-responsavel/src/components/NotificationsModal.tsx
++++ b/portal-responsavel/src/components/NotificationsModal.tsx
+@@ -8,6 +8,7 @@ import type { Notification } from '../types';
+ import styles from '../styles/portal.module.scss';
+ import ReactionArea from './ReactionArea';
+ import CommentSection from './CommentSection';
++import { sanitizeHtml } from '../utils/htmlSanitizer';
+ 
+ interface NotificationsModalProps {
+   isOpen: boolean;
+@@ -92,7 +93,7 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({
+                           <div className={styles.notifTextBlock}>
+                             <p className={styles.notificationTitle} style={{ fontSize: '1.1rem' }}>{n.titulo}</p>
+                             {n.corpoHtml && isExpanded ? (
+-                              <div className={styles.notificationFull} dangerouslySetInnerHTML={{ __html: n.corpoHtml }} />
++                              <div className={styles.notificationFull} dangerouslySetInnerHTML={{ __html: sanitizeHtml(n.corpoHtml) }} />
+                             ) : (
+                               <p className={`${styles.notificationPreview} ${!isExpanded && isLong ? styles.notificationPreviewClamped : ''}`} style={isExpanded ? { whiteSpace: 'pre-wrap' } : undefined}>
+                                 {previewText}
+diff --git a/portal-responsavel/src/components/NotificationsPanel.tsx b/portal-responsavel/src/components/NotificationsPanel.tsx
+index 5809f18..51aee62 100644
+--- a/portal-responsavel/src/components/NotificationsPanel.tsx
++++ b/portal-responsavel/src/components/NotificationsPanel.tsx
+@@ -11,6 +11,7 @@ import ReactionArea from './ReactionArea';
+ import CommentSection from './CommentSection';
+ import SpeakButton from './SpeakButton';
+ import styles from '../styles/portal.module.scss';
++import { sanitizeHtml } from '../utils/htmlSanitizer';
+ 
+ interface NotificationsPanelProps {
+   notifications: Notification[];
+@@ -110,7 +111,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
+                           {n.corpoHtml && isExpanded ? (
+                             <div
+                               className={styles.notificationFull}
+-                              dangerouslySetInnerHTML={{ __html: n.corpoHtml }}
++                              dangerouslySetInnerHTML={{ __html: sanitizeHtml(n.corpoHtml) }}
+                             />
+                           ) : (
+                             <p className={`${styles.notificationPreview} ${!isExpanded && isLong ? styles.notificationPreviewClamped : ''}`}>
+diff --git a/portal-responsavel/src/pages/PortalResponsavel.tsx b/portal-responsavel/src/pages/PortalResponsavel.tsx
+index 2cc0554..0774df1 100644
+--- a/portal-responsavel/src/pages/PortalResponsavel.tsx
++++ b/portal-responsavel/src/pages/PortalResponsavel.tsx
+@@ -45,6 +45,12 @@ import BI from './BI';
+ import schoolLogo from '../assets/logo-jaguari.png';
+ import styles from '../styles/portal.module.scss';
+ 
++declare global {
++  interface Window {
++    startTourManual?: () => Promise<void>;
++  }
++}
++
+ // ─── Helpers ──────────────────────────────────────────────────────────────────
+ /** Convert backend AuthUser to the GmailUser shape the Header expects. */
+ function toGmailUser(u: AuthUser, googleProfile?: GmailUser | null): GmailUser {
+@@ -354,7 +360,7 @@ const PortalResponsavel: React.FC = () => {
+ 
+   // Expondo função para reinício manual via Header
+   useEffect(() => {
+-    (window as any).startTourManual = async () => {
++    window.startTourManual = async () => {
+       console.log('🔄 Reiniciando tour do responsável...');
+       tourEvaluatedRef.current = false;
+       // Opcional: resetar no backend se quiser que persista como não lido, 
+@@ -362,7 +368,7 @@ const PortalResponsavel: React.FC = () => {
+       setAuthUser((u: AuthUser | null) => u ? { ...u, tutorialResponsavelConcluido: false } : u);
+       setShowTour(true);
+     };
+-    return () => { delete (window as any).startTourManual; };
++    return () => { delete window.startTourManual; };
+   }, []);
+ 
+   // ─── Load student list once authenticated ──────────────────────────────────
+diff --git a/portal-responsavel/src/services/ttsService.ts b/portal-responsavel/src/services/ttsService.ts
+index dba89e4..80641e6 100644
+--- a/portal-responsavel/src/services/ttsService.ts
++++ b/portal-responsavel/src/services/ttsService.ts
+@@ -46,7 +46,7 @@ class TTSService {
+     };
+   }
+ 
+-  async play(text: string, gender?: string, provider?: string) {
++  async play(text: string, _gender?: string, _provider?: string) {
+     if (!this.audio) return;
+ 
+     this.stop();

@@ -1,0 +1,4 @@
+/* Small accessibility fix for BI voice settings panel */
+
+/* A trava de rolagem passou para js/scroll-lock.js (html.scroll-locked).
+   body.no-scroll usava overflow:hidden, que não trava scroll no iOS Safari. */

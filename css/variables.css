@@ -1,0 +1,1699 @@
+/**
+ * CSS Variables - Design System
+ * Sistema Escolar - Modo Escuro Principal
+ */
+
+:root {
+    /* === CORES PRINCIPAIS - CLEAN MODERN (SLATE & MINT) === */
+    --bg-primary: #09090b;
+    --bg-secondary: #0f0f12;
+    --bg-tertiary: #18181b;
+    --bg-elevated: #27272a;
+
+    --text-primary: #fafafa;
+    --text-body: #d4d4d8;
+    /* Texto de corpo legível (zinc-300) */
+    --text-secondary: #d4d4d8;
+    /* Texto secundário legível (zinc-300) */
+    --text-accent: #10b981;
+    /* Acento verde da marca — para destaques, não texto corrido */
+    --text-tertiary: #a1a1aa;
+    /* Cinza mais claro para subtítulos */
+    --text-inverse: #09090b;
+
+    --border-primary: rgba(255, 255, 255, 0.04);
+    --border-secondary: rgba(255, 255, 255, 0.08);
+    --border-focus: #10b981;
+
+    /* === CORES DE MARCA (MINT/EMERALD) === */
+    --primary: #10b981;
+    /* Mint/Emerald */
+    --primary-rgb: 16, 185, 129;
+    /* Para uso em rgba() */
+    --primary-color: var(--primary);
+    /* Alias legado */
+    --primary-dark: #059669;
+    --primary-hover: #34d399;
+    --primary-active: #059669;
+    --primary-light: rgba(16, 185, 129, 0.08);
+
+    --secondary: #0ea5e9;
+    /* Sky Blue */
+    --secondary-hover: #38bdf8;
+    --secondary-light: rgba(14, 165, 233, 0.08);
+
+    /* === CORES DE STATUS === */
+    --success: #10b981;
+    --success-hover: #059669;
+    --success-light: rgba(16, 185, 129, 0.1);
+    --warning: #f59e0b;
+    --warning-hover: #d97706;
+    --warning-light: rgba(245, 158, 11, 0.1);
+    --error: #ef4444;
+    --error-hover: #dc2626;
+    --error-light: rgba(239, 68, 68, 0.1);
+    --info: #0ea5e9;
+    --info-hover: #0284c7;
+    --info-light: rgba(14, 165, 233, 0.1);
+
+    /* === GRADIENTES (SUBTLE & CLEAN) === */
+    --gradient-primary: linear-gradient(to bottom right, #10b981, #0ea5e9);
+    --gradient-accent: linear-gradient(135deg, #8b5cf6, #6366f1);
+    --gradient-success: linear-gradient(135deg, #10b981, #059669);
+    --gradient-warning: linear-gradient(135deg, #f59e0b, #d97706);
+    --gradient-danger: linear-gradient(135deg, #ef4444, #dc2626);
+    --gradient-surface: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%);
+    --gradient-mesh: radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.05) 0, transparent 40%),
+        radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.05) 0, transparent 40%);
+
+    /* === SOMBRAS (PRECISE) === */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.6);
+    --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.8);
+    --shadow-xl: 0 32px 64px rgba(0, 0, 0, 0.9);
+    --shadow-2xl: 0 48px 80px rgba(0, 0, 0, 0.95);
+    --shadow-glow: 0 0 20px rgba(16, 185, 129, 0.25);
+    --shadow-glow-lg: 0 0 40px rgba(16, 185, 129, 0.3);
+
+    /* === TIPOGRAFIA === */
+    --font-primary: 'Inter', system-ui, -apple-system, sans-serif;
+
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
+    --font-size-base: 1rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem;
+    --font-size-2xl: 1.5rem;
+    --font-size-3xl: 2rem;
+    --font-size-4xl: 2.75rem;
+
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+    --font-weight-black: 900;
+
+    --line-height-tight: 1.2;
+    --line-height-normal: 1.6;
+
+    /* === ESPAÇAMENTOS === */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    --spacing-2xl: 3.5rem;
+
+    /* === BORDAS === */
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    --radius-2xl: 1.5rem;
+    --radius-full: 9999px;
+    --border-dark: rgba(255, 255, 255, 0.06);
+
+    /* === CURVAS DE EASING === */
+    /* Curvas premium reutilizáveis em todo o sistema */
+    --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+    /* material padrão */
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    /* desaceleração suave (entradas) */
+    --ease-in: cubic-bezier(0.4, 0, 1, 1);
+    /* aceleração (saídas) */
+    --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+    /* ênfase, elementos grandes */
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    /* leve overshoot elástico */
+    --ease-snappy: cubic-bezier(0.22, 1, 0.36, 1);
+    /* rápido e responsivo */
+
+    /* === TRANSIÇÕES === */
+    --transition-fast: 150ms var(--ease-out);
+    --transition-base: 250ms var(--ease-out);
+    --transition-slow: 400ms var(--ease-emphasized);
+    --transition-spring: 500ms var(--ease-spring);
+    --transition-colors: 200ms var(--ease-standard);
+
+    /* === BACKDROP === */
+    --backdrop-blur: blur(8px);
+    --backdrop-blur-lg: blur(16px);
+    --glass-bg: rgba(255, 255, 255, 0.04);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-blur: 25px;
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+
+    /* High Performance Gradients */
+    --vibrant-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+    --surface-gradient: radial-gradient(circle at top left, rgba(99, 102, 241, 0.15), transparent 40%),
+        radial-gradient(circle at bottom right, rgba(236, 72, 153, 0.15), transparent 40%);
+    /* === Z-INDEX === */
+    --z-dropdown: 1000;
+    --z-sticky: 1020;
+    --z-fixed: 1030;
+    --z-modal-backdrop: 1040;
+    --z-modal: 1050;
+    --z-popover: 1060;
+    --z-tooltip: 1070;
+
+    /* === LARGURAS === */
+    --container-sm: 640px;
+    --container-md: 768px;
+    --container-lg: 1024px;
+    --container-xl: 1280px;
+    --container-2xl: 1536px;
+
+    /* === ALTURAS === */
+    --header-height: 64px;
+    --footer-height: 60px;
+
+    --backdrop-color: rgba(9, 9, 11, 0.8);
+}
+
+/* === MODO CLARO OPCIONAL — SLATE & MINT CLEAN ===
+   Ativado por [data-theme="light"] no <html>. O sistema SEMPRE abre em dark;
+   o modo claro é opt-in e salvo em localStorage('theme'). Como todo o design
+   consome estas variáveis, trocar o atributo reveste o sistema inteiro.
+   A marca vira um tom mais escuro (emerald #059669) porque o #10b981 puro
+   tem contraste insuficiente como texto/ícone sobre fundo branco (WCAG). */
+:root[data-theme="light"] {
+    color-scheme: light;
+
+    /* Base */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8fafc;
+    --bg-tertiary: #f1f5f9;
+    --bg-elevated: #e2e8f0;
+
+    /* Texto — no modo claro TODO texto é PRETO puro. Nada de cinza/branco:
+       primário, corpo, secundário e terciário colapsam em #000000. O único
+       token claro que sobra é --text-inverse (texto sobre superfície colorida
+       ou escura, ex.: botão primário) e --text-accent (verde da marca). */
+    --text-primary: #000000;
+    --text-body: #000000;
+    --text-secondary: #000000;
+    --text-accent: #059669;
+    --text-tertiary: #000000;
+    --text-inverse: #ffffff;
+    /* Tokens de texto fixos declarados em outros CSS (main.css etc.) —
+       remapeados aqui para preto no modo claro. */
+    --text-white: #000000;
+    --text-muted: #000000;
+    --text-light: #000000;
+
+    /* Bordas */
+    --border-primary: rgba(15, 23, 42, 0.06);
+    --border-secondary: rgba(15, 23, 42, 0.10);
+    --border-focus: #059669;
+    --border-dark: rgba(15, 23, 42, 0.08);
+
+    /* Marca (tons mais escuros para contraste sobre claro) */
+    --primary: #059669;
+    --primary-rgb: 5, 150, 105;
+    --primary-color: var(--primary);
+    --primary-dark: #047857;
+    --primary-hover: #10b981;
+    --primary-active: #047857;
+    --primary-light: rgba(5, 150, 105, 0.10);
+
+    --secondary: #0284c7;
+    --secondary-hover: #0ea5e9;
+    --secondary-light: rgba(2, 132, 199, 0.10);
+
+    /* Status */
+    --success: #059669;
+    --success-hover: #047857;
+    --success-light: rgba(5, 150, 105, 0.12);
+    --warning: #b45309;
+    --warning-hover: #92400e;
+    --warning-light: rgba(180, 83, 9, 0.12);
+    --error: #dc2626;
+    --error-hover: #b91c1c;
+    --error-light: rgba(220, 38, 38, 0.10);
+    --info: #0284c7;
+    --info-hover: #0369a1;
+    --info-light: rgba(2, 132, 199, 0.10);
+
+    /* Gradientes / mesh mais discretos */
+    --gradient-surface: linear-gradient(180deg, rgba(15, 23, 42, 0.02) 0%, rgba(15, 23, 42, 0) 100%);
+    --gradient-mesh: radial-gradient(at 0% 0%, rgba(5, 150, 105, 0.06) 0, transparent 40%),
+        radial-gradient(at 100% 100%, rgba(2, 132, 199, 0.06) 0, transparent 40%);
+
+    /* Sombras suaves e frias para superfícies claras */
+    --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+    --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+    --shadow-lg: 0 12px 24px rgba(15, 23, 42, 0.10);
+    --shadow-xl: 0 32px 64px rgba(15, 23, 42, 0.12);
+    --shadow-2xl: 0 48px 80px rgba(15, 23, 42, 0.14);
+    --shadow-glow: 0 0 20px rgba(5, 150, 105, 0.18);
+    --shadow-glow-lg: 0 0 40px rgba(5, 150, 105, 0.22);
+
+    /* Glass / backdrop / sidebar adaptados ao claro */
+    --glass-bg: rgba(255, 255, 255, 0.65);
+    --glass-border: rgba(15, 23, 42, 0.08);
+    --glass-shadow: 0 8px 32px 0 rgba(15, 23, 42, 0.10);
+    --backdrop-color: rgba(15, 23, 42, 0.35);
+
+    --sidebar-bg: rgba(248, 250, 252, 0.85);
+    --sidebar-border: rgba(15, 23, 42, 0.08);
+    --sidebar-item-hover: rgba(15, 23, 42, 0.04);
+    --sidebar-item-active: linear-gradient(90deg, rgba(5, 150, 105, 0.14) 0%, transparent 100%);
+}
+
+/* Fundos de <body> escritos com cor fixa em alguns CSS de página
+   (main.css, cadastro-aluno.css) — revestidos aqui para o modo claro. */
+:root[data-theme="light"] body {
+    background: var(--bg-primary);
+    background-image: none;
+}
+
+/* Utilitários de glass no modo claro (as classes usam branco fixo) */
+:root[data-theme="light"] .glass {
+    background: rgba(255, 255, 255, 0.70);
+    border-color: rgba(15, 23, 42, 0.08);
+}
+
+:root[data-theme="light"] .glass-strong {
+    background: rgba(255, 255, 255, 0.85);
+    border-color: rgba(15, 23, 42, 0.10);
+}
+
+/* ======================================================================
+   MODO CLARO — AJUSTES DE COMPONENTES
+   Componentes cujas cores foram escritas fixas (escuras) nos CSS de tela e
+   que não seguem os tokens. Revestidos aqui por [data-theme="light"], cuja
+   especificidade vence os seletores originais independente da ordem de carga.
+   ====================================================================== */
+
+/* --- Selects premium (system-global.css) — universais --- */
+:root[data-theme="light"] select,
+:root[data-theme="light"] select.form-input,
+:root[data-theme="light"] select.form-select {
+    background-color: #ffffff;
+    color: #0f172a;
+    border-color: rgba(15, 23, 42, 0.14);
+    color-scheme: light;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+:root[data-theme="light"] select:hover:not(:disabled) {
+    background-color: #f8fafc;
+    border-color: #059669;
+}
+
+:root[data-theme="light"] select:focus {
+    background-color: #ffffff;
+    border-color: #059669;
+}
+
+:root[data-theme="light"] select option {
+    background-color: #ffffff;
+    color: #0f172a;
+}
+
+:root[data-theme="light"] select option:disabled {
+    color: #94a3b8;
+}
+
+/* --- Botões de ícone e gatilho de configurações (system-global.css) --- */
+:root[data-theme="light"] .icon-btn,
+:root[data-theme="light"] .settings-trigger {
+    background: rgba(15, 23, 42, 0.04);
+    border-color: rgba(15, 23, 42, 0.10);
+    color: #475569;
+}
+
+:root[data-theme="light"] .settings-trigger--floating {
+    background: #ffffff;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.12);
+}
+
+/* --- Camada de fundo do dashboard (dashboard.css) --- */
+:root[data-theme="light"] .dashboard-page::before {
+    background: #f1f5f9;
+}
+
+/* --- Painel de notificações (notifications-panel.css) --- */
+:root[data-theme="light"] #notif-panel {
+    background: #ffffff;
+    border-color: rgba(15, 23, 42, 0.10);
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.14);
+}
+
+:root[data-theme="light"] .notif-header {
+    border-bottom-color: rgba(15, 23, 42, 0.08);
+}
+
+:root[data-theme="light"] .emoji-picker-premium {
+    background: #ffffff;
+    border-color: rgba(15, 23, 42, 0.10);
+}
+
+/* --- Picker de reações (reactions.css) --- */
+:root[data-theme="light"] .reaction-picker-modal {
+    background: #ffffff;
+    border-color: rgba(15, 23, 42, 0.10);
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.16);
+}
+
+/* --- Mural escolar admin/direção (notificacoes-mural.css) --- */
+:root[data-theme="light"] {
+    --mn-bg: rgba(255, 255, 255, 0.90);
+    --mn-card: rgba(255, 255, 255, 0.95);
+    --mn-border: rgba(15, 23, 42, 0.08);
+}
+
+:root[data-theme="light"] .mn-header {
+    background: rgba(255, 255, 255, 0.92);
+}
+
+:root[data-theme="light"] .mn-header-brand h1 {
+    color: #0f172a;
+}
+
+:root[data-theme="light"] .mn-editor-wrap,
+:root[data-theme="light"] .mn-dest-panel {
+    background: rgba(15, 23, 42, 0.03);
+}
+
+:root[data-theme="light"] .mn-table th {
+    background: rgba(15, 23, 42, 0.04);
+    color: #64748b;
+}
+
+:root[data-theme="light"] .mn-select option {
+    background: #ffffff;
+    color: #0f172a;
+}
+
+:root[data-theme="light"] .mn-modal {
+    background: #ffffff;
+    color: #0f172a;
+}
+
+:root[data-theme="light"] .mn-toast {
+    background: #ffffff;
+    color: #0f172a;
+    border-color: rgba(15, 23, 42, 0.08);
+}
+
+/* --- Chatbot IA: barra de input e campo (chatbot-ia.css) --- */
+:root[data-theme="light"] .chatbot-input {
+    background: rgba(15, 23, 42, 0.03);
+}
+
+:root[data-theme="light"] .chatbot-input input {
+    background: rgba(15, 23, 42, 0.04);
+    color: #0f172a;
+}
+
+/* --- Busca do feed social (social-feed.css) --- */
+:root[data-theme="light"] .feed-search-wrapper {
+    background: rgba(15, 23, 42, 0.03);
+    border-color: rgba(15, 23, 42, 0.10);
+}
+
+:root[data-theme="light"] .feed-search-wrapper:focus-within {
+    background: rgba(15, 23, 42, 0.05);
+}
+
+/* --- Legibilidade no tema claro: saudação (dashboard.css) e mural (social-feed.css) ---
+   Títulos usavam gradiente branco recortado (-webkit-text-fill-color: transparent),
+   invisível no fundo branco. No tema claro recebem gradiente/texto escuro.
+   O card de postagem do mural permanece ESCURO para contraste (pedido do usuário). */
+:root[data-theme="light"] .welcome-content h1,
+:root[data-theme="light"] .feed-main-title {
+    background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: #0f172a;
+}
+
+:root[data-theme="light"] .welcome-content p,
+:root[data-theme="light"] .feed-subtitle {
+    color: #475569;
+}
+
+/* Card de postagem do mural: fundo escuro (preto) mesmo no tema claro */
+:root[data-theme="light"] .comunicado-card-premium {
+    background: #0f172a;
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+:root[data-theme="light"] .comunicado-card-premium:hover {
+    background: #1e293b;
+    border-color: rgba(255, 255, 255, 0.14);
+}
+
+/* --- Escolher perfil (selecionar.css): titulo e icones com gradiente branco --- */
+:root[data-theme="light"] .page-header h1,
+:root[data-theme="light"] .action-icon {
+    background: linear-gradient(135deg, #0f172a 0%, #475569 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: #0f172a;
+}
+
+/* --- Chatbot IA: texto da mensagem do assistente (chatbot-ia.css) ---
+   A bolha do bot fica clara no tema claro; o texto (branco #f1f5f9) sumia. */
+:root[data-theme="light"] .msg-ai .msg-text-bubble {
+    color: #0f172a;
+}
+
+:root[data-theme="light"] .msg-ai .msg-text-bubble a {
+    color: #059669;
+}
+
+/* --- Escolher perfil: cards de estatística (selecionar.css) ---
+   Os cards ficavam cinza no fundo branco. Por pedido: card ESCURO/preto,
+   com valor branco (já é) e label claro. */
+:root[data-theme="light"] .stat-card {
+    background: #0f172a;
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+}
+
+:root[data-theme="light"] .stat-card-value {
+    color: #ffffff;
+}
+
+:root[data-theme="light"] .stat-card-label {
+    color: #cbd5e1;
+}
+
+/* --- Turma: tabela de alunos (turma.css) ---
+   As células (td) usavam color:#ffffff e o cabeçalho (th) cor muito clara,
+   sumindo no tema claro. */
+:root[data-theme="light"] .alunos-table td {
+    color: #0f172a;
+}
+
+:root[data-theme="light"] .alunos-table th {
+    color: #475569;
+}
+
+/* --- Títulos com gradiente branco recortado em várias telas (perfil, cadastro,
+   login, neo-brutal, utilitário .text-gradient) — invisíveis no fundo branco.
+   No tema claro recebem gradiente escuro. --- */
+:root[data-theme="light"] .perfil-header h1,
+:root[data-theme="light"] .cadastro-header h1,
+:root[data-theme="light"] .login-header h1,
+:root[data-theme="light"] .card-title,
+:root[data-theme="light"] .text-gradient,
+:root[data-theme="light"] .text-gradient-warm {
+    background: linear-gradient(135deg, #0f172a 0%, #475569 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: #0f172a;
+}
+
+/* --- Ícones do header (ajuda/sino/engrenagem) no tema claro --- */
+:root[data-theme="light"] .header-icon-btn,
+:root[data-theme="light"] .header-icon-btn i,
+:root[data-theme="light"] .header-hamburger,
+:root[data-theme="light"] .header-hamburger i {
+    color: #0f172a;
+}
+
+/* --- Turma: títulos/nomes brancos (var(--text-white)) e colunas sumiam --- */
+:root[data-theme="light"] .faltas-title-text h3,
+:root[data-theme="light"] .student-names h4 {
+    color: #0f172a;
+}
+
+:root[data-theme="light"] .faltas-title-text p,
+:root[data-theme="light"] .student-names small {
+    color: #475569;
+}
+
+/* turma.css força estas colunas/textos a #ffffff !important (linhas ~993-1005),
+   ficando invisíveis no tema claro. Aqui vencem por maior especificidade. */
+:root[data-theme="light"] .col-num,
+:root[data-theme="light"] .col-nome,
+:root[data-theme="light"] .col-condicao,
+:root[data-theme="light"] .col-matricula,
+:root[data-theme="light"] .col-faltas,
+:root[data-theme="light"] .col-recuperacao,
+:root[data-theme="light"] .alunos-table th,
+:root[data-theme="light"] .turma-details .meta,
+:root[data-theme="light"] .turma-details .meta span,
+:root[data-theme="light"] .alunos-count {
+    color: #0f172a !important;
+}
+
+/* Observações do aluno (branco translúcido fixo) → cinza-escuro no tema claro */
+:root[data-theme="light"] .observacoes {
+    color: #475569 !important;
+}
+
+/* --- Selecionar: card de turma expandido é ESCURO — no tema claro os tokens
+   deixavam o texto interno cinza-escuro (ilegível). Força cores claras. --- */
+:root[data-theme="light"] .turma-card .turma-info p,
+:root[data-theme="light"] .turma-card .turma-turno {
+    color: #cbd5e1;
+}
+
+:root[data-theme="light"] .turma-card .turma-info h4 {
+    color: #ffffff;
+}
+
+/* --- Cadastro/criar conta: manter os cards ESCUROS no tema claro (pedido) ---
+   Os cards de seleção ficavam cinza-claro no modo white; aqui viram escuros
+   com texto claro. */
+:root[data-theme="light"] .role-card-content,
+:root[data-theme="light"] .checkbox-card-content {
+    background: #0f172a;
+    border-color: rgba(255, 255, 255, 0.10);
+    color: #e2e8f0;
+}
+
+:root[data-theme="light"] .role-card-content h3,
+:root[data-theme="light"] .role-card-content p,
+:root[data-theme="light"] .checkbox-card-content span {
+    color: #e2e8f0;
+}
+
+/* --- Mural: header do topo (inline color:#fff) e abas de filtro ---
+   A header usa estilo inline, então precisa de !important para virar escura. */
+:root[data-theme="light"] .mural-section-header h2 {
+    color: #0f172a !important;
+}
+
+:root[data-theme="light"] .mural-section-header p {
+    color: #475569 !important;
+}
+
+:root[data-theme="light"] .feed-filter-tab {
+    color: #475569;
+}
+
+:root[data-theme="light"] .feed-filter-tab:hover {
+    color: #0f172a;
+}
+
+:root[data-theme="light"] .feed-filter-tab.active {
+    color: #4f46e5;
+}
+
+/* --- Sidebar do dashboard no tema claro (sidebar.css) ---
+   A sidebar fica clara, mas os textos eram claros (cinza/branco) e sumiam.
+   Aqui viram escuros/pretos. Item ativo continua verde. */
+:root[data-theme="light"] .sidebar-logo,
+:root[data-theme="light"] .sidebar-logo span {
+    color: #0f172a;
+    -webkit-text-fill-color: #0f172a;
+}
+
+:root[data-theme="light"] .user-fullname {
+    color: #0f172a;
+}
+
+:root[data-theme="light"] .user-role-tag {
+    color: #475569;
+}
+
+:root[data-theme="light"] .sidebar-group-label {
+    color: #64748b;
+}
+
+:root[data-theme="light"] .sidebar-item {
+    color: #1e293b;
+}
+
+:root[data-theme="light"] .sidebar-item:hover {
+    color: #0f172a;
+}
+
+:root[data-theme="light"] .sidebar-item.active {
+    color: #059669;
+}
+
+/* --- Painéis de voz (voice-panel.css / bi-pedagogico.css) --- */
+:root[data-theme="light"] .voice-panel,
+:root[data-theme="light"] .voice-panel-hidden {
+    background: rgba(255, 255, 255, 0.98);
+    border-color: rgba(15, 23, 42, 0.10);
+}
+
+/* --- Cabeçalho de relatórios da turma (turma.css) --- */
+:root[data-theme="light"] .relatorios-header-card {
+    background: linear-gradient(135deg, rgba(241, 245, 249, 0.9), rgba(226, 232, 240, 0.9));
+    border-color: rgba(15, 23, 42, 0.08);
+}
+
+/* --- Sidebar do BI pedagógico no mobile (bi-pedagogico.css) --- */
+:root[data-theme="light"] .bi-sidebar {
+    background: rgba(255, 255, 255, 0.98);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Telas de entrada (login / splash / selecionar).                         */
+/* Heróis com imagem de fundo permanecem escuros de propósito — hero       */
+/* escuro sobre tema claro é legível e é padrão de design.                 */
+/* ---------------------------------------------------------------------- */
+
+/* --- Campos de formulário .form-input (genérico, todo o app) ---
+   As superfícies específicas do login ficam em login-new.css. */
+:root[data-theme="light"] .form-input {
+    background: rgba(15, 23, 42, 0.04);
+    border-color: rgba(15, 23, 42, 0.10);
+}
+
+:root[data-theme="light"] .form-input::placeholder {
+    color: rgba(15, 23, 42, 0.40);
+}
+
+:root[data-theme="light"] .form-input:focus {
+    background: rgba(15, 23, 42, 0.06);
+}
+
+/* --- Splash screen (splash-screen.css) --- */
+:root[data-theme="light"] #splashScreen {
+    background: #f8fafc;
+    background-image:
+        radial-gradient(ellipse at 30% 20%, rgba(5, 150, 105, 0.06) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 80%, rgba(2, 132, 199, 0.05) 0%, transparent 50%);
+}
+
+/* --- Seleção de turmas (selecionar.css): hero .page-header fica escuro --- */
+:root[data-theme="light"] .turmas-section {
+    background: rgba(255, 255, 255, 0.70);
+    border-color: rgba(15, 23, 42, 0.06);
+}
+
+:root[data-theme="light"] .turmas-section h2 {
+    color: #0f172a;
+    text-shadow: none;
+}
+
+/* === UTILITÁRIOS DE GLASSMORPHISM === */
+.glass {
+    background: rgba(255, 255, 255, 0.05);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-strong {
+    background: rgba(255, 255, 255, 0.1);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* === ANIMAÇÕES === */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 18px, 0);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translate3d(0, -18px, 0);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translate3d(100%, 0, 0);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translate3d(-100%, 0, 0);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.94);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -1000px 0;
+    }
+
+    100% {
+        background-position: 1000px 0;
+    }
+}
+
+/* === UTILITÁRIOS DE ANIMAÇÃO ===
+   Classes reutilizáveis com curvas premium e aceleração por GPU. */
+.anim-fade-in {
+    animation: fadeIn 320ms var(--ease-out) both;
+}
+
+.anim-fade-in-up {
+    animation: fadeInUp 420ms var(--ease-out) both;
+}
+
+.anim-fade-in-down {
+    animation: fadeInDown 420ms var(--ease-out) both;
+}
+
+.anim-slide-right {
+    animation: slideInRight 420ms var(--ease-emphasized) both;
+}
+
+.anim-slide-left {
+    animation: slideInLeft 420ms var(--ease-emphasized) both;
+}
+
+.anim-scale-in {
+    animation: scaleIn 360ms var(--ease-spring) both;
+}
+
+/* === ENTRADAS ESCALONADAS (STAGGER) EM LISTAS/GRIDS ===
+   Dirigido pelo js/ui-stagger.js. Os filhos só ficam ocultos quando o JS
+   está presente (classe .stagger-ready no <html>), garantindo degradação
+   graciosa sem JavaScript. A animação dispara quando o container entra na
+   tela (.in-view) e o atraso é calculado pelo índice --stagger-i, sem limite
+   de quantidade de itens. */
+.stagger-ready [data-stagger]>* {
+    opacity: 0;
+}
+
+[data-stagger].in-view>* {
+    animation: fadeInUp 460ms var(--ease-out) both;
+    animation-delay: calc(var(--stagger-i, 0) * 55ms);
+}
+
+/* Utilitário CSS puro (sem JS) para blocos sempre visíveis */
+.anim-stagger>* {
+    animation: fadeInUp 460ms var(--ease-out) both;
+}
+
+.anim-stagger>*:nth-child(1) {
+    animation-delay: 40ms;
+}
+
+.anim-stagger>*:nth-child(2) {
+    animation-delay: 95ms;
+}
+
+.anim-stagger>*:nth-child(3) {
+    animation-delay: 150ms;
+}
+
+.anim-stagger>*:nth-child(4) {
+    animation-delay: 205ms;
+}
+
+.anim-stagger>*:nth-child(5) {
+    animation-delay: 260ms;
+}
+
+.anim-stagger>*:nth-child(6) {
+    animation-delay: 315ms;
+}
+
+.anim-stagger>*:nth-child(7) {
+    animation-delay: 370ms;
+}
+
+.anim-stagger>*:nth-child(8) {
+    animation-delay: 425ms;
+}
+
+/* Elementos animados ganham hint de composição enquanto animam */
+[class*="anim-"] {
+    will-change: opacity, transform;
+}
+
+/* === ACESSIBILIDADE: MOVIMENTO REDUZIDO ===
+   Respeita a preferência do sistema do usuário e desliga animações
+   longas/decorativas, mantendo apenas transições instantâneas. */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ======================================================================
+   MODO CLARO ("PÁGINA BRANCA") — TIPOGRAFIA 100% PRETA
+   ======================================================================
+   Regra geral do sistema no tema claro: NENHUM texto pode ser branco ou
+   cinza. Todo texto, título, rótulo, ícone de fonte e legenda de botão vira
+   PRETO puro (#000000) — inclusive em estados de :hover, :focus, durante
+   transições e dentro de animações.
+
+   Esta é a ÚLTIMA seção do arquivo de tokens, então vence por ordem de
+   cascata as regras claras declaradas acima; e usa !important + alta
+   especificidade para vencer também os CSS de página carregados depois
+   (turma.css, login-new.css, index-landing.css, tailwind-built.css…),
+   incluindo os que usam !important.
+
+   As ÚNICAS exceções são as superfícies que continuam propositalmente
+   ESCURAS no tema claro (decisões de design já registradas neste arquivo)
+   e os controles de fundo colorido sólido — ali o texto claro é o correto,
+   e por isso eles ficam de fora da varredura via :not().
+   ====================================================================== */
+
+/* O modo de alto contraste (.high-contrast no <html>, ligado no drawer de
+   configurações) é preto com texto branco por definição — a varredura é
+   desligada nele para não apagar o texto. */
+:root[data-theme="light"]:not(.high-contrast) :is(body, h1, h2, h3, h4, h5, h6, p, span, small, strong, b, em, i, u, s,
+    a, li, dt, dd, td, th, caption, label, legend, figcaption, blockquote,
+    summary, details, address, code, kbd, samp, pre, time, mark, output, abbr,
+    div, section, article, header, footer, main, aside, nav, form, fieldset,
+    button, input, textarea, select, option, optgroup, svg):not(
+
+    /* --- superfícies mantidas ESCURAS de propósito no tema claro --- */
+    .how-visual, .how-visual *,
+    .comunicado-card-premium, .comunicado-card-premium *,
+    .stat-card, .stat-card *,
+    .management-card, .management-card *,
+    .sc-modal-card, .sc-modal-card *,
+    .turma-card .turma-info, .turma-card .turma-info *,
+    .role-card-content, .role-card-content *,
+    .checkbox-card-content, .checkbox-card-content *,
+    /* --- controles de fundo colorido sólido: texto claro é o legível --- */
+    [class*="btn-primary"], [class*="btn-primary"] *,
+    [class*="btn-danger"], [class*="btn-danger"] *,
+    [class*="btn-success"], [class*="btn-success"] *,
+    [class*="btn-warning"], [class*="btn-warning"] *,
+    [class*="btn-error"], [class*="btn-error"] *,
+    [class*="btn-cta"], [class*="btn-cta"] *,
+    .comment-submit-legacy, .comment-submit-legacy *,
+    /* --- ícones dentro de quadrado colorido, selos e toasts --- */
+    [class*="card-icon"], [class*="card-icon"] *,
+    [class*="toast"], [class*="toast"] *,
+    .badge, .badge *) {
+    color: #000000 !important;
+    /* Vence os títulos com gradiente recortado (background-clip: text), que
+       ficavam brancos/transparentes e sumiam no fundo branco. */
+    -webkit-text-fill-color: #000000 !important;
+    /* Brilhos e sombras de texto brancas (usadas em heróis e animações de
+       destaque) não têm função sobre fundo branco. */
+    text-shadow: none !important;
+}
+
+/* Estados ativos de navegação continuam com a cor da marca — verde e índigo
+   não são cinza nem branco, então são reafirmados depois da varredura.
+   O `[class]` final é só um ajuste de especificidade: sem ele estas regras
+   empatariam com a varredura no elemento e o item ativo ficaria preto. */
+:root[data-theme="light"]:not(.high-contrast) :is(.sidebar-item, .bottom-nav-item).active[class],
+:root[data-theme="light"]:not(.high-contrast) :is(.sidebar-item, .bottom-nav-item).active :is(i, span) {
+    color: var(--primary) !important;
+    -webkit-text-fill-color: var(--primary) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .feed-filter-tab.active[class] {
+    color: #4f46e5 !important;
+    -webkit-text-fill-color: #4f46e5 !important;
+}
+
+/* Estrelas de avaliação: o ouro aqui é o ESTADO (nota escolhida), não enfeite.
+   A varredura pintava todas de preto e a estrela marcada ficava igual à vazia.
+   Reafirmadas depois dela: vazia em cinza claro, marcada — e a prévia do hover
+   — em âmbar, que continua legível sobre o branco. */
+:root[data-theme="light"]:not(.high-contrast) :is(.star-rating .star,
+    .review-stars-small .bi-star,
+    .avg-stars .bi-star,
+    #ratingStars label .bi-star) {
+    color: #cbd5e1 !important;
+    -webkit-text-fill-color: #cbd5e1 !important;
+}
+
+/* O `[class]` sobe a especificidade acima da regra da estrela vazia (que o
+   `#ratingStars` do perfil já eleva por conter um id), garantindo o âmbar. */
+:root[data-theme="light"]:not(.high-contrast) :is(.star-rating .star.active,
+    .star-rating .star.hover-preview,
+    .review-stars-small .bi-star-fill,
+    .avg-stars .bi-star-fill,
+    #ratingStars label .bi-star-fill)[class] {
+    color: #f59e0b !important;
+    -webkit-text-fill-color: #f59e0b !important;
+}
+
+/* --- Navegação (sidebar / header / navbar) fica CLARA no modo claro ---
+   parallax-glass.css força fundo escuro nesses elementos com !important e
+   não conhece o tema claro; nas páginas que o carregam (detalhes/*, admin/*,
+   graficos, ata…) a barra ficava escura e, com o texto agora preto, sumiria.
+   Aqui a chrome de navegação volta a ser clara com texto preto. */
+:root[data-theme="light"]:not(.high-contrast) :is(.sidebar, .app-sidebar, .header, .app-header, .navbar, .top-nav) {
+    background: rgba(255, 255, 255, 0.92) !important;
+    border-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+/* ======================================================================
+   MODO CLARO ("PÁGINA BRANCA") — CAIXAS PRETAS
+   ======================================================================
+   A página (canvas) fica BRANCA e o texto sobre ela PRETO (varredura acima).
+   Já as CAIXAS — cards, painéis de conteúdo, seções em bloco e modais, que
+   apareciam cinza/branco-lavado sobre o branco — passam a ser PRETAS, e o
+   texto dentro delas volta a ser BRANCO.
+
+   Só vale no tema claro: no escuro nada aqui é aplicado.
+
+   Fora da lista de propósito: a navegação (sidebar, header, bottom-nav) e os
+   popovers flutuantes (painel de notificações, seletor de emoji, painel de
+   voz, seletor de escola), que já têm tratamento claro coeso; e o painel do
+   docente .how-visual, que já é escuro por conta própria.
+   ====================================================================== */
+
+:root[data-theme="light"]:not(.high-contrast) :is(.card, .card-glass, .glass, .glass-strong,
+    .glass-card, .glass-card-md, .glass-card-strong, .glass-panel,
+    .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
+    .management-card, .sc-modal-card,
+    .info-card, .info-box, .lgpd-box, .dpo-box,
+    .login-card, .auth-card,
+    .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
+    .sec-form-card, .sec-quick-card, .sec-stat-card,
+    .sala-card, .report-card,
+    .mn-card, .mn-form-card, .mn-sidebar-card, .mn-dest-panel, .mn-editor-wrap, .mn-modal,
+    .relatorios-header-card, .ca-section,
+    .welcome-section, .turmas-section, .turma-card,
+    .role-card-content, .checkbox-card-content, .comunicado-card-premium,
+    .modal-content, .pa-modal-card) {
+    /* shorthand zera também gradientes/imagens de fundo herdados do tema escuro */
+    background: #000000 !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18) !important;
+}
+
+/* Hover das caixas: a regra acima é !important e apagaria o realce de hover
+   original, então ele é redeclarado como um preto levemente elevado. */
+:root[data-theme="light"]:not(.high-contrast) :is(.card, .card-glass, .glass, .glass-strong,
+    .glass-card, .glass-card-md, .glass-card-strong, .glass-panel,
+    .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
+    .management-card, .sc-modal-card,
+    .info-card, .login-card, .auth-card,
+    .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
+    .sec-form-card, .sec-quick-card, .sec-stat-card,
+    .sala-card, .report-card, .mn-card, .turma-card,
+    .role-card-content, .checkbox-card-content, .comunicado-card-premium):hover {
+    background: #121212 !important;
+    border-color: rgba(255, 255, 255, 0.22) !important;
+}
+
+/* Texto dentro das caixas pretas: BRANCO.
+   Mesma especificidade da varredura preta (0,5,1), mas declarado depois —
+   por isso vence dentro das caixas e só dentro delas. */
+:root[data-theme="light"]:not(.high-contrast) :is(.card, .card-glass, .glass, .glass-strong,
+    .glass-card, .glass-card-md, .glass-card-strong, .glass-panel,
+    .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
+    .management-card, .sc-modal-card,
+    .info-card, .info-box, .lgpd-box, .dpo-box,
+    .login-card, .auth-card,
+    .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
+    .sec-form-card, .sec-quick-card, .sec-stat-card,
+    .sala-card, .report-card,
+    .mn-card, .mn-form-card, .mn-sidebar-card, .mn-dest-panel, .mn-editor-wrap, .mn-modal,
+    .relatorios-header-card, .ca-section,
+    .welcome-section, .turmas-section, .turma-card,
+    .role-card-content, .checkbox-card-content, .comunicado-card-premium,
+    .modal-content, .pa-modal-card) :is(h1, h2, h3, h4, h5, h6, p, span, small, strong, b, em, i, u, s,
+    a, li, dt, dd, td, th, caption, label, legend, figcaption, blockquote,
+    summary, details, address, code, kbd, pre, time, output,
+    div, section, article, header, footer, nav, form, fieldset,
+    button, input, textarea, select, option, optgroup, svg):not(.turma-icon) {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+/* Controles de formulário dentro de caixa preta: fundo escuro, texto branco,
+   cursor e contorno claros. Sem isto o tratamento claro global os deixaria
+   brancos — e o texto (já branco pela regra acima) sumiria. A lista de
+   caixas é a MESMA das regras anteriores: qualquer caixa de fora criaria um
+   campo branco com texto branco. */
+:root[data-theme="light"]:not(.high-contrast) :is(.card, .card-glass, .glass, .glass-strong,
+    .glass-card, .glass-card-md, .glass-card-strong, .glass-panel,
+    .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
+    .management-card, .sc-modal-card,
+    .info-card, .info-box, .lgpd-box, .dpo-box,
+    .login-card, .auth-card,
+    .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
+    .sec-form-card, .sec-quick-card, .sec-stat-card,
+    .sala-card, .report-card,
+    .mn-card, .mn-form-card, .mn-sidebar-card, .mn-dest-panel, .mn-editor-wrap, .mn-modal,
+    .relatorios-header-card, .ca-section,
+    .welcome-section, .turmas-section, .turma-card,
+    .role-card-content, .checkbox-card-content, .comunicado-card-premium,
+    .modal-content, .pa-modal-card) :is(input:not([type="checkbox"]):not([type="radio"]), textarea, select, .form-input, .sc-input) {
+    background: rgba(255, 255, 255, 0.07) !important;
+    background-color: rgba(255, 255, 255, 0.07) !important;
+    border-color: rgba(255, 255, 255, 0.18) !important;
+    caret-color: #ffffff !important;
+    color-scheme: dark;
+}
+
+:root[data-theme="light"]:not(.high-contrast) :is(.card, .card-glass, .glass, .glass-strong,
+    .glass-card, .glass-card-md, .glass-card-strong, .glass-panel,
+    .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
+    .management-card, .sc-modal-card,
+    .info-card, .info-box, .lgpd-box, .dpo-box,
+    .login-card, .auth-card,
+    .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
+    .sec-form-card, .sec-quick-card, .sec-stat-card,
+    .sala-card, .report-card,
+    .mn-card, .mn-form-card, .mn-sidebar-card, .mn-dest-panel, .mn-editor-wrap, .mn-modal,
+    .relatorios-header-card, .ca-section,
+    .welcome-section, .turmas-section, .turma-card,
+    .role-card-content, .checkbox-card-content, .comunicado-card-premium,
+    .modal-content, .pa-modal-card) option {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) :is(.card, .card-glass, .glass, .glass-strong,
+    .glass-card, .glass-card-md, .glass-card-strong, .glass-panel,
+    .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
+    .info-card, .info-box, .lgpd-box, .dpo-box,
+    .login-card, .auth-card,
+    .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
+    .sec-form-card, .sec-quick-card, .sec-stat-card,
+    .sala-card, .report-card,
+    .mn-card, .mn-form-card, .mn-sidebar-card, .mn-dest-panel, .mn-editor-wrap, .mn-modal,
+    .relatorios-header-card, .ca-section,
+    .welcome-section, .turmas-section, .turma-card,
+    .role-card-content, .checkbox-card-content, .comunicado-card-premium,
+    .modal-content, .pa-modal-card) ::placeholder {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    opacity: 0.55;
+}
+
+:root[data-theme="light"]:not(.high-contrast) :is(.card, .card-glass, .glass, .glass-strong,
+    .glass-card, .glass-card-md, .glass-card-strong, .glass-panel,
+    .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
+    .info-card, .info-box, .lgpd-box, .dpo-box,
+    .login-card, .auth-card,
+    .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
+    .sec-form-card, .sec-quick-card, .sec-stat-card,
+    .sala-card, .report-card,
+    .mn-card, .mn-form-card, .mn-sidebar-card, .mn-dest-panel, .mn-editor-wrap, .mn-modal,
+    .relatorios-header-card, .ca-section,
+    .welcome-section, .turmas-section, .turma-card,
+    .role-card-content, .checkbox-card-content, .comunicado-card-premium,
+    .modal-content, .pa-modal-card) :is(input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus) {
+    -webkit-text-fill-color: #ffffff !important;
+    -webkit-box-shadow: 0 0 0 1000px #0a0a0a inset !important;
+}
+
+/* Bordas internas (tabelas, divisores, botões neutros, caixas de seleção)
+   eram escuras sobre claro — sobre a caixa preta precisam ser claras. */
+:root[data-theme="light"]:not(.high-contrast) :is(.card, .card-glass, .glass, .glass-strong,
+    .glass-card, .glass-card-md, .glass-card-strong, .glass-panel,
+    .dashboard-card, .stat-card, .stat-card-premium, .mn-stat-card,
+    .info-card, .info-box, .lgpd-box, .dpo-box,
+    .login-card, .auth-card,
+    .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
+    .sec-form-card, .sec-quick-card, .sec-stat-card,
+    .sala-card, .report-card,
+    .mn-card, .mn-form-card, .mn-sidebar-card, .mn-dest-panel, .mn-editor-wrap, .mn-modal,
+    .relatorios-header-card, .ca-section,
+    .welcome-section, .turmas-section, .turma-card,
+    .role-card-content, .checkbox-card-content, .comunicado-card-premium,
+    .modal-content, .pa-modal-card) :is(table, thead, tbody, tr, th, td, hr, .divider,
+    .btn-secondary, .btn-outline, .icon-btn,
+    input[type="checkbox"], input[type="radio"]) {
+    border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+/* Aba ativa do login: o fundo branco herdado do tema claro deixaria o texto
+   branco invisível dentro do card preto. */
+:root[data-theme="light"]:not(.high-contrast) .login-card .login-tab.active {
+    background: rgba(255, 255, 255, 0.14) !important;
+    border-color: rgba(255, 255, 255, 0.18) !important;
+}
+
+/* Marcas d'água decorativas (a letra gigante atrás do card de turma):
+   como o card agora é preto, ela volta a ser branca bem translúcida. */
+:root[data-theme="light"]:not(.high-contrast) .turma-card .turma-icon[class] {
+    color: rgba(255, 255, 255, 0.08) !important;
+    -webkit-text-fill-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Campos de formulário: texto digitado, cursor, placeholder e autopreencher
+   do navegador — todos em preto. */
+:root[data-theme="light"] :is(input, textarea, select, [contenteditable]) {
+    caret-color: #000000 !important;
+}
+
+/* ======================================================================
+   SIDEBAR NO TEMA CLARO — RÓTULOS SEMPRE LEGÍVEIS
+   ======================================================================
+   O fundo da sidebar é claro no tema claro (--sidebar-bg), mas os rótulos
+   ainda saíam brancos e sumiam. O bloco da linha ~600 não segura os dois
+   casos abaixo, porque perde em especificidade ou em !important:
+
+     - `.high-contrast span { color: #fff !important }` (system-global.css)
+       continua valendo com o Alto Contraste ligado — justamente quando a
+       varredura preta (`:not(.high-contrast)`) NÃO roda;
+     - as cores do tema escuro de sidebar.css (#94a3b8 no item, #fff no
+       hover), herdadas pelo <span> e pelo <i> dentro do item.
+
+   As cores repetem as do bloco da sidebar, agora com !important e
+   especificidade suficiente para vencer as duas.
+   ====================================================================== */
+:root[data-theme="light"] .sidebar .sidebar-logo,
+:root[data-theme="light"] .sidebar .sidebar-logo span,
+:root[data-theme="light"] .sidebar .user-fullname {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+
+:root[data-theme="light"] .sidebar .user-role-tag,
+:root[data-theme="light"] .sidebar .sidebar-group-label {
+    color: #475569 !important;
+    -webkit-text-fill-color: #475569 !important;
+}
+
+/* Item de navegação (texto + ícone, seja <i> da Bootstrap Icons ou o <svg>
+   do Lucide, que pinta com currentColor). O `:not()` preserva o verde do
+   item atual e o vermelho do Sair, tratados logo abaixo. */
+:root[data-theme="light"] .sidebar .sidebar-item:not(.active):not(.sidebar-item-danger),
+:root[data-theme="light"] .sidebar .sidebar-item:not(.active):not(.sidebar-item-danger) :is(span, i, svg) {
+    color: #1e293b !important;
+    -webkit-text-fill-color: #1e293b !important;
+}
+
+:root[data-theme="light"] .sidebar .sidebar-item.active,
+:root[data-theme="light"] .sidebar .sidebar-item.active :is(span, i, svg) {
+    color: #059669 !important;
+    -webkit-text-fill-color: #059669 !important;
+}
+
+:root[data-theme="light"] .sidebar .sidebar-item-danger,
+:root[data-theme="light"] .sidebar .sidebar-item-danger :is(span, i, svg) {
+    color: #ef4444 !important;
+    -webkit-text-fill-color: #ef4444 !important;
+}
+
+:root[data-theme="light"] .sidebar .sidebar-toggle,
+:root[data-theme="light"] .sidebar .sidebar-toggle :is(i, svg) {
+    color: #1e293b !important;
+}
+
+:root[data-theme="light"] ::placeholder {
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+    opacity: 0.55;
+}
+
+:root[data-theme="light"] input:-webkit-autofill,
+:root[data-theme="light"] input:-webkit-autofill:hover,
+:root[data-theme="light"] input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #000000 !important;
+    -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+}
+
+:root[data-theme="light"] ::selection {
+    background: rgba(0, 0, 0, 0.14);
+    color: #000000;
+}
+
+/* --- Animações de carregamento (skeleton/shimmer) ---
+   O gradiente cinza-claro sobre branco ficava invisível: no tema claro o
+   shimmer passa a ser um pulso preto translúcido. */
+:root[data-theme="light"] .skeleton {
+    background: linear-gradient(90deg,
+            rgba(0, 0, 0, 0.06) 0%,
+            rgba(0, 0, 0, 0.16) 50%,
+            rgba(0, 0, 0, 0.06) 100%);
+    background-size: 200% 100%;
+}
+
+/* --- Hero de "selecionar turma" (selecionar.css) ---
+   O cabeçalho era uma imagem com overlay escuro; com o título agora preto,
+   o overlay passa a ser claro para manter o contraste. Os brilhos brancos
+   animados (::before/::after) viram escuros e discretos. */
+:root[data-theme="light"] .page-header {
+    background:
+        linear-gradient(135deg, rgba(248, 250, 252, 0.94) 0%, rgba(226, 232, 240, 0.90) 100%),
+        url('../img/triangles-bg.webp');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-blend-mode: normal;
+    border-bottom-color: rgba(15, 23, 42, 0.10);
+    box-shadow: 0 10px 40px rgba(15, 23, 42, 0.10);
+}
+
+:root[data-theme="light"] .page-header::before {
+    opacity: 0.35;
+    filter: invert(1) grayscale(1);
+}
+
+:root[data-theme="light"] .page-header::after {
+    opacity: 0.10;
+    filter: grayscale(1) brightness(0.2);
+}
+
+/* ======================================================================
+   REGRA DE OURO PARA MODAIS ESCUROS (.sc-modal-card, .sc-modal)
+   Garante que todos os rótulos, dados digitados, placeholders e textos de dicas
+   sejam 100% brancos e visíveis em qualquer tema (escuro/claro).
+   ====================================================================== */
+.sc-modal-card,
+.sc-modal-card h1, .sc-modal-card h2, .sc-modal-card h3, .sc-modal-card h4,
+.sc-modal-card p, .sc-modal-card span, .sc-modal-card small,
+.sc-modal-card .sc-label, .sc-modal-card label,
+.sc-modal-card .sc-hint,
+.sc-modal-card .sc-input, .sc-modal-card input, .sc-modal-card select {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+.sc-modal-card .sc-input::placeholder,
+.sc-modal-card input::placeholder,
+.sc-modal-card select::placeholder,
+.sc-modal-card ::placeholder {
+    color: rgba(255, 255, 255, 0.85) !important;
+    -webkit-text-fill-color: rgba(255, 255, 255, 0.85) !important;
+    opacity: 1 !important;
+}
+
+.sc-modal-card .sc-input:focus,
+.sc-modal-card input:focus,
+.sc-modal-card select:focus {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25) !important;
+    background: rgba(255, 255, 255, 0.12) !important;
+    outline: none;
+}
+
+/* ======================================================================
+   MODO CLARO ("PÁGINA BRANCA") — PÁGINA DE PERFIL (PROFESSOR / DIRETOR)
+   ====================================================================== */
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) {
+    background: #ffffff !important;
+    border: 1px solid rgba(15, 23, 42, 0.10) !important;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) :is(h1, h2, h3, h4, h5, h6) {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) .section-title {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    border-bottom-color: rgba(15, 23, 42, 0.10) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) .section-title i {
+    color: #059669 !important;
+    -webkit-text-fill-color: #059669 !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) :is(.form-label, label):not([for="star1"]):not([for="star2"]):not([for="star3"]):not([for="star4"]):not([for="star5"]) {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) :is(p, span, small, .text-secondary) {
+    color: #475569 !important;
+    -webkit-text-fill-color: #475569 !important;
+}
+
+/* Campos de entrada no perfil no modo claro */
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) :is(.form-input, .form-textarea, input:not([type="checkbox"]):not([type="radio"]), textarea, select) {
+    background-color: #ffffff !important;
+    background: #ffffff !important;
+    border: 1.5px solid rgba(15, 23, 42, 0.14) !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    caret-color: #059669 !important;
+    color-scheme: light !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) :is(.form-input, .form-textarea, input, textarea, select):focus {
+    background-color: #ffffff !important;
+    border-color: #059669 !important;
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) :is(.form-input, .form-textarea, input, textarea, select):disabled {
+    background-color: #f1f5f9 !important;
+    color: #64748b !important;
+    -webkit-text-fill-color: #64748b !important;
+    border-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) :is(.form-input, .form-textarea, input, textarea, select)::placeholder {
+    color: #94a3b8 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
+    opacity: 1 !important;
+}
+
+/* Área de Upload de Foto */
+:root[data-theme="light"]:not(.high-contrast) .photo-upload {
+    background: #f8fafc !important;
+    border: 1px solid rgba(15, 23, 42, 0.08) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .photo-preview {
+    background: #ffffff !important;
+    border-color: rgba(15, 23, 42, 0.14) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .photo-preview i {
+    color: #94a3b8 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
+}
+
+/* Blocos Destacados dentro do Perfil (Minha Escola, LGPD, Avaliação) */
+:root[data-theme="light"]:not(.high-contrast) #secaoTrocarEscola {
+    background: #f0fdf4 !important;
+    border: 1.5px solid rgba(5, 150, 105, 0.25) !important;
+}
+:root[data-theme="light"]:not(.high-contrast) #secaoTrocarEscola .section-title {
+    color: #059669 !important;
+    -webkit-text-fill-color: #059669 !important;
+}
+:root[data-theme="light"]:not(.high-contrast) #btnMudarEscola {
+    background: #ffffff !important;
+    color: #059669 !important;
+    -webkit-text-fill-color: #059669 !important;
+    border: 1.5px solid #059669 !important;
+    font-weight: 600 !important;
+}
+:root[data-theme="light"]:not(.high-contrast) #btnMudarEscola:hover {
+    background: #059669 !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .form-section:has(.bi-shield-check) {
+    background: #eff6ff !important;
+    border: 1.5px solid rgba(2, 132, 199, 0.25) !important;
+}
+:root[data-theme="light"]:not(.high-contrast) .form-section:has(.bi-shield-check) .section-title {
+    color: #0284c7 !important;
+    -webkit-text-fill-color: #0284c7 !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .form-section:has(.bi-star-fill) {
+    background: #fffbeb !important;
+    border: 1.5px solid rgba(217, 119, 6, 0.25) !important;
+}
+:root[data-theme="light"]:not(.high-contrast) .form-section:has(.bi-star-fill) .section-title {
+    color: #d97706 !important;
+    -webkit-text-fill-color: #d97706 !important;
+}
+:root[data-theme="light"]:not(.high-contrast) #btnEnviarAvaliacao {
+    background: #ffffff !important;
+    color: #d97706 !important;
+    -webkit-text-fill-color: #d97706 !important;
+    border: 1.5px solid #d97706 !important;
+    font-weight: 600 !important;
+}
+:root[data-theme="light"]:not(.high-contrast) #btnEnviarAvaliacao:hover {
+    background: #d97706 !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+/* Botões do Perfil no Modo Claro */
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) .btn-secondary {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    border: 1px solid rgba(15, 23, 42, 0.14) !important;
+}
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) .btn-secondary:hover {
+    background: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) .btn-outline {
+    background: #ffffff !important;
+    color: #334155 !important;
+    -webkit-text-fill-color: #334155 !important;
+    border: 1px solid rgba(15, 23, 42, 0.2) !important;
+}
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) .btn-outline:hover {
+    background: #f8fafc !important;
+    color: #0f172a !important;
+    border-color: rgba(15, 23, 42, 0.3) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) .btn-primary {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    border: none !important;
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) :is(.cadastro-card, .perfil-card) .form-actions {
+    border-top-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+/* ======================================================================
+   MODO CLARO ("PÁGINA BRANCA") — LISTA DE PROFESSORES
+   O .glass-card da lista de professores sai da "caixa preta" e recebe
+   tratamento branco com tabela legível, inputs claros e texto escuro.
+   ====================================================================== */
+
+/* --- Card principal: fundo branco --- */
+:root[data-theme="light"]:not(.high-contrast) .glass-card {
+    background: #ffffff !important;
+    border: 1px solid rgba(15, 23, 42, 0.10) !important;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+}
+
+/* Texto genérico dentro do glass-card: escuro (vence a regra "caixas pretas"
+   que pinta tudo de branco, graças ao seletor .glass-card extra). */
+:root[data-theme="light"]:not(.high-contrast) .glass-card :is(h1, h2, h3, h4, h5, h6,
+    p, span, small, strong, b, em, i, u, s, a, li, label, legend,
+    div, section, article, header, footer, nav, form, fieldset,
+    button, input, textarea, select, td, th, caption, summary, details, code, kbd, pre, time, output) {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+
+/* --- Títulos e textos dentro do glass-card --- */
+:root[data-theme="light"]:not(.high-contrast) .glass-card .header h2 {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .glass-card .header p {
+    color: #475569 !important;
+    -webkit-text-fill-color: #475569 !important;
+}
+
+/* --- Todos os campos de formulário dentro do glass-card --- */
+:root[data-theme="light"]:not(.high-contrast) .glass-card :is(input:not([type="checkbox"]):not([type="radio"]), textarea, select) {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    border: 1.5px solid rgba(15, 23, 42, 0.14) !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    caret-color: #059669 !important;
+    color-scheme: light !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .glass-card :is(input, textarea, select)::placeholder {
+    color: #94a3b8 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
+    opacity: 1 !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .glass-card :is(input, textarea, select):focus {
+    border-color: #059669 !important;
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15) !important;
+    background: #ffffff !important;
+}
+
+/* --- Textarea de observações gerais --- */
+:root[data-theme="light"]:not(.high-contrast) .glass-card #caixaTexto {
+    background: #ffffff !important;
+    border: 1.5px solid rgba(15, 23, 42, 0.14) !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    caret-color: #059669 !important;
+    color-scheme: light !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .glass-card #caixaTexto::placeholder {
+    color: #94a3b8 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
+    opacity: 1 !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .glass-card #caixaTexto:focus {
+    border-color: #059669 !important;
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15) !important;
+}
+
+/* --- Table wrapper --- */
+:root[data-theme="light"]:not(.high-contrast) .glass-card .table-wrapper {
+    background: #f8fafc !important;
+    border: 1px solid rgba(15, 23, 42, 0.08) !important;
+    border-radius: 12px !important;
+}
+
+/* --- Cabeçalho da tabela --- */
+:root[data-theme="light"]:not(.high-contrast) .glass-card table th {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+    -webkit-text-fill-color: #475569 !important;
+    border-bottom: 2px solid rgba(15, 23, 42, 0.10) !important;
+    font-weight: 700 !important;
+}
+
+/* --- Células da tabela --- */
+:root[data-theme="light"]:not(.high-contrast) .glass-card table td {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.06) !important;
+}
+
+/* Linhas alternadas (zebra) */
+:root[data-theme="light"]:not(.high-contrast) .glass-card table tbody tr:nth-child(even) td {
+    background: #f8fafc !important;
+}
+
+/* Hover nas linhas */
+:root[data-theme="light"]:not(.high-contrast) .glass-card table tbody tr:hover td {
+    background: #eff6ff !important;
+}
+
+/* --- Inputs dentro da tabela --- */
+:root[data-theme="light"]:not(.high-contrast) .glass-card table input[type="text"],
+:root[data-theme="light"]:not(.high-contrast) .glass-card table input[type="number"] {
+    background: #ffffff !important;
+    border: 1.5px solid rgba(15, 23, 42, 0.12) !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    caret-color: #059669 !important;
+    color-scheme: light !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .glass-card table input[type="text"]::placeholder,
+:root[data-theme="light"]:not(.high-contrast) .glass-card table input[type="number"]::placeholder {
+    color: #94a3b8 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
+    opacity: 1 !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .glass-card table input:focus {
+    border-color: #059669 !important;
+    box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.12) !important;
+    background: #ffffff !important;
+}
+
+/* --- Coluna de assinatura --- */
+:root[data-theme="light"]:not(.high-contrast) .glass-card .col-assinatura {
+    color: #94a3b8 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
+}
+
+/* --- Botão de deletar --- */
+:root[data-theme="light"]:not(.high-contrast) .glass-card .btn-delete {
+    background: rgba(239, 68, 68, 0.08) !important;
+    color: #dc2626 !important;
+    -webkit-text-fill-color: #dc2626 !important;
+    border: 1px solid rgba(239, 68, 68, 0.20) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .glass-card .btn-delete:hover {
+    background: #dc2626 !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+/* --- Botões de ação (salvar, adicionar, gerar pdf) --- */
+:root[data-theme="light"]:not(.high-contrast) .glass-card .controls .btn-primary {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .glass-card .controls .btn-success {
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) .glass-card .controls .btn-danger {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(220, 38, 38, 0.3) !important;
+}

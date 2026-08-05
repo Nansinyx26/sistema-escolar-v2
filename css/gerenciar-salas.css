@@ -1,0 +1,465 @@
+.salas-management-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: var(--spacing-xl);
+    margin-top: var(--spacing-xl);
+}
+
+/* Barra de busca — .filters-section/.search-box não têm estilo nos CSS
+   carregados por esta tela, então o ícone e o campo ficavam soltos. */
+.filters-section {
+    padding: var(--spacing-lg);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-xl);
+}
+
+.search-box {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.search-box > i {
+    flex-shrink: 0;
+    font-size: 1.1rem;
+    color: var(--text-tertiary);
+}
+
+.search-box input {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 14px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: var(--font-size-sm);
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.sala-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    transition: all var(--transition-base);
+    animation: fadeInUp 0.5s var(--ease-out) backwards;
+}
+
+.sala-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--primary);
+    box-shadow: var(--shadow-lg);
+}
+
+.sala-card-header {
+    background: var(--bg-tertiary);
+    padding: var(--spacing-lg);
+    border-bottom: 1px solid var(--border-primary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.sala-card-header h3 {
+    margin: 0;
+    font-size: var(--font-size-xl);
+    color: var(--primary);
+}
+
+.sala-card-header .badge {
+    background: var(--primary-light);
+    color: var(--primary);
+    padding: 4px 10px;
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+}
+
+.sala-card-body {
+    padding: var(--spacing-lg);
+}
+
+.professores-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.professor-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--bg-elevated);
+    border-radius: var(--radius-lg);
+    border: 1px solid transparent;
+    transition: all var(--transition-fast);
+}
+
+.professor-item:hover {
+    border-color: var(--border-primary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.professor-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--bg-tertiary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 2px solid var(--border-primary);
+    flex-shrink: 0;
+}
+
+.professor-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.professor-info {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.professor-info strong {
+    display: block;
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.professor-info span {
+    font-size: var(--font-size-xs);
+    color: var(--text-tertiary);
+}
+
+.professor-actions {
+    opacity: 0.5;
+    transition: opacity var(--transition-base);
+}
+
+.professor-item:hover .professor-actions {
+    opacity: 1;
+}
+
+.btn-remove-atrib {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger, var(--error));
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.btn-remove-atrib:hover {
+    background: var(--danger, var(--error));
+    color: white;
+    transform: scale(1.1);
+}
+
+.empty-sala {
+    text-align: center;
+    padding: var(--spacing-xl);
+    color: var(--text-tertiary);
+    font-style: italic;
+    font-size: var(--font-size-sm);
+}
+
+.loading-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: var(--spacing-3xl);
+    color: var(--text-secondary);
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--border-primary);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    margin: 0 auto var(--spacing-md);
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(5px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xl);
+}
+
+.modal-header {
+    padding: var(--spacing-lg);
+    border-bottom: 1px solid var(--border-primary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: var(--font-size-xl);
+    color: var(--primary);
+}
+
+.btn-close {
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.modal-body {
+    padding: var(--spacing-xl);
+}
+
+.modal-footer {
+    padding: var(--spacing-lg);
+    border-top: 1px solid var(--border-primary);
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-md);
+}
+
+.radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-sm);
+}
+
+.radio-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.radio-item:hover {
+    border-color: var(--primary);
+}
+
+.radio-item input {
+    width: 18px;
+    height: 18px;
+}
+
+/* Add Button in Card */
+.btn-add-prof {
+    background: var(--primary-light);
+    color: var(--primary);
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.btn-add-prof:hover {
+    background: var(--primary);
+    color: white;
+    transform: rotate(90deg);
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ======================================================================
+   MODO CLARO
+   ======================================================================
+   No tema claro a página é branca e as CAIXAS (.sala-card, .glass-card,
+   .modal-content) viram PRETAS com texto branco — regra global de
+   variables.css. As superfícies INTERNAS desta tela (cabeçalho do card,
+   item de professor, avatar, opções de rádio, botões neutros) continuavam
+   usando os tokens claros (--bg-tertiary / --bg-elevated), o que colocava
+   texto branco sobre cinza-claro e as tornava ilegíveis. Aqui elas passam
+   a ser camadas claras translúcidas sobre o preto.
+   Carregado depois de variables.css, então empates de especificidade são
+   vencidos por este arquivo; onde a regra global usa !important, este
+   também usa.
+   ====================================================================== */
+
+/* --- Cabeçalho do card de sala --- */
+:root[data-theme="light"] .sala-card-header {
+    background: rgba(255, 255, 255, 0.06);
+    border-bottom-color: rgba(255, 255, 255, 0.12);
+}
+
+:root[data-theme="light"] .sala-card .sala-card-header h3 {
+    color: #34d399 !important;
+    -webkit-text-fill-color: #34d399 !important;
+}
+
+:root[data-theme="light"] .sala-card .sala-card-header .badge {
+    background: rgba(52, 211, 153, 0.18);
+    color: #6ee7b7 !important;
+    -webkit-text-fill-color: #6ee7b7 !important;
+}
+
+/* --- Item de professor --- */
+:root[data-theme="light"] .professor-item {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+:root[data-theme="light"] .professor-item:hover {
+    background: rgba(255, 255, 255, 0.10);
+    border-color: rgba(255, 255, 255, 0.18);
+}
+
+:root[data-theme="light"] .professor-avatar {
+    background: rgba(255, 255, 255, 0.10);
+    border-color: rgba(255, 255, 255, 0.18);
+}
+
+:root[data-theme="light"] .sala-card .professor-info span {
+    color: rgba(255, 255, 255, 0.62) !important;
+    -webkit-text-fill-color: rgba(255, 255, 255, 0.62) !important;
+}
+
+:root[data-theme="light"] .sala-card .empty-sala {
+    color: rgba(255, 255, 255, 0.55) !important;
+    -webkit-text-fill-color: rgba(255, 255, 255, 0.55) !important;
+}
+
+/* --- Botões de ação do card (a regra global os pintaria de branco) --- */
+:root[data-theme="light"] .sala-card .btn-add-prof,
+:root[data-theme="light"] .sala-card .btn-add-prof i {
+    background: rgba(52, 211, 153, 0.18);
+    color: #6ee7b7 !important;
+    -webkit-text-fill-color: #6ee7b7 !important;
+}
+
+:root[data-theme="light"] .sala-card .btn-add-prof:hover,
+:root[data-theme="light"] .sala-card .btn-add-prof:hover i {
+    background: #34d399;
+    color: #052e1c !important;
+    -webkit-text-fill-color: #052e1c !important;
+}
+
+:root[data-theme="light"] .sala-card .btn-remove-atrib,
+:root[data-theme="light"] .sala-card .btn-remove-atrib i {
+    background: rgba(248, 113, 113, 0.18);
+    color: #fca5a5 !important;
+    -webkit-text-fill-color: #fca5a5 !important;
+}
+
+:root[data-theme="light"] .sala-card .btn-remove-atrib:hover,
+:root[data-theme="light"] .sala-card .btn-remove-atrib:hover i {
+    background: #ef4444;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+/* --- Busca (dentro da caixa preta .glass-card) --- */
+:root[data-theme="light"] .search-box input {
+    border-color: rgba(255, 255, 255, 0.18);
+}
+
+:root[data-theme="light"] .search-box input:focus {
+    border-color: #34d399;
+}
+
+/* --- Modal --- */
+:root[data-theme="light"] .modal-content .modal-header h2,
+:root[data-theme="light"] .modal-content .modal-header h2 i {
+    color: #34d399 !important;
+    -webkit-text-fill-color: #34d399 !important;
+}
+
+:root[data-theme="light"] .modal-content .radio-item {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.14);
+}
+
+:root[data-theme="light"] .modal-content .radio-item:hover {
+    background: rgba(255, 255, 255, 0.10);
+    border-color: #34d399;
+}
+
+/* Os rádios nativos herdariam o esquema claro e sumiriam no fundo preto. */
+:root[data-theme="light"] .modal-content input[type="radio"] {
+    accent-color: #34d399;
+    color-scheme: dark;
+}
+
+/* Botões neutros dentro da caixa preta: o fundo continuava claro (token do
+   tema claro) com o texto já branco pela regra global — texto invisível. */
+:root[data-theme="light"] .modal-content .btn-secondary {
+    background: rgba(255, 255, 255, 0.10);
+    border-color: rgba(255, 255, 255, 0.18);
+}
+
+:root[data-theme="light"] .modal-content .btn-secondary:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.28);
+}
+
+/* --- Estado de carregamento --- */
+:root[data-theme="light"] .spinner {
+    border-color: rgba(0, 0, 0, 0.12);
+    border-top-color: var(--primary);
+}

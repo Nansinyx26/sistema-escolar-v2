@@ -1,0 +1,40 @@
+# Node dependencies
+node_modules/
+npm-debug.log*
+
+# Environment and secrets — NUNCA versionar credenciais
+.env
+.env.local
+.env.*.local
+*.env
+!.env.example
+!backend/.env.example
+backend/.env
+credentials.json
+secrets.json
+backend/vapid-keys.json
+
+# Logs and diagnostics — logs não pertencem ao repositório
+backend/*.log
+backend/logs/
+logs/
+*.log
+backend/latest_code.txt
+backend/crash_log.txt
+backend/crash_log_utf8.txt
+backend/output.log
+backend/test_output.txt
+backend/scripts/collections_output.txt
+backend/scripts/collections.json
+env.txt
+
+# Confidentials (LGPD) — School schedules and worksheets
+direcao/horarios_consolidado.json
+*.xlsx
+Horario Jaguari 2026/
+
+# System / editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
