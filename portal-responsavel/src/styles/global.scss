@@ -113,20 +113,39 @@ ol { list-style: none; }
 button { cursor: pointer; }
 
 // ─── Custom Scrollbar ─────────────────────────────────────────────────────────
+html {
+  scrollbar-color: #10b981 #09090b;
+}
+
+:root[data-theme="light"] {
+  scrollbar-color: #000000 #ffffff;
+}
+
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: $bg-secondary;
+  background: #09090b;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: #10b981;
   border-radius: 99px;
 
-  &:hover { background: rgba(16, 185, 129, 0.4); }
+  &:hover { background: #34d399; }
+}
+
+:root[data-theme="light"] ::-webkit-scrollbar-track {
+  background: #ffffff;
+}
+
+:root[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: #000000;
+  border-radius: 99px;
+
+  &:hover { background: #18181b; }
 }
 
 // ─── Text Selection ───────────────────────────────────────────────────────────

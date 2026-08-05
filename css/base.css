@@ -197,23 +197,46 @@ a:focus-visible,
 }
 
 /* === SCROLLBAR CUSTOMIZADO === */
+html {
+    scrollbar-color: #10b981 #09090b;
+}
+
+:root[data-theme="light"] {
+    scrollbar-color: #000000 #ffffff;
+}
+
 ::-webkit-scrollbar {
-    width: 12px;
-    height: 12px;
+    width: 10px;
+    height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-    background: var(--bg-secondary);
+    background: #09090b;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--border-secondary);
+    background: #10b981;
     border-radius: var(--radius-full);
-    border: 3px solid var(--bg-secondary);
+    border: 2px solid #09090b;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--text-tertiary);
+    background: #34d399;
+}
+
+/* Modo Claro — Barra de rolagem preta */
+:root[data-theme="light"] ::-webkit-scrollbar-track {
+    background: #ffffff;
+}
+
+:root[data-theme="light"] ::-webkit-scrollbar-thumb {
+    background: #000000;
+    border-radius: var(--radius-full);
+    border: 2px solid #ffffff;
+}
+
+:root[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+    background: #18181b;
 }
 
 /* === SELEÇÍO DE TEXTO === */
