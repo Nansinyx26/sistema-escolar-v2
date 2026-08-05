@@ -319,11 +319,18 @@ async function carregarResumoDiretor() {
         }
 
         // Carregar últimos avisos
-        const resNotices = await fetch(`${window.API_BASE_URL}/dashboard/summary/notices`, { credentials: 'include' });
-        const jsonNotices = await resNotices.json();
-        
-        if (jsonNotices.success) {
-            atualizarListaAvisosMini(jsonNotices.data.slice(0, 5));
+        try {
+            const resNotices = await fetch(`${window.API_BASE_URL}/dashboard/summary/notices`, { credentials: 'include' });
+            const jsonNotices = await resNotices.json();
+            
+            if (jsonNotices.success) {
+                atualizarListaAvisosMini(jsonNotices.data.slice(0, 5));
+            } else {
+                atualizarListaAvisosMini([]);
+            }
+        } catch (e) {
+            console.warn('Erro ao carregar últimos avisos:', e);
+            atualizarListaAvisosMini([]);
         }
 
         // Mock de atividades (pode ser expandido futuramente)
@@ -403,7 +410,12 @@ function animateValue(id, start, end, duration) {
 
 function atualizarListaAvisosMini(notices) {
     const list = document.getElementById('latestNoticesList');
-    if (!list || notices.length === 0) return;
+    if (!list) return;
+
+    if (!notices || notices.length === 0) {
+        list.innerHTML = '<div class="activity-item-mini" style="justify-content: center; color: #94a3b8; padding: 1rem;"><i class="bi bi-check-circle" style="margin-right: 6px;"></i> Nenhum aviso recente</div>';
+        return;
+    }
 
     list.innerHTML = notices.map(n => `
         <div class="activity-item-mini">

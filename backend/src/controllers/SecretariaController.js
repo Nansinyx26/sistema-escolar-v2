@@ -1103,8 +1103,8 @@ exports.exportarRelatorio = async (req, res) => {
 exports.dashboardResumo = async (req, res) => {
     try {
         const [totalAlunos, totalTurmas, totalMatriculas, justificativasPendentes, docsEmitidos] = await Promise.all([
-            Aluno.countDocuments(escopo(req, { ativo: true })),
-            Turma.countDocuments(escopo(req, { ativo: true })),
+            Aluno.countDocuments(escopo(req, { ativo: { $ne: false } })),
+            Turma.countDocuments(escopo(req, { ativo: { $ne: false } })),
             Matricula.countDocuments(escopo(req, { status: 'cursando' })),
             JustificativaFalta.countDocuments(escopo(req, { status: 'pendente' })),
             DocumentoEmitido.countDocuments(escopo(req, { createdAt: { $gte: new Date(new Date().getFullYear(), 0, 1) } }))
