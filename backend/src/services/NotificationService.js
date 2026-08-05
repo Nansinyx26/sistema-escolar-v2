@@ -90,7 +90,7 @@ exports.notify = async ({
                 if (escolaId) {
                     global.io.to(`escola:${escolaId}`).emit('notification:new', payload);
                 } else {
-                    global.io.emit('notification:new', payload);
+                    global.io.to('role:professor').to('role:responsavel').to('role:diretor').emit('notification:new', payload);
                 }
             } else {
                 const rooms = new Set();

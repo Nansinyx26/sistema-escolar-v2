@@ -28,7 +28,7 @@ jobs:
     strategy:
       matrix:
         # sharp >=0.35 exige Node >=20.9; vite 8 exige >=20.19
-        node-version: [20.x, 22.x]
+        node-version: [20.x]
 
     steps:
       - name: 📥 Checkout code
