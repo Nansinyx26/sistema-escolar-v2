@@ -28,6 +28,33 @@ services:
       - key: METRICS_TOKEN
         sync: false # Opcional: protege GET /api/metrics em produção
 
+      # ── Conta administradora (backend/scripts/criar-admin.js) ───────────────
+      # Lidas SOMENTE pelo script de provisionamento, nunca pelo servidor.
+      # `sync: false` = valor preenchido no painel do Render → Environment; o
+      # blueprint versionado fica sem credencial nenhuma.
+      #
+      # ADMIN_SENHA é opcional: deixe em branco e o script gera uma senha
+      # aleatória, exibida uma única vez na saída do comando. Se você preencher,
+      # APAGUE a variável do painel logo após rodar o script — senha de admin em
+      # texto plano no ambiente do serviço vaza em qualquer dump de env.
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_SENHA
+        sync: false
+      - key: ADMIN_NOME
+        sync: false
+      - key: ADMIN_TELEFONE
+        sync: false
+
+      # ADMIN_PATH — apelido secreto da área administrativa. Com um valor aqui,
+      # as telas passam a responder em /html/<valor>/... e /html/admin/...
+      # devolve 404 para todos. Vazio mantém /html/admin.
+      # Ofuscação, não autorização: o gate de perfil segue sendo a defesa real.
+      # Este é o ÚNICO ADMIN_* que o servidor lê em execução — os demais são
+      # usados só pelo script de provisionamento.
+      - key: ADMIN_PATH
+        sync: false
+
       # ── URLs ────────────────────────────────────────────────────────────────
       - key: FRONTEND_URL
         value: https://sistema-escolar-bfty.onrender.com
@@ -49,6 +76,20 @@ services:
       # ── TTS: ElevenLabs (opcional — fallback do Gemini) ──────────────────────
       - key: ELEVENLABS_API_KEY
         sync: false # ElevenLabs: https://elevenlabs.io/app/settings/api-keys
+
+      # ── Copiloto de IA (página ia-assistant) ────────────────────────────────
+      # SEM esta chave o assistente responde 503 e a página só mostra o aviso de
+      # indisponibilidade. Se ela estiver numa conta de NÍVEL GRATUITO, a cota
+      # diária acaba e o assistente passa a responder "atingiu o limite de uso"
+      # até a virada do dia — o remédio é ativar faturamento no projeto da
+      # chave, não mexer no código.
+      - key: GEMINI_KEY
+        sync: false # Google AI Studio: https://aistudio.google.com/app/apikey
+
+      # Sobrescreve o modelo tentado primeiro. Em branco usa o padrão do código,
+      # que já cai em modelos alternativos quando um deles recusa por cota.
+      - key: IA_MODELO
+        sync: false
 
       # ── Chat interno ─────────────────────────────────────────────────────────
       # Adapter compartilhado do Socket.IO. Este serviço roda em `plan: free`,

@@ -130,10 +130,9 @@ describe('Navegação e tratamento de erros', () => {
         expect(res.text).not.toContain('ESCOLA JAGUARI');
     });
 
-    it('todos os destinos de getRedirectPath existem e retornam 200', async () => {
+    it('todos os destinos publicos de getRedirectPath existem e retornam 200', async () => {
         const destinos = [
             '/html/dashboard.html',
-            '/html/secretaria/painel.html',
             '/html/mudar-senha.html',
             '/html/escolher-perfil.html',
             '/html/login.html',
@@ -143,5 +142,31 @@ describe('Navegação e tratamento de erros', () => {
             const res = await request(app).get(destino);
             expect(`${destino}:${res.status}`).toBe(`${destino}:200`);
         }
+    });
+
+    // O painel da secretaria saiu da lista acima quando /html/secretaria passou
+    // a ser área restrita (middleware/protegerPaginas.js). O que o teste original
+    // garantia continua garantido, só que em duas partes: o caminho EXISTE de
+    // verdade (não cai no catch-all que devolve a landing) e ele ABRE para quem
+    // o getRedirectPath manda para lá.
+    it('destino da secretaria existe e nao cai no catch-all da landing', async () => {
+        const res = await request(app).get('/html/secretaria/painel.html');
+
+        expect(res.status).toBe(302);
+        expect(res.headers.location).toMatch(/\/html\/login\.html/);
+        expect(res.text).not.toContain('ESCOLA JAGUARI');
+    });
+
+    it('destino da secretaria abre para a propria secretaria', async () => {
+        const { assinarTokenSessao } = require('../utils/sessionToken');
+        const usuario = await criarUsuario({
+            email: 'sec_redirect@escola.test', perfil: 'secretaria', nome: 'Secretaria Teste'
+        });
+
+        const res = await request(app)
+            .get('/html/secretaria/painel.html')
+            .set('Cookie', [`escola_jwt=${assinarTokenSessao(usuario)}`]);
+
+        expect(res.status).toBe(200);
     });
 });

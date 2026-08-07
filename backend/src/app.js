@@ -176,6 +176,18 @@ const staticOptions = {
     }
 };
 
+// ============================================
+// GATE DAS ÁREAS RESTRITAS — ANTES DO express.static
+// ============================================
+// A ordem é a proteção: se este middleware ficasse depois do static, o Express
+// já teria respondido com o arquivo e o gate nunca rodaria.
+//
+// É registrado SEM prefixo de propósito. Montá-lo em `app.use('/html/admin')`
+// deixava o gate casar o caminho cru enquanto o static resolvia o caminho
+// decodificado — e `/html/%61dmin/usuarios.html` entregava a página a um
+// anônimo. Ver middleware/protegerPaginas.js.
+app.use(require('./middleware/protegerPaginas').protegerAreasRestritas(frontendRootPath));
+
 staticDirectories.forEach((directory) => {
     app.use(`/${directory}`, express.static(path.join(frontendRootPath, directory), staticOptions));
 });
