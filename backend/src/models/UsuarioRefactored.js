@@ -28,7 +28,7 @@ const UsuarioAuthSchema = new mongoose.Schema({
   _id: mongoose.Schema.Types.ObjectId,
   
   // Identidade
-  email: { type: String, required: true, unique: true, index: true },
+  email: { type: String, required: true, unique: true }, // unique já cria índice; index:true seria duplicata
   cpf: { type: String, sparse: true, unique: true },
   nome: { type: String, required: true },
   telefone: String,
@@ -60,8 +60,8 @@ const UsuarioAuthSchema = new mongoose.Schema({
 }, { collection: 'usuariosAuth' });
 
 // Indices
-UsuarioAuthSchema.index({ email: 1, ativo: 1 });
-UsuarioAuthSchema.index({ cpf: 1 }, { sparse: true });
+UsuarioAuthSchema.index({ email: 1, ativo: 1 }); // índice composto para login com filtro de conta ativa
+// cpf já tem unique+sparse inline acima — não duplicar com schema.index({cpf:1})
 UsuarioAuthSchema.index({ perfil: 1, ativo: 1 });
 
 // ======================
@@ -75,8 +75,7 @@ const UsuarioPreferenciasSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'UsuarioAuth',
     required: true,
-    unique: true,
-    index: true,
+    unique: true, // unique já cria índice; index:true abaixo seria duplicata
   },
   
   // Tema
@@ -130,8 +129,7 @@ const UsuarioLGPDSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'UsuarioAuth',
     required: true,
-    unique: true,
-    index: true,
+    unique: true, // unique já cria índice; index:true abaixo seria duplicata
   },
   
   // Consentimento
@@ -181,8 +179,7 @@ const ResponsavelPerfilSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'UsuarioAuth',
     required: true,
-    unique: true,
-    index: true,
+    unique: true, // unique já cria índice; index:true abaixo seria duplicata
   },
   
   // Responsabilidade
@@ -239,8 +236,7 @@ const UsuarioOnboardingSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'UsuarioAuth',
     required: true,
-    unique: true,
-    index: true,
+    unique: true, // unique já cria índice; index:true abaixo seria duplicata
   },
   
   // Primeiro acesso

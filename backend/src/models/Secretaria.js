@@ -3,9 +3,9 @@ const mongoose = require('mongoose');
 const SecretariaSchema = new mongoose.Schema({
     _id: { type: String, default: () => new mongoose.Types.ObjectId().toString() },
     id: { type: mongoose.Schema.Types.Mixed, index: true },
-    idUsuario: { type: String, index: true, required: true }, // Vínculo com Usuario._id
+    idUsuario: { type: String, required: true }, // Vínculo com Usuario._id — índice em schema.index abaixo
     nome: { type: String, required: true },
-    email: { type: String, unique: true },
+    email: { type: String }, // cache do Usuario.email — unicidade real está na coleção usuarios
     telefone: String,
     escola: String,
     // Multi-escola: vínculos do usuário com escolas (escolaId = _id de Escola).
@@ -33,7 +33,8 @@ const SecretariaSchema = new mongoose.Schema({
     collection: 'secretarias'
 });
 
-// Índice para busca por usuário vinculado
+// Cada conta de secretaria aponta para exatamente um Usuario — 1:1 garantido por unique.
+// NÃO declarar index:true no campo acima: isso criaria {idUsuario:1} duas vezes (warning Mongoose).
 SecretariaSchema.index({ idUsuario: 1 }, { unique: true });
 
 module.exports = mongoose.model('Secretaria', SecretariaSchema);

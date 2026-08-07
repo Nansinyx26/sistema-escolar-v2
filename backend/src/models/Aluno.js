@@ -62,7 +62,7 @@ const AlunoSchema = new mongoose.Schema({
     id: { type: mongoose.Schema.Types.Mixed, index: true }, // Pode ser numero (legacy) ou string/uuid
     nome: { type: String, required: true },
     sobrenome: String,
-    matricula: { type: String, unique: true, sparse: true }, // RA (Registro Acadêmico) - Fixo do aluno
+    matricula: { type: String, sparse: true }, // RA (Registro Acadêmico) — unicidade por escola em schema.index abaixo
 
     // --- LEGACY/CACHE (Agora gerenciado pela entidade 'Matricula') ---
     turma: { type: String, index: true }, // Ex: "1A" (Manter por compatibilidade ou cache)
@@ -159,5 +159,12 @@ AlunoSchema.index({ nome: 'text', sobrenome: 'text' });
 // Consulta mais comum: alunos ativos de uma turma específica
 AlunoSchema.index({ turma: 1, ativo: 1 });
 AlunoSchema.index({ turmaId: 1, ativo: 1 });
+// Matrícula (RA) é única dentro de cada escola, não globalmente.
+// Um RA "2024001" na Escola A é independente do mesmo número na Escola B.
+// partialFilterExpression exclui alunos sem RA atribuído ainda.
+AlunoSchema.index(
+    { escolaId: 1, matricula: 1 },
+    { unique: true, partialFilterExpression: { matricula: { $type: 'string' } } }
+);
 
 module.exports = mongoose.models.Aluno || mongoose.model('Aluno', AlunoSchema);

@@ -5,7 +5,7 @@ const DiretorSchema = new mongoose.Schema({
     id: { type: mongoose.Schema.Types.Mixed, index: true },
     idUsuario: { type: String, index: true }, // Vínculo com Usuario._id
     nome: { type: String, required: true },
-    email: { type: String, unique: true },
+    email: { type: String }, // cache do Usuario.email — unicidade real está na coleção usuarios
     telefone: String,
     idade: Number,
     biografia: String,

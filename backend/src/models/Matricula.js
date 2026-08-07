@@ -11,7 +11,7 @@ const MatriculaSchema = new mongoose.Schema({
     escolaId: { type: String, index: true },
 
     anoLetivo: { type: Number, required: true, index: true }, // Ex: 2024, 2025
-    matriculaNumero: { type: String, unique: true }, // Ex: "2024001" (antigo campo matricula do aluno)
+    matriculaNumero: { type: String }, // Ex: "2024001" — unicidade por escola em schema.index abaixo
 
     status: {
         type: String,
@@ -35,7 +35,14 @@ const MatriculaSchema = new mongoose.Schema({
     collection: 'matriculas'
 });
 
-// Indice composto para garantir que um aluno só tenha uma matrícula ativa por ano (opcional, dependendo da regra de negócio)
-MatriculaSchema.index({ alunoId: 1, anoLetivo: 1 }, { unique: true });
+// Um aluno só pode ter uma matrícula ativa por escola por ano letivo.
+// escolaId é necessário: um aluno transferido de escola no mesmo ano letivo
+// teria o mesmo alunoId+anoLetivo em duas escolas distintas sem essa chave.
+MatriculaSchema.index({ escolaId: 1, alunoId: 1, anoLetivo: 1 }, { unique: true });
+// Número de matrícula é único dentro de cada escola, não globalmente.
+MatriculaSchema.index(
+    { escolaId: 1, matriculaNumero: 1 },
+    { unique: true, partialFilterExpression: { matriculaNumero: { $type: 'string' } } }
+);
 
 module.exports = mongoose.model('Matricula', MatriculaSchema);

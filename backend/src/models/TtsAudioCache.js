@@ -4,8 +4,7 @@ const TtsAudioCacheSchema = new mongoose.Schema({
     hash: {
         type:     String,
         required: true,
-        unique:   true,
-        index:    true
+        unique:   true // unique já cria índice — index:true seria duplicata
     },
     audioData: {
         type:     Buffer,

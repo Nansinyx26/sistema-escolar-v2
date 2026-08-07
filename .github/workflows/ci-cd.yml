@@ -28,7 +28,7 @@ jobs:
     strategy:
       matrix:
         # sharp >=0.35 exige Node >=20.9; vite 8 exige >=20.19
-        node-version: [20.x]
+        node-version: [22.x]
 
     steps:
       - name: 📥 Checkout code
@@ -86,7 +86,24 @@ jobs:
         run: npm audit --audit-level=moderate
         continue-on-error: true
 
-      - name: 🔐 Trivy scan
+      # O resultado precisa aparecer no LOG, e não só num arquivo .sarif.
+      # Antes, a única saída do Trivy era o arquivo enviado para a aba Security
+      # — que neste repositório nunca chegou lá (ver o passo seguinte). Ou seja:
+      # o job dizia "Security Scan" e não mostrava nada a ninguém.
+      - name: 🔐 Trivy scan (resultado no log)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "./backend"
+          format: "table"
+          severity: "CRITICAL,HIGH"
+          # exit-code fica em 0 de propósito: ligar o bloqueio junto com esta
+          # correção travaria o deploy por vulnerabilidades preexistentes que
+          # ninguém triou ainda. Trocar para "1" quando a lista estiver limpa
+          # transforma este passo num gate de verdade.
+          exit-code: "0"
+
+      - name: 🔐 Trivy scan (arquivo SARIF)
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: "fs"
@@ -94,11 +111,22 @@ jobs:
           format: "sarif"
           output: "trivy-results.sarif"
 
+      # A aba Security só aceita SARIF de repositório PÚBLICO ou de repositório
+      # privado com GitHub Advanced Security. Este repo é privado e sem GHAS,
+      # então o upload responde "Resource not accessible by integration" —
+      # sempre. Como o passo tinha `if: always()` e nada que tolerasse a falha,
+      # ele derrubava o job `security`, e com ele o `build-prod`, que declara
+      # `needs: [lint-and-test, security]`. Resultado: o deploy de produção era
+      # pulado por causa de um upload que nunca poderia funcionar.
+      #
+      # `continue-on-error` mantém o passo no lugar: no dia em que o repo virar
+      # público ou ganhar GHAS, ele volta a publicar sozinho, sem editar nada.
       - name: 📤 Upload Trivy results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: "trivy-results.sarif"
         if: always()
+        continue-on-error: true
 
   # ================================
   # BUILD & DEPLOY (DEV)

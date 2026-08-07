@@ -17,7 +17,7 @@ const mongoose = require('mongoose');
  * cresce sem limite.
  */
 const TokenRevogadoSchema = new mongoose.Schema({
-    jti: { type: String, required: true, unique: true, index: true },
+    jti: { type: String, required: true, unique: true }, // unique já cria índice — não declarar index:true também
     usuarioId: { type: String, index: true },
     // Momento em que o token expiraria por conta própria (vindo do claim `exp`).
     // Depois disso o registro é inútil: o jwt.verify já rejeita sozinho.

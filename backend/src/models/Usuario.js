@@ -13,7 +13,7 @@ const UsuarioSchema = new mongoose.Schema({
     senha: { type: String, select: false }, // Opcional para logins sociais (Google)
     nome: { type: String, required: true },
     telefone: { type: String, required: true }, // Telefone obrigatório para recuperação de senha
-    cpf: { type: String, unique: true, sparse: true }, // CPF opcional/sparse para novos cadastros
+    cpf: { type: String }, // CPF opcional — unicidade por escola em schema.index abaixo
     perfil: { type: String, enum: ['admin', 'diretor', 'professor', 'responsavel', 'secretaria'], default: 'professor' },
     escola: { type: String }, // Nome da escola
     escolaId: { type: String, index: true }, // Multi-tenant: id da Escola (para notificações/filtros)
@@ -237,5 +237,11 @@ UsuarioSchema.set('toObject', { transform: removerCamposSensiveis });
 UsuarioSchema.index({ perfil: 1, ativo: 1 });
 // Índice para consulta de usuários inativos (rotina de anonimização automática)
 UsuarioSchema.index({ ultimoLogin: 1, ativo: 1 });
+// CPF é único dentro de cada escola, não globalmente (professor pode ter vínculo em várias escolas).
+// partialFilterExpression exclui documentos sem CPF — `sparse` sozinho não funciona em índice composto.
+UsuarioSchema.index(
+    { escolaId: 1, cpf: 1 },
+    { unique: true, partialFilterExpression: { cpf: { $type: 'string' } } }
+);
 
 module.exports = mongoose.models.Usuario || mongoose.model('Usuario', UsuarioSchema);
