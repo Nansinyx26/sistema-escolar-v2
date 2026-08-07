@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Fora de buscadores e de qualquer pré-visualização de link. -->
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+    <meta name="referrer" content="no-referrer">
+    <title>Acesso</title>
+    <style>
+        :root {
+            --bg: #0f1115; --card: #171a21; --borda: #262b36;
+            --texto: #e7e9ee; --suave: #9aa3b2; --acento: #3ddc97; --erro: #f87171;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; min-height: 100vh; display: flex; align-items: center;
+            justify-content: center; background: var(--bg); color: var(--texto);
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            padding: 24px;
+        }
+        .cartao {
+            width: 100%; max-width: 360px; background: var(--card);
+            border: 1px solid var(--borda); border-radius: 12px; padding: 32px 28px;
+        }
+        h1 { margin: 0 0 24px; font-size: 1.1rem; font-weight: 600; letter-spacing: .01em; }
+        label { display: block; font-size: .8rem; color: var(--suave); margin-bottom: 6px; }
+        input {
+            width: 100%; padding: 11px 12px; margin-bottom: 16px; background: #0d0f14;
+            border: 1px solid var(--borda); border-radius: 8px; color: var(--texto);
+            font-size: .95rem; font-family: inherit;
+        }
+        input:focus { outline: none; border-color: var(--acento); }
+        button {
+            width: 100%; padding: 11px; background: var(--acento); color: #0b0d11;
+            border: none; border-radius: 8px; font-size: .95rem; font-weight: 600;
+            cursor: pointer; font-family: inherit;
+        }
+        button:disabled { opacity: .55; cursor: default; }
+        .aviso { font-size: .85rem; margin-bottom: 16px; min-height: 1.2em; }
+        .aviso.erro { color: var(--erro); }
+        .aviso.info { color: var(--suave); }
+        .oculto { display: none; }
+        #codigo { letter-spacing: .4em; text-align: center; font-size: 1.15rem; }
+    </style>
+</head>
+<body>
+    <main class="cartao">
+        <h1 id="titulo">Acesso restrito</h1>
+        <p class="aviso" id="aviso" role="alert" aria-live="polite"></p>
+
+        <form id="formLogin" autocomplete="off">
+            <label for="email">E-mail</label>
+            <input type="email" id="email" name="email" required autocomplete="username">
+
+            <label for="senha">Senha</label>
+            <input type="password" id="senha" name="senha" required autocomplete="current-password">
+
+            <button type="submit" id="btnEntrar">Entrar</button>
+        </form>
+
+        <form id="form2FA" class="oculto" autocomplete="off">
+            <label for="codigo">Código de verificação</label>
+            <input type="text" id="codigo" name="codigo" inputmode="numeric" maxlength="6"
+                   pattern="[0-9]{6}" autocomplete="one-time-code" required>
+            <button type="submit" id="btnVerificar">Verificar</button>
+        </form>
+    </main>
+
+    <script>
+    // ────────────────────────────────────────────────────────────────────────
+    // Página de acesso administrativo.
+    //
+    // Vive dentro da área protegida, mas é a ÚNICA isenta da checagem de perfil
+    // — exigir sessão para chegar à tela de login seria um impasse. Quem a
+    // protege é o prefixo secreto (ADMIN_PATH): sem conhecer a URL, não se
+    // chega aqui. Ver backend/src/middleware/protegerPaginas.js.
+    //
+    // Isso é ofuscação, não autorização. O que de fato barra alguém é a senha e
+    // o gate de perfil das páginas seguintes — esta tela não sabe nem tenta
+    // saber quem está do outro lado.
+    //
+    // Os caminhos são RELATIVOS de propósito: assim a navegação permanece sob o
+    // apelido secreto. Um caminho absoluto aqui entregaria o prefixo real a
+    // quem abrisse o fonte — inclusive escrito num comentário como este.
+    // ────────────────────────────────────────────────────────────────────────
+    (function () {
+        'use strict';
+
+        var API = window.location.origin + '/api';
+        var aviso = document.getElementById('aviso');
+        var formLogin = document.getElementById('formLogin');
+        var form2FA = document.getElementById('form2FA');
+        var btnEntrar = document.getElementById('btnEntrar');
+        var btnVerificar = document.getElementById('btnVerificar');
+
+        function mostrar(texto, tipo) {
+            aviso.textContent = texto || '';
+            aviso.className = 'aviso' + (tipo ? ' ' + tipo : '');
+        }
+
+        // O cookie csrf_token não é HttpOnly justamente para ser lido aqui e
+        // devolvido no header (padrão double-submit). /api/auth/login é isento,
+        // mas /2fa/verify não é.
+        function csrf() {
+            var m = ('; ' + document.cookie).split('; csrf_token=');
+            return m.length === 2 ? m.pop().split(';').shift() : '';
+        }
+
+        function entrar(destino) {
+            // Relativo: preserva o prefixo secreto da URL atual.
+            window.location.href = destino || './usuarios.html';
+        }
+
+        formLogin.addEventListener('submit', function (e) {
+            e.preventDefault();
+            mostrar('Verificando…', 'info');
+            btnEntrar.disabled = true;
+
+            fetch(API + '/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf() },
+                credentials: 'include',
+                body: JSON.stringify({
+                    email: document.getElementById('email').value.trim(),
+                    senha: document.getElementById('senha').value
+                })
+            })
+            .then(function (r) { return r.json().catch(function () { return {}; }); })
+            .then(function (data) {
+                btnEntrar.disabled = false;
+
+                if (data && data.requires2FA) {
+                    formLogin.classList.add('oculto');
+                    form2FA.classList.remove('oculto');
+                    document.getElementById('titulo').textContent = 'Verificação em duas etapas';
+                    mostrar('Enviamos um código para o seu e-mail.', 'info');
+                    document.getElementById('codigo').focus();
+                    return;
+                }
+
+                if (!data || !data.success) {
+                    // Repete a mensagem do servidor, que já é deliberadamente
+                    // genérica para não confirmar se a conta existe.
+                    mostrar((data && data.error) || 'Não foi possível entrar.', 'erro');
+                    return;
+                }
+
+                entrar();
+            })
+            .catch(function () {
+                btnEntrar.disabled = false;
+                mostrar('Falha de conexão. Tente novamente.', 'erro');
+            });
+        });
+
+        form2FA.addEventListener('submit', function (e) {
+            e.preventDefault();
+            mostrar('Verificando código…', 'info');
+            btnVerificar.disabled = true;
+
+            fetch(API + '/auth/2fa/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf() },
+                credentials: 'include',
+                body: JSON.stringify({ codigo: document.getElementById('codigo').value.trim() })
+            })
+            .then(function (r) { return r.json().catch(function () { return {}; }); })
+            .then(function (data) {
+                btnVerificar.disabled = false;
+                if (!data || !data.success) {
+                    mostrar((data && data.error) || 'Código inválido.', 'erro');
+                    return;
+                }
+                entrar();
+            })
+            .catch(function () {
+                btnVerificar.disabled = false;
+                mostrar('Falha de conexão. Tente novamente.', 'erro');
+            });
+        });
+    })();
+    </script>
+</body>
+</html>

@@ -51,6 +51,20 @@ const logger = require('../utils/logger');
  * então uma página nova nasce protegida sem depender de alguém cadastrá-la.
  * As chaves DEVEM estar em minúsculas — a comparação é feita em caixa baixa.
  */
+/**
+ * Páginas alcançáveis SEM sessão dentro de uma área restrita.
+ *
+ * Só a tela de login entra aqui, e por impasse: exigir sessão para chegar à
+ * página que cria a sessão tornaria a área inacessível. O que a protege é o
+ * prefixo secreto (ADMIN_PATH) — com ele configurado, /html/admin/entrar.html
+ * responde 404 como todo o resto do caminho previsível.
+ *
+ * A isenção vale APENAS para a checagem de perfil. Tudo mais continua: o
+ * caminho é normalizado antes, o apelido é resolvido antes, e a página não dá
+ * acesso a nada — quem entra ainda precisa da senha.
+ */
+const PAGINAS_SEM_SESSAO = new Set(['entrar.html']);
+
 const AREAS = {
     '/html/admin': {
         perfis: ['admin'],
@@ -185,6 +199,10 @@ function extrairToken(req) {
 
 async function autorizar(req, res, next, { config, forma }, pagina404) {
     const arquivo = path.basename(forma);
+
+    // Tela de login da área: segue adiante sem sessão (ver PAGINAS_SEM_SESSAO).
+    if (PAGINAS_SEM_SESSAO.has(arquivo)) return next();
+
     const perfisPermitidos = (config.excecoes && config.excecoes[arquivo]) || config.perfis;
     const token = extrairToken(req);
 
