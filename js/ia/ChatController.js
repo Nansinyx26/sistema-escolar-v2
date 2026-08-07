@@ -51,12 +51,17 @@ export class ChatController {
      * @param {Function} [opcoes.aoMudarEstado]     'ocioso'|'pensando'|'falando'
      * @param {Function} [opcoes.aoAvisar]          exibe um toast
      * @param {Function} [opcoes.aoReceberContexto] contexto confirmado pelo servidor
+     * @param {boolean}  [opcoes.narrarAuto] narrar toda resposta ao terminá-la
      */
     constructor(elementos, opcoes = {}) {
         this.el = elementos;
         this.aoMudarEstado = opcoes.aoMudarEstado || (() => {});
         this.aoAvisar = opcoes.aoAvisar || (() => {});
         this.aoReceberContexto = opcoes.aoReceberContexto || (() => {});
+
+        // Propriedade pública: o painel de preferências troca isso em tempo de
+        // execução, sem recriar o controller nem recarregar a página.
+        this.narrarAuto = Boolean(opcoes.narrarAuto);
 
         this.aoSalvarConversa = opcoes.aoSalvarConversa || (() => {});
 
@@ -77,6 +82,7 @@ export class ChatController {
         this.ultimaPergunta = null;
         this.controlador = null;   // AbortController do envio em curso
         this.gerando = false;
+        this.narrando = false;     // áudio em reprodução — ver _definirGerando
         this.paleta = null;        // definida por conectarPaleta()
 
         this._ligarEventos();
@@ -154,7 +160,14 @@ export class ChatController {
         this.el.botaoEnviar.disabled = valor;
         this.el.entrada.disabled = valor;
         if (this.el.botaoParar) this.el.botaoParar.hidden = !valor;
-        this.aoMudarEstado(valor ? 'pensando' : 'ocioso');
+
+        // Com narração automática a fala começa DENTRO do stream, então este
+        // "ocioso" do fim da geração chegaria depois e apagaria o "falando" —
+        // o orb voltava ao repouso com o áudio ainda tocando. Quem narra é dono
+        // do estado até o áudio acabar.
+        if (valor || !this.narrando) {
+            this.aoMudarEstado(valor ? 'pensando' : 'ocioso');
+        }
         if (!valor) this.el.entrada.focus();
     }
 
@@ -204,6 +217,9 @@ export class ChatController {
     /** Abre uma conversa em branco. Sem id, o servidor cria um registro novo. */
     novaConversa() {
         if (this.gerando) this.parar();
+        // Abrir uma conversa em branco com a resposta anterior ainda sendo lida
+        // em voz alta deixa a tela e o áudio falando de coisas diferentes.
+        this.pararNarracao();
         this.conversaId = null;
         this.ultimaPergunta = null;
         this.renderer.limpar(ESTADO_VAZIO_HTML);
@@ -216,6 +232,7 @@ export class ChatController {
      */
     retomar(conversa) {
         if (this.gerando) this.parar();
+        this.pararNarracao();
 
         this.conversaId = conversa.id;
         this.renderer.limpar('');
@@ -387,6 +404,14 @@ export class ChatController {
         }
         if (confirmacoes.length > 0) this.renderer.rolarParaFim();
 
+        // Narração automática. Fica aqui, e não em `finalizarResposta`, para NÃO
+        // disparar em `retomar()`: reabrir uma conversa antiga não deve começar
+        // a ler respostas que a pessoa já leu. O `aborted` cobre o caso de ter
+        // clicado em "parar" — narrar meia resposta seria pior que silêncio.
+        if (this.narrarAuto && texto && !this.controlador?.signal.aborted) {
+            this._falar(texto);
+        }
+
         return texto;
     }
 
@@ -423,26 +448,59 @@ export class ChatController {
     }
 
     /**
+     * Interrompe a narração em curso.
+     *
+     * Existe para quem está FORA do controller (o microfone da página) poder
+     * calar o áudio sem chamar `window.stopTtsAudio` direto: aquela chamada
+     * pararia o som mas deixaria `narrando` ligado, e o controller pararia de
+     * devolver o orb ao repouso a partir dali.
+     */
+    pararNarracao() {
+        if (window.stopTtsAudio) window.stopTtsAudio();
+        this.narrando = false;
+    }
+
+    /**
      * Narra a resposta usando o serviço de voz já existente na página
      * (`window.speak`, definido em sidebar-voice.js). Voz é opcional: uma falha
      * aqui nunca invalida a resposta de texto.
      */
     async _falar(texto) {
-        if (typeof window.speak !== 'function') return;
+        if (typeof window.speak !== 'function') {
+            this.aoAvisar('A narração não está disponível nesta página.');
+            return;
+        }
+        const encerrar = () => {
+            this.narrando = false;
+            this.aoMudarEstado('ocioso');
+        };
+
         try {
             if (window.stopTtsAudio) window.stopTtsAudio();
+            this.narrando = true;
             this.aoMudarEstado('falando');
             // Marcação de Markdown não deve ser lida em voz alta.
             const limpo = texto.replace(/[*_~`#|>]/g, ' ').replace(/\s+/g, ' ').trim();
             const audio = await window.speak(limpo);
+
             if (audio && 'onended' in audio) {
-                audio.onended = () => this.aoMudarEstado('ocioso');
-            } else {
-                this.aoMudarEstado('ocioso');
+                // `onended` só cobre o fim natural. Sem o `onerror` o orb ficava
+                // preso em "Narrando a resposta..." quando o áudio falhava no
+                // meio da reprodução.
+                audio.onended = encerrar;
+                audio.onerror = encerrar;
+                return;
             }
+
+            // `window.speak` devolve null quando o servidor de voz recusa. Sem
+            // aviso, a pessoa clica em "Ouvir" e não acontece absolutamente
+            // nada — parecia que o botão estava quebrado.
+            encerrar();
+            this.aoAvisar('Não foi possível gerar o áudio agora. O texto da resposta continua acima.');
         } catch (e) {
             console.warn('[IA] Narração indisponível:', e?.message);
-            this.aoMudarEstado('ocioso');
+            encerrar();
+            this.aoAvisar('Não foi possível gerar o áudio agora.');
         }
     }
 }

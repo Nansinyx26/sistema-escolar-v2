@@ -19,30 +19,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         ? 'http://localhost:3001/api'
         : (window.location.origin + '/api');
 
-    // ── Timer de auto-refresh para códigos pendentes ─────────────────────
-    let autoRefreshTimer = null;
-    let autoRefreshCount = 0;
-    const MAX_AUTO_REFRESH = 12; // máx 12 tentativas (1 minuto)
-
-    function startAutoRefresh() {
-        stopAutoRefresh();
-        autoRefreshCount = 0;
-        autoRefreshTimer = setInterval(async () => {
-            autoRefreshCount++;
-            if (autoRefreshCount >= MAX_AUTO_REFRESH) {
-                stopAutoRefresh();
-                return;
-            }
-            await carregarCodigos(true); // silent = true (sem mostrar "Carregando...")
-        }, 5000); // a cada 5 segundos
-    }
-
-    function stopAutoRefresh() {
-        if (autoRefreshTimer) {
-            clearInterval(autoRefreshTimer);
-            autoRefreshTimer = null;
-        }
-    }
+    // Não há mais auto-refresh: a rota gera os códigos faltantes em lote dentro
+    // do próprio request e já devolve o código definitivo. O polling antigo
+    // desistia calado depois de 1 minuto e deixava "Gerando..." na tela para
+    // sempre quando a geração em background falhava.
 
     async function popularTurmas() {
         const select = document.getElementById('filtroTurmaCodigosSecretos');
@@ -99,6 +79,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    function escapeHtml(valor) {
+        return String(valor ?? '').replace(/[&<>"']/g, c => (
+            { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+        ));
+    }
+
     async function carregarCodigos(silent) {
         const tbody = document.getElementById('secretCodesTableBody');
         if (!tbody) return;
@@ -121,7 +107,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (!json.success || !Array.isArray(json.data) || json.data.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="5" class="empty-message">Nenhum aluno encontrado.</td></tr>';
-                stopAutoRefresh();
                 return;
             }
 
@@ -132,21 +117,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                     : '<span class="status-pill status-pill--aguardando"><i class="bi bi-clock-history"></i> Aguardando</span>';
 
                 // ── Código secreto ───────────────────────────────────────
+                // `codigoFalhou` = o backend tentou gerar e a gravação não
+                // passou. É um erro no cadastro do aluno, não uma espera —
+                // por isso a mensagem manda agir em vez de pedir paciência.
                 let codigoHTML;
-                if (item.codigoSecreto === 'Gerando...') {
-                    codigoHTML = '<span class="codigo-secreto" style="opacity:0.6;animation:pulse-mint 1.2s infinite;"><i class="bi bi-arrow-repeat" style="margin-right:4px;"></i>Gerando...</span>';
+                if (item.codigoFalhou) {
+                    codigoHTML = '<span class="codigo-secreto" style="opacity:0.75;color:#f87171;" title="Não foi possível gerar o código deste aluno. Revise o cadastro (nome, turma) e recarregue."><i class="bi bi-exclamation-triangle" style="margin-right:4px;"></i>Falhou</span>';
                 } else if (!item.codigoSecreto || item.codigoSecreto === 'N/A') {
                     codigoHTML = '<code class="codigo-secreto" style="opacity:0.5;">------</code>';
                 } else {
-                    codigoHTML = `<code class="codigo-secreto">${item.codigoSecreto}</code>`;
+                    codigoHTML = `<code class="codigo-secreto">${escapeHtml(item.codigoSecreto)}</code>`;
                 }
 
                 return `
                     <tr>
-                        <td style="font-weight:600;">${item.nome}</td>
+                        <td style="font-weight:600;">${escapeHtml(item.nome)}</td>
                         <td>${codigoHTML}</td>
-                        <td>${item.ano || '-'}</td>
-                        <td>${item.turma || '-'}</td>
+                        <td>${escapeHtml(item.ano || '-')}</td>
+                        <td>${escapeHtml(item.turma || '-')}</td>
                         <td>${statusBadge}</td>
                     </tr>
                 `;
@@ -154,16 +142,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const paginationEl = document.getElementById('secretCodesPagination');
             if (paginationEl) {
-                paginationEl.innerHTML = `<span style="font-size:0.8rem;color:var(--text-secondary);">${json.data.length} aluno(s) encontrado(s)</span>`;
-            }
-
-            // Se há códigos pendentes, inicia auto-refresh para buscar atualizações
-            if (json.pendingCodes) {
-                if (!autoRefreshTimer) {
-                    startAutoRefresh();
-                }
-            } else {
-                stopAutoRefresh();
+                const falhas = json.failedCodes || 0;
+                const aviso = falhas > 0
+                    ? ` <span style="color:#f87171;">· ${falhas} sem código (revisar cadastro)</span>`
+                    : '';
+                paginationEl.innerHTML = `<span style="font-size:0.8rem;color:var(--text-secondary);">${json.data.length} aluno(s) encontrado(s)${aviso}</span>`;
             }
         } catch (error) {
             console.error('Erro ao carregar códigos secretos:', error);

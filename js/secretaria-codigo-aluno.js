@@ -139,11 +139,19 @@
             info.appendChild(meta);
 
             var codigo = document.createElement('code');
-            codigo.textContent = a.codigoSecreto;
-            codigo.style.cssText = 'background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:#34d399;border-radius:8px;padding:5px 10px;font-size:.86rem;letter-spacing:.08em;font-weight:700;';
+            // Sem código = a geração falhou para este aluno (cadastro a revisar).
+            // Antes vinha o texto "Gerando..." e ele nunca mudava sozinho.
+            var temCodigo = !!a.codigoSecreto;
+            codigo.textContent = temCodigo ? a.codigoSecreto : 'sem código';
+            codigo.title = temCodigo ? '' : 'Não foi possível gerar o código deste aluno. Revise o cadastro e use o botão de gerar novo código.';
+            codigo.style.cssText = temCodigo
+                ? 'background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:#34d399;border-radius:8px;padding:5px 10px;font-size:.86rem;letter-spacing:.08em;font-weight:700;'
+                : 'background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);color:#f87171;border-radius:8px;padding:5px 10px;font-size:.78rem;font-weight:600;';
 
             var btnCopiar = botaoIcone('bi-clipboard', 'Copiar código');
+            btnCopiar.disabled = !temCodigo;
             btnCopiar.addEventListener('click', function () {
+                if (!a.codigoSecreto) return;
                 navigator.clipboard.writeText(a.codigoSecreto).then(function () {
                     toast('Código de ' + a.nome + ' copiado!', 'success');
                     btnCopiar.querySelector('i').className = 'bi bi-clipboard-check';
@@ -153,7 +161,10 @@
 
             var btnRegen = botaoIcone('bi-arrow-repeat', 'Gerar novo código (invalida o atual)');
             btnRegen.addEventListener('click', function () {
-                if (!confirm('Gerar um NOVO código para ' + a.nome + '?\n\nO código atual (' + a.codigoSecreto + ') deixará de funcionar imediatamente.')) return;
+                var aviso = a.codigoSecreto
+                    ? '\n\nO código atual (' + a.codigoSecreto + ') deixará de funcionar imediatamente.'
+                    : '\n\nEste aluno está sem código no momento.';
+                if (!confirm('Gerar um NOVO código para ' + a.nome + '?' + aviso)) return;
                 btnRegen.disabled = true;
                 btnRegen.querySelector('i').className = 'bi bi-arrow-repeat mca-spin';
                 fetch(API_BASE + '/alunos/' + encodeURIComponent(a.id) + '/regenerar-codigo', {
@@ -166,6 +177,10 @@
                         if (!json.success) throw new Error(json.error || 'Falha ao regenerar');
                         a.codigoSecreto = json.data.codigoSecreto;
                         codigo.textContent = a.codigoSecreto;
+                        // Sai do visual de erro caso o aluno estivesse sem código.
+                        codigo.title = '';
+                        codigo.style.cssText = 'background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:#34d399;border-radius:8px;padding:5px 10px;font-size:.86rem;letter-spacing:.08em;font-weight:700;';
+                        btnCopiar.disabled = false;
                         toast(json.message, 'success');
                     })
                     .catch(function (e) { toast(e.message || 'Erro ao regenerar código.', 'error'); })

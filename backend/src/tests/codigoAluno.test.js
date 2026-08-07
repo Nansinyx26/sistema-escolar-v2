@@ -3,6 +3,7 @@
  * listagem restrita por perfil e escola, e regeneração invalidando o anterior.
  */
 const request = require('supertest');
+const mongoose = require('mongoose');
 const app = require('../app');
 const { conectarBanco, limparBanco, desconectarBanco, criarUsuario, SENHA_TESTE } = require('./helpers');
 
@@ -38,6 +39,48 @@ describe('GET /api/alunos/codigos-secretos', () => {
         expect(res.body.data).toHaveLength(1);
         expect(res.body.data[0].codigoSecreto).toBe('ABC123');
         expect(res.body.data[0].id).toBeTruthy();
+    });
+
+    /**
+     * REGRESSÃO: a tela da direção ficava presa em "Gerando..." para sempre.
+     *
+     * A geração rodava em background, um aluno por vez, com `doc.save()` — que
+     * revalida o documento inteiro. Um cadastro legado sem `nome` (obrigatório
+     * no schema) derrubava o laço com ValidationError e, como tudo estava
+     * dentro de um único try fire-and-forget, os alunos seguintes nunca
+     * recebiam código e ninguém via o erro.
+     */
+    it('gera os códigos na própria resposta, mesmo com cadastro legado quebrado', async () => {
+        const col = mongoose.connection.collection('alunos');
+        await col.insertMany([
+            { _id: 'sem-cod-1', nome: 'Sem Codigo Um', turma: '1A', ativo: true },
+            { _id: 'sem-cod-2', nome: 'Sem Codigo Dois', turma: '1A', ativo: true, codigoSecreto: null },
+            { _id: 'sem-cod-3', nome: 'Sem Codigo Tres', turma: '1A', ativo: true, codigoSecreto: 'N/A' },
+            { _id: 'quebrado', turma: '1A', ativo: true }, // sem `nome`: derrubava o laço antigo
+        ]);
+
+        const agent = await agentPerfil('admin', 'admin_pendentes@escola.test');
+        const res = await agent.get('/api/alunos/codigos-secretos');
+
+        expect(res.status).toBe(200);
+        // Nada de estado de espera: a resposta já traz o código definitivo.
+        expect(res.body.pendingCodes).toBe(false);
+        expect(res.body.data.some(d => d.codigoSecreto === 'Gerando...')).toBe(false);
+
+        for (const nome of ['Sem Codigo Um', 'Sem Codigo Dois', 'Sem Codigo Tres']) {
+            const item = res.body.data.find(d => d.nome === nome);
+            expect(item.codigoSecreto).toMatch(/^[A-Z2-9]{10,}$/);
+            expect(item.codigoFalhou).toBe(false);
+        }
+
+        // O documento quebrado também é atendido (bulkWrite grava só o campo)
+        // e não deixa a string "undefined" na tela.
+        expect(res.body.data.find(d => d.nome === '(sem nome)')).toBeTruthy();
+
+        const noBanco = await Aluno.find({}).select('codigoSecreto').lean();
+        const codigos = noBanco.map(d => d.codigoSecreto);
+        expect(codigos.every(Boolean)).toBe(true);
+        expect(new Set(codigos).size).toBe(codigos.length); // todos únicos
     });
 
     it('filtra pela escola ativa da sessão (multi-tenant)', async () => {

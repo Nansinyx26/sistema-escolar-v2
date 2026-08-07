@@ -401,3 +401,64 @@ describe('AIProvider — tradução para o formato do provedor', () => {
         expect(p._traduzirFerramentas([])).toBeUndefined();
     });
 });
+
+describe('AIProvider — recusa por cota', () => {
+    const { GeminiProvider } = jest.requireActual('../services/ia/AIProvider');
+
+    // Corpo real de um 429 do provedor: RetryInfo diz quando tentar de novo e
+    // QuotaFailure diz QUAL limite estourou.
+    const corpo429 = (quotaId, retryDelay) => JSON.stringify({
+        error: {
+            code: 429,
+            status: 'RESOURCE_EXHAUSTED',
+            details: [
+                { '@type': 'type.googleapis.com/google.rpc.QuotaFailure', violations: [{ quotaId }] },
+                { '@type': 'type.googleapis.com/google.rpc.RetryInfo', retryDelay: retryDelay }
+            ]
+        }
+    });
+
+    it('lê o tempo de espera informado pelo provedor', () => {
+        const p = new GeminiProvider();
+        const info = p._lerLimiteDeCota(corpo429('GenerateRequestsPerMinutePerProject', '23s'));
+
+        expect(info.esperaSegundos).toBe(23);
+        expect(info.diaria).toBe(false);
+    });
+
+    it('reconhece o limite DIÁRIO — que não passa "em alguns minutos"', () => {
+        const p = new GeminiProvider();
+        const info = p._lerLimiteDeCota(corpo429('GenerateRequestsPerDayPerProject', '0s'));
+
+        expect(info.diaria).toBe(true);
+        expect(p._mensagemDeCota(true, 0)).toMatch(/hoje/i);
+        expect(p._mensagemDeCota(true, 0)).not.toMatch(/alguns minutos/i);
+    });
+
+    it('um corpo ilegível não derruba o tratamento do erro', () => {
+        const p = new GeminiProvider();
+        expect(p._lerLimiteDeCota('<html>502 Bad Gateway</html>')).toEqual({
+            diaria: false, esperaSegundos: 0
+        });
+        expect(p._lerLimiteDeCota(undefined).esperaSegundos).toBe(0);
+    });
+
+    it('espera curta vira instrução em segundos; espera longa continua genérica', () => {
+        const p = new GeminiProvider();
+        expect(p._mensagemDeCota(false, 25)).toMatch(/25 segundos/);
+        expect(p._mensagemDeCota(false, 3600)).toMatch(/alguns minutos/i);
+        expect(p._mensagemDeCota(false, 0)).toMatch(/alguns minutos/i);
+    });
+
+    it('não cita o nome comercial do provedor em nenhuma mensagem de cota', () => {
+        const p = new GeminiProvider();
+        const mensagens = [
+            p._mensagemDeCota(true, 0),
+            p._mensagemDeCota(false, 25),
+            p._mensagemDeCota(false, 0)
+        ];
+        for (const m of mensagens) {
+            expect(m).not.toMatch(/gemini|google|openai|claude/i);
+        }
+    });
+});

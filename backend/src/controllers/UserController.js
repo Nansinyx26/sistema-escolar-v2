@@ -2001,18 +2001,26 @@ exports.removeFoto = async (req, res) => {
  */
 exports.updateTTSSettings = async (req, res) => {
     const userId = req.user.id || req.user._id;
-    const { ttsProvider, voicePreference, speed, narrationMode } = req.body;
+    const { ttsProvider, voicePreference, elevenlabsVoice, narrarAuto, speed, narrationMode } = req.body;
+
+    // `voiceGender` é campo legado com enum de gênero. A tela de voz hoje manda
+    // NOME DE VOZ ('adam', 'brian', ...) ou 'off' — copiar isso direto para lá,
+    // com runValidators ligado, reprovava o update inteiro: a pessoa trocava a
+    // voz, recebia 500 e NENHUMA das preferências era gravada.
+    const GENEROS_LEGADOS = ['male', 'female'];
 
     try {
         const updateData = {};
         if (ttsProvider)     updateData['settings.ttsProvider']     = ttsProvider;
         if (voicePreference) updateData['settings.voicePreference'] = voicePreference;
+        if (elevenlabsVoice) updateData['settings.elevenlabsVoice'] = elevenlabsVoice;
+        if (narrarAuto !== undefined) updateData['settings.narrarAuto'] = Boolean(narrarAuto);
         if (speed !== undefined) updateData['settings.speed']       = Number(speed);
         if (narrationMode)   updateData['settings.narrationMode']   = narrationMode;
 
         // Também atualiza os campos legados para retrocompatibilidade
         if (ttsProvider)     updateData.ttsProvider         = ttsProvider;
-        if (voicePreference) updateData.voiceGender         = voicePreference;
+        if (GENEROS_LEGADOS.includes(voicePreference)) updateData.voiceGender = voicePreference;
         if (speed !== undefined) updateData.voiceSpeed      = Number(speed);
         if (narrationMode)   updateData.preferenciaNarracao = narrationMode;
 

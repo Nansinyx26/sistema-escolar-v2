@@ -2,7 +2,7 @@ const Aluno = require('../models/Aluno');
 const ImageProcessor = require('../utils/imageProcessor');
 const { saveToGridFS, deleteFile } = require('../utils/gridfs');
 const escapeRegex = require('../utils/escapeRegex');
-const { generateUniqueSecretCode } = require('../utils/secretCodeHelper');
+const { generateUniqueSecretCode, assignSecretCodes } = require('../utils/secretCodeHelper');
 const logger = require('../utils/logger');
 const assertAcessoAoAluno = require('../middleware/assertAcessoAoAluno');
 
@@ -344,12 +344,17 @@ exports.delete = async (req, res) => {
 // ─── GET /api/alunos/codigos-secretos ────────────────────────────────────────
 // Restrito a diretores/admin/secretaria — lista todos os alunos com seus códigos secretos.
 //
-// PERFORMANCE: a versão anterior gerava códigos inline para cada aluno sem
-// código (N+1 queries — findById + save + findOne por unicidade POR ALUNO),
-// fazendo a rota travar quando havia muitos alunos sem código. Agora a rota
-// retorna os dados imediatamente com uma única query e dispara a geração de
-// códigos faltantes em background (fire-and-forget). Um reload subsequente
-// já traz os códigos gerados.
+// PERFORMANCE: a primeira versão gerava os códigos inline com N+1 queries
+// (findById + findOne de unicidade + save POR ALUNO) e travava a rota. A
+// segunda passou essa mesma rotina para background (fire-and-forget) e devolvia
+// "Gerando..." — mas, sem ninguém observando o resultado, qualquer falha (um
+// documento legado reprovando na validação do schema, por exemplo) abortava o
+// laço em silêncio e a tela da direção ficava presa em "Gerando..." para
+// sempre. Além disso o auto-refresh do front redisparava o laço a cada 5s.
+//
+// Agora a geração é feita em lote (utils/secretCodeHelper#assignSecretCodes):
+// 3 idas ao banco para qualquer quantidade de alunos, rápido o bastante para
+// rodar dentro do request. A resposta já sai com os códigos definitivos.
 exports.listSecretCodes = async (req, res) => {
     try {
         const { turma, q } = req.query;
@@ -401,30 +406,15 @@ exports.listSecretCodes = async (req, res) => {
             .sort({ turma: 1, nome: 1 })
             .lean();
 
-        // ── Geração de códigos em background (fire-and-forget) ───────────────
-        // Identifica alunos sem código válido e gera de forma assíncrona.
-        // A resposta não espera — o frontend mostra "Gerando..." e um auto-
-        // refresh traz os códigos quando prontos.
+        // ── Geração dos códigos faltantes (em lote, dentro do request) ───────
         const missingIds = students
             .filter(s => !s.codigoSecreto || ['N/A', 'n/a', ''].includes(String(s.codigoSecreto).trim()))
             .map(s => s._id);
 
+        let novosCodigos = new Map();
         if (missingIds.length > 0) {
-            // Fire-and-forget: não bloqueia a resposta HTTP
-            (async () => {
-                try {
-                    for (const id of missingIds) {
-                        const doc = await Aluno.findById(id);
-                        if (doc) {
-                            doc.codigoSecreto = undefined; // triggers pre-save → gera código
-                            await doc.save();
-                        }
-                    }
-                    console.log(`🔑 [SECRET-CODES] ${missingIds.length} código(s) gerado(s) em background.`);
-                } catch (err) {
-                    console.error('❌ [SECRET-CODES] Erro ao gerar códigos em background:', err.message);
-                }
-            })();
+            novosCodigos = await assignSecretCodes(missingIds);
+            logger.info(`[SECRET-CODES] ${novosCodigos.size}/${missingIds.length} código(s) gerado(s).`);
         }
 
         // ── Mapear turmas para exibição ──────────────────────────────────────
@@ -440,8 +430,16 @@ exports.listSecretCodes = async (req, res) => {
         });
 
         // ── Montar resposta ──────────────────────────────────────────────────
-        const hasPending = missingIds.length > 0;
-        const missingIdSet = new Set(missingIds.map(String));
+        // Pendente = aluno que entrou sem código E cuja gravação não confirmou.
+        // Nesse caso o problema é o documento em si (não uma espera), então o
+        // front precisa dizer isso em vez de ficar recarregando para sempre.
+        const naoGerados = missingIds.filter(id => !novosCodigos.has(String(id)));
+        const falhouSet = new Set(naoGerados.map(String));
+        if (naoGerados.length > 0) {
+            logger.warn(`[SECRET-CODES] ${naoGerados.length} aluno(s) sem código após a geração.`, {
+                ids: naoGerados.map(String).slice(0, 20)
+            });
+        }
 
         const data = students.map(s => {
             const studentTurmaKey = (s.turma || s.turmaId || '').toUpperCase();
@@ -461,23 +459,28 @@ exports.listSecretCodes = async (req, res) => {
                 }
             }
 
-            // Se o aluno está na lista de pendentes, mostra "Gerando..."
-            const isMissing = missingIdSet.has(String(s._id));
-            const codigoExibido = isMissing ? 'Gerando...' : (s.codigoSecreto || 'N/A');
+            const codigoExibido = novosCodigos.get(String(s._id))
+                || (falhouSet.has(String(s._id)) ? null : s.codigoSecreto)
+                || null;
 
             return {
                 id: s._id,
-                nome: `${s.nome}${s.sobrenome ? ' ' + s.sobrenome : ''}`,
+                // Cadastros legados podem estar sem `nome`; concatenar direto
+                // imprimia a string "undefined" na tela da direção.
+                nome: [s.nome, s.sobrenome].filter(Boolean).join(' ') || '(sem nome)',
                 ano,
                 turma: turmaNome,
                 codigoSecreto: codigoExibido,
+                codigoFalhou: falhouSet.has(String(s._id)),
                 matricula: s.matricula || '-',
                 vinculado: !!s.responsavel,
                 responsavelEmail: s.responsavel || null
             };
         });
 
-        res.json({ success: true, data, pendingCodes: hasPending });
+        // `pendingCodes` fica para clientes antigos que ainda fazem polling —
+        // false porque não há mais nada sendo gerado em background.
+        res.json({ success: true, data, pendingCodes: false, failedCodes: naoGerados.length });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }

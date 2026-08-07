@@ -32,6 +32,12 @@ const UsuarioSchema = new mongoose.Schema({
     settings: {
         ttsProvider:     { type: String, default: 'gemini' },
         voicePreference: { type: String, default: 'male' },
+        // Nome da voz no provedor de narração (adam, brian, eric, george) ou
+        // 'off'. Fica FORA de `voiceGender` de propósito: aquele campo é legado
+        // e tem enum de gênero, então gravar um nome de voz nele reprovava o
+        // documento inteiro na validação e derrubava o salvamento.
+        elevenlabsVoice: { type: String, default: 'adam' },
+        narrarAuto:      { type: Boolean, default: false },
         speed:           { type: Number, default: 1.0 },
         narrationMode:   { type: String, default: 'texto_audio' }
     },

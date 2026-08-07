@@ -101,11 +101,23 @@ const MODELO_PADRAO = 'gemini-2.0-flash';
  */
 const MAX_CHARS_POR_MENSAGEM = 8000;
 
+/**
+ * Cascata de modelos tentados quando o anterior recusa a requisição.
+ *
+ * O valor está em cada família ter um BALDE DE COTA PRÓPRIO no nível gratuito:
+ * estourar o limite por minuto do 2.5-flash não consome o do 2.0-flash, então a
+ * cascata realmente devolve resposta em vez de só repetir o mesmo 429.
+ *
+ * Por isso a lista NÃO pode conter modelo desativado: `gemini-1.5-flash` e
+ * `gemini-1.5-pro` saíram da API e respondiam 404 — duas viagens de rede
+ * garantidamente perdidas no meio da cascata, bem no momento em que a pessoa
+ * está esperando a resposta.
+ */
 const MODELOS_FALLBACK = [
+    'gemini-2.5-flash',
     'gemini-2.0-flash',
-    'gemini-1.5-flash',
-    'gemini-2.0-flash-lite',
-    'gemini-1.5-pro'
+    'gemini-2.5-flash-lite',
+    'gemini-2.0-flash-lite'
 ];
 
 class GeminiProvider extends AIProvider {
@@ -238,6 +250,8 @@ class GeminiProvider extends AIProvider {
         let respostaSucesso = null;
         let ultimoDetalheErro = '';
         let cotaExcedidaGeral = false;
+        let cotaDiaria = false;
+        let esperaSegundos = 0;
 
         for (const mod of modelosParaTentar) {
             if (signal?.aborted) {
@@ -276,21 +290,76 @@ class GeminiProvider extends AIProvider {
                 status: resposta.status, action: 'ia.stream', cota, detalhe: detalhe.slice(0, 300)
             });
 
+            // 404 aqui quase sempre é modelo desativado ou nome errado em
+            // IA_MODELO — não é falta de cota, e o log precisa dizer isso para
+            // não mandar o suporte caçar limite de uso que não existe.
+            if (resposta.status === 404) {
+                logger.error('[IA] Modelo inexistente ou desativado: ' + mod, {
+                    action: 'ia.stream.modelo'
+                });
+            }
+
             if (cota) {
                 cotaExcedidaGeral = true;
+                const info = this._lerLimiteDeCota(detalhe);
+                if (info.diaria) cotaDiaria = true;
+                // Guarda a MENOR espera: é quando a primeira família libera.
+                if (info.esperaSegundos > 0) {
+                    esperaSegundos = esperaSegundos === 0
+                        ? info.esperaSegundos
+                        : Math.min(esperaSegundos, info.esperaSegundos);
+                }
             }
         }
 
         if (!respostaSucesso) {
             throw new ErroProvedorIA(
                 cotaExcedidaGeral
-                    ? 'O assistente atingiu o limite de uso do momento. Tente novamente em alguns minutos.'
+                    ? this._mensagemDeCota(cotaDiaria, esperaSegundos)
                     : 'O assistente está indisponível no momento.',
                 { status: cotaExcedidaGeral ? 429 : 502, cotaExcedida: cotaExcedidaGeral }
             );
         }
 
         yield* this._lerSSE(respostaSucesso.body, signal);
+    }
+
+    /**
+     * Extrai do corpo do 429 quanto tempo esperar e se o limite é DIÁRIO.
+     *
+     * A distinção importa para quem lê a mensagem: limite por minuto passa
+     * sozinho em segundos, limite diário só volta na virada do dia — mandar
+     * "tente em alguns minutos" nesse caso faz a pessoa insistir à toa.
+     *
+     * O corpo é lido com tolerância (regex sobre o texto, não só JSON.parse)
+     * porque o formato do erro é detalhe do provedor e já mudou antes; falhar
+     * em ler o detalhe nunca pode derrubar o tratamento do erro em si.
+     */
+    _lerLimiteDeCota(detalhe) {
+        const texto = String(detalhe || '');
+        const resultado = { diaria: false, esperaSegundos: 0 };
+
+        // `quotaId` traz o período do limite, ex.: "...PerMinutePerProject".
+        resultado.diaria = /per\s*day|perday|daily/i.test(texto);
+
+        // RetryInfo do google.rpc: { "retryDelay": "23s" }
+        const espera = /"retryDelay"\s*:\s*"?(\d+(?:\.\d+)?)s"?/i.exec(texto);
+        if (espera) resultado.esperaSegundos = Math.ceil(Number(espera[1]));
+
+        return resultado;
+    }
+
+    /** Mensagem de cota mostrada ao usuário — sem citar o provedor. */
+    _mensagemDeCota(diaria, esperaSegundos) {
+        if (diaria) {
+            return 'O assistente atingiu o limite de uso previsto para hoje. '
+                + 'O serviço volta a responder amanhã.';
+        }
+        if (esperaSegundos > 0 && esperaSegundos <= 120) {
+            return `O assistente atingiu o limite de uso do momento. `
+                + `Tente novamente em cerca de ${esperaSegundos} segundos.`;
+        }
+        return 'O assistente atingiu o limite de uso do momento. Tente novamente em alguns minutos.';
     }
 
     /**

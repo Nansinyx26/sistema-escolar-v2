@@ -61,6 +61,9 @@
       .orb:hover { transform: scale(1.03); }
       .orb.pensando { animation: pulsar 1.6s ease-in-out infinite; }
       .orb.falando { animation: pulsar 0.8s ease-in-out infinite; }
+      /* Captando o microfone: pulso mais rápido que o de "narrando", para os
+         dois estados de áudio não ficarem indistinguíveis à distância. */
+      .orb.ouvindo { animation: pulsar 0.55s ease-in-out infinite; }
 
       @keyframes pulsar {
         0%, 100% { transform: scale(1); box-shadow: 0 0 60px var(--glow); }
@@ -97,6 +100,7 @@
         width: 7px; height: 7px; border-radius: 50%; background: var(--muted);
       }
       .status-pill.pensando .status-dot,
+      .status-pill.ouvindo .status-dot,
       .status-pill.falando .status-dot { background: var(--accent); }
 
       .stage-btn {
@@ -487,7 +491,7 @@
       }
 
       @media (prefers-reduced-motion: reduce) {
-        .orb, .orb.pensando, .orb.falando,
+        .orb, .orb.pensando, .orb.falando, .orb.ouvindo,
         .bars.active .bar, .ia-pensando span, .ia-cursor { animation: none !important; }
         * { transition-duration: 0.01ms !important; }
       }
@@ -532,11 +536,26 @@
       <div class="config-box">
         <h2 id="cfgTitulo">Preferências de voz</h2>
 
+        <!-- Os `value` são os nomes que o backend resolve em TTSService
+             (ELEVENLABS_VOICES). Antes as opções eram "male"/"off", herdadas do
+             Google Cloud: a voz salva nunca reaparecia selecionada aqui, porque
+             o valor gravado não existia na lista. -->
         <div class="config-field">
           <label for="cfgVoice">Voz</label>
           <select id="cfgVoice">
-            <option value="male">Voz masculina (Neural2)</option>
+            <option value="adam">Adam — grave e firme</option>
+            <option value="brian">Brian — calma e clara</option>
+            <option value="eric">Eric — natural</option>
+            <option value="george">George — pausada</option>
             <option value="off">Desativada</option>
+          </select>
+        </div>
+
+        <div class="config-field">
+          <label for="cfgAuto">Narração automática</label>
+          <select id="cfgAuto">
+            <option value="0">Só quando eu clicar em "Ouvir"</option>
+            <option value="1">Narrar toda resposta</option>
           </select>
         </div>
 
@@ -649,7 +668,7 @@
           <textarea class="input-box" id="inputBox" rows="1"
             role="combobox" aria-expanded="false" aria-controls="iaPaleta" aria-autocomplete="list"
             placeholder="Pergunte alguma coisa, ou digite / para os comandos"></textarea>
-          <button type="button" class="mic-btn" id="micBtn" title="Falar por voz (Microfone)" aria-label="Falar por voz">
+          <button type="button" class="mic-btn" id="micBtn" title="Falar por voz (Microfone)" aria-label="Falar por voz" aria-pressed="false">
             <i data-lucide="mic" aria-hidden="true"></i>
           </button>
           <button type="button" class="stop-btn" id="stopBtn" hidden title="Parar geração" aria-label="Parar geração">

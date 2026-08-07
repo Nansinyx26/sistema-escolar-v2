@@ -435,12 +435,16 @@ class DirecaoDashboard {
                 ? '<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(34,197,94,0.12);color:#22c55e;padding:3px 10px;border-radius:20px;font-size:0.78rem;font-weight:600;"><i class="bi bi-link-45deg"></i> Vinculado</span>'
                 : '<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(251,191,36,0.12);color:#fbbf24;padding:3px 10px;border-radius:20px;font-size:0.78rem;font-weight:600;"><i class="bi bi-clock-history"></i> Aguardando</span>';
 
+            // Sem código = falha ao gerar (a rota gera em lote antes de
+            // responder, então não existe mais estado "gerando").
+            const codigoHTML = item.codigoSecreto
+                ? `<code style="background:rgba(16,185,129,0.1);color:#34d399;padding:4px 10px;border-radius:6px;font-weight:700;letter-spacing:1.5px;font-size:0.9rem;">${item.codigoSecreto}</code>`
+                : '<span style="color:#f87171;font-size:0.85rem;" title="Não foi possível gerar o código deste aluno. Revise o cadastro e recarregue."><i class="bi bi-exclamation-triangle"></i> Falhou</span>';
+
             return `
                 <tr>
                     <td style="font-weight:600;">${item.nome}</td>
-                    <td>
-                        <code style="background:rgba(16,185,129,0.1);color:#34d399;padding:4px 10px;border-radius:6px;font-weight:700;letter-spacing:1.5px;font-size:0.9rem;">${item.codigoSecreto}</code>
-                    </td>
+                    <td>${codigoHTML}</td>
                     <td>${item.ano || '-'}</td>
                     <td>${item.turma || '-'}</td>
                     <td>${statusBadge}</td>

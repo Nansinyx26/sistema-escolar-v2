@@ -26,10 +26,15 @@ function avisar(mensagem) {
 
 // ── Estado visual do orb ─────────────────────────────────────────────────────
 
+/** Preenchido em `iniciar()`. O painel de preferências precisa dele para
+ *  aplicar a narração automática sem esperar um recarregamento. */
+let controladorAtivo = null;
+
 const TEXTO_ESTADO = {
     ocioso: 'Pronto para ajudar',
     pensando: 'Pensando...',
-    falando: 'Narrando a resposta...'
+    falando: 'Narrando a resposta...',
+    ouvindo: 'Ouvindo você...'
 };
 
 function definirEstado(estado) {
@@ -39,10 +44,13 @@ function definirEstado(estado) {
     const texto = document.getElementById('statusText');
     if (!orb) return;
 
-    orb.className = 'orb' + (estado === 'pensando' || estado === 'falando' ? ' ' + estado : '');
+    const animado = estado === 'pensando' || estado === 'falando' || estado === 'ouvindo';
+    orb.className = 'orb' + (animado ? ' ' + estado : '');
     if (pilula) pilula.className = 'status-pill ' + estado;
     if (texto) texto.textContent = TEXTO_ESTADO[estado] || estado;
-    if (barras) barras.className = 'bars' + (estado === 'falando' ? ' active' : '');
+    // As barras representam áudio em movimento — vale tanto para o assistente
+    // narrando quanto para o microfone captando a pessoa.
+    if (barras) barras.className = 'bars' + (estado === 'falando' || estado === 'ouvindo' ? ' active' : '');
 }
 
 // ── Destino do botão "voltar" ────────────────────────────────────────────────
@@ -86,10 +94,31 @@ function perfilProvavel() {
 // Mantém as MESMAS chaves de localStorage e o mesmo endpoint da versão
 // anterior desta página, para não invalidar a preferência de quem já usava.
 
+/** Vozes que o backend sabe resolver. Serve para descartar valor legado. */
+const VOZES_VALIDAS = ['adam', 'brian', 'eric', 'george', 'off'];
+
+/**
+ * Normaliza a voz salva. Instalações antigas gravaram 'male' (nomenclatura do
+ * Google Cloud) em `user_elevenlabs_voice`; sem esta tradução o `<select>` não
+ * casava com nenhuma opção e caía silenciosamente na primeira.
+ */
+function normalizarVoz(valor) {
+    const v = String(valor || '').toLowerCase();
+    if (VOZES_VALIDAS.includes(v)) return v;
+    if (v === 'female' || v === 'male') return 'adam';
+    return 'adam';
+}
+
 let cfg = {
-    voice: localStorage.getItem('user_elevenlabs_voice') || localStorage.getItem('user_voice_preference') || 'adam',
+    voice: normalizarVoz(
+        localStorage.getItem('user_elevenlabs_voice') || localStorage.getItem('user_voice_preference')
+    ),
     lang: 'pt-BR',
-    provider: localStorage.getItem('user_tts_provider') || 'elevenlabs'
+    provider: localStorage.getItem('user_tts_provider') || 'elevenlabs',
+    // Narração automática fica DESLIGADA por padrão: a página é usada em sala e
+    // na secretaria, e áudio disparando sozinho no primeiro acesso incomoda
+    // mais do que ajuda. Quem quer a voz liga uma vez e a escolha persiste.
+    narrarAuto: localStorage.getItem('user_narrar_auto') === '1'
 };
 
 function carregarConfig() {
@@ -99,43 +128,66 @@ function carregarConfig() {
     } catch {
         // Preferência corrompida no storage: segue com o padrão.
     }
+    cfg.voice = normalizarVoz(cfg.voice);
+
     const v = document.getElementById('cfgVoice');
     const l = document.getElementById('cfgLang');
     const p = document.getElementById('cfgProvider');
+    const a = document.getElementById('cfgAuto');
     if (v) v.value = cfg.voice;
     if (l) l.value = cfg.lang;
     if (p) p.value = cfg.provider;
+    if (a) a.value = cfg.narrarAuto ? '1' : '0';
 }
 
 function salvarConfig() {
-    cfg.voice = document.getElementById('cfgVoice')?.value || cfg.voice;
+    cfg.voice = normalizarVoz(document.getElementById('cfgVoice')?.value || cfg.voice);
     cfg.lang = document.getElementById('cfgLang')?.value || cfg.lang;
     cfg.provider = document.getElementById('cfgProvider')?.value || cfg.provider;
+    cfg.narrarAuto = document.getElementById('cfgAuto')?.value === '1';
 
     localStorage.setItem('aichat_cfg_local', JSON.stringify(cfg));
     if (cfg.voice !== 'off') {
         localStorage.setItem('user_elevenlabs_voice', cfg.voice);
-        localStorage.setItem('user_voice_preference', 'male');
+        localStorage.setItem('user_voice_preference', cfg.voice);
     } else {
         localStorage.setItem('user_voice_preference', 'off');
     }
     localStorage.setItem('user_tts_provider', cfg.provider);
+    localStorage.setItem('user_narrar_auto', cfg.narrarAuto ? '1' : '0');
+
+    // O controller lê a preferência a cada resposta, então a mudança vale já
+    // na próxima mensagem — sem recarregar a página.
+    if (controladorAtivo) controladorAtivo.narrarAuto = cfg.narrarAuto && cfg.voice !== 'off';
+
     fecharConfig();
 
     // MongoDB é a fonte da verdade da preferência; o localStorage é só cache.
     const base = (window.API_BASE_URL || '/api').replace(/\/$/, '');
+    const csrf = ('; ' + document.cookie).split('; csrf_token=')[1]?.split(';')[0] || '';
+
     fetch(base + '/auth/settings/tts', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        // Sem o token o validador de CSRF rejeita o POST com 403 e a preferência
+        // nunca chega ao banco — as outras chamadas desta página já o enviavam.
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
         body: JSON.stringify({
             ttsProvider: cfg.provider,
             voicePreference: cfg.voice,
             elevenlabsVoice: cfg.voice,
+            narrarAuto: cfg.narrarAuto,
             speed: Number(localStorage.getItem('user_voice_speed') || 1.0),
             narrationMode: localStorage.getItem('user_narration_mode') || 'texto_audio'
         })
-    }).catch(() => avisar('Preferência salva neste dispositivo, mas não no servidor.'));
+    })
+        // `fetch` só rejeita em falha de rede. Sem checar o `ok`, uma recusa do
+        // servidor (o 500 da validação, por exemplo) passava como sucesso e a
+        // preferência sumia ao trocar de aparelho, sem nenhum aviso.
+        .then((r) => {
+            if (!r.ok) throw new Error(String(r.status));
+        })
+        .catch(() => avisar('Preferência salva neste dispositivo, mas não no servidor.'));
 }
 
 function abrirConfig() {
@@ -283,8 +335,11 @@ async function iniciar() {
         // Corrige o "voltar" com o perfil que o SERVIDOR confirmou.
         aoReceberContexto: (ctx) => definirVoltar(ctx.perfil),
         // O título só existe depois que o servidor grava o turno.
-        aoSalvarConversa: (c) => sidebar.registrar(c)
+        aoSalvarConversa: (c) => sidebar.registrar(c),
+        narrarAuto: cfg.narrarAuto && cfg.voice !== 'off'
     });
+
+    controladorAtivo = controlador;
 
     // ── Conversas anteriores ────────────────────────────────────────────────
     const painelSidebar = document.getElementById('iaSidebar');
@@ -386,6 +441,9 @@ function iniciarReconhecimentoVoz(controlador) {
                 avisar('Seu navegador não suporta reconhecimento de voz. Use Chrome, Edge ou Safari.');
             });
         }
+        // Falta de microfone não tira a NARRAÇÃO: aqui o orb continua servindo
+        // para calar o assistente, que é o único gesto de voz que resta.
+        document.getElementById('orb')?.addEventListener('click', () => controlador.pararNarracao());
         return;
     }
 
@@ -394,38 +452,66 @@ function iniciarReconhecimentoVoz(controlador) {
     recVoz.interimResults = true;
     recVoz.lang = cfg.lang || 'pt-BR';
 
+    // Só o resultado FINAL vira pergunta. Os parciais aparecem na caixa para a
+    // pessoa acompanhar, mas enviar um parcial mandaria frase pela metade ao
+    // assistente — e cada envio custa cota do modelo.
+    let transcricaoFinal = '';
+    let cancelandoVoz = false;
+
     recVoz.onstart = () => {
         gravandoVoz = true;
+        transcricaoFinal = '';
+        cancelandoVoz = false;
         btnMic?.classList.add('gravando');
-        definirEstado('falando');
-        avisar('Ouvindo... Fale agora.');
+        btnMic?.setAttribute('aria-pressed', 'true');
+        definirEstado('ouvindo');
+        avisar('Ouvindo... Fale agora. Clique de novo para enviar.');
     };
 
     recVoz.onresult = (event) => {
-        let transcricao = '';
+        let parcial = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
-            transcricao += event.results[i][0].transcript;
+            const trecho = event.results[i][0].transcript;
+            if (event.results[i].isFinal) transcricaoFinal += trecho;
+            else parcial += trecho;
         }
         if (controlador.el.entrada) {
-            controlador.el.entrada.value = transcricao;
+            controlador.el.entrada.value = (transcricaoFinal + parcial).trim();
             controlador._ajustarAltura();
         }
     };
 
     recVoz.onerror = (event) => {
         console.warn('[Voz] Erro no reconhecimento de voz:', event.error);
+        cancelandoVoz = true;
         gravandoVoz = false;
         btnMic?.classList.remove('gravando');
+        btnMic?.setAttribute('aria-pressed', 'false');
         definirEstado('ocioso');
-        if (event.error !== 'no-speech' && event.error !== 'aborted') {
-            avisar('Não foi possível ouvir. Verifique as permissões do microfone.');
+
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+            avisar('Permissão de microfone negada. Libere o microfone nas configurações do site.');
+        } else if (event.error === 'no-speech') {
+            avisar('Não ouvi nada. Toque no microfone e fale mais perto.');
+        } else if (event.error !== 'aborted') {
+            avisar('Não foi possível ouvir. Verifique o microfone e a conexão.');
         }
     };
 
     recVoz.onend = () => {
         gravandoVoz = false;
         btnMic?.classList.remove('gravando');
+        btnMic?.setAttribute('aria-pressed', 'false');
         definirEstado('ocioso');
+
+        // Ditar e ainda ter que apertar "enviar" quebra o uso sem as mãos, que
+        // é justamente o motivo de existir o microfone.
+        const pergunta = transcricaoFinal.trim();
+        if (!cancelandoVoz && pergunta && controlador.el.entrada) {
+            controlador.el.entrada.value = pergunta;
+            controlador.enviar();
+        }
+        transcricaoFinal = '';
     };
 
     function alternarGravacao() {
@@ -442,11 +528,15 @@ function iniciarReconhecimentoVoz(controlador) {
         }
     }
 
-    btnMic?.addEventListener('click', alternarGravacao);
-    document.getElementById('orb')?.addEventListener('click', () => {
-        if (window.stopTtsAudio) window.stopTtsAudio();
+    // Falar por cima da narração é o gesto natural para interromper o
+    // assistente, então o microfone sempre cala o áudio antes de abrir.
+    function calarENovamenteOuvir() {
+        controlador.pararNarracao();
         alternarGravacao();
-    });
+    }
+
+    btnMic?.addEventListener('click', calarENovamenteOuvir);
+    document.getElementById('orb')?.addEventListener('click', calarENovamenteOuvir);
 }
 
 if (document.readyState === 'loading') {
