@@ -339,13 +339,16 @@ describe('Código fixo de 2FA — guardado como hash', () => {
         // publico. Aceitar o formato antigo manteria vivo o problema.
         const diretor = await criarUsuario({ email: 'dir_legado@escola.test', perfil: 'diretor' });
         await Usuario.findByIdAndUpdate(diretor._id, {
-            twoFactorFixedCode: '440044',   // formato antigo, texto puro
+            // Formato antigo (texto puro). Valor sintetico de proposito: repetir
+            // o codigo real que vazou o reintroduziria num arquivo novo e
+            // voltaria a disparar o scanner de segredos.
+            twoFactorFixedCode: '007007',
             twoFactorEnabled: true,
         });
 
         const { preCookie } = await loginAtePreAuth('dir_legado@escola.test');
         const res = await request(app).post('/api/auth/2fa/verify')
-            .set('Cookie', [preCookie]).send({ codigo: '440044' });
+            .set('Cookie', [preCookie]).send({ codigo: '007007' });
 
         expect(res.status).toBe(401);
     });
