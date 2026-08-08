@@ -45,6 +45,43 @@ describe('POST /api/auth/login', () => {
         expect(res.status).toBe(401);
     });
 
+    // ─────────────────────────────────────────────────────────
+    // Contrato de resposta: o cliente reage a `codigo`, nunca ao texto.
+    // Um teste que casasse com a mensagem transformaria o texto em API e
+    // impediria traduzir a interface sem quebrar a lógica do front.
+    // ─────────────────────────────────────────────────────────
+    it('senha errada devolve codigo CREDENCIAL_INVALIDA', async () => {
+        await criarUsuario({ email: 'contrato-senha@escola.test' });
+        const res = await postLogin({ email: 'contrato-senha@escola.test', senha: 'ErradaDeProposito1' });
+
+        expect(res.status).toBe(401);
+        expect(res.body.codigo).toBe('CREDENCIAL_INVALIDA');
+        expect(res.body.ok).toBe(false);
+        expect(res.body.success).toBe(false);
+    });
+
+    it('usuario inexistente devolve exatamente a mesma resposta — sem oraculo de existencia', async () => {
+        const inexistente = await postLogin({ email: 'nunca-existiu@escola.test', senha: 'QualquerCoisa1' });
+        await criarUsuario({ email: 'existe@escola.test' });
+        const senhaErrada = await postLogin({ email: 'existe@escola.test', senha: 'QualquerCoisa1' });
+
+        expect(inexistente.status).toBe(senhaErrada.status);
+        expect(inexistente.body).toEqual(senhaErrada.body);
+    });
+
+    it('2FA pendente e 200 com require2FA, canal e destino mascarado', async () => {
+        await criarUsuario({ email: 'contrato2fa@escola.test', perfil: 'diretor' });
+        const res = await postLogin({ email: 'contrato2fa@escola.test', senha: SENHA_TESTE });
+
+        expect(res.status).toBe(200);
+        expect(res.body.ok).toBe(true);
+        expect(res.body.require2FA).toBe(true);
+        expect(res.body.canal).toBe('email');
+        expect(res.body.destinoMascarado).toBe('co***@escola.test');
+        // O endereço completo nao volta ao cliente antes do segundo fator.
+        expect(JSON.stringify(res.body)).not.toContain('contrato2fa@escola.test');
+    });
+
     it('deve emitir cookie JWT para credenciais validas (sem 2FA)', async () => {
         await criarUsuario({ email: 'valido@escola.test' });
         const res = await postLogin({ email: 'valido@escola.test', senha: SENHA_TESTE });
@@ -136,7 +173,14 @@ describe('Brute-Force: bloqueio de conta', () => {
         });
 
         const res = await postLogin({ email: 'bloqueado@escola.test', senha: SENHA_TESTE });
-        expect(res.status).toBe(403);
+
+        // 429, não 403: o bloqueio é limitação de TAXA, não falta de permissão.
+        // O cliente reage ao `codigo`, nunca ao texto da mensagem.
+        expect(res.status).toBe(429);
+        expect(res.body.codigo).toBe('MUITAS_TENTATIVAS');
+        expect(res.body.ok).toBe(false);
+        expect(res.body.retryEmSegundos).toBeGreaterThan(0);
+        expect(res.headers['retry-after']).toBeDefined();
     });
 });
 

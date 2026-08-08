@@ -134,15 +134,36 @@
                     formLogin.classList.add('oculto');
                     form2FA.classList.remove('oculto');
                     document.getElementById('titulo').textContent = 'Verificação em duas etapas';
-                    mostrar('Enviamos um código para o seu e-mail.', 'info');
+                    // `envioConfirmado === false` = o código existe mas o e-mail
+                    // não saiu. Dizer "enviamos" aqui deixaria a pessoa esperando
+                    // uma mensagem que nunca vai chegar.
+                    if (data.envioConfirmado === false) {
+                        mostrar('Não foi possível enviar o código por e-mail. Use "Reenviar" ou fale com o administrador.', 'erro');
+                    } else {
+                        var destino = data.destinoMascarado ? ' (' + data.destinoMascarado + ')' : '';
+                        mostrar('Enviamos um código para o seu e-mail' + destino + '.', 'info');
+                    }
                     document.getElementById('codigo').focus();
                     return;
                 }
 
                 if (!data || !data.success) {
-                    // Repete a mensagem do servidor, que já é deliberadamente
-                    // genérica para não confirmar se a conta existe.
-                    mostrar((data && data.error) || 'Não foi possível entrar.', 'erro');
+                    // Reage ao `codigo`, nunca ao texto: o servidor pode mudar a
+                    // redação sem quebrar esta tela. As mensagens de credencial
+                    // seguem deliberadamente genéricas, para não confirmar se a
+                    // conta existe.
+                    var porCodigo = {
+                        CREDENCIAL_INVALIDA: 'E-mail ou senha incorretos.',
+                        CODIGO_INVALIDO: 'Código inválido ou expirado.',
+                        MUITAS_TENTATIVAS: 'Muitas tentativas. Aguarde alguns minutos.'
+                    };
+                    var texto = porCodigo[data && data.codigo]
+                        || (data && data.error)
+                        || 'Não foi possível entrar.';
+                    if (data && data.codigo === 'MUITAS_TENTATIVAS' && data.retryEmSegundos > 0) {
+                        texto += ' (~' + Math.ceil(data.retryEmSegundos / 60) + ' min)';
+                    }
+                    mostrar(texto, 'erro');
                     return;
                 }
 
