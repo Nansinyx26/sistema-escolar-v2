@@ -37,7 +37,10 @@ const DECLARACAO = [
     { nome: 'EMAIL_HOST',         obrigatoriaEm: null,       descricao: 'Servidor SMTP' },
     { nome: 'EMAIL_PORT',         obrigatoriaEm: null,       descricao: 'Porta SMTP' },
     { nome: 'EMAIL_USER',         obrigatoriaEm: null,       descricao: 'Usuário SMTP' },
-    { nome: 'EMAIL_PASS',         obrigatoriaEm: null,       descricao: 'Senha/API key SMTP' },
+    { nome: 'EMAIL_PASS',         obrigatoriaEm: null,       descricao: 'Chave de API do provedor (re_.../xkeysib-...) ou senha SMTP' },
+    // Sem EMAIL_FROM o provedor recusa a mensagem por remetente não verificado,
+    // e o 2FA de diretor/secretaria para de chegar sem erro visível.
+    { nome: 'EMAIL_FROM',         obrigatoriaEm: null,       descricao: 'Remetente verificado — obrigatório para o e-mail funcionar' },
     { nome: 'GOOGLE_TTS_API_KEY', obrigatoriaEm: null,       descricao: 'API key Gemini/Google (TTS e chatbot)' },
     { nome: 'GEMINI_KEY',         obrigatoriaEm: null,       descricao: 'Alias da API key do Gemini' },
     { nome: 'ELEVENLABS_API_KEY', obrigatoriaEm: null,       descricao: 'API key ElevenLabs (TTS)' },

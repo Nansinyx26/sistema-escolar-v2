@@ -18,7 +18,7 @@
 const cron = require('node-cron');
 const Usuario = require('../models/Usuario');
 const { logAction } = require('./auditHelper');
-const nodemailer = require('nodemailer');
+const { enviarEmail } = require('../services/EnvioEmail');
 
 // Threshold: 12 meses = 365 dias
 const THRESHOLD_ANONIMIZACAO_DIAS = 365;
@@ -37,15 +37,25 @@ function diasAtras(dias) {
 // --------------------------------------------------
 // Envia e-mail de aviso de anonimização iminente
 // --------------------------------------------------
-async function enviarAvisoAnonimizacao(usuario, transporter) {
-    if (!transporter || !usuario.email || usuario.email.includes('@escola.anon')) return;
+/**
+ * BUG CORRIGIDO: este aviso nunca chegou a ninguém.
+ *
+ * O `transporter` era um PARÂMETRO, e a cadeia inteira de chamadas o recebia
+ * como `undefined` — `startAnonimizacaoAutomatica()` é invocada sem argumento
+ * no index.js. A primeira linha da função (`if (!transporter) return`) então
+ * saía sempre, em silêncio: o aviso de 30 dias exigido antes da anonimização
+ * LGPD jamais foi disparado, e nada no log indicava isso.
+ *
+ * O parâmetro sumiu. O envio vai por services/EnvioEmail.js, como todo o resto.
+ */
+async function enviarAvisoAnonimizacao(usuario) {
+    if (!usuario.email || usuario.email.includes('@escola.anon')) return;
 
     try {
-        await transporter.sendMail({
-            from: process.env.EMAIL_FROM || `"Sistema Escolar" <noreply@escola.com>`,
-            to: usuario.email,
-            subject: '⚠️ Aviso LGPD: Seus dados serão anonimizados em 30 dias',
-            html: `
+        await enviarEmail(
+            usuario.email,
+            'Aviso LGPD: Seus dados serão anonimizados em 30 dias',
+            `
                 <div style="font-family:Arial,sans-serif;max-width:520px;padding:24px;border:1px solid #f59e0b;border-radius:8px;">
                     <h2 style="color:#b45309;">Aviso de Privacidade — LGPD</h2>
                     <p>Olá, <strong>${usuario.nome}</strong>.</p>
@@ -65,8 +75,7 @@ async function enviarAvisoAnonimizacao(usuario, transporter) {
                     <p style="color:#aaa;font-size:12px;">E-mail automático — Sistema Escolar | LGPD Art. 18</p>
                 </div>
             `
-        });
-        console.log(`📧 [LGPD] Aviso de anonimização enviado para ${usuario.email}`);
+        );
     } catch (err) {
         console.error(`[LGPD] Erro ao enviar aviso para ${usuario.email}:`, err.message);
     }
@@ -75,7 +84,7 @@ async function enviarAvisoAnonimizacao(usuario, transporter) {
 // --------------------------------------------------
 // Executa a rotina de anonimização
 // --------------------------------------------------
-async function executarAnonimizacao(transporter) {
+async function executarAnonimizacao() {
     console.log('🔄 [LGPD] Iniciando rotina de anonimização automática...');
 
     let anonimizados = 0;
@@ -96,7 +105,7 @@ async function executarAnonimizacao(transporter) {
         }).select('_id email nome ultimoLogin').lean();
 
         for (const usuario of usuariosParaAviso) {
-            await enviarAvisoAnonimizacao(usuario, transporter);
+            await enviarAvisoAnonimizacao(usuario);
             avisoEnviados++;
         }
 
@@ -150,7 +159,7 @@ async function executarAnonimizacao(transporter) {
 // --------------------------------------------------
 // Inicia o cron job
 // --------------------------------------------------
-function startAnonimizacaoAutomatica(transporter) {
+function startAnonimizacaoAutomatica() {
     if (process.env.NODE_ENV !== 'production') {
         console.log('ℹ️  [LGPD] Anonimização automática desativada em desenvolvimento.');
         return;
@@ -159,7 +168,7 @@ function startAnonimizacaoAutomatica(transporter) {
     // Executa todo dia 1 do mês às 03:00
     // Cron: '0 3 1 * *'  →  minuto=0, hora=3, dia=1, mês=*, dia-semana=*
     cron.schedule('0 3 1 * *', () => {
-        executarAnonimizacao(transporter);
+        executarAnonimizacao();
     }, {
         timezone: 'America/Sao_Paulo'
     });

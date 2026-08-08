@@ -1,14 +1,19 @@
-const nodemailer = require('nodemailer');
 const logger = require('../utils/logger');
+const { enviarEmail } = require('./EnvioEmail');
 
-const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST || 'smtp.mailtrap.io',
-    port: process.env.EMAIL_PORT || 2525,
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    }
-});
+// ============================================================================
+// O transporte local foi REMOVIDO em favor de services/EnvioEmail.js.
+//
+// O default daqui era `smtp.mailtrap.io:2525` — um capturador de e-mail de
+// desenvolvimento. Sem EMAIL_HOST definido, toda mensagem deste arquivo era
+// entregue a um servidor de testes e NUNCA chegava ao destinatário real, sem
+// erro nenhum. Era a mais silenciosa das cinco configurações divergentes de
+// e-mail que existiam no projeto.
+//
+// O remetente também era fixo em `sistema@escolajaguari.com.br`, ignorando
+// EMAIL_FROM. Provedores recusam remetente de domínio não verificado, então o
+// endereço agora vem da configuração, num lugar só.
+// ============================================================================
 
 /**
  * Envia um e-mail de notificação formatado.
@@ -34,18 +39,9 @@ exports.sendNotificationEmail = async (to, subject, title, summary, link) => {
     </div>
     `;
 
-    try {
-        await transporter.sendMail({
-            from: '"Escola Jaguari" <sistema@escolajaguari.com.br>',
-            to,
-            subject: `[Notificação] ${subject}`,
-            html
-        });
-        return true;
-    } catch (error) {
-        logger.error(`Error sending email: ${error.message}`);
-        return false;
-    }
+    const r = await enviarEmail(to, `[Notificação] ${subject}`, html);
+    if (!r.ok) logger.error(`[EmailService] Notificação não entregue (${r.etapa}): ${r.erro}`);
+    return r.ok;
 };
 
 /**
@@ -72,16 +68,7 @@ exports.sendVerificationCode = async (to, code, userName) => {
     </div>
     `;
 
-    try {
-        await transporter.sendMail({
-            from: '"Escola Jaguari" <sistema@escolajaguari.com.br>',
-            to,
-            subject: '🔐 Código de recuperação de senha — Escola Jaguari',
-            html
-        });
-        return true;
-    } catch (error) {
-        logger.error(`Error sending recovery email: ${error.message}`);
-        return false;
-    }
+    const r = await enviarEmail(to, 'Código de recuperação de senha — Escola Jaguari', html);
+    if (!r.ok) logger.error(`[EmailService] Código de recuperação não entregue (${r.etapa}): ${r.erro}`);
+    return r.ok;
 };

@@ -20,28 +20,22 @@
  */
 
 const crypto = require('crypto');
-const nodemailer = require('nodemailer');
 const Usuario = require('../models/Usuario');
 const { logAction } = require('../utils/auditHelper');
 const ACTUAL_JWT_SECRET = require('../utils/jwtConfig');
 const jwt = require('jsonwebtoken');
 const { validarPreAuthToken, limparPreAuthToken } = require('../utils/preAuthToken');
+const logger = require('../utils/logger');
+const { mascarar: mascararEmail } = require('../services/EnvioEmail');
 
 // Força bruta de 6 dígitos: 5 tentativas e o código é invalidado.
 const MAX_TENTATIVAS_2FA = 5;
 const BLOQUEIO_2FA_MS = 15 * 60 * 1000;
 
-// Reutiliza as mesmas configurações de e-mail do UserController
-const isResend = !process.env.EMAIL_HOST || process.env.EMAIL_HOST === 'smtp.resend.com';
-const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST || 'smtp.resend.com',
-    port: parseInt(process.env.EMAIL_PORT) || (isResend ? 465 : 587),
-    secure: isResend,
-    auth: {
-        user: isResend ? 'resend' : process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    }
-});
+// O transporte de e-mail vive em services/EnvioEmail.js. Este arquivo mantinha
+// a QUARTA cópia de `createTransport` do projeto, com defaults próprios — era
+// assim que uma correção de configuração passava a valer em três lugares e não
+// no quarto.
 
 // --------------------------------------------------
 // Utilitário: Gera código numérico de 6 dígitos
@@ -56,16 +50,21 @@ function gerarCodigo6Digitos() {
 // Utilitário: Envia e-mail com o código 2FA
 // --------------------------------------------------
 async function enviarEmail2FA(email, nome, codigo) {
-    // Não abre SMTP real em testes (evita handles pendentes / flakiness)
-    if (process.env.NODE_ENV === 'test') return;
-    await transporter.sendMail({
-        from: process.env.EMAIL_FROM || `"Sistema Escolar" <noreply@escola.com>`,
-        to: email,
-        subject: '🔐 Seu código de verificação — Sistema Escolar',
-        html: `
+    // Não abre canal externo em testes (evita handles pendentes / flakiness)
+    if (process.env.NODE_ENV === 'test') return { ok: true, etapa: 'concluido' };
+
+    const { enviarEmail } = require('../services/EnvioEmail');
+    // O nome vem do cadastro e ia cru para dentro do HTML da mensagem.
+    const nomeSeguro = require('../utils/sanitize').sanitizeInput(String(nome || 'usuário'));
+    // Devolve o resultado em vez de lançar: quem chama precisa poder DIZER ao
+    // usuário que o envio falhou, e não fingir que deu certo.
+    return enviarEmail(
+        email,
+        'Seu código de verificação — Sistema Escolar',
+        `
             <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; border: 1px solid #e0e0e0; border-radius: 8px;">
                 <h2 style="color: #1a56db; margin-bottom: 8px;">Verificação de Dois Fatores</h2>
-                <p>Olá, <strong>${nome}</strong>.</p>
+                <p>Olá, <strong>${nomeSeguro}</strong>.</p>
                 <p>Seu código de acesso é:</p>
                 <div style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #111; background: #f4f4f4; padding: 16px 24px; border-radius: 6px; text-align: center; margin: 16px 0;">
                     ${codigo}
@@ -76,7 +75,7 @@ async function enviarEmail2FA(email, nome, codigo) {
                 <p style="color: #aaa; font-size: 12px;">Sistema Escolar — E-mail automático, não responda.</p>
             </div>
         `
-    });
+    );
 }
 
 // --------------------------------------------------
@@ -92,7 +91,7 @@ exports.sendCode = async (req, res) => {
         // (e reinicia o contador de tentativas) na conta que quiser.
         const pre = validarPreAuthToken(req);
         if (!pre.ok) {
-            return res.status(401).json({ success: false, error: pre.error });
+            return res.status(401).json({ success: false, ok: false, codigo: 'PREAUTH_INVALIDO', error: pre.error });
         }
         const userId = pre.userId;
 
@@ -120,13 +119,39 @@ exports.sendCode = async (req, res) => {
             twoFactorAttempts: 0
         });
 
-        await enviarEmail2FA(usuario.email, usuario.nome, codigo);
+        // Falta de e-mail no cadastro é a falha mais silenciosa do fluxo: o
+        // envio para `undefined` é recusado pelo provedor e, no caminho antigo,
+        // ninguém ficava sabendo — a tela dizia "código enviado" do mesmo jeito.
+        if (!usuario.email || !usuario.email.includes('@')) {
+            logger.error('[2FA] Conta sem e-mail válido no cadastro', {
+                usuarioId: String(usuario._id), perfil: usuario.perfil,
+                action: 'auth.2fa.semEmail',
+            });
+            return res.status(422).json({
+                success: false, ok: false, codigo: 'SEM_EMAIL_CADASTRADO',
+                error: 'Esta conta não tem um e-mail válido cadastrado. Fale com o administrador.'
+            });
+        }
 
-        console.log(`📧 [2FA] Código enviado para ${usuario.email}`);
+        const envio = await enviarEmail2FA(usuario.email, usuario.nome, codigo);
+        const destinoMascarado = mascararEmail(usuario.email);
+
+        if (!envio.ok) {
+            // 502: a falha é do canal de entrega, não da requisição. O código
+            // segue válido no banco, então um retry entrega sem refazer o login.
+            return res.status(502).json({
+                success: false, ok: false, codigo: 'FALHA_ENVIO_EMAIL',
+                canal: 'email', destinoMascarado,
+                error: 'Não foi possível enviar o código agora. Tente novamente em instantes.'
+            });
+        }
 
         return res.json({
             success: true,
-            message: `Código de 6 dígitos enviado para ${usuario.email.replace(/(.{2})(.*)(@.*)/, '$1***$3')}`
+            ok: true,
+            canal: 'email',
+            destinoMascarado,
+            message: `Código de 6 dígitos enviado para ${destinoMascarado}`
         });
 
     } catch (err) {
@@ -144,13 +169,13 @@ exports.verifyCode = async (req, res) => {
         // 1. Prova de que a senha foi validada nesta sessão de login.
         const pre = validarPreAuthToken(req);
         if (!pre.ok) {
-            return res.status(401).json({ success: false, error: pre.error });
+            return res.status(401).json({ success: false, ok: false, codigo: 'PREAUTH_INVALIDO', error: pre.error });
         }
         const userId = pre.userId;
 
         const { codigo } = req.body;
         if (!codigo) {
-            return res.status(400).json({ success: false, error: 'O código é obrigatório.' });
+            return res.status(400).json({ success: false, ok: false, codigo: 'CODIGO_AUSENTE', error: 'O código é obrigatório.' });
         }
 
         const usuario = await Usuario.findById(userId)
@@ -165,8 +190,12 @@ exports.verifyCode = async (req, res) => {
         // 2. Bloqueio por tentativas: 10^6 códigos só são varridos sem limite.
         if (usuario.twoFactorLockUntil && usuario.twoFactorLockUntil > now) {
             const minutos = Math.ceil((usuario.twoFactorLockUntil - now) / 60000);
+            res.set('Retry-After', String(Math.ceil((usuario.twoFactorLockUntil - now) / 1000)));
             return res.status(429).json({
                 success: false,
+                ok: false,
+                codigo: 'MUITAS_TENTATIVAS',
+                retryEmSegundos: Math.ceil((usuario.twoFactorLockUntil - now) / 1000),
                 error: `Muitas tentativas incorretas. Tente novamente em ${minutos} minuto(s).`
             });
         }
@@ -175,7 +204,7 @@ exports.verifyCode = async (req, res) => {
         //    Antes, twoFactorFixedCode pulava a checagem e o login gravava uma
         //    validade de 1 ano, deixando o código eternamente utilizável.
         if (!usuario.twoFactorPendingExpiry || now > usuario.twoFactorPendingExpiry) {
-            return res.status(401).json({ success: false, error: 'Código expirado. Solicite um novo.' });
+            return res.status(401).json({ success: false, ok: false, codigo: 'CODIGO_INVALIDO', error: 'Código expirado. Solicite um novo.' });
         }
 
         // Compara hash (proteção contra timing attacks via crypto.timingSafeEqual)
@@ -211,12 +240,16 @@ exports.verifyCode = async (req, res) => {
             });
 
             if (tentativas >= MAX_TENTATIVAS_2FA) {
+                res.set('Retry-After', String(Math.ceil(BLOQUEIO_2FA_MS / 1000)));
                 return res.status(429).json({
                     success: false,
+                    ok: false,
+                    codigo: 'MUITAS_TENTATIVAS',
+                    retryEmSegundos: Math.ceil(BLOQUEIO_2FA_MS / 1000),
                     error: 'Muitas tentativas incorretas. O código foi invalidado — faça login novamente.'
                 });
             }
-            return res.status(401).json({ success: false, error: 'Código inválido.' });
+            return res.status(401).json({ success: false, ok: false, codigo: 'CODIGO_INVALIDO', error: 'Código inválido.' });
         }
 
         // Limpa o token pendente e o contador de tentativas

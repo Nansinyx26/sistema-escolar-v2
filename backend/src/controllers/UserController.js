@@ -8,10 +8,10 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const ImageProcessor = require('../utils/imageProcessor');
 const crypto = require('crypto');
-const nodemailer = require('nodemailer');
 const ACTUAL_JWT_SECRET = require('../utils/jwtConfig');
 const RecuperacaoSenha = require('../models/RecuperacaoSenha');
 const EmailService = require('../services/EmailService');
+const logger = require('../utils/logger');
 const { emitirParaPerfis } = require('../utils/realtime');
 // Usado nos dados vindos do Google, que não passam pela sanitização global
 // do app.js (ela cobre req.body/query/params, não payload de OAuth).
@@ -73,18 +73,9 @@ async function criarPerfilSecretaria(user, nomeEscola) {
     });
 }
 
-// Configuração do transportador de e-mail
-// Usa Resend SMTP como padrão. Para usar Gmail, defina EMAIL_HOST=smtp.gmail.com e EMAIL_PORT=587
-const isResend = !process.env.EMAIL_HOST || process.env.EMAIL_HOST === 'smtp.resend.com';
-const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST || 'smtp.resend.com',
-    port: parseInt(process.env.EMAIL_PORT) || (isResend ? 465 : 587),
-    secure: isResend, // true para Resend (465), false para Gmail (587)
-    auth: {
-        user: isResend ? 'resend' : process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    }
-});
+// O transporte de e-mail vive em services/EnvioEmail.js. Este bloco era a
+// primeira das cinco cópias de `createTransport` espalhadas pelo projeto; com o
+// último `sendMail` daqui migrado, ele ficou sem nenhum uso.
 
 exports.list = async (req, res) => {
     try {
@@ -345,7 +336,7 @@ exports.registerWithCode = async (req, res) => {
         });
 
         // Gera token JWT e define cookie HttpOnly.
-        // CPF e telefone saíram do payload: o JWT é apenas assinado, NÃO é
+        // CPF e telefone saíram do payload: o JWT é apenas assinado, NÍO é
         // cifrado — qualquer um que o obtenha lê o conteúdo em claro. Não há
         // motivo para carregar PII num crachá de autorização.
         emitirTokenSessao(res, user);
@@ -390,10 +381,57 @@ exports.getRedirectPath = getRedirectPath;
 // havia dois textos distintos — 'Credenciais inválidas ou conta inativa'
 // (usuário inexistente/desativado) e 'Credenciais inválidas' (senha errada) —
 // o que permitia validar e-mails em massa sem nunca acertar uma senha.
-const ERRO_CREDENCIAIS = { success: false, error: 'E-mail ou senha incorretos.' };
+// ============================================
+// CONTRATO DE RESPOSTA DO LOGIN — o front reage a `codigo`, nunca ao texto
+// ============================================
+// O cliente discriminava os casos pelo TEXTO de `error`. Isso torna a mensagem
+// parte da API: mudar "E-mail ou senha incorretos." para "Credenciais
+// inválidas." quebraria o front sem quebrar nenhum teste, e traduzir a
+// interface seria impossível sem quebrar a lógica.
+//
+// `codigo` é o campo estável. `ok` é alias de `success` e `error` continua
+// existindo — os dois mantêm compatibilidade com todas as telas que já leem
+// `data.success` / `data.error` hoje; nada precisa migrar de uma vez.
+const CODIGOS_LOGIN = {
+    CREDENCIAL_INVALIDA: 'CREDENCIAL_INVALIDA',
+    MUITAS_TENTATIVAS: 'MUITAS_TENTATIVAS',
+    ESCOLA_INDISPONIVEL: 'ESCOLA_INDISPONIVEL',
+    SEM_VINCULO_ESCOLA: 'SEM_VINCULO_ESCOLA',
+};
+
+const ERRO_CREDENCIAIS = {
+    success: false,
+    ok: false,
+    codigo: CODIGOS_LOGIN.CREDENCIAL_INVALIDA,
+    error: 'E-mail ou senha incorretos.',
+};
+
+/** Mascara o e-mail para exibição: renan@dominio.com → re***@dominio.com */
+function mascararEmail(email) {
+    if (typeof email !== 'string') return '';
+    return email.replace(/(.{2})(.*)(@.*)/, '$1***$3');
+}
+
+/**
+ * Corpo do e-mail com o código 2FA.
+ *
+ * O nome é escapado: ele vem do cadastro e ia direto para dentro do HTML.
+ * Quem controla o próprio nome controlaria a marcação da mensagem que a
+ * instituição envia em seu nome.
+ */
+function montarHtmlCodigo2FA(nome, codigo) {
+    const nomeSeguro = sanitizeInput(String(nome || 'usuário'));
+    return `<div style="font-family:Arial,sans-serif;max-width:480px;padding:24px;border:1px solid #e0e0e0;border-radius:8px;">
+        <h2 style="color:#1a56db;">Verificação em Dois Fatores</h2>
+        <p>Olá, <strong>${nomeSeguro}</strong>!</p>
+        <p>Seu código de acesso:</p>
+        <div style="font-size:36px;font-weight:bold;letter-spacing:8px;background:#f4f4f4;padding:16px 24px;border-radius:6px;text-align:center;margin:16px 0;">${codigo}</div>
+        <p style="color:#666;font-size:14px;">Válido por <strong>5 minutos</strong>. Não compartilhe.</p>
+    </div>`;
+}
 
 // Hash bcrypt descartável, usado só para gastar o mesmo tempo de CPU quando a
-// conta NÃO existe. Sem isso, "usuário inexistente" responde em ~1ms e
+// conta NÍO existe. Sem isso, "usuário inexistente" responde em ~1ms e
 // "senha errada" em ~100ms (custo 12) — um canal lateral de tempo que entrega
 // a mesma informação que a mensagem unificada acabou de esconder.
 const HASH_DUMMY = bcrypt.hashSync('senha-inexistente-para-timing-constante', SALT_ROUNDS);
@@ -484,9 +522,18 @@ exports.login = async (req, res) => {
         // correta já não precisa desse oráculo.
         // ============================================
         if (user.lockUntil && user.lockUntil > Date.now()) {
-            const minutosRestantes = Math.ceil((user.lockUntil - Date.now()) / (60 * 1000));
-            return res.status(403).json({
+            const restanteMs = user.lockUntil - Date.now();
+            const minutosRestantes = Math.ceil(restanteMs / (60 * 1000));
+            // 429 (e não 403): o bloqueio é limitação de TAXA, não falta de
+            // permissão. `Retry-After` é o cabeçalho padrão para isso e permite
+            // ao cliente esperar sem inventar heurística em cima do texto.
+            const retryEmSegundos = Math.ceil(restanteMs / 1000);
+            res.set('Retry-After', String(retryEmSegundos));
+            return res.status(429).json({
                 success: false,
+                ok: false,
+                codigo: CODIGOS_LOGIN.MUITAS_TENTATIVAS,
+                retryEmSegundos,
                 error: `Conta bloqueada temporariamente devido a múltiplas tentativas falhas. Tente novamente em ${minutosRestantes} minutos.`
             });
         }
@@ -515,13 +562,18 @@ exports.login = async (req, res) => {
             if (escolaIdSolicitada) {
                 const escolaSolicitada = await Escola.findById(escolaIdSolicitada).select('nome ativo').lean().catch(() => null);
                 if (!escolaSolicitada || !escolaSolicitada.ativo) {
-                    return res.status(403).json({ success: false, error: 'Esta escola ainda não está disponível no sistema.' });
+                    return res.status(403).json({
+                        success: false, ok: false,
+                        codigo: CODIGOS_LOGIN.ESCOLA_INDISPONIVEL,
+                        error: 'Esta escola ainda não está disponível no sistema.'
+                    });
                 }
                 const temVinculo = user.perfil === 'admin'
                     || vinculos.some(v => String(v.escolaId) === String(escolaIdSolicitada));
                 if (!temVinculo) {
                     return res.status(403).json({
-                        success: false,
+                        success: false, ok: false,
+                        codigo: CODIGOS_LOGIN.SEM_VINCULO_ESCOLA,
                         error: `Você não possui vínculo com a escola "${escolaSolicitada.nome}". Verifique com a direção da escola.`
                     });
                 }
@@ -534,6 +586,7 @@ exports.login = async (req, res) => {
                 if (escolas.length > 1) {
                     return res.json({
                         success: true,
+                        ok: true,
                         requiresEscolha: true,
                         escolas,
                         message: 'Você possui vínculo com mais de uma escola. Selecione em qual deseja entrar.'
@@ -587,9 +640,13 @@ exports.login = async (req, res) => {
 
                 return res.json({
                     success: true,
+                    ok: true,
                     requires2FA: true,
+                    require2FA: true,          // alias do contrato padronizado
+                    canal: 'email',
+                    destinoMascarado: mascararEmail(user.email),
                     redirect_to,
-                    message: `Código de verificação fixo habilitado para ${user.email.replace(/(.{2})(.*)(@.*)/, '$1***$3')}`
+                    message: `Código de verificação fixo habilitado para ${mascararEmail(user.email)}`
                 });
             }
 
@@ -604,25 +661,41 @@ exports.login = async (req, res) => {
                 twoFactorAttempts: 0
             });
 
-            // Em teste não abrimos conexão SMTP real: o envio fire-and-forget
-            // deixava handles abertos que o jest --forceExit matava no meio de
-            // outra request, tornando a suíte de auth intermitente.
-            if (process.env.NODE_ENV !== 'test') {
-                transporter.sendMail({
-                    from: process.env.EMAIL_FROM || `"Sistema Escolar" <noreply@escola.com>`,
-                    to: user.email,
-                    subject: '🔐 Código de verificação — Sistema Escolar',
-                    html: `<div style="font-family:Arial,sans-serif;max-width:480px;padding:24px;border:1px solid #e0e0e0;border-radius:8px;">
-                        <h2 style="color:#1a56db;">Verificação em Dois Fatores</h2>
-                        <p>Olá, <strong>${user.nome}</strong>!</p>
-                        <p>Seu código de acesso:</p>
-                        <div style="font-size:36px;font-weight:bold;letter-spacing:8px;background:#f4f4f4;padding:16px 24px;border-radius:6px;text-align:center;margin:16px 0;">${codigo}</div>
-                        <p style="color:#666;font-size:14px;">Válido por <strong>5 minutos</strong>. Não compartilhe.</p>
-                    </div>`
-                }).catch(err => console.error('[2FA] Erro ao enviar código:', err));
+            // ============================================
+            // ENVIO AGUARDADO — era aqui que o 2FA sumia
+            // ============================================
+            // Este bloco era fire-and-forget: `sendMail(...).catch(console.error)`.
+            // A resposta HTTP dizia "código enviado" e voltava ANTES de o envio
+            // terminar, então uma recusa do provedor (remetente não verificado,
+            // porta SMTP bloqueada, chave inválida) virava uma linha de log que
+            // ninguém lia — e diretor e secretaria ficavam esperando um e-mail
+            // que nunca saiu, sem nenhum erro na tela.
+            //
+            // Agora o resultado é aguardado e viaja na resposta (`envioConfirmado`),
+            // para a tela poder dizer a verdade.
+            let envioConfirmado = false;
+            if (process.env.NODE_ENV === 'test') {
+                // Testes não abrem canal externo: o envio real deixava handles
+                // pendentes que o jest --forceExit matava no meio de outra
+                // request, tornando a suíte de auth intermitente.
+                envioConfirmado = true;
+            } else {
+                const { enviarEmail } = require('../services/EnvioEmail');
+                const resultado = await enviarEmail(
+                    user.email,
+                    'Código de verificação — Sistema Escolar',
+                    montarHtmlCodigo2FA(user.nome, codigo)
+                );
+                envioConfirmado = resultado.ok;
+                if (!resultado.ok) {
+                    // O código continua válido no banco: o admin pode reenviar
+                    // por /api/auth/2fa/send sem o usuário refazer a senha.
+                    logger.error('[2FA] Código gerado mas NÃO entregue', {
+                        etapa: resultado.etapa, erro: resultado.erro,
+                        action: 'auth.2fa.envioFalhou',
+                    });
+                }
             }
-
-            console.log(`🔐 [2FA] Código 2FA enviado para ${user.email}`);
             await logAction(req, 'LOGIN_2FA_REQUIRED', 'Auth', {
                 recursoId: user._id,
                 descricao: `Login 2FA exigido para ${user.email}`
@@ -634,9 +707,16 @@ exports.login = async (req, res) => {
 
             return res.json({
                 success: true,
+                ok: true,
                 requires2FA: true,
+                require2FA: true,          // alias do contrato padronizado
+                canal: 'email',
+                destinoMascarado: mascararEmail(user.email),
+                envioConfirmado,           // false = o e-mail NAO saiu; a tela avisa
                 redirect_to,
-                message: `Código de verificação enviado para ${user.email.replace(/(.{2})(.*)(@.*)/, '$1***$3')}`
+                message: envioConfirmado
+                    ? `Código de verificação enviado para ${mascararEmail(user.email)}`
+                    : 'Não foi possível enviar o código por e-mail agora. Tente novamente ou fale com o administrador.'
             });
         }
 
@@ -658,12 +738,17 @@ exports.login = async (req, res) => {
 
         res.json({
             success: true,
+            ok: true,
             requires2FA: false,
+            require2FA: false,
             redirect_to,
             user: {
                 id: user._id,
                 nome: user.nome,
                 perfil: user.perfil,
+                // Rótulo de exibição vem do servidor (utils/perfilRotulo.js),
+                // não de inferência no front.
+                perfilRotulo: require('../utils/perfilRotulo').rotuloDoPerfil(user.perfil),
                 email: user.email,
                 deveMudarSenha: user.deveMudarSenha,
                 cpf: user.cpf,
@@ -805,7 +890,7 @@ exports.googleLogin = async (req, res) => {
         // SANITIZAÇÃO DE DADOS DE TERCEIRO (Google)
         // ============================================
         // A sanitização global do app.js cobre req.body/query/params. Estes
-        // campos NÃO vêm de lá — vêm de dentro do ID token do Google — então
+        // campos NÍO vêm de lá — vêm de dentro do ID token do Google — então
         // chegavam ao banco crus.
         //
         // O nome de exibição de uma conta Google é escolhido livremente pelo

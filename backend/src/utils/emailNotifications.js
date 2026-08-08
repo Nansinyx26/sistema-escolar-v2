@@ -11,21 +11,12 @@
  * USO: require('./emailNotifications')
  */
 
-const nodemailer = require('nodemailer');
+// Transporte centralizado em services/EnvioEmail.js — este arquivo mantinha a
+// terceira cópia de `createTransport` do projeto. O remetente também sai de lá:
+// o default `noreply@escola.com` que existia aqui é um domínio não verificado,
+// e Resend/Brevo recusam a mensagem inteira por causa dele.
+const { enviarEmail } = require('../services/EnvioEmail');
 
-// Reutiliza config de e-mail do sistema
-const isResend = !process.env.EMAIL_HOST || process.env.EMAIL_HOST === 'smtp.resend.com';
-const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST || 'smtp.resend.com',
-    port: parseInt(process.env.EMAIL_PORT) || (isResend ? 465 : 587),
-    secure: isResend,
-    auth: {
-        user: isResend ? 'resend' : process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    }
-});
-
-const FROM = process.env.EMAIL_FROM || '"Sistema Escolar" <noreply@escola.com>';
 const APP_NAME = 'Sistema Escolar';
 
 // --------------------------------------------------
@@ -82,13 +73,7 @@ async function notificarBruteForce(adminEmails, emailAlvo, ip) {
     const html = templateBase('⚠️ Alerta de Segurança — Brute Force', '#dc3545', '🛡️', corpo);
 
     try {
-        await transporter.sendMail({
-            from: FROM,
-            to: adminEmails.join(', '),
-            subject: `⚠️ [SEGURANÇA] Tentativa de brute force detectada — ${emailAlvo}`,
-            html
-        });
-        console.log(`📧 [NOTIF] Alerta brute force enviado para ${adminEmails.length} admin(s).`);
+        await enviarEmail(adminEmails.join(', '), `[SEGURANÇA] Tentativa de brute force detectada — ${emailAlvo}`, html);
     } catch (err) {
         console.error('[NOTIF] Erro ao enviar alerta brute force:', err.message);
     }
@@ -115,13 +100,7 @@ async function notificarRotacaoCodigo(adminEmails, novoCodigo, autor) {
     const html = templateBase('🔐 Código Secreto Rotacionado', '#1a56db', '🔑', corpo);
 
     try {
-        await transporter.sendMail({
-            from: FROM,
-            to: adminEmails.join(', '),
-            subject: `🔑 Novo código secreto da escola: ${novoCodigo}`,
-            html
-        });
-        console.log(`📧 [NOTIF] Notificação de rotação de código enviada.`);
+        await enviarEmail(adminEmails.join(', '), `Novo código secreto da escola: ${novoCodigo}`, html);
     } catch (err) {
         console.error('[NOTIF] Erro ao notificar rotação:', err.message);
     }
@@ -148,13 +127,7 @@ async function notificarVerificacaoEmail(email, nome, tokenUrl) {
     const html = templateBase('Confirme seu E-mail', '#16a34a', '✅', corpo);
 
     try {
-        await transporter.sendMail({
-            from: FROM,
-            to: email,
-            subject: `✅ Confirme seu e-mail — ${APP_NAME}`,
-            html
-        });
-        console.log(`📧 [NOTIF] E-mail de verificação enviado para ${email}`);
+        await enviarEmail(email, `Confirme seu e-mail — ${APP_NAME}`, html);
     } catch (err) {
         console.error('[NOTIF] Erro ao enviar e-mail de verificação:', err.message);
         console.log(`🔗 [DESENVOLVIMENTO] Link de ativação de e-mail: ${tokenUrl}`);

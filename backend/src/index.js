@@ -11,8 +11,20 @@ if (process.env.CONSOLE_GUARD !== 'false') {
     require('./utils/consoleGuard').instalar();
 }
 
-// Patch global do nodemailer para contornar bloqueio de porta SMTP no Render
-require('./utils/nodemailerPatch');
+// NOTA: o patch global do nodemailer (utils/nodemailerPatch.js) foi DESLIGADO.
+//
+// Ele reescrevia `nodemailer.createTransport` no processo inteiro para desviar
+// o envio à API HTTP do Brevo — a solução certa para o bloqueio de SMTP do
+// Render, mas condicionada a `EMAIL_HOST.includes('brevo')`. Com a produção
+// configurada em Resend, a condição nunca era verdadeira e todo envio caía no
+// SMTP bloqueado, em silêncio.
+//
+// services/EnvioEmail.js faz o mesmo desvio de forma explícita, para Resend E
+// Brevo, escolhendo o transporte pelo formato da própria chave. Manter os dois
+// significaria dois caminhos de envio disputando o mesmo `sendMail`.
+//
+// O arquivo continua no repositório para consulta; reative-o apenas se voltar a
+// depender de um `createTransport` direto em algum ponto.
 
 const app = require('./app');
 const connectDB = require('./utils/db');
@@ -70,6 +82,31 @@ const startServer = async () => {
             startAnonimizacaoAutomatica();
             // 5. Ativa health monitor periódico (Roadmap #6)
             startHealthMonitor();
+
+            // 5a. Verifica o canal de e-mail e DIZ o resultado no log.
+            //
+            // O 2FA de diretor e secretaria depende inteiramente deste canal.
+            // Antes não havia verificação nenhuma: uma configuração quebrada só
+            // aparecia quando alguém não conseguia entrar, sem erro visível em
+            // lugar algum. Agora o boot é o momento em que isso fica evidente.
+            //
+            // Não derruba o processo: o resto do sistema funciona sem e-mail, e
+            // um servidor no ar com aviso é melhor que um servidor fora do ar.
+            require('./services/EnvioEmail').verificarEnvio()
+                .then((r) => {
+                    if (r.ok) {
+                        logger.info('✅ Canal de e-mail operacional', {
+                            transporte: r.transporte, remetente: r.remetente, action: 'boot.email',
+                        });
+                    } else {
+                        logger.alert('EMAIL_INDISPONIVEL',
+                            `Canal de e-mail NÃO operacional (${r.etapa}): ${r.erro}`,
+                            { transporte: r.transporte, action: 'boot.email' });
+                        logger.error('⚠️  E-mail indisponível — 2FA de diretor e secretaria vai falhar. ' +
+                            'Rode GET /api/admin/diag/email para o detalhe.', { etapa: r.etapa, erro: r.erro });
+                    }
+                })
+                .catch((err) => logger.error('[Boot] Falha ao verificar o canal de e-mail', { err }));
 
             // 5b. Ativa avaliação de métricas e alertas periódicos (Roadmap #6 - Observabilidade)
             const alertService = require('./services/AlertService');

@@ -172,6 +172,9 @@ router.use('/responsavel', authJWT, require('./responsavel'));
 router.use('/notificacoes', authJWT, filtrarPorEscola, require('./notificacoes'));
 // `filtrarPorEscola`: é o req.escolaId que faz o SecurityController escopar o
 // código de cadastro à escola do diretor em vez do código global da rede.
+// Diagnóstico administrativo. authorize('admin') aqui e nao dentro do router:
+// uma rota nova no arquivo nasce protegida sem depender de alguem lembrar.
+router.use('/admin', authJWT, authorize('admin'), require('./admin'));
 router.use('/security', authJWT, filtrarPorEscola, require('./security'));
 router.use('/audit', authJWT, filtrarPorEscola, require('./audit'));
 router.use('/usuarios', authJWT, filtrarPorEscola, require('./usuarios'));

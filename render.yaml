@@ -63,11 +63,37 @@ services:
       - key: GOOGLE_CLIENT_ID
         sync: false # Console do Google Cloud → APIs & Services → Credentials
 
-      # ── E-mail (Recuperação de senha via Resend) ─────────────────────────────
+      # ── E-mail (2FA, recuperação de senha e avisos LGPD) ─────────────────────
+      # O envio passa por backend/src/services/EnvioEmail.js, que escolhe o
+      # transporte pelo FORMATO da chave em EMAIL_PASS:
+      #   "re_..."                    → API HTTPS do Resend
+      #   "xkeysib-..." / "xsmtpsib-" → API HTTPS do Brevo
+      #   qualquer outra + EMAIL_HOST → SMTP
+      #
+      # PREFIRA UMA CHAVE DE API. O Render bloqueia conexão SMTP de saída, e é
+      # por isso que o 2FA de diretor e secretaria parou de chegar: o envio
+      # tentava SMTP, era bloqueado, e a falha morria num catch vazio.
+      # HTTPS/443 não sofre esse bloqueio.
       - key: EMAIL_USER
         value: resend
       - key: EMAIL_PASS
         sync: false # Chave da API do Resend: https://resend.com/api-keys
+
+      # EMAIL_FROM — OBRIGATÓRIA. Sem ela o código caía em `noreply@escola.com`,
+      # um domínio que ninguém verificou; Resend e Brevo RECUSAM a mensagem
+      # inteira por causa disso, e a recusa não aparecia em lugar nenhum.
+      # Use um endereço de domínio verificado no provedor. Para teste rápido no
+      # Resend, `onboarding@resend.dev` funciona sem verificar domínio.
+      # Formato aceito: "Sistema Escolar <nao-responda@seudominio.com.br>"
+      - key: EMAIL_FROM
+        sync: false
+
+      # Só para SMTP (ignoradas quando EMAIL_PASS é chave de API).
+      # 465 = TLS implícito | 587 = STARTTLS. NUNCA 25: bloqueada em hospedagem.
+      # - key: EMAIL_HOST
+      #   value: smtp.seuprovedor.com
+      # - key: EMAIL_PORT
+      #   value: "587"
 
       # ── TTS: Google Gemini ───────────────────────────────────────────────────
       - key: GOOGLE_TTS_API_KEY
