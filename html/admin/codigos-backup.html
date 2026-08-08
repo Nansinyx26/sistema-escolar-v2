@@ -121,6 +121,30 @@
     .saldo div.destaque strong { color: var(--mint); }
 
     .rodape-acoes { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: 1.2rem; }
+
+    /* Abas. A primeira e a recomendada; a segunda existe como excecao, e o
+       peso visual reflete isso — sem escondê-la, que seria pior. */
+    .abas { display: flex; gap: .3rem; border-bottom: 1px solid var(--borda); margin-bottom: 1.3rem; }
+    .aba {
+        background: none; border: none; border-bottom: 2px solid transparent;
+        color: var(--suave); font-size: .88rem; font-weight: 600;
+        padding: .7rem 1.1rem; border-radius: 0; cursor: pointer; transition: color .18s, border-color .18s;
+    }
+    .aba:hover:not(.ativa) { color: var(--texto); filter: none; background: none; }
+    .aba.ativa { color: var(--mint); border-bottom-color: var(--mint); }
+    .aba .selo {
+        font-size: .62rem; text-transform: uppercase; letter-spacing: .08em;
+        background: rgba(240,180,41,.15); color: var(--alerta);
+        padding: .12rem .4rem; border-radius: 4px; margin-left: .45rem; font-weight: 700;
+    }
+    .painel { display: none; }
+    .painel.ativo { display: block; }
+    .codigo-unico {
+        font-family: ui-monospace, Consolas, monospace; font-size: 2.1rem; font-weight: 700;
+        letter-spacing: .22em; text-align: center; color: var(--mint);
+        background: var(--mint-fundo); border: 1px dashed var(--borda-forte);
+        border-radius: 11px; padding: 1.1rem .5rem; margin: 1.1rem 0; user-select: all;
+    }
     .carregando { color: var(--suave); font-size: .85rem; }
 
     /* A forma correta de entregar estes códigos é num papel, por um canal
@@ -147,6 +171,13 @@
         indisponível ou a pessoa perder acesso à caixa de entrada.
     </p>
 
+    <div class="abas nao-imprimir" role="tablist">
+        <button type="button" class="aba ativa" id="abaBackup" role="tab" aria-selected="true"
+                aria-controls="painelBackup" onclick="trocarAba('backup')">Códigos de uso único</button>
+        <button type="button" class="aba" id="abaFixo" role="tab" aria-selected="false"
+                aria-controls="painelFixo" onclick="trocarAba('fixo')">Código fixo<span class="selo">exceção</span></button>
+    </div>
+
     <div class="cartao nao-imprimir">
         <h2>1. Escolha a conta</h2>
         <div class="linha">
@@ -159,16 +190,42 @@
         <div id="saldo"></div>
     </div>
 
-    <div class="cartao nao-imprimir">
-        <h2>2. Gerar um lote novo</h2>
-        <p style="font-size:.86rem; color:var(--suave); margin-top:0;">
-            Gera 8 códigos de uso único. <strong>Invalida o lote anterior</strong> —
-            códigos antigos param de funcionar na hora.
-        </p>
-        <button type="button" id="btnGerar" disabled>Gerar 8 códigos</button>
+    <div id="painelBackup" class="painel ativo" role="tabpanel" aria-labelledby="abaBackup">
+        <div class="cartao nao-imprimir">
+            <h2>2. Gerar um lote novo</h2>
+            <p style="font-size:.86rem; color:var(--suave); margin-top:0;">
+                Gera 8 códigos de uso único. <strong>Invalida o lote anterior</strong> —
+                códigos antigos param de funcionar na hora.
+            </p>
+            <button type="button" id="btnGerar" disabled>Gerar 8 códigos</button>
+        </div>
+        <div id="resultado"></div>
     </div>
 
-    <div id="resultado"></div>
+    <div id="painelFixo" class="painel" role="tabpanel" aria-labelledby="abaFixo">
+        <div class="cartao nao-imprimir">
+            <h2>2. Código fixo de 2FA</h2>
+            <div class="aviso">
+                <strong>Isto é mais fraco que os códigos de uso único.</strong>
+                Um código fixo é reutilizável: quem o vir uma vez entra sempre, até
+                alguém trocá-lo. Use enquanto o e-mail estiver indisponível e
+                <strong>remova quando o envio voltar</strong>.
+            </div>
+            <div id="statusFixo" style="font-size:.86rem; color:var(--suave); margin-bottom:1rem;"></div>
+            <div class="linha" style="margin-bottom:1rem;">
+                <div>
+                    <label for="codigoEscolhido">Código de 6 dígitos (deixe vazio para sortear)</label>
+                    <input type="text" id="codigoEscolhido" inputmode="numeric" maxlength="6"
+                           placeholder="aleatório" style="letter-spacing:.25em; text-align:center;">
+                </div>
+            </div>
+            <div class="rodape-acoes" style="margin-top:0;">
+                <button type="button" id="btnDefinirFixo" disabled>Definir código fixo</button>
+                <button type="button" id="btnRemoverFixo" class="secundario" disabled>Remover</button>
+            </div>
+        </div>
+        <div id="resultadoFixo"></div>
+    </div>
 </div>
 
 <script>
@@ -227,10 +284,124 @@
             elResultado.innerHTML = aviso('Não foi possível carregar a lista de contas. Recarregue a página.', 'erro');
         });
 
+    var btnDefinirFixo = document.getElementById('btnDefinirFixo');
+    var btnRemoverFixo = document.getElementById('btnRemoverFixo');
+    var elStatusFixo   = document.getElementById('statusFixo');
+    var elResultadoFixo= document.getElementById('resultadoFixo');
+    var inpEscolhido   = document.getElementById('codigoEscolhido');
+
     selConta.addEventListener('change', function () {
         btnGerar.disabled = !selConta.value;
+        btnDefinirFixo.disabled = !selConta.value;
         elSaldo.innerHTML = '';
         elResultado.innerHTML = '';
+        elResultadoFixo.innerHTML = '';
+        elStatusFixo.textContent = '';
+        btnRemoverFixo.disabled = true;
+        if (selConta.value) consultarFixo();
+    });
+
+    // -- Abas -----------------------------------------------------------------
+    window.trocarAba = function (qual) {
+        var ehFixo = qual === 'fixo';
+        document.getElementById('abaBackup').classList.toggle('ativa', !ehFixo);
+        document.getElementById('abaFixo').classList.toggle('ativa', ehFixo);
+        document.getElementById('abaBackup').setAttribute('aria-selected', String(!ehFixo));
+        document.getElementById('abaFixo').setAttribute('aria-selected', String(ehFixo));
+        document.getElementById('painelBackup').classList.toggle('ativo', !ehFixo);
+        document.getElementById('painelFixo').classList.toggle('ativo', ehFixo);
+    };
+
+    // -- Codigo fixo ----------------------------------------------------------
+    // Mais fraco que os de uso unico, e por isso fica na aba secundaria. Serve
+    // a janela em que o provedor de e-mail esta bloqueado.
+
+    function consultarFixo() {
+        elStatusFixo.textContent = 'Verificando...';
+        fetch(API() + '/admin/2fa/codigo-fixo/' + encodeURIComponent(selConta.value), { credentials: 'include' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (!d.ok) { elStatusFixo.textContent = d.erro || 'Nao foi possivel verificar.'; return; }
+                btnRemoverFixo.disabled = !d.definido;
+
+                if (d.legado) {
+                    // Valor de antes da migracao para hash: o login o RECUSA.
+                    // Sem este aviso a conta parece protegida e nao entra.
+                    elStatusFixo.innerHTML = '';
+                    elResultadoFixo.innerHTML = aviso(
+                        'Esta conta tem um codigo fixo em formato ANTIGO, que o login nao aceita mais. '
+                      + 'Defina um novo aqui para a conta voltar a funcionar.', 'erro');
+                } else if (d.definido) {
+                    elStatusFixo.innerHTML = '<strong style="color:var(--mint-suave);">Ha um codigo fixo ativo</strong>'
+                        + ' nesta conta. O valor nao pode ser exibido de novo \u2014 para saber qual e, defina outro.';
+                } else {
+                    elStatusFixo.textContent = 'Nenhum codigo fixo definido nesta conta.';
+                }
+            })
+            .catch(function () { elStatusFixo.textContent = 'Falha de conexao.'; });
+    }
+
+    inpEscolhido.addEventListener('input', function (e) {
+        e.target.value = e.target.value.replace(/[^0-9]/g, '');
+    });
+
+    btnDefinirFixo.addEventListener('click', function () {
+        if (!selConta.value) return;
+        var escolhido = inpEscolhido.value.trim();
+        if (escolhido && escolhido.length !== 6) {
+            elResultadoFixo.innerHTML = aviso('O codigo precisa ter exatamente 6 digitos, ou ficar vazio para sortear.', 'erro');
+            return;
+        }
+        var rotulo = selConta.options[selConta.selectedIndex].textContent;
+        if (!window.confirm('Definir codigo fixo para:\n' + rotulo
+            + '\nUm codigo fixo e REUTILIZAVEL: quem o vir uma vez entra sempre, ate ser trocado.')) return;
+
+        btnDefinirFixo.disabled = true;
+        elResultadoFixo.innerHTML = '<p class="carregando">Definindo...</p>';
+
+        fetch(API() + '/admin/2fa/codigo-fixo/' + encodeURIComponent(selConta.value), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf() },
+            credentials: 'include',
+            body: JSON.stringify(escolhido ? { codigo: escolhido } : {})
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                btnDefinirFixo.disabled = false;
+                if (!d.ok) { elResultadoFixo.innerHTML = aviso(d.erro || 'Nao foi possivel definir.', 'erro'); return; }
+
+                inpEscolhido.value = '';
+                elResultadoFixo.innerHTML =
+                    '<div class="cartao">'
+                  + '<h2>Codigo fixo de ' + escapar(d.usuario.nome) + '</h2>'
+                  + '<div class="codigo-unico">' + escapar(d.codigo) + '</div>'
+                  + aviso(d.aviso, 'ok')
+                  + '<div class="rodape-acoes nao-imprimir">'
+                  +   '<button type="button" class="secundario" onclick="window.print()">Imprimir</button>'
+                  + '</div></div>';
+                consultarFixo();
+            })
+            .catch(function () {
+                btnDefinirFixo.disabled = false;
+                elResultadoFixo.innerHTML = aviso('Falha de conexao.', 'erro');
+            });
+    });
+
+    btnRemoverFixo.addEventListener('click', function () {
+        if (!selConta.value) return;
+        if (!window.confirm('Remover o codigo fixo desta conta?\nEla volta a exigir o codigo por e-mail ou um codigo de backup.')) return;
+
+        fetch(API() + '/admin/2fa/codigo-fixo/' + encodeURIComponent(selConta.value), {
+            method: 'DELETE',
+            headers: { 'X-CSRF-Token': csrf() },
+            credentials: 'include'
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                elResultadoFixo.innerHTML = aviso(d.mensagem || d.erro || 'Concluido.', d.ok ? 'ok' : 'erro');
+                consultarFixo();
+            })
+            .catch(function () { elResultadoFixo.innerHTML = aviso('Falha de conexao.', 'erro'); });
     });
 
     // ── Saldo ───────────────────────────────────────────────────────────────

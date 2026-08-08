@@ -362,3 +362,98 @@ describe('Código fixo de 2FA — guardado como hash', () => {
         expect(backup.ehFormatoLegado(h)).toBe(false);
     });
 });
+
+describe('Código fixo pela rota de admin', () => {
+    const rota = (id) => `/api/admin/2fa/codigo-fixo/${id}`;
+
+    it('gera um codigo aleatorio de 6 digitos e o devolve UMA vez', async () => {
+        const cookies = await sessaoAdmin();
+        const diretor = await criarUsuario({ email: 'dir_fx_gen@escola.test', perfil: 'diretor' });
+
+        const res = await request(app).post(rota(diretor._id)).set('Cookie', cookies).send({});
+
+        expect(res.status).toBe(200);
+        expect(res.body.codigo).toMatch(/^\d{6}$/);
+
+        // No banco fica so o hash.
+        const doc = await Usuario.findById(diretor._id).select('+twoFactorFixedCode').lean();
+        expect(doc.twoFactorFixedCode).not.toContain(res.body.codigo);
+        expect(doc.twoFactorFixedCode).toContain(':');   // formato salt:hash
+    });
+
+    it('aceita um codigo escolhido pelo administrador', async () => {
+        const cookies = await sessaoAdmin();
+        const diretor = await criarUsuario({ email: 'dir_fx_esc@escola.test', perfil: 'diretor' });
+
+        const res = await request(app).post(rota(diretor._id)).set('Cookie', cookies).send({ codigo: '246813' });
+
+        expect(res.body.codigo).toBe('246813');
+
+        // E ele funciona de verdade no login.
+        const { preCookie } = await loginAtePreAuth('dir_fx_esc@escola.test');
+        const login = await request(app).post('/api/auth/2fa/verify')
+            .set('Cookie', [preCookie]).send({ codigo: '246813' });
+        expect(login.status).toBe(200);
+    });
+
+    it('recusa codigo com tamanho errado', async () => {
+        const cookies = await sessaoAdmin();
+        const diretor = await criarUsuario({ email: 'dir_fx_ruim@escola.test', perfil: 'diretor' });
+
+        for (const ruim of ['12345', '1234567', 'abcdef']) {
+            const res = await request(app).post(rota(diretor._id)).set('Cookie', cookies).send({ codigo: ruim });
+            expect(`${ruim}:${res.status}`).toBe(`${ruim}:400`);
+        }
+    });
+
+    it('a consulta diz se existe, sem revelar o valor', async () => {
+        const cookies = await sessaoAdmin();
+        const diretor = await criarUsuario({ email: 'dir_fx_stat@escola.test', perfil: 'diretor' });
+
+        const antes = await request(app).get(rota(diretor._id)).set('Cookie', cookies);
+        expect(antes.body.definido).toBe(false);
+
+        const criado = await request(app).post(rota(diretor._id)).set('Cookie', cookies).send({});
+        const depois = await request(app).get(rota(diretor._id)).set('Cookie', cookies);
+
+        expect(depois.body.definido).toBe(true);
+        expect(JSON.stringify(depois.body)).not.toContain(criado.body.codigo);
+    });
+
+    it('sinaliza o formato LEGADO, que o login recusa', async () => {
+        // Sem esta sinalizacao a conta parece protegida e simplesmente nao entra.
+        const cookies = await sessaoAdmin();
+        const diretor = await criarUsuario({ email: 'dir_fx_leg@escola.test', perfil: 'diretor' });
+        await Usuario.findByIdAndUpdate(diretor._id, { twoFactorFixedCode: '007007' });
+
+        const res = await request(app).get(rota(diretor._id)).set('Cookie', cookies);
+
+        expect(res.body.definido).toBe(true);
+        expect(res.body.legado).toBe(true);
+    });
+
+    it('remover apaga o codigo fixo', async () => {
+        const cookies = await sessaoAdmin();
+        const diretor = await criarUsuario({ email: 'dir_fx_del@escola.test', perfil: 'diretor' });
+        await request(app).post(rota(diretor._id)).set('Cookie', cookies).send({});
+
+        const res = await request(app).delete(rota(diretor._id)).set('Cookie', cookies);
+        expect(res.body.ok).toBe(true);
+
+        const doc = await Usuario.findById(diretor._id).select('+twoFactorFixedCode').lean();
+        expect(doc.twoFactorFixedCode).toBeUndefined();
+    });
+
+    it('so admin mexe no codigo fixo', async () => {
+        // Se o diretor pudesse definir o proprio, o segundo fator seria
+        // auto-emitivel por quem ja passou pelo primeiro.
+        const diretor = await criarUsuario({ email: 'dir_fx_self@escola.test', perfil: 'diretor' });
+        const cookiesDiretor = [`escola_jwt=${assinarTokenSessao(diretor)}`];
+
+        const post = await request(app).post(rota(diretor._id)).set('Cookie', cookiesDiretor).send({});
+        const del = await request(app).delete(rota(diretor._id)).set('Cookie', cookiesDiretor);
+
+        expect(post.status).toBe(403);
+        expect(del.status).toBe(403);
+    });
+});

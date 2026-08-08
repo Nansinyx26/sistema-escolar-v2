@@ -232,6 +232,122 @@ router.get('/2fa/backup-codes/:usuarioId', async (req, res) => {
     }
 });
 
+// ────────────────────────────────────────────────────────────────────────────
+// CÓDIGO FIXO DE 2FA
+// ────────────────────────────────────────────────────────────────────────────
+// Alternativa MAIS FRACA que os códigos de backup, exposta aqui porque a
+// operação pediu: enquanto o provedor de e-mail está bloqueado, um código
+// reutilizável é mais simples de administrar do que reemitir lotes.
+//
+// A diferença, dita por extenso: um código de uso único queima ao ser usado;
+// um código fixo é uma segunda senha permanente de 6 dígitos. Quem o vir uma
+// vez entra sempre, até alguém trocá-lo. A interface diz isso na tela.
+//
+// Guardado como hash scrypt, como todo o resto — antes deste trabalho ele
+// ficava em TEXTO PURO no banco e havia um valor escrito no código-fonte.
+
+/**
+ * POST /api/admin/2fa/codigo-fixo/:usuarioId
+ * Body opcional: { codigo: '123456' } — sem ele, gera aleatório.
+ * Devolve o código em texto puro UMA vez.
+ */
+router.post('/2fa/codigo-fixo/:usuarioId', async (req, res) => {
+    try {
+        const Usuario = require('../models/Usuario');
+        const { hashSegredo } = require('../utils/codigosBackup');
+        const { logAction } = require('../utils/auditHelper');
+        const crypto = require('crypto');
+
+        const usuario = await Usuario.findById(req.params.usuarioId).select('email nome perfil').lean();
+        if (!usuario) return res.status(404).json({ ok: false, erro: 'Usuário não encontrado.' });
+
+        const informado = req.body && req.body.codigo != null ? String(req.body.codigo).trim() : '';
+        if (informado && !/^\d{6}$/.test(informado)) {
+            return res.status(400).json({ ok: false, erro: 'O código fixo precisa ter exatamente 6 dígitos.' });
+        }
+
+        // Aleatório por padrão: código escolhido à mão tende a ser data de
+        // nascimento, sequência ou repetição — e este vale até ser trocado.
+        const codigo = informado || String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+
+        await Usuario.findByIdAndUpdate(usuario._id, {
+            twoFactorFixedCode: await hashSegredo(codigo),
+            twoFactorEnabled: true,
+        });
+
+        await logAction(req, 'CODIGO_FIXO_2FA_DEFINIDO', 'Segurança', {
+            recursoId: usuario._id,
+            descricao: `Código fixo de 2FA definido para ${mascarar(usuario.email)} (${usuario.perfil})`
+                     + (informado ? ' — valor escolhido pelo administrador' : ' — valor aleatório'),
+        });
+        logger.warn('[2FA] Código fixo definido', {
+            alvo: mascarar(usuario.email), perfil: usuario.perfil,
+            por: mascarar(req.user?.email || ''), escolhido: Boolean(informado),
+            action: 'admin.2fa.codigoFixo',
+        });
+
+        return res.json({
+            ok: true,
+            usuario: { nome: usuario.nome, perfil: usuario.perfil, email: mascarar(usuario.email) },
+            codigo,
+            aviso: 'Este código aparece UMA ÚNICA VEZ — no banco fica apenas o hash. '
+                 + 'Ele é REUTILIZÁVEL: quem o vir uma vez entra sempre, até ser trocado. '
+                 + 'Entregue por um canal separado da senha e remova assim que o e-mail voltar.',
+        });
+    } catch (e) {
+        logger.error('[2FA] Falha ao definir código fixo', { err: e });
+        return res.status(500).json({ ok: false, erro: 'Erro ao definir o código fixo.' });
+    }
+});
+
+/** GET — existe código fixo nesta conta? Nunca devolve o valor. */
+router.get('/2fa/codigo-fixo/:usuarioId', async (req, res) => {
+    try {
+        const Usuario = require('../models/Usuario');
+        const { ehFormatoLegado } = require('../utils/codigosBackup');
+
+        const usuario = await Usuario.findById(req.params.usuarioId)
+            .select('email perfil +twoFactorFixedCode').lean();
+        if (!usuario) return res.status(404).json({ ok: false, erro: 'Usuário não encontrado.' });
+
+        const valor = usuario.twoFactorFixedCode;
+        return res.json({
+            ok: true,
+            definido: Boolean(valor),
+            // Valor de antes da migração: está em texto puro e o login o
+            // RECUSA. Precisa ser regerado, senão a conta parece protegida e
+            // não consegue entrar.
+            legado: ehFormatoLegado(valor),
+        });
+    } catch (e) {
+        logger.error('[2FA] Falha ao consultar código fixo', { err: e });
+        return res.status(500).json({ ok: false, erro: 'Erro ao consultar.' });
+    }
+});
+
+/** DELETE — remove o código fixo. A conta volta ao e-mail / códigos de backup. */
+router.delete('/2fa/codigo-fixo/:usuarioId', async (req, res) => {
+    try {
+        const Usuario = require('../models/Usuario');
+        const { logAction } = require('../utils/auditHelper');
+
+        const usuario = await Usuario.findById(req.params.usuarioId).select('email perfil').lean();
+        if (!usuario) return res.status(404).json({ ok: false, erro: 'Usuário não encontrado.' });
+
+        await Usuario.updateOne({ _id: usuario._id }, { $unset: { twoFactorFixedCode: '' } });
+
+        await logAction(req, 'CODIGO_FIXO_2FA_REMOVIDO', 'Segurança', {
+            recursoId: usuario._id,
+            descricao: `Código fixo de 2FA removido de ${mascarar(usuario.email)} (${usuario.perfil})`,
+        });
+
+        return res.json({ ok: true, mensagem: 'Código fixo removido. A conta volta ao código por e-mail ou de backup.' });
+    } catch (e) {
+        logger.error('[2FA] Falha ao remover código fixo', { err: e });
+        return res.status(500).json({ ok: false, erro: 'Erro ao remover.' });
+    }
+});
+
 /** Traduz as falhas mais comuns em uma ação concreta. */
 function sugerir(resultado) {
     const texto = String(resultado.erro || '').toLowerCase();
