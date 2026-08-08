@@ -13,7 +13,13 @@
 const express = require('express');
 const router = express.Router();
 
-const { enviarEmail, verificarEnvio, mascarar } = require('../services/EnvioEmail');
+// Importado como MÓDULO, não desestruturado. A desestruturação captura a
+// referência da função no momento do require, o que torna o envio impossível
+// de substituir em teste — e, pior, fazia a suíte bater na API real do
+// provedor: lenta, sujeita à rede e gastando cota a cada execução.
+// Com acesso por propriedade, a resolução acontece na hora da chamada.
+const EnvioEmail = require('../services/EnvioEmail');
+const { mascarar } = EnvioEmail;
 const logger = require('../utils/logger');
 
 /**
@@ -44,7 +50,7 @@ router.get('/diag/email', async (req, res) => {
         action: 'admin.diag.email',
     });
 
-    const verificacao = await verificarEnvio();
+    const verificacao = await EnvioEmail.verificarEnvio();
 
     if (!verificacao.ok) {
         return res.status(503).json({
@@ -68,7 +74,7 @@ router.get('/diag/email', async (req, res) => {
         });
     }
 
-    const envio = await enviarEmail(
+    const envio = await EnvioEmail.enviarEmail(
         destinatario,
         'Teste de entrega — Sistema Escolar',
         `<div style="font-family:Arial,sans-serif;max-width:480px;padding:24px;">
@@ -431,6 +437,197 @@ router.post('/recuperacao-senha/:usuarioId', async (req, res) => {
     } catch (e) {
         logger.error('[recuperacao] Falha ao disparar recuperação pelo admin', { err: e });
         return res.status(500).json({ ok: false, erro: 'Erro ao disparar a recuperação de senha.' });
+    }
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// 2FA OBRIGATÓRIO — ativação com trava contra auto-trancamento
+// ────────────────────────────────────────────────────────────────────────────
+// Exigir segundo fator de uma conta administrativa é a operação com o pior
+// modo de falha do sistema inteiro: se o canal de e-mail estiver quebrado e a
+// conta não tiver códigos de backup, o próximo login falha e NÃO HÁ NINGUÉM
+// dentro para desfazer. O conserto vira acesso direto ao banco de produção.
+//
+// Por isso a ativação não é um interruptor: é um procedimento com pré-voo.
+
+/**
+ * GET /api/admin/2fa/prontidao/:usuarioId
+ *
+ * Responde "posso exigir 2FA desta conta sem trancá-la para fora?".
+ * Três condições, verificadas de verdade — não presumidas:
+ *   1. a conta tem e-mail válido cadastrado;
+ *   2. o canal de e-mail está operacional AGORA (não "estava no boot");
+ *   3. existem códigos de backup disponíveis, caso (2) caia depois.
+ */
+router.get('/2fa/prontidao/:usuarioId', async (req, res) => {
+    try {
+        const Usuario = require('../models/Usuario');
+        const politica = require('../utils/politica2FA');
+
+        const usuario = await Usuario.findById(req.params.usuarioId)
+            .select('email nome perfil ativo twoFactorEnabled +twoFactorBackupCodes +twoFactorFixedCode')
+            .lean();
+        if (!usuario) return res.status(404).json({ ok: false, erro: 'Usuário não encontrado.' });
+
+        const emailValido = typeof usuario.email === 'string'
+            && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(usuario.email);
+
+        // Checagem VIVA do canal, sem enviar mensagem. Confiar no resultado do
+        // boot seria confiar num estado de horas atrás — e o provedor pode ter
+        // bloqueado a conta nesse meio-tempo, que foi exatamente o que houve.
+        const canal = await EnvioEmail.verificarEnvio();
+
+        const disponiveis = (usuario.twoFactorBackupCodes || []).filter((c) => !c.usadoEm).length;
+
+        const bloqueios = [];
+        if (!emailValido) bloqueios.push('A conta não tem e-mail válido cadastrado — o código não teria para onde ir.');
+        if (!canal.ok) bloqueios.push(`O canal de e-mail não está operacional (${canal.etapa}): ${canal.erro}`);
+        if (!disponiveis) bloqueios.push('A conta não tem códigos de backup — sem eles, uma queda do provedor tranca o acesso.');
+
+        return res.json({
+            ok: bloqueios.length === 0,
+            usuario: {
+                id: String(usuario._id), nome: usuario.nome, perfil: usuario.perfil,
+                email: mascarar(usuario.email || ''),
+            },
+            jaExige: politica.exigeSegundoFator(usuario),
+            verificacoes: {
+                emailValido,
+                canalOperacional: canal.ok,
+                codigosBackupDisponiveis: disponiveis,
+                temCodigoFixo: Boolean(usuario.twoFactorFixedCode),
+            },
+            bloqueios,
+            politicaVigente: {
+                perfisObrigatorios: politica.perfisComObrigatoriedade(),
+                perfisDispensados: politica.perfisDispensados(),
+            },
+        });
+    } catch (e) {
+        logger.error('[2FA] Falha na checagem de prontidão', { err: e });
+        return res.status(500).json({ ok: false, erro: 'Erro ao verificar prontidão.' });
+    }
+});
+
+/**
+ * POST /api/admin/2fa/ativar/:usuarioId
+ *
+ * Liga o segundo fator NA CONTA (`twoFactorEnabled`) e devolve, na mesma
+ * resposta, 8 códigos de backup recém-gerados — a única vez em que existem
+ * legíveis. Ativar sem entregar a rede de segurança junto seria montar o
+ * cenário de trancamento de propósito.
+ *
+ * RECUSA quando a prontidão falha. `?forcar=true` ignora a recusa, e existe
+ * porque há um caso legítimo: ativar sabendo que o e-mail está fora, contando
+ * apenas com os códigos de backup impressos. Mas tem de ser uma escolha
+ * declarada, não o caminho de menor resistência.
+ *
+ * Isto é o ROLLOUT POR CONTA. Só depois de validar aqui é que o perfil inteiro
+ * entra em PERFIS_2FA_OBRIGATORIO — ver docs/2FA-OBRIGATORIO.md.
+ */
+router.post('/2fa/ativar/:usuarioId', async (req, res) => {
+    try {
+        const Usuario = require('../models/Usuario');
+        const { gerarLote, QUANTIDADE_PADRAO } = require('../utils/codigosBackup');
+        const { logAction } = require('../utils/auditHelper');
+
+        const forcar = String(req.query.forcar || '') === 'true';
+
+        const usuario = await Usuario.findById(req.params.usuarioId).select('email nome perfil ativo').lean();
+        if (!usuario) return res.status(404).json({ ok: false, erro: 'Usuário não encontrado.' });
+
+        const emailValido = typeof usuario.email === 'string'
+            && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(usuario.email);
+        const canal = await EnvioEmail.verificarEnvio();
+
+        if (!forcar && (!emailValido || !canal.ok)) {
+            return res.status(409).json({
+                ok: false,
+                erro: !emailValido
+                    ? 'A conta não tem e-mail válido — ativar agora a trancaria fora do sistema.'
+                    : `O canal de e-mail não está operacional (${canal.etapa}): ${canal.erro}`,
+                sugestao: 'Corrija antes de ativar. Se quiser ativar mesmo assim, apoiado apenas nos '
+                        + 'códigos de backup impressos, repita com ?forcar=true.',
+            });
+        }
+
+        // Códigos ANTES de ligar a exigência: se a geração falhar, a conta
+        // continua entrando como entrava. A ordem inversa deixaria uma janela
+        // com 2FA exigido e nenhuma rede de segurança.
+        const { codigos, registros } = await gerarLote(QUANTIDADE_PADRAO);
+
+        await Usuario.findByIdAndUpdate(usuario._id, {
+            twoFactorBackupCodes: registros,
+            twoFactorBackupGeradoEm: new Date(),
+            twoFactorEnabled: true,
+        });
+
+        await logAction(req, 'TWOFACTOR_ATIVADO', 'Segurança', {
+            recursoId: usuario._id,
+            descricao: `2FA obrigatório ATIVADO para ${mascarar(usuario.email)} (${usuario.perfil})`
+                     + `, com ${QUANTIDADE_PADRAO} códigos de backup`
+                     + (forcar ? ' — ATIVAÇÃO FORÇADA, canal de e-mail não validado' : ''),
+        });
+        logger.warn('[2FA] Segundo fator ativado na conta', {
+            alvo: mascarar(usuario.email), perfil: usuario.perfil,
+            por: mascarar(req.user?.email || ''), forcado: forcar,
+            action: 'admin.2fa.ativado',
+        });
+
+        return res.json({
+            ok: true,
+            usuario: { nome: usuario.nome, perfil: usuario.perfil, email: mascarar(usuario.email) },
+            codigos,
+            forcado: forcar,
+            aviso: 'Segundo fator ATIVADO nesta conta. Guarde os códigos abaixo AGORA — '
+                 + 'eles aparecem uma única vez e são a única forma de entrar se o e-mail falhar. '
+                 + 'Imprima e guarde fora do computador.',
+            proximoPasso: 'Saia, entre de novo com esta conta e confirme que o código chega. '
+                        + 'Só depois disso acrescente o perfil em PERFIS_2FA_OBRIGATORIO.',
+        });
+    } catch (e) {
+        logger.error('[2FA] Falha ao ativar segundo fator', { err: e });
+        return res.status(500).json({ ok: false, erro: 'Erro ao ativar o segundo fator.' });
+    }
+});
+
+/**
+ * DELETE /api/admin/2fa/ativar/:usuarioId
+ *
+ * Desliga o `twoFactorEnabled` da conta. NÃO afeta a obrigatoriedade por
+ * perfil: se o perfil está em PERFIS_2FA_OBRIGATORIO, a conta continua
+ * exigindo segundo fator — e a resposta diz isso, em vez de deixar o
+ * administrador achar que desligou e descobrir o contrário no próximo login.
+ */
+router.delete('/2fa/ativar/:usuarioId', async (req, res) => {
+    try {
+        const Usuario = require('../models/Usuario');
+        const politica = require('../utils/politica2FA');
+        const { logAction } = require('../utils/auditHelper');
+
+        const usuario = await Usuario.findById(req.params.usuarioId).select('email perfil').lean();
+        if (!usuario) return res.status(404).json({ ok: false, erro: 'Usuário não encontrado.' });
+
+        await Usuario.updateOne({ _id: usuario._id }, { $set: { twoFactorEnabled: false } });
+
+        await logAction(req, 'TWOFACTOR_DESATIVADO', 'Segurança', {
+            recursoId: usuario._id,
+            descricao: `2FA desativado na conta ${mascarar(usuario.email)} (${usuario.perfil})`,
+        });
+
+        const aindaExige = politica.exigeSegundoFator({ perfil: usuario.perfil, twoFactorEnabled: false });
+
+        return res.json({
+            ok: true,
+            aindaExigePorPerfil: aindaExige,
+            mensagem: aindaExige
+                ? `Desativado na conta, mas o perfil "${usuario.perfil}" está em PERFIS_2FA_OBRIGATORIO — `
+                  + 'a conta CONTINUA exigindo segundo fator. Para dispensá-la de fato, ajuste a variável de ambiente.'
+                : 'Segundo fator desativado nesta conta.',
+        });
+    } catch (e) {
+        logger.error('[2FA] Falha ao desativar segundo fator', { err: e });
+        return res.status(500).json({ ok: false, erro: 'Erro ao desativar.' });
     }
 });
 

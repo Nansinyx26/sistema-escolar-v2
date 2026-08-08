@@ -96,6 +96,19 @@ services:
       # vazada — e um falso positivo recorrente treina a equipe a ignorar alerta.
 
       # ── Política de 2FA ──────────────────────────────────────────────────────
+      # PERFIS_2FA_OBRIGATORIO — perfis que EXIGEM segundo fator.
+      # Vazia = diretor,secretaria (a política que já existia). Um deploy sem
+      # esta variável NÃO afrouxa nada.
+      #
+      #     PERFIS_2FA_OBRIGATORIO=diretor,secretaria,admin
+      #
+      # Antes de acrescentar `admin`, leia docs/2FA-OBRIGATORIO.md e siga o
+      # roteiro: verificar prontidão → ativar na sua conta → validar entrando →
+      # só então propagar. Ligar isto com o e-mail fora e sem códigos de backup
+      # tranca a conta administrativa, e não há quem destrave de dentro.
+      - key: PERFIS_2FA_OBRIGATORIO
+        sync: false
+
       # DISPENSAR_2FA_EMAIL — perfis que entram SÓ com e-mail e senha.
       # Vazia (padrão) = todos os perfis obrigatórios passam pelo segundo fator.
       #

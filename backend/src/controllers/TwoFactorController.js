@@ -362,7 +362,16 @@ exports.verifyCode = async (req, res) => {
             ultimoLogin: new Date()
         });
 
-        // O pre-auth é de uso único: consumido, some.
+        // Auditoria do sucesso. Havia registro de LOGIN_2FA_REQUIRED e de
+        // LOGIN_2FA_FAILED, mas nenhum do login que DEU CERTO — então a trilha
+        // respondia "quem tentou" e nunca "quem entrou", que é a pergunta de
+        // qualquer investigação.
+        await logAction(req, 'LOGIN_2FA_SUCESSO', 'Auth', {
+            recursoId: usuario._id,
+            descricao: `Login concluido com segundo fator (${usuario.perfil}) — ${usuario.email}`
+        });
+
+        // O pré-auth é de uso único: consumido, some.
         limparPreAuthToken(res);
 
         // Gera e seta o cookie JWT pelo emissor central: garante `jti` (sem ele

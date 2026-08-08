@@ -40,7 +40,34 @@
  * ============================================================================
  */
 
-const PERFIS_COM_2FA_OBRIGATORIO = ['diretor', 'secretaria'];
+/**
+ * Perfis que EXIGEM segundo fator, por configuração.
+ *
+ * A lista era um array literal aqui dentro. Mudar quem precisa de 2FA exigia
+ * editar código e fazer deploy — o que, na prática, significa que ninguém muda.
+ *
+ * `PERFIS_2FA_OBRIGATORIO=diretor,secretaria,admin`
+ *
+ * O padrão preserva o comportamento anterior (diretor e secretaria), para que
+ * um deploy sem a variável não afrouxe nada por omissão. Fail-safe: a ausência
+ * de configuração mantém a política mais restritiva que já existia.
+ *
+ * Para exigir 2FA do ADMIN, acrescente `admin` — mas leia o roteiro de
+ * ativação em docs/2FA-OBRIGATORIO.md antes: ligar isso com o canal de e-mail
+ * quebrado e sem códigos de backup tranca a conta administrativa fora do
+ * sistema, e não há quem destrave de dentro.
+ */
+const PADRAO_PERFIS_OBRIGATORIO = ['diretor', 'secretaria'];
+
+function perfisComObrigatoriedade() {
+    const bruto = (process.env.PERFIS_2FA_OBRIGATORIO || '').trim();
+    if (!bruto) return PADRAO_PERFIS_OBRIGATORIO;
+    const lista = bruto.split(',').map((p) => p.trim().toLowerCase()).filter(Boolean);
+    // Variável presente mas só com lixo (vírgulas, espaços) volta ao padrão em
+    // vez de desligar a exigência — desligar tem de ser explícito, via
+    // DISPENSAR_2FA_EMAIL, que grita no boot.
+    return lista.length ? lista : PADRAO_PERFIS_OBRIGATORIO;
+}
 
 /** Perfis dispensados por configuração de ambiente. */
 function perfisDispensados() {
@@ -66,14 +93,23 @@ function exigeSegundoFator(usuario) {
     if (!usuario) return false;
     if (dispensado(usuario.perfil)) return false;
 
+    // `twoFactorEnabled` na conta é o que permite o rollout gradual: liga-se o
+    // segundo fator numa conta só, valida-se, e só então o perfil inteiro entra
+    // na lista da variável de ambiente.
     return Boolean(usuario.twoFactorEnabled)
-        || PERFIS_COM_2FA_OBRIGATORIO.includes(usuario.perfil);
+        || perfisComObrigatoriedade().includes(String(usuario.perfil || '').toLowerCase());
 }
 
 /**
  * Chamado no boot. Retorna a mensagem de alerta quando há dispensa ativa, ou
  * `null` quando a política está íntegra.
  */
+/** Resumo da política vigente, para o log de boot. */
+function resumoDaPolitica() {
+    return `2FA obrigatório para: ${perfisComObrigatoriedade().join(', ')}`
+         + (perfisDispensados().length ? ` | DISPENSADO para: ${perfisDispensados().join(', ')}` : '');
+}
+
 function avisoDeBoot() {
     const dispensados = perfisDispensados();
     if (!dispensados.length) return null;
@@ -86,6 +122,8 @@ module.exports = {
     exigeSegundoFator,
     dispensado,
     perfisDispensados,
+    perfisComObrigatoriedade,
+    resumoDaPolitica,
     avisoDeBoot,
-    PERFIS_COM_2FA_OBRIGATORIO,
+    PADRAO_PERFIS_OBRIGATORIO,
 };

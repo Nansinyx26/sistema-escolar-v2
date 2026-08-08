@@ -88,7 +88,9 @@ const startServer = async () => {
             // Uma configuracao que enfraquece autenticacao nao pode ficar
             // silenciosa: e o tipo de coisa que se liga "so por hoje" e fica
             // ligada por meses porque nada nunca lembra ninguem dela.
-            const avisoPolitica2FA = require('./utils/politica2FA').avisoDeBoot();
+            const politica2FA = require('./utils/politica2FA');
+            logger.info(`[Boot] ${politica2FA.resumoDaPolitica()}`, { action: 'boot.politica2FA' });
+            const avisoPolitica2FA = politica2FA.avisoDeBoot();
             if (avisoPolitica2FA) {
                 logger.alert('SEGURANCA_2FA_DISPENSADO', avisoPolitica2FA, { action: 'boot.politica2FA' });
                 logger.warn(`⚠️  ${avisoPolitica2FA}`);

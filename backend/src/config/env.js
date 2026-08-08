@@ -47,6 +47,8 @@ const DECLARACAO = [
     { nome: 'METRICS_TOKEN',      obrigatoriaEm: null,       descricao: 'Protege GET /api/metrics em produção' },
     // Enfraquece a autenticação: o boot emite alerta enquanto estiver preenchida.
     { nome: 'DISPENSAR_2FA_EMAIL', obrigatoriaEm: null,      descricao: 'Perfis que entram sem segundo fator (ex.: diretor,secretaria)' },
+    // Vazia = diretor,secretaria. Ver docs/2FA-OBRIGATORIO.md antes de incluir admin.
+    { nome: 'PERFIS_2FA_OBRIGATORIO', obrigatoriaEm: null,  descricao: 'Perfis que exigem segundo fator' },
     { nome: 'FILTRO_PALAVROES_NIVEIS',   obrigatoriaEm: null, descricao: 'Níveis que bloqueiam o envio (padrão: grave,moderado)' },
     { nome: 'FILTRO_PALAVROES_EXTRAS',   obrigatoriaEm: null, descricao: 'Palavras extras a bloquear, separadas por vírgula' },
     { nome: 'FILTRO_PALAVROES_EXCECOES', obrigatoriaEm: null, descricao: 'Palavras a liberar do filtro, separadas por vírgula' },
