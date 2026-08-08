@@ -163,9 +163,9 @@ function areaDe(formas) {
 
 /**
  * Resolve o apelido secreto. Devolve:
- *   { rota: '/html/admin/x.html' }  → reescrever req.url para este caminho
- *   { bloquear: true }              → caminho previsível, morto quando há apelido
- *   null                            → não tem relação com a área admin
+ *   { rota: '/html/admin/x.html' }        → reescrever req.url para este caminho
+ *   { bloquear: true, destino, arquivo }  → caminho previsível (ver abaixo)
+ *   null                                  → não tem relação com a área admin
  */
 function resolverApelido(formas) {
     if (!APELIDO_ADMIN) return null;
@@ -177,11 +177,20 @@ function resolverApelido(formas) {
             const resto = forma.real.slice(`/html/${APELIDO_ADMIN}`.length);
             return { rota: AREA_ADMIN_REAL + resto };
         }
-        // Com apelido ativo, o nome previsível deixa de existir para todos.
+        // Com apelido ativo, o nome previsível deixa de existir para o público.
         // Um 404 aqui (em vez do 302 para o login) impede que a resposta
         // confirme que a área administrativa existe neste servidor.
+        //
+        // `destino` é o endereço real correspondente, usado APENAS para
+        // redirecionar quem já provou ser admin/diretor — ver
+        // redirecionarSeAutorizado(). Para todo o resto continua sendo 404.
         if (dentroDe(forma.comparacao, AREA_ADMIN_REAL)) {
-            return { bloquear: true };
+            const resto = forma.real.slice(AREA_ADMIN_REAL.length);
+            return {
+                bloquear: true,
+                destino: `/html/${APELIDO_ADMIN}${resto}`,
+                arquivo: path.basename(forma.comparacao),
+            };
         }
     }
     return null;
@@ -197,30 +206,24 @@ function extrairToken(req) {
     return null;
 }
 
-async function autorizar(req, res, next, { config, forma }, pagina404) {
-    const arquivo = path.basename(forma);
-
-    // Tela de login da área: segue adiante sem sessão (ver PAGINAS_SEM_SESSAO).
-    if (PAGINAS_SEM_SESSAO.has(arquivo)) return next();
-
-    const perfisPermitidos = (config.excecoes && config.excecoes[arquivo]) || config.perfis;
+/**
+ * Valida a sessão da requisição e devolve o usuário do BANCO, ou `null`.
+ *
+ * Extraído de `autorizar` para que o redirect do caminho previsível
+ * (redirecionarSeAutorizado) use exatamente a mesma verificação — duas cópias
+ * dessa lógica divergiriam, e a que ficasse frouxa viraria o buraco.
+ */
+async function sessaoDoRequest(req) {
     const token = extrairToken(req);
-
-    if (!token) {
-        return res.redirect(302, `/html/login.html?next=${encodeURIComponent(req.originalUrl)}`);
-    }
+    if (!token) return null;
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
 
         // O token pré-2FA é assinado com o mesmo segredo e não pode valer como
         // sessão completa — mesma trava do authJWT.
-        if (decoded.purpose && decoded.purpose !== 'session') {
-            return res.redirect(302, '/html/login.html');
-        }
-        if (await tokenEstaRevogado(decoded)) {
-            return res.redirect(302, '/html/login.html');
-        }
+        if (decoded.purpose && decoded.purpose !== 'session') return null;
+        if (await tokenEstaRevogado(decoded)) return null;
 
         // Perfil lido do BANCO, nunca do token: um rebaixamento vale já na
         // próxima requisição, sem esperar o cookie expirar.
@@ -231,25 +234,84 @@ async function autorizar(req, res, next, { config, forma }, pagina404) {
         const versaoConta = usuario?.tokenVersion !== undefined ? usuario.tokenVersion : 0;
         const versaoToken = decoded.tokenVersion !== undefined ? decoded.tokenVersion : 0;
 
-        if (!usuario || usuario.ativo === false || versaoConta !== versaoToken) {
-            return res.redirect(302, '/html/login.html');
-        }
+        if (!usuario || usuario.ativo === false || versaoConta !== versaoToken) return null;
 
-        if (!perfisPermitidos.includes(usuario.perfil)) {
-            logger.warn('Acesso negado a área restrita', {
-                arquivo, perfil: usuario.perfil, action: 'protegerPaginas.negado',
-            });
-            // 404 e não 403: um 403 confirmaria que a área existe.
-            return res.status(404).sendFile(pagina404);
-        }
-
-        return next();
+        return usuario;
     } catch (e) {
         logger.warn('Token inválido em área restrita', {
-            arquivo, errName: e.name, action: 'protegerPaginas.tokenInvalido',
+            errName: e.name, action: 'protegerPaginas.tokenInvalido',
         });
-        return res.redirect(302, '/html/login.html');
+        return null;
     }
+}
+
+async function autorizar(req, res, next, { config, forma }, pagina404) {
+    const arquivo = path.basename(forma);
+
+    // Tela de login da área: segue adiante sem sessão (ver PAGINAS_SEM_SESSAO).
+    if (PAGINAS_SEM_SESSAO.has(arquivo)) return next();
+
+    const perfisPermitidos = (config.excecoes && config.excecoes[arquivo]) || config.perfis;
+
+    if (!extrairToken(req)) {
+        return res.redirect(302, `/html/login.html?next=${encodeURIComponent(req.originalUrl)}`);
+    }
+
+    const usuario = await sessaoDoRequest(req);
+    if (!usuario) return res.redirect(302, '/html/login.html');
+
+    if (!perfisPermitidos.includes(usuario.perfil)) {
+        logger.warn('Acesso negado a área restrita', {
+            arquivo, perfil: usuario.perfil, action: 'protegerPaginas.negado',
+        });
+        // 404 e não 403: um 403 confirmaria que a área existe.
+        return res.status(404).sendFile(pagina404);
+    }
+
+    return next();
+}
+
+/**
+ * Link antigo/favoritado para o caminho previsível, com o apelido ativo.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ * POR QUE 302 CONDICIONAL E NÃO 301 PÚBLICO
+ * ─────────────────────────────────────────────────────────────────────────
+ * Um redirect público de /html/admin/x.html para o caminho real entregaria o
+ * ADMIN_PATH a qualquer pessoa com um `curl -I`. O apelido deixaria de ter
+ * função no mesmo instante — e o motivo dele existir é não aparecer no espaço
+ * de URLs que scanner automático varre primeiro.
+ *
+ * Então o redirect só acontece para quem JÁ PROVOU ter a sessão e o perfil da
+ * página pedida. Para todo o resto — anônimo, sessão inválida, perfil sem
+ * acesso — a resposta continua sendo exatamente a de antes: 404, indistinguível
+ * de um caminho que nunca existiu.
+ *
+ * 302 e não 301: o 301 é cacheado pelo browser de forma persistente e o destino
+ * é um segredo que pode ser ROTACIONADO. Um 301 gravado no cache continuaria
+ * apontando para o prefixo antigo depois da troca, e o usuário levaria um 404
+ * sem entender por quê.
+ */
+async function redirecionarSeAutorizado(req, res, apelido, pagina404) {
+    const responder404 = () => res.status(404).sendFile(pagina404);
+
+    // A tela de login da área não redireciona: ela é alcançável sem sessão, e
+    // redirecionar sem sessão publicaria o prefixo para qualquer um.
+    if (PAGINAS_SEM_SESSAO.has(apelido.arquivo)) return responder404();
+
+    const usuario = await sessaoDoRequest(req);
+    if (!usuario) return responder404();
+
+    const config = AREAS[AREA_ADMIN_REAL];
+    const perfisPermitidos = (config.excecoes && config.excecoes[apelido.arquivo]) || config.perfis;
+    if (!perfisPermitidos.includes(usuario.perfil)) return responder404();
+
+    logger.info('Redirecionando link antigo da área administrativa', {
+        arquivo: apelido.arquivo, perfil: usuario.perfil, action: 'protegerPaginas.redirect',
+    });
+
+    const query = req.url.slice(req.path.length);
+    return res.redirect(302, apelido.destino + query);
 }
 
 /**
@@ -272,7 +334,13 @@ function protegerAreasRestritas(frontendRootPath) {
 
         const apelido = resolverApelido(formas);
         if (apelido) {
-            if (apelido.bloquear) return res.status(404).sendFile(pagina404);
+            if (apelido.bloquear) {
+                // Cookies precisam ser parseados antes: o cookieParser global
+                // só é registrado depois dos estáticos.
+                return parseCookies(req, res, () =>
+                    redirecionarSeAutorizado(req, res, apelido, pagina404)
+                        .catch(() => res.status(404).sendFile(pagina404)));
+            }
 
             // Reescreve para o caminho real ANTES do static, preservando a
             // query string. A partir daqui o resto do pipeline — inclusive o

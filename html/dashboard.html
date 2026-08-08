@@ -413,10 +413,10 @@
                             </button>
                         </div>
                         <div style="display: flex; gap: 0.5rem;">
-                            <button class="btn btn-secondary btn-sm" data-href="admin/usuarios.html">
+                            <button class="btn btn-secondary btn-sm" data-rota="admin.usuarios">
                                 <i class="bi bi-people-fill"></i> Usuários
                             </button>
-                            <button class="btn btn-secondary btn-sm" data-href="admin/auditoria.html" id="btnAuditoriaDash" style="display: none;">
+                            <button class="btn btn-secondary btn-sm" data-rota="admin.auditoria" id="btnAuditoriaDash" style="display: none;">
                                 <i class="bi bi-shield-shaded"></i> Auditoria
                             </button>
                         </div>
@@ -544,7 +544,7 @@
                             <h3>Gestão de Contas</h3>
                             <p class="card-description">Excluir contas de email e senha</p>
                         </div>
-                        <button class="btn btn-outline btn-sm" data-href="admin/usuarios.html">
+                        <button class="btn btn-outline btn-sm" data-rota="admin.usuarios">
                             Gerenciar
                             <i class="bi bi-arrow-right"></i>
                         </button>
@@ -589,7 +589,7 @@
                             <h3>Códigos por Escola</h3>
                             <p class="card-description">Códigos de cadastro de professores</p>
                         </div>
-                        <a href="admin/codigos-escolas.html" class="btn btn-outline btn-sm" style="text-decoration: none;">
+                        <a data-rota="admin.codigosEscolas" class="btn btn-outline btn-sm" style="text-decoration: none;">
                             Ver Códigos
                             <i class="bi bi-arrow-right"></i>
                         </a>
@@ -736,6 +736,9 @@
     <script src="../js/anime.min.js"></script>
     <script defer src="../js/database.js?v=3"></script>
     <script defer src="../js/auth.js?v=3"></script>
+    <!-- Módulo central de rotas: resolve o caminho real das páginas
+         administrativas, que fica atrás do prefixo secreto ADMIN_PATH. -->
+    <script defer src="../js/rotas.js?v=1"></script>
     <script defer src="../js/utils.js?v=3"></script>
     <script src="../js/voice-orb.js?v=1.0"></script>
     <script src="../js/sidebar-voice.js?v=4.1"></script>

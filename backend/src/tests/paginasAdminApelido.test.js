@@ -38,13 +38,66 @@ describe('Apelido secreto: o caminho previsível morre', () => {
         expect(vazou(res)).toBe(false);
     });
 
-    it('nem o proprio admin acessa pelo caminho previsivel', async () => {
-        const cookies = await sessaoDe('admin', 'admin_apelido@escola.test');
+    it('professor recebe 404 no caminho previsivel — o prefixo nao vaza para quem nao tem acesso', async () => {
+        const cookies = await sessaoDe('professor', 'prof_apelido@escola.test');
 
         const res = await request(app).get('/html/admin/usuarios.html').set('Cookie', cookies);
 
         expect(res.status).toBe(404);
+        expect(res.headers.location).toBeUndefined();
         expect(vazou(res)).toBe(false);
+    });
+
+    it('a tela de login da area NAO redireciona nem para admin — ela e alcancavel sem sessao', async () => {
+        const cookies = await sessaoDe('admin', 'admin_entrar@escola.test');
+
+        const res = await request(app).get('/html/admin/entrar.html').set('Cookie', cookies);
+
+        expect(res.status).toBe(404);
+        expect(res.headers.location).toBeUndefined();
+    });
+});
+
+describe('Apelido secreto: link antigo redireciona SO para quem ja provou acesso', () => {
+    // O prompt pedia 301 publico. Um redirect publico entregaria o ADMIN_PATH a
+    // qualquer `curl -I` e anularia o apelido, entao o redirect e condicionado a
+    // sessao valida COM o perfil da pagina. Para todo o resto: 404, igual antes.
+    it('admin com sessao valida e levado ao caminho real', async () => {
+        const cookies = await sessaoDe('admin', 'admin_redir@escola.test');
+
+        const res = await request(app).get('/html/admin/usuarios.html').set('Cookie', cookies);
+
+        expect(res.status).toBe(302);
+        expect(res.headers.location).toBe(`/html/${CODIGO}/usuarios.html`);
+    });
+
+    it('o redirect preserva a query string', async () => {
+        const cookies = await sessaoDe('admin', 'admin_redir_qs@escola.test');
+
+        const res = await request(app)
+            .get('/html/admin/usuarios.html?filtro=professor&pagina=2')
+            .set('Cookie', cookies);
+
+        expect(res.status).toBe(302);
+        expect(res.headers.location).toBe(`/html/${CODIGO}/usuarios.html?filtro=professor&pagina=2`);
+    });
+
+    it('diretor e redirecionado em usuarios.html (excecao de perfil da pagina)', async () => {
+        const cookies = await sessaoDe('diretor', 'dir_redir@escola.test');
+
+        const res = await request(app).get('/html/admin/usuarios.html').set('Cookie', cookies);
+
+        expect(res.status).toBe(302);
+        expect(res.headers.location).toBe(`/html/${CODIGO}/usuarios.html`);
+    });
+
+    it('diretor NAO e redirecionado em auditoria.html — pagina admin-only', async () => {
+        const cookies = await sessaoDe('diretor', 'dir_sem_audit@escola.test');
+
+        const res = await request(app).get('/html/admin/auditoria.html').set('Cookie', cookies);
+
+        expect(res.status).toBe(404);
+        expect(res.headers.location).toBeUndefined();
     });
 
     it('variacoes codificadas do caminho previsivel tambem morrem', async () => {

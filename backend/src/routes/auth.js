@@ -62,9 +62,38 @@ router.get('/me', authJWT, async (req, res) => {
         });
         if (!safeUser.id) safeUser.id = String(user._id);
 
+        // Rótulo de exibição decidido no servidor (utils/perfilRotulo.js).
+        // `null` para perfil fora do enum: o front exibe '—' em vez de chutar.
+        safeUser.perfilRotulo = require('../utils/perfilRotulo').rotuloDoPerfil(user.perfil);
+
         res.json({ success: true, user: safeUser });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+// --- Rotas de navegação da área administrativa ---
+// Devolve o caminho REAL de cada página do painel. Necessário porque o prefixo
+// da área é um segredo de ambiente (ADMIN_PATH): o front não pode carregá-lo
+// hardcoded, e um endpoint público entregaria o segredo a qualquer um.
+//
+// Duas travas: exige sessão (authJWT) e o perfil vem do BANCO, não do token —
+// um rebaixamento vale na requisição seguinte. Perfil sem acesso recebe um
+// objeto vazio, nunca um 403: negar com status distinto já confirmaria que
+// existe algo ali para ser encontrado.
+router.get('/rotas', authJWT, async (req, res) => {
+    try {
+        const Usuario = require('../models/Usuario');
+        const { rotasAdminPara } = require('../utils/rotasFront');
+
+        const usuario = await Usuario.findById(req.user?.id || req.user?._id)
+            .select('perfil ativo')
+            .lean();
+
+        const perfil = usuario && usuario.ativo !== false ? usuario.perfil : null;
+        res.json({ success: true, rotas: { admin: perfil ? rotasAdminPara(perfil) : {} } });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Erro ao resolver rotas.' });
     }
 });
 
