@@ -132,6 +132,106 @@ router.get('/diag/contas-2fa', async (req, res) => {
     }
 });
 
+// ────────────────────────────────────────────────────────────────────────────
+// CÓDIGOS DE BACKUP DO 2FA
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * POST /api/admin/2fa/backup-codes/:usuarioId
+ *
+ * Gera 8 códigos de uso único para uma conta e os devolve EM TEXTO PURO —
+ * a única vez em que eles existem legíveis. No banco vai apenas o hash scrypt;
+ * nem o administrador consegue relê-los depois. Perdeu, gera outro lote.
+ *
+ * Existe para o caso em que o segundo fator por e-mail está indisponível: sem
+ * isso, uma falha do provedor de e-mail tranca diretor e secretaria fora do
+ * sistema sem nenhum caminho de volta.
+ *
+ * Gerar um lote INVALIDA o lote anterior por completo. Acumular lotes deixaria
+ * códigos antigos — possivelmente impressos e esquecidos numa gaveta — valendo
+ * para sempre.
+ */
+router.post('/2fa/backup-codes/:usuarioId', async (req, res) => {
+    try {
+        const Usuario = require('../models/Usuario');
+        const { gerarLote, QUANTIDADE_PADRAO } = require('../utils/codigosBackup');
+        const { logAction } = require('../utils/auditHelper');
+
+        const usuario = await Usuario.findById(req.params.usuarioId).select('email nome perfil ativo').lean();
+        if (!usuario) {
+            return res.status(404).json({ ok: false, erro: 'Usuário não encontrado.' });
+        }
+
+        const { codigos, registros } = await gerarLote(QUANTIDADE_PADRAO);
+
+        await Usuario.findByIdAndUpdate(usuario._id, {
+            twoFactorBackupCodes: registros,
+            twoFactorBackupGeradoEm: new Date(),
+        });
+
+        // Auditoria: quem gerou, para quem, quando. A geração de um segundo
+        // fator alternativo é exatamente o tipo de evento que precisa ficar
+        // registrado — inclusive para detectar um administrador comprometido
+        // fabricando acesso a contas alheias.
+        await logAction(req, 'BACKUP_CODES_GERADOS', 'Segurança', {
+            recursoId: usuario._id,
+            descricao: `${QUANTIDADE_PADRAO} códigos de backup gerados para ${mascarar(usuario.email)} (${usuario.perfil})`,
+        });
+        logger.warn('[2FA] Códigos de backup gerados', {
+            alvo: mascarar(usuario.email), perfil: usuario.perfil,
+            por: mascarar(req.user?.email || ''), action: 'admin.2fa.backupCodes',
+        });
+
+        return res.json({
+            ok: true,
+            usuario: { id: String(usuario._id), nome: usuario.nome, email: mascarar(usuario.email), perfil: usuario.perfil },
+            codigos,
+            aviso: 'Estes códigos aparecem UMA ÚNICA VEZ. Entregue-os por um canal '
+                 + 'separado da senha (impresso, pessoalmente ou por telefone) e não '
+                 + 'os envie no mesmo e-mail ou mensagem em que a senha foi enviada. '
+                 + 'Cada código funciona uma vez só. Gerar um lote novo invalida este.',
+        });
+    } catch (e) {
+        logger.error('[2FA] Falha ao gerar códigos de backup', { err: e });
+        return res.status(500).json({ ok: false, erro: 'Erro ao gerar códigos de backup.' });
+    }
+});
+
+/**
+ * GET /api/admin/2fa/backup-codes/:usuarioId
+ *
+ * Quantos códigos ainda restam. NÃO devolve os códigos — eles não existem mais
+ * em texto puro em lugar nenhum. Serve para saber quando gerar um lote novo.
+ */
+router.get('/2fa/backup-codes/:usuarioId', async (req, res) => {
+    try {
+        const Usuario = require('../models/Usuario');
+        const usuario = await Usuario.findById(req.params.usuarioId)
+            .select('email perfil +twoFactorBackupCodes +twoFactorBackupGeradoEm')
+            .lean();
+
+        if (!usuario) return res.status(404).json({ ok: false, erro: 'Usuário não encontrado.' });
+
+        const lote = usuario.twoFactorBackupCodes || [];
+        const disponiveis = lote.filter((c) => !c.usadoEm).length;
+
+        return res.json({
+            ok: true,
+            usuario: { email: mascarar(usuario.email), perfil: usuario.perfil },
+            total: lote.length,
+            disponiveis,
+            usados: lote.length - disponiveis,
+            geradoEm: usuario.twoFactorBackupGeradoEm || null,
+            sugestao: disponiveis === 0 && lote.length
+                ? 'Todos os códigos foram usados. Gere um lote novo antes que a conta fique sem alternativa ao e-mail.'
+                : undefined,
+        });
+    } catch (e) {
+        logger.error('[2FA] Falha ao consultar códigos de backup', { err: e });
+        return res.status(500).json({ ok: false, erro: 'Erro ao consultar códigos.' });
+    }
+});
+
 /** Traduz as falhas mais comuns em uma ação concreta. */
 function sugerir(resultado) {
     const texto = String(resultado.erro || '').toLowerCase();

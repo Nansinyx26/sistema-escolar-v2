@@ -89,6 +89,31 @@ const UsuarioSchema = new mongoose.Schema({
     twoFactorFixedCode: { type: String, select: false },
 
     // ============================================
+    // CÓDIGOS DE BACKUP — segundo fator que não depende do e-mail
+    // ============================================
+    // O 2FA de diretor e secretaria era 100% dependente da entrega de e-mail.
+    // Quando o provedor bloqueou o envio, esses dois perfis ficaram trancados
+    // fora do sistema, sem nenhum caminho de recuperação — a indisponibilidade
+    // de um serviço externo virou perda total de acesso.
+    //
+    // Cada código é guardado como HASH (scrypt), nunca em texto puro: um dump
+    // do banco não pode virar um molho de chaves de segundo fator. São de USO
+    // ÚNICO — `usadoEm` marca o consumo e o código não vale mais.
+    //
+    // Isto NÃO é um "modo sem 2FA": continua sendo algo que a pessoa precisa
+    // possuir, entregue por um canal separado da senha.
+    twoFactorBackupCodes: {
+        type: [{
+            hash: { type: String, required: true },
+            usadoEm: { type: Date, default: null },
+            _id: false,
+        }],
+        select: false,
+        default: undefined,
+    },
+    twoFactorBackupGeradoEm: { type: Date, select: false },
+
+    // ============================================
     // LGPD: Anonimização e Consentimento (Roadmap #13)
     // ============================================
     anonimizadoEm: { type: Date, default: null }, // Data da anonimização LGPD
@@ -214,6 +239,8 @@ const CAMPOS_NUNCA_SERIALIZADOS = [
     'twoFactorPendingToken',
     'twoFactorPendingExpiry',
     'twoFactorFixedCode',
+    'twoFactorBackupCodes',
+    'twoFactorBackupGeradoEm',
     'twoFactorAttempts',
     'twoFactorLockUntil',
     'vinculoAttempts',

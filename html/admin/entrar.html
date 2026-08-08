@@ -41,7 +41,8 @@
         .aviso.erro { color: var(--erro); }
         .aviso.info { color: var(--suave); }
         .oculto { display: none; }
-        #codigo { letter-spacing: .4em; text-align: center; font-size: 1.15rem; }
+        #codigo { letter-spacing: .28em; text-align: center; font-size: 1.15rem; text-transform: uppercase; }
+        .dica { font-size: .78rem; opacity: .65; margin: .4rem 0 .8rem; line-height: 1.4; }
     </style>
 </head>
 <body>
@@ -61,8 +62,18 @@
 
         <form id="form2FA" class="oculto" autocomplete="off">
             <label for="codigo">Código de verificação</label>
-            <input type="text" id="codigo" name="codigo" inputmode="numeric" maxlength="6"
-                   pattern="[0-9]{6}" autocomplete="one-time-code" required>
+            <!-- Aceita as DUAS formas: os 6 dígitos enviados por e-mail e o
+                 código de backup (XXXXX-XXXXX). `maxlength=6` e
+                 `pattern=[0-9]{6}` barravam o de backup no proprio navegador,
+                 antes de qualquer requisicao. `inputmode` volta a ser text pelo
+                 mesmo motivo: o teclado numerico do celular nao digita letras. -->
+            <input type="text" id="codigo" name="codigo" maxlength="11"
+                   autocomplete="one-time-code" required
+                   aria-describedby="dicaCodigo">
+            <p id="dicaCodigo" class="dica">
+                6 dígitos do e-mail — ou um código de backup (XXXXX-XXXXX), se o
+                e-mail não chegar.
+            </p>
             <button type="submit" id="btnVerificar">Verificar</button>
         </form>
     </main>
@@ -184,7 +195,7 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf() },
                 credentials: 'include',
-                body: JSON.stringify({ codigo: document.getElementById('codigo').value.trim() })
+                body: JSON.stringify({ codigo: document.getElementById('codigo').value.trim().toUpperCase() })
             })
             .then(function (r) { return r.json().catch(function () { return {}; }); })
             .then(function (data) {
@@ -193,7 +204,15 @@
                     mostrar((data && data.error) || 'Código inválido.', 'erro');
                     return;
                 }
-                entrar();
+                // Entrou com codigo de backup: avisa quantos sobraram ANTES de
+                // navegar. Sem isso a pessoa so descobre que acabaram na vez em
+                // que precisar e nao tiver mais nenhum.
+                if (data.usouCodigoBackup) {
+                    mostrar(data.aviso || 'Código de backup utilizado.', 'info');
+                    setTimeout(function () { entrar(data.redirect_to); }, 2500);
+                    return;
+                }
+                entrar(data.redirect_to);
             })
             .catch(function () {
                 btnVerificar.disabled = false;

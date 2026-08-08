@@ -1,0 +1,267 @@
+/**
+ * codigosBackup2FA.test.js — códigos de recuperação de uso único
+ *
+ * Este é o caminho que devolve acesso quando o segundo fator por e-mail está
+ * indisponível. Ele precisa funcionar exatamente quando tudo o mais falhou —
+ * e, por ser um caminho de exceção, é o tipo de código que ninguém exercita no
+ * dia a dia e que apodrece em silêncio. Daí a cobertura.
+ */
+const request = require('supertest');
+const app = require('../app');
+const {
+    conectarBanco, limparBanco, desconectarBanco, criarUsuario, SENHA_TESTE,
+} = require('./helpers');
+const { assinarTokenSessao } = require('../utils/sessionToken');
+const Usuario = require('../models/Usuario');
+const backup = require('../utils/codigosBackup');
+
+async function sessaoAdmin() {
+    const admin = await criarUsuario({ email: `adm_bk_${Date.now()}@escola.test`, perfil: 'admin' });
+    return [`escola_jwt=${assinarTokenSessao(admin)}`];
+}
+
+/** Gera um lote para um usuário via rota de admin e devolve os códigos. */
+async function gerarPara(usuarioId, cookies) {
+    const res = await request(app)
+        .post(`/api/admin/2fa/backup-codes/${usuarioId}`)
+        .set('Cookie', cookies);
+    return res;
+}
+
+/** Faz login com senha (para de 2FA) e devolve o cookie de pré-autenticação. */
+async function loginAtePreAuth(email) {
+    const res = await request(app).post('/api/auth/login').send({ email, senha: SENHA_TESTE });
+    const cookies = res.headers['set-cookie'] || [];
+    const pre = cookies.find((c) => c.startsWith('escola_preauth'));
+    return { res, preCookie: pre ? pre.split(';')[0] : null };
+}
+
+beforeAll(async () => { await conectarBanco(); });
+afterEach(async () => { await limparBanco(); });
+afterAll(async () => { await desconectarBanco(); });
+
+describe('Geração de códigos de backup', () => {
+    it('admin gera 8 codigos e eles voltam UMA vez em texto puro', async () => {
+        const cookies = await sessaoAdmin();
+        const diretor = await criarUsuario({ email: 'dir_gen@escola.test', perfil: 'diretor' });
+
+        const res = await gerarPara(diretor._id, cookies);
+
+        expect(res.status).toBe(200);
+        expect(res.body.ok).toBe(true);
+        expect(res.body.codigos).toHaveLength(8);
+        expect(new Set(res.body.codigos).size).toBe(8); // sem repetidos
+        res.body.codigos.forEach((c) => expect(c).toMatch(/^[A-Z2-9]{5}-[A-Z2-9]{5}$/));
+    });
+
+    it('o banco guarda HASH, nunca o codigo em texto puro', async () => {
+        // Um dump do banco nao pode virar um molho de chaves de segundo fator.
+        const cookies = await sessaoAdmin();
+        const diretor = await criarUsuario({ email: 'dir_hash@escola.test', perfil: 'diretor' });
+
+        const res = await gerarPara(diretor._id, cookies);
+        const doc = await Usuario.findById(diretor._id).select('+twoFactorBackupCodes').lean();
+        const serializado = JSON.stringify(doc.twoFactorBackupCodes);
+
+        res.body.codigos.forEach((c) => {
+            expect(serializado).not.toContain(c);
+            expect(serializado).not.toContain(c.replace('-', ''));
+        });
+        expect(doc.twoFactorBackupCodes).toHaveLength(8);
+    });
+
+    it('gerar um lote novo INVALIDA o anterior', async () => {
+        // Acumular lotes deixaria codigos impressos e esquecidos valendo para
+        // sempre.
+        const cookies = await sessaoAdmin();
+        const diretor = await criarUsuario({ email: 'dir_relote@escola.test', perfil: 'diretor' });
+
+        const primeiro = await gerarPara(diretor._id, cookies);
+        await gerarPara(diretor._id, cookies);
+
+        const doc = await Usuario.findById(diretor._id).select('+twoFactorBackupCodes').lean();
+        const indice = await backup.conferir(primeiro.body.codigos[0], doc.twoFactorBackupCodes);
+
+        expect(indice).toBe(-1);
+        expect(doc.twoFactorBackupCodes).toHaveLength(8);
+    });
+
+    it('a consulta informa quantos restam e NAO devolve os codigos', async () => {
+        const cookies = await sessaoAdmin();
+        const diretor = await criarUsuario({ email: 'dir_saldo@escola.test', perfil: 'diretor' });
+        const gerados = await gerarPara(diretor._id, cookies);
+
+        const res = await request(app)
+            .get(`/api/admin/2fa/backup-codes/${diretor._id}`)
+            .set('Cookie', cookies);
+
+        expect(res.body.disponiveis).toBe(8);
+        expect(res.body.usados).toBe(0);
+        gerados.body.codigos.forEach((c) => {
+            expect(JSON.stringify(res.body)).not.toContain(c);
+        });
+    });
+
+    it('so admin gera — diretor nao gera codigo para si mesmo', async () => {
+        // Senao o segundo fator seria auto-emitivel por quem ja passou pelo
+        // primeiro, o que o anula.
+        const diretor = await criarUsuario({ email: 'dir_self@escola.test', perfil: 'diretor' });
+        const cookiesDiretor = [`escola_jwt=${assinarTokenSessao(diretor)}`];
+
+        const res = await gerarPara(diretor._id, cookiesDiretor);
+
+        expect(res.status).toBe(403);
+    });
+
+    it('anonimo nao gera nada', async () => {
+        const diretor = await criarUsuario({ email: 'dir_anon@escola.test', perfil: 'diretor' });
+        const res = await request(app).post(`/api/admin/2fa/backup-codes/${diretor._id}`);
+        expect(res.status).toBe(401);
+    });
+});
+
+describe('Login com código de backup', () => {
+    it('diretor entra com codigo de backup mesmo SEM e-mail entregue', async () => {
+        // O cenario que motivou o recurso: provedor bloqueado, nenhum codigo
+        // chegou, e a conta precisa entrar assim mesmo.
+        const cookiesAdmin = await sessaoAdmin();
+        const diretor = await criarUsuario({ email: 'dir_login@escola.test', perfil: 'diretor' });
+        const { codigos } = (await gerarPara(diretor._id, cookiesAdmin)).body;
+
+        const { res: login, preCookie } = await loginAtePreAuth('dir_login@escola.test');
+        expect(login.body.require2FA).toBe(true);
+
+        const res = await request(app)
+            .post('/api/auth/2fa/verify')
+            .set('Cookie', [preCookie])
+            .send({ codigo: codigos[0] });
+
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.usouCodigoBackup).toBe(true);
+        expect(res.body.codigosBackupRestantes).toBe(7);
+
+        const cookies = res.headers['set-cookie'] || [];
+        expect(cookies.some((c) => c.startsWith('escola_jwt'))).toBe(true);
+    });
+
+    it('o mesmo codigo NAO funciona duas vezes', async () => {
+        const cookiesAdmin = await sessaoAdmin();
+        const diretor = await criarUsuario({ email: 'dir_reuso@escola.test', perfil: 'diretor' });
+        const { codigos } = (await gerarPara(diretor._id, cookiesAdmin)).body;
+
+        const primeira = await loginAtePreAuth('dir_reuso@escola.test');
+        const ok = await request(app).post('/api/auth/2fa/verify')
+            .set('Cookie', [primeira.preCookie]).send({ codigo: codigos[0] });
+        expect(ok.status).toBe(200);
+
+        const segunda = await loginAtePreAuth('dir_reuso@escola.test');
+        const repetido = await request(app).post('/api/auth/2fa/verify')
+            .set('Cookie', [segunda.preCookie]).send({ codigo: codigos[0] });
+
+        expect(repetido.status).toBe(401);
+        expect(repetido.body.codigo).toBe('CODIGO_INVALIDO');
+    });
+
+    it('aceita o codigo em minusculas e sem hifen', async () => {
+        // Vai ser lido de um papel ou ditado por telefone. Recusar por
+        // formatacao gastaria uma das 5 tentativas de quem esta certo.
+        const cookiesAdmin = await sessaoAdmin();
+        const diretor = await criarUsuario({ email: 'dir_fmt@escola.test', perfil: 'diretor' });
+        const { codigos } = (await gerarPara(diretor._id, cookiesAdmin)).body;
+
+        const { preCookie } = await loginAtePreAuth('dir_fmt@escola.test');
+        const bagunçado = ` ${codigos[0].replace('-', '').toLowerCase()} `;
+
+        const res = await request(app).post('/api/auth/2fa/verify')
+            .set('Cookie', [preCookie]).send({ codigo: bagunçado });
+
+        expect(res.status).toBe(200);
+        expect(res.body.usouCodigoBackup).toBe(true);
+    });
+
+    it('codigo de backup de OUTRA conta nao serve', async () => {
+        const cookiesAdmin = await sessaoAdmin();
+        const alvo = await criarUsuario({ email: 'dir_alvo@escola.test', perfil: 'diretor' });
+        const outro = await criarUsuario({ email: 'dir_outro@escola.test', perfil: 'diretor' });
+        const { codigos } = (await gerarPara(outro._id, cookiesAdmin)).body;
+        await gerarPara(alvo._id, cookiesAdmin);
+
+        const { preCookie } = await loginAtePreAuth('dir_alvo@escola.test');
+        const res = await request(app).post('/api/auth/2fa/verify')
+            .set('Cookie', [preCookie]).send({ codigo: codigos[0] });
+
+        expect(res.status).toBe(401);
+    });
+
+    it('conta SEM lote gerado nao ganha nenhum atalho', async () => {
+        await criarUsuario({ email: 'dir_semlote@escola.test', perfil: 'diretor' });
+        const { preCookie } = await loginAtePreAuth('dir_semlote@escola.test');
+
+        const res = await request(app).post('/api/auth/2fa/verify')
+            .set('Cookie', [preCookie]).send({ codigo: 'ABCDE-FGHJK' });
+
+        expect(res.status).toBe(401);
+    });
+
+    it('sem pre-autenticacao o codigo de backup nao vale — a senha ainda e obrigatoria', async () => {
+        // O codigo de backup e SEGUNDO fator, nao substitui o primeiro.
+        const cookiesAdmin = await sessaoAdmin();
+        const diretor = await criarUsuario({ email: 'dir_sempre@escola.test', perfil: 'diretor' });
+        const { codigos } = (await gerarPara(diretor._id, cookiesAdmin)).body;
+
+        const res = await request(app).post('/api/auth/2fa/verify').send({ codigo: codigos[0] });
+
+        expect(res.status).toBe(401);
+        expect(res.body.codigo).toBe('PREAUTH_INVALIDO');
+    });
+
+    it('o codigo por e-mail continua funcionando junto com o de backup', async () => {
+        // O recurso novo nao pode ter quebrado o caminho normal.
+        const cookiesAdmin = await sessaoAdmin();
+        const diretor = await criarUsuario({ email: 'dir_ambos@escola.test', perfil: 'diretor' });
+        await gerarPara(diretor._id, cookiesAdmin);
+
+        const { preCookie } = await loginAtePreAuth('dir_ambos@escola.test');
+
+        // Planta um código de e-mail conhecido, como o login faria.
+        const crypto = require('crypto');
+        const codigoEmail = '246813';
+        await Usuario.findByIdAndUpdate(diretor._id, {
+            twoFactorPendingToken: crypto.createHash('sha256').update(codigoEmail).digest('hex'),
+            twoFactorPendingExpiry: new Date(Date.now() + 5 * 60 * 1000),
+            twoFactorAttempts: 0,
+        });
+
+        const res = await request(app).post('/api/auth/2fa/verify')
+            .set('Cookie', [preCookie]).send({ codigo: codigoEmail });
+
+        expect(res.status).toBe(200);
+        expect(res.body.usouCodigoBackup).toBeUndefined();
+    });
+});
+
+describe('Unidade: utils/codigosBackup', () => {
+    it('conferir devolve -1 para codigo ja usado', async () => {
+        const { codigos, registros } = await backup.gerarLote(3);
+        registros[1].usadoEm = new Date();
+
+        expect(await backup.conferir(codigos[0], registros)).toBe(0);
+        expect(await backup.conferir(codigos[1], registros)).toBe(-1);
+        expect(await backup.conferir(codigos[2], registros)).toBe(2);
+    });
+
+    it('nao gera simbolos ambiguos (0 O 1 I L)', async () => {
+        // Estes codigos sao lidos por pessoas; ambiguidade vira tentativa
+        // errada, e tentativa errada consome o limite de forca bruta.
+        const { codigos } = await backup.gerarLote(20);
+        codigos.forEach((c) => expect(c).not.toMatch(/[01OIL]/));
+    });
+
+    it('valor que nao tem cara de codigo de backup e rejeitado sem custo', async () => {
+        const { registros } = await backup.gerarLote(2);
+        expect(await backup.conferir('123456', registros)).toBe(-1);
+        expect(await backup.conferir('', registros)).toBe(-1);
+        expect(await backup.conferir(null, registros)).toBe(-1);
+    });
+});

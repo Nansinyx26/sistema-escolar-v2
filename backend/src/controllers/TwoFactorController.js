@@ -179,7 +179,7 @@ exports.verifyCode = async (req, res) => {
         }
 
         const usuario = await Usuario.findById(userId)
-            .select('+twoFactorPendingToken +twoFactorPendingExpiry +twoFactorFixedCode +twoFactorAttempts +twoFactorLockUntil');
+            .select('+twoFactorPendingToken +twoFactorPendingExpiry +twoFactorFixedCode +twoFactorAttempts +twoFactorLockUntil +twoFactorBackupCodes');
 
         if (!usuario) {
             return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
@@ -200,7 +200,81 @@ exports.verifyCode = async (req, res) => {
             });
         }
 
-        // 3. Expiração SEMPRE aplicada — inclusive quando existe código fixo.
+        // ============================================
+        // 3. CÓDIGO DE BACKUP — caminho que não depende do e-mail
+        // ============================================
+        // Verificado ANTES da expiração do código por e-mail de propósito: o
+        // motivo de existir é justamente o cenário em que nenhum código foi
+        // enviado (provedor fora do ar, conta sem e-mail válido). Se ficasse
+        // depois, o `return` da expiração cortaria o caminho antes de chegar
+        // aqui — e o recurso de recuperação não funcionaria exatamente quando
+        // é necessário.
+        //
+        // O bloqueio por tentativas (passo 2, acima) continua valendo: o código
+        // de backup não é uma porta que escapa do limite de força bruta.
+        const backup = require('../utils/codigosBackup');
+        if (backup.pareceCodigoBackup(codigo) && (usuario.twoFactorBackupCodes || []).length) {
+            const lote = usuario.twoFactorBackupCodes.map((c) => ({ hash: c.hash, usadoEm: c.usadoEm }));
+            const indice = await backup.conferir(codigo, lote);
+
+            if (indice >= 0) {
+                // USO ÚNICO: marca o consumo pelo índice exato, com uma escrita
+                // condicionada a ele ainda estar livre. Duas requisições
+                // simultâneas com o mesmo código não podem passar as duas.
+                const campo = `twoFactorBackupCodes.${indice}.usadoEm`;
+                const consumo = await Usuario.updateOne(
+                    { _id: userId, [campo]: null },
+                    { $set: { [campo]: new Date(), twoFactorAttempts: 0, twoFactorLockUntil: null, ultimoLogin: new Date() } }
+                );
+
+                if (consumo.modifiedCount !== 1) {
+                    // Perdeu a corrida: o código foi consumido por outra
+                    // requisição no intervalo. Trata como inválido.
+                    return res.status(401).json({
+                        success: false, ok: false, codigo: 'CODIGO_INVALIDO',
+                        error: 'Código inválido.'
+                    });
+                }
+
+                const restantes = usuario.twoFactorBackupCodes.filter((c, i) => !c.usadoEm && i !== indice).length;
+
+                limparPreAuthToken(res);
+                require('../utils/sessionToken').emitirTokenSessao(res, usuario);
+                if (req.session) {
+                    req.session.usuarioId = String(usuario._id);
+                    if (req.session.escolaPendenteId) {
+                        req.session.escolaAtivaId = req.session.escolaPendenteId;
+                        delete req.session.escolaPendenteId;
+                    }
+                }
+
+                // Uso de código de backup é evento de auditoria por si só: ele
+                // indica que o canal normal falhou, ou que alguém entrou por um
+                // caminho de exceção.
+                await logAction(req, 'LOGIN_2FA_BACKUP', 'Segurança', {
+                    recursoId: usuario._id,
+                    descricao: `Login com código de backup (${restantes} restantes) — ${usuario.email}`
+                });
+                logger.warn('[2FA] Login com código de backup', {
+                    usuarioId: String(usuario._id), perfil: usuario.perfil, restantes,
+                    action: 'auth.2fa.backupUsado',
+                });
+
+                return res.json({
+                    success: true, ok: true,
+                    usouCodigoBackup: true,
+                    codigosBackupRestantes: restantes,
+                    aviso: restantes === 0
+                        ? 'Este era o seu último código de backup. Peça ao administrador um lote novo.'
+                        : `Você usou um código de backup. Restam ${restantes}.`,
+                    redirect_to: require('./UserController').getRedirectPath(usuario),
+                });
+            }
+            // Não bateu: cai no fluxo normal, que contabiliza a tentativa
+            // errada e aplica o bloqueio.
+        }
+
+        // 4. Expiração SEMPRE aplicada — inclusive quando existe código fixo.
         //    Antes, twoFactorFixedCode pulava a checagem e o login gravava uma
         //    validade de 1 ano, deixando o código eternamente utilizável.
         if (!usuario.twoFactorPendingExpiry || now > usuario.twoFactorPendingExpiry) {
