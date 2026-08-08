@@ -176,6 +176,8 @@
                 aria-controls="painelBackup" onclick="trocarAba('backup')">Códigos de uso único</button>
         <button type="button" class="aba" id="abaFixo" role="tab" aria-selected="false"
                 aria-controls="painelFixo" onclick="trocarAba('fixo')">Código fixo<span class="selo">exceção</span></button>
+        <button type="button" class="aba" id="abaSenha" role="tab" aria-selected="false"
+                aria-controls="painelSenha" onclick="trocarAba('senha')">Recuperar senha</button>
     </div>
 
     <div class="cartao nao-imprimir">
@@ -225,6 +227,25 @@
             </div>
         </div>
         <div id="resultadoFixo"></div>
+    </div>
+
+    <div id="painelSenha" class="painel" role="tabpanel" aria-labelledby="abaSenha">
+        <div class="cartao nao-imprimir">
+            <h2>2. Enviar código de recuperação de senha</h2>
+            <p style="font-size:.86rem; color:var(--suave); margin-top:0;">
+                Dispara o <strong>mesmo</strong> fluxo do &ldquo;Esqueci minha senha&rdquo;
+                da tela de login. O código de 6 dígitos vai para o e-mail da
+                própria pessoa e vale 15 minutos.
+            </p>
+            <div class="aviso">
+                O código <strong>não aparece aqui</strong>, e isso é proposital: quem
+                redefine a senha precisa ser quem tem acesso à caixa de e-mail do
+                titular. Se o administrador pudesse ler o código, poderia trocar a
+                senha de qualquer conta sem o dono saber.
+            </div>
+            <button type="button" id="btnRecuperarSenha" disabled>Enviar código de recuperação</button>
+        </div>
+        <div id="resultadoSenha"></div>
     </div>
 </div>
 
@@ -298,18 +319,27 @@
         elResultadoFixo.innerHTML = '';
         elStatusFixo.textContent = '';
         btnRemoverFixo.disabled = true;
+        document.getElementById('btnRecuperarSenha').disabled = !selConta.value;
+        document.getElementById('resultadoSenha').innerHTML = '';
         if (selConta.value) consultarFixo();
     });
 
     // -- Abas -----------------------------------------------------------------
+    var ABAS = {
+        backup: { aba: 'abaBackup', painel: 'painelBackup' },
+        fixo:   { aba: 'abaFixo',   painel: 'painelFixo'   },
+        senha:  { aba: 'abaSenha',  painel: 'painelSenha'  }
+    };
+
     window.trocarAba = function (qual) {
-        var ehFixo = qual === 'fixo';
-        document.getElementById('abaBackup').classList.toggle('ativa', !ehFixo);
-        document.getElementById('abaFixo').classList.toggle('ativa', ehFixo);
-        document.getElementById('abaBackup').setAttribute('aria-selected', String(!ehFixo));
-        document.getElementById('abaFixo').setAttribute('aria-selected', String(ehFixo));
-        document.getElementById('painelBackup').classList.toggle('ativo', !ehFixo);
-        document.getElementById('painelFixo').classList.toggle('ativo', ehFixo);
+        Object.keys(ABAS).forEach(function (chave) {
+            var ativa = chave === qual;
+            var aba = document.getElementById(ABAS[chave].aba);
+            var painel = document.getElementById(ABAS[chave].painel);
+            aba.classList.toggle('ativa', ativa);
+            aba.setAttribute('aria-selected', String(ativa));
+            painel.classList.toggle('ativo', ativa);
+        });
     };
 
     // -- Codigo fixo ----------------------------------------------------------
@@ -384,6 +414,36 @@
             .catch(function () {
                 btnDefinirFixo.disabled = false;
                 elResultadoFixo.innerHTML = aviso('Falha de conexao.', 'erro');
+            });
+    });
+
+    // -- Recuperacao de senha -------------------------------------------------
+    var btnRecuperarSenha = document.getElementById('btnRecuperarSenha');
+    var elResultadoSenha  = document.getElementById('resultadoSenha');
+
+    btnRecuperarSenha.addEventListener('click', function () {
+        if (!selConta.value) return;
+        var rotulo = selConta.options[selConta.selectedIndex].textContent;
+        if (!window.confirm('Enviar codigo de recuperacao de senha para:\n' + rotulo)) return;
+
+        btnRecuperarSenha.disabled = true;
+        elResultadoSenha.innerHTML = '<p class="carregando">Enviando...</p>';
+
+        fetch(API() + '/admin/recuperacao-senha/' + encodeURIComponent(selConta.value), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf() },
+            credentials: 'include'
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                btnRecuperarSenha.disabled = false;
+                elResultadoSenha.innerHTML = d.ok
+                    ? aviso(d.mensagem, 'ok')
+                    : aviso(d.erro || 'Nao foi possivel enviar.', 'erro');
+            })
+            .catch(function () {
+                btnRecuperarSenha.disabled = false;
+                elResultadoSenha.innerHTML = aviso('Falha de conexao.', 'erro');
             });
     });
 

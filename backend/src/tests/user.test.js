@@ -111,7 +111,9 @@ describe('POST /api/auth/reset-password', () => {
         const codigo = '123456';
         await RecuperacaoSenha.create({
             usuarioId: user._id,
-            codigo: codigo,
+            // O campo guarda HASH scrypt desde a correcao que tirou o codigo de
+            // recuperacao do texto puro (utils/codigosBackup.hashSegredo).
+            codigo: await require('../utils/codigosBackup').hashSegredo(codigo),
             status: 'ativo',
             expiraEm: new Date(Date.now() + 10 * 60 * 1000),
             tentativas: 0,

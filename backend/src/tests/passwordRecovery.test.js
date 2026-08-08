@@ -14,11 +14,27 @@ const bcrypt  = require('bcryptjs');
 const app              = require('../app');
 const Usuario          = require('../models/Usuario');
 const RecuperacaoSenha = require('../models/RecuperacaoSenha');
+const EmailService     = require('../services/EmailService');
 const { conectarBanco, limparBanco, desconectarBanco, criarUsuario, SENHA_TESTE, SENHA_TESTE_NOVA, CODIGO_ESCOLA_TESTE } = require('./helpers');
 
-beforeAll(async () => { await conectarBanco(); });
-afterEach(async () => { await limparBanco(); });
-afterAll(async () => { await desconectarBanco(); });
+// ─────────────────────────────────────────────────────────
+// O codigo agora vai HASHEADO para o banco, entao a suite nao consegue mais
+// le-lo de la — e nem deveria: ler o segredo direto da tabela testava o
+// armazenamento, nao o fluxo.
+//
+// A suite passa a capturar o codigo que foi realmente ENVIADO, interceptando o
+// EmailService. E mais fiel ao que acontece: o usuario recebe por e-mail.
+// ─────────────────────────────────────────────────────────
+let codigoEnviado = null;
+let espiaoEmail;
+
+beforeAll(async () => {
+    await conectarBanco();
+    espiaoEmail = jest.spyOn(EmailService, 'sendVerificationCode')
+        .mockImplementation(async (_para, codigo) => { codigoEnviado = codigo; return true; });
+});
+afterEach(async () => { await limparBanco(); codigoEnviado = null; });
+afterAll(async () => { if (espiaoEmail) espiaoEmail.mockRestore(); await desconectarBanco(); });
 
 // ─────────────────────────────────────────────────────────
 // Helpers
@@ -33,10 +49,9 @@ function postReset(body) {
     return request(app).post('/api/auth/reset-password').send(body);
 }
 
-/** Recupera o código ativo diretamente do banco (simula ler o e-mail) */
-async function obterCodigoAtivo(userId) {
-    const rec = await RecuperacaoSenha.findOne({ usuarioId: userId, status: 'ativo' });
-    return rec ? rec.codigo : null;
+/** O código que o usuário recebeu por e-mail no último pedido. */
+async function obterCodigoAtivo() {
+    return codigoEnviado;
 }
 
 // ─────────────────────────────────────────────────────────
@@ -69,6 +84,11 @@ describe('POST /api/auth/forgot-password', () => {
         expect(codigo).toBeTruthy();
         expect(codigo.length).toBe(6);
         expect(/^\d{6}$/.test(codigo)).toBe(true);
+
+        // E o que ficou no banco e o HASH, nao o codigo.
+        const registro = await RecuperacaoSenha.findOne({ usuarioId: user._id, status: 'ativo' }).lean();
+        expect(registro.codigo).not.toBe(codigo);
+        expect(registro.codigo).toContain(':');
     });
 
     it('deve invalidar códigos anteriores ao gerar um novo', async () => {

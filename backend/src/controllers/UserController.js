@@ -1202,12 +1202,29 @@ exports.delete = async (req, res) => {
 
             // Remove o perfil estendido junto. `secretarias.email` é unique —
             // o órfão impedia recadastrar a mesma pessoa depois.
-            if (user.perfil === 'secretaria') {
-                const Secretaria = require('../models/Secretaria');
-                await Secretaria.deleteOne({
+            //
+            // Professor e diretor têm o mesmo problema por outro caminho: o
+            // documento de perfil sobrevivia à exclusão da conta, continuava
+            // aparecendo nas listagens da equipe e ainda servia de base para o
+            // "primeiro acesso" recriar o login — ou seja, apagar pela tela de
+            // usuários não apagava a pessoa do banco.
+            const MODELOS_DE_PERFIL = {
+                secretaria: '../models/Secretaria',
+                professor: '../models/Professor',
+                diretor: '../models/Diretor'
+            };
+            const caminhoModelo = MODELOS_DE_PERFIL[user.perfil];
+            if (caminhoModelo) {
+                const Perfil = require(caminhoModelo);
+                await Perfil.deleteMany({
                     $or: [{ idUsuario: String(user._id) }, { email: String(user.email).toLowerCase() }]
-                }).catch(e => console.error('[DELETE_USER] Perfil de secretaria órfão:', e.message));
+                }).catch(e => console.error(`[DELETE_USER] Perfil de ${user.perfil} órfão:`, e.message));
             }
+
+            // Códigos de recuperação pendentes apontam para um _id que não
+            // existe mais; sem isso ficam na coleção até o job de limpeza.
+            await RecuperacaoSenha.deleteMany({ usuarioId: user._id })
+                .catch(e => console.error('[DELETE_USER] Recuperações órfãs:', e.message));
         }
         res.json({ success: true });
     } catch (error) {
@@ -1321,34 +1338,53 @@ exports.forgotPassword = async (req, res) => {
         // 2. Gerar código de 6 dígitos numéricos
         const code = crypto.randomInt(100000, 999999).toString();
 
-        // 3. Salvar no banco com expiração em 15 minutos
+        // ============================================
+        // 3. Salvar o HASH, nunca o código
+        // ============================================
+        // O código ia para o banco em TEXTO PURO. Quem lesse a coleção
+        // `recuperacaosenhas` — dump, backup vazado, acesso indevido ao Atlas —
+        // tinha, para cada pedido em aberto, um código de redefinição de senha
+        // pronto para usar. É tomada de conta direta, sem precisar da senha.
+        const { hashSegredo } = require('../utils/codigosBackup');
+
         await RecuperacaoSenha.create({
             usuarioId: user._id,
-            codigo: code,
+            codigo: await hashSegredo(code),
             criadoEm: new Date(),
             expiraEm: new Date(Date.now() + 15 * 60 * 1000), // 15 minutos
             status: 'ativo',
             tentativas: 0
         });
 
-        // Grava no arquivo local para fins de teste automatizado/E2E
-        try {
-            const fs = require('fs');
-            const path = require('path');
-            fs.writeFileSync(path.join(__dirname, '../../latest_code.txt'), code);
-        } catch (fsErr) {
-            console.error('Erro ao salvar latest_code.txt:', fsErr);
+        // ============================================
+        // REMOVIDO: gravação do código em `latest_code.txt`
+        // ============================================
+        // Havia um `fs.writeFileSync(.../latest_code.txt, code)` aqui, marcado
+        // como "para testes E2E" — mas sem nenhuma guarda de ambiente: rodava
+        // em PRODUÇÃO, a cada pedido de recuperação. O arquivo ficava no disco
+        // do servidor com um código de redefinição válido em texto puro.
+        //
+        // Qualquer leitura de arquivo arbitrário, backup de disco ou acesso ao
+        // contêiner virava tomada de conta. Teste E2E que precise do código
+        // deve lê-lo do banco de teste, não de um arquivo escrito em produção.
+
+        // ============================================
+        // 4. Envio AGUARDADO
+        // ============================================
+        // Era fire-and-forget: a resposta dizia "você receberá um código" mesmo
+        // quando o provedor recusava a mensagem. Mesmo problema que deixou o
+        // 2FA de diretor e secretaria mudo por semanas.
+        const entregue = await EmailService.sendVerificationCode(user.email, code, user.nome);
+        if (!entregue) {
+            logger.error('[recuperacao] Código gerado mas NÃO entregue', {
+                usuarioId: String(user._id), action: 'auth.recuperacao.envioFalhou',
+            });
         }
 
-        // 4. Enviar e-mail de código em background
-        EmailService.sendVerificationCode(user.email, code, user.nome).catch(err => {
-            console.error('Erro ao enviar e-mail de recuperação:', err);
-        });
-
-        // Retorna sucesso para debug em desenvolvimento se necessário, mas oculta no ambiente de produção
-        if (process.env.NODE_ENV === 'development') {
-            standardResponse.code_debug = code;
-        }
+        // O código NUNCA volta na resposta, nem em desenvolvimento: havia um
+        // `code_debug` que dependia só de NODE_ENV. Uma variável de ambiente
+        // mal configurada num deploy transformava o endpoint público de
+        // "esqueci minha senha" num oráculo de tomada de conta.
 
         res.json(standardResponse);
 
@@ -1393,8 +1429,9 @@ exports.verifyRecoveryCode = async (req, res) => {
             return res.status(400).json({ success: false, error: 'Código bloqueado por excesso de tentativas. Solicite um novo código.' });
         }
 
-        // Compara o código
-        if (recovery.codigo !== codigo.trim()) {
+        // Compara por HASH (o banco não guarda mais o código em texto puro).
+        const { conferirSegredo } = require('../utils/codigosBackup');
+        if (!(await conferirSegredo(String(codigo).trim(), recovery.codigo))) {
             recovery.tentativas += 1;
             await recovery.save();
 
@@ -1462,7 +1499,8 @@ exports.resetPassword = async (req, res) => {
         }
 
         // Valida se o código confere
-        if (recovery.codigo !== codigo.trim()) {
+        const { conferirSegredo: conferirCodigoRecuperacao } = require('../utils/codigosBackup');
+        if (!(await conferirCodigoRecuperacao(String(codigo).trim(), recovery.codigo))) {
             recovery.tentativas += 1;
             await recovery.save();
 

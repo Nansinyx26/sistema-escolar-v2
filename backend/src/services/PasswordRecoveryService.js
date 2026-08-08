@@ -94,12 +94,9 @@ class PasswordRecoveryService {
         tentativas: 0
       });
 
-      // 4. Salvar código em arquivo local (para testes E2E)
-      try {
-        fs.writeFileSync(path.join(__dirname, '../../latest_code.txt'), code);
-      } catch (fsErr) {
-        logger.warn('Could not write latest_code.txt', { error: fsErr.message });
-      }
+      // 4. REMOVIDO: gravação do código em `latest_code.txt`.
+      // Escrevia um código de redefinição de senha em texto puro no disco do
+      // servidor, sem guarda de ambiente. Ver UserController.forgotPassword.
 
       // 5. Enviar email em background
       await EmailService.sendVerificationCode(user.email, code, user.nome).catch(err => {

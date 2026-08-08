@@ -348,6 +348,92 @@ router.delete('/2fa/codigo-fixo/:usuarioId', async (req, res) => {
     }
 });
 
+// ────────────────────────────────────────────────────────────────────────────
+// RECUPERAÇÃO DE SENHA DISPARADA PELO ADMIN
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * POST /api/admin/recuperacao-senha/:usuarioId
+ *
+ * Dispara o MESMO fluxo do "Esqueci minha senha" da tela de login, só que
+ * iniciado pelo administrador — para quando a pessoa liga dizendo que não
+ * consegue entrar e não sabe achar o link sozinha.
+ *
+ * O código vai para o e-mail DO USUÁRIO e não volta na resposta. Isso é
+ * deliberado: se o administrador pudesse ler o código, ele trocaria a senha de
+ * qualquer conta sem deixar de fora a pessoa dona dela — e a auditoria diria
+ * apenas "senha alterada", sem distinguir uso legítimo de tomada de conta.
+ * Mantendo a entrega no e-mail do titular, quem redefine é sempre quem tem
+ * acesso à caixa dele.
+ *
+ * Reaproveita `UserController.forgotPassword` inteiro em vez de duplicar a
+ * geração: um segundo caminho de recuperação divergiria do primeiro na próxima
+ * correção de segurança, e o mais frouxo dos dois é o que valeria.
+ */
+router.post('/recuperacao-senha/:usuarioId', async (req, res) => {
+    try {
+        const Usuario = require('../models/Usuario');
+        const { logAction } = require('../utils/auditHelper');
+
+        const usuario = await Usuario.findById(req.params.usuarioId).select('email nome perfil ativo').lean();
+        if (!usuario) return res.status(404).json({ ok: false, erro: 'Usuário não encontrado.' });
+
+        if (!usuario.email || !usuario.email.includes('@')) {
+            return res.status(422).json({
+                ok: false,
+                erro: 'Esta conta não tem e-mail válido cadastrado — não há para onde enviar o código.',
+            });
+        }
+        if (usuario.ativo === false) {
+            return res.status(409).json({ ok: false, erro: 'Conta desativada. Reative antes de recuperar a senha.' });
+        }
+
+        await logAction(req, 'RECUPERACAO_SENHA_ADMIN', 'Segurança', {
+            recursoId: usuario._id,
+            descricao: `Recuperação de senha disparada pelo admin para ${mascarar(usuario.email)} (${usuario.perfil})`,
+        });
+
+        // Delega ao fluxo público. `forgotPassword` responde por conta própria
+        // com a mensagem anti-enumeração; aqui trocamos por uma resposta útil,
+        // já que o alvo foi escolhido por um admin autenticado e não há e-mail
+        // a proteger de enumeração.
+        // `forgotPassword` só lê `req.body.email` e escreve na resposta. Um
+        // objeto mínimo basta e é mais robusto que clonar o `req` real — um
+        // clone parcial de Request quebra em silêncio quando o handler passa a
+        // usar um campo que o clone não copiou.
+        const UserController = require('../controllers/UserController');
+        let falhou = null;
+        const respostaCapturada = {
+            statusCode: 200,
+            status(codigo) { this.statusCode = codigo; return this; },
+            json(corpo) {
+                if (this.statusCode >= 400 || (corpo && corpo.success === false)) {
+                    falhou = (corpo && corpo.error) || `HTTP ${this.statusCode}`;
+                }
+                return this;
+            },
+        };
+
+        await UserController.forgotPassword({ body: { email: usuario.email } }, respostaCapturada);
+
+        if (falhou) {
+            return res.status(502).json({ ok: false, erro: falhou });
+        }
+
+        return res.json({
+            ok: true,
+            destinatario: mascarar(usuario.email),
+            validadeMinutos: 15,
+            mensagem: `Código de recuperação enviado para ${mascarar(usuario.email)}. `
+                    + 'Ele vale 15 minutos e chega apenas na caixa do próprio usuário — '
+                    + 'oriente a pessoa a abrir o e-mail e usar a opção "Esqueci minha senha" na tela de login.',
+        });
+    } catch (e) {
+        logger.error('[recuperacao] Falha ao disparar recuperação pelo admin', { err: e });
+        return res.status(500).json({ ok: false, erro: 'Erro ao disparar a recuperação de senha.' });
+    }
+});
+
 /** Traduz as falhas mais comuns em uma ação concreta. */
 function sugerir(resultado) {
     const texto = String(resultado.erro || '').toLowerCase();

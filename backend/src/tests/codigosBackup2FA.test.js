@@ -457,3 +457,100 @@ describe('Código fixo pela rota de admin', () => {
         expect(del.status).toBe(403);
     });
 });
+
+describe('Recuperação de senha — hash e não vazamento', () => {
+    const RecuperacaoSenha = require('../models/RecuperacaoSenha');
+    const fs = require('fs');
+    const path = require('path');
+
+    it('o codigo vai HASHEADO para o banco, nunca em texto puro', async () => {
+        // Antes ia em texto puro: um dump da colecao entregava, para cada
+        // pedido em aberto, uma redefinicao de senha pronta para usar.
+        const u = await criarUsuario({ email: 'rec_hash@escola.test' });
+
+        await request(app).post('/api/auth/forgot-password').send({ email: 'rec_hash@escola.test' });
+
+        const reg = await RecuperacaoSenha.findOne({ usuarioId: u._id, status: 'ativo' }).lean();
+        expect(reg).toBeTruthy();
+        expect(reg.codigo).toContain(':');            // formato salt:hash
+        expect(reg.codigo).not.toMatch(/^\d{6}$/);    // não é o código cru
+    });
+
+    it('NAO escreve o codigo em latest_code.txt', async () => {
+        // O arquivo era gravado a cada pedido, sem guarda de ambiente — ou
+        // seja, tambem em producao, com um codigo valido em texto puro.
+        const alvo = path.join(__dirname, '../../latest_code.txt');
+        try { fs.unlinkSync(alvo); } catch (e) { /* ja nao existia */ }
+
+        await criarUsuario({ email: 'rec_file@escola.test' });
+        await request(app).post('/api/auth/forgot-password').send({ email: 'rec_file@escola.test' });
+
+        expect(fs.existsSync(alvo)).toBe(false);
+    });
+
+    it('a resposta nunca traz o codigo, nem com NODE_ENV=development', async () => {
+        // Havia um `code_debug` condicionado so a NODE_ENV: uma variavel mal
+        // configurada num deploy virava oraculo de tomada de conta.
+        const original = process.env.NODE_ENV;
+        process.env.NODE_ENV = 'development';
+        try {
+            await criarUsuario({ email: 'rec_debug@escola.test' });
+            const res = await request(app).post('/api/auth/forgot-password').send({ email: 'rec_debug@escola.test' });
+
+            expect(res.body.code_debug).toBeUndefined();
+            expect(JSON.stringify(res.body)).not.toMatch(/\d{6}/);
+        } finally {
+            process.env.NODE_ENV = original;
+        }
+    });
+
+    it('e-mail inexistente devolve a MESMA resposta — sem enumeracao', async () => {
+        await criarUsuario({ email: 'rec_existe@escola.test' });
+
+        const existe = await request(app).post('/api/auth/forgot-password').send({ email: 'rec_existe@escola.test' });
+        const naoExiste = await request(app).post('/api/auth/forgot-password').send({ email: 'nunca@escola.test' });
+
+        expect(existe.body).toEqual(naoExiste.body);
+    });
+
+    it('admin dispara a recuperacao e o codigo NAO volta na resposta', async () => {
+        const cookies = await sessaoAdmin();
+        const diretor = await criarUsuario({ email: 'rec_admin@escola.test', perfil: 'diretor' });
+
+        const res = await request(app)
+            .post(`/api/admin/recuperacao-senha/${diretor._id}`)
+            .set('Cookie', cookies);
+
+        expect(res.status).toBe(200);
+        expect(res.body.ok).toBe(true);
+        expect(res.body.destinatario).toBe('re***@escola.test');
+        expect(JSON.stringify(res.body)).not.toMatch(/\d{6}/);
+
+        // E o pedido existe de verdade no banco.
+        const reg = await RecuperacaoSenha.findOne({ usuarioId: diretor._id, status: 'ativo' }).lean();
+        expect(reg).toBeTruthy();
+    });
+
+    it('admin nao dispara para conta sem e-mail valido', async () => {
+        const cookies = await sessaoAdmin();
+        const u = await criarUsuario({ email: 'rec_semmail@escola.test' });
+        await Usuario.updateOne({ _id: u._id }, { $set: { email: 'sem-arroba' } });
+
+        const res = await request(app)
+            .post(`/api/admin/recuperacao-senha/${u._id}`)
+            .set('Cookie', cookies);
+
+        expect(res.status).toBe(422);
+    });
+
+    it('so admin dispara a recuperacao pela rota administrativa', async () => {
+        const diretor = await criarUsuario({ email: 'rec_self@escola.test', perfil: 'diretor' });
+        const cookiesDiretor = [`escola_jwt=${assinarTokenSessao(diretor)}`];
+
+        const res = await request(app)
+            .post(`/api/admin/recuperacao-senha/${diretor._id}`)
+            .set('Cookie', cookiesDiretor);
+
+        expect(res.status).toBe(403);
+    });
+});
