@@ -240,7 +240,12 @@ function initSidebarProfile() {
         }
         if (name) name.textContent = user.nome || 'Usuário';
         if (role) {
-            role.textContent = user.perfil === 'diretor' ? 'Diretor(a)' : 'Professor(a)';
+            // Fonte única: js/auth.js → resolverPerfilAtivo. O ternário que
+            // vivia aqui transformava admin, secretaria e responsável em
+            // "Professor(a)", porque só distinguia 'diretor' de todo o resto.
+            role.textContent = window.rotuloPerfilAtivo
+                ? window.rotuloPerfilAtivo(user, window.escolaAtivaId && window.escolaAtivaId())
+                : '—';
         }
         if (escola) {
             escola.textContent = user.escola || 'Escola Padrão';

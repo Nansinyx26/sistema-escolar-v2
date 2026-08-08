@@ -75,14 +75,11 @@
         return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
     };
 
+    // Fonte única em js/auth.js. Este mapa chamava o ADMIN de "Diretor(a)" —
+    // divergia dos outros três e reforçava a impressão de perfil trocado.
     const getRoleName = (perfil) => {
-        if (!perfil) return 'Usuário';
-        if (perfil === 'diretor' || perfil === 'admin') return 'Diretor(a)';
-        if (perfil === 'professor') return 'Professor(a)';
-        if (perfil === 'responsavel') return 'Responsável';
-        if (perfil === 'secretaria') return 'Secretária';
-        if (perfil === 'coordenador') return 'Coordenador(a)';
-        return perfil;
+        if (!window.rotuloPerfilAtivo) return '—';
+        return window.rotuloPerfilAtivo({ perfil }, window.escolaAtivaId && window.escolaAtivaId());
     };
 
     // Initialize Web Audio API

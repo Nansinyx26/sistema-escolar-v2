@@ -134,15 +134,12 @@ function preencherFormulario(user, perfil) {
     // Informações da conta
     document.getElementById('email').value = user.email;
 
-    // Tipo de perfil
-    let tipoPerfil = 'Usuário';
-    if (user.perfil === 'admin') {
-        tipoPerfil = 'Administrador';
-    } else if (user.perfil === 'professor') {
-        tipoPerfil = 'Professor';
-    } else if (user.perfil === 'diretor') {
-        tipoPerfil = 'Diretor';
-    }
+    // Tipo de perfil — fonte única em js/auth.js.
+    // A cadeia anterior não tinha ramo para 'secretaria' nem 'responsavel':
+    // esses dois perfis liam "Usuário" na própria tela de perfil.
+    const tipoPerfil = window.rotuloPerfilAtivo
+        ? window.rotuloPerfilAtivo(user, window.escolaAtivaId && window.escolaAtivaId())
+        : '—';
     document.getElementById('tipoPerfil').value = tipoPerfil;
 
     // Informações específicas de professor

@@ -150,11 +150,12 @@ async function carregarDados() {
 function atualizarHeader(user, perfil) {
     const nomeExibir = (perfil && perfil.nome) ? perfil.nome : (user.nome || user.email);
 
-    // Role baseada no perfil
-    const roleLabel = user.perfil === 'admin' ? 'Administrador'
-        : user.perfil === 'professor' ? 'Professor'
-        : user.perfil === 'secretaria' ? 'Secretária'
-        : 'Diretor';
+    // Role baseada no perfil — fonte única em js/auth.js.
+    // A cadeia anterior terminava em `: 'Diretor'`, então responsável (e
+    // qualquer perfil novo) era rotulado como diretor sem que nada avisasse.
+    const roleLabel = window.rotuloPerfilAtivo
+        ? window.rotuloPerfilAtivo(user, window.escolaAtivaId && window.escolaAtivaId())
+        : '—';
 
     const sidebarUserName = document.getElementById('sidebarUserName');
     const sidebarUserRole = document.getElementById('sidebarUserRole');
@@ -532,7 +533,14 @@ window.abrirFerramentas = function () {
         return;
     }
 
-    window.location.href = 'admin/configuracoes.html';
+    // Caminho resolvido por js/rotas.js: a área administrativa pode estar atrás
+    // do prefixo secreto (ADMIN_PATH), e 'admin/configuracoes.html' batia num
+    // 404 sempre que ele estava configurado.
+    if (window.ROTAS) {
+        window.ROTAS.ir('admin.configuracoes');
+        return;
+    }
+    console.error('[dashboard] js/rotas.js não carregado — navegação cancelada.');
 };
 
 // Preferências de voz agora são gerenciadas por sidebar-voice.js (initVoiceToggles)
