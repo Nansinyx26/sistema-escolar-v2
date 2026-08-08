@@ -1,0 +1,238 @@
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Códigos de Backup 2FA — Administração</title>
+<link rel="icon" type="image/png" href="/favicon/favicon.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<style>
+    :root {
+        --bg: #0b1120; --card: #131c31; --borda: rgba(255,255,255,.08);
+        --texto: #e2e8f0; --suave: #94a3b8; --acento: #38bdf8;
+        --alerta: #fbbf24; --erro: #f87171; --ok: #34d399;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0; padding: 2rem 1rem; background: var(--bg); color: var(--texto);
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.55;
+    }
+    .envolucro { max-width: 780px; margin: 0 auto; }
+    h1 { font-size: 1.4rem; margin: 0 0 .3rem; display: flex; align-items: center; gap: .6rem; }
+    .subtitulo { color: var(--suave); font-size: .9rem; margin: 0 0 1.8rem; }
+    .cartao {
+        background: var(--card); border: 1px solid var(--borda); border-radius: 12px;
+        padding: 1.4rem; margin-bottom: 1.2rem;
+    }
+    h2 { font-size: 1rem; margin: 0 0 1rem; color: var(--acento); }
+    label { display: block; font-size: .82rem; color: var(--suave); margin-bottom: .35rem; }
+    select, input {
+        width: 100%; padding: .6rem .7rem; border-radius: 8px; font-size: .92rem;
+        background: rgba(255,255,255,.04); border: 1px solid var(--borda); color: var(--texto);
+    }
+    button {
+        padding: .6rem 1.1rem; border-radius: 8px; border: none; cursor: pointer;
+        font-size: .9rem; font-weight: 600; background: var(--acento); color: #082f49;
+    }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    button.secundario { background: rgba(255,255,255,.08); color: var(--texto); }
+    .linha { display: flex; gap: .7rem; align-items: flex-end; flex-wrap: wrap; }
+    .linha > div { flex: 1; min-width: 220px; }
+    .aviso {
+        border-left: 3px solid var(--alerta); background: rgba(251,191,36,.08);
+        padding: .8rem 1rem; border-radius: 0 8px 8px 0; font-size: .86rem; margin: 1rem 0;
+    }
+    .aviso.erro { border-color: var(--erro); background: rgba(248,113,113,.08); }
+    .aviso.ok { border-color: var(--ok); background: rgba(52,211,153,.08); }
+    .grade-codigos {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: .6rem; margin: 1rem 0;
+    }
+    .codigo {
+        font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+        font-size: 1.05rem; letter-spacing: .06em; text-align: center;
+        background: rgba(56,189,248,.08); border: 1px dashed rgba(56,189,248,.35);
+        border-radius: 8px; padding: .65rem .3rem; user-select: all;
+    }
+    .saldo { display: flex; gap: 1.6rem; flex-wrap: wrap; margin-top: .6rem; }
+    .saldo div { font-size: .85rem; color: var(--suave); }
+    .saldo strong { display: block; font-size: 1.5rem; color: var(--texto); font-weight: 700; }
+    .rodape-acoes { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: 1rem; }
+    a.voltar { color: var(--suave); font-size: .85rem; text-decoration: none; }
+    a.voltar:hover { color: var(--texto); }
+    @media print {
+        body { background: #fff; color: #000; }
+        .cartao { border-color: #ccc; }
+        .nao-imprimir, .voltar { display: none !important; }
+        .codigo { border-color: #999; background: #f4f4f4; color: #000; }
+    }
+</style>
+
+<div class="envolucro">
+    <a href="./usuarios.html" class="voltar">&larr; Voltar para usuários</a>
+    <h1><i class="bi bi-key"></i> Códigos de Backup 2FA</h1>
+    <p class="subtitulo">
+        Segundo fator que não depende de e-mail. Use quando o provedor estiver
+        indisponível ou a pessoa perder acesso à caixa de entrada.
+    </p>
+
+    <div class="cartao nao-imprimir">
+        <h2>1. Escolha a conta</h2>
+        <div class="linha">
+            <div>
+                <label for="conta">Conta (diretor, secretaria ou com 2FA ativo)</label>
+                <select id="conta"><option value="">Carregando…</option></select>
+            </div>
+            <button type="button" id="btnSaldo" class="secundario">Ver saldo</button>
+        </div>
+        <div id="saldo"></div>
+    </div>
+
+    <div class="cartao nao-imprimir">
+        <h2>2. Gerar um lote novo</h2>
+        <p style="font-size:.86rem; color:var(--suave); margin-top:0;">
+            Gera 8 códigos de uso único. <strong>Invalida o lote anterior</strong> —
+            códigos antigos param de funcionar na hora.
+        </p>
+        <button type="button" id="btnGerar" disabled>Gerar 8 códigos</button>
+    </div>
+
+    <div id="resultado"></div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    var API = window.API_BASE_URL || '/api';
+    var selConta = document.getElementById('conta');
+    var elSaldo = document.getElementById('saldo');
+    var elResultado = document.getElementById('resultado');
+    var btnGerar = document.getElementById('btnGerar');
+    var btnSaldo = document.getElementById('btnSaldo');
+
+    // O cookie csrf_token nao e HttpOnly justamente para ser lido aqui e
+    // devolvido no header (padrao double-submit).
+    function csrf() {
+        var m = ('; ' + document.cookie).split('; csrf_token=');
+        return m.length === 2 ? m.pop().split(';').shift() : '';
+    }
+
+    function escapar(t) {
+        var d = document.createElement('div');
+        d.textContent = String(t == null ? '' : t);
+        return d.innerHTML;
+    }
+
+    function aviso(texto, tipo) {
+        return '<div class="aviso ' + (tipo || '') + '">' + escapar(texto) + '</div>';
+    }
+
+    // ── Carrega as contas que podem ter codigo de backup ────────────────────
+    // Reusa /diag/contas-2fa? Nao: aquela rota so devolve as contas com
+    // PROBLEMA. Aqui precisamos de todas as elegiveis, entao vem de /usuarios.
+    fetch(API + '/usuarios', { credentials: 'include' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (json) {
+            var lista = (json && json.data) || [];
+            var elegiveis = lista.filter(function (u) {
+                return u.ativo !== false
+                    && (u.perfil === 'diretor' || u.perfil === 'secretaria' || u.twoFactorEnabled);
+            });
+
+            if (!elegiveis.length) {
+                selConta.innerHTML = '<option value="">Nenhuma conta elegível</option>';
+                return;
+            }
+
+            selConta.innerHTML = '<option value="">— selecione —</option>' + elegiveis.map(function (u) {
+                return '<option value="' + escapar(u._id || u.id) + '">'
+                     + escapar(u.nome || '(sem nome)') + ' — ' + escapar(u.perfil)
+                     + ' — ' + escapar(u.email) + '</option>';
+            }).join('');
+        })
+        .catch(function () {
+            selConta.innerHTML = '<option value="">Falha ao carregar contas</option>';
+            elResultado.innerHTML = aviso('Não foi possível carregar a lista de contas. Recarregue a página.', 'erro');
+        });
+
+    selConta.addEventListener('change', function () {
+        btnGerar.disabled = !selConta.value;
+        elSaldo.innerHTML = '';
+        elResultado.innerHTML = '';
+    });
+
+    // ── Saldo ───────────────────────────────────────────────────────────────
+    btnSaldo.addEventListener('click', function () {
+        if (!selConta.value) { elSaldo.innerHTML = aviso('Selecione uma conta primeiro.'); return; }
+        elSaldo.innerHTML = '<p style="color:var(--suave);font-size:.85rem;">Consultando…</p>';
+
+        fetch(API + '/admin/2fa/backup-codes/' + encodeURIComponent(selConta.value), { credentials: 'include' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (!d.ok && d.erro) { elSaldo.innerHTML = aviso(d.erro, 'erro'); return; }
+                elSaldo.innerHTML =
+                    '<div class="saldo">'
+                  + '<div><strong>' + d.disponiveis + '</strong>disponíveis</div>'
+                  + '<div><strong>' + d.usados + '</strong>já usados</div>'
+                  + '<div><strong>' + d.total + '</strong>no lote</div>'
+                  + '</div>'
+                  + (d.sugestao ? aviso(d.sugestao) : '');
+            })
+            .catch(function () { elSaldo.innerHTML = aviso('Falha de conexão.', 'erro'); });
+    });
+
+    // ── Geração ─────────────────────────────────────────────────────────────
+    btnGerar.addEventListener('click', function () {
+        if (!selConta.value) return;
+        var rotulo = selConta.options[selConta.selectedIndex].textContent;
+        if (!window.confirm('Gerar 8 códigos novos para:\n\n' + rotulo
+            + '\n\nIsto INVALIDA os códigos anteriores desta conta.')) return;
+
+        btnGerar.disabled = true;
+        elResultado.innerHTML = '<p style="color:var(--suave);">Gerando…</p>';
+
+        fetch(API + '/admin/2fa/backup-codes/' + encodeURIComponent(selConta.value), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf() },
+            credentials: 'include'
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                btnGerar.disabled = false;
+                if (!d.ok) {
+                    elResultado.innerHTML = aviso(d.erro || 'Não foi possível gerar os códigos.', 'erro');
+                    return;
+                }
+
+                elResultado.innerHTML =
+                    '<div class="cartao">'
+                  + '<h2>Códigos de ' + escapar(d.usuario.nome) + ' (' + escapar(d.usuario.perfil) + ')</h2>'
+                  + aviso(d.aviso, 'ok')
+                  + '<div class="grade-codigos">'
+                  +   d.codigos.map(function (c) { return '<div class="codigo">' + escapar(c) + '</div>'; }).join('')
+                  + '</div>'
+                  + '<div class="rodape-acoes nao-imprimir">'
+                  +   '<button type="button" id="btnCopiar" class="secundario">Copiar todos</button>'
+                  +   '<button type="button" id="btnImprimir" class="secundario">Imprimir</button>'
+                  + '</div>'
+                  + '</div>';
+
+                // Estes handlers ficam aqui porque os botoes acabaram de nascer
+                // com o innerHTML acima.
+                document.getElementById('btnCopiar').addEventListener('click', function () {
+                    var texto = 'Códigos de backup — ' + d.usuario.nome + '\n\n'
+                              + d.codigos.join('\n')
+                              + '\n\nCada código funciona UMA vez.';
+                    navigator.clipboard.writeText(texto).then(function () {
+                        this.textContent = 'Copiado!';
+                    }.bind(this)).catch(function () {
+                        window.alert('Não foi possível copiar. Selecione os códigos manualmente.');
+                    });
+                });
+                document.getElementById('btnImprimir').addEventListener('click', function () { window.print(); });
+            })
+            .catch(function () {
+                btnGerar.disabled = false;
+                elResultado.innerHTML = aviso('Falha de conexão ao gerar os códigos.', 'erro');
+            });
+    });
+})();
+</script>

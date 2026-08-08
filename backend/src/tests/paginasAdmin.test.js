@@ -22,6 +22,9 @@ const PAGINAS_SO_ADMIN = [
     '/html/admin/codigos-escolas.html',
     // Estas duas não tinham NENHUMA verificação, nem a de fachada.
     '/html/admin/diagnostico.html',
+    // Exibe códigos de backup 2FA recém-gerados: se vazar, um anônimo recebe
+    // o segundo fator de diretor e secretaria de bandeja.
+    '/html/admin/codigos-backup.html',
 ];
 
 const { assinarTokenSessao } = require('../utils/sessionToken');
