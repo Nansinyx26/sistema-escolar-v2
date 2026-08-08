@@ -153,7 +153,7 @@
                         <button class="btn btn-primary btn-sm" onclick="openNewUserModal()" style="height: 42px;">
                             <i class="bi bi-person-plus-fill"></i> Novo Usuário
                         </button>
-                        <button class="btn btn-secondary btn-sm" onclick="window.location.href='codigos-backup.html'" style="height: 42px;" title="Códigos de backup 2FA">
+                        <button class="btn btn-secondary btn-sm" onclick="window.location.href='codigos-backup.html'" style="height: 42px;" title="Códigos de backup 2FA (tela cheia)">
                             <i class="bi bi-key"></i>
                         </button>
                         <button class="btn btn-secondary btn-sm" onclick="window.location.href='auditoria.html'" style="height: 42px;" title="Ver Logs de Auditoria">
@@ -186,6 +186,70 @@
                 </table>
             </div>
         </main>
+
+        <!-- ================================================================
+             Modal: Códigos de Backup 2FA
+             ================================================================
+             Fica AQUI, e não numa página separada, porque a operação nasce da
+             linha do usuário: quem administra já está olhando a lista e não
+             deveria perder o contexto (nem a busca e os filtros aplicados)
+             para gerar um código.
+
+             Paleta black + mint restrita a este bloco, via #modalBackup, para
+             não vazar cor para o resto da tela de usuários.
+        -->
+        <div id="modalBackup" class="backdrop" style="display: none; align-items: center; justify-content: center; z-index: 1000;">
+            <div class="glass-strong" style="max-width: 560px; width: 92%; padding: 2rem; border-radius: var(--radius-lg); background: linear-gradient(180deg,#131a22,#0d1117); border: 1px solid rgba(52,224,161,.18);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: .4rem;">
+                    <h3 style="margin: 0; display:flex; align-items:center; gap:.55rem;">
+                        <i class="bi bi-key-fill" style="color:#34e0a1;"></i> Códigos de Backup 2FA
+                    </h3>
+                    <button class="btn-icon" onclick="fecharCodigosBackup()" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <p id="backupConta" style="color:#8b98a5; font-size:.88rem; margin:0 0 1.2rem;"></p>
+
+                <div id="backupCorpo"></div>
+            </div>
+        </div>
+
+        <style>
+            #modalBackup .mint-btn {
+                padding:.6rem 1.15rem; border-radius:9px; border:1px solid transparent; cursor:pointer;
+                font-size:.88rem; font-weight:700; background:#34e0a1; color:#04120c;
+            }
+            #modalBackup .mint-btn:hover:not(:disabled) { filter: brightness(1.12); }
+            #modalBackup .mint-btn:disabled { opacity:.4; cursor:not-allowed; }
+            #modalBackup .mint-btn.secundario {
+                background:transparent; color:#7af0c4; border-color:rgba(52,224,161,.32);
+            }
+            #modalBackup .grade-codigos {
+                display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+                gap:.55rem; margin:1rem 0;
+            }
+            #modalBackup .codigo {
+                font-family:ui-monospace,Consolas,monospace; font-size:1.05rem; letter-spacing:.06em;
+                text-align:center; font-weight:600; color:#7af0c4; background:rgba(52,224,161,.07);
+                border:1px dashed rgba(52,224,161,.32); border-radius:9px; padding:.6rem .3rem;
+                user-select:all;
+            }
+            #modalBackup .saldo { display:flex; gap:1.8rem; flex-wrap:wrap; margin:.4rem 0 1.2rem; }
+            #modalBackup .saldo div { font-size:.72rem; color:#8b98a5; text-transform:uppercase; letter-spacing:.06em; }
+            #modalBackup .saldo strong { display:block; font-size:1.7rem; color:#e6edf3; line-height:1.1; }
+            #modalBackup .saldo div.destaque strong { color:#34e0a1; }
+            #modalBackup .nota {
+                border-left:3px solid #34e0a1; background:rgba(52,224,161,.07); color:#7af0c4;
+                padding:.8rem 1rem; border-radius:0 9px 9px 0; font-size:.83rem; margin:1rem 0;
+            }
+            #modalBackup .nota.erro { border-color:#ff6b6b; background:rgba(255,107,107,.07); color:#ffb3b3; }
+            @media print {
+                body * { visibility: hidden; }
+                #modalBackup, #modalBackup * { visibility: visible; }
+                #modalBackup { position:absolute; inset:0; background:#fff !important; display:block !important; }
+                #modalBackup .glass-strong { background:#fff !important; border-color:#bbb !important; }
+                #modalBackup .codigo { color:#000 !important; background:#f2f2f2 !important; border-color:#666 !important; }
+                #modalBackup .nao-imprimir { display:none !important; }
+            }
+        </style>
 
         <!-- Modal Novo Usuário -->
         <div id="newUserModal" class="backdrop" style="display: none; align-items: center; justify-content: center; z-index: 1000;">
@@ -455,6 +519,11 @@
                                         <i class="bi bi-shield-lock"></i>
                                     </button>
                                 ` : ''}
+                                ${(u.source === 'MongoDB' && (u.perfil === 'diretor' || u.perfil === 'secretaria' || u.twoFactorEnabled)) ? `
+                                    <button class="btn-icon" onclick="abrirCodigosBackup('${u.id}')" title="Códigos de backup 2FA" style="color: #34e0a1">
+                                        <i class="bi bi-key-fill"></i>
+                                    </button>
+                                ` : ''}
                                 <button class="btn-icon" onclick="deleteUser('${u.id}', '${u.source}', '${u.email}')" title="Excluir Permanentemente" style="color: #ef4444">
                                     <i class="bi bi-trash"></i>
                                 </button>
@@ -463,6 +532,124 @@
                     </tr>
                 `).join('');
             }
+
+            // ================================================================
+            // CÓDIGOS DE BACKUP 2FA — tudo na própria página de usuários
+            // ================================================================
+            // Segundo fator que não depende de e-mail. Existe porque o 2FA de
+            // diretor e secretaria dependia inteiramente da entrega de e-mail:
+            // quando o provedor bloqueou o envio, os dois perfis ficaram
+            // trancados fora do sistema sem caminho de volta.
+            //
+            // Os códigos NÃO ficam visíveis depois de gerados — no banco só
+            // existe o hash scrypt. Por isso este modal trata o momento da
+            // geração como o único em que eles existem legíveis: copiar e
+            // imprimir estão ali, e a nota diz como entregar.
+
+            let backupUsuarioId = null;
+
+            const esc = (t) => {
+                const d = document.createElement('div');
+                d.textContent = String(t == null ? '' : t);
+                return d.innerHTML;
+            };
+
+            window.abrirCodigosBackup = async (id) => {
+                backupUsuarioId = id;
+                const u = (window.allUsersCache || []).find(x => String(x.id) === String(id)) || {};
+
+                document.getElementById('backupConta').textContent =
+                    `${u.nome || 'Conta'} — ${u.perfil || '?'} — ${u.email || ''}`;
+                document.getElementById('backupCorpo').innerHTML =
+                    '<p style="color:#8b98a5;font-size:.85rem;">Consultando saldo…</p>';
+                document.getElementById('modalBackup').style.display = 'flex';
+
+                try {
+                    const res = await fetch(`${window.API_BASE_URL}/admin/2fa/backup-codes/${encodeURIComponent(id)}`, { credentials: 'include' });
+                    const d = await res.json();
+                    if (!res.ok) throw new Error(d.erro || `HTTP ${res.status}`);
+                    renderSaldoBackup(d);
+                } catch (e) {
+                    document.getElementById('backupCorpo').innerHTML =
+                        `<div class="nota erro">${esc(e.message)}</div>` + botoesGerar();
+                }
+            };
+
+            const botoesGerar = () => `
+                <div class="nao-imprimir" style="display:flex;gap:.6rem;flex-wrap:wrap;">
+                    <button type="button" class="mint-btn" onclick="gerarCodigosBackup()">Gerar 8 códigos</button>
+                </div>`;
+
+            function renderSaldoBackup(d) {
+                const semLote = !d.total;
+                document.getElementById('backupCorpo').innerHTML = `
+                    <div class="saldo">
+                        <div class="destaque"><strong>${d.disponiveis || 0}</strong>disponíveis</div>
+                        <div><strong>${d.usados || 0}</strong>usados</div>
+                        <div><strong>${d.total || 0}</strong>no lote</div>
+                    </div>
+                    ${semLote ? '<div class="nota">Esta conta ainda não tem códigos de backup.</div>' : ''}
+                    ${d.sugestao ? `<div class="nota">${esc(d.sugestao)}</div>` : ''}
+                    <p style="font-size:.82rem;color:#8b98a5;">
+                        Gerar um lote novo <strong>invalida o anterior</strong> — os códigos
+                        antigos param de funcionar na hora.
+                    </p>
+                    ${botoesGerar()}`;
+            }
+
+            window.gerarCodigosBackup = async () => {
+                if (!backupUsuarioId) return;
+                if (!confirm('Gerar 8 códigos novos?\n\nIsto INVALIDA os códigos anteriores desta conta.')) return;
+
+                document.getElementById('backupCorpo').innerHTML =
+                    '<p style="color:#8b98a5;font-size:.85rem;">Gerando…</p>';
+
+                try {
+                    const res = await fetch(`${window.API_BASE_URL}/admin/2fa/backup-codes/${encodeURIComponent(backupUsuarioId)}`, {
+                        method: 'POST',
+                        headers: window.csrfHeaders ? window.csrfHeaders(true) : { 'Content-Type': 'application/json' },
+                        credentials: 'include'
+                    });
+                    const d = await res.json();
+                    if (!d.ok) throw new Error(d.erro || 'Não foi possível gerar os códigos.');
+
+                    document.getElementById('backupCorpo').innerHTML = `
+                        <div class="nota">${esc(d.aviso)}</div>
+                        <div class="grade-codigos">
+                            ${d.codigos.map(c => `<div class="codigo">${esc(c)}</div>`).join('')}
+                        </div>
+                        <div class="nao-imprimir" style="display:flex;gap:.6rem;flex-wrap:wrap;">
+                            <button type="button" class="mint-btn secundario" onclick="copiarCodigosBackup(this)">Copiar todos</button>
+                            <button type="button" class="mint-btn secundario" onclick="window.print()">Imprimir</button>
+                            <button type="button" class="mint-btn" onclick="fecharCodigosBackup()">Concluir</button>
+                        </div>`;
+
+                    // Guardado só em memória, para o botão de copiar. Sai da
+                    // página junto com o modal — nada vai para storage.
+                    window.__codigosBackupTemp = { nome: d.usuario.nome, codigos: d.codigos };
+                } catch (e) {
+                    document.getElementById('backupCorpo').innerHTML =
+                        `<div class="nota erro">${esc(e.message)}</div>` + botoesGerar();
+                }
+            };
+
+            window.copiarCodigosBackup = (btn) => {
+                const t = window.__codigosBackupTemp;
+                if (!t) return;
+                const texto = `Códigos de backup — ${t.nome}\n\n${t.codigos.join('\n')}\n\nCada código funciona UMA vez.`;
+                navigator.clipboard.writeText(texto)
+                    .then(() => { btn.textContent = 'Copiado!'; })
+                    .catch(() => alert('Não foi possível copiar. Selecione os códigos manualmente.'));
+            };
+
+            window.fecharCodigosBackup = () => {
+                document.getElementById('modalBackup').style.display = 'none';
+                document.getElementById('backupCorpo').innerHTML = '';
+                // Os códigos saem da memória ao fechar: não há razão para
+                // mantê-los acessíveis depois que a entrega foi feita.
+                delete window.__codigosBackupTemp;
+                backupUsuarioId = null;
+            };
 
             window.anonymizeUser = async (id) => {
                 if (!confirm('Tem certeza que deseja ANONIMIZAR este usuário? Todos os dados pessoais (CPF, Telefone, E-mail) serão removidos permanentemente para cumprir a LGPD, mas o registro histórico será mantido.')) return;
