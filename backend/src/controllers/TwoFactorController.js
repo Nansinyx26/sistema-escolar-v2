@@ -102,7 +102,10 @@ exports.sendCode = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
         }
 
-        const exige2FA = usuario.twoFactorEnabled || ['diretor', 'secretaria'].includes(usuario.perfil);
+        // Mesma fonte de verdade do login (utils/politica2FA.js). Duas copias
+        // da regra divergiriam, e a divergencia apareceria como "o login nao
+        // pede codigo mas o reenvio insiste que 2FA esta ativo".
+        const exige2FA = require('../utils/politica2FA').exigeSegundoFator(usuario);
         if (!exige2FA) {
             return res.status(400).json({ success: false, error: '2FA não está ativo nesta conta.' });
         }

@@ -83,6 +83,17 @@ const startServer = async () => {
             // 5. Ativa health monitor periódico (Roadmap #6)
             startHealthMonitor();
 
+            // 5a-. Dispensa de 2FA ativa? O boot grita.
+            //
+            // Uma configuracao que enfraquece autenticacao nao pode ficar
+            // silenciosa: e o tipo de coisa que se liga "so por hoje" e fica
+            // ligada por meses porque nada nunca lembra ninguem dela.
+            const avisoPolitica2FA = require('./utils/politica2FA').avisoDeBoot();
+            if (avisoPolitica2FA) {
+                logger.alert('SEGURANCA_2FA_DISPENSADO', avisoPolitica2FA, { action: 'boot.politica2FA' });
+                logger.warn(`⚠️  ${avisoPolitica2FA}`);
+            }
+
             // 5a. Verifica o canal de e-mail e DIZ o resultado no log.
             //
             // O 2FA de diretor e secretaria depende inteiramente deste canal.

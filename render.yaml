@@ -95,6 +95,27 @@ services:
       # host+usuário+senha que os scanners de segredo tratam como credencial
       # vazada — e um falso positivo recorrente treina a equipe a ignorar alerta.
 
+      # ── Política de 2FA ──────────────────────────────────────────────────────
+      # DISPENSAR_2FA_EMAIL — perfis que entram SÓ com e-mail e senha.
+      # Vazia (padrão) = todos os perfis obrigatórios passam pelo segundo fator.
+      #
+      #     DISPENSAR_2FA_EMAIL=diretor,secretaria
+      #
+      # ATENÇÃO: diretor e secretaria enxergam nota, frequência e dado pessoal
+      # de menor de idade. Com a dispensa ativa, uma senha vazada vira acesso
+      # completo a esses dados, sem nenhuma barreira restante.
+      #
+      # Existe porque o 2FA depende da entrega de e-mail, e uma indisponibilidade
+      # do provedor trancava esses perfis fora do sistema. A alternativa que NÃO
+      # abre mão do segundo fator são os códigos de backup:
+      #     POST /api/admin/2fa/backup-codes/:usuarioId
+      #
+      # Apagar esta variável restaura o 2FA na reinicialização seguinte, sem
+      # deploy. O boot avisa em nível de alerta enquanto ela estiver ativa, e
+      # cada login sem segundo fator entra na auditoria como LOGIN_SEM_2FA.
+      - key: DISPENSAR_2FA_EMAIL
+        sync: false
+
       # ── TTS: Google Gemini ───────────────────────────────────────────────────
       - key: GOOGLE_TTS_API_KEY
         sync: false # Google AI Studio: https://aistudio.google.com/app/apikey

@@ -607,8 +607,28 @@ exports.login = async (req, res) => {
         const redirect_to = getRedirectPath(user);
         // Seleciona campos extras necessários para o fluxo 2FA
         const userWith2FA = await Usuario.findById(user._id).select('+twoFactorEnabled +twoFactorFixedCode +twoFactorPendingToken +twoFactorPendingExpiry');
-        const mustUse2FA = ['diretor', 'secretaria'].includes(user.perfil);
-        if (userWith2FA && (userWith2FA.twoFactorEnabled || mustUse2FA)) {
+        // Política do segundo fator: utils/politica2FA.js (fonte única).
+        // A regra estava hardcoded aqui e duplicada no TwoFactorController.
+        const politica2FA = require('../utils/politica2FA');
+        const precisa2FA = userWith2FA && politica2FA.exigeSegundoFator({
+            perfil: user.perfil,
+            twoFactorEnabled: userWith2FA.twoFactorEnabled,
+        });
+
+        // Dispensa ativa (DISPENSAR_2FA_EMAIL): o login termina aqui mesmo, com
+        // sessão completa. Registrado em auditoria porque "quem entrou sem
+        // segundo fator, e quando" precisa ter resposta depois.
+        if (userWith2FA && !precisa2FA && politica2FA.dispensado(user.perfil)) {
+            await logAction(req, 'LOGIN_SEM_2FA', 'Segurança', {
+                recursoId: user._id,
+                descricao: `Login sem segundo fator (perfil ${user.perfil} dispensado por configuração) — ${user.email}`
+            });
+            logger.warn('[2FA] Login sem segundo fator — perfil dispensado', {
+                perfil: user.perfil, usuarioId: String(user._id), action: 'auth.2faDispensado',
+            });
+        }
+
+        if (precisa2FA) {
             const { emitirPreAuthToken } = require('../utils/preAuthToken');
 
             // Se houver um código fixo configurado para esta conta, use-o (não envia e-mail).
