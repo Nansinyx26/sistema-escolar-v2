@@ -4,64 +4,138 @@
 <link rel="icon" type="image/png" href="/favicon/favicon.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <style>
+    /* ────────────────────────────────────────────────────────────────────
+       Paleta BLACK + MINT.
+       O mint (#34e0a1) fica reservado ao que exige atenção: título, códigos
+       e ação primária. Se tudo brilhasse, nada se destacaria — e nesta tela o
+       que precisa saltar são os códigos, que aparecem uma única vez.
+       ──────────────────────────────────────────────────────────────────── */
     :root {
-        --bg: #0b1120; --card: #131c31; --borda: rgba(255,255,255,.08);
-        --texto: #e2e8f0; --suave: #94a3b8; --acento: #38bdf8;
-        --alerta: #fbbf24; --erro: #f87171; --ok: #34d399;
+        --preto:      #05070a;
+        --carvao:     #0d1117;
+        --superficie: #131a22;
+        --borda:      rgba(52, 224, 161, .14);
+        --borda-forte:rgba(52, 224, 161, .32);
+        --mint:       #34e0a1;
+        --mint-suave: #7af0c4;
+        --mint-fundo: rgba(52, 224, 161, .07);
+        --texto:      #e6edf3;
+        --suave:      #8b98a5;
+        --alerta:     #f0b429;
+        --erro:       #ff6b6b;
     }
     * { box-sizing: border-box; }
     body {
-        margin: 0; padding: 2rem 1rem; background: var(--bg); color: var(--texto);
-        font-family: system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.55;
+        margin: 0; padding: 2.5rem 1rem 4rem;
+        background:
+            radial-gradient(900px 500px at 15% -10%, rgba(52,224,161,.10), transparent 60%),
+            radial-gradient(700px 400px at 90% 0%, rgba(52,224,161,.05), transparent 55%),
+            var(--preto);
+        min-height: 100vh;
+        color: var(--texto);
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
     }
-    .envolucro { max-width: 780px; margin: 0 auto; }
-    h1 { font-size: 1.4rem; margin: 0 0 .3rem; display: flex; align-items: center; gap: .6rem; }
-    .subtitulo { color: var(--suave); font-size: .9rem; margin: 0 0 1.8rem; }
+    .envolucro { max-width: 800px; margin: 0 auto; }
+
+    a.voltar {
+        color: var(--suave); font-size: .85rem; text-decoration: none;
+        display: inline-flex; align-items: center; gap: .4rem; margin-bottom: 1.3rem;
+        transition: color .18s;
+    }
+    a.voltar:hover { color: var(--mint); }
+
+    h1 {
+        font-size: 1.55rem; margin: 0 0 .4rem; letter-spacing: -.02em;
+        display: flex; align-items: center; gap: .65rem; font-weight: 700;
+    }
+    h1 i { color: var(--mint); }
+    .subtitulo { color: var(--suave); font-size: .92rem; margin: 0 0 2rem; max-width: 60ch; }
+
     .cartao {
-        background: var(--card); border: 1px solid var(--borda); border-radius: 12px;
-        padding: 1.4rem; margin-bottom: 1.2rem;
+        background: linear-gradient(180deg, var(--superficie), var(--carvao));
+        border: 1px solid var(--borda); border-radius: 14px;
+        padding: 1.5rem; margin-bottom: 1.1rem;
     }
-    h2 { font-size: 1rem; margin: 0 0 1rem; color: var(--acento); }
-    label { display: block; font-size: .82rem; color: var(--suave); margin-bottom: .35rem; }
+    h2 {
+        font-size: .78rem; margin: 0 0 1.1rem; color: var(--mint);
+        text-transform: uppercase; letter-spacing: .12em; font-weight: 700;
+    }
+
+    label { display: block; font-size: .8rem; color: var(--suave); margin-bottom: .4rem; }
     select, input {
-        width: 100%; padding: .6rem .7rem; border-radius: 8px; font-size: .92rem;
-        background: rgba(255,255,255,.04); border: 1px solid var(--borda); color: var(--texto);
+        width: 100%; padding: .68rem .8rem; border-radius: 9px; font-size: .92rem;
+        background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.09);
+        color: var(--texto); transition: border-color .18s, box-shadow .18s;
     }
+    select:focus, input:focus {
+        outline: none; border-color: var(--mint);
+        box-shadow: 0 0 0 3px rgba(52,224,161,.14);
+    }
+
     button {
-        padding: .6rem 1.1rem; border-radius: 8px; border: none; cursor: pointer;
-        font-size: .9rem; font-weight: 600; background: var(--acento); color: #082f49;
+        padding: .68rem 1.25rem; border-radius: 9px; border: 1px solid transparent;
+        cursor: pointer; font-size: .9rem; font-weight: 700;
+        background: var(--mint); color: #04120c; transition: filter .18s, transform .06s;
     }
-    button:disabled { opacity: .5; cursor: not-allowed; }
-    button.secundario { background: rgba(255,255,255,.08); color: var(--texto); }
-    .linha { display: flex; gap: .7rem; align-items: flex-end; flex-wrap: wrap; }
-    .linha > div { flex: 1; min-width: 220px; }
+    button:hover:not(:disabled) { filter: brightness(1.12); }
+    button:active:not(:disabled) { transform: translateY(1px); }
+    button:disabled { opacity: .38; cursor: not-allowed; }
+    button.secundario {
+        background: transparent; color: var(--mint-suave); border-color: var(--borda-forte);
+    }
+    button.secundario:hover:not(:disabled) { background: var(--mint-fundo); filter: none; }
+    button:focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; }
+
+    .linha { display: flex; gap: .8rem; align-items: flex-end; flex-wrap: wrap; }
+    .linha > div { flex: 1; min-width: 230px; }
+
     .aviso {
-        border-left: 3px solid var(--alerta); background: rgba(251,191,36,.08);
-        padding: .8rem 1rem; border-radius: 0 8px 8px 0; font-size: .86rem; margin: 1rem 0;
+        border-left: 3px solid var(--alerta); background: rgba(240,180,41,.07);
+        padding: .85rem 1rem; border-radius: 0 9px 9px 0; font-size: .85rem;
+        margin: 1rem 0; color: #f5d78e;
     }
-    .aviso.erro { border-color: var(--erro); background: rgba(248,113,113,.08); }
-    .aviso.ok { border-color: var(--ok); background: rgba(52,211,153,.08); }
+    .aviso.erro { border-color: var(--erro); background: rgba(255,107,107,.07); color: #ffb3b3; }
+    .aviso.ok   { border-color: var(--mint); background: var(--mint-fundo); color: var(--mint-suave); }
+
     .grade-codigos {
-        display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-        gap: .6rem; margin: 1rem 0;
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
+        gap: .65rem; margin: 1.2rem 0;
     }
     .codigo {
         font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
-        font-size: 1.05rem; letter-spacing: .06em; text-align: center;
-        background: rgba(56,189,248,.08); border: 1px dashed rgba(56,189,248,.35);
-        border-radius: 8px; padding: .65rem .3rem; user-select: all;
+        font-size: 1.1rem; letter-spacing: .08em; text-align: center; font-weight: 600;
+        color: var(--mint-suave); background: var(--mint-fundo);
+        border: 1px dashed var(--borda-forte); border-radius: 9px;
+        padding: .7rem .3rem;
+        user-select: all;  /* um clique seleciona o código inteiro */
     }
-    .saldo { display: flex; gap: 1.6rem; flex-wrap: wrap; margin-top: .6rem; }
-    .saldo div { font-size: .85rem; color: var(--suave); }
-    .saldo strong { display: block; font-size: 1.5rem; color: var(--texto); font-weight: 700; }
-    .rodape-acoes { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: 1rem; }
-    a.voltar { color: var(--suave); font-size: .85rem; text-decoration: none; }
-    a.voltar:hover { color: var(--texto); }
+
+    .saldo { display: flex; gap: 2rem; flex-wrap: wrap; margin-top: .9rem; }
+    .saldo div { font-size: .8rem; color: var(--suave); text-transform: uppercase; letter-spacing: .06em; }
+    .saldo strong {
+        display: block; font-size: 1.9rem; font-weight: 700;
+        color: var(--texto); line-height: 1.1; margin-bottom: .1rem;
+    }
+    .saldo div.destaque strong { color: var(--mint); }
+
+    .rodape-acoes { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: 1.2rem; }
+    .carregando { color: var(--suave); font-size: .85rem; }
+
+    /* A forma correta de entregar estes códigos é num papel, por um canal
+       separado da senha — então a impressão precisa sair legível em tinta. */
     @media print {
-        body { background: #fff; color: #000; }
-        .cartao { border-color: #ccc; }
-        .nao-imprimir, .voltar { display: none !important; }
-        .codigo { border-color: #999; background: #f4f4f4; color: #000; }
+        body { background: #fff; color: #000; padding: 1rem; }
+        .cartao { border-color: #bbb; background: #fff; }
+        h1, h1 i, h2 { color: #000; }
+        .codigo { border-color: #666; background: #f2f2f2; color: #000; }
+        .aviso { color: #000; background: #f8f8f8; }
+        .nao-imprimir, a.voltar, .subtitulo { display: none !important; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        * { transition: none !important; }
     }
 </style>
 
@@ -170,7 +244,7 @@
                 if (!d.ok && d.erro) { elSaldo.innerHTML = aviso(d.erro, 'erro'); return; }
                 elSaldo.innerHTML =
                     '<div class="saldo">'
-                  + '<div><strong>' + d.disponiveis + '</strong>disponíveis</div>'
+                  + '<div class="destaque"><strong>' + d.disponiveis + '</strong>disponíveis</div>'
                   + '<div><strong>' + d.usados + '</strong>já usados</div>'
                   + '<div><strong>' + d.total + '</strong>no lote</div>'
                   + '</div>'

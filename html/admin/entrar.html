@@ -41,7 +41,7 @@
         .aviso.erro { color: var(--erro); }
         .aviso.info { color: var(--suave); }
         .oculto { display: none; }
-        #codigo { letter-spacing: .28em; text-align: center; font-size: 1.15rem; text-transform: uppercase; }
+        #codigo { letter-spacing: .28em; text-align: center; font-size: 1.15rem; }
         .dica { font-size: .78rem; opacity: .65; margin: .4rem 0 .8rem; line-height: 1.4; }
     </style>
 </head>
@@ -62,17 +62,15 @@
 
         <form id="form2FA" class="oculto" autocomplete="off">
             <label for="codigo">Código de verificação</label>
-            <!-- Aceita as DUAS formas: os 6 dígitos enviados por e-mail e o
-                 código de backup (XXXXX-XXXXX). `maxlength=6` e
-                 `pattern=[0-9]{6}` barravam o de backup no proprio navegador,
-                 antes de qualquer requisicao. `inputmode` volta a ser text pelo
-                 mesmo motivo: o teclado numerico do celular nao digita letras. -->
+            <!-- Aceita as DUAS formas, ambas numericas: os 6 dígitos do
+                 e-mail e o código de backup de 10 dígitos. `maxlength=6` e
+                 `pattern=[0-9]{6}` barravam o de backup no proprio navegador. -->
             <input type="text" id="codigo" name="codigo" maxlength="11"
-                   autocomplete="one-time-code" required
+                   inputmode="numeric" autocomplete="one-time-code" required
                    aria-describedby="dicaCodigo">
             <p id="dicaCodigo" class="dica">
-                6 dígitos do e-mail — ou um código de backup (XXXXX-XXXXX), se o
-                e-mail não chegar.
+                6 dígitos do e-mail — ou um código de backup de 10 dígitos
+                (12345-67890), se o e-mail não chegar.
             </p>
             <button type="submit" id="btnVerificar">Verificar</button>
         </form>

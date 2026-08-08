@@ -51,7 +51,9 @@ describe('Geração de códigos de backup', () => {
         expect(res.body.ok).toBe(true);
         expect(res.body.codigos).toHaveLength(8);
         expect(new Set(res.body.codigos).size).toBe(8); // sem repetidos
-        res.body.codigos.forEach((c) => expect(c).toMatch(/^[A-Z2-9]{5}-[A-Z2-9]{5}$/));
+        // Somente digitos: o campo de 2FA abre teclado numerico no celular,
+        // o mesmo do codigo de 6 digitos que vem por e-mail.
+        res.body.codigos.forEach((c) => expect(c).toMatch(/^\d{5}-\d{5}$/));
     });
 
     it('o banco guarda HASH, nunca o codigo em texto puro', async () => {
@@ -251,17 +253,109 @@ describe('Unidade: utils/codigosBackup', () => {
         expect(await backup.conferir(codigos[2], registros)).toBe(2);
     });
 
-    it('nao gera simbolos ambiguos (0 O 1 I L)', async () => {
-        // Estes codigos sao lidos por pessoas; ambiguidade vira tentativa
-        // errada, e tentativa errada consome o limite de forca bruta.
+    it('gera SOMENTE digitos', async () => {
+        // Se voltasse a sair letra, o teclado numerico do celular deixaria de
+        // conseguir digitar o codigo — que foi o motivo da troca de alfabeto.
         const { codigos } = await backup.gerarLote(20);
-        codigos.forEach((c) => expect(c).not.toMatch(/[01OIL]/));
+        codigos.forEach((c) => expect(c).toMatch(/^\d{5}-\d{5}$/));
+    });
+
+    it('o codigo de backup nao se confunde com o de 6 digitos do e-mail', async () => {
+        // Ambos sao numericos agora; o COMPRIMENTO e o que separa os dois, e
+        // `pareceCodigoBackup` decide qual caminho o verify vai tentar.
+        expect(backup.pareceCodigoBackup('1234567890')).toBe(true);
+        expect(backup.pareceCodigoBackup('12345-67890')).toBe(true);
+        expect(backup.pareceCodigoBackup('123456')).toBe(false);   // codigo do e-mail
+        expect(backup.pareceCodigoBackup('12345678901')).toBe(false);
     });
 
     it('valor que nao tem cara de codigo de backup e rejeitado sem custo', async () => {
         const { registros } = await backup.gerarLote(2);
-        expect(await backup.conferir('123456', registros)).toBe(-1);
+        expect(await backup.conferir('123456', registros)).toBe(-1); // 6 digitos: nao e backup
         expect(await backup.conferir('', registros)).toBe(-1);
         expect(await backup.conferir(null, registros)).toBe(-1);
+    });
+});
+
+describe('Código fixo de 2FA — guardado como hash', () => {
+    const crypto = require('crypto');
+
+    it('login com codigo fixo funciona e o valor NAO fica legivel no banco', async () => {
+        const diretor = await criarUsuario({ email: 'dir_fixo@escola.test', perfil: 'diretor' });
+        const CODIGO = '135791';
+        await Usuario.findByIdAndUpdate(diretor._id, {
+            twoFactorFixedCode: await backup.hashSegredo(CODIGO),
+            twoFactorEnabled: true,
+        });
+
+        const doc = await Usuario.findById(diretor._id).select('+twoFactorFixedCode').lean();
+        expect(doc.twoFactorFixedCode).not.toContain(CODIGO);
+
+        const { preCookie } = await loginAtePreAuth('dir_fixo@escola.test');
+        const res = await request(app).post('/api/auth/2fa/verify')
+            .set('Cookie', [preCookie]).send({ codigo: CODIGO });
+
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+    });
+
+    it('o login NAO grava mais o codigo em twoFactorPendingToken', async () => {
+        // Antes, o login lia o codigo fixo em texto puro e reconstruia um
+        // SHA-256 em PendingToken. Com o valor hasheado isso deixou de ser
+        // possivel — e nem deve ser: SHA-256 sobre 6 digitos cai em
+        // milissegundos de forca bruta.
+        const diretor = await criarUsuario({ email: 'dir_fixo2@escola.test', perfil: 'diretor' });
+        await Usuario.findByIdAndUpdate(diretor._id, {
+            twoFactorFixedCode: await backup.hashSegredo('246802'),
+            twoFactorEnabled: true,
+        });
+
+        await loginAtePreAuth('dir_fixo2@escola.test');
+
+        const doc = await Usuario.findById(diretor._id)
+            .select('+twoFactorPendingToken +twoFactorPendingExpiry').lean();
+        expect(doc.twoFactorPendingToken).toBeNull();
+        // A janela de 5 minutos continua valendo.
+        expect(doc.twoFactorPendingExpiry).toBeTruthy();
+    });
+
+    it('codigo fixo ERRADO e recusado', async () => {
+        const diretor = await criarUsuario({ email: 'dir_fixo3@escola.test', perfil: 'diretor' });
+        await Usuario.findByIdAndUpdate(diretor._id, {
+            twoFactorFixedCode: await backup.hashSegredo('111222'),
+            twoFactorEnabled: true,
+        });
+
+        const { preCookie } = await loginAtePreAuth('dir_fixo3@escola.test');
+        const res = await request(app).post('/api/auth/2fa/verify')
+            .set('Cookie', [preCookie]).send({ codigo: '999888' });
+
+        expect(res.status).toBe(401);
+        expect(res.body.codigo).toBe('CODIGO_INVALIDO');
+    });
+
+    it('valor LEGADO em texto puro e RECUSADO', async () => {
+        // O unico valor legado conhecido esteve versionado em repositorio
+        // publico. Aceitar o formato antigo manteria vivo o problema.
+        const diretor = await criarUsuario({ email: 'dir_legado@escola.test', perfil: 'diretor' });
+        await Usuario.findByIdAndUpdate(diretor._id, {
+            twoFactorFixedCode: '440044',   // formato antigo, texto puro
+            twoFactorEnabled: true,
+        });
+
+        const { preCookie } = await loginAtePreAuth('dir_legado@escola.test');
+        const res = await request(app).post('/api/auth/2fa/verify')
+            .set('Cookie', [preCookie]).send({ codigo: '440044' });
+
+        expect(res.status).toBe(401);
+    });
+
+    it('hashSegredo/conferirSegredo: casa o certo, recusa o errado', async () => {
+        const h = await backup.hashSegredo('654321');
+        expect(await backup.conferirSegredo('654321', h)).toBe(true);
+        expect(await backup.conferirSegredo('654320', h)).toBe(false);
+        expect(await backup.conferirSegredo('654321', '654321')).toBe(false); // legado
+        expect(backup.ehFormatoLegado('654321')).toBe(true);
+        expect(backup.ehFormatoLegado(h)).toBe(false);
     });
 });

@@ -131,9 +131,16 @@ document.addEventListener('DOMContentLoaded', function () {
         const errorMsg = document.getElementById('twofa-error-msg');
         const btn = document.getElementById('twofa-submit-btn');
 
-        if (!code || code.length !== 6) {
+        // Aceita o codigo do e-mail (6 digitos) OU o de backup (10 simbolos,
+        // com ou sem hifen). A validacao anterior era `length !== 6`, que
+        // rejeitava o de backup antes mesmo de chegar ao servidor.
+        const semHifen = code.replace(/-/g, '');
+        const ehCodigoEmail = /^\d{6}$/.test(code);
+        const ehCodigoBackup = /^\d{10}$/.test(semHifen);
+
+        if (!ehCodigoEmail && !ehCodigoBackup) {
             if (errorMsg) {
-                errorMsg.textContent = 'Digite o código de 6 dígitos.';
+                errorMsg.textContent = 'Informe os 6 dígitos do e-mail ou o código de backup de 10 dígitos.';
                 errorMsg.style.display = 'block';
             }
             return;
@@ -232,8 +239,17 @@ document.addEventListener('DOMContentLoaded', function () {
             if (e.key === 'Enter') verificarCodigo2FA();
         });
         codeInput.addEventListener('input', (e) => {
-            e.target.value = e.target.value.replace(/\D/g, '');
-            if (e.target.value.length === 6) verificarCodigo2FA();
+            // O filtro anterior era `replace(/\D/g, '')`, que apagava tambem o
+            // HIFEN — e com ele o codigo de backup 12345-67890 se desmontava
+            // enquanto a pessoa digitava. Agora o hifen sobrevive.
+            const antes = e.target.value;
+            const limpo = antes.replace(/[^0-9-]/g, '');
+            if (limpo !== antes) e.target.value = limpo;
+
+            // Envio automatico: 6 digitos (codigo do e-mail) ou 10 simbolos
+            // alfanumericos (codigo de backup, com ou sem hifen).
+            const semHifen = limpo.replace(/-/g, '');
+            if (/^\d{6}$/.test(limpo) || semHifen.length === 10) verificarCodigo2FA();
         });
     }
 

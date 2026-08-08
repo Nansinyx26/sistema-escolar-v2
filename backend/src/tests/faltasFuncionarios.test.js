@@ -41,7 +41,9 @@ const CODIGO_2FA = '424242';
 
 async function logar(email, perfil, escola) {
     const usuario = await criarUsuario({
-        email, perfil, escolaId: String(escola._id), twoFactorFixedCode: CODIGO_2FA
+        email, perfil, escolaId: String(escola._id),
+        // O campo guarda HASH scrypt (utils/codigosBackup); texto puro e recusado.
+        twoFactorFixedCode: await require('../utils/codigosBackup').hashSegredo(CODIGO_2FA)
     });
     const vinculos = [{ escolaId: String(escola._id), cargo: perfil }];
 

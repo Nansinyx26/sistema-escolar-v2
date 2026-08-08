@@ -635,17 +635,30 @@ exports.login = async (req, res) => {
             // A validade é a MESMA do fluxo normal (5 min): a expiração de 1 ano
             // transformava o código fixo numa credencial permanente de 6 dígitos.
             if (userWith2FA.twoFactorFixedCode) {
-                const codigo = userWith2FA.twoFactorFixedCode;
-                const codigoHash = crypto.createHash('sha256').update(codigo).digest('hex');
+                // ============================================
+                // O código fixo agora é guardado como HASH scrypt
+                // ============================================
+                // Antes o valor vinha em TEXTO PURO do banco e o login o
+                // re-hasheava em SHA-256 para preencher `twoFactorPendingToken`.
+                // Duas consequências ruins: qualquer dump do banco entregava um
+                // segundo fator pronto para uso, e SHA-256 sobre 6 dígitos é
+                // quebrado por força bruta em milissegundos de qualquer forma.
+                //
+                // Agora o servidor NÃO conhece o código: ele só guarda o hash e
+                // compara no /2fa/verify. Por isso `twoFactorPendingToken` fica
+                // null aqui — não há o que preencher sem o texto puro. A janela
+                // de 5 minutos continua valendo, gravada em `PendingExpiry`.
                 const expiry = new Date(Date.now() + 5 * 60 * 1000);
 
                 await Usuario.findByIdAndUpdate(user._id, {
-                    twoFactorPendingToken: codigoHash,
+                    twoFactorPendingToken: null,
                     twoFactorPendingExpiry: expiry,
                     twoFactorAttempts: 0
                 });
 
-                console.log(`🔐 [2FA] Código fixo aplicado para ${user.email}`);
+                logger.info('[2FA] Código fixo aplicado', {
+                    usuarioId: String(user._id), perfil: user.perfil, action: 'auth.2fa.codigoFixo',
+                });
                 await logAction(req, 'LOGIN_2FA_REQUIRED', 'Auth', {
                     recursoId: user._id,
                     descricao: `Login 2FA (fixo) exigido para ${user.email}`

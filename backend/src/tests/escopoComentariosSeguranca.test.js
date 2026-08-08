@@ -57,7 +57,10 @@ async function agentResponsavel(email, escola) {
 async function agentDiretor(email, escola) {
     const CODIGO_FIXO = '424242';
     const user = await criarUsuario({
-        email, perfil: 'diretor', escolaId: String(escola._id), twoFactorFixedCode: CODIGO_FIXO
+        email, perfil: 'diretor', escolaId: String(escola._id),
+        // O campo guarda HASH scrypt (utils/codigosBackup). Texto puro e
+        // recusado de proposito — ver o commit que migrou o codigo fixo.
+        twoFactorFixedCode: await require('../utils/codigosBackup').hashSegredo(CODIGO_FIXO)
     });
     await Diretor.create({
         idUsuario: String(user._id), nome: user.nome, email,

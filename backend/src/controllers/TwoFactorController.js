@@ -297,6 +297,30 @@ exports.verifyCode = async (req, res) => {
             valido = false;
         }
 
+        // ============================================
+        // CÓDIGO FIXO — comparado por hash, não reconstruído
+        // ============================================
+        // O valor guardado em `twoFactorFixedCode` deixou de ser texto puro. O
+        // login não consegue mais preencher `twoFactorPendingToken` a partir
+        // dele, então a conferência acontece aqui, contra o hash scrypt.
+        //
+        // A janela de 5 minutos já foi validada acima (twoFactorPendingExpiry):
+        // o código fixo não escapa da expiração nem do limite de tentativas.
+        if (!valido && usuario.twoFactorFixedCode) {
+            if (backup.ehFormatoLegado(usuario.twoFactorFixedCode)) {
+                // Valor em texto puro de antes da migração. RECUSADO de
+                // propósito: o único valor legado conhecido esteve versionado
+                // em repositório público, e aceitá-lo manteria vivo justamente
+                // o problema que o hash existe para resolver.
+                logger.error('[2FA] Código fixo em formato legado (texto puro) — recusado', {
+                    usuarioId: String(usuario._id), perfil: usuario.perfil,
+                    action: 'auth.2fa.codigoFixoLegado',
+                });
+            } else {
+                valido = await backup.conferirSegredo(codigo, usuario.twoFactorFixedCode);
+            }
+        }
+
         if (!valido) {
             const tentativas = (usuario.twoFactorAttempts || 0) + 1;
             const update = { twoFactorAttempts: tentativas };

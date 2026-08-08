@@ -506,18 +506,28 @@
                     <label class="form-label" for="twofa-code-input">Código de Verificação</label>
                     <div class="input-group">
                         <i class="input-icon bi bi-key"></i>
+                        <!-- Aceita as DUAS formas, ambas numericas: os 6
+                             digitos do e-mail e o codigo de backup de 10
+                             digitos. `maxlength=6` e `pattern=[0-9]{6}`
+                             barravam o de backup no proprio navegador.
+                             `inputmode=numeric` FICA: os dois sao numeros, e o
+                             teclado numerico e o certo para os dois. -->
                         <input
                             type="text"
                             id="twofa-code-input"
                             class="form-input"
                             placeholder="000000"
-                            maxlength="6"
-                            pattern="[0-9]{6}"
+                            maxlength="11"
                             inputmode="numeric"
                             autocomplete="one-time-code"
-                            style="text-align: center; font-size: 1.5rem; letter-spacing: 0.5rem; font-weight: 700;"
+                            aria-describedby="twofa-dica"
+                            style="text-align: center; font-size: 1.4rem; letter-spacing: 0.3rem; font-weight: 700;"
                         >
                     </div>
+                    <p id="twofa-dica" style="font-size: 0.78rem; color: var(--text-tertiary); margin-top: 0.5rem; line-height: 1.4;">
+                        6 dígitos do e-mail — ou um código de backup de 10 dígitos
+                        (<span style="letter-spacing:.05em;">12345-67890</span>), se o e-mail não chegar.
+                    </p>
                 </div>
 
                 <p id="twofa-timer" style="font-size: 0.8rem; color: var(--text-tertiary); margin-bottom: 1.5rem;">⏱️ Expira em <span id="twofa-countdown">5:00</span></p>
