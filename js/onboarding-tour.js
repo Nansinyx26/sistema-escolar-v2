@@ -5,6 +5,69 @@
 (function () {
     'use strict';
 
+    // ========================================================================
+    // SILENCIAR O GUIA — estado único, persistido
+    // ========================================================================
+    // O botão do alto-falante NUNCA foi um toggle. Cada clique chamava
+    // `triggerTourSpeak()`, que passa por `window.speak()` → `stopTtsAudio()` e
+    // em seguida pede um áudio NOVO ao backend. Por isso o primeiro clique
+    // parecia silenciar (ele de fato corta a fala em andamento) e o segundo não
+    // "dessilenciava": ele tentava falar de novo, e quando o TTS estava
+    // indisponível (401, 503, cota do provedor) simplesmente não saía som — sem
+    // nenhum aviso. Do lado de quem usa, o botão só desligava.
+    //
+    // Agora existe um estado booleano de verdade, guardado no localStorage, que
+    // sobrevive ao F5 e à navegação entre páginas. Mudo bloqueia novas falas na
+    // origem; ao desmutar, a fala do passo atual recomeça.
+    //
+    // A chave NÃO entra na limpeza de troca de conta (js/auth.js): silenciar é
+    // preferência de acessibilidade do APARELHO — quem precisa de silêncio
+    // continua precisando ao trocar de usuário.
+    // ========================================================================
+    const CHAVE_SILENCIADO = 'guiaSilenciado';
+
+    function guiaSilenciado() {
+        try {
+            return localStorage.getItem(CHAVE_SILENCIADO) === 'true';
+        } catch (e) {
+            return false; // storage bloqueado: o padrão é com som
+        }
+    }
+
+    function definirSilenciado(valor) {
+        try {
+            localStorage.setItem(CHAVE_SILENCIADO, String(valor));
+        } catch (e) { /* storage bloqueado: vale só para esta sessão */ }
+    }
+
+    /**
+     * Aplica o estado ao botão: ícone, `aria-pressed`, rótulo e title.
+     *
+     * `aria-pressed` é o que comunica a um leitor de tela que este é um botão
+     * de dois estados e em qual deles ele está — sem isso, quem depende de
+     * leitor não tem como saber se o guia está mudo.
+     */
+    function pintarBotaoSom(botao) {
+        if (!botao) return;
+        const mudo = guiaSilenciado();
+        const rotulo = mudo ? 'Ativar som do guia' : 'Silenciar guia';
+
+        botao.setAttribute('aria-pressed', String(mudo));
+        botao.setAttribute('aria-label', rotulo);
+        botao.setAttribute('title', rotulo);
+        botao.style.opacity = mudo ? '0.55' : '1';
+
+        // O lucide-init.js troca <i> por <svg>; recriar o <i> e mandar
+        // redesenhar é o caminho que funciona nos dois casos.
+        const icone = botao.querySelector('i, svg');
+        if (icone) {
+            const novo = document.createElement('i');
+            novo.className = mudo ? 'bi bi-volume-mute-fill' : 'bi bi-volume-up-fill';
+            icone.replaceWith(novo);
+            if (typeof window.renderLucideIcons === 'function') window.renderLucideIcons();
+        }
+    }
+
     const PROFESSOR_STEPS = [
         { title: 'Boas-vindas', content: 'Bem-vindo ao Sistema Escolar! Este tour mostra os principais recursos da sua dashboard com o novo layout.', target: null },
         { title: 'Área Principal', content: 'Aqui você vê a mensagem de boas-vindas e um resumo rápido da sua rotina docente.', target: '.welcome-section' },
@@ -339,8 +402,8 @@
             </div>
             <h3 style="color: #fff; font-size: 1.25rem; font-weight: 800; margin-bottom: 0.75rem; letter-spacing: -0.02em; display: flex; align-items: center; gap: 10px;">
                 ${step.title}
-                <button type="button" id="tour-speak" style="background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); color: #10b981; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;" title="Ouvir explicação">
-                    <i class="bi bi-volume-up-fill"></i>
+                <button type="button" id="tour-speak" aria-pressed="${guiaSilenciado()}" aria-label="${guiaSilenciado() ? 'Ativar som do guia' : 'Silenciar guia'}" title="${guiaSilenciado() ? 'Ativar som do guia' : 'Silenciar guia'}" style="background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); color: #10b981; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; opacity: ${guiaSilenciado() ? '0.55' : '1'};">
+                    <i class="bi ${guiaSilenciado() ? 'bi-volume-mute-fill' : 'bi-volume-up-fill'}"></i>
                 </button>
             </h3>
             <p style="color: rgba(255,255,255,0.65); font-size: 0.92rem; line-height: 1.6; margin-bottom: 1.5rem">${step.content}</p>
@@ -358,6 +421,14 @@
 
         const triggerTourSpeak = async () => {
             if (!window.speak) return;
+
+            // Bloqueio na ORIGEM: enquanto mudo, nenhuma fala nova é pedida.
+            // Só parar o áudio depois de gerado gastaria a chamada ao TTS e
+            // deixaria a janela em que o som escapa antes do `cancel`.
+            if (guiaSilenciado()) {
+                if (window.stopTtsAudio) window.stopTtsAudio();
+                return;
+            }
 
             // Remove um retry pendente de um passo anterior
             if (voiceUnlockHandler) {
@@ -402,11 +473,44 @@
             }
         };
 
+        // A fala automática do passo passa pelo mesmo portão: `triggerTourSpeak`
+        // já sai cedo quando o guia está mudo.
         setTimeout(triggerTourSpeak, 300);
 
-        document.getElementById('tour-speak')?.addEventListener('click', () => {
-            triggerTourSpeak();
-        });
+        // ── Botão de som: TOGGLE ────────────────────────────────────────────
+        // `renderStep()` reescreve o innerHTML do popup a cada passo, então o
+        // botão é sempre um elemento NOVO — não há listener acumulado de passos
+        // anteriores. A guarda `data-som-ligado` protege contra uma chamada
+        // dupla de renderStep no mesmo passo, que daria dois toggles por clique
+        // (o estado voltaria ao original e o botão pareceria morto).
+        const botaoSom = document.getElementById('tour-speak');
+        if (botaoSom && !botaoSom.dataset.somLigado) {
+            botaoSom.dataset.somLigado = '1';
+            pintarBotaoSom(botaoSom);
+
+            botaoSom.addEventListener('click', () => {
+                const mudoAgora = !guiaSilenciado();
+                definirSilenciado(mudoAgora);
+                pintarBotaoSom(botaoSom);
+
+                if (mudoAgora) {
+                    // Silenciar precisa PARAR o que está tocando agora, não só
+                    // impedir a próxima fala.
+                    if (window.stopTtsAudio) window.stopTtsAudio();
+                    if (window.VoiceOrbManager) window.VoiceOrbManager.setState('idle');
+                    // Um retry de autoplay pendente também precisa morrer, senão
+                    // o primeiro toque na tela reabriria o áudio já silenciado.
+                    if (voiceUnlockHandler) {
+                        document.removeEventListener('pointerdown', voiceUnlockHandler);
+                        voiceUnlockHandler = null;
+                    }
+                } else {
+                    // Dessilenciar: refala o passo atual. O clique é um gesto do
+                    // usuário, então o autoplay do navegador está liberado aqui.
+                    triggerTourSpeak();
+                }
+            });
+        }
 
         document.getElementById('tour-back')?.addEventListener('click', () => {
             currentStep--;

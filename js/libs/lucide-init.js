@@ -95,6 +95,10 @@
     'door-open-fill': 'door-open', 'door-open': 'door-open',
     'door-closed': 'door-closed', 'volume-up-fill': 'volume-2',
     'volume-up': 'volume-2', 'volume-mute': 'volume-x', 'trophy': 'trophy',
+    // Estado "mudo" do botão de som do guia (js/onboarding-tour.js). Sem esta
+    // entrada o ícone ficava em Bootstrap enquanto o par "com som" virava
+    // Lucide — o botão trocava de estilo ao alternar, e não só de símbolo.
+    'volume-mute-fill': 'volume-x',
     'tools': 'wrench', 'terminal-fill': 'terminal', 'table': 'table',
     'speedometer': 'gauge', 'speedometer2': 'gauge', 'printer': 'printer',
     'palette': 'palette', 'lightning-charge-fill': 'zap',
