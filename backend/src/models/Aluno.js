@@ -159,6 +159,11 @@ AlunoSchema.index({ nome: 'text', sobrenome: 'text' });
 // Consulta mais comum: alunos ativos de uma turma específica
 AlunoSchema.index({ turma: 1, ativo: 1 });
 AlunoSchema.index({ turmaId: 1, ativo: 1 });
+// Todos os alunos ativos de uma escola. É a consulta do relatório "alunos por
+// turma", que passou a buscar a escola inteira de uma vez em vez de fazer uma
+// ida ao banco por turma. Sem este índice composto, o filtro por `escolaId`
+// resolve pelo índice simples do campo e o `ativo` sobra para varredura.
+AlunoSchema.index({ escolaId: 1, ativo: 1 });
 // Matrícula (RA) é única dentro de cada escola, não globalmente.
 // Um RA "2024001" na Escola A é independente do mesmo número na Escola B.
 // partialFilterExpression exclui alunos sem RA atribuído ainda.

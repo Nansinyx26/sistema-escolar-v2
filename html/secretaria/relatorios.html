@@ -147,13 +147,101 @@ function switchTab(tab) {
     document.getElementById('tabMatriculas').style.display = tab === 'matriculas' ? 'block' : 'none';
 }
 
-async function carregarAlunosPorTurma() {
+// ============================================================================
+// CARREGAMENTO COM FIM GARANTIDO
+// ============================================================================
+// Os dois carregadores desta página tinham a mesma forma:
+//
+//     try { ... if (json.success) { pinta } } catch(e) { console.error(e) }
+//
+// Sem `finally`, sem timeout e sem ramo `else`. Qualquer falha — 403 de perfil,
+// 500, rede caindo, ou só uma consulta lenta demais — deixava o texto
+// "Carregando..." na tela PARA SEMPRE, com o erro só no console. Era esse o
+// "spinner infinito" relatado.
+//
+// Agora todo fetch tem AbortController + 15s, e o estado final da tela é
+// decidido no `finally`: dados, vazio, ou erro com botão de tentar de novo.
+// Nunca "carregando".
+// ============================================================================
+const TIMEOUT_MS = 15000;
+
+/**
+ * fetch com prazo. O AbortController é o que realmente encerra a requisição —
+ * um `Promise.race` com timer deixaria a conexão pendurada consumindo conexão
+ * do navegador (limite de 6 por origem) mesmo depois de desistirmos dela.
+ */
+async function buscarComPrazo(url) {
+    const controlador = new AbortController();
+    const alarme = setTimeout(() => controlador.abort(), TIMEOUT_MS);
     try {
-        const res = await fetch(`${API()}/secretaria/relatorios/alunos-por-turma`, { credentials:'include' });
-        const json = await res.json();
-        const container = document.getElementById('turmaReportContent');
-        if (json.success) {
-            container.innerHTML = json.data.map(t => `
+        const res = await fetch(url, { credentials: 'include', signal: controlador.signal });
+        if (!res.ok) {
+            const erro = new Error(mensagemDoStatus(res.status));
+            erro.status = res.status;
+            throw erro;
+        }
+        return await res.json();
+    } catch (e) {
+        if (e.name === 'AbortError') {
+            throw new Error(`O servidor demorou mais de ${TIMEOUT_MS / 1000}s para responder.`);
+        }
+        throw e;
+    } finally {
+        clearTimeout(alarme);
+    }
+}
+
+function mensagemDoStatus(status) {
+    if (status === 401) return 'Sua sessão expirou. Entre novamente.';
+    if (status === 403) return 'Seu perfil não tem acesso a este relatório.';
+    if (status === 404) return 'Relatório indisponível nesta versão do sistema.';
+    if (status >= 500) return 'O servidor falhou ao gerar o relatório.';
+    return `Não foi possível carregar (HTTP ${status}).`;
+}
+
+/** Bloco de erro com retry. `aoTentar` é o nome de uma função global. */
+function blocoErro(mensagem, aoTentar) {
+    return `<div style="text-align:center;padding:2rem;color:#fca5a5;">
+        <i class="bi bi-exclamation-triangle" style="font-size:1.5rem;display:block;margin-bottom:0.5rem;"></i>
+        <div style="margin-bottom:1rem;">${escapar(mensagem)}</div>
+        <button class="sec-btn sec-btn-outline" onclick="${aoTentar}()">
+            <i class="bi bi-arrow-clockwise"></i> Tentar novamente
+        </button>
+    </div>`;
+}
+
+function blocoVazio(mensagem) {
+    return `<div style="text-align:center;padding:2rem;color:#94a3b8;">
+        <i class="bi bi-inbox" style="font-size:1.5rem;display:block;margin-bottom:0.5rem;"></i>
+        ${escapar(mensagem)}
+    </div>`;
+}
+
+/** A mensagem de erro pode conter texto vindo do servidor. */
+function escapar(texto) {
+    const d = document.createElement('div');
+    d.textContent = String(texto == null ? '' : texto);
+    return d.innerHTML;
+}
+
+async function carregarAlunosPorTurma() {
+    const container = document.getElementById('turmaReportContent');
+    container.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:2rem;">Carregando...</div>';
+
+    try {
+        const json = await buscarComPrazo(`${API()}/secretaria/relatorios/alunos-por-turma`);
+        if (!json.success) throw new Error(json.error || 'O servidor recusou o relatório.');
+
+        const turmas = json.data || [];
+        // Estado vazio é diferente de erro: "não há turmas" é uma resposta
+        // correta, e mostrá-la como falha mandaria a secretaria procurar um
+        // problema que não existe.
+        if (!turmas.length) {
+            container.innerHTML = blocoVazio('Nenhuma turma ativa cadastrada.');
+            return;
+        }
+
+        container.innerHTML = turmas.map(t => `
                 <div class="sec-form-card">
                     <h3><i class="bi bi-people" style="color:#0ea5e9;"></i> ${t.turma} <span class="sec-badge sec-badge-blue" style="margin-left:0.5rem;">${t.totalAlunos} alunos</span></h3>
                     ${t.alunos.length > 0 ? `<div style="overflow-x:auto;"><table class="sec-table">
@@ -162,17 +250,23 @@ async function carregarAlunosPorTurma() {
                     </table></div>` : '<div style="color:#94a3b8;font-size:0.85rem;padding:0.5rem;">Nenhum aluno nesta turma</div>'}
                 </div>
             `).join('');
-        }
-    } catch(e) { console.error(e); }
+    } catch (e) {
+        console.error('[relatorios] alunos-por-turma:', e);
+        container.innerHTML = blocoErro(e.message, 'carregarAlunosPorTurma');
+    }
 }
 
 async function carregarMatriculas() {
+    const resumoEl = document.getElementById('matResumo');
+    const body = document.getElementById('matBody');
+    body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#94a3b8;">Carregando...</td></tr>';
+
     try {
-        const res = await fetch(`${API()}/secretaria/relatorios/matriculas`, { credentials:'include' });
-        const json = await res.json();
-        if (json.success) {
+        const json = await buscarComPrazo(`${API()}/secretaria/relatorios/matriculas`);
+        if (!json.success) throw new Error(json.error || 'O servidor recusou o relatório.');
+        {
             const r = json.data.resumo;
-            document.getElementById('matResumo').innerHTML = `
+            resumoEl.innerHTML = `
                 <div class="sec-summary-item"><div class="sec-summary-value">${r.total}</div><div class="sec-summary-label">Total</div></div>
                 <div class="sec-summary-item"><div class="sec-summary-value" style="color:#10b981;">${r.cursando}</div><div class="sec-summary-label">Cursando</div></div>
                 <div class="sec-summary-item"><div class="sec-summary-value" style="color:#3b82f6;">${r.aprovado}</div><div class="sec-summary-label">Aprovados</div></div>
@@ -180,19 +274,38 @@ async function carregarMatriculas() {
                 <div class="sec-summary-item"><div class="sec-summary-value" style="color:#f59e0b;">${r.transferido}</div><div class="sec-summary-label">Transferidos</div></div>
                 <div class="sec-summary-item"><div class="sec-summary-value" style="color:#94a3b8;">${r.evadido}</div><div class="sec-summary-label">Evadidos</div></div>
             `;
-            const body = document.getElementById('matBody');
-            if (json.data.matriculas.length > 0) {
+            const matriculas = json.data.matriculas || [];
+            if (matriculas.length > 0) {
                 const badgeMap = { cursando:'sec-badge-green', aprovado:'sec-badge-blue', reprovado:'sec-badge-red', transferido:'sec-badge-yellow', evadido:'sec-badge-gray' };
-                body.innerHTML = json.data.matriculas.map(m => `<tr>
+                body.innerHTML = matriculas.map(m => `<tr>
                     <td>${m.alunoNome}</td>
                     <td>${m.matriculaNumero || '-'}</td>
                     <td>${m.anoLetivo}</td>
                     <td><span class="sec-badge ${badgeMap[m.status] || 'sec-badge-purple'}">${m.status}</span></td>
                     <td>${m.dataMatricula ? new Date(m.dataMatricula).toLocaleDateString('pt-BR') : '-'}</td>
                 </tr>`).join('');
+            } else {
+                // Sem matrícula no período é resultado válido, não falha.
+                body.innerHTML = '<tr><td colspan="5">' + blocoVazio('Nenhuma matrícula no período.') + '</td></tr>';
+            }
+
+            // O backend limita as LINHAS mas conta o resumo sobre a base
+            // inteira. Sem este aviso, o total do resumo pareceria não bater
+            // com a tabela e viraria um chamado de "número errado".
+            const pag = json.data.paginacao;
+            if (pag && pag.truncado) {
+                body.insertAdjacentHTML('beforeend',
+                    `<tr><td colspan="5" style="text-align:center;color:#94a3b8;font-size:0.85rem;padding:0.75rem;">
+                        Exibindo as ${matriculas.length} matrículas mais recentes de ${pag.total}.
+                        Use "Exportar Matrículas (CSV)" para a lista completa.
+                    </td></tr>`);
             }
         }
-    } catch(e) { console.error(e); }
+    } catch (e) {
+        console.error('[relatorios] matriculas:', e);
+        resumoEl.innerHTML = '';
+        body.innerHTML = '<tr><td colspan="5">' + blocoErro(e.message, 'carregarMatriculas') + '</td></tr>';
+    }
 }
 
 function exportar(tipo) {

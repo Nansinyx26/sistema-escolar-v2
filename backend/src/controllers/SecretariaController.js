@@ -982,21 +982,64 @@ exports.listarComunicados = async (req, res) => {
 // GET /api/secretaria/relatorios/alunos-por-turma
 exports.relatorioAlunosPorTurma = async (req, res) => {
     try {
-        const turmas = await Turma.find(escopo(req, { ativo: true })).sort({ nome: 1 }).lean();
+        // ============================================
+        // N+1 ELIMINADO
+        // ============================================
+        // Antes: um `Aluno.find()` por turma, dentro de um Promise.all — 1 + N
+        // idas ao banco. Pior, cada uma usava `$or` de três campos, que impede
+        // o planejador de resolver por um índice só. Numa escola com 30 turmas
+        // isso é 31 consultas por carregamento, e no Atlas gratuito era tempo
+        // suficiente para a página ficar presa no "Carregando..." (que, sem
+        // `finally` no front, nunca saía).
+        //
+        // Agora: DUAS consultas no total. Os alunos vêm de uma vez e são
+        // agrupados em memória — agrupar alguns milhares de documentos em JS é
+        // ordens de grandeza mais barato que uma ida a mais ao banco.
+        const [turmas, alunos] = await Promise.all([
+            Turma.find(escopo(req, { ativo: true })).sort({ nome: 1 }).lean(),
+            Aluno.find(escopo(req, { ativo: true }))
+                .select('nome sobrenome matricula turma turmaId ativo')
+                .sort({ nome: 1 })
+                .lean(),
+        ]);
 
-        const resultado = await Promise.all(turmas.map(async (t) => {
-            const alunos = await Aluno.find(escopo(req, {
-                $or: [{ turma: t.nome }, { turma: t.id }, { turmaId: t._id }],
-                ativo: true
-            })).select('nome sobrenome matricula turma ativo').sort({ nome: 1 }).lean();
+        // O vínculo aluno→turma é gravado de três formas no histórico da base
+        // (nome da turma, id textual, ObjectId). O índice cobre as três para
+        // que o agrupamento reproduza exatamente o `$or` anterior.
+        const porChave = new Map();
+        const indexar = (chave, aluno) => {
+            if (chave === undefined || chave === null || chave === '') return;
+            const k = String(chave);
+            if (!porChave.has(k)) porChave.set(k, []);
+            porChave.get(k).push(aluno);
+        };
+        alunos.forEach((a) => {
+            indexar(a.turma, a);
+            if (a.turmaId) indexar(a.turmaId, a);
+        });
+
+        const resultado = turmas.map((t) => {
+            // Um mesmo aluno pode casar por mais de uma chave (ex.: `turma` com
+            // o nome E `turmaId` com o _id). O Set desduplica por _id, senão a
+            // contagem sairia dobrada.
+            const vistos = new Set();
+            const daTurma = [];
+            [t.nome, t.id, t._id].forEach((chave) => {
+                (porChave.get(String(chave)) || []).forEach((a) => {
+                    const id = String(a._id);
+                    if (vistos.has(id)) return;
+                    vistos.add(id);
+                    daTurma.push(a);
+                });
+            });
 
             return {
                 turma: t.nome || t.id,
                 turmaId: t._id,
-                totalAlunos: alunos.length,
-                alunos
+                totalAlunos: daTurma.length,
+                alunos: daTurma,
             };
-        }));
+        });
 
         res.json({ success: true, data: resultado });
     } catch (error) {
@@ -1013,7 +1056,25 @@ exports.relatorioMatriculas = async (req, res) => {
         if (anoLetivo) query.anoLetivo = parseInt(anoLetivo);
         if (status) query.status = String(status);
 
-        const matriculas = await Matricula.find(query).sort({ createdAt: -1 }).lean();
+        // ============================================
+        // PAGINAÇÃO — a consulta não tinha teto nenhum
+        // ============================================
+        // `Matricula.find(query)` sem `limit` carrega o histórico INTEIRO da
+        // escola na memória do servidor e o serializa para o navegador. Isso
+        // cresce a cada ano letivo e nunca diminui: uma escola com poucos anos
+        // de operação já devolve dezenas de milhares de documentos, e foi um
+        // dos candidatos a travar esta página.
+        //
+        // O teto é aplicado às LINHAS. O resumo continua contando a base toda,
+        // via agregação no banco — trazer tudo só para contar era o desperdício.
+        const limite = Math.min(Math.max(parseInt(req.query.limite, 10) || 200, 1), 1000);
+        const pagina = Math.max(parseInt(req.query.pagina, 10) || 1, 1);
+
+        const matriculas = await Matricula.find(query)
+            .sort({ createdAt: -1 })
+            .skip((pagina - 1) * limite)
+            .limit(limite)
+            .lean();
 
         // Popula nomes
         const alunoIds = [...new Set(matriculas.map(m => m.alunoId))];
@@ -1030,17 +1091,37 @@ exports.relatorioMatriculas = async (req, res) => {
             };
         });
 
-        // Resumo
-        const resumo = {
-            total: dados.length,
-            cursando: dados.filter(d => d.status === 'cursando').length,
-            aprovado: dados.filter(d => d.status === 'aprovado').length,
-            reprovado: dados.filter(d => d.status === 'reprovado').length,
-            transferido: dados.filter(d => d.status === 'transferido').length,
-            evadido: dados.filter(d => d.status === 'evadido').length
-        };
+        // Resumo sobre a base COMPLETA, contado pelo banco.
+        // A versão anterior contava em cima do array já carregado — com a
+        // paginação acima, isso passaria a resumir apenas a página atual e os
+        // números da tela ficariam errados sem nenhum sinal disso.
+        const porStatus = await Matricula.aggregate([
+            { $match: query },
+            { $group: { _id: '$status', total: { $sum: 1 } } },
+        ]);
 
-        res.json({ success: true, data: { matriculas: dados, resumo } });
+        const resumo = { total: 0, cursando: 0, aprovado: 0, reprovado: 0, transferido: 0, evadido: 0 };
+        porStatus.forEach(({ _id, total }) => {
+            resumo.total += total;
+            if (Object.prototype.hasOwnProperty.call(resumo, _id)) resumo[_id] = total;
+        });
+
+        res.json({
+            success: true,
+            data: {
+                matriculas: dados,
+                resumo,
+                paginacao: {
+                    pagina,
+                    limite,
+                    total: resumo.total,
+                    // A tela usa isto para avisar que existe mais coisa além do
+                    // que está listado, em vez de o número do resumo parecer
+                    // não bater com a tabela.
+                    truncado: resumo.total > pagina * limite,
+                },
+            },
+        });
     } catch (error) {
         logger.error(`[Secretaria.relatorioMatriculas] ${error.message}`);
         res.status(500).json({ success: false, error: error.message });
