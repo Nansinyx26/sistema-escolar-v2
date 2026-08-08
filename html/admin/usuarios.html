@@ -448,6 +448,12 @@
                         const json = await res.json();
                         if (json.success) success = true;
                         else throw new Error(json.error);
+
+                        // A cópia local do mesmo e-mail sobrevivia à exclusão no
+                        // servidor: a linha voltava para a tabela como
+                        // "IndexedDB" logo no refresh e o botão de migrar ainda
+                        // permitia devolver a conta apagada para a nuvem.
+                        if (success) await deleteFromIndexedDBByEmail(email);
                     } else if (source === 'IndexedDB') {
                         success = await deleteFromIndexedDB(id);
                     }
@@ -519,7 +525,7 @@
                                         <i class="bi bi-shield-lock"></i>
                                     </button>
                                 ` : ''}
-                                ${(u.source === 'MongoDB' && (u.perfil === 'diretor' || u.perfil === 'secretaria' || u.twoFactorEnabled)) ? `
+                                ${(u.source === 'MongoDB' && (['admin','diretor','secretaria'].indexOf(u.perfil) !== -1 || u.twoFactorEnabled)) ? `
                                     <button class="btn-icon" onclick="abrirCodigosBackup('${u.id}')" title="Códigos de backup 2FA" style="color: #34e0a1">
                                         <i class="bi bi-key-fill"></i>
                                     </button>
@@ -714,6 +720,22 @@
                     };
                     req.onupgradeneeded = (e) => e.target.transaction.abort();
                 });
+            }
+
+            // Remove pelo e-mail, não pela chave: a cópia local de uma conta
+            // do MongoDB tem id próprio, então só o e-mail liga as duas.
+            async function deleteFromIndexedDBByEmail(email) {
+                const alvo = String(email || '').toLowerCase();
+                if (!alvo) return;
+                try {
+                    const locais = await getIndexedDBUsers();
+                    for (const u of locais) {
+                        if (String(u.email || '').toLowerCase() !== alvo) continue;
+                        await deleteFromIndexedDB(u._id || u.id).catch(() => {});
+                    }
+                } catch (e) {
+                    console.error('Falha ao limpar cópia local:', e);
+                }
             }
 
             function deleteFromIndexedDB(id) {

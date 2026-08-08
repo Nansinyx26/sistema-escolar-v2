@@ -309,9 +309,15 @@
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (json) {
             var lista = (json && json.data) || [];
+            // ADMIN precisa estar aqui. O filtro nasceu antes da Tarefa 7, quando
+            // codigo de backup existia so para diretor e secretaria — e por isso
+            // deixava de fora justamente a conta em que o 2FA obrigatorio e
+            // ativado primeiro, no rollout. Sem admin na lista, o roteiro de
+            // ativacao nao tinha como comecar.
+            var PERFIS_ELEGIVEIS = ['admin', 'diretor', 'secretaria'];
             var elegiveis = lista.filter(function (u) {
                 return u.ativo !== false
-                    && (u.perfil === 'diretor' || u.perfil === 'secretaria' || u.twoFactorEnabled);
+                    && (PERFIS_ELEGIVEIS.indexOf(u.perfil) !== -1 || u.twoFactorEnabled);
             });
 
             if (!elegiveis.length) {
