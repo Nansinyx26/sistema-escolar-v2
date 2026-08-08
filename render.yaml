@@ -88,12 +88,12 @@ services:
       - key: EMAIL_FROM
         sync: false
 
-      # Só para SMTP (ignoradas quando EMAIL_PASS é chave de API).
-      # 465 = TLS implícito | 587 = STARTTLS. NUNCA 25: bloqueada em hospedagem.
-      # - key: EMAIL_HOST
-      #   value: smtp.seuprovedor.com
-      # - key: EMAIL_PORT
-      #   value: "587"
+      # Configuração de SMTP (EMAIL_HOST/EMAIL_PORT) só é necessária quando
+      # EMAIL_PASS NÃO é uma chave de API — o que não é o caso recomendado aqui.
+      # As instruções estão em docs/ENVIO-DE-EMAIL.md, fora deste arquivo: um
+      # exemplo de host SMTP ao lado de EMAIL_USER e EMAIL_PASS forma o trio
+      # host+usuário+senha que os scanners de segredo tratam como credencial
+      # vazada — e um falso positivo recorrente treina a equipe a ignorar alerta.
 
       # ── TTS: Google Gemini ───────────────────────────────────────────────────
       - key: GOOGLE_TTS_API_KEY
