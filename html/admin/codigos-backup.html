@@ -178,6 +178,8 @@
                 aria-controls="painelFixo" onclick="trocarAba('fixo')">Código fixo<span class="selo">exceção</span></button>
         <button type="button" class="aba" id="abaSenha" role="tab" aria-selected="false"
                 aria-controls="painelSenha" onclick="trocarAba('senha')">Recuperar senha</button>
+        <button type="button" class="aba" id="abaAtivar" role="tab" aria-selected="false"
+                aria-controls="painelAtivar" onclick="trocarAba('ativar')">Ativar 2FA</button>
     </div>
 
     <div class="cartao nao-imprimir">
@@ -246,6 +248,29 @@
             <button type="button" id="btnRecuperarSenha" disabled>Enviar código de recuperação</button>
         </div>
         <div id="resultadoSenha"></div>
+    </div>
+
+    <div id="painelAtivar" class="painel" role="tabpanel" aria-labelledby="abaAtivar">
+        <div class="cartao nao-imprimir">
+            <h2>2. Exigir segundo fator nesta conta</h2>
+            <p style="font-size:.86rem; color:var(--suave); margin-top:0;">
+                Liga o 2FA <strong>apenas nesta conta</strong> e gera 8 códigos de
+                backup na mesma operação. É o passo de <em>rollout</em>: valide
+                aqui antes de exigir do perfil inteiro.
+            </p>
+            <div class="aviso">
+                Se o e-mail falhar e a conta não tiver códigos de backup, o próximo
+                login não completa — e <strong>não há ninguém dentro para desfazer</strong>.
+                Por isso a verificação abaixo roda antes.
+            </div>
+
+            <div class="rodape-acoes" style="margin-top:0;">
+                <button type="button" id="btnProntidao" class="secundario" disabled>Verificar se está pronto</button>
+                <button type="button" id="btnAtivar2FA" disabled>Ativar 2FA nesta conta</button>
+                <button type="button" id="btnDesativar2FA" class="secundario" disabled>Desativar</button>
+            </div>
+        </div>
+        <div id="resultadoAtivar"></div>
     </div>
 </div>
 
@@ -321,6 +346,12 @@
         btnRemoverFixo.disabled = true;
         document.getElementById('btnRecuperarSenha').disabled = !selConta.value;
         document.getElementById('resultadoSenha').innerHTML = '';
+        document.getElementById('btnProntidao').disabled = !selConta.value;
+        document.getElementById('btnDesativar2FA').disabled = !selConta.value;
+        // Ativar so libera DEPOIS da verificacao de prontidao. E o ponto todo:
+        // o caminho facil nao pode ser o que tranca a conta.
+        document.getElementById('btnAtivar2FA').disabled = true;
+        document.getElementById('resultadoAtivar').innerHTML = '';
         if (selConta.value) consultarFixo();
     });
 
@@ -328,7 +359,8 @@
     var ABAS = {
         backup: { aba: 'abaBackup', painel: 'painelBackup' },
         fixo:   { aba: 'abaFixo',   painel: 'painelFixo'   },
-        senha:  { aba: 'abaSenha',  painel: 'painelSenha'  }
+        senha:  { aba: 'abaSenha',  painel: 'painelSenha'  },
+        ativar: { aba: 'abaAtivar', painel: 'painelAtivar' }
     };
 
     window.trocarAba = function (qual) {
@@ -445,6 +477,116 @@
                 btnRecuperarSenha.disabled = false;
                 elResultadoSenha.innerHTML = aviso('Falha de conexao.', 'erro');
             });
+    });
+
+    // -- Ativacao do 2FA obrigatorio -----------------------------------------
+    var btnProntidao     = document.getElementById('btnProntidao');
+    var btnAtivar2FA     = document.getElementById('btnAtivar2FA');
+    var btnDesativar2FA  = document.getElementById('btnDesativar2FA');
+    var elResultadoAtivar= document.getElementById('resultadoAtivar');
+
+    function linhaCheck(ok, texto) {
+        return '<div style="display:flex;gap:.6rem;align-items:flex-start;margin:.4rem 0;font-size:.87rem;">'
+             + '<span style="color:' + (ok ? 'var(--mint)' : 'var(--erro)') + ';font-weight:700;">'
+             + (ok ? 'OK' : 'X') + '</span><span>' + texto + '</span></div>';
+    }
+
+    btnProntidao.addEventListener('click', function () {
+        if (!selConta.value) return;
+        elResultadoAtivar.innerHTML = '<p class="carregando">Verificando...</p>';
+        btnAtivar2FA.disabled = true;
+
+        fetch(API() + '/admin/2fa/prontidao/' + encodeURIComponent(selConta.value), { credentials: 'include' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d.erro) { elResultadoAtivar.innerHTML = aviso(d.erro, 'erro'); return; }
+
+                var v = d.verificacoes;
+                var html = '<div class="cartao">'
+                    + '<h2>Verificacao de prontidao</h2>'
+                    + linhaCheck(v.emailValido, 'E-mail valido cadastrado na conta')
+                    + linhaCheck(v.canalOperacional, 'Canal de e-mail operacional agora')
+                    + linhaCheck(v.codigosBackupDisponiveis > 0,
+                        'Codigos de backup disponiveis (' + v.codigosBackupDisponiveis + ')')
+                    + (d.jaExige ? aviso('Esta conta JA exige segundo fator.') : '');
+
+                if (d.bloqueios && d.bloqueios.length) {
+                    html += aviso('Resolva antes de ativar: ' + d.bloqueios.join(' | '), 'erro');
+                } else {
+                    html += aviso('Tudo pronto. O botao "Ativar 2FA nesta conta" foi liberado.', 'ok');
+                    btnAtivar2FA.disabled = false;
+                }
+
+                html += '<p style="font-size:.8rem;color:var(--suave);margin-bottom:0;">'
+                     +  'Politica vigente: 2FA obrigatorio para <strong>'
+                     +  escapar((d.politicaVigente.perfisObrigatorios || []).join(', ') || '(nenhum)')
+                     +  '</strong>'
+                     +  ((d.politicaVigente.perfisDispensados || []).length
+                          ? ' | dispensado para <strong>' + escapar(d.politicaVigente.perfisDispensados.join(', ')) + '</strong>'
+                          : '')
+                     +  '</p></div>';
+
+                elResultadoAtivar.innerHTML = html;
+            })
+            .catch(function () { elResultadoAtivar.innerHTML = aviso('Falha de conexao.', 'erro'); });
+    });
+
+    btnAtivar2FA.addEventListener('click', function () {
+        if (!selConta.value) return;
+        var rotulo = selConta.options[selConta.selectedIndex].textContent;
+        if (!window.confirm('Ativar 2FA obrigatorio para:\n' + rotulo
+            + '\nOs 8 codigos de backup aparecem UMA vez. Imprima antes de fechar.')) return;
+
+        btnAtivar2FA.disabled = true;
+        elResultadoAtivar.innerHTML = '<p class="carregando">Ativando...</p>';
+
+        fetch(API() + '/admin/2fa/ativar/' + encodeURIComponent(selConta.value), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf() },
+            credentials: 'include'
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (!d.ok) {
+                    // 409 = a prontidao falhou entre a verificacao e o clique.
+                    elResultadoAtivar.innerHTML = aviso(d.erro, 'erro')
+                        + (d.sugestao ? aviso(d.sugestao) : '');
+                    return;
+                }
+
+                elResultadoAtivar.innerHTML =
+                    '<div class="cartao">'
+                  + '<h2>2FA ativado para ' + escapar(d.usuario.nome) + '</h2>'
+                  + aviso(d.aviso, 'ok')
+                  + '<div class="grade-codigos">'
+                  +   d.codigos.map(function (c) { return '<div class="codigo">' + escapar(c) + '</div>'; }).join('')
+                  + '</div>'
+                  + aviso(d.proximoPasso)
+                  + '<div class="rodape-acoes nao-imprimir">'
+                  +   '<button type="button" class="secundario" onclick="window.print()">Imprimir</button>'
+                  + '</div></div>';
+            })
+            .catch(function () {
+                btnAtivar2FA.disabled = false;
+                elResultadoAtivar.innerHTML = aviso('Falha de conexao.', 'erro');
+            });
+    });
+
+    btnDesativar2FA.addEventListener('click', function () {
+        if (!selConta.value) return;
+        if (!window.confirm('Desativar o 2FA desta conta?')) return;
+
+        fetch(API() + '/admin/2fa/ativar/' + encodeURIComponent(selConta.value), {
+            method: 'DELETE',
+            headers: { 'X-CSRF-Token': csrf() },
+            credentials: 'include'
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                elResultadoAtivar.innerHTML = aviso(d.mensagem || d.erro || 'Concluido.',
+                    d.ok && !d.aindaExigePorPerfil ? 'ok' : (d.ok ? '' : 'erro'));
+            })
+            .catch(function () { elResultadoAtivar.innerHTML = aviso('Falha de conexao.', 'erro'); });
     });
 
     btnRemoverFixo.addEventListener('click', function () {
