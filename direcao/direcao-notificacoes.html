@@ -29,6 +29,7 @@
     <link rel="stylesheet" href="../css/system-global.css?v=1.0">
     <!-- Rolagem e performance mobile — deve ser o ÚLTIMO stylesheet -->
     <link rel="stylesheet" href="../css/mobile-scroll.css?v=1.0">
+    <link rel="stylesheet" href="../css/motion.css">
     <script src="../js/scroll-lock.js?v=1.0"></script>
 </head>
 <body>
@@ -43,7 +44,7 @@
 <header class="mn-header">
     <div class="mn-header-brand">
         <button id="btnVoltar" class="mn-btn-back" title="Voltar ao Dashboard"><i class="bi bi-arrow-left"></i></button>
-        <img src="../../img/logo-jaguari.png" alt="Logo" onerror="this.style.display='none'">
+        <img src="../../img/logo-jaguari.png" alt="Logo" onerror="this.style.display='none'" decoding="async" loading="eager" fetchpriority="high">
         <div>
             <h1>Mural Escolar <span id="liveBadge" class="mn-live-badge">● AO VIVO</span></h1>
             <p id="notifCount" class="mn-header-count">Carregando avisos...</p>
@@ -69,7 +70,7 @@
 
         <div class="mn-card mn-form-card" id="cardPostar">
             <div class="mn-form-author">
-                <img src="../../img/default-avatar.png" id="userPhotoPreview" data-user-photo="self" class="user-avatar" alt="Foto">
+                <img src="../../img/default-avatar.png" id="userPhotoPreview" data-user-photo="self" class="user-avatar" alt="Foto" decoding="async" loading="eager" fetchpriority="high">
                 <div><h2>Publicar novo aviso</h2><p>Comunique-se com toda a comunidade escolar</p></div>
             </div>
             <form id="formNotificacao" novalidate>
@@ -192,5 +193,7 @@
     <!-- Lucide line icons (padronização) + shim de compatibilidade Bootstrap Icons -->
     <script src="../js/libs/lucide.min.js"></script>
     <script src="../js/libs/lucide-init.js"></script>
+    <script defer src="../js/observability.js"></script>
+    <script defer src="../js/motion.js"></script>
 </body>
 </html>

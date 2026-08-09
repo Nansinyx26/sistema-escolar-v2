@@ -29,7 +29,238 @@
     <link rel="stylesheet" href="../../css/system-global.css?v=1.0">
     <!-- Rolagem e performance mobile — deve ser o ÚLTIMO stylesheet -->
     <link rel="stylesheet" href="../../css/mobile-scroll.css?v=1.0">
+    <link rel="stylesheet" href="../../css/motion.css">
     <script src="../../js/scroll-lock.js?v=1.0"></script>
+
+    <!--
+      Estilos próprios da tela. Nenhuma folha global define .settings-card,
+      .setting-item, .switch/.slider ou .status-badge — sem este bloco a página
+      caía para checkbox cru e texto solto, sem cartão e sem toggle.
+      Só tokens de variables.css aqui, para acompanhar o tema claro/escuro.
+    -->
+    <style>
+        .container {
+            max-width: 900px;
+            margin: 2rem auto 4rem;
+            padding: 0 1rem;
+        }
+
+        .settings-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-secondary);
+            border-radius: var(--radius-lg);
+            padding: 1.75rem;
+            box-shadow: var(--shadow-md);
+        }
+
+        .settings-card>h2 {
+            margin: 0 0 1.5rem;
+            font-size: var(--font-size-xl);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+        }
+
+        .setting-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1.5rem;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-secondary);
+            border-radius: var(--radius-md);
+        }
+
+        .setting-item.destaque {
+            border-left: 4px solid var(--primary);
+            background: var(--primary-light);
+        }
+
+        .setting-info {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .setting-info h4 {
+            margin: 0 0 0.35rem;
+            font-size: var(--font-size-base);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+        }
+
+        .setting-info p {
+            margin: 0;
+            max-width: 56ch;
+            font-size: var(--font-size-sm);
+            line-height: 1.5;
+            color: var(--text-tertiary);
+        }
+
+        /* Coluna de controle à direita (toggle + selo, código + botão) */
+        .setting-control {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 0.5rem;
+            flex-shrink: 0;
+        }
+
+        .secret-code-box {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.5rem 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px dashed var(--primary);
+            border-radius: var(--radius-md);
+        }
+
+        #adminSecretCode {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 1.5rem;
+            font-weight: var(--font-weight-bold);
+            letter-spacing: 2px;
+            color: var(--primary);
+        }
+
+        #adminSecretCode.codigo-erro {
+            font-size: var(--font-size-sm);
+            letter-spacing: normal;
+            color: var(--error);
+        }
+
+        /* === Toggle === */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 26px;
+            flex-shrink: 0;
+        }
+
+        .switch input {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .switch .slider {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-secondary);
+            border-radius: var(--radius-full);
+            transition: background 0.25s var(--ease-standard), border-color 0.25s var(--ease-standard);
+        }
+
+        .switch .slider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 3px;
+            width: 18px;
+            height: 18px;
+            background: var(--text-tertiary);
+            border-radius: 50%;
+            transform: translateY(-50%);
+            transition: transform 0.25s var(--ease-standard), background 0.25s var(--ease-standard);
+        }
+
+        .switch input:checked+.slider {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .switch input:checked+.slider::before {
+            background: #fff;
+            transform: translateY(-50%) translateX(22px);
+        }
+
+        .switch input:focus-visible+.slider {
+            outline: 2px solid var(--border-focus);
+            outline-offset: 2px;
+        }
+
+        .switch input:disabled {
+            cursor: not-allowed;
+        }
+
+        .switch input:disabled+.slider {
+            opacity: 0.45;
+        }
+
+        /* === Selo de estado === */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: var(--radius-full);
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-semibold);
+        }
+
+        .status-badge::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .status-on {
+            background: var(--success-light);
+            color: var(--success);
+        }
+
+        .status-off {
+            background: rgba(161, 161, 170, 0.14);
+            color: var(--text-tertiary);
+        }
+
+        .footer-actions {
+            display: flex;
+            justify-content: flex-end;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-secondary);
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                margin-top: 1rem;
+            }
+
+            .settings-card {
+                padding: 1.25rem;
+            }
+
+            .setting-item {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 1rem;
+            }
+
+            .setting-control {
+                align-items: flex-start;
+            }
+
+            .secret-code-box {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .footer-actions .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
 </head>
 
 <body>
@@ -68,31 +299,22 @@
                         <span>Configurações do Sistema</span>
                     </div>
                 </div>
-                <div class="header-right">
-                    <button class="btn btn-primary" id="btnExportarDB" onclick="ExportDB.exportar()">
-                        <i class="bi bi-cloud-download"></i> Exportar Banco Completo
-                    </button>
-                </div>
-
             </div>
         </header>
 
         <main class="container">
             <div class="settings-card">
-                <h2 style="margin-bottom: 1.5rem;">Segurança e Validação</h2>
+                <h2>Segurança e Validação</h2>
 
-                <div class="setting-item"
-                    style="border-left: 4px solid var(--primary); background: rgba(59, 130, 246, 0.05);">
+                <div class="setting-item destaque">
                     <div class="setting-info">
                         <h4>Código Secreto da Instituição</h4>
                         <p>Forneça este código aos novos professores e diretores durante o cadastro. Ele rotaciona
                             diariamente à meia-noite (horário de Brasília) por segurança.</p>
                     </div>
-                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
-                        <div
-                            style="background: rgba(0,0,0,0.2); padding: 0.5rem 1rem; border-radius: var(--radius-md); border: 1px dashed var(--primary); display: flex; align-items: center; gap: 1rem;">
-                            <span id="adminSecretCode"
-                                style="font-family: monospace; font-size: 1.5rem; font-weight: bold; color: var(--primary); letter-spacing: 2px;">••••••</span>
+                    <div class="setting-control">
+                        <div class="secret-code-box">
+                            <span id="adminSecretCode">••••••</span>
                         </div>
                         <button class="btn btn-outline btn-sm" id="btnRotateCode"
                             style="font-size: 0.75rem; padding: 4px 8px;">
@@ -106,7 +328,7 @@
                         <h4>Trava de Frequência</h4>
                         <p>Exigir que o professor faça a chamada dos alunos antes de registrar o conteúdo da aula.</p>
                     </div>
-                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
+                    <div class="setting-control">
                         <label class="switch">
                             <input type="checkbox" id="toggleExigirChamada">
                             <span class="slider"></span>
@@ -121,7 +343,7 @@
                         <p>Impedir lançamentos fora do horário exato da grade (desativado permite retroativos no mesmo
                             dia).</p>
                     </div>
-                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
+                    <div class="setting-control">
                         <label class="switch">
                             <input type="checkbox" id="toggleGradeEstrita" disabled>
                             <span class="slider"></span>
@@ -141,10 +363,18 @@
 
     <div id="toastContainer" class="toast-container"></div>
 
+    <!--
+      api-config.js define window.API_BASE_URL. Sem ele, database.js cai no
+      fallback http://localhost:3001/api e TODA chamada desta tela falhava em
+      produção (código secreto, carga e gravação das configurações).
+      csrf-helper.js expõe csrfHeaders(): o backend rejeita PUT/POST sem
+      X-CSRF-Token com 403 e nada é salvo.
+    -->
+    <script src="../../js/api-config.js"></script>
+    <script src="../../js/csrf-helper.js"></script>
     <script defer src="../../js/database.js"></script>
     <script defer src="../../js/auth.js"></script>
     <script defer src="../../js/utils.js"></script>
-    <script defer src="../../js/export-full-db.js"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
@@ -160,6 +390,12 @@
             const toggleExigirChamada = document.getElementById('toggleExigirChamada');
             const statusLabel = document.getElementById('statusLabel');
             const btnSalvar = document.getElementById('btnSalvar');
+            const secretCodeEl = document.getElementById('adminSecretCode');
+
+            // Cabeçalhos de mutação: Content-Type + X-CSRF-Token lido do cookie.
+            const headersMutacao = () => (window.csrfHeaders
+                ? window.csrfHeaders(true)
+                : { 'Content-Type': 'application/json' });
 
             const updateStatusUI = (isChecked) => {
                 if (isChecked) {
@@ -180,7 +416,7 @@
 
             // Carregar configurações atuais
             try {
-                const res = await fetch(`${db.baseUrl}/config`);
+                const res = await fetch(`${db.baseUrl}/config`, { credentials: 'include' });
                 const json = await res.json();
 
                 if (json.success && json.data) {
@@ -188,6 +424,8 @@
                     const isActive = json.data.exigirChamadaAntesDeAula || false;
                     toggleExigirChamada.checked = isActive;
                     updateStatusUI(isActive);
+                } else {
+                    showToast(json.error || 'Configuração não encontrada no banco', 'error');
                 }
             } catch (e) {
                 console.error('Erro ao carregar config:', e);
@@ -200,13 +438,19 @@
                     const res = await fetch(`${db.baseUrl}/security/status`, { credentials: 'include' });
                     const json = await res.json();
                     if (json.success && json.data) {
-                        document.getElementById('adminSecretCode').textContent = json.data.codigo;
-                    } else {
-                        document.getElementById('adminSecretCode').textContent = 'Erro';
+                        secretCodeEl.textContent = json.data.codigo;
+                        secretCodeEl.classList.remove('codigo-erro');
+                        return;
                     }
+                    // Sessão expirada é o caso comum aqui e merece texto próprio.
+                    secretCodeEl.textContent = (res.status === 401 || res.status === 403)
+                        ? 'Sem permissão'
+                        : (json.error || 'Indisponível');
+                    secretCodeEl.classList.add('codigo-erro');
                 } catch (e) {
                     console.error('Erro ao buscar código secreto:', e);
-                    document.getElementById('adminSecretCode').textContent = 'Erro';
+                    secretCodeEl.textContent = 'Falha de conexão';
+                    secretCodeEl.classList.add('codigo-erro');
                 }
             };
             await loadSecretCode();
@@ -215,7 +459,11 @@
             document.getElementById('btnRotateCode').addEventListener('click', async () => {
                 if (!confirm('Tem certeza? Isso invalidará o código atual imediatamente.')) return;
                 try {
-                    const res = await fetch(`${db.baseUrl}/security/rotate`, { method: 'POST', credentials: 'include' });
+                    const res = await fetch(`${db.baseUrl}/security/rotate`, {
+                        method: 'POST',
+                        headers: headersMutacao(),
+                        credentials: 'include'
+                    });
                     const json = await res.json();
                     if (json.success) {
                         showToast('Código atualizado com sucesso!', 'success');
@@ -241,7 +489,8 @@
                 try {
                     const res = await fetch(`${db.baseUrl}/config/${currentConfigId}`, {
                         method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: headersMutacao(),
+                        credentials: 'include',
                         body: JSON.stringify({
                             exigirChamadaAntesDeAula: toggleExigirChamada.checked
                         })
@@ -274,6 +523,8 @@
     <!-- Lucide line icons (padronização) + shim de compatibilidade Bootstrap Icons -->
     <script src="../../js/libs/lucide.min.js"></script>
     <script src="../../js/libs/lucide-init.js"></script>
+    <script defer src="../../js/observability.js"></script>
+    <script defer src="../../js/motion.js"></script>
 </body>
 
 </html>

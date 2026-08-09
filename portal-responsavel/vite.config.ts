@@ -24,5 +24,11 @@ export default defineConfig({
   server: {
     port: 5174,
     open: true,
+    fs: {
+      // O portal reaproveita o sistema de motion da raiz do repositório
+      // (css/motion.css e js/motion.js), que fica fora da root do Vite.
+      // Sem isso o dev server bloqueia a leitura desses arquivos.
+      allow: [path.resolve(__dirname, '..')],
+    },
   },
 });
