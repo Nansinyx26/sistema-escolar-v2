@@ -254,7 +254,38 @@ async function autorizar(req, res, next, { config, forma }, pagina404) {
     const perfisPermitidos = (config.excecoes && config.excecoes[arquivo]) || config.perfis;
 
     if (!extrairToken(req)) {
-        return res.redirect(302, `/html/login.html?next=${encodeURIComponent(req.originalUrl)}`);
+        // ============================================
+        // O DESTINO VAI NA SESSÃO, NÃO NA URL
+        // ============================================
+        // Antes: `/html/login.html?next=%2Fhtml%2F<SEGREDO>%2Fusuarios.html`.
+        // O prefixo secreto da área administrativa ia parar na barra de
+        // endereço, no histórico do navegador e em qualquer print da tela de
+        // login. Um segredo cujo motivo de existir é não aparecer.
+        //
+        // E o `next` não era lido por ninguém no front — o redirecionamento
+        // pós-login vem do `redirect_to` da API. Ou seja: vazava sem entregar
+        // nada em troca. Guardado na sessão, o retorno passa a funcionar de
+        // fato, e o caminho não aparece.
+        // Cookie, e NÃO `req.session`: este middleware roda antes do
+        // express-session (ele precisa vir antes do express.static, e a sessão
+        // vem depois). `req.session` é undefined aqui, e um `if (req.session)`
+        // falharia em silêncio — o recurso pareceria implementado e nunca
+        // funcionaria.
+        //
+        // HttpOnly para o JS da página não conseguir ler o prefixo. 10 minutos
+        // porque é uma travessia de tela de login, não um estado duradouro.
+        //
+        // O caminho ainda existe em algum lugar do navegador, mas sai do que
+        // importa: barra de endereço, histórico, print de tela e cabeçalho
+        // Referer. Nenhum deles alcança um cookie HttpOnly.
+        res.cookie('destino_pos_login', req.originalUrl, {
+            httpOnly: true,
+            sameSite: 'Lax',
+            secure: process.env.NODE_ENV === 'production',
+            maxAge: 10 * 60 * 1000,
+            path: '/',
+        });
+        return res.redirect(302, '/html/login.html');
     }
 
     const usuario = await sessaoDoRequest(req);
