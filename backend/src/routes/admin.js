@@ -479,10 +479,26 @@ router.get('/2fa/prontidao/:usuarioId', async (req, res) => {
 
         const disponiveis = (usuario.twoFactorBackupCodes || []).filter((c) => !c.usadoEm).length;
 
+        // BLOQUEIO x AVISO — a distinção importa, e errar nela é perigoso.
+        //
+        // A ausência de códigos de backup NÃO bloqueia: a própria ativação gera
+        // um lote novo. Tratá-la como bloqueio criava uma armadilha real — o
+        // administrador ia à primeira aba, gerava um lote, IMPRIMIA, e então a
+        // ativação gerava OUTRO lote, invalidando a folha que ele acabara de
+        // guardar. Ficaria com um papel de códigos mortos, acreditando ter uma
+        // rede de segurança que não existe mais.
+        //
+        // Bloqueio é só o que a ativação não consegue resolver sozinha: e-mail
+        // ausente na conta e canal de entrega fora do ar.
         const bloqueios = [];
         if (!emailValido) bloqueios.push('A conta não tem e-mail válido cadastrado — o código não teria para onde ir.');
         if (!canal.ok) bloqueios.push(`O canal de e-mail não está operacional (${canal.etapa}): ${canal.erro}`);
-        if (!disponiveis) bloqueios.push('A conta não tem códigos de backup — sem eles, uma queda do provedor tranca o acesso.');
+
+        const avisos = [];
+        if (!disponiveis) {
+            avisos.push('Esta conta ainda não tem códigos de backup. A ativação vai gerar 8 — '
+                      + 'não precisa gerar antes, ou a folha impressa seria invalidada pela ativação.');
+        }
 
         return res.json({
             ok: bloqueios.length === 0,
@@ -498,6 +514,7 @@ router.get('/2fa/prontidao/:usuarioId', async (req, res) => {
                 temCodigoFixo: Boolean(usuario.twoFactorFixedCode),
             },
             bloqueios,
+            avisos,
             politicaVigente: {
                 perfisObrigatorios: politica.perfisComObrigatoriedade(),
                 perfisDispensados: politica.perfisDispensados(),

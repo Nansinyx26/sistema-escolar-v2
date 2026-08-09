@@ -278,7 +278,12 @@
 (function () {
     'use strict';
 
-    var API = window.API_BASE_URL || '/api';
+    // Função, não string. As duas formas conviviam no arquivo — a original
+    // concatenava (`API + '/x'`) e tudo que veio depois chamava (`API() + '/x'`),
+    // o que estourava "API is not a function" em TODA aba nova. Padronizado em
+    // função: um valor lido na hora da chamada também sobrevive a um
+    // API_BASE_URL definido tarde por outro script.
+    var API = function () { return window.API_BASE_URL || '/api'; };
     var selConta = document.getElementById('conta');
     var elSaldo = document.getElementById('saldo');
     var elResultado = document.getElementById('resultado');
@@ -305,7 +310,7 @@
     // ── Carrega as contas que podem ter codigo de backup ────────────────────
     // Reusa /diag/contas-2fa? Nao: aquela rota so devolve as contas com
     // PROBLEMA. Aqui precisamos de todas as elegiveis, entao vem de /usuarios.
-    fetch(API + '/usuarios', { credentials: 'include' })
+    fetch(API() + '/usuarios', { credentials: 'include' })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (json) {
             var lista = (json && json.data) || [];
@@ -512,9 +517,12 @@
                     + '<h2>Verificacao de prontidao</h2>'
                     + linhaCheck(v.emailValido, 'E-mail valido cadastrado na conta')
                     + linhaCheck(v.canalOperacional, 'Canal de e-mail operacional agora')
-                    + linhaCheck(v.codigosBackupDisponiveis > 0,
-                        'Codigos de backup disponiveis (' + v.codigosBackupDisponiveis + ')')
+                    + linhaCheck(true, v.codigosBackupDisponiveis > 0
+                        ? 'Codigos de backup disponiveis (' + v.codigosBackupDisponiveis + ')'
+                        : 'Codigos de backup serao gerados pela propria ativacao')
                     + (d.jaExige ? aviso('Esta conta JA exige segundo fator.') : '');
+
+                (d.avisos || []).forEach(function (a) { html += aviso(a); });
 
                 if (d.bloqueios && d.bloqueios.length) {
                     html += aviso('Resolva antes de ativar: ' + d.bloqueios.join(' | '), 'erro');
@@ -617,7 +625,7 @@
         if (!selConta.value) { elSaldo.innerHTML = aviso('Selecione uma conta primeiro.'); return; }
         elSaldo.innerHTML = '<p style="color:var(--suave);font-size:.85rem;">Consultando…</p>';
 
-        fetch(API + '/admin/2fa/backup-codes/' + encodeURIComponent(selConta.value), { credentials: 'include' })
+        fetch(API() + '/admin/2fa/backup-codes/' + encodeURIComponent(selConta.value), { credentials: 'include' })
             .then(function (r) { return r.json(); })
             .then(function (d) {
                 if (!d.ok && d.erro) { elSaldo.innerHTML = aviso(d.erro, 'erro'); return; }
@@ -642,7 +650,7 @@
         btnGerar.disabled = true;
         elResultado.innerHTML = '<p style="color:var(--suave);">Gerando…</p>';
 
-        fetch(API + '/admin/2fa/backup-codes/' + encodeURIComponent(selConta.value), {
+        fetch(API() + '/admin/2fa/backup-codes/' + encodeURIComponent(selConta.value), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf() },
             credentials: 'include'

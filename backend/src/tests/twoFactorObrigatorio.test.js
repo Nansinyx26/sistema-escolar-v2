@@ -98,16 +98,38 @@ describe('Prontidão: a trava contra auto-trancamento', () => {
         expect(res.body.bloqueios.join(' ')).toContain('canal de e-mail');
     });
 
-    it('recusa quando a conta nao tem codigos de backup', async () => {
+    it('a falta de codigos de backup e AVISO, nao bloqueio', async () => {
+        // A ativacao gera o lote. Tratar a ausencia como bloqueio criava uma
+        // armadilha: o admin geraria e IMPRIMIRIA um lote na primeira aba, e a
+        // ativacao geraria outro — deixando na mao um papel de codigos mortos.
         canalOperacional(true);
         const cookies = await sessaoAdmin();
         const alvo = await criarUsuario({ email: 'pront_semcod@escola.test', perfil: 'admin' });
 
         const res = await request(app).get(`/api/admin/2fa/prontidao/${alvo._id}`).set('Cookie', cookies);
 
-        expect(res.body.ok).toBe(false);
+        expect(res.body.ok).toBe(true);
+        expect(res.body.bloqueios).toEqual([]);
         expect(res.body.verificacoes.codigosBackupDisponiveis).toBe(0);
-        expect(res.body.bloqueios.join(' ')).toContain('códigos de backup');
+        expect(res.body.avisos.join(' ')).toContain('ativação vai gerar');
+    });
+
+    it('ativar direto, sem lote previo, entrega codigos que FUNCIONAM', async () => {
+        // O caminho que o roteiro manda seguir: nao gerar antes, ativar direto.
+        canalOperacional(true);
+        const cookies = await sessaoAdmin();
+        const alvo = await criarUsuario({ email: 'pront_direto@escola.test', perfil: 'admin' });
+
+        const ativacao = await request(app).post(`/api/admin/2fa/ativar/${alvo._id}`).set('Cookie', cookies);
+        expect(ativacao.body.codigos).toHaveLength(8);
+
+        const login = await request(app).post('/api/auth/login')
+            .send({ email: 'pront_direto@escola.test', senha: SENHA_TESTE });
+        const pre = (login.headers['set-cookie'] || []).find(c => c.startsWith('escola_preauth'));
+        const res = await request(app).post('/api/auth/2fa/verify')
+            .set('Cookie', [pre.split(';')[0]]).send({ codigo: ativacao.body.codigos[0] });
+
+        expect(res.status).toBe(200);
     });
 
     it('recusa quando a conta nao tem e-mail valido', async () => {
