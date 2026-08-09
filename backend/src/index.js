@@ -4,6 +4,16 @@
 const { validarAmbiente } = require('./config/env');
 validarAmbiente();
 
+// Observabilidade ANTES de qualquer require de express/mongoose/http: as
+// instrumentações do OpenTelemetry (e os agentes de APM) funcionam por
+// monkey-patch dos módulos, então precisam chegar primeiro. Depois do
+// validarAmbiente() porque a configuração dos provedores vem do .env.
+//
+// Tudo desligado por padrão — só liga com a env de habilitação + credencial.
+// Ver docs/OBSERVABILITY.md.
+const observability = require('./observability');
+const _obsEstado = observability.init();
+
 // Redireciona `console.*` legado para o logger estruturado ANTES de qualquer
 // outro require: a partir daqui nenhuma linha de log escapa da sanitização,
 // mesmo nos arquivos ainda não migrados. Desligável com CONSOLE_GUARD=false.
