@@ -1,0 +1,80 @@
+name: "🐛 Correção"
+description: "Algo existe e está errado, quebrado ou fora do esperado"
+title: "Corrigir "
+labels: ["tipo:correcao"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Processo completo em [AGENTS.md](../blob/main/AGENTS.md).
+        O PR que resolver esta Issue **precisa** conter `Closes #<numero>` na descrição.
+
+  - type: textarea
+    id: problema
+    attributes:
+      label: O que está acontecendo
+      description: Descreva o comportamento errado, sem interpretar a causa ainda.
+      placeholder: "Ao salvar a planilha de faltas com turma vazia, a página trava."
+    validations:
+      required: true
+
+  - type: textarea
+    id: esperado
+    attributes:
+      label: O que deveria acontecer
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproducao
+    attributes:
+      label: Como reproduzir
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      options:
+        - "area:backend"
+        - "area:frontend"
+        - "area:portal"
+        - "area:infra"
+        - "area:banco"
+        - "area:ux"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: prioridade
+    attributes:
+      label: Prioridade
+      options:
+        - "prioridade:critica — produção quebrada, sem contorno"
+        - "prioridade:alta — bloqueia usuário, há contorno"
+        - "prioridade:media — incomoda, não bloqueia"
+        - "prioridade:baixa — cosmético"
+    validations:
+      required: true
+
+  - type: textarea
+    id: aceite
+    attributes:
+      label: Critério de aceite
+      description: Como saber, de forma verificável, que a correção acabou.
+      value: |
+        - [ ]
+        - [ ] Teste automatizado cobrindo o caso
+    validations:
+      required: true
+
+  - type: textarea
+    id: contexto
+    attributes:
+      label: Contexto adicional
+      description: Logs, prints, navegador, perfil de usuário. **Não cole dados pessoais de aluno ou responsável.**
