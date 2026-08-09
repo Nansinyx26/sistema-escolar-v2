@@ -18,7 +18,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # PR de release (develop → main) é a promoção do que já foi revisado, um
+      # a um, na entrada da develop. Ele não tem Issue própria, o head é
+      # `develop` — que nunca vai casar com <tipo>/<issue>-<slug> — e exigir as
+      # duas coisas tornaria o fluxo da seção 6 do AGENTS.md impossível de
+      # cumprir: o gate reprovaria exatamente o PR que leva tudo à produção.
+      #
+      # A checagem de título continua valendo para ele.
+      - name: 🏷️ Identificar PR de release
+        id: tipo
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ "$HEAD_REF" = "develop" ] && [ "$BASE_REF" = "main" ]; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "::notice title=PR de release::develop → main; as regras de Issue e de nome de branch não se aplicam."
+          else
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: 🔗 A descrição do PR precisa referenciar uma Issue
+        if: steps.tipo.outputs.release != 'true'
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
@@ -53,7 +74,9 @@ jobs:
           exit 1
 
       - name: 🌿 Nome da branch precisa seguir o padrão
-        if: github.event.pull_request.head.repo.full_name == github.repository
+        if: >-
+          steps.tipo.outputs.release != 'true' &&
+          github.event.pull_request.head.repo.full_name == github.repository
         env:
           BRANCH: ${{ github.head_ref }}
         run: |
