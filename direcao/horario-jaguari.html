@@ -39,6 +39,7 @@
     <link rel="stylesheet" href="../css/system-global.css?v=1.0">
     <!-- Rolagem e performance mobile — deve ser o ÚLTIMO stylesheet -->
     <link rel="stylesheet" href="../css/mobile-scroll.css?v=1.0">
+    <link rel="stylesheet" href="../css/motion.css">
     <script src="../js/scroll-lock.js?v=1.0"></script>
 </head>
 
@@ -47,7 +48,7 @@
     <div id="splashScreen">
         <div class="splash-logo-container">
             <div class="splash-logo">
-                <img src="../../img/logo-jaguari.png" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; filter: brightness(1.2) saturate(1.1) drop-shadow(0 0 15px rgba(0, 212, 255, 0.6)) drop-shadow(0 0 30px rgba(0, 212, 255, 0.3));">
+                <img src="../../img/logo-jaguari.png" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; filter: brightness(1.2) saturate(1.1) drop-shadow(0 0 15px rgba(0, 212, 255, 0.6)) drop-shadow(0 0 30px rgba(0, 212, 255, 0.3));" decoding="async" loading="eager" fetchpriority="high">
             </div>
             <div class="splash-logo-ring"></div>
         </div>
@@ -70,7 +71,7 @@
         <nav class="navbar">
             <div class="navbar-content">
                 <div class="navbar-brand">
-                    <span class="logo"><img src="../../img/logo-jaguari.png" alt="Logo" style="height: 32px; vertical-align: middle; margin-right: 8px; filter: brightness(1.15) saturate(1.1) drop-shadow(0 0 8px rgba(0, 212, 255, 0.4));"></span>
+                    <span class="logo"><img src="../../img/logo-jaguari.png" alt="Logo" style="height: 32px; vertical-align: middle; margin-right: 8px; filter: brightness(1.15) saturate(1.1) drop-shadow(0 0 8px rgba(0, 212, 255, 0.4));" decoding="async" loading="eager" fetchpriority="high"></span>
                     <span>Escola Jaguari</span>
                 </div>
                 <div class="navbar-nav">
@@ -83,7 +84,7 @@
             <section id="horario-jaguari" class="container">
                 <div class="page-header page-header-horarios">
                     <div class="page-header-info">
-                        <h1><img src="../../img/logo-jaguari.png" alt="" style="height: 48px; vertical-align: middle; margin-right: 12px; filter: brightness(1.15) saturate(1.1) drop-shadow(0 0 12px rgba(0,212,255,0.4)) drop-shadow(0 0 25px rgba(0,212,255,0.2));"> Horários 2026</h1>
+                        <h1><img src="../../img/logo-jaguari.png" alt="" style="height: 48px; vertical-align: middle; margin-right: 12px; filter: brightness(1.15) saturate(1.1) drop-shadow(0 0 12px rgba(0,212,255,0.4)) drop-shadow(0 0 25px rgba(0,212,255,0.2));" decoding="async" loading="lazy"> Horários 2026</h1>
                         <p class="page-header-sub">CIEP Jaguari</p>
                         <p class="page-header-ref">Ref: 25/02/2026</p>
                     </div>
@@ -250,5 +251,7 @@
     <!-- Lucide line icons (padronização) + shim de compatibilidade Bootstrap Icons -->
     <script src="../js/libs/lucide.min.js"></script>
     <script src="../js/libs/lucide-init.js"></script>
+    <script defer src="../js/observability.js"></script>
+    <script defer src="../js/motion.js"></script>
 </body>
 </html>

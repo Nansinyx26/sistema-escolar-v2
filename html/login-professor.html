@@ -39,6 +39,7 @@
     <link rel="stylesheet" href="../css/system-global.css?v=1.0">
     <!-- Rolagem e performance mobile — deve ser o ÚLTIMO stylesheet -->
     <link rel="stylesheet" href="../css/mobile-scroll.css?v=1.0">
+    <link rel="stylesheet" href="../css/motion.css">
     <script src="../js/scroll-lock.js?v=1.0"></script>
 </head>
 
@@ -47,7 +48,7 @@
     <div id="splashScreen">
         <div class="splash-logo-container">
             <div class="splash-logo">
-                <img src="../img/logo-jaguari.png" alt="Logo">
+                <img src="../img/logo-jaguari.png" alt="Logo" decoding="async" loading="eager" fetchpriority="high">
             </div>
             <div class="splash-logo-ring"></div>
         </div>
@@ -93,7 +94,7 @@
                 <!-- Header -->
                 <div class="login-header">
                     <div class="login-logo">
-                        <img src="../img/logo-jaguari.png" alt="Logo">
+                        <img src="../img/logo-jaguari.png" alt="Logo" decoding="async" loading="eager" fetchpriority="high">
                     </div>
                     <h1>Portal do Professor</h1>
                     <p>Acesse seu painel de turmas, notas e frequência.</p>
@@ -584,5 +585,7 @@
     <!-- Lucide line icons (padronização) + shim de compatibilidade Bootstrap Icons -->
     <script src="../js/libs/lucide.min.js"></script>
     <script src="../js/libs/lucide-init.js"></script>
+    <script defer src="../js/observability.js"></script>
+    <script defer src="../js/motion.js"></script>
 </body>
 </html>

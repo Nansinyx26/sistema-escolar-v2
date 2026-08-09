@@ -9,6 +9,13 @@ import ReactDOM from 'react-dom/client';
 import PortalResponsavel from './pages/PortalResponsavel';
 import './styles/global.scss';
 
+// Sistema de motion/skeleton/lazy loading compartilhado com o restante do
+// sistema escolar — mesma fonte, sem duplicar tokens. O runtime observa o DOM
+// via MutationObserver, então também alcança o que o React renderiza depois.
+// Ver AGENTS.md §8 e docs/MOTION.md.
+import '../../css/motion.css';
+import '../../js/motion.js';
+
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { BIProvider } from './context/BIContext';
 

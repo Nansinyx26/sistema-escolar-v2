@@ -54,6 +54,7 @@
     <link rel="stylesheet" href="../../css/system-global.css?v=1.0">
     <!-- Rolagem e performance mobile — deve ser o ÚLTIMO stylesheet -->
     <link rel="stylesheet" href="../../css/mobile-scroll.css?v=1.0">
+    <link rel="stylesheet" href="../../css/motion.css">
     <script src="../../js/scroll-lock.js?v=1.0"></script>
 </head>
 
@@ -90,7 +91,7 @@
         <!-- Sidebar User Profile -->
         <div class="sidebar-profile">
             <div class="sidebar-avatar-wrapper">
-                <img src="/img/default-avatar.png" alt="Foto do Diretor" class="sidebar-avatar" id="sidebarAvatar">
+                <img src="/img/default-avatar.png" alt="Foto do Diretor" class="sidebar-avatar" id="sidebarAvatar" decoding="async" loading="eager" fetchpriority="high">
                 <div class="sidebar-status-online"></div>
             </div>
             <div class="sidebar-info">
@@ -388,6 +389,8 @@
     <!-- Lucide line icons (padronização) + shim de compatibilidade Bootstrap Icons -->
     <script src="../../js/libs/lucide.min.js"></script>
     <script src="../../js/libs/lucide-init.js"></script>
+    <script defer src="../../js/observability.js"></script>
+    <script defer src="../../js/motion.js"></script>
 </body>
 
 </html>
