@@ -186,6 +186,39 @@ const staticOptions = {
 // deixava o gate casar o caminho cru enquanto o static resolvia o caminho
 // decodificado — e `/html/%61dmin/usuarios.html` entregava a página a um
 // anônimo. Ver middleware/protegerPaginas.js.
+// ============================================
+// URL CANÔNICA — colapsa barras repetidas ANTES de qualquer coisa
+// ============================================
+// `https://host//html/<area>/usuarios.html` (barra dupla) entregava o HTML,
+// porque a normalização do caminho acontece no servidor. O NAVEGADOR, porém,
+// não normaliza: os `<link href="../../css/x.css">` da página sobem dois níveis
+// a partir de `//html/<area>/` e viram `//css/x.css` — que o browser interpreta
+// como URL protocol-relative, ou seja, OUTRO HOST. Resultado: a página abre
+// sem CSS nenhum e parece quebrada.
+//
+// Fora da área com apelido isso dava 404 (o express.static não casa o caminho
+// cru). Dentro dela passou a servir 200, porque a reescrita do apelido
+// normaliza o caminho antes do static. Meia-vitória é o pior dos casos: a
+// página carrega, mas sem estilo.
+//
+// O redirect resolve na origem — qualquer link com barra sobrando se corrige
+// sozinho e os caminhos relativos voltam a resolver.
+//
+// SEGURANÇA: o colapso reduz QUALQUER sequência de barras a uma só, então o
+// destino sempre começa com exatamente um `/`. Sem isso, um caminho como
+// `//evil.com/x` viraria `Location: //evil.com/x` — protocol-relative — e o
+// redirect levaria a pessoa para fora do domínio.
+//
+// Vem ANTES do gate de propósito: menos variantes de caminho chegando à
+// decisão de autorização é menos superfície para divergência.
+app.use((req, res, next) => {
+    if (!req.path.includes('//')) return next();
+
+    const canonico = req.path.replace(/\/{2,}/g, '/');
+    const query = req.url.slice(req.path.length);
+    return res.redirect(308, canonico + query);
+});
+
 app.use(require('./middleware/protegerPaginas').protegerAreasRestritas(frontendRootPath));
 
 staticDirectories.forEach((directory) => {
