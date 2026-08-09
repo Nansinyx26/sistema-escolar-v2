@@ -61,6 +61,7 @@ exports.sendVerificationCode = async (to, code, userName) => {
                 ${code}
             </div>
             <p style="color: #666; line-height: 1.6;">Este código expira em 15 minutos. Se você não solicitou esta alteração, desconsidere este e-mail.</p>
+            <p style="color:#b45309;font-size:12px;background:#fffbeb;border-left:3px solid #f59e0b;padding:10px 12px;margin-top:20px;border-radius:0 4px 4px 0;"><strong>Não clique em "Cancelar inscricao".</strong> Este é um e-mail do sistema, não é propaganda. Cancelando, voce deixa de receber os códigos e fica sem conseguir entrar.</p>
             <p style="color: #999; font-size: 12px; margin-top: 40px; text-align: center;">
                 Este é um e-mail automático. Por favor, não responda.
             </p>

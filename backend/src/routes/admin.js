@@ -123,14 +123,51 @@ router.get('/diag/contas-2fa', async (req, res) => {
             .filter((c) => !valido(c.email))
             .map((c) => ({ id: String(c._id), perfil: c.perfil, email: mascarar(c.email || '') || '(vazio)' }));
 
+        // ============================================
+        // CONTATOS BLOQUEADOS NO PROVEDOR
+        // ============================================
+        // O Brevo anexa `list-unsubscribe` em todo e-mail, inclusive
+        // transacional — obrigatório, sem chave para desligar. O Gmail o
+        // transforma no link "Cancelar inscrição" ao lado do remetente.
+        //
+        // Quem clicar ali achando que é propaganda entra na lista de bloqueados
+        // e PARA DE RECEBER OS CÓDIGOS DE LOGIN. Fica trancado fora do sistema,
+        // e o sintoma é o pior possível: o e-mail não chega, sem erro, sem
+        // aviso, sem nada para investigar.
+        //
+        // Cruzar as duas listas transforma isso num item de painel.
+        const bloqueio = await EnvioEmail.contatosBloqueados();
+        const bloqueadas = bloqueio.suportado
+            ? contas
+                .filter((c) => bloqueio.emails.includes(String(c.email || '').toLowerCase()))
+                .map((c) => ({ id: String(c._id), perfil: c.perfil, email: mascarar(c.email) }))
+            : [];
+
+        const sugestoes = [];
+        if (problemas.length) {
+            sugestoes.push('Contas sem e-mail válido não conseguem receber o código 2FA. '
+                         + 'Cadastre um endereço antes de tentar o login.');
+        }
+        if (bloqueadas.length) {
+            sugestoes.push('Contas BLOQUEADAS no provedor não recebem mais nenhum e-mail — provavelmente '
+                         + 'alguém clicou em "Cancelar inscrição" no código de verificação. Desbloqueie em '
+                         + 'Brevo → Contatos → Contatos bloqueados ou cancelados. Até lá, use um código de backup.');
+        }
+        if (bloqueio.erro) {
+            sugestoes.push(`Não foi possível consultar a lista de bloqueados do provedor: ${bloqueio.erro}`);
+        }
+
         return res.json({
-            ok: problemas.length === 0,
+            ok: problemas.length === 0 && bloqueadas.length === 0,
             totalContas2FA: contas.length,
             semEmailValido: problemas.length,
             contas: problemas,
-            sugestao: problemas.length
-                ? 'Estas contas não conseguem receber o código 2FA. Cadastre um e-mail válido antes de tentar o login.'
-                : undefined,
+            bloqueadasNoProvedor: bloqueadas.length,
+            bloqueadas,
+            // `false` = o transporte atual não expõe essa informação. Não é
+            // erro: é ausência de recurso, e o painel não deve alarmar por isso.
+            consultaDeBloqueioSuportada: bloqueio.suportado,
+            sugestoes: sugestoes.length ? sugestoes : undefined,
         });
     } catch (e) {
         logger.error('[diag] Falha ao auditar contas 2FA', { err: e });

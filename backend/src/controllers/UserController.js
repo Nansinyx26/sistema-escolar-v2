@@ -419,6 +419,42 @@ function mascararEmail(email) {
  * Quem controla o próprio nome controlaria a marcação da mensagem que a
  * instituição envia em seu nome.
  */
+// ============================================================================
+// O aviso vai DENTRO do e-mail, e não como recado à equipe
+// ============================================================================
+// O Brevo anexa `list-unsubscribe` em todo transacional — obrigatório, sem
+// chave para desligar — e o Gmail o exibe como "Cancelar inscrição" ao lado do
+// remetente. Quem clicar para de receber os códigos de login e fica trancado
+// fora do sistema, sem nenhum sinal do que aconteceu.
+//
+// Avisar a equipe por fora funciona uma vez e é esquecido. O aviso precisa
+// estar onde a pessoa está no momento em que hesita: na própria mensagem,
+// a centímetros do botão.
+const AVISO_NAO_CANCELAR = '<p style="color:#b45309;font-size:12px;background:#fffbeb;border-left:3px solid #f59e0b;padding:10px 12px;margin-top:20px;border-radius:0 4px 4px 0;"><strong>Não clique em "Cancelar inscricao".</strong> Este é um e-mail do sistema, não é propaganda. Cancelando, voce deixa de receber os códigos e fica sem conseguir entrar.</p>';
+
+/**
+ * Destino guardado pelo gate quando a pessoa foi barrada sem sessão.
+ *
+ * Consumido de uma vez: deixar na sessão faria o próximo login também cair
+ * numa página escolhida numa navegação antiga, o que confunde mais do que
+ * ajuda.
+ *
+ * Validado mesmo vindo da nossa própria sessão. Um valor que comece com `//`
+ * é protocol-relative e o navegador o trata como OUTRO HOST — bastaria uma
+ * falha em qualquer ponto que escreve nesse campo para virar redirect aberto
+ * logo após a autenticação, que é o momento de maior confiança do usuário.
+ */
+function destinoAposLogin(req, res) {
+    const destino = req.cookies && req.cookies.destino_pos_login;
+    // Uso único: consumido, some. Deixá-lo faria um login futuro cair numa
+    // página escolhida numa navegação antiga.
+    if (destino && res) res.clearCookie('destino_pos_login', { path: '/' });
+
+    if (typeof destino !== 'string') return null;
+    if (!destino.startsWith('/') || destino.startsWith('//')) return null;
+    return destino;
+}
+
 function montarHtmlCodigo2FA(nome, codigo) {
     const nomeSeguro = sanitizeInput(String(nome || 'usuário'));
     return `<div style="font-family:Arial,sans-serif;max-width:480px;padding:24px;border:1px solid #e0e0e0;border-radius:8px;">
@@ -427,6 +463,7 @@ function montarHtmlCodigo2FA(nome, codigo) {
         <p>Seu código de acesso:</p>
         <div style="font-size:36px;font-weight:bold;letter-spacing:8px;background:#f4f4f4;padding:16px 24px;border-radius:6px;text-align:center;margin:16px 0;">${codigo}</div>
         <p style="color:#666;font-size:14px;">Válido por <strong>5 minutos</strong>. Não compartilhe.</p>
+        ${AVISO_NAO_CANCELAR}
     </div>`;
 }
 
@@ -604,7 +641,10 @@ exports.login = async (req, res) => {
         // Dispara o envio do código e retorna requires2FA=true.
         // O frontend exibirá a tela de código; o cookie só é setado em /api/auth/2fa/verify.
         // ============================================
-        const redirect_to = getRedirectPath(user);
+        // Se a pessoa foi barrada tentando abrir uma página específica, o gate
+        // guardou o destino na sessão (protegerPaginas). Volta para lá em vez
+        // do painel padrão — e o caminho nunca passou pela barra de endereço.
+        const redirect_to = destinoAposLogin(req, res) || getRedirectPath(user);
         // Seleciona campos extras necessários para o fluxo 2FA
         const userWith2FA = await Usuario.findById(user._id).select('+twoFactorEnabled +twoFactorFixedCode +twoFactorPendingToken +twoFactorPendingExpiry');
         // Política do segundo fator: utils/politica2FA.js (fonte única).

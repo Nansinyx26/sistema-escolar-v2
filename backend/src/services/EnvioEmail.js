@@ -288,4 +288,48 @@ function consultarGet(hostname, path, headers) {
     });
 }
 
-module.exports = { enviarEmail, verificarEnvio, transporteEscolhido, mascarar };
+/**
+ * Contatos que o provedor BLOQUEOU e para os quais não entrega mais.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ * POR QUE ISTO PRECISA SER CONSULTÁVEL
+ * ─────────────────────────────────────────────────────────────────────────
+ * O Brevo anexa `list-unsubscribe` em TODO e-mail, inclusive transacional —
+ * é obrigatório e não há chave para desligar no painel. O Gmail transforma
+ * esse cabeçalho num link "Cancelar inscrição" ao lado do remetente.
+ *
+ * Se um diretor clicar ali achando que é propaganda, ele entra na lista de
+ * bloqueados e PARA DE RECEBER OS CÓDIGOS DE LOGIN. Fica trancado fora do
+ * sistema, e o sintoma é o pior possível: o e-mail simplesmente não chega,
+ * sem erro, sem aviso, sem nada para investigar.
+ *
+ * Com esta consulta, o painel aponta o problema antes de virar chamado.
+ *
+ * @returns {Promise<{suportado: boolean, emails: string[], erro?: string}>}
+ *          `suportado: false` quando o transporte não expõe essa informação —
+ *          não é erro, é ausência de recurso, e o chamador não deve alarmar.
+ */
+async function contatosBloqueados() {
+    if (transporteEscolhido() !== 'brevo-api') {
+        return { suportado: false, emails: [] };
+    }
+
+    try {
+        // 500 é o teto por página na API. Uma escola não chega perto disso em
+        // bloqueios; se chegar, o problema é outro e maior.
+        const bruto = await consultarGet(
+            'api.brevo.com',
+            '/v3/smtp/blockedContacts?limit=500&offset=0',
+            { 'api-key': config().chave }
+        );
+        const json = JSON.parse(bruto);
+        const emails = (json.contacts || [])
+            .map((c) => String(c.email || '').toLowerCase())
+            .filter(Boolean);
+        return { suportado: true, emails };
+    } catch (e) {
+        return { suportado: true, emails: [], erro: e.message || String(e) };
+    }
+}
+
+module.exports = { enviarEmail, verificarEnvio, transporteEscolhido, mascarar, contatosBloqueados };

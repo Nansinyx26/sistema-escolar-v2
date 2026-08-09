@@ -38,6 +38,22 @@ const BLOQUEIO_2FA_MS = 15 * 60 * 1000;
 // no quarto.
 
 // --------------------------------------------------
+/**
+ * Destino guardado pelo gate (protegerPaginas) quando a pessoa foi barrada.
+ * Mesma validação do UserController: `//` seria protocol-relative e viraria
+ * redirect aberto no instante seguinte à autenticação.
+ */
+function destinoGuardado(req, res) {
+    const destino = req.cookies && req.cookies.destino_pos_login;
+    // Uso único: consumido, some. Deixá-lo faria um login futuro cair numa
+    // página escolhida numa navegação antiga.
+    if (destino && res) res.clearCookie('destino_pos_login', { path: '/' });
+    if (typeof destino !== 'string') return null;
+    if (!destino.startsWith('/') || destino.startsWith('//')) return null;
+    return destino;
+}
+
+// --------------------------------------------------
 // Utilitário: Gera código numérico de 6 dígitos
 // --------------------------------------------------
 function gerarCodigo6Digitos() {
@@ -73,6 +89,7 @@ async function enviarEmail2FA(email, nome, codigo) {
                 <p style="color: #666; font-size: 14px;">Se você não solicitou este código, ignore este e-mail.</p>
                 <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
                 <p style="color: #aaa; font-size: 12px;">Sistema Escolar — E-mail automático, não responda.</p>
+                <p style="color:#b45309;font-size:12px;background:#fffbeb;border-left:3px solid #f59e0b;padding:10px 12px;margin-top:20px;border-radius:0 4px 4px 0;"><strong>Não clique em "Cancelar inscricao".</strong> Este é um e-mail do sistema, não é propaganda. Cancelando, voce deixa de receber os códigos e fica sem conseguir entrar.</p>
             </div>
         `
     );
@@ -270,7 +287,7 @@ exports.verifyCode = async (req, res) => {
                     aviso: restantes === 0
                         ? 'Este era o seu último código de backup. Peça ao administrador um lote novo.'
                         : `Você usou um código de backup. Restam ${restantes}.`,
-                    redirect_to: require('./UserController').getRedirectPath(usuario),
+                    redirect_to: destinoGuardado(req, res) || require('./UserController').getRedirectPath(usuario),
                 });
             }
             // Não bateu: cai no fluxo normal, que contabiliza a tentativa
@@ -395,7 +412,7 @@ exports.verifyCode = async (req, res) => {
 
         // Reusa a mesma tabela de redirecionamento por perfil do login normal
         const { getRedirectPath } = require('./UserController');
-        const redirect_to = getRedirectPath(usuario);
+        const redirect_to = destinoGuardado(req, res) || getRedirectPath(usuario);
 
         return res.json({
             success: true,
