@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 Padrão de trabalho (leia antes de abrir)
+    url: https://github.com/Nansinyx26/sistema-escolar-v2/blob/main/AGENTS.md
+    about: "Issue → Branch → PR → Deploy. Todo PR precisa mencionar a Issue com 'Closes #'."
+  - name: 🔐 Vulnerabilidade de segurança
+    url: https://github.com/Nansinyx26/sistema-escolar-v2/security/advisories/new
+    about: "Não abra Issue pública para falha de segurança. Use um advisory privado."
