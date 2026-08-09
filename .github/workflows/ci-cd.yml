@@ -243,6 +243,9 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
     env:
       HAS_SLACK: ${{ secrets.SLACK_WEBHOOK != '' }}
+      # Mesmo padrão de HAS_RENDER_DEV/HAS_SLACK: o contexto `secrets` não é
+      # acessível no `if` de um job, então a checagem vira env + if de passo.
+      HAS_MONGO_DEV: ${{ secrets.MONGODB_URI_DEV != '' }}
 
     steps:
       - name: 📥 Checkout code
@@ -257,12 +260,35 @@ jobs:
         working-directory: ./backend
         run: npm ci
 
+      # ATENÇÃO: este passo ainda está ERRADO — ver a Issue #1.
+      #
+      # `npm run migrate` aponta, no backend/package.json, para
+      # `scripts/migrate_indexeddb_to_mongodb.js`: uma migração ONE-SHOT de
+      # IndexedDB para MongoDB, escrita para rodar uma única vez na virada de
+      # arquitetura. O argumento `up` é ignorado pelo script. Enquanto isso, a
+      # migração de verdade, versionada em backend/migrations/, nunca roda —
+      # não existe runner que leia aquele diretório.
+      #
+      # A guarda abaixo é contenção, não correção: sem MONGODB_URI_DEV o passo
+      # é PULADO em vez de falhar o pipeline inteiro (o connectDB lança quando
+      # a URI está vazia, e derrubava o job na primeira push da develop).
+      #
+      # No dia em que alguém cadastrar MONGODB_URI_DEV, este passo passa a
+      # executar de fato — e aí a migração histórica roda a cada push contra o
+      # banco de dev. Corrija a Issue #1 ANTES de cadastrar esse secret.
       - name: 🗄️ Run migrations
         working-directory: ./backend
         run: npm run migrate up
+        if: env.HAS_MONGO_DEV == 'true'
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI_DEV }}
           NODE_ENV: development
+
+      - name: ⏭️ Migrations puladas
+        if: env.HAS_MONGO_DEV != 'true'
+        run: |
+          echo "::notice title=Migrations puladas::MONGODB_URI_DEV não está configurado."
+          echo "Nenhuma migração foi executada. Ver a Issue #1 antes de cadastrar o secret."
 
       - name: 📢 Notify migration status
         uses: 8398a7/action-slack@v3
