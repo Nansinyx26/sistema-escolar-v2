@@ -32,8 +32,15 @@ function coletarProblemas(page: Page) {
         /favicon/i,
         /ResizeObserver loop/i,
         /Failed to load resource.*(analytics|gtag|fonts\.googleapis)/i,
-        // Sem backend de verdade, chamadas de API falham — esperado no smoke.
         /\/api\//i,
+
+        // Falha de carregamento de recurso vem ao console SEM a URL — só
+        // "Failed to load resource: the server responded with a status of 401".
+        // Várias destas páginas carregam auth.js/api-config.js, que consultam a
+        // sessão assim que abrem; sem login, 401/403/404 são a resposta CORRETA
+        // do servidor, não defeito. Filtrar por status evita transformar o
+        // smoke num teste de autenticação — que é papel de outro arquivo.
+        /Failed to load resource.*status of (401|403|404)/i,
     ];
 
     const relevante = (texto: string) => !IGNORAR.some((re) => re.test(texto));
@@ -75,13 +82,26 @@ for (const pagina of PAGINAS_PUBLICAS) {
 }
 
 test('o sistema de motion carrega em toda página pública', async ({ page }) => {
+    const ausentes: string[] = [];
+
     for (const pagina of PAGINAS_PUBLICAS) {
-        await page.goto(pagina.caminho, { waitUntil: 'load' });
+        const resposta = await page.goto(pagina.caminho, { waitUntil: 'load' });
+
+        // Uma página que redireciona ou 404 não tem como carregar o motion; o
+        // diagnóstico útil é dizer ISSO, não "Motion ausente".
+        if (!resposta || resposta.status() >= 400) {
+            ausentes.push(`${pagina.caminho} → HTTP ${resposta?.status() ?? 'sem resposta'}`);
+            continue;
+        }
 
         const carregado = await page.evaluate(() => typeof (window as any).Motion !== 'undefined');
 
-        expect(carregado, `Motion ausente em ${pagina.caminho}`).toBe(true);
+        if (!carregado) ausentes.push(`${pagina.caminho} → window.Motion indefinido`);
     }
+
+    // Uma execução reporta TODAS as páginas com problema, em vez de parar na
+    // primeira e esconder as demais atrás de um retry.
+    expect(ausentes, 'páginas sem o sistema de motion').toEqual([]);
 });
 
 test('o coletor de erros de frontend carrega antes do motion', async ({ page }) => {
