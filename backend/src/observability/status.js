@@ -13,8 +13,6 @@
  * módulo, então a dependência é sempre em uma direção só.
  */
 
-'use strict';
-
 const config = require('./config');
 const otel = require('./otel');
 const providers = require('./providers');

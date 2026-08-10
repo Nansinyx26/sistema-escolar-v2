@@ -1,0 +1,7 @@
+# Gate local antes do commit (AGENTS.md §10).
+#
+# Só lint/format, que é rápido. Teste, arquitetura e Knip ficam no
+# `npm run verify` e no CI — um pre-commit de dois minutos é um pre-commit que
+# as pessoas contornam com --no-verify.
+
+npx --no -- biome check --write --no-errors-on-unmatched --staged
