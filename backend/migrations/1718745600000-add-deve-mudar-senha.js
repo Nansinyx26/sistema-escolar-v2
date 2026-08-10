@@ -9,7 +9,7 @@ module.exports = {
   version: '1.0',
   
   async up() {
-    const Usuario = require('../models/Usuario');
+    const Usuario = require('../src/models/Usuario');
     
     console.log('Adicionando campo deveMudarSenha...');
     
@@ -28,7 +28,7 @@ module.exports = {
   },
   
   async down() {
-    const Usuario = require('../models/Usuario');
+    const Usuario = require('../src/models/Usuario');
     
     console.log('Removendo campo deveMudarSenha...');
     

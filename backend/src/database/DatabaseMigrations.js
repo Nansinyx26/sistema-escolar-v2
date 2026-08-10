@@ -144,7 +144,10 @@ class DatabaseMigrations {
 
     if (pending.length === 0) {
       console.log('✅ Database is up to date');
-      return { applied: [], skipped: 0 };
+      // `applied` precisa ser NÚMERO aqui também: o caminho de sucesso abaixo
+      // devolve contagem, e a CLI imprime `Applied ${result.applied}`. Com um
+      // array vazio a mensagem saía como "Applied  migrations", sem número.
+      return { applied: 0, failed: 0, results: [] };
     }
 
     console.log(`\n📦 Applying ${pending.length} pending migrations...\n`);
@@ -261,8 +264,18 @@ if (require.main === module) {
 
   (async () => {
     try {
-      const db = require('./db');
-      await db.connectDB();
+      // Dois defeitos que impediam esta CLI de rodar UMA vez sequer:
+      //
+      //   1. `require('./db')` apontava para src/database/db.js, que não
+      //      existe — o módulo de conexão vive em src/utils/db.js.
+      //   2. `utils/db` exporta a função DIRETAMENTE (`module.exports =
+      //      connectDB`), então `db.connectDB()` era `undefined(...)`.
+      //
+      // Por isso o runner ficou órfão desde que foi escrito: qualquer
+      // tentativa de usá-lo estourava em MODULE_NOT_FOUND antes da primeira
+      // linha útil. Ver Issue #1.
+      const connectDB = require('../utils/db');
+      await connectDB();
 
       switch (command) {
         case 'status':

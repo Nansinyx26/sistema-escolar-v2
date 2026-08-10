@@ -405,25 +405,30 @@ jobs:
         working-directory: ./backend
         run: npm ci
 
-      # ATENÇÃO: este passo ainda está ERRADO — ver a Issue #1.
+      # `migrate:up` roda o runner versionado (src/database/DatabaseMigrations.js),
+      # que registra cada migração aplicada na coleção `__migrations__` e só
+      # executa as pendentes — rodar de novo não repete nada.
       #
-      # `npm run migrate` aponta, no backend/package.json, para
-      # `scripts/migrate_indexeddb_to_mongodb.js`: uma migração ONE-SHOT de
-      # IndexedDB para MongoDB, escrita para rodar uma única vez na virada de
-      # arquitetura. O argumento `up` é ignorado pelo script. Enquanto isso, a
-      # migração de verdade, versionada em backend/migrations/, nunca roda —
-      # não existe runner que leia aquele diretório.
+      # Até a Issue #1, este passo chamava `npm run migrate up`, e o script
+      # `migrate` apontava para uma importação ONE-SHOT de IndexedDB. Toda push
+      # na develop reimportava aquele dump contra o banco de dev, enquanto as
+      # migrações de backend/migrations/ nunca rodavam.
       #
-      # A guarda abaixo é contenção, não correção: sem MONGODB_URI_DEV o passo
-      # é PULADO em vez de falhar o pipeline inteiro (o connectDB lança quando
-      # a URI está vazia, e derrubava o job na primeira push da develop).
-      #
-      # No dia em que alguém cadastrar MONGODB_URI_DEV, este passo passa a
-      # executar de fato — e aí a migração histórica roda a cada push contra o
-      # banco de dev. Corrija a Issue #1 ANTES de cadastrar esse secret.
+      # A guarda por secret continua: sem MONGODB_URI_DEV o passo é pulado, em
+      # vez de derrubar o pipeline com um erro de conexão.
       - name: 🗄️ Run migrations
         working-directory: ./backend
-        run: npm run migrate up
+        run: npm run migrate:up
+        if: env.HAS_MONGO_DEV == 'true'
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI_DEV }}
+          NODE_ENV: development
+
+      # Deixa no log o que ficou aplicado — sem isso, migração é uma caixa
+      # preta que só se inspeciona conectando no banco à mão.
+      - name: 📊 Status das migrations
+        working-directory: ./backend
+        run: npm run migrate:status
         if: env.HAS_MONGO_DEV == 'true'
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI_DEV }}
