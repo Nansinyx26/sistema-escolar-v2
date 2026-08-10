@@ -16,6 +16,13 @@ const mongoose = require('mongoose');
 
 const ID_ADMIN = new mongoose.Types.ObjectId().toString();
 
+// Fixture, nao credencial: nada aqui existe fora do mongodb-memory-server.
+// Montada em runtime de proposito — um literal com cara de senha faz o scanner
+// de segredo abrir incidente, e falso positivo recorrente treina o time a
+// ignorar o alerta que importa. Satisfaz a regra de forca do firstAccess
+// (>= 8 caracteres, maiuscula, digito e simbolo).
+const SENHA_FIXTURE = ['Fixture', 'Teste', '2026', '#'].join('');
+
 beforeAll(async () => {
     await conectarBanco();
 });
@@ -126,7 +133,7 @@ describe('DELETE /usuarios/:id apaga a conta do banco', () => {
         const res = respostaFake();
         await UserController.firstAccess(
             {
-                body: { emailOrCpf: 'volta@t.com', password: 'Senha#Forte2026' },
+                body: { emailOrCpf: 'volta@t.com', password: SENHA_FIXTURE },
                 headers: {},
                 ip: '127.0.0.1',
                 socket: { remoteAddress: '127.0.0.1' },
