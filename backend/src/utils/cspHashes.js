@@ -36,28 +36,29 @@ const path = require('path');
 const crypto = require('crypto');
 
 // Diretórios/arquivos HTML efetivamente servidos (espelha app.js)
-const ALVOS = [
-    'index.html',
-    'html',
-    'detalhes',
-    'direcao',
-    'graficos',
-    'portal-responsavel/dist'
-];
+const ALVOS = ['index.html', 'html', 'detalhes', 'direcao', 'graficos', 'portal-responsavel/dist'];
 
 const RE_SCRIPT = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
 
 function listarHtml(raiz, alvo, acc = []) {
     const p = path.join(raiz, alvo);
     let st;
-    try { st = fs.statSync(p); } catch { return acc; }
+    try {
+        st = fs.statSync(p);
+    } catch {
+        return acc;
+    }
 
     if (st.isFile()) {
         if (p.endsWith('.html')) acc.push(p);
         return acc;
     }
     let entradas;
-    try { entradas = fs.readdirSync(p); } catch { return acc; }
+    try {
+        entradas = fs.readdirSync(p);
+    } catch {
+        return acc;
+    }
     for (const e of entradas) listarHtml(p, e, acc);
     return acc;
 }
@@ -67,7 +68,7 @@ function listarHtml(raiz, alvo, acc = []) {
  * @returns {{hashes: string[], arquivos: number, blocos: number, maisRecente: number}}
  */
 function calcularHashes(raizFrontend) {
-    const arquivos = ALVOS.flatMap(a => listarHtml(raizFrontend, a));
+    const arquivos = ALVOS.flatMap((a) => listarHtml(raizFrontend, a));
     const hashes = new Set();
     let blocos = 0;
     let maisRecente = 0;
@@ -77,7 +78,9 @@ function calcularHashes(raizFrontend) {
         try {
             html = fs.readFileSync(arquivo, 'utf8');
             maisRecente = Math.max(maisRecente, fs.statSync(arquivo).mtimeMs);
-        } catch { continue; }
+        } catch {
+            continue;
+        }
 
         for (const m of html.matchAll(RE_SCRIPT)) {
             const atributos = m[1];
@@ -89,11 +92,27 @@ function calcularHashes(raizFrontend) {
             if (!corpo.trim()) continue;
             // `type` não-executável (application/json, text/template…) é dado, não script.
             const tipo = /\btype\s*=\s*["']?([^"'\s>]+)/i.exec(atributos)?.[1]?.toLowerCase();
-            if (tipo && !['text/javascript', 'module', 'application/javascript'].includes(tipo)) continue;
+            if (tipo && !['text/javascript', 'module', 'application/javascript'].includes(tipo))
+                continue;
 
             // CRÍTICO: o browser hasheia o conteúdo EXATO entre as tags, sem
-            // aparar espaços. Qualquer normalização aqui quebraria o match.
-            hashes.add(`'sha256-${crypto.createHash('sha256').update(corpo, 'utf8').digest('base64')}'`);
+            // aparar espaços. Não normalize NADA além das quebras de linha.
+            //
+            // As quebras são a exceção, e por exigência do próprio HTML: o
+            // parser converte `\r\n` e `\r` soltos em `\n` ANTES de o conteúdo
+            // virar o texto do script. Ou seja, o browser hasheia o texto já
+            // normalizado — hashear os bytes crus do disco é que estava errado.
+            //
+            // Consequência prática, e o motivo da Issue #27: em checkout
+            // Windows o Git grava CRLF, os hashes deixavam de bater e a CSP
+            // bloqueava TODO script inline. O sistema não abria na máquina de
+            // quem desenvolve, enquanto produção (Linux, LF) seguia normal.
+            // Verificado: os hashes que o Chrome exigia batem com o conteúdo
+            // normalizado e com nenhum dos crus.
+            const corpoNormalizado = corpo.replace(/\r\n?/g, '\n');
+            hashes.add(
+                `'sha256-${crypto.createHash('sha256').update(corpoNormalizado, 'utf8').digest('base64')}'`
+            );
             blocos++;
         }
     }
@@ -131,7 +150,9 @@ function obterHashes(raizFrontend) {
 
     cache = calcularHashes(raizFrontend);
     ultimaChecagem = agora;
-    console.log(`🔒 [CSP] ${cache.blocos} scripts inline autorizados por hash em ${cache.arquivos} arquivos HTML (sem 'unsafe-inline').`);
+    console.log(
+        `🔒 [CSP] ${cache.blocos} scripts inline autorizados por hash em ${cache.arquivos} arquivos HTML (sem 'unsafe-inline').`
+    );
     return cache.hashes;
 }
 
