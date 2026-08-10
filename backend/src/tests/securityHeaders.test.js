@@ -25,7 +25,6 @@ function diretiva(res, nome) {
 }
 
 describe('CSP: scripts inline sem unsafe-inline', () => {
-
     it('script-src NAO contem unsafe-inline', async () => {
         const res = await request(app).get('/index.html');
         // 'unsafe-inline' autoriza QUALQUER script inline — inclusive o que um
@@ -35,7 +34,7 @@ describe('CSP: scripts inline sem unsafe-inline', () => {
 
     it('script-src autoriza os inline por hash', async () => {
         const res = await request(app).get('/index.html');
-        const hashes = (diretiva(res, 'script-src').match(/'sha256-[^']+'/g) || []);
+        const hashes = diretiva(res, 'script-src').match(/'sha256-[^']+'/g) || [];
         expect(hashes.length).toBeGreaterThan(0);
     });
 
@@ -54,7 +53,19 @@ describe('CSP: scripts inline sem unsafe-inline', () => {
 
             for (const m of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
                 if (/\bsrc\s*=/i.test(m[1]) || !m[2].trim()) continue;
-                const hash = `'sha256-${crypto.createHash('sha256').update(m[2], 'utf8').digest('base64')}'`;
+
+                // A normalização de quebras de linha NÃO é um detalhe do teste:
+                // é o que o parser HTML faz antes de o conteúdo virar o texto
+                // do script, então é sobre o texto normalizado que o browser
+                // calcula o hash (Issue #27).
+                //
+                // Sem esta linha, o teste hasheava os bytes crus — a MESMA
+                // suposição errada que a implementação fazia. Os dois erravam
+                // igual, o teste passava, e em checkout Windows (CRLF) a CSP
+                // bloqueava todo script inline na cara do usuário. Teste que
+                // repete a premissa do código não consegue testá-la.
+                const corpo = m[2].replace(/\r\n?/g, '\n');
+                const hash = `'sha256-${crypto.createHash('sha256').update(corpo, 'utf8').digest('base64')}'`;
                 expect(autorizados.has(hash)).toBe(true);
             }
         }
@@ -77,12 +88,13 @@ describe('CSP: scripts inline sem unsafe-inline', () => {
         const doDisco = calcularHashes(raizFrontend).hashes;
 
         expect(doDisco.length).toBe(naPolitica.size);
-        doDisco.forEach(h => expect(naPolitica.has(h)).toBe(true));
+        for (const h of doDisco) {
+            expect(naPolitica.has(h)).toBe(true);
+        }
     });
 });
 
 describe('Clickjacking', () => {
-
     it('X-Frame-Options: DENY', async () => {
         const res = await request(app).get('/index.html');
         expect(res.headers['x-frame-options']).toBe('DENY');
@@ -96,20 +108,15 @@ describe('Clickjacking', () => {
 });
 
 describe('CORS', () => {
-
     it('NAO reflete uma origem arbitraria', async () => {
-        const res = await request(app)
-            .get('/api/ping')
-            .set('Origin', 'https://evil.example.com');
+        const res = await request(app).get('/api/ping').set('Origin', 'https://evil.example.com');
         expect(res.headers['access-control-allow-origin']).toBeUndefined();
     });
 
     it('origem bloqueada responde 403, nao 500', async () => {
         // 500 dispararia o alerta FATAL 'UNHANDLED_ERROR': qualquer um inundaria
         // o canal de alertas mandando Origin aleatória.
-        const res = await request(app)
-            .get('/api/ping')
-            .set('Origin', 'https://evil.example.com');
+        const res = await request(app).get('/api/ping').set('Origin', 'https://evil.example.com');
         expect(res.status).toBe(403);
     });
 });
