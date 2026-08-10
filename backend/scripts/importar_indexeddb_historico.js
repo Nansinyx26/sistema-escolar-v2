@@ -1,3 +1,23 @@
+/**
+ * importar_indexeddb_historico.js — importação ONE-SHOT de IndexedDB para MongoDB.
+ *
+ * ⚠️ NÃO é uma migração de schema e NÃO deve rodar no CI.
+ *
+ * Foi escrito para a virada de arquitetura, quando os dados viviam no
+ * IndexedDB do navegador. Recebe um dump JSON e o grava no Mongo. Rodar de
+ * novo reimporta o mesmo dump.
+ *
+ * Chamava-se `migrate_indexeddb_to_mongodb.js`, e o nome foi a causa da
+ * Issue #1: o script `npm run migrate` apontava para cá, então TODA push na
+ * develop reexecutava esta importação contra o banco de dev, enquanto as
+ * migrações versionadas em backend/migrations/ nunca rodavam.
+ *
+ * Migração de schema agora é `npm run migrate:up` (src/database/DatabaseMigrations.js).
+ *
+ * Uso manual:
+ *   npm run importar:indexeddb -- caminho/para/dump.json
+ */
+
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 const mongoose = require('mongoose');
 const fs = require('fs');
@@ -15,7 +35,7 @@ const args = process.argv.slice(2);
 const jsonFile = args[0];
 
 if (!jsonFile) {
-    console.log('Uso: node scripts/migrate_indexeddb_to_mongodb.js <caminho-para-json>');
+    console.log('Uso: npm run importar:indexeddb -- <caminho-para-json>');
     process.exit(1);
 }
 
