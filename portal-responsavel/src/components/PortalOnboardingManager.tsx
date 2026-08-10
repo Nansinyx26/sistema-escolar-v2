@@ -1,6 +1,13 @@
-import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
-import OnboardingTour, { RESPONSAVEL_TOUR_STEPS } from './OnboardingTour';
+import {
+  type Dispatch,
+  type SetStateAction,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import type { AuthUser } from '../types';
+import OnboardingTour, { RESPONSAVEL_TOUR_STEPS } from './OnboardingTour';
 
 declare global {
   interface Window {
@@ -11,7 +18,7 @@ declare global {
 interface PortalOnboardingManagerProps {
   authUser: AuthUser | null;
   authLoading: boolean;
-  currentTab: 'dashboard' | 'ficha' | 'linking' | 'profile';
+  currentTab: 'dashboard' | 'ficha' | 'linking' | 'profile' | 'privacidade';
   onUserChange: Dispatch<SetStateAction<AuthUser | null>>;
 }
 
