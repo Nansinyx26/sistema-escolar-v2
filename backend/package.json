@@ -6,7 +6,12 @@
     "scripts": {
         "start": "node src/index.js",
         "dev": "nodemon src/index.js",
-        "migrate": "node scripts/migrate_indexeddb_to_mongodb.js",
+        "migrate": "node src/database/DatabaseMigrations.js",
+        "migrate:status": "node src/database/DatabaseMigrations.js status",
+        "migrate:up": "node src/database/DatabaseMigrations.js up",
+        "migrate:down": "node src/database/DatabaseMigrations.js down",
+        "migrate:create": "node src/database/DatabaseMigrations.js create",
+        "importar:indexeddb": "node scripts/importar_indexeddb_historico.js",
         "seed:escolas": "node scripts/seedEscolas.js",
         "migrate:multiescola": "node scripts/migrarParaMultiEscola.js",
         "migrate:webp": "node scripts/migrate-with-webp.js",
