@@ -5,3 +5,13 @@
 # as pessoas contornam com --no-verify.
 
 npx --no -- biome check --write --no-errors-on-unmatched --staged
+
+# `--staged` ESCREVE nos arquivos, mas não os devolve ao índice. Sem a linha
+# abaixo, o commit sai com a versão NÃO formatada, o working tree fica sujo com
+# a formatação que o hook acabou de aplicar, e o CI reprova o que foi enviado —
+# tudo em silêncio, porque o hook terminou em sucesso.
+#
+# `update-index --again` re-adiciona apenas os caminhos que já estavam no
+# índice, então não arrasta para o commit nada que a pessoa deixou de fora
+# de propósito.
+git update-index --again
