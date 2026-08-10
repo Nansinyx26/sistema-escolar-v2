@@ -1,0 +1,140 @@
+{
+    "$schema": "https://biomejs.dev/schemas/2.5.7/schema.json",
+    "vcs": {
+        "enabled": true,
+        "clientKind": "git",
+        "useIgnoreFile": true,
+        "defaultBranch": "develop"
+    },
+    "files": {
+        "includes": [
+            "js/**/*.js",
+            "scripts/**/*.js",
+            "backend/src/**/*.js",
+            "backend/tests/**/*.js",
+            "portal-responsavel/src/**/*.{ts,tsx}",
+            "e2e/**/*.ts",
+            "*.js",
+            "*.json",
+            "!**/node_modules",
+            "!**/dist",
+            "!**/coverage",
+            "!**/build",
+            "!**/playwright-report",
+            "!**/test-results",
+            "!**/.stryker-tmp",
+            "!js/libs",
+            "!js/legacy",
+            "!js/*.min.js",
+            "!js/anime.min.js",
+            "!js/gsap.min.js",
+            "!js/three.min.js",
+            "!css",
+            "!package-lock.json",
+            "!**/package-lock.json",
+            "!.dependency-cruiser-known-violations.json"
+        ],
+        "maxSize": 2097152
+    },
+    "formatter": {
+        "enabled": true,
+        "indentStyle": "space",
+        "indentWidth": 4,
+        "lineWidth": 100,
+        "lineEnding": "lf"
+    },
+    "linter": {
+        "enabled": true,
+        "rules": {
+            "preset": "recommended",
+            "suspicious": {
+                "noExplicitAny": "warn",
+                "noConsole": "off",
+                "noVar": "error"
+            },
+            "style": {
+                "useConst": "error"
+            },
+            "complexity": {
+                "noForEach": "off"
+            },
+            "correctness": {
+                "noUnusedVariables": "warn",
+                "noUnusedImports": "warn"
+            },
+            "performance": {
+                "noDelete": "off"
+            }
+        }
+    },
+    "javascript": {
+        "formatter": {
+            "quoteStyle": "single",
+            "semicolons": "always",
+            "trailingCommas": "es5",
+            "arrowParentheses": "always"
+        },
+        "globals": ["Motion", "Observability", "lucide", "gsap", "anime", "THREE", "io"]
+    },
+    "json": {
+        "formatter": {
+            "indentWidth": 4
+        }
+    },
+    "assist": {
+        "enabled": true,
+        "actions": {
+            "source": {
+                "organizeImports": "on"
+            }
+        }
+    },
+    "overrides": [
+        {
+            "includes": ["js/**/*.js"],
+            "javascript": {
+                "formatter": {
+                    "quoteStyle": "double"
+                }
+            },
+            "linter": {
+                "rules": {
+                    "suspicious": {
+                        "noVar": "off",
+                        "noRedundantUseStrict": "off"
+                    },
+                    "complexity": {
+                        "useArrowFunction": "off",
+                        "useOptionalChain": "off",
+                        "noArguments": "off"
+                    },
+                    "style": {
+                        "useTemplate": "off"
+                    },
+                    "correctness": {
+                        "noInnerDeclarations": "off"
+                    }
+                }
+            }
+        },
+        {
+            "includes": ["portal-responsavel/src/**/*.{ts,tsx}"],
+            "javascript": {
+                "formatter": {
+                    "quoteStyle": "single",
+                    "indentWidth": 2
+                }
+            }
+        },
+        {
+            "includes": ["backend/tests/**/*.js", "e2e/**/*.ts"],
+            "linter": {
+                "rules": {
+                    "suspicious": {
+                        "noExplicitAny": "off"
+                    }
+                }
+            }
+        }
+    ]
+}
