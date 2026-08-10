@@ -81,27 +81,21 @@ for (const pagina of PAGINAS_PUBLICAS) {
     });
 }
 
-test('o sistema de motion carrega em toda página pública', async ({ page }) => {
-    const ausentes: string[] = [];
-
-    for (const pagina of PAGINAS_PUBLICAS) {
+// Um teste POR PÁGINA, e não um laço dentro de um teste só.
+//
+// Com o laço, uma página que redireciona via JS (auth.js manda para o login
+// quando não há sessão) abortava o `goto` da página seguinte — net::ERR_ABORTED
+// — e derrubava a verificação das outras sete. Cada teste com o seu próprio
+// contexto elimina a interferência e diz exatamente qual página falhou.
+for (const pagina of PAGINAS_PUBLICAS) {
+    test(`${pagina.nome} carrega o sistema de motion`, async ({ page }) => {
         const resposta = await page.goto(pagina.caminho, { waitUntil: 'load' });
 
-        // Uma página que redireciona ou 404 não tem como carregar o motion; o
-        // diagnóstico útil é dizer ISSO, não "Motion ausente".
-        if (!resposta || resposta.status() >= 400) {
-            ausentes.push(`${pagina.caminho} → HTTP ${resposta?.status() ?? 'sem resposta'}`);
-            continue;
-        }
+        expect(resposta?.status(), `status de ${pagina.caminho}`).toBeLessThan(400);
 
-        // Algumas destas páginas redirecionam via JS quando não há sessão
-        // (auth.js manda para o login). Se o redirect acontece no meio do
-        // evaluate, o Playwright lança "Execution context was destroyed" — que
-        // é ruído de temporização, não ausência do motion. No CI, mais lento,
-        // isso acontecia sempre; na máquina local, quase nunca.
-        //
+        // Se a página redirecionar durante o evaluate, o contexto é destruído.
         // Uma tentativa extra depois da navegação assentar resolve, e o motion
-        // é conferido na página em que o usuário de fato termina.
+        // acaba conferido na página onde o usuário de fato termina.
         let carregado: boolean;
         try {
             carregado = await page.evaluate(() => typeof (window as any).Motion !== 'undefined');
@@ -110,17 +104,12 @@ test('o sistema de motion carrega em toda página pública', async ({ page }) =>
             carregado = await page.evaluate(() => typeof (window as any).Motion !== 'undefined');
         }
 
-        if (!carregado) {
-            const onde = new URL(page.url()).pathname;
-            const destino = onde === pagina.caminho ? '' : ` (redirecionou para ${onde})`;
-            ausentes.push(`${pagina.caminho} → window.Motion indefinido${destino}`);
-        }
-    }
+        const onde = new URL(page.url()).pathname;
+        const destino = onde === pagina.caminho ? '' : ` (redirecionou para ${onde})`;
 
-    // Uma execução reporta TODAS as páginas com problema, em vez de parar na
-    // primeira e esconder as demais atrás de um retry.
-    expect(ausentes, 'páginas sem o sistema de motion').toEqual([]);
-});
+        expect(carregado, `window.Motion indefinido em ${pagina.caminho}${destino}`).toBe(true);
+    });
+}
 
 test('o coletor de erros de frontend carrega antes do motion', async ({ page }) => {
     await page.goto('/', { waitUntil: 'load' });
