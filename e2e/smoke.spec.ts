@@ -16,7 +16,9 @@ const PAGINAS_PUBLICAS = [
     { caminho: '/html/login-professor.html', nome: 'login do professor' },
     { caminho: '/html/login-secretaria.html', nome: 'login da secretaria' },
     { caminho: '/html/login-diretor.html', nome: 'login da direção' },
-    { caminho: '/html/escolher-perfil.html', nome: 'escolha de perfil' },
+    // escolher-perfil.html NÃO entra aqui: exige sessão e redireciona para o
+    // login quando não há. Tratá-la como pública fazia o teste medir a página
+    // errada. A cobertura dela pertence a um fluxo autenticado (Issue #14).
     { caminho: '/html/politica-privacidade.html', nome: 'política de privacidade' },
     { caminho: '/html/404.html', nome: 'página 404' },
 ];
@@ -93,15 +95,17 @@ for (const pagina of PAGINAS_PUBLICAS) {
 
         expect(resposta?.status(), `status de ${pagina.caminho}`).toBeLessThan(400);
 
-        // Se a página redirecionar durante o evaluate, o contexto é destruído.
-        // Uma tentativa extra depois da navegação assentar resolve, e o motion
-        // acaba conferido na página onde o usuário de fato termina.
-        let carregado: boolean;
+        // `waitForFunction` em vez de um `evaluate` único: ele reavalia até dar
+        // certo e sobrevive a navegação, o que um evaluate solto não faz — se a
+        // página redireciona ou o script `defer` ainda não rodou, o evaluate
+        // falha por temporização e não por ausência do motion.
+        let carregado = true;
         try {
-            carregado = await page.evaluate(() => typeof (window as any).Motion !== 'undefined');
+            await page.waitForFunction(() => typeof (window as any).Motion !== 'undefined', null, {
+                timeout: 8000,
+            });
         } catch {
-            await page.waitForLoadState('load');
-            carregado = await page.evaluate(() => typeof (window as any).Motion !== 'undefined');
+            carregado = false;
         }
 
         const onde = new URL(page.url()).pathname;
