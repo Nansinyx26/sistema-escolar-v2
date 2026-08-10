@@ -1,0 +1,33 @@
+# CODEOWNERS — revisor obrigatório por área.
+# Ative "Require review from Code Owners" na proteção das branches main e develop.
+# Processo completo em AGENTS.md.
+
+# Padrão para tudo que não casar com nada abaixo
+*                           @Nansinyx26
+
+# Processo e automação — mudar aqui muda a regra do jogo
+/AGENTS.md                  @Nansinyx26
+/CLAUDE.md                  @Nansinyx26
+/.github/                   @Nansinyx26
+/scripts/gh-bootstrap.sh    @Nansinyx26
+
+# Backend
+/backend/                   @Nansinyx26
+/backend/migrations/        @Nansinyx26
+/backend/src/observability/ @Nansinyx26
+
+# Frontend principal (vanilla)
+/js/                        @Nansinyx26
+/css/                       @Nansinyx26
+/scss/                      @Nansinyx26
+
+# Portal do responsável (React + Vite)
+/portal-responsavel/        @Nansinyx26
+
+# Qualidade e observabilidade
+/biome.json                 @Nansinyx26
+/knip.json                  @Nansinyx26
+/stryker.conf.json          @Nansinyx26
+/.dependency-cruiser.cjs    @Nansinyx26
+/playwright.config.ts       @Nansinyx26
+/codecov.yml                @Nansinyx26

@@ -1,0 +1,124 @@
+name: 📋 PR Policy
+
+# Torna executável a regra central de AGENTS.md:
+# todo PR referencia uma Issue na descrição.
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+    branches: [main, develop]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  pr-policy:
+    name: 🔗 Issue vinculada, branch e título
+    runs-on: ubuntu-latest
+
+    steps:
+      # PR de release (develop → main) é a promoção do que já foi revisado, um
+      # a um, na entrada da develop. Ele não tem Issue própria, o head é
+      # `develop` — que nunca vai casar com <tipo>/<issue>-<slug> — e exigir as
+      # duas coisas tornaria o fluxo da seção 6 do AGENTS.md impossível de
+      # cumprir: o gate reprovaria exatamente o PR que leva tudo à produção.
+      #
+      # A checagem de título continua valendo para ele.
+      - name: 🏷️ Identificar PR de release
+        id: tipo
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ "$HEAD_REF" = "develop" ] && [ "$BASE_REF" = "main" ]; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "::notice title=PR de release::develop → main; as regras de Issue e de nome de branch não se aplicam."
+          else
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 🔗 A descrição do PR precisa referenciar uma Issue
+        if: steps.tipo.outputs.release != 'true'
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if printf '%s' "$PR_BODY" | grep -qiE '(clos(e|es|ed)|fix(es|ed)?|resolv(e|es|ed)|refs)[[:space:]]+#[0-9]+'; then
+            echo "OK — Issue referenciada na descrição."
+            printf '%s' "$PR_BODY" | grep -oiE '(clos(e|es|ed)|fix(es|ed)?|resolv(e|es|ed)|refs)[[:space:]]+#[0-9]+' | sed 's/^/  /'
+            exit 0
+          fi
+
+          echo "::error title=PR sem Issue vinculada::A descrição deste PR não referencia nenhuma Issue."
+          cat <<'MSG'
+
+          ┌───────────────────────────────────────────────────────────────┐
+          │  Este PR não referencia uma Issue.                            │
+          └───────────────────────────────────────────────────────────────┘
+
+          Regra (AGENTS.md, seção 5): todo PR menciona a Issue na DESCRIÇÃO.
+
+          Como corrigir — edite a descrição do PR e inclua uma linha:
+
+              Closes #142
+
+          Palavras aceitas: Closes / Fixes / Resolves  (fecham a Issue no merge)
+                            Refs                        (apenas relaciona)
+
+          Ainda não existe Issue para este trabalho? Crie antes:
+
+              gh issue create --title "..." \
+                --label "tipo:correcao,area:backend,prioridade:alta"
+
+          MSG
+          exit 1
+
+      - name: 🌿 Nome da branch precisa seguir o padrão
+        if: >-
+          steps.tipo.outputs.release != 'true' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          # <tipo>/<numero-da-issue>-<slug>   ex.: fix/142-calculo-frequencia
+          if printf '%s' "$BRANCH" | grep -qE '^(feat|fix|chore|refactor|perf|docs|test|build|ci|hotfix|release)/[0-9]+-[a-z0-9._-]+$'; then
+            echo "OK — branch '$BRANCH'."
+            exit 0
+          fi
+
+          echo "::error title=Nome de branch fora do padrão::'$BRANCH' não segue <tipo>/<issue>-<slug>."
+          cat <<MSG
+
+          Branch atual: $BRANCH
+
+          Esperado: <tipo>/<numero-da-issue>-<slug-curto>
+          Tipos:    feat, fix, chore, refactor, perf, docs, test, build, ci, hotfix, release
+
+          Exemplos:  fix/142-calculo-frequencia
+                     feat/144-relatorio-bimestral
+                     refactor/143-user-controller
+
+          MSG
+          exit 1
+
+      - name: 📝 Título do PR em Conventional Commits
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if printf '%s' "$TITLE" | grep -qE '^(feat|fix|refactor|perf|docs|test|build|ci|chore|style|revert)(\([a-z0-9,_-]+\))?!?: .+'; then
+            echo "OK — título '$TITLE'."
+            exit 0
+          fi
+
+          echo "::error title=Título fora do padrão::'$TITLE' não segue Conventional Commits."
+          cat <<MSG
+
+          Título atual: $TITLE
+
+          Esperado: <tipo>(<escopo>): <descrição no imperativo>
+          Escopos:  backend, frontend, portal, motion, obs, ci, deps, db
+
+          Exemplo:  fix(backend): corrigir cálculo de frequência
+
+          MSG
+          exit 1

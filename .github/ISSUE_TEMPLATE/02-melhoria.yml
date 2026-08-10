@@ -1,0 +1,84 @@
+name: "✨ Melhoria"
+description: "Algo existe e funciona, mas pode ficar melhor (performance, UX, refactor, acessibilidade, dívida técnica)"
+title: "Melhorar "
+labels: ["tipo:melhoria"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Processo completo em [AGENTS.md](../blob/main/AGENTS.md).
+        O PR que resolver esta Issue **precisa** conter `Closes #<numero>` na descrição.
+
+  - type: textarea
+    id: situacao
+    attributes:
+      label: Situação atual
+      description: O que existe hoje e por que incomoda.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposta
+    attributes:
+      label: Melhoria proposta
+    validations:
+      required: true
+
+  - type: textarea
+    id: ganho
+    attributes:
+      label: Ganho esperado
+      description: Se der para medir, meça (ms, requisições, linhas removidas, pontos de Lighthouse).
+    validations:
+      required: true
+
+  - type: dropdown
+    id: natureza
+    attributes:
+      label: Natureza da melhoria
+      options:
+        - "Performance"
+        - "UX / interface / motion"
+        - "Acessibilidade"
+        - "Refactor / dívida técnica"
+        - "Observabilidade"
+        - "Testes"
+        - "Segurança"
+        - "Documentação"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      options:
+        - "area:backend"
+        - "area:frontend"
+        - "area:portal"
+        - "area:infra"
+        - "area:banco"
+        - "area:ux"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: prioridade
+    attributes:
+      label: Prioridade
+      options:
+        - "prioridade:alta"
+        - "prioridade:media"
+        - "prioridade:baixa"
+    validations:
+      required: true
+
+  - type: textarea
+    id: aceite
+    attributes:
+      label: Critério de aceite
+      value: |
+        - [ ]
+        - [ ] Sem regressão nos testes existentes
+    validations:
+      required: true

@@ -1,0 +1,84 @@
+name: "🚀 Nova função"
+description: "Algo que não existe e será criado"
+title: "Adicionar "
+labels: ["tipo:nova-funcao"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Processo completo em [AGENTS.md](../blob/main/AGENTS.md).
+        O PR que resolver esta Issue **precisa** conter `Closes #<numero>` na descrição.
+        Se a função for grande, marque `epico` e quebre em sub-Issues com checklist.
+
+  - type: textarea
+    id: problema
+    attributes:
+      label: Problema a resolver
+      description: Qual necessidade real de quem usa o sistema está sem resposta hoje.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solucao
+    attributes:
+      label: Solução proposta
+    validations:
+      required: true
+
+  - type: dropdown
+    id: perfil
+    attributes:
+      label: Perfil de usuário atendido
+      multiple: true
+      options:
+        - "Aluno"
+        - "Responsável"
+        - "Professor"
+        - "Secretaria"
+        - "Direção"
+        - "Administrador"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      options:
+        - "area:backend"
+        - "area:frontend"
+        - "area:portal"
+        - "area:infra"
+        - "area:banco"
+        - "area:ux"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: prioridade
+    attributes:
+      label: Prioridade
+      options:
+        - "prioridade:alta"
+        - "prioridade:media"
+        - "prioridade:baixa"
+    validations:
+      required: true
+
+  - type: textarea
+    id: aceite
+    attributes:
+      label: Critério de aceite
+      value: |
+        - [ ]
+        - [ ] Cobertura de testes para o fluxo principal
+        - [ ] Estados de carregamento com skeleton e motion conforme `docs/MOTION.md`
+        - [ ] Operações instrumentadas conforme `docs/OBSERVABILITY.md`
+    validations:
+      required: true
+
+  - type: textarea
+    id: fora
+    attributes:
+      label: Fora de escopo
+      description: O que esta Issue explicitamente **não** cobre.

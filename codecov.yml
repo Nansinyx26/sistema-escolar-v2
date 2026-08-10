@@ -1,0 +1,99 @@
+# codecov.yml — gates de cobertura.
+#
+# Contexto: até agora a cobertura NUNCA foi medida. O CI chamava
+# `npm run coverage`, script que não existe, e o `--if-present` fazia o passo
+# passar em silêncio; o upload seguinte apontava para um lcov.info inexistente.
+# Ver a Issue "Corrigir upload de cobertura que nunca recebe arquivo".
+#
+# Por isso `project.target` começa em `auto` (não deixar piorar) em vez de um
+# número fixo — cravar 80% antes de conhecer o baseline só bloquearia todo PR.
+# O gate que morde de verdade é o `patch`: código NOVO precisa vir testado.
+
+codecov:
+  require_ci_to_pass: true
+  notify:
+    wait_for_ci: true
+
+coverage:
+  precision: 1
+  round: down
+  range: "50...85"
+
+  status:
+    project:
+      default:
+        # "auto" = comparar com a base. Cobertura não pode cair.
+        target: auto
+        threshold: 1%
+        if_ci_failed: error
+
+      backend:
+        target: auto
+        threshold: 1%
+        paths:
+          - "backend/src/"
+
+      observabilidade:
+        # A barreira de PII precisa de cobertura alta: vazamento de dado de
+        # aluno é o tipo de defeito que não aparece em teste verde.
+        target: 80%
+        threshold: 0%
+        paths:
+          - "backend/src/observability/"
+          - "backend/src/utils/logSanitizer.js"
+
+    patch:
+      default:
+        # Código novo vem testado. Este é o gate que importa no dia a dia.
+        target: 70%
+        threshold: 0%
+        if_ci_failed: error
+
+comment:
+  layout: "condensed_header, diff, flags, components, condensed_files"
+  behavior: default
+  require_changes: true
+  require_base: false
+  require_head: true
+
+component_management:
+  individual_components:
+    - component_id: backend
+      name: Backend
+      paths: [backend/src/**]
+
+    - component_id: observabilidade
+      name: Observabilidade
+      paths:
+        - backend/src/observability/**
+        - backend/src/utils/logSanitizer.js
+
+    - component_id: frontend
+      name: Frontend (vanilla)
+      paths: [js/**]
+
+    - component_id: portal
+      name: Portal do Responsável
+      paths: [portal-responsavel/src/**]
+
+ignore:
+  - "**/node_modules/**"
+  - "**/coverage/**"
+  - "**/dist/**"
+  - "**/*.min.js"
+  - "js/libs/**"
+  - "js/legacy/**"
+  - "backend/scripts/**"
+  - "backend/migrations/**"
+  - "backend/src/tests/**"
+  - "e2e/**"
+  - "scripts/**"
+  - "**/*.test.js"
+
+flags:
+  backend:
+    paths: [backend/src/]
+    carryforward: false
+  e2e:
+    paths: [js/, portal-responsavel/src/]
+    carryforward: true

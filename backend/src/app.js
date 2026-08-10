@@ -18,6 +18,11 @@ app.use(compression());
 // Monitoramento e Observabilidade: Métricas HTTP (Roadmap #6)
 app.use(requestLogger);
 
+// Correlaciona requisição ↔ trace ↔ erro e devolve X-Trace-Id ao cliente.
+// Vira no-op quando a observabilidade está desligada (que é o padrão).
+const observability = require('./observability');
+app.use(observability.middleware.request);
+
 // Configurar Trust Proxy para o Render (Necessário para express-rate-limit)
 app.set('trust proxy', 1);
 
@@ -496,6 +501,14 @@ app.use('/api/auth', authPrefixLimiter);
 // Rotas
 app.use('/api', apiRoutes);
 
+// GET /api/health/observability — diz quais provedores estão ligados.
+// Nunca expõe DSN, chave ou endpoint.
+observability.middleware.mountHealth(app);
+
+// POST /api/observability/frontend-error — coletor de erros do navegador.
+// O front não fala com o Sentry direto por causa da CSP; ver middleware.js.
+observability.middleware.mountFrontendCollector(app);
+
 // 404 global: rota desconhecida NÃO mascara mais como landing page.
 // API → JSON; navegação → página de erro amigável (dark theme) com
 // retorno seguro ao painel do perfil logado.
@@ -505,6 +518,10 @@ app.use((req, res) => {
     }
     res.status(404).sendFile(path.join(frontendRootPath, 'html', '404.html'));
 });
+
+// Reporta 5xx aos provedores ativos e repassa o erro. Fica ANTES do handler
+// abaixo de propósito: só observa, quem responde ao cliente é o handler final.
+app.use(observability.middleware.errorHandler);
 
 // Tratamento de Erro (Opaco em Produção — não vaza stack traces)
 app.use((err, req, res, next) => {

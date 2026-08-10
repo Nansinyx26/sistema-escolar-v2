@@ -1,0 +1,1089 @@
+[
+  {
+    "type": "cycle",
+    "from": "backend/src/models/Aluno.js",
+    "to": "backend/src/utils/secretCodeHelper.js",
+    "rule": {
+      "severity": "error",
+      "name": "sem-ciclos"
+    },
+    "cycle": [
+      {
+        "name": "backend/src/utils/secretCodeHelper.js",
+        "dependencyTypes": [
+          "local",
+          "require"
+        ]
+      },
+      {
+        "name": "backend/src/models/Aluno.js",
+        "dependencyTypes": [
+          "local",
+          "require"
+        ]
+      }
+    ]
+  },
+  {
+    "type": "dependency",
+    "from": "backend/src/services/ia/ExportadorConversa.js",
+    "to": "backend/src/controllers/RelatorioController.js",
+    "rule": {
+      "severity": "error",
+      "name": "service-nao-sobe"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "backend/src/services/ia/tools/gerarRelatorioPDF.js",
+    "to": "backend/src/controllers/RelatorioController.js",
+    "rule": {
+      "severity": "error",
+      "name": "service-nao-sobe"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "backend/src/services/ia/tools/listarComunicados.js",
+    "to": "backend/src/controllers/ComunicadoController.js",
+    "rule": {
+      "severity": "error",
+      "name": "service-nao-sobe"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "backend/src/routes/admin.js",
+    "to": "backend/src/models/Usuario.js",
+    "rule": {
+      "severity": "warn",
+      "name": "rota-nao-fala-com-banco"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "backend/src/routes/audit.js",
+    "to": "backend/src/models/AuditLog.js",
+    "rule": {
+      "severity": "warn",
+      "name": "rota-nao-fala-com-banco"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "backend/src/routes/auth.js",
+    "to": "backend/src/models/Usuario.js",
+    "rule": {
+      "severity": "warn",
+      "name": "rota-nao-fala-com-banco"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "backend/src/routes/chatbot.js",
+    "to": "backend/src/models/ChatMensagem.js",
+    "rule": {
+      "severity": "warn",
+      "name": "rota-nao-fala-com-banco"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "backend/src/routes/escolas.js",
+    "to": "backend/src/models/Diretor.js",
+    "rule": {
+      "severity": "warn",
+      "name": "rota-nao-fala-com-banco"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "backend/src/routes/escolas.js",
+    "to": "backend/src/models/Escola.js",
+    "rule": {
+      "severity": "warn",
+      "name": "rota-nao-fala-com-banco"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "backend/src/routes/escolas.js",
+    "to": "backend/src/models/Professor.js",
+    "rule": {
+      "severity": "warn",
+      "name": "rota-nao-fala-com-banco"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "backend/src/routes/escolas.js",
+    "to": "backend/src/models/Secretaria.js",
+    "rule": {
+      "severity": "warn",
+      "name": "rota-nao-fala-com-banco"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "backend/src/routes/escolas.js",
+    "to": "backend/src/models/Usuario.js",
+    "rule": {
+      "severity": "warn",
+      "name": "rota-nao-fala-com-banco"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "backend/src/routes/tts.js",
+    "to": "backend/src/models/TtsAudioCache.js",
+    "rule": {
+      "severity": "warn",
+      "name": "rota-nao-fala-com-banco"
+    }
+  },
+  {
+    "type": "module",
+    "from": "backend/src/config/swagger.js",
+    "to": "backend/src/config/swagger.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "backend/src/database/DatabaseMigrations.js",
+    "to": "backend/src/database/DatabaseMigrations.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "backend/src/middleware/pagination.js",
+    "to": "backend/src/middleware/pagination.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "backend/src/models/UsuarioRefactored.js",
+    "to": "backend/src/models/UsuarioRefactored.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "backend/src/services/AiKnowledgeService.js",
+    "to": "backend/src/services/AiKnowledgeService.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "backend/src/tests/globalSetup.js",
+    "to": "backend/src/tests/globalSetup.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "backend/src/tests/globalTeardown.js",
+    "to": "backend/src/tests/globalTeardown.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "backend/src/tests/guiaSilenciar.test.js",
+    "to": "backend/src/tests/guiaSilenciar.test.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "backend/src/tests/telasAdminInline.test.js",
+    "to": "backend/src/tests/telasAdminInline.test.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "backend/src/validation/ValidationSchemas.js",
+    "to": "backend/src/validation/ValidationSchemas.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/announcement-feed-legacy.js",
+    "to": "js/announcement-feed-legacy.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/announcement-feed-react.js",
+    "to": "js/announcement-feed-react.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/api-config.js",
+    "to": "js/api-config.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/auth.js",
+    "to": "js/auth.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/cadastro-aluno.js",
+    "to": "js/cadastro-aluno.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/cadastro-diretor.js",
+    "to": "js/cadastro-diretor.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/cadastro-professor.js",
+    "to": "js/cadastro-professor.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/cadastro-secretaria.js",
+    "to": "js/cadastro-secretaria.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/changelog.js",
+    "to": "js/changelog.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/chat-direto-manager.js",
+    "to": "js/chat-direto-manager.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/chatbot-ia.js",
+    "to": "js/chatbot-ia.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/click-sound.js",
+    "to": "js/click-sound.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/csrf-helper.js",
+    "to": "js/csrf-helper.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/dashboard.js",
+    "to": "js/dashboard.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/database.js",
+    "to": "js/database.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/diagnostico-audio.js",
+    "to": "js/diagnostico-audio.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/escape-html.js",
+    "to": "js/escape-html.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/escola-contexto.js",
+    "to": "js/escola-contexto.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/escola-switcher.js",
+    "to": "js/escola-switcher.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/escolas-modal.js",
+    "to": "js/escolas-modal.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/escolher-perfil.js",
+    "to": "js/escolher-perfil.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/events/cadastro-aluno-events.js",
+    "to": "js/events/cadastro-aluno-events.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/events/dashboard-events.js",
+    "to": "js/events/dashboard-events.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/events/escolher-perfil-events.js",
+    "to": "js/events/escolher-perfil-events.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/events/gerenciar-salas-events.js",
+    "to": "js/events/gerenciar-salas-events.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/events/grade-horaria-events.js",
+    "to": "js/events/grade-horaria-events.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/events/lista-prof-events.js",
+    "to": "js/events/lista-prof-events.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/events/login-events.js",
+    "to": "js/events/login-events.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/events/mudar-senha-events.js",
+    "to": "js/events/mudar-senha-events.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/events/perfil-events.js",
+    "to": "js/events/perfil-events.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/events/primeiro-acesso-events.js",
+    "to": "js/events/primeiro-acesso-events.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/filtro-palavroes-ui.js",
+    "to": "js/filtro-palavroes-ui.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/frequencia-professores.js",
+    "to": "js/frequencia-professores.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/gerenciar-salas.js",
+    "to": "js/gerenciar-salas.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/grade-horaria-admin.js",
+    "to": "js/grade-horaria-admin.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/grade-service.js",
+    "to": "js/grade-service.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/gsap-login.js",
+    "to": "js/gsap-login.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/ia-logic.js",
+    "to": "js/ia-logic.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/inject-glass.js",
+    "to": "js/inject-glass.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/lista-professores.js",
+    "to": "js/lista-professores.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/login.js",
+    "to": "js/login.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/meu-horario.js",
+    "to": "js/meu-horario.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/meus-dados.js",
+    "to": "js/meus-dados.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/motion.js",
+    "to": "js/motion.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/mural-dashboard.js",
+    "to": "js/mural-dashboard.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/notif-manager.js",
+    "to": "js/notif-manager.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/notifications.js",
+    "to": "js/notifications.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/observability.js",
+    "to": "js/observability.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/onboarding-tour.js",
+    "to": "js/onboarding-tour.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/parallax.js",
+    "to": "js/parallax.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/perfil.js",
+    "to": "js/perfil.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/planilha-faltas.js",
+    "to": "js/planilha-faltas.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/professores-online.js",
+    "to": "js/professores-online.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/push-notifications.js",
+    "to": "js/push-notifications.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/pwa-install.js",
+    "to": "js/pwa-install.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/react-stats.js",
+    "to": "js/react-stats.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/reactions.js",
+    "to": "js/reactions.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/realtime.js",
+    "to": "js/realtime.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/register-diretor.js",
+    "to": "js/register-diretor.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/register-secretaria.js",
+    "to": "js/register-secretaria.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/register.js",
+    "to": "js/register.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/rotas.js",
+    "to": "js/rotas.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/scroll-lock.js",
+    "to": "js/scroll-lock.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/secretaria-codigo-aluno.js",
+    "to": "js/secretaria-codigo-aluno.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/selecionar.js",
+    "to": "js/selecionar.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/settings-drawer.js",
+    "to": "js/settings-drawer.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/sidebar-voice.js",
+    "to": "js/sidebar-voice.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/som-notificacao.js",
+    "to": "js/som-notificacao.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/splash-screen.js",
+    "to": "js/splash-screen.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/tailwind-config.js",
+    "to": "js/tailwind-config.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/theme.js",
+    "to": "js/theme.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/threejs-dashboard.js",
+    "to": "js/threejs-dashboard.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/ui-stagger.js",
+    "to": "js/ui-stagger.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/utils.js",
+    "to": "js/utils.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/vendor.js",
+    "to": "js/vendor.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/voice-orb.js",
+    "to": "js/voice-orb.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "js/watermark.js",
+    "to": "js/watermark.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "scripts/check-links.js",
+    "to": "scripts/check-links.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "scripts/inject-motion.js",
+    "to": "scripts/inject-motion.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "scripts/replace-tailwind-cdn.js",
+    "to": "scripts/replace-tailwind-cdn.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "scripts/strip-light-theme.js",
+    "to": "scripts/strip-light-theme.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
+    "from": "scripts/test_db_data.js",
+    "to": "scripts/test_db_data.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "backend/src/utils/anonimizacaoAutomatica.js",
+    "to": "backend/src/models/Usuario.js",
+    "rule": {
+      "severity": "warn",
+      "name": "transversal-nao-desce"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "backend/src/utils/anonimizacaoAutomatica.js",
+    "to": "backend/src/services/EnvioEmail.js",
+    "rule": {
+      "severity": "warn",
+      "name": "transversal-nao-desce"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "backend/src/utils/auditHelper.js",
+    "to": "backend/src/models/AuditLog.js",
+    "rule": {
+      "severity": "warn",
+      "name": "transversal-nao-desce"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "backend/src/utils/db.js",
+    "to": "backend/src/models/Aluno.js",
+    "rule": {
+      "severity": "warn",
+      "name": "transversal-nao-desce"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "backend/src/utils/db.js",
+    "to": "backend/src/models/AvaliacaoSistema.js",
+    "rule": {
+      "severity": "warn",
+      "name": "transversal-nao-desce"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "backend/src/utils/db.js",
+    "to": "backend/src/models/Comunicado.js",
+    "rule": {
+      "severity": "warn",
+      "name": "transversal-nao-desce"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "backend/src/utils/db.js",
+    "to": "backend/src/models/Nota.js",
+    "rule": {
+      "severity": "warn",
+      "name": "transversal-nao-desce"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "backend/src/utils/db.js",
+    "to": "backend/src/models/Turma.js",
+    "rule": {
+      "severity": "warn",
+      "name": "transversal-nao-desce"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "backend/src/utils/db.js",
+    "to": "backend/src/models/Usuario.js",
+    "rule": {
+      "severity": "warn",
+      "name": "transversal-nao-desce"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "backend/src/utils/emailNotifications.js",
+    "to": "backend/src/services/EnvioEmail.js",
+    "rule": {
+      "severity": "warn",
+      "name": "transversal-nao-desce"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "backend/src/utils/secretCodeHelper.js",
+    "to": "backend/src/models/Aluno.js",
+    "rule": {
+      "severity": "warn",
+      "name": "transversal-nao-desce"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "backend/src/utils/sessionToken.js",
+    "to": "backend/src/models/TokenRevogado.js",
+    "rule": {
+      "severity": "warn",
+      "name": "transversal-nao-desce"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "backend/src/utils/sessionToken.js",
+    "to": "backend/src/models/Usuario.js",
+    "rule": {
+      "severity": "warn",
+      "name": "transversal-nao-desce"
+    }
+  }
+]

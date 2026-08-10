@@ -33,6 +33,10 @@ jobs:
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
+        with:
+          # O lint incremental compara com a branch base; com o clone raso
+          # padrão (depth 1) o `--since origin/<base>` não teria o que comparar.
+          fetch-depth: 0
 
       - name: 📦 Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
@@ -40,32 +44,173 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: "npm"
 
+      - name: 📥 Install dependencies (raiz)
+        run: npm ci
+
       - name: 📥 Install dependencies (backend)
         working-directory: ./backend
         run: npm ci
 
-      - name: 🔍 ESLint
-        working-directory: ./backend
-        run: npm run lint --if-present
+      # Antes este passo era `npm run lint --if-present` no backend. Não existia
+      # script `lint` nem configuração de ESLint em lugar nenhum do repositório,
+      # então o `--if-present` fazia o passo passar em silêncio: o job se chamava
+      # "Lint & Test" e nunca tinha feito lint em nenhum commit. Agora é o Biome,
+      # na raiz, cobrindo js/, backend/src/ e portal-responsavel/src/.
+      #
+      # ESTRATÉGIA DE ADOÇÃO — leia antes de mexer:
+      # A primeira execução do Biome neste repositório encontrou 831 erros e 758
+      # avisos em 450 arquivos, toda dívida acumulada antes de existir lint.
+      # Ligar o gate completo agora reprovaria 100% dos PRs no primeiro dia e o
+      # time desligaria o lint — que é o pior desfecho possível.
+      #
+      # Por isso o gate morde só o CÓDIGO NOVO (arquivos alterados no PR). O
+      # relatório completo roda logo abaixo, sem travar, para a dívida ficar
+      # visível e ir sendo paga. Quando o total chegar a zero, troque este passo
+      # por `npm run lint` e remova o `continue-on-error` do seguinte.
+      # Ver a Issue "Adotar Biome como lint e formatação únicos".
+      #
+      # O gate NÃO roda no PR de release (develop → main). Ali `--since=main`
+      # significa "tudo que entrou desde a última publicação", o que traz de
+      # volta a dívida legada dos arquivos tocados no caminho — exatamente o
+      # que o gate incremental existe para evitar. Cada commit já passou pelo
+      # gate ao entrar na develop, um PR por vez; o release só promove o que
+      # já foi verificado. Mesma lógica da isenção em pr-policy.yml.
+      #
+      # `--no-errors-on-unmatched` não é detalhe: sem ele o Biome sai com erro
+      # quando NENHUM arquivo casa, e um PR que mexe só em YAML, Markdown ou
+      # HTML — nada disso é lintado — reprovaria sem ter nada de errado.
+      - name: 🔍 Lint do código alterado (gate)
+        if: ${{ !(github.head_ref == 'develop' && github.base_ref == 'main') }}
+        run: >-
+          npx biome check --changed
+          --since="origin/${{ github.base_ref || 'develop' }}"
+          --no-errors-on-unmatched
+
+      - name: ⏭️ Gate de lint pulado (PR de release)
+        if: ${{ github.head_ref == 'develop' && github.base_ref == 'main' }}
+        run: |
+          echo "::notice title=Gate de lint pulado::PR de release (develop → main). Cada commit já passou pelo gate ao entrar na develop."
+
+      - name: 📋 Lint completo (relatório da dívida, não bloqueia)
+        run: npm run lint
         continue-on-error: true
 
-      - name: 🧪 Unit Tests
+      # `--runInBand` já vem do script do backend: os testes usam
+      # mongodb-memory-server e concorrer entre si dá porta ocupada.
+      - name: 🧪 Testes com cobertura
         working-directory: ./backend
-        run: npm test --if-present
+        run: npm run test:coverage
         env:
           NODE_ENV: test
           MONGODB_URI: mongodb://localhost:27017/test
 
-      - name: 📊 Code Coverage
-        working-directory: ./backend
-        run: npm run coverage --if-present
-        continue-on-error: true
+      # O passo anterior chamava `npm run coverage`, script que NÃO existe — o
+      # nome correto é `test:coverage`. Com `--if-present`, o passo terminava em
+      # sucesso sem gerar nada, e o upload abaixo apontava para um lcov.info que
+      # nunca foi escrito. Ou seja: a cobertura deste projeto jamais foi medida.
+      - name: 🔎 Conferir que o relatório existe
+        run: |
+          if [ ! -s ./backend/coverage/lcov.info ]; then
+            echo "::error title=Cobertura ausente::backend/coverage/lcov.info não foi gerado."
+            exit 1
+          fi
+          echo "lcov.info: $(wc -l < ./backend/coverage/lcov.info) linhas"
 
       - name: 📤 Upload coverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
         with:
           files: ./backend/coverage/lcov.info
+          flags: backend
           fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  # ================================
+  # QUALIDADE DE CÓDIGO
+  # ================================
+  quality:
+    name: 🧹 Arquitetura & código morto
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: 📥 Install dependencies (raiz)
+        run: npm ci
+
+      - name: 📥 Install dependencies (backend)
+        working-directory: ./backend
+        run: npm ci
+
+      # Contrato de camadas: routes → controllers → services → models.
+      - name: 🏛️ Contrato de arquitetura (dependency-cruiser)
+        run: npm run arch
+
+      # Código, dependências e exports mortos.
+      - name: 🗑️ Código morto (Knip)
+        run: npm run knip
+        continue-on-error: true
+
+  # ================================
+  # TESTES END-TO-END
+  # ================================
+  e2e:
+    name: 🎭 E2E (Playwright)
+    runs-on: ubuntu-latest
+    needs: [lint-and-test]
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: 📥 Install dependencies (raiz)
+        run: npm ci
+
+      - name: 📥 Install dependencies (backend)
+        working-directory: ./backend
+        run: npm ci
+
+      - name: 🎭 Instalar navegadores
+        run: npx playwright install --with-deps chromium firefox
+
+      - name: 🎨 Build do CSS
+        run: npm run build:css && npm run build:tailwind
+
+      - name: 🎭 Rodar E2E
+        run: npm run test:e2e
+        env:
+          NODE_ENV: test
+          CI: "true"
+          # Sem Mongo no runner: os testes cobrem páginas públicas e o
+          # sistema de motion, que não dependem do banco.
+          MONGODB_URI: mongodb://localhost:27017/test
+          # JWT_SECRET não é declarado aqui de propósito. Valor fixo dentro do
+          # YAML é segredo versionado: o scanner abre incidente a cada push e o
+          # alerta de verdade se perde no meio dos falsos positivos.
+          # Quem define o segredo é scripts/start-e2e-server.js, que sorteia um
+          # valor novo por execução — o backend sobe no mesmo processo, então a
+          # variável chega até ele do mesmo jeito.
+          OBSERVABILITY_DISABLED: "true"
+
+      - name: 📤 Publicar relatório
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
 
   # ================================
   # SECURITY SCAN
@@ -243,6 +388,9 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
     env:
       HAS_SLACK: ${{ secrets.SLACK_WEBHOOK != '' }}
+      # Mesmo padrão de HAS_RENDER_DEV/HAS_SLACK: o contexto `secrets` não é
+      # acessível no `if` de um job, então a checagem vira env + if de passo.
+      HAS_MONGO_DEV: ${{ secrets.MONGODB_URI_DEV != '' }}
 
     steps:
       - name: 📥 Checkout code
@@ -257,12 +405,35 @@ jobs:
         working-directory: ./backend
         run: npm ci
 
+      # ATENÇÃO: este passo ainda está ERRADO — ver a Issue #1.
+      #
+      # `npm run migrate` aponta, no backend/package.json, para
+      # `scripts/migrate_indexeddb_to_mongodb.js`: uma migração ONE-SHOT de
+      # IndexedDB para MongoDB, escrita para rodar uma única vez na virada de
+      # arquitetura. O argumento `up` é ignorado pelo script. Enquanto isso, a
+      # migração de verdade, versionada em backend/migrations/, nunca roda —
+      # não existe runner que leia aquele diretório.
+      #
+      # A guarda abaixo é contenção, não correção: sem MONGODB_URI_DEV o passo
+      # é PULADO em vez de falhar o pipeline inteiro (o connectDB lança quando
+      # a URI está vazia, e derrubava o job na primeira push da develop).
+      #
+      # No dia em que alguém cadastrar MONGODB_URI_DEV, este passo passa a
+      # executar de fato — e aí a migração histórica roda a cada push contra o
+      # banco de dev. Corrija a Issue #1 ANTES de cadastrar esse secret.
       - name: 🗄️ Run migrations
         working-directory: ./backend
         run: npm run migrate up
+        if: env.HAS_MONGO_DEV == 'true'
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI_DEV }}
           NODE_ENV: development
+
+      - name: ⏭️ Migrations puladas
+        if: env.HAS_MONGO_DEV != 'true'
+        run: |
+          echo "::notice title=Migrations puladas::MONGODB_URI_DEV não está configurado."
+          echo "Nenhuma migração foi executada. Ver a Issue #1 antes de cadastrar o secret."
 
       - name: 📢 Notify migration status
         uses: 8398a7/action-slack@v3
