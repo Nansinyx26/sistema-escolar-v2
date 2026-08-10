@@ -25,15 +25,30 @@ jobs:
       # cumprir: o gate reprovaria exatamente o PR que leva tudo à produção.
       #
       # A checagem de título continua valendo para ele.
-      - name: 🏷️ Identificar PR de release
+      - name: 🏷️ Identificar PR entre branches permanentes
         id: tipo
         env:
           HEAD_REF: ${{ github.head_ref }}
           BASE_REF: ${{ github.base_ref }}
         run: |
+          # Dois fluxos da seção 6 do AGENTS.md acontecem ENTRE branches
+          # permanentes, sem Issue própria e sem nome no padrão <tipo>/<issue>:
+          #
+          #   develop → main   release. Promove o que já foi revisado, um PR
+          #                    por vez, na entrada da develop.
+          #   main → develop   sincronização depois de hotfix. Devolve à
+          #                    develop o que entrou direto em produção; a Issue
+          #                    é a do hotfix, e já foi fechada por ele.
+          #
+          # Exigir Issue e nome de branch nestes dois tornaria impossível
+          # cumprir o processo que o próprio AGENTS.md descreve — o gate
+          # reprovaria justamente os PRs que fecham o ciclo.
           if [ "$HEAD_REF" = "develop" ] && [ "$BASE_REF" = "main" ]; then
             echo "release=true" >> "$GITHUB_OUTPUT"
             echo "::notice title=PR de release::develop → main; as regras de Issue e de nome de branch não se aplicam."
+          elif [ "$HEAD_REF" = "main" ] && [ "$BASE_REF" = "develop" ]; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "::notice title=PR de sincronização::main → develop; devolve à develop o que entrou por hotfix."
           else
             echo "release=false" >> "$GITHUB_OUTPUT"
           fi

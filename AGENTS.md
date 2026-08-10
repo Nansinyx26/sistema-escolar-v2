@@ -159,6 +159,24 @@ feat/144-x ──PR──▶ develop ──(deploy dev + migrations)──▶ PR
 **Hotfix de produção**: Issue `tipo:correcao` + `prioridade:critica` → branch `hotfix/<issue>-<slug>`
 a partir da `main` → PR para `main` → em seguida PR de sincronização `main` → `develop`.
 
+### Os dois PRs entre branches permanentes
+
+`develop → main` (release) e `main → develop` (sincronização pós-hotfix) são exceções
+reconhecidas pelo gate: **não exigem Issue nem nome de branch no padrão**. O release promove
+o que já foi revisado um PR por vez; a sincronização devolve o que entrou por hotfix, cuja
+Issue já foi fechada pelo próprio hotfix.
+
+**O título continua valendo** — inclusive nesses dois. É ele que descreve a entrega no
+histórico da `main`:
+
+```
+chore(release): publicar o runner de migrations versionadas
+chore(sync): devolver à develop o hotfix de autenticação
+```
+
+Não aceite o título que o GitHub sugere sozinho (`Develop`, `Main`): ele reprova no gate,
+e com razão — não diz nada a quem lê o histórico daqui a seis meses.
+
 ---
 
 ## 7. Instruções específicas para agentes de IA
