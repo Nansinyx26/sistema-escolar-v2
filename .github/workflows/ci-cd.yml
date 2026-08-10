@@ -75,9 +75,16 @@ jobs:
       # que o gate incremental existe para evitar. Cada commit já passou pelo
       # gate ao entrar na develop, um PR por vez; o release só promove o que
       # já foi verificado. Mesma lógica da isenção em pr-policy.yml.
+      #
+      # `--no-errors-on-unmatched` não é detalhe: sem ele o Biome sai com erro
+      # quando NENHUM arquivo casa, e um PR que mexe só em YAML, Markdown ou
+      # HTML — nada disso é lintado — reprovaria sem ter nada de errado.
       - name: 🔍 Lint do código alterado (gate)
         if: ${{ !(github.head_ref == 'develop' && github.base_ref == 'main') }}
-        run: npx biome check --changed --since="origin/${{ github.base_ref || 'develop' }}"
+        run: >-
+          npx biome check --changed
+          --since="origin/${{ github.base_ref || 'develop' }}"
+          --no-errors-on-unmatched
 
       - name: ⏭️ Gate de lint pulado (PR de release)
         if: ${{ github.head_ref == 'develop' && github.base_ref == 'main' }}
