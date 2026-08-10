@@ -94,9 +94,27 @@ test('o sistema de motion carrega em toda página pública', async ({ page }) =>
             continue;
         }
 
-        const carregado = await page.evaluate(() => typeof (window as any).Motion !== 'undefined');
+        // Algumas destas páginas redirecionam via JS quando não há sessão
+        // (auth.js manda para o login). Se o redirect acontece no meio do
+        // evaluate, o Playwright lança "Execution context was destroyed" — que
+        // é ruído de temporização, não ausência do motion. No CI, mais lento,
+        // isso acontecia sempre; na máquina local, quase nunca.
+        //
+        // Uma tentativa extra depois da navegação assentar resolve, e o motion
+        // é conferido na página em que o usuário de fato termina.
+        let carregado: boolean;
+        try {
+            carregado = await page.evaluate(() => typeof (window as any).Motion !== 'undefined');
+        } catch {
+            await page.waitForLoadState('load');
+            carregado = await page.evaluate(() => typeof (window as any).Motion !== 'undefined');
+        }
 
-        if (!carregado) ausentes.push(`${pagina.caminho} → window.Motion indefinido`);
+        if (!carregado) {
+            const onde = new URL(page.url()).pathname;
+            const destino = onde === pagina.caminho ? '' : ` (redirecionou para ${onde})`;
+            ausentes.push(`${pagina.caminho} → window.Motion indefinido${destino}`);
+        }
     }
 
     // Uma execução reporta TODAS as páginas com problema, em vez de parar na
