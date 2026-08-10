@@ -68,8 +68,21 @@ jobs:
       # visível e ir sendo paga. Quando o total chegar a zero, troque este passo
       # por `npm run lint` e remova o `continue-on-error` do seguinte.
       # Ver a Issue "Adotar Biome como lint e formatação únicos".
+      #
+      # O gate NÃO roda no PR de release (develop → main). Ali `--since=main`
+      # significa "tudo que entrou desde a última publicação", o que traz de
+      # volta a dívida legada dos arquivos tocados no caminho — exatamente o
+      # que o gate incremental existe para evitar. Cada commit já passou pelo
+      # gate ao entrar na develop, um PR por vez; o release só promove o que
+      # já foi verificado. Mesma lógica da isenção em pr-policy.yml.
       - name: 🔍 Lint do código alterado (gate)
+        if: ${{ !(github.head_ref == 'develop' && github.base_ref == 'main') }}
         run: npx biome check --changed --since="origin/${{ github.base_ref || 'develop' }}"
+
+      - name: ⏭️ Gate de lint pulado (PR de release)
+        if: ${{ github.head_ref == 'develop' && github.base_ref == 'main' }}
+        run: |
+          echo "::notice title=Gate de lint pulado::PR de release (develop → main). Cada commit já passou pelo gate ao entrar na develop."
 
       - name: 📋 Lint completo (relatório da dívida, não bloqueia)
         run: npm run lint
