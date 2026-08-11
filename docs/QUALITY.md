@@ -114,9 +114,26 @@ linha coberta sem asserção real.
 
 Alvos iniciais: `backend/src/services`, `logSanitizer.js` e `observability/scrub.js`.
 
-`break` está em `null` até o baseline ser medido — travar o CI antes de conhecer o
-número atual só bloquearia todo mundo. Depois da primeira execução, defina um pouco
-abaixo do medido e suba com o tempo.
+### Baseline medido
+
+Primeira execução real, sobre `observability/scrub.js`:
+
+```
+Score de mutação: 65,42%
+70 mortos · 34 sobreviveram · 3 sem cobertura
+Tempo: 58 min 40 s  ← para UM arquivo
+```
+
+Ou seja: a suíte mata dois terços das mutações naquele arquivo. Os 34 sobreviventes são
+mutações que o teste não percebeu — vale olhar caso a caso, com atenção especial à
+mutação de regex, porque um padrão de mascaramento quebrado passaria despercebido.
+
+`break` segue em `null` **de propósito**: 65,42% é o número de um arquivo, e o conjunto
+declarado em `mutate` (que inclui `services/**`) nunca foi medido. Cravar um limite
+global a partir de uma amostra reprovaria o CI por algo que ninguém conhece. Meça o
+conjunto uma vez — ou defina o limite por alvo — antes de ligar o bloqueio.
+
+Os 58 minutos por arquivo são o motivo de não haver agendamento.
 
 ### Como rodar
 
