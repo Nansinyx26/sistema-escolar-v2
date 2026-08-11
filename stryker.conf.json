@@ -3,53 +3,43 @@
     "packageManager": "npm",
     "testRunner": "jest",
     "coverageAnalysis": "perTest",
-
     "jest": {
         "projectType": "custom",
         "configFile": "backend/jest.config.js",
         "enableFindRelatedTests": true
     },
-
     "mutate": [
         "backend/src/services/**/*.js",
         "backend/src/utils/logSanitizer.js",
         "backend/src/observability/scrub.js",
         "backend/src/validation/**/*.js",
-
         "!backend/src/**/*.test.js",
         "!backend/src/tests/**"
     ],
-
     "_comment_alvos": "Começa pelos services e pelas duas barreiras de PII (logSanitizer e scrub). São o código onde um teste que não verifica nada custa mais caro: vazamento de dado de aluno não aparece em teste verde.",
-
     "thresholds": {
         "high": 80,
         "low": 60,
         "break": null
     },
-
     "_comment_threshold": "break: null enquanto o baseline não é medido — travar o CI antes de saber o número atual só bloquearia todo mundo. Depois da primeira execução, defina break um pouco abaixo do score medido e suba com o tempo.",
-
     "reporters": ["html", "clear-text", "progress"],
     "htmlReporter": {
         "fileName": "reports/mutation/index.html"
     },
-
     "timeoutMS": 30000,
     "timeoutFactor": 2,
     "concurrency": 2,
-
     "tempDirName": ".stryker-tmp",
     "cleanTempDir": true,
-
     "disableTypeChecks": false,
-
     "ignorePatterns": [
         "node_modules",
         "coverage",
-        "dist",
+        ".stryker-tmp",
+        "reports",
         "playwright-report",
-        "portal-responsavel",
+        "test-results",
         "js/libs",
         "js/legacy"
     ]

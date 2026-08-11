@@ -1,9 +1,9 @@
 /**
  * Monitoring Service — P3 Implementation
- * 
+ *
  * Health checks, métricas e alertas
  * Integra com Prometheus, Grafana, ou alertas simples
- * 
+ *
  * @module MonitoringService
  * @version 1.0
  */
@@ -15,281 +15,346 @@ const { CacheService } = require('./CacheService');
 const logger = require('../utils/logger');
 
 class MonitoringService {
-  constructor() {
-    this.metrics = {
-      requests: 0,
-      errors: 0,
-      avgResponseTime: 0,
-      uptime: process.uptime(),
-    };
-
-    this.alerts = [];
-    this.thresholds = {
-      errorRate: 0.05, // 5%
-      responseTime: 500, // ms
-      memoryUsage: 0.9, // 90%
-      dbConnectionPool: 0.8, // 80%
-    };
-  }
-
-  /**
-   * Health check completo
-   */
-  async health() {
-    try {
-      const [dbHealth, cacheHealth, systemHealth] = await Promise.all([
-        this.checkDatabase(),
-        this.checkCache(),
-        this.checkSystem(),
-      ]);
-
-      const allHealthy = [dbHealth, cacheHealth, systemHealth].every(h => h.ok);
-
-      return {
-        ok: allHealthy,
-        status: allHealthy ? 'healthy' : 'unhealthy',
-        timestamp: new Date(),
-        database: dbHealth,
-        cache: cacheHealth,
-        system: systemHealth,
-        metrics: this.metrics,
-        alerts: this.alerts,
-      };
-    } catch (error) {
-      logger.error('Health check failed:', error);
-      return {
-        ok: false,
-        status: 'error',
-        error: error.message,
-      };
-    }
-  }
-
-  /**
-   * Verificar saúde do banco de dados
-   */
-  async checkDatabase() {
-    try {
-      const startTime = Date.now();
-
-      // Teste simples: ping
-      if (mongoose.connection.readyState !== 1) {
-        return {
-          ok: false,
-          status: 'disconnected',
-          responseTime: 0,
+    constructor() {
+        this.metrics = {
+            requests: 0,
+            errors: 0,
+            avgResponseTime: 0,
+            uptime: process.uptime(),
         };
-      }
 
-      // Teste com query
-      const db = mongoose.connection.db;
-      await db.admin().ping();
+        this.alerts = [];
 
-      const responseTime = Date.now() - startTime;
+        // Métricas por rota. Map em vez de objeto para ter tamanho e ordem
+        // previsíveis, e para o teto de cardinalidade abaixo ser simples de aplicar.
+        this.rotas = new Map();
+        this.MAX_ROTAS = 200;
 
-      // Alertar se lento
-      if (responseTime > this.thresholds.responseTime) {
-        this.addAlert('DB_SLOW', `Database ping took ${responseTime}ms`, 'warning');
-      }
-
-      return {
-        ok: true,
-        status: 'connected',
-        responseTime,
-        collections: db.listCollections ? 'available' : 'unknown',
-      };
-    } catch (error) {
-      this.addAlert('DB_ERROR', error.message, 'critical');
-      logger.error('Database health check failed:', error);
-      return {
-        ok: false,
-        status: 'error',
-        error: error.message,
-      };
-    }
-  }
-
-  /**
-   * Verificar saúde do cache
-   */
-  async checkCache() {
-    try {
-      const health = await CacheService.health();
-
-      if (!health) {
-        this.addAlert('CACHE_DOWN', 'Cache service not responding', 'warning');
-      }
-
-      return {
-        ok: health,
-        status: health ? 'healthy' : 'unhealthy',
-        type: process.env.REDIS_URL ? 'redis' : 'node-cache',
-      };
-    } catch (error) {
-      this.addAlert('CACHE_ERROR', error.message, 'warning');
-      logger.error('Cache health check failed:', error);
-      return {
-        ok: false,
-        status: 'error',
-        error: error.message,
-      };
-    }
-  }
-
-  /**
-   * Fração do heap realmente consumida (0 a 1).
-   *
-   * O denominador é o limite do heap (--max-old-space-size), não o heapTotal:
-   * heapTotal é apenas o heap que o V8 reservou até agora e cresce sob demanda,
-   * então heapUsed/heapTotal beira 95% em qualquer processo saudável antes de
-   * cada ciclo de GC — o que gerava alertas HIGH_MEMORY falsos.
-   */
-  getMemoryUsageRatio() {
-    return process.memoryUsage().heapUsed / v8.getHeapStatistics().heap_size_limit;
-  }
-
-  /**
-   * Verificar saúde do sistema
-   */
-  checkSystem() {
-    try {
-      const uptime = process.uptime();
-      const memUsage = process.memoryUsage();
-      const cpuUsage = process.cpuUsage();
-      const systemUptime = os.uptime();
-
-      const heapLimit = v8.getHeapStatistics().heap_size_limit;
-      const memPercentage = memUsage.heapUsed / heapLimit;
-      const nodeVersion = process.version;
-      const platform = os.platform();
-      const cpus = os.cpus().length;
-
-      // Alertar por uso de memória alto
-      if (memPercentage > this.thresholds.memoryUsage) {
-        this.addAlert(
-          'HIGH_MEMORY',
-          `Memory usage: ${(memPercentage * 100).toFixed(2)}%`,
-          'warning'
-        );
-      }
-
-      return {
-        // Memória alta é sinal de aviso (já emitido acima), não de indisponibilidade.
-        // Reprovar o health check por isso faria load balancers e monitores de uptime
-        // tirarem o processo do ar mesmo com banco e cache saudáveis.
-        ok: true,
-        status: 'operational',
-        memory: {
-          used: Math.round(memUsage.heapUsed / 1024 / 1024) + ' MB',
-          total: Math.round(heapLimit / 1024 / 1024) + ' MB',
-          percentage: (memPercentage * 100).toFixed(2) + '%',
-          heapReserved: Math.round(memUsage.heapTotal / 1024 / 1024) + ' MB',
-          rss: Math.round(memUsage.rss / 1024 / 1024) + ' MB',
-        },
-        cpu: {
-          system: Math.round(cpuUsage.system / 1000) + ' ms',
-          user: Math.round(cpuUsage.user / 1000) + ' ms',
-        },
-        uptime: {
-          process: this.formatUptime(uptime),
-          system: this.formatUptime(systemUptime),
-        },
-        environment: {
-          nodeVersion,
-          platform,
-          cpus,
-        },
-      };
-    } catch (error) {
-      logger.error('System health check failed:', error);
-      return {
-        ok: false,
-        status: 'error',
-        error: error.message,
-      };
-    }
-  }
-
-  /**
-   * Registrar metricás de requisição
-   */
-  recordRequest(statusCode, responseTime) {
-    this.metrics.requests++;
-
-    if (statusCode >= 400) {
-      this.metrics.errors++;
+        this.thresholds = {
+            errorRate: 0.05, // 5%
+            responseTime: 500, // ms
+            memoryUsage: 0.9, // 90%
+            dbConnectionPool: 0.8, // 80%
+        };
     }
 
-    // Calcular média móvel de tempo de resposta
-    this.metrics.avgResponseTime =
-      (this.metrics.avgResponseTime * (this.metrics.requests - 1) + responseTime) /
-      this.metrics.requests;
+    /**
+     * Health check completo
+     */
+    async health() {
+        try {
+            const [dbHealth, cacheHealth, systemHealth] = await Promise.all([
+                this.checkDatabase(),
+                this.checkCache(),
+                this.checkSystem(),
+            ]);
 
-    // Alertar se muitos erros
-    const errorRate = this.metrics.errors / this.metrics.requests;
-    if (errorRate > this.thresholds.errorRate && this.metrics.requests > 100) {
-      this.addAlert(
-        'HIGH_ERROR_RATE',
-        `Error rate: ${(errorRate * 100).toFixed(2)}%`,
-        'critical'
-      );
-    }
-  }
+            const allHealthy = [dbHealth, cacheHealth, systemHealth].every((h) => h.ok);
 
-  /**
-   * Adicionar alerta
-   */
-  addAlert(code, message, severity = 'warning') {
-    const alert = {
-      code,
-      message,
-      severity,
-      timestamp: new Date(),
-    };
-
-    this.alerts.push(alert);
-
-    // Manter apenas últimos 100 alertas
-    if (this.alerts.length > 100) {
-      this.alerts = this.alerts.slice(-100);
-    }
-
-    // Log e notificação
-    if (severity === 'critical') {
-      logger.error(`[ALERT] ${code}: ${message}`);
-      // TODO: Enviar notificação (email, Slack, etc)
-    } else {
-      logger.warn(`[ALERT] ${code}: ${message}`);
-    }
-  }
-
-  /**
-   * Obter alertas ativos
-   */
-  getActiveAlerts(severity = null) {
-    let filtered = this.alerts;
-
-    if (severity) {
-      filtered = filtered.filter(a => a.severity === severity);
+            return {
+                ok: allHealthy,
+                status: allHealthy ? 'healthy' : 'unhealthy',
+                timestamp: new Date(),
+                database: dbHealth,
+                cache: cacheHealth,
+                system: systemHealth,
+                metrics: this.metrics,
+                alerts: this.alerts,
+            };
+        } catch (error) {
+            logger.error('Health check failed:', error);
+            return {
+                ok: false,
+                status: 'error',
+                error: error.message,
+            };
+        }
     }
 
-    // Retornar últimos 20
-    return filtered.slice(-20);
-  }
+    /**
+     * Verificar saúde do banco de dados
+     */
+    async checkDatabase() {
+        try {
+            const startTime = Date.now();
 
-  /**
-   * Limpar alertas antigos (> 1 hora)
-   */
-  cleanOldAlerts() {
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    this.alerts = this.alerts.filter(a => a.timestamp > oneHourAgo);
-  }
+            // Teste simples: ping
+            if (mongoose.connection.readyState !== 1) {
+                return {
+                    ok: false,
+                    status: 'disconnected',
+                    responseTime: 0,
+                };
+            }
 
-  /**
-   * Métricas prometheus-compatible
-   */
-  getPrometheusMetrics() {
-    return `
+            // Teste com query
+            const db = mongoose.connection.db;
+            await db.admin().ping();
+
+            const responseTime = Date.now() - startTime;
+
+            // Alertar se lento
+            if (responseTime > this.thresholds.responseTime) {
+                this.addAlert('DB_SLOW', `Database ping took ${responseTime}ms`, 'warning');
+            }
+
+            return {
+                ok: true,
+                status: 'connected',
+                responseTime,
+                collections: db.listCollections ? 'available' : 'unknown',
+            };
+        } catch (error) {
+            this.addAlert('DB_ERROR', error.message, 'critical');
+            logger.error('Database health check failed:', error);
+            return {
+                ok: false,
+                status: 'error',
+                error: error.message,
+            };
+        }
+    }
+
+    /**
+     * Verificar saúde do cache
+     */
+    async checkCache() {
+        try {
+            const health = await CacheService.health();
+
+            if (!health) {
+                this.addAlert('CACHE_DOWN', 'Cache service not responding', 'warning');
+            }
+
+            return {
+                ok: health,
+                status: health ? 'healthy' : 'unhealthy',
+                type: process.env.REDIS_URL ? 'redis' : 'node-cache',
+            };
+        } catch (error) {
+            this.addAlert('CACHE_ERROR', error.message, 'warning');
+            logger.error('Cache health check failed:', error);
+            return {
+                ok: false,
+                status: 'error',
+                error: error.message,
+            };
+        }
+    }
+
+    /**
+     * Fração do heap realmente consumida (0 a 1).
+     *
+     * O denominador é o limite do heap (--max-old-space-size), não o heapTotal:
+     * heapTotal é apenas o heap que o V8 reservou até agora e cresce sob demanda,
+     * então heapUsed/heapTotal beira 95% em qualquer processo saudável antes de
+     * cada ciclo de GC — o que gerava alertas HIGH_MEMORY falsos.
+     */
+    getMemoryUsageRatio() {
+        return process.memoryUsage().heapUsed / v8.getHeapStatistics().heap_size_limit;
+    }
+
+    /**
+     * Verificar saúde do sistema
+     */
+    checkSystem() {
+        try {
+            const uptime = process.uptime();
+            const memUsage = process.memoryUsage();
+            const cpuUsage = process.cpuUsage();
+            const systemUptime = os.uptime();
+
+            const heapLimit = v8.getHeapStatistics().heap_size_limit;
+            const memPercentage = memUsage.heapUsed / heapLimit;
+            const nodeVersion = process.version;
+            const platform = os.platform();
+            const cpus = os.cpus().length;
+
+            // Alertar por uso de memória alto
+            if (memPercentage > this.thresholds.memoryUsage) {
+                this.addAlert(
+                    'HIGH_MEMORY',
+                    `Memory usage: ${(memPercentage * 100).toFixed(2)}%`,
+                    'warning'
+                );
+            }
+
+            return {
+                // Memória alta é sinal de aviso (já emitido acima), não de indisponibilidade.
+                // Reprovar o health check por isso faria load balancers e monitores de uptime
+                // tirarem o processo do ar mesmo com banco e cache saudáveis.
+                ok: true,
+                status: 'operational',
+                memory: {
+                    used: Math.round(memUsage.heapUsed / 1024 / 1024) + ' MB',
+                    total: Math.round(heapLimit / 1024 / 1024) + ' MB',
+                    percentage: (memPercentage * 100).toFixed(2) + '%',
+                    heapReserved: Math.round(memUsage.heapTotal / 1024 / 1024) + ' MB',
+                    rss: Math.round(memUsage.rss / 1024 / 1024) + ' MB',
+                },
+                cpu: {
+                    system: Math.round(cpuUsage.system / 1000) + ' ms',
+                    user: Math.round(cpuUsage.user / 1000) + ' ms',
+                },
+                uptime: {
+                    process: this.formatUptime(uptime),
+                    system: this.formatUptime(systemUptime),
+                },
+                environment: {
+                    nodeVersion,
+                    platform,
+                    cpus,
+                },
+            };
+        } catch (error) {
+            logger.error('System health check failed:', error);
+            return {
+                ok: false,
+                status: 'error',
+                error: error.message,
+            };
+        }
+    }
+
+    /**
+     * Registrar metricás de requisição
+     */
+    /**
+     * Acumula uma requisição na estatística da sua rota.
+     *
+     * Guarda soma e máximo em vez de manter a lista de tempos: o consumo de
+     * memória fica constante por rota, independente do volume. A contrapartida é
+     * não haver percentil — para p95 seria preciso um histograma, e o custo não
+     * se paga no volume de uma escola.
+     */
+    registrarRota(rota, statusCode, responseTime) {
+        let r = this.rotas.get(rota);
+
+        if (!r) {
+            // Teto de cardinalidade: rota nova só entra se houver espaço. Sem isto,
+            // um cliente pedindo caminhos aleatórios encheria a memória do processo —
+            // e o painel de saúde viraria o próprio problema de saúde.
+            if (this.rotas.size >= this.MAX_ROTAS) return;
+            r = { requisicoes: 0, erros: 0, somaMs: 0, maxMs: 0, ultimoAcesso: null };
+            this.rotas.set(rota, r);
+        }
+
+        r.requisicoes++;
+        if (statusCode >= 400) r.erros++;
+        r.somaMs += responseTime;
+        if (responseTime > r.maxMs) r.maxMs = responseTime;
+        r.ultimoAcesso = new Date().toISOString();
+    }
+
+    /**
+     * Estatística por rota, da pior para a melhor.
+     *
+     * A ordenação é deliberada: taxa de erro primeiro, latência como desempate.
+     * Quem abre o painel quer ver o que está quebrado no topo, não a rota com
+     * mais tráfego.
+     */
+    metricasPorRota() {
+        const lista = [...this.rotas.entries()].map(([rota, r]) => ({
+            rota,
+            requisicoes: r.requisicoes,
+            erros: r.erros,
+            taxaErro: r.requisicoes ? r.erros / r.requisicoes : 0,
+            mediaMs: r.requisicoes ? Math.round(r.somaMs / r.requisicoes) : 0,
+            maxMs: Math.round(r.maxMs),
+            disponibilidade: r.requisicoes ? 1 - r.erros / r.requisicoes : 1,
+            ultimoAcesso: r.ultimoAcesso,
+        }));
+
+        lista.sort((a, b) => b.taxaErro - a.taxaErro || b.mediaMs - a.mediaMs);
+        return lista;
+    }
+
+    recordRequest(statusCode, responseTime, rota) {
+        this.metrics.requests++;
+
+        if (statusCode >= 400) {
+            this.metrics.errors++;
+        }
+
+        // Acumula por rota, não só no agregado.
+        //
+        // A média geral esconde o caso que importa: 2% de erro no total pode ser
+        // 100% de erro no lançamento de frequência e 0% no resto. Quem opera a
+        // escola precisa saber QUAL tela está quebrada, não que "algo" está.
+        //
+        // `rota` já chega normalizada (`GET /api/alunos/:id`) — ver requestLogger.
+        if (rota) this.registrarRota(rota, statusCode, responseTime);
+
+        // Calcular média móvel de tempo de resposta
+        this.metrics.avgResponseTime =
+            (this.metrics.avgResponseTime * (this.metrics.requests - 1) + responseTime) /
+            this.metrics.requests;
+
+        // Alertar se muitos erros
+        const errorRate = this.metrics.errors / this.metrics.requests;
+        if (errorRate > this.thresholds.errorRate && this.metrics.requests > 100) {
+            this.addAlert(
+                'HIGH_ERROR_RATE',
+                `Error rate: ${(errorRate * 100).toFixed(2)}%`,
+                'critical'
+            );
+        }
+    }
+
+    /**
+     * Adicionar alerta
+     */
+    addAlert(code, message, severity = 'warning') {
+        const alert = {
+            code,
+            message,
+            severity,
+            timestamp: new Date(),
+        };
+
+        this.alerts.push(alert);
+
+        // Manter apenas últimos 100 alertas
+        if (this.alerts.length > 100) {
+            this.alerts = this.alerts.slice(-100);
+        }
+
+        // Log e notificação
+        if (severity === 'critical') {
+            logger.error(`[ALERT] ${code}: ${message}`);
+            // TODO: Enviar notificação (email, Slack, etc)
+        } else {
+            logger.warn(`[ALERT] ${code}: ${message}`);
+        }
+    }
+
+    /**
+     * Obter alertas ativos
+     */
+    getActiveAlerts(severity = null) {
+        let filtered = this.alerts;
+
+        if (severity) {
+            filtered = filtered.filter((a) => a.severity === severity);
+        }
+
+        // Retornar últimos 20
+        return filtered.slice(-20);
+    }
+
+    /**
+     * Limpar alertas antigos (> 1 hora)
+     */
+    cleanOldAlerts() {
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        this.alerts = this.alerts.filter((a) => a.timestamp > oneHourAgo);
+    }
+
+    /**
+     * Métricas prometheus-compatible
+     */
+    getPrometheusMetrics() {
+        return `
 # HELP app_requests_total Total requests
 # TYPE app_requests_total counter
 app_requests_total ${this.metrics.requests}
@@ -314,42 +379,42 @@ process_memory_used ${process.memoryUsage().heapUsed}
 # TYPE process_memory_total gauge
 process_memory_total ${process.memoryUsage().heapTotal}
 `;
-  }
-
-  /**
-   * Helper: formatar uptime
-   */
-  formatUptime(seconds) {
-    const days = Math.floor(seconds / 86400);
-    const hours = Math.floor((seconds % 86400) / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
-
-    return `${days}d ${hours}h ${minutes}m ${secs}s`;
-  }
-
-  startHealthCheckLoop(intervalMs = 60000) {
-    this.healthCheckTimer = setInterval(async () => {
-      try {
-        const health = await this.health();
-        
-        if (!health.ok) {
-          logger.warn('Health check failed', { health });
-        }
-
-        this.cleanOldAlerts();
-      } catch (error) {
-        logger.error('Health check loop error:', error);
-      }
-    }, intervalMs);
-  }
-
-  stopHealthCheckLoop() {
-    if (this.healthCheckTimer) {
-      clearInterval(this.healthCheckTimer);
-      this.healthCheckTimer = null;
     }
-  }
+
+    /**
+     * Helper: formatar uptime
+     */
+    formatUptime(seconds) {
+        const days = Math.floor(seconds / 86400);
+        const hours = Math.floor((seconds % 86400) / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = Math.floor(seconds % 60);
+
+        return `${days}d ${hours}h ${minutes}m ${secs}s`;
+    }
+
+    startHealthCheckLoop(intervalMs = 60000) {
+        this.healthCheckTimer = setInterval(async () => {
+            try {
+                const health = await this.health();
+
+                if (!health.ok) {
+                    logger.warn('Health check failed', { health });
+                }
+
+                this.cleanOldAlerts();
+            } catch (error) {
+                logger.error('Health check loop error:', error);
+            }
+        }, intervalMs);
+    }
+
+    stopHealthCheckLoop() {
+        if (this.healthCheckTimer) {
+            clearInterval(this.healthCheckTimer);
+            this.healthCheckTimer = null;
+        }
+    }
 }
 
 // Export singleton
@@ -362,9 +427,9 @@ module.exports = monitoring;
 
 /**
  * Exemplo de integração em app.js:
- * 
+ *
  * const monitoring = require('./services/MonitoringService');
- * 
+ *
  * // Metrics middleware
  * app.use((req, res, next) => {
  *   const startTime = Date.now();
@@ -374,13 +439,13 @@ module.exports = monitoring;
  *   });
  *   next();
  * });
- * 
+ *
  * // Health endpoint
  * app.get('/api/health', async (req, res) => {
  *   const health = await monitoring.health();
  *   res.status(health.ok ? 200 : 503).json(health);
  * });
- * 
+ *
  * // Prometheus metrics
  * app.get('/metrics', (req, res) => {
  *   res.type('text/plain');

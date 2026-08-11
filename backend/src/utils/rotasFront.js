@@ -42,6 +42,7 @@ const PAGINAS_ADMIN = {
     auditoria: 'auditoria.html',
     cadastroSecretaria: 'cadastro-secretaria.html',
     diagnostico: 'diagnostico.html',
+    saude: 'saude.html',
     codigosBackup: 'codigos-backup.html',
     entrar: 'entrar.html',
 };
