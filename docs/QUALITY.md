@@ -126,8 +126,12 @@ npm run test:mutation:pii   # só a barreira de PII — alvo pequeno, valor alto
 npm run test:mutation       # tudo que está em stryker.conf.json (horas)
 ```
 
-No CI: workflow **🧬 Teste de mutação**, manual (`workflow_dispatch`, com campo para
-escolher o alvo) e semanal aos domingos às 04:00 UTC. O relatório sai como artefato.
+No CI: workflow **🧬 Teste de mutação**, **só manual** — aba *Actions* → *Run workflow*,
+com campo para escolher o alvo. O relatório sai como artefato.
+
+Não há agendamento de propósito: o repositório é privado, o GitHub Actions cobra por
+minuto acima de 2.000/mês, e este job pode rodar por horas. Um agendamento semanal
+consumiria a cota sozinho e a conta chegaria como surpresa.
 
 **Não roda em PR, de propósito.** O Stryker executa a suíte inteira *uma vez por
 mutação*: só `scrub.js`, com 63 suítes, não termina em 10 minutos localmente. Amarrar

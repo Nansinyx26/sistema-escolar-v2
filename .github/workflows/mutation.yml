@@ -7,7 +7,7 @@ name: 🧬 Teste de mutação
 # (45 arquivos) são horas. Amarrar isso ao PR tornaria todo merge insuportável,
 # e o time desligaria o job em uma semana.
 #
-# Por isso: sob demanda (workflow_dispatch) e uma vez por semana, de madrugada.
+# Por isso roda SÓ sob demanda (workflow_dispatch). Ver a nota sobre custo abaixo.
 #
 # Ver a Issue "Medir a qualidade real dos testes com Stryker" e docs/QUALITY.md.
 
@@ -18,9 +18,16 @@ on:
         description: "Arquivos a mutar (glob). Vazio = o que está no stryker.conf.json"
         required: false
         default: "backend/src/observability/scrub.js,backend/src/utils/logSanitizer.js"
-  schedule:
-    # Domingo, 04:00 UTC (01:00 BRT). Fora do horário de aula.
-    - cron: "0 4 * * 0"
+
+# SEM `schedule`, de propósito.
+#
+# O repositório é privado, e o GitHub Actions cobra por minuto acima da cota
+# gratuita (2.000/mês). Este job pode rodar por HORAS sobre o conjunto completo
+# — um agendamento semanal consumiria a cota sozinho, sem ninguém pedir, e a
+# conta chegaria como surpresa.
+#
+# Rode quando quiser saber o número: aba Actions → 🧬 Teste de mutação → Run
+# workflow. O campo `alvo` deixa escolher um recorte pequeno.
 
 permissions:
   contents: read
