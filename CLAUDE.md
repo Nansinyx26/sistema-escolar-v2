@@ -28,6 +28,11 @@ Use a skill **`design-motion-principles`** (`.claude/skills/design-motion-princi
 qualquer trabalho de motion. Weighting deste projeto: **Emil (primário) · Jakub (secundário)**.
 Skeleton, lazy loading e `prefers-reduced-motion` são obrigatórios — ver [`docs/MOTION.md`](docs/MOTION.md).
 
+Para direção visual (paleta, tipografia, layout) use a skill **`frontend-design`**
+(`.claude/skills/frontend-design/`). Registries de componentes (shadcn, Magic UI,
+React Bits, 21st.dev) estão configurados **apenas no `portal-responsavel/`** —
+ver [`docs/UI-TOOLING.md`](docs/UI-TOOLING.md).
+
 ## Observabilidade
 
 Hub em `backend/src/observability/`. Ver [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md).

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { updateProfile, ApiError } from '../services/apiService';
-import type { AuthUser } from '../types';
+import type React from 'react';
+import { useEffect, useState } from 'react';
+import { ApiError, updateProfile } from '../services/apiService';
 import styles from '../styles/portal.module.scss';
+import type { AuthUser } from '../types';
 import { getPhotoUrl } from '../utils/photoUtils';
 import Icon from './ui/Icon';
 
@@ -12,13 +13,18 @@ interface ProfileSidebarProps {
   onUpdateUser: (updatedUser: AuthUser) => void;
   onLogout: () => void;
   onPasswordRecovery: () => void;
-  onNavigate: (tab: 'dashboard' | 'ficha' | 'linking' | 'profile') => void;
+  onNavigate: (tab: 'dashboard' | 'ficha' | 'linking' | 'profile' | 'privacidade') => void;
   onRestartTour?: () => void;
 }
 
 function getInitials(name: string): string {
   if (!name) return 'U';
-  return name.split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+  return name
+    .split(' ')
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase();
 }
 
 export default function ProfileSidebar({
@@ -43,13 +49,24 @@ export default function ProfileSidebar({
     setTelefone(user.telefone || '');
   }, [user]);
 
+  // Escape fecha a sidebar. O clique no fundo ja fechava, mas quem navega por
+  // teclado nao tinha como sair sem tabular ate o botao de fechar.
+  useEffect(() => {
+    if (!isOpen) return;
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', aoTeclar);
+    return () => document.removeEventListener('keydown', aoTeclar);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   // Mascara de Telefone: (00) 00000-0000 ou (00) 0000-0000
   const handleTelefoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value.replace(/\D/g, '');
     if (val.length > 11) val = val.slice(0, 11);
-    
+
     if (val.length > 10) {
       val = val.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
     } else if (val.length > 6) {
@@ -90,13 +107,30 @@ export default function ProfileSidebar({
   };
 
   return (
-    <div className={styles.sidebarOverlay} onClick={onClose}>
-      <div className={styles.sidebarContainer} onClick={(e) => e.stopPropagation()} data-tour="sidebar">
+    /* O fundo do modal fecha no clique. Nao vira <button> porque tambem e o
+       container de layout do painel; o acesso por teclado esta garantido pelo
+       listener de Escape acima. */
+    // biome-ignore lint/a11y/noStaticElementInteractions: fundo de modal, fechavel por Escape
+    <div
+      className={styles.sidebarOverlay}
+      role="presentation"
+      onClick={(e) => {
+        // Comparar com currentTarget dispensa o stopPropagation que o
+        // container interno precisava so para nao fechar a si mesmo.
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className={styles.sidebarContainer} data-tour="sidebar">
         <div className={styles.sidebarHeader}>
           <h3>
             <Icon name="user-circle" /> Opções do Perfil
           </h3>
-          <button className={styles.sidebarCloseBtn} onClick={onClose} aria-label="Fechar menu lateral">
+          <button
+            type="button"
+            className={styles.sidebarCloseBtn}
+            onClick={onClose}
+            aria-label="Fechar menu lateral"
+          >
             <Icon name="x" />
           </button>
         </div>
@@ -112,8 +146,15 @@ export default function ProfileSidebar({
                   <img
                     src={photoUrl}
                     alt={user.nome}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }}
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      borderRadius: 'inherit',
+                    }}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
                   />
                 ) : (
                   <span>{getInitials(user.nome)}</span>
@@ -126,13 +167,24 @@ export default function ProfileSidebar({
             {/* Quick link to edit photo/name */}
             <button
               type="button"
-              onClick={() => { onNavigate('profile'); onClose(); }}
+              onClick={() => {
+                onNavigate('profile');
+                onClose();
+              }}
               style={{
                 marginTop: '8px',
-                display: 'inline-flex', alignItems: 'center', gap: '5px',
-                padding: '5px 12px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 600,
-                background: 'rgba(16, 185, 129,0.08)', border: '1px solid rgba(16, 185, 129,0.2)',
-                color: '#10b981', cursor: 'pointer', transition: 'background 0.2s',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '5px 12px',
+                borderRadius: '20px',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                background: 'rgba(16, 185, 129,0.08)',
+                border: '1px solid rgba(16, 185, 129,0.2)',
+                color: '#10b981',
+                cursor: 'pointer',
+                transition: 'background 0.2s',
               }}
             >
               <Icon name="camera" /> Editar foto e nome
@@ -149,10 +201,13 @@ export default function ProfileSidebar({
           {isEditing ? (
             <form onSubmit={handleSubmit} className={styles.sidebarForm}>
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Nome Completo</label>
+                <label className={styles.formLabel} htmlFor="sidebar-nome">
+                  Nome Completo
+                </label>
                 <div className={styles.inputWrapper}>
                   <Icon name="user" />
                   <input
+                    id="sidebar-nome"
                     type="text"
                     className={styles.formInput}
                     value={nome}
@@ -163,10 +218,13 @@ export default function ProfileSidebar({
               </div>
 
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Telefone Celular</label>
+                <label className={styles.formLabel} htmlFor="sidebar-telefone">
+                  Telefone Celular
+                </label>
                 <div className={styles.inputWrapper}>
                   <Icon name="phone" />
                   <input
+                    id="sidebar-telefone"
                     type="text"
                     className={styles.formInput}
                     value={telefone === '(00) 00000-0000' ? '' : telefone}
@@ -195,24 +253,25 @@ export default function ProfileSidebar({
               </div>
             </form>
           ) : (
-             <div className={styles.sidebarDetailsList}>
+            <div className={styles.sidebarDetailsList}>
               <div className={styles.sidebarDetailItem}>
-                <label>Telefone</label>
+                <span className={styles.detailLabel}>Telefone</span>
                 <span>{user.telefone === '(00) 00000-0000' ? 'Não informado' : user.telefone}</span>
               </div>
               <div className={styles.sidebarDetailItem}>
-                <label>LGPD</label>
+                <span className={styles.detailLabel}>LGPD</span>
                 {user.consentimentoAceiteEm ? (
                   <span style={{ color: '#22c55e', fontWeight: 600 }}>✓ Assinado</span>
                 ) : (
                   <button
+                    type="button"
                     onClick={async () => {
                       try {
                         setLoading(true);
                         const updated = await updateProfile({
                           nome: user.nome || '',
                           telefone: user.telefone || '',
-                          consentimentoAceiteEm: true
+                          consentimentoAceiteEm: true,
                         });
                         onUpdateUser(updated);
                         alert('Termo LGPD assinado com sucesso!');
@@ -230,7 +289,7 @@ export default function ProfileSidebar({
                       borderRadius: '4px',
                       fontSize: '0.75rem',
                       cursor: 'pointer',
-                      fontWeight: 700
+                      fontWeight: 700,
                     }}
                     disabled={loading}
                   >
@@ -239,17 +298,25 @@ export default function ProfileSidebar({
                 )}
               </div>
 
-              <button className={styles.sidebarEditBtn} onClick={() => {
-                onNavigate('profile');
-                onClose();
-              }}>
-                <Icon name="signature" /> {user.consentimentoAceiteEm ? 'Alterar Cadastro / Termo LGPD' : 'Assinar Termo LGPD e Cadastro'}
+              <button
+                type="button"
+                className={styles.sidebarEditBtn}
+                onClick={() => {
+                  onNavigate('profile');
+                  onClose();
+                }}
+              >
+                <Icon name="signature" />{' '}
+                {user.consentimentoAceiteEm
+                  ? 'Alterar Cadastro / Termo LGPD'
+                  : 'Assinar Termo LGPD e Cadastro'}
               </button>
 
               <hr className={styles.sidebarSeparator} />
 
               <div className={styles.sidebarNav}>
                 <button
+                  type="button"
                   onClick={() => {
                     onNavigate('dashboard');
                     onClose();
@@ -259,6 +326,7 @@ export default function ProfileSidebar({
                   <Icon name="home" /> Ir para o Painel (Home)
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     onNavigate('ficha');
                     onClose();
@@ -268,15 +336,30 @@ export default function ProfileSidebar({
                   <Icon name="clipboard-list" /> Ficha &amp; Autorizações
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     onNavigate('profile');
                     onClose();
                   }}
                   className={styles.sidebarNavLink}
                 >
-                  <Icon name="shield-lock" /> {user.consentimentoAceiteEm ? 'Visualizar Termo LGPD' : 'Assinar Termo LGPD e Cadastro'}
+                  <Icon name="shield-lock" />{' '}
+                  {user.consentimentoAceiteEm
+                    ? 'Visualizar Termo LGPD'
+                    : 'Assinar Termo LGPD e Cadastro'}
                 </button>
                 <button
+                  type="button"
+                  onClick={() => {
+                    onNavigate('privacidade');
+                    onClose();
+                  }}
+                  className={styles.sidebarNavLink}
+                >
+                  <Icon name="file-text" /> Política de Privacidade
+                </button>
+                <button
+                  type="button"
                   onClick={onPasswordRecovery}
                   className={styles.sidebarNavLink}
                 >
@@ -285,7 +368,10 @@ export default function ProfileSidebar({
                 {onRestartTour && (
                   <button
                     type="button"
-                    onClick={() => { onRestartTour(); onClose(); }}
+                    onClick={() => {
+                      onRestartTour();
+                      onClose();
+                    }}
                     className={styles.sidebarNavLink}
                   >
                     <Icon name="help" /> Ver Tutorial Novamente
@@ -295,7 +381,7 @@ export default function ProfileSidebar({
 
               <hr className={styles.sidebarSeparator} />
 
-              <button className={styles.sidebarLogoutBtn} onClick={onLogout}>
+              <button type="button" className={styles.sidebarLogoutBtn} onClick={onLogout}>
                 <Icon name="logout" /> Sair da Conta
               </button>
             </div>

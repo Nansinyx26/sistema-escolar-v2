@@ -1,18 +1,19 @@
-import NotificationSettings from './NotificationSettings';
-import EditarPerfil from './EditarPerfil';
-import VincularFilho from './VincularFilho';
+import styles from '../styles/portal.module.scss';
 import type { Attendance, AuthUser, Grade, Notification, Student } from '../types';
-import StudentCard from './StudentCard';
-import NotificationsPanel from './NotificationsPanel';
 import AnnouncementFeed from './AnnouncementFeed';
+import DashboardSkeleton from './DashboardSkeleton';
+import EditarPerfil from './EditarPerfil';
+import FichaAluno from './FichaAluno';
 import FrequencyCard from './FrequencyCard';
 import NotesCard from './NotesCard';
-import FichaAluno from './FichaAluno';
-import DashboardSkeleton from './DashboardSkeleton';
-import styles from '../styles/portal.module.scss';
+import NotificationSettings from './NotificationSettings';
+import NotificationsPanel from './NotificationsPanel';
+import PoliticaPrivacidade from './PoliticaPrivacidade';
+import StudentCard from './StudentCard';
 import Icon from './ui/Icon';
+import VincularFilho from './VincularFilho';
 
-type PortalTab = 'dashboard' | 'ficha' | 'linking' | 'profile';
+type PortalTab = 'dashboard' | 'ficha' | 'linking' | 'profile' | 'privacidade';
 
 interface ProfileTabProps {
   authUser: AuthUser;
@@ -23,13 +24,11 @@ interface ProfileTabProps {
 export function ProfileTabSection({ authUser, activeStudent, onUserUpdate }: ProfileTabProps) {
   return (
     <>
-      <EditarPerfil
-        user={authUser}
-        activeStudent={activeStudent}
-        onSuccess={onUserUpdate}
-      />
+      <EditarPerfil user={authUser} activeStudent={activeStudent} onSuccess={onUserUpdate} />
       <NotificationSettings
-        initialPrefs={authUser.notificacoesPreferencias || { portal: true, push: true, email: true }}
+        initialPrefs={
+          authUser.notificacoesPreferencias || { portal: true, push: true, email: true }
+        }
         onUpdate={(updatedPrefs) => {
           onUserUpdate({ ...authUser, notificacoesPreferencias: updatedPrefs });
         }}
@@ -93,7 +92,8 @@ export function DashboardTabSection({
         <Icon name="users" style={{ fontSize: '3.5rem', color: '#60a5fa', marginBottom: '16px' }} />
         <h3>Nenhum aluno vinculado</h3>
         <p style={{ margin: '8px 0 24px', color: '#94a3b8' }}>
-          Sua conta de responsável não possui nenhum aluno vinculado. Entre em contato com a secretaria/direção da escola para verificar seu cadastro.
+          Sua conta de responsável não possui nenhum aluno vinculado. Entre em contato com a
+          secretaria/direção da escola para verificar seu cadastro.
         </p>
       </div>
     );
@@ -105,6 +105,7 @@ export function DashboardTabSection({
         <div className={styles.studentTabs}>
           {students.map((student) => (
             <button
+              type="button"
               key={student.id}
               className={student.id === activeId ? styles.active : ''}
               onClick={() => onSelectStudent(student.id)}
@@ -124,7 +125,12 @@ export function DashboardTabSection({
         </h1>
         <p className={styles.pageSubtitle}>
           {activeStudent ? (
-            <>Acompanhe o desempenho de <strong>{activeStudent.nome} {activeStudent.sobrenome}</strong></>
+            <>
+              Acompanhe o desempenho de{' '}
+              <strong>
+                {activeStudent.nome} {activeStudent.sobrenome}
+              </strong>
+            </>
           ) : (
             'Carregando dados do aluno…'
           )}
@@ -141,7 +147,11 @@ export function DashboardTabSection({
           <button
             key={atalho.id}
             type="button"
-            onClick={() => document.getElementById(atalho.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            onClick={() =>
+              document
+                .getElementById(atalho.id)
+                ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }
           >
             <i className={`ti ${atalho.icon}`} aria-hidden="true" /> {atalho.label}
           </button>
@@ -152,7 +162,12 @@ export function DashboardTabSection({
         <div className={styles.errorAlert} role="alert" style={{ marginBottom: '24px' }}>
           <Icon name="alert-circle" aria-hidden="true" />
           {dataError}
-          <button className={styles.retryBtn} onClick={onRetry} aria-label="Tentar novamente">
+          <button
+            type="button"
+            className={styles.retryBtn}
+            onClick={onRetry}
+            aria-label="Tentar novamente"
+          >
             Tentar novamente
           </button>
         </div>
@@ -177,6 +192,7 @@ export function DashboardTabSection({
                   <Icon name="bell-off" aria-hidden="true" />
                   <p>Sem novas notificações</p>
                   <button
+                    type="button"
                     className={styles.showAllBtn}
                     onClick={onShowAllNotifications}
                     aria-label="Ver todas as notificações"
@@ -202,7 +218,11 @@ export function DashboardTabSection({
               ) : (
                 <>
                   <section id="sec-frequencia" aria-label="Frequência">
-                    <FrequencyCard attendance={attendance ?? { presenca: 0, ausencia: 0, atraso: 0, percentual: 0 }} />
+                    <FrequencyCard
+                      attendance={
+                        attendance ?? { presenca: 0, ausencia: 0, atraso: 0, percentual: 0 }
+                      }
+                    />
                   </section>
                   <section id="sec-notas" aria-label="Notas">
                     <NotesCard grades={grades} />
@@ -226,11 +246,20 @@ interface FichaTabProps {
 }
 
 /** Aba dedicada: Ficha & Autorizações do aluno (movida da coluna lateral). */
-export function FichaTabSection({ activeStudent, students, activeId, onSelectStudent, onStudentUpdate }: FichaTabProps) {
+export function FichaTabSection({
+  activeStudent,
+  students,
+  activeId,
+  onSelectStudent,
+  onStudentUpdate,
+}: FichaTabProps) {
   if (!activeStudent) {
     return (
       <div className={styles.emptyDashboardCard}>
-        <Icon name="clipboard-list" style={{ fontSize: '3rem', color: '#10b981', marginBottom: '12px' }} />
+        <Icon
+          name="clipboard-list"
+          style={{ fontSize: '3rem', color: '#10b981', marginBottom: '12px' }}
+        />
         <h3>Nenhum aluno selecionado</h3>
         <p style={{ margin: '8px 0', color: '#94a3b8' }}>
           Vincule um aluno à sua conta para preencher a ficha e as autorizações escolares.
@@ -246,6 +275,7 @@ export function FichaTabSection({ activeStudent, students, activeId, onSelectStu
           <div className={styles.studentTabs}>
             {students.map((student) => (
               <button
+                type="button"
                 key={student.id}
                 className={student.id === activeId ? styles.active : ''}
                 onClick={() => onSelectStudent(student.id)}
@@ -263,7 +293,10 @@ export function FichaTabSection({ activeStudent, students, activeId, onSelectStu
         </span>
         <h1 className={styles.pageTitle}>Ficha &amp; Autorizações</h1>
         <p className={styles.pageSubtitle}>
-          Dados, autorizações escolares e documento assinado de <strong>{activeStudent.nome} {activeStudent.sobrenome}</strong>
+          Dados, autorizações escolares e documento assinado de{' '}
+          <strong>
+            {activeStudent.nome} {activeStudent.sobrenome}
+          </strong>
         </p>
       </div>
 
@@ -294,6 +327,7 @@ interface PortalTabContentProps {
   onUserUpdate: (user: AuthUser) => void;
   onLinkingSuccess: () => void;
   onLinkingCancel: () => void;
+  onNavigate: (tab: PortalTab) => void;
   onSelectStudent: (id: string) => void;
   onRetry: () => void;
   onShowAllNotifications: () => void;
@@ -310,10 +344,26 @@ export function PortalTabContent(props: PortalTabContentProps) {
     onUserUpdate,
     onLinkingSuccess,
     onLinkingCancel,
+    onNavigate,
   } = props;
 
+  if (currentTab === 'privacidade') {
+    return (
+      <PoliticaPrivacidade
+        onBack={() => onNavigate('dashboard')}
+        onOpenConsents={() => onNavigate('profile')}
+      />
+    );
+  }
+
   if (currentTab === 'profile') {
-    return <ProfileTabSection authUser={authUser} activeStudent={activeStudent} onUserUpdate={onUserUpdate} />;
+    return (
+      <ProfileTabSection
+        authUser={authUser}
+        activeStudent={activeStudent}
+        onUserUpdate={onUserUpdate}
+      />
+    );
   }
 
   if (currentTab === 'linking') {

@@ -8,6 +8,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import PortalResponsavel from './pages/PortalResponsavel';
 import './styles/global.scss';
+// Camada Tailwind (sem preflight) usada pelos componentes shadcn/Magic UI/React Bits.
+import './styles/tailwind.css';
 
 // Sistema de motion/skeleton/lazy loading compartilhado com o restante do
 // sistema escolar — mesma fonte, sem duplicar tokens. O runtime observa o DOM
@@ -25,10 +27,7 @@ if (!rootElement) {
   throw new Error('Root element #root not found in the document.');
 }
 
-const PLACEHOLDER_CLIENT_IDS = new Set([
-  'seu_client_id.apps.googleusercontent.com',
-  '',
-]);
+const PLACEHOLDER_CLIENT_IDS = new Set(['seu_client_id.apps.googleusercontent.com', '']);
 
 function resolveGoogleClientId(): string | null {
   const envVars = [
@@ -66,13 +65,11 @@ function MissingClientIdScreen() {
         gap: '12px',
       }}
     >
-      <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>
-        Login com Google não configurado
-      </p>
+      <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>Login com Google não configurado</p>
       <p style={{ color: '#a0a0a0', maxWidth: '420px', lineHeight: 1.5 }}>
-        Adicione <code style={{ color: '#10b981' }}>VITE_GMAIL_CLIENT_ID</code> ao
-        arquivo <code style={{ color: '#10b981' }}>.env</code> do portal com o Client ID
-        do Google Cloud Console.
+        Adicione <code style={{ color: '#10b981' }}>VITE_GMAIL_CLIENT_ID</code> ao arquivo{' '}
+        <code style={{ color: '#10b981' }}>.env</code> do portal com o Client ID do Google Cloud
+        Console.
       </p>
     </div>
   );
@@ -95,5 +92,5 @@ function RootComponent() {
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <RootComponent />
-  </React.StrictMode>,
+  </React.StrictMode>
 );

@@ -1455,6 +1455,29 @@
   a {
     color: $accent-cyan;
   }
+
+  /* Política de Privacidade é uma aba do portal, não uma URL: o controle é um
+     <button>, então precisa perder a aparência de botão e ganhar a de link. */
+  .footerLinkBtn {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: $accent-cyan;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+
+    &:hover {
+      color: $text-primary;
+    }
+
+    &:focus-visible {
+      outline: 2px solid $accent-cyan;
+      outline-offset: 2px;
+      border-radius: $radius-sm;
+    }
+  }
 }
 
 // ─── Vincular Filho ────────────────────────────────────────────────────────
@@ -1880,7 +1903,9 @@
   flex-direction: column;
   gap: 4px;
 
-  label {
+  /* Nome do par nome/valor. Era um <label>, mas nao rotulava controle algum —
+     trocado por <span> com classe para o seletor continuar valendo. */
+  .detailLabel {
     font-size: 0.75rem;
     font-weight: 600;
     text-transform: uppercase;
@@ -4741,4 +4766,130 @@ input:checked + .slider:before {
 }
 @media (prefers-reduced-motion: reduce) {
   .fichaWrapper { animation: none; }
+}
+
+/* ── Aba Política de Privacidade (página dedicada) ── */
+.policyWrapper {
+  max-width: 760px;   /* medida de linha confortável para texto corrido longo */
+  margin: 0 auto;
+  animation: slideUp 0.4s ease;
+}
+
+.policyMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.policyBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: $success;
+  background: rgba(22, 163, 74, 0.1);
+  border: 1px solid rgba(22, 163, 74, 0.25);
+}
+
+.policyDate {
+  font-size: 0.78rem;
+  color: $text-tertiary;
+}
+
+.policyCard {
+  @include card;
+  & {
+    line-height: 1.7;
+    color: $text-secondary;
+  }
+
+  /* O mixin `card` levanta o cartão no hover. Aqui dentro é texto corrido
+     longo: passar o mouse durante a leitura empurraria a linha que a pessoa
+     está lendo. Cartão de leitura fica parado. */
+  &:hover {
+    border-color: $border-color;
+    box-shadow: $shadow-card;
+    transform: none;
+  }
+}
+
+.policyIntro {
+  padding-bottom: 20px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid $border-color;
+
+  strong {
+    color: $text-primary;
+  }
+}
+
+.policySection {
+  margin-top: 28px;
+
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: $text-primary;
+    margin-bottom: 10px;
+
+    svg {
+      color: $accent-cyan;
+      flex-shrink: 0;
+    }
+  }
+
+  p + p {
+    margin-top: 10px;
+  }
+
+  ul {
+    margin: 10px 0 0;
+    padding-left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  li::marker {
+    color: $accent-cyan;
+  }
+
+  strong {
+    color: $text-primary;
+  }
+}
+
+.policyLink {
+  color: $accent-cyan;
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.policyInlineBtn {
+  @include button-secondary;
+  & {
+    margin-top: 16px;
+  }
+}
+
+.policyFooter {
+  margin-top: 24px;
+  display: flex;
+  justify-content: center;
+}
+
+.policyBackBtn {
+  @include button-ghost;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .policyWrapper { animation: none; }
 }

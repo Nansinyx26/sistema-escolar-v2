@@ -13,6 +13,7 @@ backend/.env
 credentials.json
 secrets.json
 backend/vapid-keys.json
+.mcp.json
 
 # Logs and diagnostics — logs não pertencem ao repositório
 backend/*.log
@@ -27,6 +28,10 @@ backend/test_output.txt
 backend/scripts/collections_output.txt
 backend/scripts/collections.json
 env.txt
+
+# Saida do Playwright — artefato de execucao, nao codigo
+test-results/
+playwright-report/
 
 # Confidentials (LGPD) — School schedules and worksheets
 direcao/horarios_consolidado.json
