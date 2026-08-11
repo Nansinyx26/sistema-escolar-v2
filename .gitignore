@@ -43,3 +43,6 @@ Horario Jaguari 2026/
 Thumbs.db
 .idea/
 .vscode/
+# Relatorios de cobertura (gerados por `npm run test:coverage`)
+coverage/
+backend/coverage/
