@@ -33,13 +33,22 @@ coverage:
         paths:
           - "backend/src/"
 
-      observabilidade:
-        # A barreira de PII precisa de cobertura alta: vazamento de dado de
-        # aluno é o tipo de defeito que não aparece em teste verde.
+      barreira-de-pii:
+        # Vazamento de dado de aluno é o tipo de defeito que não aparece em
+        # teste verde: o sistema funciona igual, os eventos chegam ao painel,
+        # e ninguém descobre até alguém abrir um evento e ver o CPF de uma
+        # criança. Por isso 80% aqui, e não a média do projeto.
+        #
+        # O alvo cobre SÓ os dois arquivos que fazem a higienização. Antes
+        # apontava para `observability/` inteiro, o que incluía otel.js e
+        # providers.js — quase só caminhos no-op para quando o SDK do
+        # fornecedor não está instalado. Exigir 80% deles forçaria testar
+        # a ausência de bibliotecas de terceiros, e o gate seria desligado
+        # por inútil em vez de cumprido.
         target: 80%
         threshold: 0%
         paths:
-          - "backend/src/observability/"
+          - "backend/src/observability/scrub.js"
           - "backend/src/utils/logSanitizer.js"
 
     patch:

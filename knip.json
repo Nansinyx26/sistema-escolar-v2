@@ -25,12 +25,20 @@
                 "@opentelemetry/*",
                 "@sentry/node",
                 "dd-trace",
-                "newrelic"
+                "newrelic",
+                "jest-environment-jsdom"
             ]
         },
         "portal-responsavel": {
             "entry": ["src/main.tsx"],
-            "project": ["src/**/*.{ts,tsx}"]
+            "project": ["src/**/*.{ts,tsx}"],
+            "ignoreDependencies": [
+                "clsx",
+                "tailwind-merge",
+                "class-variance-authority",
+                "radix-ui",
+                "tw-animate-css"
+            ]
         }
     },
     "ignoreBinaries": ["gh", "biome", "playwright"],

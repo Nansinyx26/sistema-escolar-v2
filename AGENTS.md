@@ -159,6 +159,9 @@ feat/144-x ──PR──▶ develop ──(deploy dev + migrations)──▶ PR
 **Hotfix de produção**: Issue `tipo:correcao` + `prioridade:critica` → branch `hotfix/<issue>-<slug>`
 a partir da `main` → PR para `main` → em seguida PR de sincronização `main` → `develop`.
 
+O passo a passo dos dois fluxos, incluindo o que fazer com a produção fora do ar, está em
+[`CONTRIBUTING.md`](CONTRIBUTING.md).
+
 ### Os dois PRs entre branches permanentes
 
 `develop → main` (release) e `main → develop` (sincronização pós-hotfix) são exceções
