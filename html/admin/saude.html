@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saúde do sistema — Administração</title>
+
+    <link rel="stylesheet" href="../../css/variables.css">
+    <link rel="stylesheet" href="../../css/base.css">
+    <link rel="stylesheet" href="../../css/motion.css">
+
+    <style>
+        /* Painel operado, não lido: o resumo vem antes do detalhe, e o estado
+           aparece na forma além do número — pastilha e faixa de severidade. */
+        .saude { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
+
+        .saude-topo {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .saude-topo h1 { margin: 0; font-size: 1.5rem; }
+        .saude-atualizado { font-size: .85rem; color: var(--text-secondary); }
+
+        .cartoes {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .cartao {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 1.1rem 1.2rem;
+        }
+        .cartao-rotulo {
+            font-size: .75rem;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+            margin-bottom: .5rem;
+        }
+        .cartao-valor {
+            font-size: 1.6rem;
+            font-weight: 700;
+            line-height: 1.1;
+            font-variant-numeric: tabular-nums;
+        }
+        .cartao-nota { font-size: .8rem; color: var(--text-secondary); margin-top: .35rem; }
+
+        .pastilha {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            font-size: .78rem;
+            font-weight: 600;
+            padding: .22rem .6rem;
+            border-radius: var(--radius-full);
+        }
+        .pastilha::before {
+            content: "";
+            width: .5rem;
+            height: .5rem;
+            border-radius: 50%;
+            background: currentColor;
+        }
+        .ok { color: #1a8f6b; background: rgba(26, 143, 107, .13); }
+        .alerta { color: #a37312; background: rgba(163, 115, 18, .14); }
+        .erro { color: #b8412f; background: rgba(184, 65, 47, .14); }
+
+        h2 { font-size: 1.05rem; margin: 2rem 0 .75rem; }
+
+        .tabela-caixa {
+            overflow-x: auto;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+        }
+        table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+        th, td { text-align: left; padding: .6rem .8rem; border-bottom: 1px solid var(--border-color); }
+        th {
+            font-size: .72rem;
+            letter-spacing: .07em;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+            background: var(--bg-tertiary);
+            white-space: nowrap;
+        }
+        tbody tr:last-child td { border-bottom: 0; }
+        td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+        td.rota { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .84rem; }
+
+        /* Faixa de severidade: o que precisa de atenção se lê antes de ler. */
+        tr.grave td:first-child { box-shadow: inset 3px 0 0 #b8412f; }
+        tr.atencao td:first-child { box-shadow: inset 3px 0 0 #a37312; }
+
+        .vazio {
+            padding: 2rem 1rem;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: .92rem;
+        }
+
+        .rodape-nota {
+            margin-top: 2rem;
+            font-size: .82rem;
+            color: var(--text-tertiary);
+            line-height: 1.6;
+        }
+
+        button.recarregar {
+            font: inherit;
+            font-size: .85rem;
+            padding: .45rem .9rem;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <main class="saude">
+
+        <div class="saude-topo">
+            <h1>Saúde do sistema</h1>
+            <div style="display:flex;align-items:center;gap:.75rem">
+                <span class="saude-atualizado" id="atualizado">—</span>
+                <button class="recarregar" id="recarregar" data-busy-label="Atualizando…">Atualizar</button>
+            </div>
+        </div>
+
+        <div class="cartoes" id="cartoes" data-loading="true">
+            <div class="motion-skeleton" aria-hidden="true">
+                <div class="skeleton skeleton-card"></div>
+            </div>
+        </div>
+
+        <h2>Rotas com mais problema</h2>
+        <p style="font-size:.87rem;color:var(--text-secondary);margin:.25rem 0 .9rem">
+            Ordenadas por taxa de erro, com latência como desempate — o que está quebrado aparece no topo.
+        </p>
+
+        <div id="rotas-caixa" data-loading="true">
+            <div class="motion-skeleton" aria-hidden="true">
+                <div class="skeleton skeleton-row"></div>
+                <div class="skeleton skeleton-row"></div>
+                <div class="skeleton skeleton-row"></div>
+            </div>
+        </div>
+
+        <p class="rodape-nota" id="rodape"></p>
+    </main>
+
+    <script defer src="../../js/observability.js"></script>
+    <script defer src="../../js/motion.js"></script>
+    <script defer src="../../js/api-config.js"></script>
+    <script defer src="../../js/saude-painel.js"></script>
+</body>
+</html>

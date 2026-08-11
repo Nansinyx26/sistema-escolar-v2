@@ -41,6 +41,21 @@ router.get('/monitoring/health', async (req, res) => {
     const health = await monitoring.health();
     res.status(health.ok ? 200 : 503).json(health);
 });
+
+// Estatística por rota — latência, taxa de erro e disponibilidade.
+//
+// Fica atrás de autenticação de admin: os caminhos revelam a superfície da API,
+// e o volume por rota diz quando a escola está em uso. Nada disso precisa ser
+// público. É o mesmo cuidado que /metrics já tinha com o METRICS_TOKEN.
+router.get('/monitoring/rotas', authJWT, authorize('admin'), (req, res) => {
+    res.json({
+        success: true,
+        rotas: monitoring.metricasPorRota(),
+        totalRotas: monitoring.rotas.size,
+        limiteRotas: monitoring.MAX_ROTAS,
+        geradoEm: new Date().toISOString(),
+    });
+});
 router.get('/metrics', (req, res) => {
     // Em produção, exige token (METRICS_TOKEN) — métricas internas não são públicas
     if (process.env.NODE_ENV === 'production') {
@@ -64,106 +79,131 @@ router.put('/config/:id', authJWT, authorize('admin'), ConfigController.update);
 router.get('/files/:id', FileController.servePublicImage); // Rota pública principal (usada pelo getPhotoUrl)
 router.get('/public/photo/:id', FileController.servePublicImage); // Rota pública legada
 router.get('/upload/photo/:id', authJWT, filtrarPorEscola, FileController.serveFile);
-router.post('/upload/photo', authJWT, filtrarPorEscola, upload.single('foto'), convertToWebP, async (req, res) => {
-    if (!req.file) return res.status(400).json({ success: false, error: 'Nenhum arquivo enviado' });
-    try {
-        const db = mongoose.connection.db;
-        const bucket = new mongoose.mongo.GridFSBucket(db, { bucketName: 'uploads' });
-        const filename = crypto.randomBytes(16).toString('hex') + '.webp';
-        const uploadStream = bucket.openUploadStream(filename, {
-            contentType: 'image/webp',
-            // Metadata é o que permite ao FileController decidir quem pode baixar
-            metadata: {
-                usuarioId: String(req.user?.id || req.user?._id || ''),
-                escolaId: req.escolaId ? String(req.escolaId) : undefined,
-                alunoId: req.body?.alunoId ? String(req.body.alunoId) : undefined
-            }
-        });
-        uploadStream.end(req.file.buffer);
-        uploadStream.on('finish', () => {
-            res.json({ success: true, data: { id: uploadStream.id, filename: filename } });
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// --- 3b. Upload de Documentos (PDF, JPG, PNG) ---
-router.get('/upload/documento/:id', authJWT, horizontalFilter, filtrarPorEscola, FileController.serveFile);
-router.post('/upload/documento', authJWT, horizontalFilter, filtrarPorEscola, uploadDocument.array('documentos', 10), async (req, res) => {
-    if (!req.files || req.files.length === 0) {
-        return res.status(400).json({ success: false, error: 'Nenhum arquivo enviado' });
-    }
-
-    // O `fileFilter` do uploadDocument só olha `file.mimetype`, que é o
-    // Content-Type que o CLIENTE mandou. O anexo do chat já era conferido byte a
-    // byte; aqui não era — e este é o caminho que grava RG/CPF/comprovante de
-    // criança. Um `payload.exe` renomeado para `rg.pdf` entrava no GridFS e
-    // depois era baixado pela secretaria como se fosse o documento.
-    //
-    // Diferente de /api/upload/photo, aqui não há reencode (o sharp do WebP é o
-    // que barra o disfarce naquela rota): o byte enviado é o byte guardado.
-    for (const arquivo of req.files) {
-        const veredito = validarAssinatura(arquivo.buffer, arquivo.mimetype);
-        if (!veredito.ok) {
-            return res.status(400).json({
-                success: false,
-                error: `"${arquivo.originalname}": ${veredito.motivo}`
-            });
-        }
-    }
-
-    try {
-        // O documento é vinculado a um aluno já no upload — é esse metadata
-        // que o FileController usa depois para decidir quem pode baixá-lo.
-        // Sem alunoId, o arquivo fica restrito a quem o enviou + gestão.
-        let alunoId;
-        if (req.body?.alunoId) {
-            const { assertAcessoAoAluno } = require('../middleware/assertAcessoAoAluno');
-            const acesso = await assertAcessoAoAluno(req, String(req.body.alunoId));
-            if (!acesso.ok) {
-                return res.status(acesso.status).json({ success: false, error: acesso.error });
-            }
-            alunoId = String(req.body.alunoId);
-        }
-
-        const db = mongoose.connection.db;
-        const bucket = new mongoose.mongo.GridFSBucket(db, { bucketName: 'uploads' });
-        const results = [];
-
-        for (const file of req.files) {
-            const ext = file.mimetype === 'application/pdf' ? '.pdf'
-                : file.mimetype.includes('png') ? '.png' : '.jpg';
-            const filename = crypto.randomBytes(16).toString('hex') + ext;
-
+router.post(
+    '/upload/photo',
+    authJWT,
+    filtrarPorEscola,
+    upload.single('foto'),
+    convertToWebP,
+    async (req, res) => {
+        if (!req.file)
+            return res.status(400).json({ success: false, error: 'Nenhum arquivo enviado' });
+        try {
+            const db = mongoose.connection.db;
+            const bucket = new mongoose.mongo.GridFSBucket(db, { bucketName: 'uploads' });
+            const filename = crypto.randomBytes(16).toString('hex') + '.webp';
             const uploadStream = bucket.openUploadStream(filename, {
-                contentType: file.mimetype,
+                contentType: 'image/webp',
+                // Metadata é o que permite ao FileController decidir quem pode baixar
                 metadata: {
                     usuarioId: String(req.user?.id || req.user?._id || ''),
                     escolaId: req.escolaId ? String(req.escolaId) : undefined,
-                    alunoId
-                }
+                    alunoId: req.body?.alunoId ? String(req.body.alunoId) : undefined,
+                },
             });
-            await new Promise((resolve, reject) => {
-                uploadStream.end(file.buffer);
-                uploadStream.on('finish', resolve);
-                uploadStream.on('error', reject);
+            uploadStream.end(req.file.buffer);
+            uploadStream.on('finish', () => {
+                res.json({ success: true, data: { id: uploadStream.id, filename: filename } });
             });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
+    }
+);
 
-            results.push({
-                id: uploadStream.id.toString(),
-                gridfsId: uploadStream.id.toString(),
-                nome: file.originalname,
-                tipo: file.mimetype,
-                enviadoEm: new Date().toISOString()
-            });
+// --- 3b. Upload de Documentos (PDF, JPG, PNG) ---
+router.get(
+    '/upload/documento/:id',
+    authJWT,
+    horizontalFilter,
+    filtrarPorEscola,
+    FileController.serveFile
+);
+router.post(
+    '/upload/documento',
+    authJWT,
+    horizontalFilter,
+    filtrarPorEscola,
+    uploadDocument.array('documentos', 10),
+    async (req, res) => {
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ success: false, error: 'Nenhum arquivo enviado' });
         }
 
-        res.json({ success: true, data: results });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        // O `fileFilter` do uploadDocument só olha `file.mimetype`, que é o
+        // Content-Type que o CLIENTE mandou. O anexo do chat já era conferido byte a
+        // byte; aqui não era — e este é o caminho que grava RG/CPF/comprovante de
+        // criança. Um `payload.exe` renomeado para `rg.pdf` entrava no GridFS e
+        // depois era baixado pela secretaria como se fosse o documento.
+        //
+        // Diferente de /api/upload/photo, aqui não há reencode (o sharp do WebP é o
+        // que barra o disfarce naquela rota): o byte enviado é o byte guardado.
+        for (const arquivo of req.files) {
+            const veredito = validarAssinatura(arquivo.buffer, arquivo.mimetype);
+            if (!veredito.ok) {
+                return res.status(400).json({
+                    success: false,
+                    error: `"${arquivo.originalname}": ${veredito.motivo}`,
+                });
+            }
+        }
+
+        try {
+            // O documento é vinculado a um aluno já no upload — é esse metadata
+            // que o FileController usa depois para decidir quem pode baixá-lo.
+            // Sem alunoId, o arquivo fica restrito a quem o enviou + gestão.
+            let alunoId;
+            if (req.body?.alunoId) {
+                const { assertAcessoAoAluno } = require('../middleware/assertAcessoAoAluno');
+                const acesso = await assertAcessoAoAluno(req, String(req.body.alunoId));
+                if (!acesso.ok) {
+                    return res.status(acesso.status).json({ success: false, error: acesso.error });
+                }
+                alunoId = String(req.body.alunoId);
+            }
+
+            const db = mongoose.connection.db;
+            const bucket = new mongoose.mongo.GridFSBucket(db, { bucketName: 'uploads' });
+            const results = [];
+
+            for (const file of req.files) {
+                const ext =
+                    file.mimetype === 'application/pdf'
+                        ? '.pdf'
+                        : file.mimetype.includes('png')
+                          ? '.png'
+                          : '.jpg';
+                const filename = crypto.randomBytes(16).toString('hex') + ext;
+
+                const uploadStream = bucket.openUploadStream(filename, {
+                    contentType: file.mimetype,
+                    metadata: {
+                        usuarioId: String(req.user?.id || req.user?._id || ''),
+                        escolaId: req.escolaId ? String(req.escolaId) : undefined,
+                        alunoId,
+                    },
+                });
+                await new Promise((resolve, reject) => {
+                    uploadStream.end(file.buffer);
+                    uploadStream.on('finish', resolve);
+                    uploadStream.on('error', reject);
+                });
+
+                results.push({
+                    id: uploadStream.id.toString(),
+                    gridfsId: uploadStream.id.toString(),
+                    nome: file.originalname,
+                    tipo: file.mimetype,
+                    enviadoEm: new Date().toISOString(),
+                });
+            }
+
+            res.json({ success: true, data: results });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
     }
-});
+);
 
 // --- 4. Sub-Rotas Modularizadas ---
 router.use('/auth', require('./auth'));
@@ -187,7 +227,12 @@ router.use('/professores', authJWT, horizontalFilter, filtrarPorEscola, require(
 router.use('/diretores', authJWT, filtrarPorEscola, require('./diretores'));
 router.use('/turmas', authJWT, horizontalFilter, filtrarPorEscola, require('./turmas'));
 router.use('/faltas', authJWT, horizontalFilter, filtrarPorEscola, require('./faltas'));
-router.use('/frequencia-professores', authJWT, horizontalFilter, require('./frequencia-professores'));
+router.use(
+    '/frequencia-professores',
+    authJWT,
+    horizontalFilter,
+    require('./frequencia-professores')
+);
 // Planilha de faltas dos funcionários — `filtrarPorEscola` é obrigatório: é ele
 // que resolve req.escolaId, usado tanto para listar o quadro quanto para isolar
 // a planilha por escola.
@@ -215,8 +260,23 @@ router.use('/secretaria', authJWT, require('./secretaria'));
 // Mesmo padrão :alunoId das rotas de IA/notas — passa pelo guard de acesso.
 const GamificacaoController = require('../controllers/GamificacaoController');
 const { requireAcessoAoAluno } = require('../middleware/assertAcessoAoAluno');
-router.get('/gamificacao/aluno/:alunoId', authJWT, horizontalFilter, filtrarPorEscola, requireAcessoAoAluno('alunoId'), GamificacaoController.getBadgesAluno);
-router.post('/gamificacao/recalcular/:alunoId', authJWT, horizontalFilter, filtrarPorEscola, authorize('admin', 'diretor', 'secretaria', 'professor'), requireAcessoAoAluno('alunoId'), GamificacaoController.recalcularBadges);
+router.get(
+    '/gamificacao/aluno/:alunoId',
+    authJWT,
+    horizontalFilter,
+    filtrarPorEscola,
+    requireAcessoAoAluno('alunoId'),
+    GamificacaoController.getBadgesAluno
+);
+router.post(
+    '/gamificacao/recalcular/:alunoId',
+    authJWT,
+    horizontalFilter,
+    filtrarPorEscola,
+    authorize('admin', 'diretor', 'secretaria', 'professor'),
+    requireAcessoAoAluno('alunoId'),
+    GamificacaoController.recalcularBadges
+);
 
 // --- 6. Chat Direto ---
 // `bloquearPalavroes` fica antes do controller: a conversa direta entre
@@ -227,26 +287,54 @@ const bloquearPalavroes = require('../middleware/bloquearPalavroes');
 // Teto de envio (30/min por conta, 120/min por IP). Vem DEPOIS do authJWT
 // porque a chave é o usuário autenticado, e ANTES do filtro de palavrões e do
 // controller para que o flood seja barrado antes de gastar banco.
-const { chatMensagemLimiter, chatUploadLimiter, chatIpLimiter } = require('../middleware/rateLimiters');
+const {
+    chatMensagemLimiter,
+    chatUploadLimiter,
+    chatIpLimiter,
+} = require('../middleware/rateLimiters');
 // `detalhado: false` só aqui e na edição: nos comentários e avaliações o front
 // mostra o nível e o termo detectado, e mudar isso quebraria aquelas telas. No
 // chat, devolver o termo exato do dicionário só ajuda quem está caçando uma
 // grafia que o filtro não pegue.
-router.post('/chat-direto/enviar', authJWT, filtrarPorEscola,
-    chatIpLimiter, chatMensagemLimiter,
+router.post(
+    '/chat-direto/enviar',
+    authJWT,
+    filtrarPorEscola,
+    chatIpLimiter,
+    chatMensagemLimiter,
     bloquearPalavroes('mensagem', { recurso: 'chat-direto', detalhado: false }),
-    ChatDiretoController.enviarMensagem);
+    ChatDiretoController.enviarMensagem
+);
 router.get('/chat-direto/historico/:outroUsuarioId', authJWT, ChatDiretoController.getHistorico);
 router.patch('/chat-direto/lida/:mensagemId', authJWT, ChatDiretoController.marcarComoLida);
-router.patch('/chat-direto/lidas/:outroUsuarioId', authJWT, ChatDiretoController.marcarConversaComoLida);
-router.put('/chat-direto/mensagem/:mensagemId', authJWT, bloquearPalavroes('novaMensagem', { recurso: 'chat-direto', detalhado: false }), ChatDiretoController.editarMensagem);
+router.patch(
+    '/chat-direto/lidas/:outroUsuarioId',
+    authJWT,
+    ChatDiretoController.marcarConversaComoLida
+);
+router.put(
+    '/chat-direto/mensagem/:mensagemId',
+    authJWT,
+    bloquearPalavroes('novaMensagem', { recurso: 'chat-direto', detalhado: false }),
+    ChatDiretoController.editarMensagem
+);
 router.delete('/chat-direto/mensagem/:mensagemId', authJWT, ChatDiretoController.apagarMensagem);
 router.post('/chat-direto/reagir', authJWT, ChatDiretoController.reagirMensagem);
 // Encaminhar cria N mensagens × M destinatários numa requisição só — é o
 // caminho mais barato para gerar volume, então entra no mesmo orçamento.
-router.post('/chat-direto/encaminhar', authJWT, filtrarPorEscola,
-    chatMensagemLimiter, ChatDiretoController.encaminharMensagem);
-router.get('/chat-direto/presenca/:outroUsuarioId', authJWT, filtrarPorEscola, ChatDiretoController.getPresenca);
+router.post(
+    '/chat-direto/encaminhar',
+    authJWT,
+    filtrarPorEscola,
+    chatMensagemLimiter,
+    ChatDiretoController.encaminharMensagem
+);
+router.get(
+    '/chat-direto/presenca/:outroUsuarioId',
+    authJWT,
+    filtrarPorEscola,
+    ChatDiretoController.getPresenca
+);
 
 // Anexos/áudios do chat: bucket próprio de mimetypes (Word, Excel, ZIP, vídeo,
 // audio/webm) e metadata com os dois lados da conversa — o download reusa o
@@ -260,7 +348,9 @@ const receberAnexosChat = (req, res, next) => {
             const grande = err.code === 'LIMIT_FILE_SIZE';
             return res.status(400).json({
                 success: false,
-                error: grande ? 'Arquivo acima do limite de 10 MB.' : (err.message || 'Falha no upload.')
+                error: grande
+                    ? 'Arquivo acima do limite de 10 MB.'
+                    : err.message || 'Falha no upload.',
             });
         }
 
@@ -269,10 +359,13 @@ const receberAnexosChat = (req, res, next) => {
         // passava pela lista branca e ia parar no GridFS.
         for (const arquivo of req.files || []) {
             // Áudio tem teto próprio (5 MB), menor que o dos demais anexos.
-            if (String(arquivo.mimetype).startsWith('audio/') && arquivo.size > uploadChat.LIMITE_AUDIO) {
+            if (
+                String(arquivo.mimetype).startsWith('audio/') &&
+                arquivo.size > uploadChat.LIMITE_AUDIO
+            ) {
                 return res.status(400).json({
                     success: false,
-                    error: `"${arquivo.originalname}": áudio acima do limite de 5 MB.`
+                    error: `"${arquivo.originalname}": áudio acima do limite de 5 MB.`,
                 });
             }
 
@@ -280,7 +373,7 @@ const receberAnexosChat = (req, res, next) => {
             if (!veredito.ok) {
                 return res.status(400).json({
                     success: false,
-                    error: `"${arquivo.originalname}": ${veredito.motivo}`
+                    error: `"${arquivo.originalname}": ${veredito.motivo}`,
                 });
             }
         }
@@ -288,8 +381,14 @@ const receberAnexosChat = (req, res, next) => {
         return next();
     });
 };
-router.post('/chat-direto/upload', authJWT, filtrarPorEscola,
-    chatUploadLimiter, receberAnexosChat, ChatDiretoController.uploadAnexo);
+router.post(
+    '/chat-direto/upload',
+    authJWT,
+    filtrarPorEscola,
+    chatUploadLimiter,
+    receberAnexosChat,
+    ChatDiretoController.uploadAnexo
+);
 router.get('/chat-direto/anexo/:id', authJWT, filtrarPorEscola, FileController.serveFile);
 
 module.exports = router;
