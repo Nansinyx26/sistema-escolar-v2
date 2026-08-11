@@ -46,3 +46,21 @@ Thumbs.db
 # Relatorios de cobertura (gerados por `npm run test:coverage`)
 coverage/
 backend/coverage/
+
+# Artefatos de trabalho — nao versionar (Issue #4)
+*.patch
+*.diff
+%TEMP%/
+
+# ATENÇÃO — portal-responsavel/dist/ NÃO entra aqui.
+#
+# Parece build descartável, mas é o que PRODUÇÃO SERVE. O render.yaml roda
+# apenas `cd backend && npm install`: o portal não é construído no deploy.
+# O backend serve os arquivos direto de portal-responsavel/dist (app.js), e
+# o cspHashes.js hasheia os inline de lá.
+#
+# Ignorar esse diretório derruba o portal do responsável em produção.
+#
+# Para poder ignorá-lo, primeiro acrescente a construção do portal ao deploy:
+#   buildCommand: cd portal-responsavel && npm ci && npm run build && cd ../backend && npm install
+# Só depois disso o dist vira artefato descartável.
