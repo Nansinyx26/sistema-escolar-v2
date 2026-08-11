@@ -226,10 +226,25 @@ jobs:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
 
+      # Gate de verdade: sem `continue-on-error`. Antes o passo rodava e o
+      # resultado era ignorado — "Security Scan" que nunca reprovou nada.
+      #
+      # O nível é `high`, e não `moderate`, por uma razão concreta: sobra uma
+      # vulnerabilidade moderate em `sanitize-html@2.17.1`
+      # (GHSA-vccv-cmxp-4j9h, `javascript:` passando por action/formaction/
+      # data/poster/background). Ela NÃO é alcançável aqui — `utils/sanitize.js`
+      # é o único ponto de uso e roda com `allowedTags: []` e
+      # `allowedAttributes: {}`, então nenhum atributo sobrevive à sanitização.
+      #
+      # A correção seria 2.17.6, que arrasta um htmlparser2 só-ESM e quebra 40
+      # suítes sob o runtime CJS do Jest. Trocar um risco não explorável por
+      # uma suíte de testes inutilizada é péssimo negócio.
+      #
+      # Reavalie quando o backend migrar para ESM, ou quando o sanitize-html
+      # publicar a correção numa linha CJS.
       - name: 🔐 Dependency Check (npm audit)
         working-directory: ./backend
-        run: npm audit --audit-level=moderate
-        continue-on-error: true
+        run: npm audit --audit-level=high
 
       # O resultado precisa aparecer no LOG, e não só num arquivo .sarif.
       # Antes, a única saída do Trivy era o arquivo enviado para a aba Security
@@ -242,11 +257,14 @@ jobs:
           scan-ref: "./backend"
           format: "table"
           severity: "CRITICAL,HIGH"
-          # exit-code fica em 0 de propósito: ligar o bloqueio junto com esta
-          # correção travaria o deploy por vulnerabilidades preexistentes que
-          # ninguém triou ainda. Trocar para "1" quando a lista estiver limpa
-          # transforma este passo num gate de verdade.
-          exit-code: "0"
+          # Agora é gate. A triagem que faltava foi feita: `npm audit fix`
+          # resolveu as 4 high e 1 moderate das dependências do backend, e a
+          # moderate restante (sanitize-html) está justificada no passo acima.
+          #
+          # Se este passo reprovar por algo que o npm audit não vê, é sinal de
+          # achado no sistema de arquivos — imagem base, binário, lockfile de
+          # outra linguagem. Trate o achado; não volte o exit-code para 0.
+          exit-code: "1"
 
       - name: 🔐 Trivy scan (arquivo SARIF)
         uses: aquasecurity/trivy-action@master
@@ -348,10 +366,12 @@ jobs:
         working-directory: ./backend
         run: npm run build --if-present
 
+      # Último ponto antes de publicar. Também sem `continue-on-error`: uma
+      # auditoria cujo resultado é ignorado na porta da produção é pior que
+      # não ter auditoria, porque dá a impressão de que alguém está olhando.
       - name: 🔐 Security audit
         working-directory: ./backend
         run: npm audit --audit-level=high
-        continue-on-error: true
 
       - name: 📤 Deploy to Render (Prod)
         uses: johnbeynon/render-deploy-action@v0.0.8
