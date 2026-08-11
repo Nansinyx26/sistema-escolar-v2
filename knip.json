@@ -14,7 +14,13 @@
             ],
             "project": ["js/**/*.js", "scripts/**/*.js", "*.js"],
             "ignore": ["js/libs/**", "js/legacy/**", "js/*.min.js", "js/events/**"],
-            "ignoreDependencies": ["daisyui", "autoprefixer", "postcss", "mongodb-memory-server"]
+            "ignoreDependencies": [
+                "daisyui",
+                "autoprefixer",
+                "postcss",
+                "mongodb-memory-server",
+                "jest"
+            ]
         },
         "backend": {
             "entry": ["src/index.js", "migrations/*.js", "scripts/*.js", "tests/**/*.test.js"],

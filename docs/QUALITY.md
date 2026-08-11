@@ -118,7 +118,38 @@ Alvos iniciais: `backend/src/services`, `logSanitizer.js` e `observability/scrub
 número atual só bloquearia todo mundo. Depois da primeira execução, defina um pouco
 abaixo do medido e suba com o tempo.
 
-É caro: rode sob demanda, não em todo PR.
+### Como rodar
+
+```bash
+npm run test:mutation:dry   # valida a configuração sem mutar nada (~2 min)
+npm run test:mutation:pii   # só a barreira de PII — alvo pequeno, valor alto
+npm run test:mutation       # tudo que está em stryker.conf.json (horas)
+```
+
+No CI: workflow **🧬 Teste de mutação**, manual (`workflow_dispatch`, com campo para
+escolher o alvo) e semanal aos domingos às 04:00 UTC. O relatório sai como artefato.
+
+**Não roda em PR, de propósito.** O Stryker executa a suíte inteira *uma vez por
+mutação*: só `scrub.js`, com 63 suítes, não termina em 10 minutos localmente. Amarrar
+isso ao PR tornaria todo merge insuportável — e o job seria desligado em uma semana.
+
+### Três armadilhas de configuração, já resolvidas
+
+O Stryker não rodava. Custou três correções, todas do mesmo tipo — configuração que
+não batia com o funcionamento real do sistema:
+
+1. **Roda da RAIZ, não do `backend/`.** O sandbox precisa enxergar `js/` do frontend,
+   porque `backend/src/utils/filtroPalavroes.js` faz `require('../../../js/filtro-palavroes')`.
+   Rodando de dentro do backend, o módulo some e o dry run quebra.
+2. **`jest` precisa estar na raiz.** É devDependency do `backend/`, e o runner do
+   Stryker o resolve a partir do diretório de execução. Está em `ignoreDependencies`
+   do Knip, porque de fato nada na raiz o importa.
+3. **`ignorePatterns` não pode excluir `portal-responsavel/dist`.** É o que produção
+   serve, e há teste que assere 200 nele. Excluí-lo do sandbox dava 404.
+
+**Nunca use `--inPlace` aqui.** Ele dispensa o sandbox e é tentador, mas mutação
+interrompida (Ctrl+C, timeout) deixa arquivo instrumentado no disco — aconteceu durante
+a configuração. Com sandbox, o working tree nunca é tocado.
 
 ---
 

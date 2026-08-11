@@ -64,3 +64,11 @@ backend/coverage/
 # Para poder ignorá-lo, primeiro acrescente a construção do portal ao deploy:
 #   buildCommand: cd portal-responsavel && npm ci && npm run build && cd ../backend && npm install
 # Só depois disso o dist vira artefato descartável.
+
+# Sandbox e relatorios do Stryker
+.stryker-tmp/
+reports/
+
+# Sandbox e relatorios do Stryker
+.stryker-tmp/
+reports/

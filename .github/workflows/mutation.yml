@@ -1,0 +1,71 @@
+name: 🧬 Teste de mutação
+
+# NÃO roda em PR, de propósito.
+#
+# O Stryker executa a suíte inteira UMA VEZ POR MUTAÇÃO. Só `scrub.js`, com 63
+# suítes, não terminou em 10 minutos numa máquina local — sobre `services/**`
+# (45 arquivos) são horas. Amarrar isso ao PR tornaria todo merge insuportável,
+# e o time desligaria o job em uma semana.
+#
+# Por isso: sob demanda (workflow_dispatch) e uma vez por semana, de madrugada.
+#
+# Ver a Issue "Medir a qualidade real dos testes com Stryker" e docs/QUALITY.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      alvo:
+        description: "Arquivos a mutar (glob). Vazio = o que está no stryker.conf.json"
+        required: false
+        default: "backend/src/observability/scrub.js,backend/src/utils/logSanitizer.js"
+  schedule:
+    # Domingo, 04:00 UTC (01:00 BRT). Fora do horário de aula.
+    - cron: "0 4 * * 0"
+
+permissions:
+  contents: read
+
+jobs:
+  mutacao:
+    name: 🧬 Stryker
+    runs-on: ubuntu-latest
+    # Teto generoso: o alvo padrão leva minutos, o conjunto completo leva horas.
+    timeout-minutes: 180
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION || '22' }}
+          cache: "npm"
+
+      # As duas instalações são necessárias: o Stryker roda da RAIZ (é de lá que
+      # o sandbox enxerga o js/ do frontend, de que backend/src/utils/
+      # filtroPalavroes.js depende), mas executa os testes do backend.
+      - name: 📥 Install dependencies (raiz)
+        run: npm ci
+
+      - name: 📥 Install dependencies (backend)
+        working-directory: ./backend
+        run: npm ci
+
+      - name: 🧬 Rodar Stryker
+        run: |
+          if [ -n "${{ inputs.alvo }}" ]; then
+            npx stryker run --mutate "${{ inputs.alvo }}"
+          else
+            npx stryker run
+          fi
+
+      # O score fica no relatório, não só no log: é ele que vira o baseline e o
+      # threshold de `break` no stryker.conf.json.
+      - name: 📤 Publicar relatório
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: relatorio-mutacao
+          path: reports/mutation/
+          retention-days: 30
