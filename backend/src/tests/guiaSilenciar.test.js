@@ -20,18 +20,26 @@
  * fim do arquivo garante isso).
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const CAMINHO_TOUR = path.join(__dirname, '../../../js/onboarding-tour.js');
 const CHAVE = 'guiaSilenciado';
 
 // ── Réplica da lógica sob teste ─────────────────────────────────────────────
 function guiaSilenciado() {
-    try { return localStorage.getItem(CHAVE) === 'true'; } catch (e) { return false; }
+    try {
+        return localStorage.getItem(CHAVE) === 'true';
+    } catch (e) {
+        return false;
+    }
 }
 function definirSilenciado(valor) {
-    try { localStorage.setItem(CHAVE, String(valor)); } catch (e) { /* noop */ }
+    try {
+        localStorage.setItem(CHAVE, String(valor));
+    } catch (e) {
+        /* noop */
+    }
 }
 function pintarBotaoSom(botao) {
     const mudo = guiaSilenciado();
@@ -45,7 +53,8 @@ function pintarBotaoSom(botao) {
 
 /** Recria o popup do tour (equivale a renderStep pintando um passo novo). */
 function pintarPopup() {
-    document.body.innerHTML = '<button id="tour-speak"><i class="bi bi-volume-up-fill"></i></button>';
+    document.body.innerHTML =
+        '<button id="tour-speak"><i class="bi bi-volume-up-fill"></i></button>';
     return document.getElementById('tour-speak');
 }
 
@@ -110,11 +119,11 @@ describe('Botão de som do guia: alterna nos dois sentidos', () => {
         const falar = jest.fn();
         const botao = montarBotao(falar);
 
-        botao.click();  // silencia
+        botao.click(); // silencia
         falar.mockClear();
         window.stopTtsAudio.mockClear();
 
-        botao.click();  // dessilencia
+        botao.click(); // dessilencia
 
         expect(falar).toHaveBeenCalledTimes(1);
         expect(window.stopTtsAudio).not.toHaveBeenCalled();
@@ -124,8 +133,8 @@ describe('Botão de som do guia: alterna nos dois sentidos', () => {
         // Listener duplicado = dois toggles por clique = estado volta ao
         // original e o botão parece morto. A guarda `data-som-ligado` impede.
         const botao = montarBotao(jest.fn());
-        ligarBotao(jest.fn());   // segunda ligação no MESMO elemento
-        ligarBotao(jest.fn());   // e uma terceira, por garantia
+        ligarBotao(jest.fn()); // segunda ligação no MESMO elemento
+        ligarBotao(jest.fn()); // e uma terceira, por garantia
 
         botao.click();
 
@@ -186,23 +195,35 @@ describe('Botão de som do guia: acessibilidade', () => {
 describe('O módulo real implementa o mesmo contrato', () => {
     const fonte = fs.readFileSync(CAMINHO_TOUR, 'utf8');
 
+    // Estas asserções leem o TEXTO-FONTE do módulo real, então dependiam de
+    // como o arquivo está formatado — e não deveriam. O formatador requebra
+    // chamadas longas em várias linhas, o que fazia
+    // `toContain("setAttribute('aria-pressed'")` falhar sem que nada no
+    // comportamento tivesse mudado: uma alteração puramente cosmética
+    // reprovava a suíte, exatamente com a cara de uma regressão real.
+    //
+    // Colapsar os espaços antes de comparar deixa a asserção onde ela tem
+    // valor — a chave, o atributo e os rótulos existem no módulo — e cega para
+    // a formatação, que já é responsabilidade do Biome.
+    const fonteNormalizada = fonte.replace(/\s+/g, ' ');
+
     it('usa a mesma chave de localStorage', () => {
-        expect(fonte).toContain("CHAVE_SILENCIADO = 'guiaSilenciado'");
+        expect(fonteNormalizada).toContain("CHAVE_SILENCIADO = 'guiaSilenciado'");
     });
 
     it('bloqueia a fala na origem quando mudo', () => {
         // Sem esta saída antecipada, o mudo gastaria a chamada ao TTS e
         // dependeria de cortar o áudio depois de gerado.
-        expect(fonte).toMatch(/if \(guiaSilenciado\(\)\) \{[\s\S]{0,200}?return;/);
+        expect(fonteNormalizada).toMatch(/if \(guiaSilenciado\(\)\) \{.{0,200}?return;/);
     });
 
     it('protege contra listener duplicado', () => {
-        expect(fonte).toContain('dataset.somLigado');
+        expect(fonteNormalizada).toContain('dataset.somLigado');
     });
 
     it('expoe os atributos de acessibilidade', () => {
-        expect(fonte).toContain("setAttribute('aria-pressed'");
-        expect(fonte).toContain("'Ativar som do guia'");
-        expect(fonte).toContain("'Silenciar guia'");
+        expect(fonteNormalizada).toMatch(/setAttribute\(\s?'aria-pressed'/);
+        expect(fonteNormalizada).toContain("'Ativar som do guia'");
+        expect(fonteNormalizada).toContain("'Silenciar guia'");
     });
 });
