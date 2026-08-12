@@ -66,6 +66,83 @@ Os arquivos de `js/` são **scripts clássicos** servidos direto ao navegador
 
 As regras desligadas no override de `js/**` são **conflito de contexto, não dívida**.
 
+### Issue #8 — o que foi medido antes de mexer
+
+A #8 nasceu de um número: ~690 avisos de estilo. Medir de onde eles vinham mudou
+completamente o que valia a pena fazer.
+
+**A régua estava errada, e essa era a correção real.** O override de `js/**`
+também forçava `"quoteStyle": "double"`, enquanto o resto do projeto usa
+`"single"` — e o frontend está escrito em aspas simples. O formatador exigia
+reescrever milhares de literais para contrariar a convenção do próprio código:
+
+| régua | reescrita em `js/` |
+| --- | --- |
+| `single` (atual) | +9.851 / −5.993 |
+| `double` (anterior) | +14.948 / −11.090 |
+
+Remover essa única linha corta ~5.100 linhas de toda reformatação futura de
+`js/`. As regras de **linter** do override continuam intactas — são conflito de
+contexto, como explicado acima. Saiu só a configuração de **formatação**.
+
+### Por que NÃO houve limpeza em massa
+
+Nenhuma área do repositório está formatada segundo o Biome hoje:
+
+| área | reformatação pendente |
+| --- | --- |
+| `backend/src` | +15.117 / −10.070 em 256 arquivos |
+| `js/` | +14.961 / −11.102 em 90 arquivos |
+| `portal-responsavel/src` | +3.253 / −1.467 em 38 arquivos |
+| `scripts/` | +155 / −104 em 4 arquivos |
+
+Isso tem uma consequência que não é óbvia: o `pre-commit` roda
+`biome check --write --staged`, então **todo arquivo que entra em stage é
+formatado por inteiro**. Aplicar as regras seguras de lint em todo o repositório
+tocaria 171 arquivos por motivo cosmético — e o hook transformaria isso em
+**+19.305 / −12.054**. Trinta mil linhas de mexida mecânica, `git blame` do
+frontend inteiro apagado, e zero mudança de comportamento.
+
+O gate é incremental de propósito: ele só cobra o arquivo que você tocou, e o
+hook formata esse arquivo sozinho. A formatação chega arquivo a arquivo, junto
+com trabalho que tem motivo próprio para existir. Forçá-la de uma vez troca um
+incômodo pequeno e distribuído por um risco grande e concentrado.
+
+**Regras seguras, para quando um arquivo for tocado por outro motivo:**
+`useNodejsImportProtocol`, `useConst`, `useTemplate`, `useImportType`,
+`noUnusedFunctionParameters`. Todas foram aplicadas e verificadas em uma
+execução de teste (973 testes, 64 suítes, `tsc` do portal limpo) antes de serem
+descartadas por causa do custo de diff. Aplique com
+`--only=<regra> --javascript-formatter-enabled=false` para não arrastar a
+formatação junto.
+
+**Regras que NÃO devem ser aplicadas automaticamente, porque mudam comportamento:**
+
+- `noGlobalIsNan` (22) — `isNaN("abc")` é `true`, `Number.isNaN("abc")` é
+  `false`. Trocar onde o valor não foi convertido antes **inverte a validação**.
+- `useParseIntRadix` (30) — muda o resultado de entradas com zero à esquerda.
+- `noArrayIndexKey` (14) — mexe na reconciliação do React.
+- `noRedundantUseStrict` (37) — ver a seção acima; aqui não é redundante.
+
+**`noUnusedVariables` (235) fica como está — é sinal, não ruído.** O conserto
+automático renomeia para `_error`. Mas 125 desses 235 são `e`, `err` e
+`error`: exceções capturadas e nunca usadas, isto é, `catch` que engolem o erro
+em silêncio. Renomear marcaria o engolimento como intencional e apagaria o aviso
+para sempre. É o único sinal que ainda aponta para esses lugares.
+
+### Teste que depende de formatação é teste frágil
+
+`guiaSilenciar.test.js` comparava o **texto-fonte** de `js/onboarding-tour.js`
+com `toContain("setAttribute(aria-pressed")`. Como o formatador troca aspas e
+requebra chamadas longas, bastava formatar o arquivo para a suíte reprovar — com
+a cara de uma regressão real, sem que nada no comportamento tivesse mudado. Foi
+exatamente o que aconteceu ao testar a limpeza, e custou uma investigação inteira
+até a causa aparecer.
+
+As asserções agora colapsam os espaços antes de comparar: continuam garantindo
+que a chave, o atributo e os rótulos existem no módulo, e ficam cegas a como o
+arquivo está formatado.
+
 ---
 
 ## Contrato de arquitetura

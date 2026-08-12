@@ -92,11 +92,6 @@
     "overrides": [
         {
             "includes": ["js/**/*.js"],
-            "javascript": {
-                "formatter": {
-                    "quoteStyle": "double"
-                }
-            },
             "linter": {
                 "rules": {
                     "suspicious": {
