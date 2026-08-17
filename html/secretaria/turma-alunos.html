@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Alunos da Turma - Secretaria</title>
+    <link rel="icon" type="image/png" href="../../favicon/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/variables.css?v=2.0">
+    <link rel="stylesheet" href="../../css/base.css?v=2.0">
+    <link rel="stylesheet" href="../../css/components-new.css?v=2.0">
+    <link rel="stylesheet" href="../../css/dashboard.css?v=2.1">
+    <link rel="stylesheet" href="../../css/responsive-global.css?v=1.2">
+    <link rel="stylesheet" href="../../css/dashboard-premium.css?v=1.0">
+    <link rel="stylesheet" href="../../js/libs/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../../css/tailwind-built.css">
+    <style>
+        /* Layout desta tela. TODO o motion vem de css/motion.css — os tokens de
+           duração/curva e as recipes de modal, skeleton e entrada de conteúdo já
+           estão lá (ver AGENTS.md §8). Nada de animação nova aqui. */
+        .sec-page { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .sec-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
+        .sec-header h1 { font-size: 1.5rem; font-weight: 700; color: #fff; margin: 0 0 0.3rem; display: flex; align-items: center; gap: 0.75rem; }
+        .sec-sub { color: #94a3b8; font-size: 0.85rem; display: flex; gap: 0.9rem; flex-wrap: wrap; align-items: center; }
+        .sec-card { background: rgba(30,41,59,0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; backdrop-filter: blur(12px); }
+        .sec-card h3 { color: #fff; font-size: 1rem; margin: 0 0 1rem; display: flex; align-items: center; gap: 0.5rem; }
+
+        .sec-input, .sec-select { width: 100%; padding: 0.55rem 0.7rem; background: rgba(15,23,42,0.85); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff; font-size: 0.85rem; font-family: inherit; }
+        .sec-input:focus-visible, .sec-select:focus-visible { outline: 2px solid #10b981; outline-offset: 1px; border-color: #10b981; }
+        .sec-input[readonly] { opacity: 0.65; cursor: not-allowed; }
+        .sec-field { display: flex; flex-direction: column; gap: 0.3rem; }
+        .sec-field label { font-size: 0.72rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; }
+        .sec-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.9rem; }
+        .sec-erro-campo { color: #f87171; font-size: 0.72rem; min-height: 0.9rem; }
+
+        .sec-btn { padding: 0.6rem 1.1rem; border-radius: 10px; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 0.45rem; font-family: inherit; }
+        .sec-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .sec-btn:focus-visible { outline: 2px solid #10b981; outline-offset: 2px; }
+        .sec-btn-primary { background: #10b981; color: #fff; }
+        .sec-btn-primary:hover:not(:disabled) { background: #059669; }
+        .sec-btn-outline { background: transparent; color: #10b981; border: 1px solid rgba(16,185,129,0.35); }
+        .sec-btn-outline:hover:not(:disabled) { background: rgba(16,185,129,0.1); }
+        .sec-btn-ghost { background: rgba(148,163,184,0.1); color: #cbd5e1; }
+        .sec-btn-danger { background: rgba(239,68,68,0.15); color: #f87171; padding: 0.35rem 0.6rem; }
+
+        .sec-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+        .sec-table th { padding: 0.65rem 0.7rem; text-align: left; color: #94a3b8; font-weight: 600; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.03em; border-bottom: 1px solid rgba(255,255,255,0.08); white-space: nowrap; }
+        .sec-table td { padding: 0.6rem 0.7rem; color: #cbd5e1; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+        .sec-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+        .table-scroll { overflow-x: auto; }
+        .preview-scroll { overflow-x: auto; max-height: 46vh; overflow-y: auto; }
+
+        .chip { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.7rem; font-weight: 600; white-space: nowrap; }
+        .chip-verde { background: rgba(16,185,129,0.14); color: #34d399; }
+        .chip-cinza { background: rgba(148,163,184,0.14); color: #cbd5e1; }
+        .chip-amarelo { background: rgba(251,191,36,0.14); color: #fbbf24; }
+        .chip-vermelho { background: rgba(239,68,68,0.14); color: #f87171; }
+        .chip-azul { background: rgba(59,130,246,0.14); color: #60a5fa; }
+
+        .alerta { border-radius: 10px; padding: 0.75rem 1rem; margin-bottom: 0.75rem; font-size: 0.82rem; display: flex; gap: 0.6rem; align-items: flex-start; line-height: 1.45; }
+        .alerta-ok { background: rgba(16,185,129,0.1); color: #34d399; border: 1px solid rgba(16,185,129,0.25); }
+        .alerta-atencao { background: rgba(251,191,36,0.1); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+        .alerta-erro { background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+
+        /* ── Modal ──────────────────────────────────────────────────────────
+           A geometria fica aqui; a TRANSIÇÃO vem de [data-motion="modal"]
+           e [data-motion="backdrop"] em css/motion.css. */
+        .modal-backdrop { position: fixed; inset: 0; background: rgba(2,6,23,0.72); backdrop-filter: blur(3px); z-index: 900; display: grid; place-items: center; padding: 1rem; }
+        .modal-backdrop[hidden] { display: none; }
+        .modal-caixa { background: #0f172a; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; width: min(880px, 100%); max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 24px 60px rgba(0,0,0,0.5); }
+        .modal-caixa.estreito { width: min(620px, 100%); }
+        .modal-topo { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1.1rem 1.4rem; border-bottom: 1px solid rgba(255,255,255,0.07); }
+        .modal-topo h2 { margin: 0; font-size: 1.02rem; color: #fff; display: flex; align-items: center; gap: 0.55rem; }
+        .modal-corpo { padding: 1.4rem; overflow-y: auto; }
+        .modal-rodape { display: flex; gap: 0.6rem; justify-content: flex-end; flex-wrap: wrap; padding: 1rem 1.4rem; border-top: 1px solid rgba(255,255,255,0.07); }
+        .modal-fechar { background: transparent; border: none; color: #94a3b8; font-size: 1.2rem; cursor: pointer; padding: 0.25rem 0.5rem; border-radius: 6px; line-height: 1; }
+        .modal-fechar:hover { color: #fff; background: rgba(255,255,255,0.06); }
+        .modal-fechar:focus-visible { outline: 2px solid #10b981; }
+
+        /* ── Autocomplete ───────────────────────────────────────────────────
+           A lista NÃO anima: o usuário digita e ela se refaz a cada tecla —
+           é interação de alta frequência (Emil, regra da frequência). */
+        .autocomplete { position: relative; }
+        .autocomplete-lista { position: absolute; inset-inline: 0; top: calc(100% + 4px); background: #111c33; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; max-height: 230px; overflow-y: auto; z-index: 20; padding: 0.25rem; }
+        .autocomplete-lista[hidden] { display: none; }
+        .autocomplete-item { width: 100%; text-align: left; background: transparent; border: none; color: #e2e8f0; padding: 0.5rem 0.6rem; border-radius: 7px; cursor: pointer; font-size: 0.82rem; font-family: inherit; display: block; }
+        .autocomplete-item:hover, .autocomplete-item[aria-selected="true"] { background: rgba(16,185,129,0.16); }
+        .autocomplete-item small { display: block; color: #94a3b8; font-size: 0.72rem; margin-top: 0.1rem; }
+        .autocomplete-vazio { color: #94a3b8; font-size: 0.78rem; padding: 0.55rem 0.6rem; }
+
+        /* ── Dropzone ───────────────────────────────────────────────────────
+           Só a borda/fundo muda no drag: é feedback de estado, não decoração. */
+        .dropzone { border: 2px dashed rgba(16,185,129,0.35); border-radius: 14px; padding: 2.2rem 1.5rem; text-align: center; cursor: pointer; background: rgba(16,185,129,0.03); transition: border-color var(--motion-fast, 120ms) var(--motion-ease-out, ease-out), background-color var(--motion-fast, 120ms) var(--motion-ease-out, ease-out); }
+        .dropzone:hover, .dropzone.arrastando { border-color: #10b981; background: rgba(16,185,129,0.09); }
+        .dropzone:focus-visible { outline: 2px solid #10b981; outline-offset: 3px; }
+        .dropzone i { font-size: 2.3rem; color: #10b981; }
+        .dropzone p { margin: 0.7rem 0 0.2rem; color: #e2e8f0; font-size: 0.92rem; }
+        .dropzone small { color: #94a3b8; font-size: 0.75rem; }
+
+        .passos { display: flex; gap: 0.5rem; margin-bottom: 1.2rem; }
+        .passo { flex: 1; height: 3px; border-radius: 3px; background: rgba(148,163,184,0.2); }
+        .passo.ativo { background: #10b981; }
+        .passo.feito { background: rgba(16,185,129,0.5); }
+
+        .cards-resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(115px, 1fr)); gap: 0.7rem; margin-bottom: 1rem; }
+        .card-resumo { background: rgba(15,23,42,0.7); border: 1px solid rgba(255,255,255,0.07); border-radius: 11px; padding: 0.7rem 0.85rem; }
+        .card-resumo strong { display: block; font-size: 1.35rem; color: #fff; line-height: 1.2; }
+        .card-resumo span { font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.03em; }
+
+        .cabecalho-arquivo { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.6rem 1.2rem; background: rgba(15,23,42,0.55); border: 1px solid rgba(255,255,255,0.06); border-radius: 11px; padding: 0.85rem 1rem; margin-bottom: 1rem; font-size: 0.78rem; }
+        .cabecalho-arquivo dt { color: #94a3b8; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.03em; }
+        .cabecalho-arquivo dd { margin: 0.1rem 0 0; color: #e2e8f0; font-weight: 600; }
+
+        .divergencia { font-size: 0.72rem; color: #fbbf24; margin-top: 0.25rem; line-height: 1.4; }
+        .divergencia b { color: #fff; }
+        .linha-mensagens { font-size: 0.71rem; color: #94a3b8; margin-top: 0.2rem; line-height: 1.4; }
+        .linha-erro td { background: rgba(239,68,68,0.05); }
+
+        .toast-area { position: fixed; inset-block-end: 20px; inset-inline-end: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; max-width: min(420px, 92vw); }
+        .toast { padding: 0.85rem 1.15rem; border-radius: 12px; font-size: 0.84rem; color: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+        .toast-ok { background: #10b981; }
+        .toast-erro { background: #ef4444; }
+        .toast-aviso { background: #d97706; }
+
+        .estado-vazio { text-align: center; padding: 2.5rem 1rem; color: #94a3b8; }
+        .estado-vazio i { font-size: 2.2rem; color: rgba(148,163,184,0.5); display: block; margin-bottom: 0.6rem; }
+
+        /* Em tela pequena a tabela vira cards empilhados — rolagem horizontal
+           de tabela larga é o pior padrão possível no celular. */
+        @media (max-width: 720px) {
+            .sec-page { padding: 1.2rem 0.9rem; }
+            .sec-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+            .sec-table tbody tr { display: block; border: 1px solid rgba(255,255,255,0.08); border-radius: 11px; margin-bottom: 0.6rem; padding: 0.5rem 0.7rem; background: rgba(15,23,42,0.45); }
+            .sec-table td { display: flex; justify-content: space-between; gap: 1rem; border: none; padding: 0.3rem 0; }
+            .sec-table td::before { content: attr(data-rotulo); color: #94a3b8; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600; flex-shrink: 0; }
+            .sec-table td:empty { display: none; }
+            .modal-corpo { padding: 1rem; }
+        }
+    </style>
+    <link rel="stylesheet" href="../../css/splash-screen.css?v=1.0">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/img/icons/apple-touch-icon-180.png">
+    <meta name="theme-color" content="#09090b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Escola">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="stylesheet" href="../../css/system-global.css?v=1.0">
+    <link rel="stylesheet" href="../../css/mobile-scroll.css?v=1.0">
+    <!-- Sistema de motion do projeto: tokens, skeleton, modal, prefers-reduced-motion -->
+    <link rel="stylesheet" href="../../css/motion.css">
+    <script src="../../js/scroll-lock.js?v=1.0"></script>
+</head>
+<body>
+
+<div class="dashboard-page">
+    <div class="dashboard-bg"><div class="orb orb-primary"></div><div class="orb orb-secondary"></div></div>
+    <main class="dashboard-main">
+        <div class="sec-page">
+
+            <div class="sec-header">
+                <div>
+                    <h1><i class="bi bi-people-fill" style="color:#10b981;"></i> <span id="tituloTurma">Alunos da turma</span></h1>
+                    <div class="sec-sub" id="subtituloTurma"></div>
+                </div>
+                <div style="display:flex;gap:0.6rem;flex-wrap:wrap;">
+                    <button type="button" class="sec-btn sec-btn-primary" id="btnAbrirAdicionar">
+                        <i class="bi bi-person-plus"></i> Adicionar aluno
+                    </button>
+                    <button type="button" class="sec-btn sec-btn-outline" id="btnAbrirImportar">
+                        <i class="bi bi-upload"></i> Importar lista
+                    </button>
+                    <a href="painel.html" class="sec-btn sec-btn-ghost" style="text-decoration:none;">
+                        <i class="bi bi-arrow-left"></i> Voltar
+                    </a>
+                </div>
+            </div>
+
+            <div id="avisoDesfazer"></div>
+
+            <!-- Sem ?turmaId= na URL, a própria tela pergunta qual turma. -->
+            <div class="sec-card" id="areaSelecaoTurma" hidden>
+                <h3><i class="bi bi-collection" style="color:#10b981;"></i> Escolha a turma</h3>
+                <div class="sec-grid" id="gradeTurmas"></div>
+            </div>
+
+            <!-- data-loading alterna skeleton ↔ conteúdo (css/motion.css §4).
+                 Skeleton, nunca spinner solto nem tela em branco. -->
+            <div class="sec-card" id="areaAlunos" data-loading="true">
+                <div class="motion-skeleton" aria-hidden="true">
+                    <div class="skeleton skeleton-heading"></div>
+                    <div class="skeleton skeleton-line"></div>
+                    <div class="skeleton skeleton-line"></div>
+                    <div class="skeleton skeleton-line"></div>
+                    <div class="skeleton skeleton-line"></div>
+                    <div class="skeleton skeleton-line"></div>
+                </div>
+
+                <div class="motion-content">
+                    <h3>
+                        <i class="bi bi-list-check" style="color:#10b981;"></i> Alunos matriculados
+                        <span class="chip chip-verde" id="contadorAlunos" style="margin-inline-start:auto;">0</span>
+                    </h3>
+                    <div class="table-scroll">
+                        <table class="sec-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Nº</th>
+                                    <th scope="col">Nome</th>
+                                    <th scope="col">RA</th>
+                                    <th scope="col">Nascimento</th>
+                                    <th scope="col">Situação</th>
+                                    <th scope="col"><span class="sr-only">Ações</span></th>
+                                </tr>
+                            </thead>
+                            <tbody id="corpoTabelaAlunos"></tbody>
+                        </table>
+                    </div>
+                    <div class="estado-vazio" id="estadoVazio" hidden>
+                        <i class="bi bi-inbox"></i>
+                        Nenhum aluno nesta turma ainda.<br>
+                        Use <strong>Adicionar aluno</strong> ou <strong>Importar lista</strong> para começar.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- ═══════════ MODAL: adicionar aluno (Fluxo A) ═══════════ -->
+<div class="modal-backdrop" id="modalAdicionar" data-motion="backdrop" data-state="closed" hidden>
+    <div class="modal-caixa estreito" data-motion="modal" data-state="closed" role="dialog" aria-modal="true" aria-labelledby="tituloModalAdicionar">
+        <div class="modal-topo">
+            <h2 id="tituloModalAdicionar"><i class="bi bi-person-plus" style="color:#10b981;"></i> Adicionar aluno</h2>
+            <button type="button" class="modal-fechar" data-fechar-modal aria-label="Fechar">&times;</button>
+        </div>
+
+        <form class="modal-corpo" id="formAluno" novalidate>
+            <div class="sec-field autocomplete" style="margin-bottom:1.2rem;">
+                <label for="buscaAluno">Aluno já cadastrado na escola?</label>
+                <input type="text" id="buscaAluno" class="sec-input" autocomplete="off"
+                       placeholder="Digite ao menos 3 letras do nome ou do RA"
+                       role="combobox" aria-expanded="false" aria-controls="listaBusca" aria-autocomplete="list">
+                <div class="autocomplete-lista" id="listaBusca" role="listbox" aria-label="Alunos encontrados" hidden></div>
+                <div id="alunoSelecionado"></div>
+            </div>
+
+            <div class="sec-grid">
+                <div class="sec-field" style="grid-column:1/-1;">
+                    <label for="campoNome">Nome completo *</label>
+                    <input type="text" id="campoNome" class="sec-input" required autocomplete="off">
+                    <span class="sec-erro-campo" id="erroNome"></span>
+                </div>
+                <div class="sec-field">
+                    <label for="campoRa">RA (12 dígitos) *</label>
+                    <input type="text" id="campoRa" class="sec-input" inputmode="numeric" required autocomplete="off" maxlength="18">
+                    <span class="sec-erro-campo" id="erroRa"></span>
+                </div>
+                <div class="sec-field">
+                    <label for="campoDigito">Dígito *</label>
+                    <input type="text" id="campoDigito" class="sec-input" maxlength="1" required autocomplete="off">
+                    <span class="sec-erro-campo" id="erroDigito"></span>
+                </div>
+                <div class="sec-field">
+                    <label for="campoUf">UF do RA</label>
+                    <select id="campoUf" class="sec-select"></select>
+                    <span class="sec-erro-campo"></span>
+                </div>
+                <div class="sec-field">
+                    <label for="campoNascimento">Nascimento (dd/mm/aaaa) *</label>
+                    <input type="text" id="campoNascimento" class="sec-input" inputmode="numeric" placeholder="dd/mm/aaaa" required autocomplete="off" maxlength="10">
+                    <span class="sec-erro-campo" id="erroNascimento"></span>
+                </div>
+                <div class="sec-field">
+                    <label for="campoSerie">Série</label>
+                    <input type="text" id="campoSerie" class="sec-input" autocomplete="off">
+                    <span class="sec-erro-campo"></span>
+                </div>
+                <div class="sec-field">
+                    <label for="campoChamada">Nº de chamada</label>
+                    <input type="text" id="campoChamada" class="sec-input" inputmode="numeric" placeholder="próximo livre" autocomplete="off" maxlength="3">
+                    <span class="sec-erro-campo"></span>
+                </div>
+                <div class="sec-field">
+                    <label for="campoSituacao">Situação</label>
+                    <select id="campoSituacao" class="sec-select"></select>
+                    <span class="sec-erro-campo"></span>
+                </div>
+            </div>
+
+            <label style="display:flex;align-items:center;gap:0.5rem;margin-top:1rem;color:#cbd5e1;font-size:0.85rem;cursor:pointer;">
+                <input type="checkbox" id="campoDeficiencia" style="width:16px;height:16px;accent-color:#10b981;">
+                Possui deficiência
+            </label>
+
+            <div class="sec-field" id="areaTranstornos" style="margin-top:0.8rem;" hidden>
+                <label for="campoTranstornos">Transtorno(s) que impactam a aprendizagem</label>
+                <textarea id="campoTranstornos" class="sec-input" rows="2" placeholder="Separe por vírgula"></textarea>
+            </div>
+
+            <div id="avisoFormulario" role="status" aria-live="polite" style="margin-top:1rem;"></div>
+        </form>
+
+        <div class="modal-rodape">
+            <button type="button" class="sec-btn sec-btn-ghost" data-fechar-modal>Cancelar</button>
+            <button type="submit" form="formAluno" class="sec-btn sec-btn-primary" id="btnSalvarAluno">
+                <i class="bi bi-check-lg"></i> <span id="rotuloSalvar">Cadastrar e vincular</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════ MODAL: importar lista (Fluxo B) ═══════════ -->
+<div class="modal-backdrop" id="modalImportar" data-motion="backdrop" data-state="closed" hidden>
+    <div class="modal-caixa" data-motion="modal" data-state="closed" role="dialog" aria-modal="true" aria-labelledby="tituloModalImportar">
+        <div class="modal-topo">
+            <h2 id="tituloModalImportar"><i class="bi bi-upload" style="color:#10b981;"></i> Importar lista de alunos</h2>
+            <button type="button" class="modal-fechar" data-fechar-modal aria-label="Fechar">&times;</button>
+        </div>
+
+        <div class="modal-corpo">
+            <div class="passos" aria-hidden="true">
+                <div class="passo ativo" data-passo-barra="1"></div>
+                <div class="passo" data-passo-barra="2"></div>
+                <div class="passo" data-passo-barra="3"></div>
+            </div>
+
+            <!-- Passo 1: upload -->
+            <section data-passo="1">
+                <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Selecionar arquivo para importar">
+                    <i class="bi bi-file-earmark-arrow-up"></i>
+                    <p>Clique aqui ou arraste o arquivo</p>
+                    <small>PDF (relatório da SED), XLSX ou CSV — até 5 MB</small>
+                </div>
+                <input type="file" id="inputArquivo" accept=".pdf,.xlsx,.xls,.csv,.txt" hidden>
+
+                <details style="margin-top:1rem;color:#94a3b8;font-size:0.82rem;">
+                    <summary style="cursor:pointer;color:#10b981;">Ver formato esperado</summary>
+                    <div style="margin-top:0.6rem;line-height:1.6;">
+                        <strong style="color:#e2e8f0;">PDF da SED:</strong> na Secretaria Escolar Digital, acesse
+                        <em>Gestão Escolar → Classes → Relação de Alunos por Classe</em>, selecione a classe e
+                        exporte em PDF. Envie o arquivo sem editar.<br>
+                        <strong style="color:#e2e8f0;">Planilha:</strong> a primeira linha deve ser o cabeçalho.
+                        Colunas reconhecidas: <code>nome</code>, <code>ra</code>, <code>dig ra</code>,
+                        <code>uf ra</code>, <code>data de nascimento</code>, <code>nr</code>, <code>serie</code>.
+                        <button type="button" class="sec-btn sec-btn-outline" id="btnModeloCsv" style="margin-top:0.7rem;">
+                            <i class="bi bi-download"></i> Baixar modelo CSV
+                        </button>
+                    </div>
+                </details>
+
+                <div id="areaProgresso" hidden style="margin-top:1.2rem;">
+                    <div class="motion-progress-bar" role="progressbar" aria-label="Envio do arquivo" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="barraProgresso">
+                        <i></i>
+                    </div>
+                    <p style="color:#94a3b8;font-size:0.8rem;margin-top:0.6rem;" id="textoProgresso" role="status" aria-live="polite">
+                        Processando — isso pode levar alguns segundos.
+                    </p>
+                </div>
+            </section>
+
+            <!-- Passo 2: pré-visualização -->
+            <section data-passo="2" hidden>
+                <div id="alertasPreview" role="status" aria-live="polite"></div>
+                <dl class="cabecalho-arquivo" id="cabecalhoArquivo"></dl>
+                <div class="cards-resumo" id="cardsResumo"></div>
+
+                <label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.7rem;color:#cbd5e1;font-size:0.82rem;cursor:pointer;">
+                    <input type="checkbox" id="marcarTodos" style="width:16px;height:16px;accent-color:#10b981;">
+                    Selecionar todos os importáveis
+                </label>
+
+                <div class="preview-scroll">
+                    <table class="sec-table">
+                        <thead>
+                            <tr>
+                                <th scope="col"><span class="sr-only">Importar</span></th>
+                                <th scope="col">Nº</th>
+                                <th scope="col">Nome</th>
+                                <th scope="col">RA</th>
+                                <th scope="col">Dig.</th>
+                                <th scope="col">Nascimento</th>
+                                <th scope="col">Situação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpoPreview"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Passo 3: resultado -->
+            <section data-passo="3" hidden>
+                <div id="areaResultado"></div>
+            </section>
+        </div>
+
+        <div class="modal-rodape">
+            <button type="button" class="sec-btn sec-btn-ghost" id="btnCancelarImportacao" data-fechar-modal>Cancelar</button>
+            <button type="button" class="sec-btn sec-btn-primary" id="btnConfirmarImportacao" hidden>
+                <i class="bi bi-check-lg"></i> <span id="rotuloConfirmar">Confirmar importação</span>
+            </button>
+            <button type="button" class="sec-btn sec-btn-outline" id="btnDesfazerImportacao" hidden>
+                <i class="bi bi-arrow-counterclockwise"></i> Desfazer importação
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="toast-area" id="areaToast" role="status" aria-live="polite" aria-atomic="false"></div>
+
+<script src="../../js/api-config.js"></script>
+<script src="../../js/csrf-helper.js"></script>
+<script defer src="../../js/auth.js?v=3"></script>
+<script src="../../js/secretaria-turma-alunos.js?v=1.0" defer></script>
+<script src="../../js/libs/lucide.min.js"></script>
+<script src="../../js/libs/lucide-init.js"></script>
+<script defer src="../../js/observability.js"></script>
+<script defer src="../../js/motion.js"></script>
+</body>
+</html>
