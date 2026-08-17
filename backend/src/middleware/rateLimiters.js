@@ -329,8 +329,40 @@ const iaChatIpLimiter = limiterPorIp({
     }
 });
 
+// ── Importação de alunos (pré-visualização) ──────────────────────────────────
+// Parsear um PDF de 30+ alunos custa CPU e memória — os dois recursos mais
+// escassos do plano free do Render. Uma conta válida em laço derruba a
+// instância inteira sem precisar de nenhuma falha de segurança.
+//
+// Chave por USUÁRIO: a escola toda sai pelo mesmo IP, e limitar por rede
+// puniria a secretaria inteira por causa de uma pessoa. 10 uploads/hora (§7.6)
+// é folgado — uma escola grande tem ~30 classes e importa cada uma uma vez.
+const importacaoPreviewLimiter = limiterPorUsuario({
+    windowMs: UMA_HORA,
+    maxProd: tetoEnv('RATE_LIMIT_IMPORTACAO_USUARIO', 10),
+    maxDev: 100,
+    mensagem: {
+        success: false,
+        error: 'Você atingiu o limite de 10 importações por hora. Aguarde antes de enviar outro arquivo.'
+    }
+});
+
+// Rede de segurança: `limiterPorUsuario` se auto-desliga quando não resolve o
+// usuário, e sem este par o endpoint ficaria sem teto próprio.
+const importacaoIpLimiter = limiterPorIp({
+    windowMs: UMA_HORA,
+    maxProd: tetoEnv('RATE_LIMIT_IMPORTACAO_IP', 40),
+    maxDev: 400,
+    mensagem: {
+        success: false,
+        error: 'Muitas importações vindas desta rede. Aguarde alguns minutos.'
+    }
+});
+
 module.exports = {
     globalLimiter,
+    importacaoPreviewLimiter,
+    importacaoIpLimiter,
     authIpLimiter,
     authContaLimiter,
     codeIpLimiter,
