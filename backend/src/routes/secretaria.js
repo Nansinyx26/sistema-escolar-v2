@@ -43,7 +43,11 @@ router.post('/turmas/:turmaId/alunos', auth, TurmaAlunosController.adicionarAlun
 router.delete('/turmas/:turmaId/alunos/:alunoId', auth, TurmaAlunosController.removerAlunoDaTurma);
 
 // Importação em lote — 3 passos: preview → confirmar (ou cancelar) → desfazer.
-router.get('/turmas/:turmaId/alunos/importar/historico', auth, TurmaAlunosController.historicoImportacoes);
+router.get(
+    '/turmas/:turmaId/alunos/importar/historico',
+    auth,
+    TurmaAlunosController.historicoImportacoes
+);
 router.post(
     '/turmas/:turmaId/alunos/importar/preview',
     auth,
@@ -53,14 +57,38 @@ router.post(
     tratarErroUpload,
     TurmaAlunosController.previewImportacao
 );
-router.post('/turmas/:turmaId/alunos/importar/:importacaoId/confirmar', auth, TurmaAlunosController.confirmarImportacao);
-router.post('/turmas/:turmaId/alunos/importar/:importacaoId/cancelar', auth, TurmaAlunosController.cancelarImportacao);
-router.post('/turmas/:turmaId/alunos/importar/:importacaoId/desfazer', auth, TurmaAlunosController.desfazerImportacao);
+router.post(
+    '/turmas/:turmaId/alunos/importar/:importacaoId/confirmar',
+    auth,
+    TurmaAlunosController.confirmarImportacao
+);
+router.post(
+    '/turmas/:turmaId/alunos/importar/:importacaoId/cancelar',
+    auth,
+    TurmaAlunosController.cancelarImportacao
+);
+router.post(
+    '/turmas/:turmaId/alunos/importar/:importacaoId/desfazer',
+    auth,
+    TurmaAlunosController.desfazerImportacao
+);
 
 // ─── T4: Documentos ─────────────────────────────────────────────────────────
-router.post('/documentos/declaracao-matricula/:alunoId', auth, SecretariaController.gerarDeclaracaoMatricula);
-router.post('/documentos/declaracao-frequencia/:alunoId', auth, SecretariaController.gerarDeclaracaoFrequencia);
-router.post('/documentos/historico-escolar/:alunoId', auth, SecretariaController.gerarHistoricoEscolar);
+router.post(
+    '/documentos/declaracao-matricula/:alunoId',
+    auth,
+    SecretariaController.gerarDeclaracaoMatricula
+);
+router.post(
+    '/documentos/declaracao-frequencia/:alunoId',
+    auth,
+    SecretariaController.gerarDeclaracaoFrequencia
+);
+router.post(
+    '/documentos/historico-escolar/:alunoId',
+    auth,
+    SecretariaController.gerarHistoricoEscolar
+);
 router.get('/documentos/historico/:alunoId', auth, SecretariaController.listarDocumentosAluno);
 router.post('/alunos/:id/documentos-upload', auth, SecretariaController.uploadDocumentoAluno);
 
