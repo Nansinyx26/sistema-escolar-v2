@@ -62,7 +62,17 @@ const AlunoSchema = new mongoose.Schema({
     id: { type: mongoose.Schema.Types.Mixed, index: true }, // Pode ser numero (legacy) ou string/uuid
     nome: { type: String, required: true },
     sobrenome: String,
-    matricula: { type: String, sparse: true }, // RA (Registro Acadêmico) — unicidade por escola em schema.index abaixo
+    // Chave de busca e de detecção de duplicata por nome: minúsculo, sem
+    // acento, sem espaço duplo. Mantido pelo pre-save abaixo — nenhum caminho
+    // de escrita precisa lembrar de calcular.
+    nomeNormalizado: { type: String },
+    // RA (Registro Acadêmico) — unicidade por escola em schema.index abaixo.
+    // `alias: 'ra'` porque o relatório da SEDUC e o módulo de importação falam
+    // "RA"; o campo físico continua sendo `matricula`, que é como o resto do
+    // sistema (e os documentos já gravados) o conhece.
+    matricula: { type: String, sparse: true, alias: 'ra' },
+    raDigito: { type: String }, // 1 caractere: 0-9 ou X. NUNCA validar DV — ver services/importacaoAlunos/normalizacao.js
+    raUf: { type: String, default: 'SP' },
 
     // --- LEGACY/CACHE (Agora gerenciado pela entidade 'Matricula') ---
     turma: { type: String, index: true }, // Ex: "1A" (Manter por compatibilidade ou cache)
@@ -114,7 +124,31 @@ const AlunoSchema = new mongoose.Schema({
 
     // PCD
     deficiencia: String, // mapear de pcdDescricao
-    pcd: Boolean,
+    // `alias: 'possuiDeficiencia'` — o relatório da SEDUC chama a coluna de
+    // "Deficiência (Sim/Não)". Campo físico continua `pcd`.
+    pcd: { type: Boolean, default: false, alias: 'possuiDeficiencia' },
+    // Texto livre da coluna "Transtorno(s) que impacta(m) o desenvolvimento da
+    // aprendizagem" do relatório da SED, já quebrado em itens.
+    transtornos: { type: [String], default: undefined },
+
+    // ─── Situação escolar (relatório SEDUC) ─────────────────────────────────
+    situacao: {
+        type: String,
+        enum: ['ativo', 'transferido', 'abandono', 'nao_compareceu', 'remanejado', 'outros'],
+        default: 'ativo'
+    },
+    dataMovimentacao: Date,
+
+    // ─── Procedência do cadastro ────────────────────────────────────────────
+    // `importacaoId` é o que torna a importação DESFAZÍVEL: sem ele não há como
+    // distinguir o aluno que aquele lote criou do que já existia antes, e
+    // "desfazer" viraria exclusão às cegas de aluno de verdade.
+    origemCadastro: {
+        type: String,
+        enum: ['manual', 'importacao_pdf', 'importacao_planilha'],
+        default: 'manual'
+    },
+    importacaoId: { type: String, default: null },
 
     foto: String, // Pode ser DataURL ou ID do GridFS
 
@@ -136,6 +170,14 @@ const AlunoSchema = new mongoose.Schema({
 // duas volte a ficar fraca sem ninguém notar.
 AlunoSchema.pre('save', async function (next) {
     try {
+        // `nomeNormalizado` é derivado, nunca informado pelo cliente. Calculá-lo
+        // aqui garante que os três caminhos de escrita (cadastro individual,
+        // importação em lote e edição) gravem a MESMA chave de busca.
+        if (this.isModified('nome') || this.isModified('sobrenome') || !this.nomeNormalizado) {
+            const { normalizarNome } = require('../utils/nomeAluno');
+            this.nomeNormalizado = normalizarNome(`${this.nome || ''} ${this.sobrenome || ''}`);
+        }
+
         const atual = typeof this.codigoSecreto === 'string' ? this.codigoSecreto.trim() : '';
         const invalido = !atual || ['N/A', 'n/a'].includes(atual);
 
@@ -170,6 +212,17 @@ AlunoSchema.index({ escolaId: 1, ativo: 1 });
 AlunoSchema.index(
     { escolaId: 1, matricula: 1 },
     { unique: true, partialFilterExpression: { matricula: { $type: 'string' } } }
+);
+// Busca por nome no autocomplete da secretaria e detecção de duplicata por
+// nome. O índice `text` acima não serve: ele casa por palavra inteira e não
+// atende busca por prefixo enquanto a pessoa digita.
+AlunoSchema.index({ escolaId: 1, nomeNormalizado: 1 });
+// "Desfazer importação": encontra em uma tacada os alunos criados por um lote.
+// partialFilterExpression mantém o índice pequeno — a esmagadora maioria dos
+// alunos não veio de importação.
+AlunoSchema.index(
+    { escolaId: 1, importacaoId: 1 },
+    { partialFilterExpression: { importacaoId: { $type: 'string' } } }
 );
 
 module.exports = mongoose.models.Aluno || mongoose.model('Aluno', AlunoSchema);

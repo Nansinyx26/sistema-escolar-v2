@@ -20,7 +20,12 @@ const MatriculaSchema = new mongoose.Schema({
     },
 
     numeroChamada: Number,
+    serie: { type: String }, // Série lida do relatório da SEDUC ("5", "9"...)
     dataMatricula: { type: Date, default: Date.now },
+
+    // Lote de importação que criou este vínculo. É o que permite desfazer a
+    // importação removendo SÓ as matrículas daquele lote.
+    importacaoId: { type: String, default: null },
 
     // Campos de saída (transferência, evasão, etc.)
     dataSaida: { type: Date, default: null },
@@ -43,6 +48,13 @@ MatriculaSchema.index({ escolaId: 1, alunoId: 1, anoLetivo: 1 }, { unique: true 
 MatriculaSchema.index(
     { escolaId: 1, matriculaNumero: 1 },
     { unique: true, partialFilterExpression: { matriculaNumero: { $type: 'string' } } }
+);
+// Listagem de alunos de uma turma num ano letivo — a consulta da tela da turma.
+MatriculaSchema.index({ escolaId: 1, turmaId: 1, anoLetivo: 1 });
+// "Desfazer importação": todas as matrículas criadas por um lote.
+MatriculaSchema.index(
+    { escolaId: 1, importacaoId: 1 },
+    { partialFilterExpression: { importacaoId: { $type: 'string' } } }
 );
 
 module.exports = mongoose.model('Matricula', MatriculaSchema);
