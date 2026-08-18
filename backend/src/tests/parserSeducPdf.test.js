@@ -195,9 +195,11 @@ describe('parser do relatório SEDUC — texto', () => {
  * funciona normalmente. É o VM do Jest que bloqueia o `import()` dinâmico com
  * que o pdfjs-dist — usado por dentro do pdf-parse — carrega o worker.
  *
- * Rode `npm run test:pdf` no backend para executá-los. Toda a LÓGICA de
- * parsing (as armadilhas do §5.2, que é onde este módulo de fato quebra) é
- * exercitada no nível de texto pelos blocos acima, sem depender do flag.
+ * Desde a Issue #55 o flag é PADRÃO do projeto: `npm test` e `npm run
+ * test:coverage` já o passam, então estes casos rodam no CI. A guarda abaixo
+ * fica por robustez — quem invocar `npx jest` na mão pula os três em vez de
+ * ver uma falha confusa, e a lógica de parsing continua coberta no nível de
+ * texto pelos blocos acima.
  */
 const VM_MODULES_ATIVO = `${process.execArgv.join(' ')} ${process.env.NODE_OPTIONS || ''}`.includes(
     'experimental-vm-modules'

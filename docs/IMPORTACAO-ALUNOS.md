@@ -235,19 +235,25 @@ e remova o card **Alunos por Turma** do painel. O resto do sistema não depende 
 
 ```bash
 cd backend
-npm test                                     # suíte completa
-npx jest src/tests/parserSeducPdf.test.js    # parser (32 testes)
-npx jest src/tests/secretariaTurmaAlunos.test.js  # endpoints (23 testes)
-npm run test:pdf                             # inclui os 3 testes de PDF binário
+npm test                                          # suíte completa
+npx jest src/tests/parserSeducPdf.test.js         # parser
+npx jest src/tests/secretariaTurmaAlunos.test.js  # endpoints
+npx jest src/tests/importacaoRamosDeErro.test.js  # ramos de erro
 ```
 
-### Por que `test:pdf` é um script separado
+### `--experimental-vm-modules` é padrão do projeto
 
-Os testes que abrem um **PDF binário de verdade** precisam de `--experimental-vm-modules`.
-Não é limitação do sistema — em produção a leitura funciona normalmente. É o VM do Jest que
-bloqueia o `import()` dinâmico com que o `pdfjs-dist` (usado por dentro do `pdf-parse`)
-carrega seu worker. Sem o flag esses 3 testes são **explicitamente pulados**, e toda a lógica
-de parsing — que é onde o módulo realmente quebra — continua coberta no nível de texto.
+Os testes que abrem um **PDF binário de verdade** precisam desse flag. Não é limitação do
+sistema — em produção a leitura funciona normalmente. É o VM do Jest que bloqueia o `import()`
+dinâmico com que o `pdfjs-dist` (usado por dentro do `pdf-parse`) carrega seu worker.
+
+Até a Issue #55 esses 3 testes ficavam num script à parte e eram **pulados no CI**. Como a
+suíte inteira passa com o flag (68 suites, 1061 testes, zero pulados), ele passou a ser padrão
+em `test`, `test:watch` e `test:coverage` — e o caminho de leitura de PDF passou a ser
+exercitado no CI, não só localmente.
+
+Quem invocar `npx jest` direto, sem o flag, continua vendo os 3 casos como pulados em vez de
+uma falha confusa — a guarda no arquivo de teste detecta a ausência do flag.
 
 ### Dependências
 
