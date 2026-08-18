@@ -64,7 +64,43 @@ module.exports = {
         const situacao = await Aluno.updateMany({ situacao: { $exists: false } }, { $set: { situacao: 'ativo' } });
         const origem = await Aluno.updateMany({ origemCadastro: { $exists: false } }, { $set: { origemCadastro: 'manual' } });
 
-        // ── 3. Índices ───────────────────────────────────────────────────────
+        // ── 3. Índice legado que bloqueia a criação dos novos ────────────────
+        //
+        // `alunos.matricula_1` existe em bases antigas como `unique: true`
+        // GLOBAL — de antes do multi-escola. Ele contradiz a regra que o schema
+        // documenta ("um RA na Escola A é independente do mesmo número na
+        // Escola B") e, na prática, impediria duas escolas de terem o mesmo RA.
+        //
+        // Ele também trava esta migração: o schema pede um `matricula_1` sparse
+        // e NÃO-unique, mesmo nome e opções diferentes, e o `createIndexes`
+        // abaixo recusa em vez de reconciliar.
+        //
+        // A derrubada é EXPLÍCITA e restrita a esse formato. Não se usa
+        // `syncIndexes` aqui de propósito: ele derrubaria qualquer índice fora
+        // do schema, incluindo os que nada têm a ver com esta entrega.
+        //
+        // `{escolaId, matricula}` unique — a proteção real contra RA duplicado
+        // dentro da escola — não é tocado e segue de pé o tempo todo.
+        let indiceLegadoRemovido = false;
+        try {
+            const indices = await Aluno.collection.indexes();
+            const legado = indices.find(
+                (indice) => indice.name === 'matricula_1' && indice.unique === true
+            );
+            if (legado) {
+                await Aluno.collection.dropIndex('matricula_1');
+                indiceLegadoRemovido = true;
+                console.log(
+                    '  ⚠️  índice legado alunos.matricula_1 (unique global) removido — ' +
+                        'a unicidade do RA é por escola, garantida por {escolaId, matricula}'
+                );
+            }
+        } catch (erro) {
+            // Collection ainda não existe numa base nova: nada a remover.
+            if (erro.codeName !== 'NamespaceNotFound') throw erro;
+        }
+
+        // ── 4. Índices ───────────────────────────────────────────────────────
         // `createIndexes`, NÃO `syncIndexes`.
         //
         // `syncIndexes` também DERRUBA todo índice que existe no banco e não
@@ -89,6 +125,7 @@ module.exports = {
 
         return {
             message: 'Campos e índices do módulo de alunos por turma aplicados',
+            indiceLegadoRemovido,
             nomeNormalizadoPreenchido: processados,
             raUfPreenchido: uf.modifiedCount,
             situacaoPreenchida: situacao.modifiedCount,
