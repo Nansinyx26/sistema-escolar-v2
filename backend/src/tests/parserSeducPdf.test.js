@@ -195,9 +195,16 @@ describe('parser do relatório SEDUC — texto', () => {
  * funciona normalmente. É o VM do Jest que bloqueia o `import()` dinâmico com
  * que o pdfjs-dist — usado por dentro do pdf-parse — carrega o worker.
  *
- * Rode `npm run test:pdf` no backend para executá-los. Toda a LÓGICA de
- * parsing (as armadilhas do §5.2, que é onde este módulo de fato quebra) é
- * exercitada no nível de texto pelos blocos acima, sem depender do flag.
+ * A Issue #55 TENTOU torná-lo padrão de `npm test`, e o CI reprovou: com o flag
+ * ligado a suíte inteira estoura o heap do runner ("Reached heap limit
+ * Allocation failed"), abortando na suíte 44 de 68. Passa em máquina de
+ * desenvolvimento só porque lá o heap padrão do Node é proporcional a uma RAM
+ * bem maior. O flag ficou, portanto, restrito a `npm run test:pdf`.
+ *
+ * Consequência aceita: estes 3 casos NÃO rodam no CI. A lógica de parsing — as
+ * armadilhas do §5.2, que é onde este módulo de fato quebra — é exercitada no
+ * nível de texto pelos blocos acima, sem depender do flag. O que fica sem
+ * cobertura automatizada é a integração com o pdf-parse, que muda pouco.
  */
 const VM_MODULES_ATIVO = `${process.execArgv.join(' ')} ${process.env.NODE_OPTIONS || ''}`.includes(
     'experimental-vm-modules'
