@@ -235,25 +235,36 @@ e remova o card **Alunos por Turma** do painel. O resto do sistema não depende 
 
 ```bash
 cd backend
-npm test                                          # suíte completa
+npm test                                          # suíte completa (3 casos de PDF pulados)
+npm run test:pdf                                  # inclui os 3 casos de PDF binário
 npx jest src/tests/parserSeducPdf.test.js         # parser
 npx jest src/tests/secretariaTurmaAlunos.test.js  # endpoints
 npx jest src/tests/importacaoRamosDeErro.test.js  # ramos de erro
 ```
 
-### `--experimental-vm-modules` é padrão do projeto
+### Por que `test:pdf` é um script separado
 
-Os testes que abrem um **PDF binário de verdade** precisam desse flag. Não é limitação do
-sistema — em produção a leitura funciona normalmente. É o VM do Jest que bloqueia o `import()`
-dinâmico com que o `pdfjs-dist` (usado por dentro do `pdf-parse`) carrega seu worker.
+Os testes que abrem um **PDF binário de verdade** precisam de `--experimental-vm-modules`. Não
+é limitação do sistema — em produção a leitura funciona normalmente. É o VM do Jest que bloqueia
+o `import()` dinâmico com que o `pdfjs-dist` (usado por dentro do `pdf-parse`) carrega seu worker.
 
-Até a Issue #55 esses 3 testes ficavam num script à parte e eram **pulados no CI**. Como a
-suíte inteira passa com o flag (68 suites, 1061 testes, zero pulados), ele passou a ser padrão
-em `test`, `test:watch` e `test:coverage` — e o caminho de leitura de PDF passou a ser
-exercitado no CI, não só localmente.
+A Issue #55 **tentou** torná-lo padrão de `npm test`, e o CI reprovou:
 
-Quem invocar `npx jest` direto, sem o flag, continua vendo os 3 casos como pulados em vez de
-uma falha confusa — a guarda no arquivo de teste detecta a ausência do flag.
+```
+FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+Process completed with exit code 134     (abortou na suíte 44 de 68)
+```
+
+Com o flag ligado, a suíte inteira num único processo (`--runInBand`) estoura o heap do runner.
+Localmente passa porque o heap padrão do Node é proporcional a uma RAM bem maior — foi uma
+conclusão errada tirada de um ambiente que não representa o CI.
+
+O flag ficou restrito a `test:pdf`. **Consequência aceita:** esses 3 casos não rodam no CI. O
+que perde cobertura automatizada é a integração com o `pdf-parse`; toda a lógica de parsing — as
+armadilhas do §3, que é onde o módulo de fato quebra — continua exercitada no nível de texto.
+
+Se algum dia valer a pena recuperá-los no CI, os caminhos prováveis são `--max-old-space-size`
+no comando ou abandonar o `--runInBand` (o `helpers.js` já isola o banco por worker).
 
 ### Dependências
 

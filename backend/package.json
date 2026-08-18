@@ -17,9 +17,10 @@
         "migrate:webp": "node scripts/migrate-with-webp.js",
         "migrate:voice": "node scripts/migrate_voice_preferences.js",
         "test:api": "node scripts/test_endpoints.js",
-        "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --forceExit --runInBand",
-        "test:watch": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --watch --forceExit --runInBand",
-        "test:coverage": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --coverage --forceExit --runInBand"
+        "test": "jest --forceExit --runInBand",
+        "test:pdf": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js src/tests/parserSeducPdf.test.js --forceExit --runInBand",
+        "test:watch": "jest --watch --forceExit --runInBand",
+        "test:coverage": "jest --coverage --forceExit --runInBand"
     },
     "dependencies": {
         "@socket.io/mongo-adapter": "^0.4.0",
