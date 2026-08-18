@@ -78,13 +78,34 @@ const AREAS = {
     // Espelha authorize('secretaria', 'diretor', 'admin') em routes/secretaria.js
     '/html/secretaria': { perfis: ['admin', 'diretor', 'secretaria'] },
     '/html/direcao': { perfis: ['admin', 'diretor'] },
+    // `codigos-secretos.html` JÁ FOI admin-only aqui, por uma exceção baseada em
+    // premissa errada: o comentário citava `routes/escolas.js → authorize('admin')`,
+    // que é o código de cadastro de DOCENTE. A página é "Alunos — Códigos
+    // Secretos" e consome `GET /api/alunos/codigos-secretos`, que é
+    // `authorize('admin', 'diretor', 'secretaria')`.
+    //
+    // A exceção não protegia nada: o diretor obtinha os mesmos dados chamando a
+    // API direto. Bloquear só o HTML impedia a tela, não o acesso ao dado — e
+    // ainda produzia um 404 em um link que o próprio menu da direção oferece.
+    //
+    // Isolamento multi-escola continua garantido no controller:
+    // `StudentController.listSecretCodes` filtra por `req.escolaId`.
+    //
+    // A secretaria entra por exceção nesta tela (ver bloco abaixo): ela já
+    // tinha o modal de consulta individual no próprio painel e a mesma
+    // permissão na API. Ver Issue #56.
     '/direcao': {
         perfis: ['admin', 'diretor'],
         excecoes: {
-            // Os códigos secretos de cadastro de docente são admin-only na API
-            // (routes/escolas.js → authorize('admin')).
-            'codigos-secretos.html': ['admin'],
-            'codigos-secretos.js': ['admin'],
+            // AMPLIA o acesso (como `usuarios.html` faz em /html/admin), não
+            // restringe. A tela lista o código secreto que o RESPONSÁVEL usa
+            // para se vincular ao aluno — trabalho corriqueiro de secretaria,
+            // e `GET /api/alunos/codigos-secretos` já a autoriza.
+            //
+            // A secretaria só entra nestes dois arquivos; o resto de /direcao
+            // continua fechado para ela pelos perfis acima.
+            'codigos-secretos.html': ['admin', 'diretor', 'secretaria'],
+            'codigos-secretos.js': ['admin', 'diretor', 'secretaria'],
         },
     },
 };
@@ -135,9 +156,9 @@ function formasDoCaminho(caminhoBruto) {
     }
 
     return brutas.map((forma) => {
-        let s = forma.replace(/\\/g, '/');   // separador do Windows
-        s = s.replace(/\/{2,}/g, '/');       // //admin → /admin
-        s = path.posix.normalize(s);         // resolve . e ..
+        let s = forma.replace(/\\/g, '/'); // separador do Windows
+        s = s.replace(/\/{2,}/g, '/'); // //admin → /admin
+        s = path.posix.normalize(s); // resolve . e ..
         if (s.length > 1 && s.endsWith('/')) s = s.slice(0, -1);
         return { real: s, comparacao: s.toLowerCase() };
     });
@@ -239,7 +260,8 @@ async function sessaoDoRequest(req) {
         return usuario;
     } catch (e) {
         logger.warn('Token inválido em área restrita', {
-            errName: e.name, action: 'protegerPaginas.tokenInvalido',
+            errName: e.name,
+            action: 'protegerPaginas.tokenInvalido',
         });
         return null;
     }
@@ -293,7 +315,9 @@ async function autorizar(req, res, next, { config, forma }, pagina404) {
 
     if (!perfisPermitidos.includes(usuario.perfil)) {
         logger.warn('Acesso negado a área restrita', {
-            arquivo, perfil: usuario.perfil, action: 'protegerPaginas.negado',
+            arquivo,
+            perfil: usuario.perfil,
+            action: 'protegerPaginas.negado',
         });
         // 404 e não 403: um 403 confirmaria que a área existe.
         return res.status(404).sendFile(pagina404);
@@ -338,7 +362,9 @@ async function redirecionarSeAutorizado(req, res, apelido, pagina404) {
     if (!perfisPermitidos.includes(usuario.perfil)) return responder404();
 
     logger.info('Redirecionando link antigo da área administrativa', {
-        arquivo: apelido.arquivo, perfil: usuario.perfil, action: 'protegerPaginas.redirect',
+        arquivo: apelido.arquivo,
+        perfil: usuario.perfil,
+        action: 'protegerPaginas.redirect',
     });
 
     const query = req.url.slice(req.path.length);
@@ -353,7 +379,7 @@ function protegerAreasRestritas(frontendRootPath) {
     const pagina404 = path.join(frontendRootPath, 'html', '404.html');
     const parseCookies = cookieParser();
 
-    return function (req, res, next) {
+    return (req, res, next) => {
         let formas = formasDoCaminho(req.path);
 
         if (formas === null) {
@@ -369,8 +395,10 @@ function protegerAreasRestritas(frontendRootPath) {
                 // Cookies precisam ser parseados antes: o cookieParser global
                 // só é registrado depois dos estáticos.
                 return parseCookies(req, res, () =>
-                    redirecionarSeAutorizado(req, res, apelido, pagina404)
-                        .catch(() => res.status(404).sendFile(pagina404)));
+                    redirecionarSeAutorizado(req, res, apelido, pagina404).catch(() =>
+                        res.status(404).sendFile(pagina404)
+                    )
+                );
             }
 
             // Reescreve para o caminho real ANTES do static, preservando a
@@ -392,5 +420,9 @@ function protegerAreasRestritas(frontendRootPath) {
 }
 
 module.exports = {
-    protegerAreasRestritas, AREAS, formasDoCaminho, areaDe, APELIDO_ADMIN,
+    protegerAreasRestritas,
+    AREAS,
+    formasDoCaminho,
+    areaDe,
+    APELIDO_ADMIN,
 };

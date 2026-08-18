@@ -13,7 +13,11 @@ const request = require('supertest');
 
 const app = require('../app');
 const {
-    conectarBanco, limparBanco, desconectarBanco, criarUsuario, SENHA_TESTE,
+    conectarBanco,
+    limparBanco,
+    desconectarBanco,
+    criarUsuario,
+    SENHA_TESTE,
 } = require('./helpers');
 
 const PAGINAS_SO_ADMIN = [
@@ -46,15 +50,19 @@ async function sessaoDe(perfil, email) {
 
 async function loginComo(perfil, email) {
     await criarUsuario({ email, perfil, nome: `Teste ${perfil}` });
-    const res = await request(app)
-        .post('/api/auth/login')
-        .send({ email, senha: SENHA_TESTE });
-    return (res.headers['set-cookie'] || []).filter(c => c.startsWith('escola_jwt'));
+    const res = await request(app).post('/api/auth/login').send({ email, senha: SENHA_TESTE });
+    return (res.headers['set-cookie'] || []).filter((c) => c.startsWith('escola_jwt'));
 }
 
-beforeAll(async () => { await conectarBanco(); });
-afterEach(async () => { await limparBanco(); });
-afterAll(async () => { await desconectarBanco(); });
+beforeAll(async () => {
+    await conectarBanco();
+});
+afterEach(async () => {
+    await limparBanco();
+});
+afterAll(async () => {
+    await desconectarBanco();
+});
 
 describe('Páginas administrativas: visitante sem sessão', () => {
     it.each(PAGINAS_SO_ADMIN)('nao entrega %s — redireciona para o login', async (pagina) => {
@@ -161,7 +169,10 @@ describe('Páginas administrativas: regressões do gate', () => {
     it('rebaixamento de perfil vale imediatamente — o perfil vem do banco', async () => {
         const cookies = await loginComo('admin', 'admin_down@escola.test');
         const Usuario = require('../models/Usuario');
-        await Usuario.updateOne({ email: 'admin_down@escola.test' }, { $set: { perfil: 'professor' } });
+        await Usuario.updateOne(
+            { email: 'admin_down@escola.test' },
+            { $set: { perfil: 'professor' } }
+        );
 
         const res = await request(app).get('/html/admin/auditoria.html').set('Cookie', cookies);
 
@@ -215,11 +226,50 @@ describe('Área da direção', () => {
         expect(res.status).toBe(200);
     });
 
-    it('codigos-secretos e admin-only, mesmo para diretor', async () => {
+    // Este caso já afirmou o oposto ("admin-only, mesmo para diretor"), com a
+    // justificativa de que a API por trás seria `routes/escolas.js`. Era engano:
+    // aquele endpoint serve o código de cadastro de DOCENTE e a página nunca o
+    // chama. Ela consome `/api/alunos/codigos-secretos`, que é
+    // `authorize('admin', 'diretor', 'secretaria')` — ou seja, o diretor já
+    // obtinha o dado pela API enquanto a tela lhe dava 404. Ver Issue #56.
+    it('diretor abre a tela de codigos secretos dos alunos', async () => {
         const cookies = await sessaoDe('diretor', 'dir_cod@escola.test');
         const res = await request(app).get('/direcao/codigos-secretos.html').set('Cookie', cookies);
-        // A API por trás é authorize('admin') — routes/escolas.js
+        expect(res.status).toBe(200);
+    });
+
+    it('admin continua abrindo a tela de codigos secretos', async () => {
+        const cookies = await sessaoDe('admin', 'adm_cod@escola.test');
+        const res = await request(app).get('/direcao/codigos-secretos.html').set('Cookie', cookies);
+        expect(res.status).toBe(200);
+    });
+
+    // O JS da página carrega tanta informação quanto o HTML — o gate precisa
+    // tratar os dois igual, senão a tela abre e morre no primeiro fetch.
+    it('diretor tambem carrega o JS da tela de codigos secretos', async () => {
+        const cookies = await sessaoDe('diretor', 'dir_cod_js@escola.test');
+        const res = await request(app).get('/direcao/codigos-secretos.js').set('Cookie', cookies);
+        expect(res.status).toBe(200);
+    });
+
+    // O código é o que o RESPONSÁVEL usa para se vincular ao aluno — entregar
+    // isso é trabalho de secretaria, e a API já a autoriza.
+    it('secretaria abre a tela de codigos secretos', async () => {
+        const cookies = await sessaoDe('secretaria', 'sec_cod@escola.test');
+        const res = await request(app).get('/direcao/codigos-secretos.html').set('Cookie', cookies);
+        expect(res.status).toBe(200);
+    });
+
+    // A exceção é POR ARQUIVO: libera a tela de códigos, não a área /direcao.
+    it('secretaria continua fora do resto da area da direcao', async () => {
+        const cookies = await sessaoDe('secretaria', 'sec_dir_resto@escola.test');
+        const res = await request(app).get('/direcao/gen_html.py').set('Cookie', cookies);
         expect(res.status).toBe(404);
+    });
+
+    it('anonimo continua sem a tela de codigos secretos', async () => {
+        const res = await request(app).get('/direcao/codigos-secretos.html');
+        expect(res.status).toBe(302);
     });
 });
 

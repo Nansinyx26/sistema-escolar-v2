@@ -20,7 +20,7 @@
  * de endereço à vontade. `chaveIp()` colapsa o endereço no prefixo /64.
  */
 const rateLimit = require('express-rate-limit');
-const crypto = require('crypto');
+const crypto = require('node:crypto');
 
 const isProduction = process.env.NODE_ENV === 'production';
 const isTest = process.env.NODE_ENV === 'test';
@@ -77,7 +77,7 @@ function identificadorDaConta(req) {
 
 const RESPOSTA_PADRAO = {
     success: false,
-    error: 'Muitas tentativas. Aguarde alguns minutos e tente novamente.'
+    error: 'Muitas tentativas. Aguarde alguns minutos e tente novamente.',
 };
 
 /**
@@ -91,7 +91,7 @@ function limiterPorIp({ windowMs, maxProd, maxDev, mensagem, pular }) {
         skip: pular || pularEmTeste,
         message: mensagem || RESPOSTA_PADRAO,
         standardHeaders: true,
-        legacyHeaders: false
+        legacyHeaders: false,
     });
 }
 
@@ -112,7 +112,7 @@ function limiterPorConta({ windowMs, maxProd, maxDev, mensagem }) {
         skip: (req) => isTest || !identificadorDaConta(req),
         message: mensagem || RESPOSTA_PADRAO,
         standardHeaders: true,
-        legacyHeaders: false
+        legacyHeaders: false,
     });
 }
 
@@ -137,7 +137,7 @@ function limiterPorUsuario({ windowMs, maxProd, maxDev, mensagem }) {
         skip: (req) => isTest || !idDoUsuario(req),
         message: mensagem || RESPOSTA_PADRAO,
         standardHeaders: true,
-        legacyHeaders: false
+        legacyHeaders: false,
     });
 }
 
@@ -160,23 +160,26 @@ const globalLimiter = rateLimit({
     windowMs: QUINZE_MIN,
     max: isProduction ? 2000 : 5000,
     keyGenerator: (req) => `ip:${chaveIp(req)}`,
-    message: { success: false, error: 'Muitas requisições vindas deste IP. Tente novamente mais tarde.' },
+    message: {
+        success: false,
+        error: 'Muitas requisições vindas deste IP. Tente novamente mais tarde.',
+    },
     skip: (req) => isTest || !req.path.startsWith('/api'),
     standardHeaders: true,
-    legacyHeaders: false
+    legacyHeaders: false,
 });
 
 // ── Login / recuperação de senha ─────────────────────────────────────────────
 const MSG_AUTH = {
     success: false,
-    error: 'Muitas tentativas de login ou recuperação. Tente novamente em 15 minutos.'
+    error: 'Muitas tentativas de login ou recuperação. Tente novamente em 15 minutos.',
 };
 
 const authIpLimiter = limiterPorIp({
     windowMs: QUINZE_MIN,
     maxProd: tetoEnv('RATE_LIMIT_LOGIN_IP', 15),
     maxDev: 200,
-    mensagem: MSG_AUTH
+    mensagem: MSG_AUTH,
 });
 
 // Orçamento por CONTA: 10 tentativas/15min independente de quantos IPs usarem.
@@ -188,20 +191,20 @@ const authContaLimiter = limiterPorConta({
     windowMs: QUINZE_MIN,
     maxProd: tetoEnv('RATE_LIMIT_LOGIN_CONTA', 10),
     maxDev: 200,
-    mensagem: MSG_AUTH
+    mensagem: MSG_AUTH,
 });
 
 // ── Endpoints que validam SEGREDOS CURTOS (códigos de 6 dígitos) ─────────────
 const MSG_CODIGO = {
     success: false,
-    error: 'Muitas tentativas de verificação de código. Tente novamente mais tarde.'
+    error: 'Muitas tentativas de verificação de código. Tente novamente mais tarde.',
 };
 
 const codeIpLimiter = limiterPorIp({
     windowMs: UMA_HORA,
     maxProd: tetoEnv('RATE_LIMIT_CODIGO_IP', 30),
     maxDev: 300,
-    mensagem: MSG_CODIGO
+    mensagem: MSG_CODIGO,
 });
 
 // 10^6 códigos possíveis: sem teto por conta, um pool de IPs varre o espaço.
@@ -210,13 +213,13 @@ const codeContaLimiter = limiterPorConta({
     windowMs: UMA_HORA,
     maxProd: tetoEnv('RATE_LIMIT_CODIGO_CONTA', 10),
     maxDev: 300,
-    mensagem: MSG_CODIGO
+    mensagem: MSG_CODIGO,
 });
 
 // ── Prefixo /api/auth (cadastro, ativação, 2FA) ──────────────────────────────
 const MSG_PREFIXO = {
     success: false,
-    error: 'Muitas requisições de autenticação. Tente novamente em 15 minutos.'
+    error: 'Muitas requisições de autenticação. Tente novamente em 15 minutos.',
 };
 
 const authPrefixLimiter = limiterPorIp({
@@ -224,7 +227,7 @@ const authPrefixLimiter = limiterPorIp({
     maxProd: 60,
     maxDev: 600,
     mensagem: MSG_PREFIXO,
-    pular: (req) => isTest || req.method === 'GET' || req.method === 'HEAD'
+    pular: (req) => isTest || req.method === 'GET' || req.method === 'HEAD',
 });
 
 // ── Síntese de voz (TTS) — cota de API externa PAGA ──────────────────────────
@@ -237,8 +240,8 @@ const ttsUsuarioLimiter = limiterPorUsuario({
     maxDev: 600,
     mensagem: {
         success: false,
-        error: 'Limite de narrações por hora atingido. Tente novamente mais tarde.'
-    }
+        error: 'Limite de narrações por hora atingido. Tente novamente mais tarde.',
+    },
 });
 
 const ttsIpLimiter = limiterPorIp({
@@ -247,8 +250,8 @@ const ttsIpLimiter = limiterPorIp({
     maxDev: 1200,
     mensagem: {
         success: false,
-        error: 'Limite de narrações por hora atingido. Tente novamente mais tarde.'
-    }
+        error: 'Limite de narrações por hora atingido. Tente novamente mais tarde.',
+    },
 });
 
 // ── Chat interno ─────────────────────────────────────────────────────────────
@@ -270,8 +273,8 @@ const chatMensagemLimiter = limiterPorUsuario({
     maxDev: 300,
     mensagem: {
         success: false,
-        error: 'Você enviou muitas mensagens em pouco tempo. Aguarde um minuto.'
-    }
+        error: 'Você enviou muitas mensagens em pouco tempo. Aguarde um minuto.',
+    },
 });
 
 // Upload é ordens de grandeza mais caro que texto (banda + GridFS), então tem
@@ -282,8 +285,8 @@ const chatUploadLimiter = limiterPorUsuario({
     maxDev: 200,
     mensagem: {
         success: false,
-        error: 'Muitos arquivos enviados em sequência. Aguarde alguns minutos.'
-    }
+        error: 'Muitos arquivos enviados em sequência. Aguarde alguns minutos.',
+    },
 });
 
 // Rede como um todo: se o limiter por usuário for contornado com várias contas,
@@ -294,8 +297,8 @@ const chatIpLimiter = limiterPorIp({
     maxDev: 1200,
     mensagem: {
         success: false,
-        error: 'Muitas mensagens vindas desta rede. Aguarde um minuto.'
-    }
+        error: 'Muitas mensagens vindas desta rede. Aguarde um minuto.',
+    },
 });
 
 // ── Copiloto de IA ───────────────────────────────────────────────────────────
@@ -312,8 +315,8 @@ const iaChatUsuarioLimiter = limiterPorUsuario({
     maxDev: 200,
     mensagem: {
         success: false,
-        error: 'Você enviou muitas mensagens seguidas ao assistente. Aguarde alguns instantes.'
-    }
+        error: 'Você enviou muitas mensagens seguidas ao assistente. Aguarde alguns instantes.',
+    },
 });
 
 // `limiterPorConta`/`limiterPorUsuario` se auto-desligam quando não conseguem
@@ -325,12 +328,44 @@ const iaChatIpLimiter = limiterPorIp({
     maxDev: 400,
     mensagem: {
         success: false,
-        error: 'Muitas mensagens ao assistente vindas desta rede. Aguarde um minuto.'
-    }
+        error: 'Muitas mensagens ao assistente vindas desta rede. Aguarde um minuto.',
+    },
+});
+
+// ── Importação de alunos (pré-visualização) ──────────────────────────────────
+// Parsear um PDF de 30+ alunos custa CPU e memória — os dois recursos mais
+// escassos do plano free do Render. Uma conta válida em laço derruba a
+// instância inteira sem precisar de nenhuma falha de segurança.
+//
+// Chave por USUÁRIO: a escola toda sai pelo mesmo IP, e limitar por rede
+// puniria a secretaria inteira por causa de uma pessoa. 10 uploads/hora (§7.6)
+// é folgado — uma escola grande tem ~30 classes e importa cada uma uma vez.
+const importacaoPreviewLimiter = limiterPorUsuario({
+    windowMs: UMA_HORA,
+    maxProd: tetoEnv('RATE_LIMIT_IMPORTACAO_USUARIO', 10),
+    maxDev: 100,
+    mensagem: {
+        success: false,
+        error: 'Você atingiu o limite de 10 importações por hora. Aguarde antes de enviar outro arquivo.',
+    },
+});
+
+// Rede de segurança: `limiterPorUsuario` se auto-desliga quando não resolve o
+// usuário, e sem este par o endpoint ficaria sem teto próprio.
+const importacaoIpLimiter = limiterPorIp({
+    windowMs: UMA_HORA,
+    maxProd: tetoEnv('RATE_LIMIT_IMPORTACAO_IP', 40),
+    maxDev: 400,
+    mensagem: {
+        success: false,
+        error: 'Muitas importações vindas desta rede. Aguarde alguns minutos.',
+    },
 });
 
 module.exports = {
     globalLimiter,
+    importacaoPreviewLimiter,
+    importacaoIpLimiter,
     authIpLimiter,
     authContaLimiter,
     codeIpLimiter,
@@ -345,5 +380,5 @@ module.exports = {
     iaChatIpLimiter,
     // exportados para teste
     chaveIp,
-    identificadorDaConta
+    identificadorDaConta,
 };
