@@ -401,6 +401,82 @@ jobs:
   # ================================
   # DATABASE MIGRATIONS
   # ================================
+  # ══════════════════════════════════════════════════════════════════════════
+  # MIGRAÇÃO DE PRODUÇÃO
+  #
+  # Existe porque o passo manual não sobrevive à realidade: release é evento
+  # raro, e "lembrar de rodar a migração depois do deploy" é exatamente o tipo
+  # de instrução que se perde. O modo de falha que isso previne não é uma
+  # migração ruim rodando sozinha — é o código subir esperando um campo que
+  # ninguém criou, e a tela quebrar para a secretaria.
+  #
+  # O risco de automatizar caiu com a Issue #60: a MESMA migração já rodou
+  # contra `escola_dev` quando o PR entrou na `develop`. Produção passa a
+  # receber migração ensaiada, não estreante.
+  #
+  # O ensaio é PARCIAL — o banco de dev tem dados sintéticos, e produção tem
+  # formato legado (foi um índice legado que quebrou a migração da Issue #58).
+  # Por isso este job falha BARULHENTO: se a migração quebrar aqui, o pipeline
+  # fica vermelho com o log do erro, em vez de seguir em silêncio.
+  #
+  # Roda DEPOIS do build-prod: build quebrado não deve tocar o banco.
+  # ══════════════════════════════════════════════════════════════════════════
+  migrations-prod:
+    name: 🗄️ Database Migrations (Produção)
+    runs-on: ubuntu-latest
+    needs: build-prod
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    env:
+      # O contexto `secrets` não é acessível no `if` de um job — vira env + if
+      # de passo, mesmo padrão dos outros jobs deste arquivo.
+      HAS_MONGO_PROD: ${{ secrets.MONGODB_URI_PROD != '' }}
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: 📥 Install dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: 🗄️ Run migrations (PRODUÇÃO)
+        working-directory: ./backend
+        run: npm run migrate:up
+        if: env.HAS_MONGO_PROD == 'true'
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI_PROD }}
+          NODE_ENV: production
+
+      - name: 📊 Status das migrations (PRODUÇÃO)
+        working-directory: ./backend
+        run: npm run migrate:status
+        if: env.HAS_MONGO_PROD == 'true'
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI_PROD }}
+          NODE_ENV: production
+
+      # Aviso, não erro: sem o secret, falhar todo release por causa de um
+      # deploy que talvez não tenha migração nenhuma seria pior. Mas o aviso
+      # aparece no resumo da execução, não some no log.
+      - name: ⚠️ Migração de produção NÃO executada
+        if: env.HAS_MONGO_PROD != 'true'
+        run: |
+          echo "::warning title=Migração de produção pulada::O secret MONGODB_URI_PROD não está configurado."
+          echo ""
+          echo "O código foi publicado, mas NENHUMA migração rodou no banco de produção."
+          echo "Se este release inclui algo em backend/migrations/, o banco está"
+          echo "desatualizado em relação ao código que acabou de subir."
+          echo ""
+          echo "Rode à mão, ou configure o secret para automatizar:"
+          echo "  cd backend && CONFIRMO=producao npm run db:producao -- migrate:up"
+          echo ""
+          echo "Ver Issue #60."
+
   migrations:
     name: 🗄️ Database Migrations
     runs-on: ubuntu-latest
