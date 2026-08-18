@@ -67,6 +67,23 @@ async function semearAlunosLegados(quantidade) {
     return documentos;
 }
 
+/**
+ * Recria o `matricula_1` no formato LEGADO (unique global).
+ *
+ * O `limparBanco()` entre testes apaga documentos, não índices — e o Mongoose
+ * já pode ter criado o `matricula_1` do schema (sparse, não-unique) numa
+ * execução anterior. Sem derrubar antes, o `createIndex` abaixo colide com ele
+ * e o teste falha por motivo errado.
+ */
+async function recriarIndiceLegado() {
+    try {
+        await Aluno.collection.dropIndex('matricula_1');
+    } catch {
+        /* não existia — é o caso normal numa base nova */
+    }
+    await Aluno.collection.createIndex({ matricula: 1 }, { unique: true, sparse: true });
+}
+
 describe('migração 1771286400000 — alunos por turma / importação', () => {
     it('preenche nomeNormalizado em todos os alunos, além do primeiro bloco', async () => {
         await semearAlunosLegados(TOTAL_LEGADOS);
@@ -143,6 +160,68 @@ describe('migração 1771286400000 — alunos por turma / importação', () => {
         expect(ttl).toBeDefined();
         expect(ttl.key).toHaveProperty('expiraEm');
         expect(ttl.expireAfterSeconds).toBe(0);
+    }, 30000);
+
+    // REGRESSÃO (Issue #58): a migração falhava com
+    // "An existing index has the same name as the requested index" em toda base
+    // criada antes do multi-escola. Sem este caso, o erro só apareceria no CI,
+    // contra o banco real — que foi exatamente como ele apareceu.
+    it('derruba o índice matricula_1 unique legado e conclui', async () => {
+        await semearAlunosLegados(3);
+
+        // Reproduz o estado de uma base antiga: RA único em toda a rede.
+        await recriarIndiceLegado();
+        const antes = (await Aluno.collection.indexes()).find((i) => i.name === 'matricula_1');
+        expect(antes.unique).toBe(true);
+
+        const resultado = await migracao.up();
+        expect(resultado.indiceLegadoRemovido).toBe(true);
+
+        const indices = await Aluno.collection.indexes();
+        const matriculaIsolado = indices.find((i) => i.name === 'matricula_1');
+        // Se sobrou, não pode mais ser o unique global.
+        if (matriculaIsolado) expect(matriculaIsolado.unique).toBeFalsy();
+
+        // A proteção real contra RA duplicado DENTRO da escola continua de pé.
+        const porEscola = indices.find((i) => i.name === 'escolaId_1_matricula_1');
+        expect(porEscola).toBeDefined();
+        expect(porEscola.unique).toBe(true);
+    }, 30000);
+
+    // O ponto do índice legado ser global é justamente este: ele proibia o que o
+    // multi-escola permite. Depois da migração, duas escolas podem repetir o RA.
+    it('permite o mesmo RA em escolas diferentes depois da migração', async () => {
+        await recriarIndiceLegado();
+        await migracao.up();
+
+        await Aluno.collection.insertMany([
+            {
+                _id: 'a1',
+                escolaId: 'escola-1',
+                nome: 'ALUNO UM',
+                matricula: '900000005555',
+                ativo: true,
+            },
+            {
+                _id: 'a2',
+                escolaId: 'escola-2',
+                nome: 'ALUNO DOIS',
+                matricula: '900000005555',
+                ativo: true,
+            },
+        ]);
+        expect(await Aluno.countDocuments({ matricula: '900000005555' })).toBe(2);
+
+        // E dentro da MESMA escola continua barrado.
+        await expect(
+            Aluno.collection.insertOne({
+                _id: 'a3',
+                escolaId: 'escola-1',
+                nome: 'ALUNO TRES',
+                matricula: '900000005555',
+                ativo: true,
+            })
+        ).rejects.toThrow();
     }, 30000);
 
     it('é idempotente — rodar de novo não refaz nada', async () => {
