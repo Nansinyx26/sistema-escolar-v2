@@ -6,6 +6,10 @@ npm-debug.log*
 .env
 .env.local
 .env.*.local
+# Ambiente de PRODUÇÃO (Issue #60). `.env.*.local` acima NÃO cobre este nome —
+# sem esta linha, a string de conexão de produção entraria num commit.
+.env.producao
+.env.production
 *.env
 !.env.example
 !backend/.env.example

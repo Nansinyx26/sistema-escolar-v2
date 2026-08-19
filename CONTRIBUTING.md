@@ -134,6 +134,63 @@ de ficar desligada por meses, e ninguém percebe até o dia em que ela faria fal
 Migrations rodam **só na `develop`**, por `npm run migrate:up`. São idempotentes: aplicam
 apenas as pendentes e registram cada uma em `__migrations__`.
 
+### Qual banco cada coisa usa
+
+| Onde | Banco | Como é escolhido |
+|---|---|---|
+| Sua máquina (`npm run dev`, `migrate:up`, scripts) | **`escola_dev`** | `backend/.env` |
+| Testes (Jest e Playwright) | em memória | `mongodb-memory-server`, nunca toca o Atlas |
+| CI, job `migrations` no push da `develop` | **`escola_dev`** | secret `MONGODB_URI_DEV` |
+| CI, job `migrations-prod` no push da `main` | **`test`** | secret `MONGODB_URI_PROD` |
+| Produção (Render) | **`test`** | painel do Render |
+
+O padrão de todo comando é **desenvolvimento**. Errar de banco no dia a dia não tem
+consequência — é essa a intenção.
+
+### Migração em produção: automática
+
+Desde a Issue #60, o push na `main` roda `migrate:up` contra o banco de produção
+(job `migrations-prod`, depois do `build-prod`). **Você não precisa lembrar de nada.**
+
+Por que é seguro automatizar: a MESMA migração já rodou contra `escola_dev` quando o PR
+entrou na `develop`. Produção recebe migração ensaiada, não estreante.
+
+O ensaio é **parcial** — dev tem dados sintéticos, produção tem formato legado (foi um
+índice legado que quebrou a migração da Issue #58). Por isso o job falha barulhento: se a
+migração quebrar, o pipeline fica vermelho com o log.
+
+> Exige o secret `MONGODB_URI_PROD`. Sem ele o job emite um **aviso visível** no resumo da
+> execução e não roda nada — o release sai, mas o banco fica para trás.
+
+### Quando precisar mesmo tocar produção à mão
+
+Produção mora em `backend/.env.producao` (copie de `.env.producao.example`; o arquivo real
+é ignorado pelo git). **Nenhum comando normal o lê.** O único caminho é:
+
+```bash
+CONFIRMO=producao npm run db:producao -- migrate:up
+```
+
+Sem o `CONFIRMO=producao`, o comando imprime host e banco e **recusa rodar**. A trava vive em
+`src/utils/alvoBanco.js` e tem teste próprio.
+
+> **Por que tanto cuidado:** o projeto teve um banco único para tudo. Uma migração rodou
+> contra os dados reais de 27 alunos acreditando estar em desenvolvimento — o secret do CI se
+> chamava `MONGODB_URI_DEV` e apontava para produção. Nome de variável não é barreira.
+> Ver Issue #60.
+
+### Populando o banco de desenvolvimento
+
+```bash
+cd backend && npm run seed:dev
+```
+
+Cria uma escola fictícia, 3 turmas e 30 alunos **inventados** (RAs na faixa `90000000xxxx`).
+É idempotente e recusa rodar se o alvo for `test` ou outro banco de sistema.
+
+**Nunca copie produção para o dev.** São nome, RA e data de nascimento de crianças; duplicar
+isso num ambiente com menos cuidado só amplia a exposição.
+
 ---
 
 ## Onde está o resto
