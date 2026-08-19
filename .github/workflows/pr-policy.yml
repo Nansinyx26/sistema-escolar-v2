@@ -8,6 +8,13 @@ on:
     types: [opened, edited, synchronize, reopened]
     branches: [main, develop]
 
+# Este workflow só roda em pull_request e não escreve em lugar nenhum —
+# cancelar execução obsoleta é sempre seguro aqui.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+
 permissions:
   contents: read
   pull-requests: read

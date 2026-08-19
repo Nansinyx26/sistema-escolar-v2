@@ -6,6 +6,18 @@ on:
   pull_request:
     branches: [main, develop]
 
+# Cancela execuções obsoletas da MESMA branch: um force-push deixava o pipeline
+# anterior rodando até o fim, e o E2E (que instala navegadores) é o job mais
+# caro do arquivo. No PR #63 foram 3 execuções completas, 2 já obsoletas.
+#
+# `cancel-in-progress` é CONDICIONADO a pull_request de propósito. Cancelar um
+# push na `main` ou na `develop` abortaria um deploy ou uma migração no meio —
+# o job `migrations-prod` escreve no banco de produção, e interrompê-lo pela
+# metade é pior do que qualquer minuto economizado.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   NODE_VERSION: "22"
   REGISTRY: ghcr.io
@@ -311,6 +323,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
 
       - name: 📥 Install dependencies
         working-directory: ./backend
@@ -357,6 +370,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
 
       - name: 📥 Install dependencies
         working-directory: ./backend
@@ -439,6 +453,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
 
       - name: 📥 Install dependencies
         working-directory: ./backend
@@ -496,6 +511,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
 
       - name: 📥 Install dependencies
         working-directory: ./backend
