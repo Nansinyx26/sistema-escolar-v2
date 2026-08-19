@@ -20,6 +20,15 @@
  * propósito — se as duas divergirem, o chat autoriza um conjunto de turmas e o
  * resto do sistema outro, que é o tipo de bug que ninguém encontra olhando.
  *
+ * NÃO CODIFIQUE FAIXA DE SÉRIE AQUI
+ * ---------------------------------
+ * As duas redes têm alcances diferentes: CIEP vai do 1º ao 5º ano, EMEF vai até
+ * o 9º. É tentador usar isso para validar ou montar lista de turmas, e seria
+ * errado — a comparação abaixo é entre os TEXTOS das turmas que estão no banco,
+ * nunca entre números de série. Por isso ela funciona nos dois tipos de escola
+ * sem saber de nenhum deles, e continua funcionando se a rede mudar de faixa.
+ * Uma faixa fixa em código só criaria um lugar novo para ficar desatualizado.
+ *
  * POR QUE EM services/ E NÃO EM utils/
  * -----------------------------------
  * Isto consulta `models/`, e a regra `transversal-nao-desce` do

@@ -33,6 +33,7 @@ const Aluno = require('../models/Aluno');
 const ChatDireto = require('../models/ChatDireto');
 const Diretor = require('../models/Diretor');
 const Secretaria = require('../models/Secretaria');
+const { invalidarCacheEscolas } = require('../middleware/filtrarPorEscola');
 
 const {
     turmasDoProfessor,
@@ -71,6 +72,11 @@ beforeEach(async () => {
         codigoSecreto: 'VINC-68-A',
         ativo: true,
     });
+    // O estado global de escolas fica memoizado por 60s. Aqui a escola é
+    // recriada a cada teste, então sem invalidar o cache ele segue apontando
+    // para a anterior — já apagada — e quem depende do ramo "escola ativa
+    // única" (responsável) leva 403 por um motivo que nada tem a ver com turma.
+    invalidarCacheEscolas();
 });
 
 /**
@@ -253,6 +259,39 @@ describe('diretor e secretaria não são limitados por turma', () => {
         const mae = await responsavelDe(`mae.${perfil}@escola.test`, '9A');
 
         expect((await enviar(gestor, mae.id)).status).toBe(200);
+    });
+});
+
+describe('a regra vale igual nos dois tipos de escola', () => {
+    /**
+     * CIEP atende do 1º ao 5º ano; EMEF vai até o 9º. Os outros testes deste
+     * arquivo usam uma EMEF, então sem este caso a suíte inteira só provaria a
+     * rede maior.
+     *
+     * O vínculo é conferido comparando o TEXTO da turma, nunca o número da
+     * série, e é por isso que o tipo da escola não entra na conta. Este teste
+     * existe para que continue assim: ele quebra no dia em que alguém trocar a
+     * comparação por uma faixa de série fixa — que é o atalho tentador e que
+     * ficaria errado para uma das duas redes.
+     */
+    it('CIEP (1º ao 5º): barra entre turmas diferentes, libera na mesma', async () => {
+        await Escola.deleteMany({});
+        escola = await Escola.create({
+            nome: 'CIEP Vinculo Fino',
+            tipo: 'CIEP',
+            bairro: 'Norte',
+            codigoSecreto: 'VINC-68-C',
+            ativo: true,
+        });
+        invalidarCacheEscolas();
+
+        const maeQuinto = await responsavelDe('mae.ciep@escola.test', '5A');
+
+        const profPrimeiro = await professorDe('prof.ciep1@escola.test', '1A');
+        expect((await enviar(profPrimeiro, maeQuinto.id)).status).toBe(403);
+
+        const profQuinto = await professorDe('prof.ciep5@escola.test', '5A');
+        expect((await enviar(profQuinto, maeQuinto.id)).status).toBe(200);
     });
 });
 
