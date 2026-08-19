@@ -2,11 +2,19 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 const ChatDireto = require('../models/ChatDireto');
 const Usuario = require('../models/Usuario');
+const Professor = require('../models/Professor');
+const Diretor = require('../models/Diretor');
+const Secretaria = require('../models/Secretaria');
 const {
     turmasDoProfessor,
     turmasDosFilhos,
     compartilhamTurma,
+    emailsDeResponsaveisDasTurmas,
+    emailsDeResponsaveisDaEscola,
+    idsDeProfessoresDasTurmas,
 } = require('../services/vinculoTurmas');
+const { formatarPresenca } = require('../utils/formatarPresenca');
+const escapeRegex = require('../utils/escapeRegex');
 const logger = require('../utils/logger');
 const NotificationService = require('../services/NotificationService');
 const { EXT_POR_MIME } = require('../middleware/uploadChat');
@@ -292,12 +300,10 @@ exports.enviarMensagem = async (req, res) => {
         const remetenteId = String(req.user.id || req.user._id || '');
 
         if (!destinatarioId || (!mensagem && !anexo && !audio)) {
-            return res
-                .status(400)
-                .json({
-                    success: false,
-                    error: 'Destinatário e conteúdo (mensagem, anexo ou áudio) são obrigatórios.',
-                });
+            return res.status(400).json({
+                success: false,
+                error: 'Destinatário e conteúdo (mensagem, anexo ou áudio) são obrigatórios.',
+            });
         }
 
         const permissao = await podeConversar(
@@ -551,12 +557,10 @@ exports.editarMensagem = async (req, res) => {
         const textoAnterior = original ? original.mensagem : '';
 
         if (!original) {
-            return res
-                .status(404)
-                .json({
-                    success: false,
-                    error: 'Mensagem não encontrada ou sem permissão para editar.',
-                });
+            return res.status(404).json({
+                success: false,
+                error: 'Mensagem não encontrada ou sem permissão para editar.',
+            });
         }
         if (foraDaJanela(original.createdAt, JANELA_EDICAO_MS)) {
             return res.status(403).json({
@@ -572,12 +576,10 @@ exports.editarMensagem = async (req, res) => {
         );
 
         if (!atualizada) {
-            return res
-                .status(404)
-                .json({
-                    success: false,
-                    error: 'Mensagem não encontrada ou sem permissão para editar.',
-                });
+            return res.status(404).json({
+                success: false,
+                error: 'Mensagem não encontrada ou sem permissão para editar.',
+            });
         }
 
         // Edição altera um registro que a outra pessoa já leu — fica na trilha.
@@ -623,12 +625,10 @@ exports.apagarMensagem = async (req, res) => {
 
         if (tipo === 'para_todos') {
             if (String(msg.remetenteId) !== meuId) {
-                return res
-                    .status(403)
-                    .json({
-                        success: false,
-                        error: 'Apenas o autor pode apagar a mensagem para todos.',
-                    });
+                return res.status(403).json({
+                    success: false,
+                    error: 'Apenas o autor pode apagar a mensagem para todos.',
+                });
             }
             // "Apagar para todos" reescreve o que a outra pessoa já leu, então
             // vale só logo após o envio. Passada a janela, resta "apagar para
@@ -834,12 +834,10 @@ exports.encaminharMensagem = async (req, res) => {
                 .json({ success: false, error: 'Mensagens e destinatários são obrigatórios.' });
         }
         if (ids.length > 20 || destinos.length > 20) {
-            return res
-                .status(400)
-                .json({
-                    success: false,
-                    error: 'Limite de 20 mensagens/destinatários por encaminhamento.',
-                });
+            return res.status(400).json({
+                success: false,
+                error: 'Limite de 20 mensagens/destinatários por encaminhamento.',
+            });
         }
 
         const originais = await ChatDireto.find({
@@ -974,5 +972,185 @@ exports.getPresenca = async (req, res) => {
         res.json({ success: true, data: info });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+/**
+ * GET /api/chat-direto/contatos — com quem esta pessoa pode conversar.
+ *
+ * POR QUE UM ENDPOINT PRÓPRIO (Issue #69)
+ * ---------------------------------------
+ * Sem ele, a tela de conversas teria de listar a escola inteira e descobrir a
+ * permissão errando: mandar mensagem e ver se volta 403. Além de ruim de usar,
+ * isso vaza a existência de contas que a pessoa não pode alcançar — para um
+ * responsável, a lista de professores e de famílias da escola inteira.
+ *
+ * CONSISTÊNCIA COM `podeConversar` É A PARTE DELICADA
+ * ---------------------------------------------------
+ * Esta função responde "quem?" e `podeConversar` responde "este aqui, pode?".
+ * São dois caminhos para a mesma regra, e regra duplicada é regra que diverge:
+ * se a lista mostrar alguém que o envio recusa, a pessoa vê um contato que não
+ * consegue usar — e o contrário é pior, um contato omitido que ela poderia ter.
+ *
+ * Elas não podem virar uma só: `podeConversar` faria uma consulta por candidato,
+ * e são centenas numa escola média. Aqui os conjuntos são calculados UMA vez e
+ * a filtragem acontece em memória. O que amarra as duas é o teste — para cada
+ * pessoa da escola, esta lista tem de concordar com `podeConversar`.
+ *
+ * O que NÃO vem aqui: prévia da última mensagem. A página busca o histórico da
+ * conversa que abrir; trazer a última mensagem de cada contato custaria uma
+ * agregação a mais por um dado que a maior parte da lista não mostra.
+ */
+exports.listarContatos = async (req, res) => {
+    try {
+        const meuId = String(req.user?.id || req.user?._id || '');
+        const meuPerfil = String(req.user?.perfil || '').toLowerCase();
+        const meuEmail = String(req.user?.email || '').toLowerCase();
+        const escolaId = req.escolaId ? String(req.escolaId) : null;
+
+        // Falha FECHADA: sem escola resolvida não há como delimitar o tenant, e
+        // listar "todo mundo" seria vazamento entre escolas.
+        if (!escolaId) return res.json({ success: true, data: [] });
+
+        const perfisAlcancaveis = (MATRIZ_CONVERSA[meuPerfil] || []).filter((p) =>
+            paresPermitidos(meuPerfil, p)
+        );
+        if (!perfisAlcancaveis.length) return res.json({ success: true, data: [] });
+
+        const querResponsaveis = perfisAlcancaveis.includes('responsavel');
+
+        // ── Equipe ────────────────────────────────────────────────────────
+        // Vem das coleções de cargo, não de `Usuario.escolaId`: o vínculo de
+        // escola de professor, diretor e secretaria mora em `vinculos[]`, e é
+        // assim que o TeacherController já monta a lista da equipe. Filtrar por
+        // `Usuario.escolaId` deixaria de fora quem tem o campo vazio.
+        const escopoDeCargo = { 'vinculos.escolaId': escolaId };
+        const [profs, dirs, secs] = await Promise.all([
+            perfisAlcancaveis.includes('professor')
+                ? Professor.find(escopoDeCargo).select('idUsuario').lean()
+                : [],
+            perfisAlcancaveis.includes('diretor')
+                ? Diretor.find(escopoDeCargo).select('idUsuario').lean()
+                : [],
+            perfisAlcancaveis.includes('secretaria')
+                ? Secretaria.find(escopoDeCargo).select('idUsuario').lean()
+                : [],
+        ]);
+
+        // ── Restrição do responsável ──────────────────────────────────────
+        // Um responsável só alcança os professores dos filhos dele. Diretor e
+        // secretaria não têm recorte de turma e ficam de fora deste filtro.
+        let professoresPermitidos = null;
+        if (meuPerfil === 'responsavel' && perfisAlcancaveis.includes('professor')) {
+            const turmasDosMeusFilhos = await turmasDosFilhos(meuEmail, escolaId);
+            professoresPermitidos = await idsDeProfessoresDasTurmas(turmasDosMeusFilhos, escolaId);
+        }
+
+        const idsDaEquipe = new Set();
+        for (const doc of profs) {
+            const id = doc.idUsuario ? String(doc.idUsuario) : null;
+            if (!id) continue;
+            if (professoresPermitidos && !professoresPermitidos.has(id)) continue;
+            idsDaEquipe.add(id);
+        }
+        for (const doc of [...dirs, ...secs]) {
+            if (doc.idUsuario) idsDaEquipe.add(String(doc.idUsuario));
+        }
+
+        // ── Responsáveis ──────────────────────────────────────────────────
+        // O responsável não tem coleção de cargo: o que o liga à escola é o
+        // filho. Diretor e secretaria alcançam todas as famílias; o professor,
+        // só as das turmas dele — a mesma regra do envio (Issue #68).
+        let emailsDeResponsaveis = new Set();
+        if (querResponsaveis) {
+            emailsDeResponsaveis =
+                meuPerfil === 'professor'
+                    ? await emailsDeResponsaveisDasTurmas(await turmasDoProfessor(meuId), escolaId)
+                    : await emailsDeResponsaveisDaEscola(escolaId);
+        }
+
+        const criterios = [];
+        if (idsDaEquipe.size) criterios.push({ _id: { $in: [...idsDaEquipe] } });
+        if (emailsDeResponsaveis.size) {
+            // Regex ancorada e sem caixa, e não um `$in` de strings: o campo
+            // `Usuario.email` NÃO é normalizado para minúsculas no schema, e o
+            // e-mail no cadastro do aluno é digitado à mão. Comparar literal
+            // faria "Maria@escola.test" sumir da lista enquanto `podeConversar`
+            // — que já usa regex sem caixa — continuaria liberando o envio: a
+            // divergência entre listar e enviar que este endpoint existe para
+            // não ter. As âncoras impedem `ana@x` de casar com `joana@x`.
+            criterios.push({
+                perfil: 'responsavel',
+                email: {
+                    $in: [...emailsDeResponsaveis].map(
+                        (e) => new RegExp(`^${escapeRegex(e)}$`, 'i')
+                    ),
+                },
+            });
+        }
+        if (!criterios.length) return res.json({ success: true, data: [] });
+
+        const candidatos = await Usuario.find({
+            $or: criterios,
+            _id: { $ne: meuId },
+            perfil: { $in: perfisAlcancaveis },
+            ativo: { $ne: false },
+        })
+            .select('nome perfil foto')
+            .lean();
+
+        // Não lidas numa agregação só, agrupada por remetente — mesmo padrão do
+        // TeacherController. Uma consulta por contato viraria dezenas de idas ao
+        // banco para montar uma tela.
+        const naoLidas = await ChatDireto.aggregate([
+            { $match: { destinatarioId: meuId, lida: false } },
+            { $group: { _id: '$remetenteId', total: { $sum: 1 } } },
+        ]);
+        const naoLidasPorRemetente = new Map(
+            naoLidas.map((linha) => [String(linha._id), linha.total])
+        );
+
+        const presence = require('../realtime/presence');
+        const agora = new Date();
+
+        const contatos = candidatos
+            .map((usuario) => {
+                const id = String(usuario._id);
+                const info = presence.infoDe(escolaId, id);
+                return {
+                    id,
+                    nome: usuario.nome,
+                    perfil: usuario.perfil,
+                    foto: usuario.foto || null,
+                    presenca: {
+                        status: info.status,
+                        // Texto já pronto para a tela (Issue #70). O bruto vai
+                        // junto para quem quiser formatar de outro jeito.
+                        texto: formatarPresenca(info, agora),
+                        ultimoAcesso: info.ultimoAcesso,
+                    },
+                    naoLidas: naoLidasPorRemetente.get(id) || 0,
+                };
+            })
+            // Quem tem mensagem esperando vem primeiro, depois quem está online,
+            // o resto em ordem alfabética. É a ordem de um mensageiro, e evita
+            // obrigar a procurar na lista o que já está pendente.
+            .sort((a, b) => {
+                if (a.naoLidas !== b.naoLidas) return b.naoLidas - a.naoLidas;
+                const aOnline = a.presenca.status !== 'offline';
+                const bOnline = b.presenca.status !== 'offline';
+                if (aOnline !== bOnline) return aOnline ? -1 : 1;
+                return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR');
+            });
+
+        res.json({ success: true, data: contatos });
+    } catch (error) {
+        // A mensagem crua não vai para o cliente: ela carrega nome de campo e de
+        // coleção. O log guarda o suficiente para investigar.
+        logger.error('[chat] falha ao montar a lista de contatos', {
+            err: error,
+            action: 'chat.contatos',
+        });
+        res.status(500).json({ success: false, error: 'Não foi possível carregar seus contatos.' });
     }
 };

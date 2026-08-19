@@ -131,6 +131,121 @@ async function turmasDosFilhos(email, escolaId) {
     return expandirTurmas(turmas);
 }
 
+/**
+ * Varre alunos e junta os e-mails de responsável que encontrar.
+ *
+ * Compartilhado pelas duas perguntas abaixo — o que muda entre elas é só o
+ * filtro. Devolve em MINÚSCULAS porque é assim que o chamador compara com a
+ * conta do responsável, e o cadastro tem grafias misturadas.
+ *
+ * @param {object} filtro consulta do Mongoose já montada pelo chamador
+ * @returns {Promise<Set<string>>}
+ */
+async function coletarEmailsDeResponsaveis(filtro) {
+    const alunos = await Aluno.find(filtro)
+        .select('responsavel responsavelDados.email responsaveis.email')
+        .lean();
+
+    const emails = new Set();
+    const guardar = (valor) => {
+        const limpo = String(valor || '')
+            .trim()
+            .toLowerCase();
+        // O campo `responsavel` é texto livre e às vezes guarda o NOME em vez
+        // do e-mail. Exigir o "@" descarta esses sem precisar validar formato.
+        if (limpo.includes('@')) emails.add(limpo);
+    };
+
+    for (const aluno of alunos) {
+        guardar(aluno.responsavel);
+        guardar(aluno.responsavelDados?.email);
+        for (const r of aluno.responsaveis || []) guardar(r?.email);
+    }
+    return emails;
+}
+
+/**
+ * E-mails dos responsáveis dos alunos de um conjunto de turmas.
+ *
+ * É a pergunta inversa de `turmasDosFilhos`, e existe por causa do custo.
+ * Montar a lista de contatos de um professor perguntando "esse responsável tem
+ * filho na minha turma?" um por um seria uma consulta por pessoa — numa escola
+ * com centenas de famílias, é a diferença entre uma consulta e centenas. Aqui a
+ * varredura acontece uma vez só.
+ *
+ * Sem turma nenhuma devolve VAZIO, nunca "todos" — é a falha fechada que
+ * protege o professor sem cadastro (ver Issue #68).
+ *
+ * @param {Set<string>|string[]} turmas turmas já expandidas nas duas grafias
+ * @param {string} [escolaId]
+ * @returns {Promise<Set<string>>}
+ */
+async function emailsDeResponsaveisDasTurmas(turmas, escolaId) {
+    const lista = [...(turmas || [])];
+    if (!lista.length) return new Set();
+
+    const filtro = { $or: [{ turma: { $in: lista } }, { turmaId: { $in: lista } }] };
+    if (escolaId) filtro.escolaId = String(escolaId);
+
+    return coletarEmailsDeResponsaveis(filtro);
+}
+
+/**
+ * E-mails de TODOS os responsáveis da escola.
+ *
+ * Existe como função SEPARADA, e não como "turmas vazias" em
+ * `emailsDeResponsaveisDasTurmas`, de propósito. Aquela devolve conjunto vazio
+ * quando não recebe turma — é a falha fechada que protege o professor sem
+ * cadastro. Se ela passasse a significar "todas" no caso vazio, um professor
+ * sem turma alcançaria a escola inteira, invertendo exatamente a proteção que
+ * a Issue #68 criou. Duas perguntas diferentes, dois nomes diferentes.
+ *
+ * Só faz sentido para diretor e secretaria, que falam com qualquer família por
+ * definição do papel.
+ *
+ * @param {string} escolaId
+ * @returns {Promise<Set<string>>} e-mails em minúsculas
+ */
+async function emailsDeResponsaveisDaEscola(escolaId) {
+    if (!escolaId) return new Set();
+    return coletarEmailsDeResponsaveis({ escolaId: String(escolaId) });
+}
+
+/**
+ * `Usuario._id` dos professores que lecionam em alguma das turmas dadas.
+ *
+ * Inversa de `turmasDoProfessor`, pelo mesmo motivo de custo. Precisa olhar os
+ * três campos de turma do cadastro, porque um professor pode estar ligado à
+ * turma por qualquer um deles.
+ *
+ * @param {Set<string>|string[]} turmas turmas já expandidas nas duas grafias
+ * @param {string} [escolaId]
+ * @returns {Promise<Set<string>>}
+ */
+async function idsDeProfessoresDasTurmas(turmas, escolaId) {
+    const lista = [...(turmas || [])];
+    if (!lista.length) return new Set();
+
+    const filtro = {
+        $or: [
+            { salaPrincipal: { $in: lista } },
+            { salasAdicionais: { $in: lista } },
+            { turmas: { $in: lista } },
+        ],
+    };
+    // O vínculo de escola do professor mora em `vinculos[]`, não num campo
+    // `escolaId` solto — daí o caminho aninhado.
+    if (escolaId) filtro['vinculos.escolaId'] = String(escolaId);
+
+    const professores = await Professor.find(filtro).select('idUsuario').lean();
+
+    const ids = new Set();
+    for (const professor of professores) {
+        if (professor.idUsuario) ids.add(String(professor.idUsuario));
+    }
+    return ids;
+}
+
 /** true se os dois conjuntos têm ao menos uma turma em comum. */
 function compartilhamTurma(turmasA, turmasB) {
     if (!turmasA || !turmasB) return false;
@@ -143,6 +258,9 @@ function compartilhamTurma(turmasA, turmasB) {
 module.exports = {
     turmasDoProfessor,
     turmasDosFilhos,
+    emailsDeResponsaveisDasTurmas,
+    emailsDeResponsaveisDaEscola,
+    idsDeProfessoresDasTurmas,
     compartilhamTurma,
     variacoesDaTurma,
     expandirTurmas,
