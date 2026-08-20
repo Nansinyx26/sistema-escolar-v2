@@ -411,3 +411,43 @@ body.sidebar-open .dev-notice {
     0% { transform: scale(1); opacity: 0.6; }
     100% { transform: scale(2); opacity: 0; }
 }
+
+/* ---------------------------------------------------------------------------
+   Selo de mensagens nao lidas na entrada "Conversas" (Issue #72)
+   ---------------------------------------------------------------------------
+   Mora aqui, e nao no <style> de cada pagina, porque a entrada aparece em
+   quatro telas diferentes (dashboard, painel da secretaria e as duas da
+   direcao) e as quatro ja carregam este arquivo. Quatro copias divergiriam na
+   primeira correcao.
+
+   O elemento e criado por js/menu-conversas.js e comeca com [hidden]; sem
+   mensagem pendente ele nao ocupa espaco nenhum.
+   --------------------------------------------------------------------------- */
+.conversas-badge {
+    margin-left: auto;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    background: #10b981;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 20px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+/* `[hidden]` sozinho perde para o `display` do seletor acima em algumas
+   cascatas; o !important garante que zero nao lidas some de verdade. */
+.conversas-badge[hidden] { display: none !important; }
+
+/* Nos cartoes do painel da secretaria nao ha linha horizontal para o
+   `margin-left: auto` empurrar: o selo vai para o canto do cartao. */
+.sec-quick-card { position: relative; }
+.sec-quick-card .conversas-badge {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    margin-left: 0;
+}
