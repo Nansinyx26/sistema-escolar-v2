@@ -335,6 +335,9 @@ router.get(
     filtrarPorEscola,
     ChatDiretoController.getPresenca
 );
+// Quem esta pessoa pode alcançar. `filtrarPorEscola` é obrigatório: sem
+// `req.escolaId` o handler devolve lista vazia em vez de vazar outras escolas.
+router.get('/chat-direto/contatos', authJWT, filtrarPorEscola, ChatDiretoController.listarContatos);
 
 // Anexos/áudios do chat: bucket próprio de mimetypes (Word, Excel, ZIP, vídeo,
 // audio/webm) e metadata com os dois lados da conversa — o download reusa o
