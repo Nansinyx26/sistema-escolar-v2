@@ -4,10 +4,12 @@
  * user avatar and logout button. Fully responsive.
  */
 
-import React, { useState, useEffect } from 'react';
-import type { GmailUser, Notification } from '../types';
-import styles from '../styles/portal.module.scss';
+import type React from 'react';
+import { useEffect, useState } from 'react';
 import schoolLogo from '../assets/logo-jaguari.png';
+import { getChatNaoLidas } from '../services/apiService';
+import styles from '../styles/portal.module.scss';
+import type { GmailUser, Notification } from '../types';
 import { getPhotoUrl } from '../utils/photoUtils';
 import Icon from './ui/Icon';
 
@@ -52,13 +54,13 @@ const VoiceSelector: React.FC = () => {
 
   const voices = [
     { id: 'male', label: 'Voz Masculina', icon: 'ti-man', color: 'text-violet-400' },
-    { id: 'off', label: 'Voz Desativada', icon: 'ti-volume-off', color: 'text-zinc-400' }
+    { id: 'off', label: 'Voz Desativada', icon: 'ti-volume-off', color: 'text-zinc-400' },
   ];
 
   const narrationModes = [
     { id: 'texto_audio', label: 'Texto + Áudio', icon: 'ti-layers' },
     { id: 'texto', label: 'Apenas Texto', icon: 'ti-text' },
-    { id: 'audio', label: 'Apenas Áudio', icon: 'ti-music-alt' }
+    { id: 'audio', label: 'Apenas Áudio', icon: 'ti-music-alt' },
   ];
 
   const saveSettings = async (updates: { voicePreference?: string; narrationMode?: string }) => {
@@ -66,7 +68,7 @@ const VoiceSelector: React.FC = () => {
       if (windowBridge.apiFetch) {
         const res = await windowBridge.apiFetch('/auth/settings/tts', {
           method: 'POST',
-          body: JSON.stringify(updates)
+          body: JSON.stringify(updates),
         });
         if (res.success && res.user && windowBridge.auth?.updateSession) {
           windowBridge.auth.updateSession(res.user);
@@ -90,7 +92,11 @@ const VoiceSelector: React.FC = () => {
     setMode(m);
     window.dispatchEvent(new CustomEvent('narrationModeChanged', { detail: m }));
     // No JS legado, isso dispara classes no body
-    document.body.classList.remove('preference-texto', 'preference-texto-audio', 'preference-audio');
+    document.body.classList.remove(
+      'preference-texto',
+      'preference-texto-audio',
+      'preference-audio'
+    );
     document.body.classList.add(`preference-${m.replace('_', '-')}`);
     saveSettings({ narrationMode: m });
   };
@@ -98,34 +104,72 @@ const VoiceSelector: React.FC = () => {
   return (
     <div style={{ position: 'relative', marginRight: '8px' }}>
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={styles.notificationBell}
         title="Configurações de Voz e Leitura"
         style={{ color: voice === 'off' ? '' : '#059669' }}
       >
-        <i className={`ti ${voice === 'off' ? 'ti-volume-off' : 'ti-volume-2'}`} style={{ fontSize: '1.4rem' }} />
+        <i
+          className={`ti ${voice === 'off' ? 'ti-volume-off' : 'ti-volume-2'}`}
+          style={{ fontSize: '1.4rem' }}
+        />
       </button>
 
       {isOpen && (
-        <div style={{
-          position: 'absolute', top: '100%', right: 0, marginTop: '8px',
-          background: '#1a211d', border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: '16px', padding: '12px', zIndex: 100, width: '200px',
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4)'
-        }} onMouseLeave={() => setIsOpen(false)}>
-
+        // O onMouseLeave abaixo só fecha o painel por conveniência do
+        // ponteiro. Não existe gesto de teclado equivalente a "saiu com o
+        // mouse", e os botões de dentro já são alcançáveis por Tab — o painel
+        // nunca depende do hover para operar.
+        // biome-ignore lint/a11y/noStaticElementInteractions: fechar no hover é gesto de ponteiro, sem equivalente de teclado
+        <div
+          style={{
+            position: 'absolute',
+            top: '100%',
+            right: 0,
+            marginTop: '8px',
+            background: '#1a211d',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: '16px',
+            padding: '12px',
+            zIndex: 100,
+            width: '200px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4)',
+          }}
+          onMouseLeave={() => setIsOpen(false)}
+        >
           <div style={{ marginBottom: '12px' }}>
-            <p style={{ fontSize: '10px', color: '#71717a', padding: '0 8px 8px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Voz do Sistema</p>
-            {voices.map(v => (
+            <p
+              style={{
+                fontSize: '10px',
+                color: '#71717a',
+                padding: '0 8px 8px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                fontWeight: 700,
+              }}
+            >
+              Voz do Sistema
+            </p>
+            {voices.map((v) => (
               <button
+                type="button"
                 key={v.id}
                 onClick={() => handleVoiceSelect(v.id)}
                 style={{
-                  width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
-                  padding: '8px', borderRadius: '8px', fontSize: '12px', textAlign: 'left',
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  textAlign: 'left',
                   background: voice === v.id ? 'rgba(5, 150, 105, 0.1)' : 'transparent',
                   color: voice === v.id ? '#059669' : '#a1a1aa',
-                  border: 'none', cursor: 'pointer', transition: 'all 0.2s'
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
                 }}
               >
                 <i className={`ti ${v.icon}`} style={{ fontSize: '1.1rem' }} />
@@ -135,17 +179,37 @@ const VoiceSelector: React.FC = () => {
           </div>
 
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px' }}>
-            <p style={{ fontSize: '10px', color: '#71717a', padding: '0 8px 8px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Modo de Leitura</p>
-            {narrationModes.map(m => (
+            <p
+              style={{
+                fontSize: '10px',
+                color: '#71717a',
+                padding: '0 8px 8px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                fontWeight: 700,
+              }}
+            >
+              Modo de Leitura
+            </p>
+            {narrationModes.map((m) => (
               <button
+                type="button"
                 key={m.id}
                 onClick={() => handleModeSelect(m.id)}
                 style={{
-                  width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
-                  padding: '8px', borderRadius: '8px', fontSize: '12px', textAlign: 'left',
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  textAlign: 'left',
                   background: mode === m.id ? 'rgba(5, 150, 105, 0.1)' : 'transparent',
                   color: mode === m.id ? '#059669' : '#a1a1aa',
-                  border: 'none', cursor: 'pointer', transition: 'all 0.2s'
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
                 }}
               >
                 <i className={`ti ${m.icon}`} style={{ fontSize: '1.1rem' }} />
@@ -180,26 +244,97 @@ const ThemeToggle: React.FC = () => {
 
   return (
     <button
+      type="button"
       className={styles.notificationBell}
       onClick={toggleTheme}
       title={theme === 'light' ? 'Modo Escuro' : 'Modo Claro'}
       aria-label={theme === 'light' ? 'Alternar para Modo Escuro' : 'Alternar para Modo Claro'}
       style={{ color: theme === 'light' ? '#d97706' : '#10b981' }}
     >
-      <i className={`ti ${theme === 'light' ? 'ti-sun' : 'ti-moon'}`} style={{ fontSize: '1.4rem' }} />
+      <i
+        className={`ti ${theme === 'light' ? 'ti-sun' : 'ti-moon'}`}
+        style={{ fontSize: '1.4rem' }}
+      />
     </button>
   );
 };
 
-const Header: React.FC<HeaderProps> = ({ user, notifications, onLogout, onBellClick, onProfileClick }) => {
+/**
+ * Atalho para a tela de conversas, com o selo de mensagens não lidas.
+ *
+ * POR QUE UM <a> E NÃO UMA ROTA DO PORTAL
+ * ---------------------------------------
+ * A conversa em si vive em /html/conversas.html, servida fora deste app. Ela
+ * reusa `js/chat-direto-manager.js` — as 2200 linhas que já resolvem anexo,
+ * áudio, reação, edição e socket. Reimplementar aquilo em React só para manter
+ * o responsável dentro do portal criaria uma segunda implementação do mesmo
+ * chat, e a segunda é sempre a que fica para trás na primeira correção.
+ *
+ * A sessão é a mesma (cookie), então a navegação é direta.
+ *
+ * O selo existe para a pessoa SABER que há algo esperando antes de sair do
+ * portal — sem ele, o atalho seria uma porta sem indicação nenhuma.
+ */
+const ConversasButton: React.FC = () => {
+  const [naoLidas, setNaoLidas] = useState(0);
+
+  useEffect(() => {
+    let ativo = true;
+
+    const buscar = async () => {
+      try {
+        const { total } = await getChatNaoLidas();
+        // O componente pode ter desmontado durante a requisição.
+        if (ativo) setNaoLidas(Number(total) || 0);
+      } catch {
+        // Selo que não carrega não pode derrubar o cabeçalho que o hospeda:
+        // fica no último valor conhecido e tenta de novo no próximo ciclo.
+      }
+    };
+
+    buscar();
+    // Sem socket neste componente: o portal não mantém a conexão do chat. Um
+    // minuto é o suficiente para um selo que só indica "há algo lá".
+    const timer = setInterval(buscar, 60000);
+
+    return () => {
+      ativo = false;
+      clearInterval(timer);
+    };
+  }, []);
+
+  return (
+    <a
+      className={styles.notificationBell}
+      href="/html/conversas.html"
+      aria-label={naoLidas > 0 ? `Conversas — ${naoLidas} mensagens não lidas` : 'Conversas'}
+      title="Conversas"
+    >
+      <Icon name="message-circle" aria-hidden="true" />
+      {naoLidas > 0 && (
+        <span className={styles.notificationBadge} aria-hidden="true">
+          {naoLidas > 9 ? '9+' : naoLidas}
+        </span>
+      )}
+    </a>
+  );
+};
+
+const Header: React.FC<HeaderProps> = ({
+  user,
+  notifications,
+  onLogout,
+  onBellClick,
+  onProfileClick,
+}) => {
   const unreadCount = notifications.filter((n) => !n.lido).length;
   const userPhoto = getPhotoUrl(user.picture);
 
   return (
-    <header className={styles.header} role="banner">
+    <header className={styles.header}>
       <div className={styles.headerContent}>
         {/* Logo */}
-        <div className={styles.logo} aria-label="Escola Jaguari – Portal do Responsável">
+        <div className={styles.logo}>
           <img src={schoolLogo} alt="" aria-hidden="true" />
           <span className={styles.logoText}>Escola Jaguari</span>
           <span className={styles.logoSub}>Portal do Responsável</span>
@@ -212,8 +347,11 @@ const Header: React.FC<HeaderProps> = ({ user, notifications, onLogout, onBellCl
             <VoiceSelector />
             <ThemeToggle />
 
+            <ConversasButton />
+
             {/* Botão Ver Tour Guiado */}
             <button
+              type="button"
               className={styles.notificationBell}
               onClick={() => windowBridge.startTourManual?.()}
               title="Ver Tour Guiado"
@@ -227,12 +365,11 @@ const Header: React.FC<HeaderProps> = ({ user, notifications, onLogout, onBellCl
 
           {/* Notification bell */}
           <button
+            type="button"
             className={styles.notificationBell}
             onClick={onBellClick}
             aria-label={
-              unreadCount > 0
-                ? `${unreadCount} notificações não lidas`
-                : 'Nenhuma notificação nova'
+              unreadCount > 0 ? `${unreadCount} notificações não lidas` : 'Nenhuma notificação nova'
             }
           >
             <Icon
@@ -248,17 +385,24 @@ const Header: React.FC<HeaderProps> = ({ user, notifications, onLogout, onBellCl
           </button>
 
           {/* User profile (clickable to open sidebar) */}
-          <div
+          <button
+            type="button"
             className={styles.userProfile}
             onClick={onProfileClick}
-            style={{ cursor: 'pointer' }}
-            role="button"
             aria-label="Opções do perfil"
             title="Clique para ver as opções do perfil"
           >
             <div className={styles.avatar} aria-hidden="true">
               {userPhoto !== '/img/default-avatar.png' ? (
-                <img src={userPhoto} alt={user.name} loading="lazy" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = '/img/default-avatar.png'; }} />
+                <img
+                  src={userPhoto}
+                  alt={user.name}
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/img/default-avatar.png';
+                  }}
+                />
               ) : (
                 <span>{getInitials(user.name)}</span>
               )}
@@ -268,10 +412,11 @@ const Header: React.FC<HeaderProps> = ({ user, notifications, onLogout, onBellCl
               <span className={styles.userName}>{user.name}</span>
               <span className={styles.userEmail}>{user.email}</span>
             </div>
-          </div>
+          </button>
 
           {/* Logout */}
           <button
+            type="button"
             className={styles.logoutBtn}
             onClick={onLogout}
             aria-label="Sair da conta"
