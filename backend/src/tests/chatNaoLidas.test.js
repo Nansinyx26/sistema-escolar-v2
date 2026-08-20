@@ -128,6 +128,75 @@ describe('conta o que chegou para mim', () => {
     });
 });
 
+describe('aviso de leitura para as próprias abas', () => {
+    /**
+     * Quem lê a conversa num aparelho precisa que o selo zere nos outros. O
+     * evento `chat:lidas` NÃO serve: ele significa "o outro leu as suas
+     * mensagens" e é emitido só para o outro lado.
+     *
+     * O teste espiona `global.io` porque o alvo é justamente PARA QUEM o
+     * evento vai — trocar a sala aqui é o defeito que isto trava, e ele não
+     * apareceria em nenhuma asserção sobre o corpo da resposta.
+     */
+    it('emite chat:conversa-lida para quem leu, e chat:lidas para o outro', async () => {
+        const eu = await professorLogado('avisa.leitor@escola.test');
+        const outro = await professorLogado('avisa.autor@escola.test');
+
+        await enviar(outro, eu.id, 'leia isto');
+
+        const salas = [];
+        const ioOriginal = global.io;
+        global.io = {
+            to(sala) {
+                const registro = { sala, eventos: [] };
+                salas.push(registro);
+                return {
+                    emit(evento, dados) {
+                        registro.eventos.push({ evento, dados });
+                    },
+                };
+            },
+        };
+
+        try {
+            const res = await eu.agent.patch(`/api/chat-direto/lidas/${outro.id}`);
+            expect(res.status).toBe(200);
+        } finally {
+            global.io = ioOriginal;
+        }
+
+        const paraMim = salas.find((s) => s.sala === `user:${eu.id}`);
+        const paraOutro = salas.find((s) => s.sala === `user:${outro.id}`);
+
+        expect(paraMim?.eventos.map((e) => e.evento)).toEqual(['chat:conversa-lida']);
+        expect(paraOutro?.eventos.map((e) => e.evento)).toEqual(['chat:lidas']);
+    });
+
+    it('não avisa ninguém quando não havia nada para ler', async () => {
+        // Sem mensagem pendente o handler sai antes de emitir. Avisar assim
+        // faria as outras abas buscarem o total à toa a cada abertura.
+        const eu = await professorLogado('sem.pendencia@escola.test');
+        const outro = await professorLogado('mudo@escola.test');
+
+        const salas = [];
+        const ioOriginal = global.io;
+        global.io = {
+            to(sala) {
+                salas.push(sala);
+                return { emit() {} };
+            },
+        };
+
+        try {
+            await eu.agent.patch(`/api/chat-direto/lidas/${outro.id}`);
+        } finally {
+            global.io = ioOriginal;
+        }
+
+        expect(salas).toEqual([]);
+    });
+});
+
 describe('isolamento entre contas', () => {
     it('cada pessoa vê só o próprio total', async () => {
         const a = await professorLogado('conta.a@escola.test');

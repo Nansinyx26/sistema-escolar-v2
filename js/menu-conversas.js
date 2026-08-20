@@ -92,6 +92,24 @@
         }
     }
 
+    /**
+     * Som de mensagem nova.
+     *
+     * `js/som-notificacao.js` já sintetiza o som e respeita a preferência
+     * `chatSomAtivo` — a MESMA que o botão de mudo dentro da conversa grava.
+     * Silenciar num lugar silencia nos dois, que é o que a pessoa espera.
+     *
+     * O som só toca quando o chat-direto-manager NÃO está na página. Onde ele
+     * está (dashboard, painel da direção, a própria tela de conversas) o som já
+     * é dele, e tocar aqui também sairia duplicado. Nas telas que só têm o
+     * selo — painel da secretaria, gerenciar-secretaria — não há mais ninguém
+     * para avisar, e sem isto a mensagem chegaria em silêncio absoluto.
+     */
+    function tocarSeNinguemMaisAvisa() {
+        if (window.chatManager) return;
+        window.SomNotificacao?.receber();
+    }
+
     function ligarSocket() {
         if (!window.socket || typeof window.socket.on !== 'function') return false;
 
@@ -101,11 +119,18 @@
             if (!meuId || String(msg?.destinatarioId || '') !== meuId) return;
             total += 1;
             pintar();
+            tocarSeNinguemMaisAvisa();
         });
 
-        // Ler a conversa muda o total de forma que o cliente não sabe calcular
-        // (quantas eram daquele remetente), então relê do servidor.
-        window.socket.on('chat:lidas', buscar);
+        // "Você leu esta conversa", emitido para as MINHAS abas quando qualquer
+        // uma delas abre a conversa. Não dá para descontar no cliente — daqui
+        // não se sabe quantas das não lidas eram daquele remetente — então
+        // relê o total do servidor.
+        //
+        // NÃO é `chat:lidas`: aquele significa "o outro leu as minhas
+        // mensagens" e nem chega para quem leu. Escutá-lo deixava o selo aceso
+        // nas outras abas até a revalidação de 60s.
+        window.socket.on('chat:conversa-lida', buscar);
         return true;
     }
 

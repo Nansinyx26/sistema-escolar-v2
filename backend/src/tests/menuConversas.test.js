@@ -108,6 +108,71 @@ describe('as peças combinam entre si', () => {
     });
 });
 
+describe('som de mensagem recebida', () => {
+    /**
+     * O som já existe em js/som-notificacao.js e respeita a preferência
+     * `chatSomAtivo` — a mesma do botão de mudo de dentro da conversa. O que
+     * este bloco cobra é o ENCAIXE: nas telas onde o chat-direto-manager não
+     * está carregado, ninguém mais avisaria que chegou mensagem.
+     */
+    const SEM_MANAGER = ['html/secretaria/painel.html', 'html/direcao/gerenciar-secretaria.html'];
+
+    it.each(SEM_MANAGER)('%s carrega o sintetizador de som', (arquivo) => {
+        const html = ler(arquivo);
+        // Confirma a premissa: se um dia esta tela passar a carregar o manager,
+        // o teste abaixo perde o sentido e este expect avisa.
+        expect(html).not.toMatch(/<script[^>]+chat-direto-manager\.js/);
+        expect(html).toMatch(/<script[^>]+som-notificacao\.js/);
+    });
+
+    it.each(SEM_MANAGER)('%s carrega o som ANTES de quem o chama', (arquivo) => {
+        const html = ler(arquivo);
+        // `defer` roda na ordem do documento: invertido, o menu-conversas.js
+        // chamaria window.SomNotificacao antes de ele existir.
+        expect(html.indexOf('som-notificacao.js')).toBeLessThan(
+            html.indexOf('<script defer src="../../js/menu-conversas.js')
+        );
+    });
+
+    it('o script não toca som onde o manager já toca', () => {
+        // Nas telas com o chat-direto-manager o som é dele; tocar aqui também
+        // sairia duplicado a cada mensagem.
+        const script = ler('js/menu-conversas.js');
+        expect(script).toContain('window.chatManager');
+        expect(script).toContain('SomNotificacao');
+    });
+});
+
+describe('o selo zera nas outras abas de quem leu', () => {
+    /**
+     * `chat:lidas` significa "o OUTRO leu as suas mensagens" e é emitido só
+     * para o outro lado — quem leu nunca o recebe. Escutá-lo aqui deixava o
+     * selo aceso nas demais abas até a revalidação de 60s, com o produto
+     * apontando mensagem que a pessoa já tinha lido.
+     */
+    it('o script escuta o evento das próprias abas, não o do outro lado', () => {
+        const script = ler('js/menu-conversas.js');
+        expect(script).toContain("'chat:conversa-lida'");
+        expect(script).not.toContain("window.socket.on('chat:lidas'");
+    });
+
+    it('o backend emite esse evento para quem leu', () => {
+        const controller = ler('backend/src/controllers/ChatDiretoController.js');
+        expect(controller).toContain("emit('chat:conversa-lida'");
+        // Para MIM, não para o outro: trocar o destinatário aqui é justamente
+        // o defeito que este par de testes existe para travar.
+        expect(controller).toMatch(/user:\$\{meuId\}`\)\.emit\('chat:conversa-lida'/);
+    });
+
+    it('não reusa chat:lidas, que o manager lê com outro sentido', () => {
+        // O chat-direto-manager trata `chat:lidas` como "marque as MINHAS
+        // bolhas como lidas". Reemiti-lo para quem leu marcaria as erradas.
+        const manager = ler('js/chat-direto-manager.js');
+        expect(manager).toContain("s.on('chat:lidas'");
+        expect(manager).toContain('marcarLidasLocalmente');
+    });
+});
+
 describe('a entrada não é escondida por perfil', () => {
     it('o link do dashboard não usa as classes de restrição da tela', () => {
         const html = ler('html/dashboard.html');

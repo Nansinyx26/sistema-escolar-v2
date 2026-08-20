@@ -492,9 +492,26 @@ exports.marcarConversaComoLida = async (req, res) => {
 
         const listaIds = ids.map((m) => String(m._id));
         if (global.io) {
+            // Para o OUTRO lado: "as suas mensagens foram lidas" — é o que faz
+            // os tiques ficarem azuis na conversa dele.
             global.io.to(`user:${outroUsuarioId}`).emit('chat:lidas', {
                 mensagemIds: listaIds,
                 destinatarioId: meuId,
+            });
+
+            // Para MIM, nas outras abas e dispositivos: "você leu esta conversa".
+            //
+            // Evento com NOME PRÓPRIO de propósito. Reemitir `chat:lidas` para
+            // mim mesmo pareceria mais simples e estaria errado: o
+            // chat-direto-manager lê aquele evento como "o outro leu as MINHAS
+            // mensagens" e marcaria as bolhas erradas como lidas.
+            //
+            // Sem isto, o selo de não lidas do menu (Issue #72) continuava
+            // aceso nas outras abas até a revalidação de 60s — o produto
+            // apontando mensagem que a pessoa já tinha lido.
+            global.io.to(`user:${meuId}`).emit('chat:conversa-lida', {
+                comUsuarioId: String(outroUsuarioId),
+                quantidade: listaIds.length,
             });
         }
 
