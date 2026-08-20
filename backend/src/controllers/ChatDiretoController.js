@@ -1154,3 +1154,44 @@ exports.listarContatos = async (req, res) => {
         res.status(500).json({ success: false, error: 'Não foi possível carregar seus contatos.' });
     }
 };
+
+/**
+ * GET /api/chat-direto/nao-lidas — quantas mensagens esperam por mim.
+ *
+ * POR QUE NÃO REUSAR /contatos (Issue #72)
+ * ----------------------------------------
+ * A lista de contatos já traz `naoLidas` por pessoa, e somar no cliente daria
+ * o mesmo número. Mas o selo do menu aparece em TODA página de TODO perfil, e
+ * `/contatos` consulta quatro coleções (professores, diretores, secretaria e
+ * alunos) para montar a lista. Pagar isso a cada carregamento de página, por
+ * um número, seria trocar uma contagem indexada por uma varredura.
+ *
+ * Aqui é um `countDocuments` sobre `{destinatarioId, lida}` — que é o índice
+ * que a própria conversa já usa.
+ *
+ * O QUE ELE CONTA
+ * ---------------
+ * Mensagens endereçadas a mim e ainda não lidas, ponto. Não filtra por
+ * permissão atual de conversa: se um professor deixou de dar aula para a turma
+ * do meu filho, a mensagem que ele já me mandou continua sendo uma mensagem
+ * que eu recebi e não li. Esconder o selo faria a pessoa nunca descobrir que
+ * havia algo ali — a conversa em si continua acessível pelo histórico.
+ */
+exports.contarNaoLidas = async (req, res) => {
+    try {
+        const meuId = String(req.user?.id || req.user?._id || '');
+        if (!meuId) return res.json({ success: true, data: { total: 0 } });
+
+        const total = await ChatDireto.countDocuments({ destinatarioId: meuId, lida: false });
+
+        res.json({ success: true, data: { total } });
+    } catch (error) {
+        logger.error('[chat] falha ao contar mensagens não lidas', {
+            err: error,
+            action: 'chat.naoLidas',
+        });
+        // Um selo que não carrega não pode derrubar a página que o hospeda: o
+        // chamador trata zero como "nada a mostrar" e a navegação segue.
+        res.status(500).json({ success: false, error: 'Não foi possível contar as mensagens.' });
+    }
+};

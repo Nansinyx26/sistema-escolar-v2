@@ -111,3 +111,36 @@ describe('motion', () => {
         expect(html).not.toContain('@keyframes');
     });
 });
+
+/**
+ * A página existia e ninguém chegava nela.
+ *
+ * Este bloco não testa o chat — testa a DESCOBERTA. `html/conversas.html` foi
+ * entregue sem nenhum link apontando para ela: a tela funcionava e era
+ * inalcançável pela interface, o que na prática é o mesmo que não existir.
+ *
+ * Um teste de asset não pega isso, porque o defeito não está na página e sim
+ * na ausência dela em outro arquivo.
+ */
+describe('a página é alcançável pelo menu', () => {
+    const MENUS = [
+        path.join(RAIZ, 'html', 'direcao', 'index.html'),
+        path.join(RAIZ, 'html', 'direcao', 'gerenciar-secretaria.html'),
+    ];
+
+    it.each(MENUS)('%s tem item de Conversas no menu lateral', (arquivo) => {
+        const markup = fs.readFileSync(arquivo, 'utf8');
+        expect(markup).toMatch(/href="\/html\/conversas\.html"/);
+        expect(markup).toMatch(/data-page="conversas"/);
+    });
+
+    it('o link do menu aponta para a página que existe no disco', () => {
+        const markup = fs.readFileSync(MENUS[0], 'utf8');
+        const alvo = /href="(\/html\/conversas\.html)"/.exec(markup);
+        expect(alvo).not.toBeNull();
+
+        // Caminho absoluto do link resolvido contra a raiz servida por
+        // `express.static` — é assim que o navegador o resolve.
+        expect(fs.existsSync(path.join(RAIZ, alvo[1]))).toBe(true);
+    });
+});
