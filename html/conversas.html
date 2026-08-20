@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Conversas</title>
+    <link rel="icon" type="image/png" href="../favicon/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/variables.css?v=2.0">
+    <link rel="stylesheet" href="../css/base.css?v=2.0">
+    <link rel="stylesheet" href="../css/components-new.css?v=2.0">
+    <link rel="stylesheet" href="../css/responsive-global.css?v=1.2">
+    <!-- Traz .sr-only, usado no rótulo do campo de busca. -->
+    <link rel="stylesheet" href="../css/system-global.css?v=1.0">
+    <link rel="stylesheet" href="../js/libs/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../css/motion.css?v=1.0">
+    <!-- Precisa vir ANTES do <style> abaixo: a página redefine o container das
+         janelas de conversa, e a regra mais específica só vence se for a última. -->
+    <link rel="stylesheet" href="../css/chat-flutuante.css?v=2.0">
+
+    <style>
+        /* ------------------------------------------------------------------
+           Layout desta tela. Todo o motion vem de css/motion.css (tokens de
+           duração/curva, .skeleton e .motion-reveal). Nenhuma animação nova
+           é declarada aqui — ver AGENTS.md §8 e docs/MOTION.md.
+           ------------------------------------------------------------------ */
+        body { margin: 0; overflow: hidden; }
+
+        .conv-layout {
+            display: grid;
+            grid-template-columns: 1fr;
+            height: 100dvh;
+            background: var(--bg-primary, #0f172a);
+        }
+
+        /* ---- Coluna da esquerda: contatos ---- */
+        .conv-sidebar {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(15, 23, 42, 0.7);
+        }
+
+        .conv-topo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 1.1rem 0.75rem;
+        }
+
+        .conv-topo h1 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #fff;
+            margin: 0;
+            flex: 1;
+        }
+
+        .conv-voltar {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            color: #cbd5e1;
+            background: rgba(148, 163, 184, 0.12);
+            text-decoration: none;
+            transition: background var(--motion-fast) var(--motion-ease-standard);
+        }
+        .conv-voltar:hover { background: rgba(148, 163, 184, 0.22); }
+        .conv-voltar:focus-visible { outline: 2px solid #10b981; outline-offset: 2px; }
+
+        .conv-busca-wrap { padding: 0 1.1rem 0.85rem; }
+        .conv-busca {
+            width: 100%;
+            padding: 0.55rem 0.75rem;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 0.85rem;
+            font-family: inherit;
+        }
+        .conv-busca:focus-visible { outline: 2px solid #10b981; outline-offset: 1px; border-color: #10b981; }
+
+        .conv-lista {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 0 0.6rem 1rem;
+            list-style: none;
+            margin: 0;
+        }
+
+        .conv-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            width: 100%;
+            padding: 0.7rem 0.65rem;
+            border: none;
+            border-radius: 12px;
+            background: transparent;
+            color: inherit;
+            text-align: left;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background var(--motion-fast) var(--motion-ease-standard);
+        }
+        .conv-item:hover { background: rgba(148, 163, 184, 0.1); }
+        .conv-item:focus-visible { outline: 2px solid #10b981; outline-offset: -2px; }
+        .conv-item[aria-current="true"] { background: rgba(16, 185, 129, 0.14); }
+
+        .conv-avatar {
+            position: relative;
+            flex-shrink: 0;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(135deg, #10b981, #0ea5e9);
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.9rem;
+            overflow: hidden;
+        }
+        .conv-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Bolinha de presença. A cor é redundante com o texto ao lado
+           ("online" / "visto por último…"): quem não distingue as cores ainda
+           recebe a informação escrita. */
+        .conv-status-dot {
+            position: absolute;
+            right: -1px;
+            bottom: -1px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid #0f172a;
+            background: #64748b;
+        }
+        .conv-status-dot[data-status="online"] { background: #22c55e; }
+        .conv-status-dot[data-status="ausente"] { background: #f59e0b; }
+
+        .conv-texto { flex: 1; min-width: 0; }
+        .conv-nome {
+            display: block;
+            color: #fff;
+            font-weight: 600;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .conv-sub {
+            display: block;
+            color: #94a3b8;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .conv-badge {
+            flex-shrink: 0;
+            min-width: 22px;
+            height: 22px;
+            padding: 0 6px;
+            border-radius: 11px;
+            background: #10b981;
+            color: #fff;
+            font-size: 0.72rem;
+            font-weight: 700;
+            display: grid;
+            place-items: center;
+        }
+
+        .conv-aviso {
+            padding: 2rem 1.2rem;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+        .conv-aviso i { display: block; font-size: 1.8rem; margin-bottom: 0.6rem; opacity: 0.5; }
+
+        /* ---- Esqueleto de carregamento ----
+           Existe para que a lista não pisque de vazio para cheia: sem ele, a
+           tela fica em branco durante a requisição e depois "salta". As linhas
+           imitam a forma do item real (avatar redondo + duas linhas). */
+        .conv-skel { display: flex; align-items: center; gap: 0.75rem; padding: 0.7rem 0.65rem; }
+        .conv-skel-avatar { width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0; }
+        .conv-skel-texto { flex: 1; }
+
+        /* ---- Coluna da direita: a conversa ---- */
+        .conv-painel {
+            display: none;
+            position: relative;
+            min-width: 0;
+            background:
+                radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.06), transparent 45%),
+                var(--bg-primary, #0f172a);
+        }
+
+        .conv-vazio {
+            height: 100%;
+            display: grid;
+            place-content: center;
+            justify-items: center;
+            gap: 0.5rem;
+            padding: 2rem;
+            text-align: center;
+            color: #64748b;
+        }
+        .conv-vazio i { font-size: 3rem; opacity: 0.35; }
+        .conv-vazio p { margin: 0; font-size: 0.9rem; max-width: 34ch; line-height: 1.5; }
+
+        /* ------------------------------------------------------------------
+           Duas colunas só a partir de 769px.
+           Abaixo disso o css/chat-flutuante.css já faz a janela ocupar a tela
+           inteira (@media max-width:768px). Sobrepor aquilo aqui seria brigar
+           com um comportamento que já funciona no celular: no telefone esta
+           página é a lista, e tocar num contato abre a conversa em cima.
+           ------------------------------------------------------------------ */
+        @media (min-width: 769px) {
+            .conv-layout { grid-template-columns: minmax(280px, 360px) 1fr; }
+            .conv-painel { display: block; }
+
+            /* O ChatManager procura #chatWindowsContainer e só cria o dele se
+               não achar (js/chat-direto-manager.js → createContainer). A página
+               fornece esse elemento aqui dentro, e a janela nasce ancorada no
+               painel em vez de flutuar sobre a tela — sem alterar uma linha do
+               manager. */
+            .conv-painel .chat-windows-container {
+                position: absolute;
+                inset: 0;
+                right: auto;
+                bottom: auto;
+                max-width: none;
+                padding: 0;
+                gap: 0;
+            }
+
+            .conv-painel .chat-window {
+                width: 100%;
+                height: 100%;
+                border-radius: 0;
+                border: none;
+                box-shadow: none;
+            }
+
+            /* A janela ancorada não minimiza nem "fecha para o canto": não há
+               canto. Os botões some para não oferecer uma ação sem efeito. */
+            .conv-painel .chat-window .btn-minimize { display: none; }
+        }
+
+        /* Sem o painel visível, a lista ocupa tudo. */
+        @media (max-width: 768px) {
+            .conv-layout { grid-template-columns: 1fr; }
+            .conv-sidebar { border-right: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="conv-layout">
+        <aside class="conv-sidebar">
+            <div class="conv-topo">
+                <a class="conv-voltar" href="dashboard.html" aria-label="Voltar ao painel">
+                    <i class="bi bi-arrow-left" aria-hidden="true"></i>
+                </a>
+                <h1>Conversas</h1>
+            </div>
+
+            <div class="conv-busca-wrap">
+                <label class="sr-only" for="convBusca">Buscar contato</label>
+                <input
+                    type="search"
+                    id="convBusca"
+                    class="conv-busca"
+                    placeholder="Buscar pelo nome…"
+                    autocomplete="off"
+                    disabled
+                >
+            </div>
+
+            <!-- `aria-live` para que o leitor de tela anuncie quando a lista
+                 termina de carregar ou quando a busca não encontra ninguém. -->
+            <ul class="conv-lista motion-stagger" id="convLista" aria-live="polite" aria-busy="true">
+                <li class="conv-skel"><div class="conv-skel-avatar skeleton"></div><div class="conv-skel-texto"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div></div></li>
+                <li class="conv-skel"><div class="conv-skel-avatar skeleton"></div><div class="conv-skel-texto"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div></div></li>
+                <li class="conv-skel"><div class="conv-skel-avatar skeleton"></div><div class="conv-skel-texto"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div></div></li>
+                <li class="conv-skel"><div class="conv-skel-avatar skeleton"></div><div class="conv-skel-texto"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div></div></li>
+                <li class="conv-skel"><div class="conv-skel-avatar skeleton"></div><div class="conv-skel-texto"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div></div></li>
+            </ul>
+        </aside>
+
+        <main class="conv-painel">
+            <div class="conv-vazio" id="convVazio">
+                <i class="bi bi-chat-dots" aria-hidden="true"></i>
+                <p>Escolha um contato à esquerda para abrir a conversa.</p>
+            </div>
+            <!-- O ChatManager monta a janela da conversa aqui dentro. -->
+            <div id="chatWindowsContainer" class="chat-windows-container"></div>
+        </main>
+    </div>
+
+    <script src="../js/api-config.js"></script>
+    <script src="../js/csrf-helper.js"></script>
+    <script defer src="../js/auth.js?v=3"></script>
+    <!-- realtime.js injeta o socket.io e publica window.socket; o chat depende
+         dele para presença, "digitando…" e mensagem em tempo real. -->
+    <script defer src="../js/realtime.js"></script>
+    <script defer src="../js/som-notificacao.js?v=1.0"></script>
+    <script defer src="../js/chat-direto-manager.js?v=2.0"></script>
+    <script defer src="../js/conversas.js?v=1.0"></script>
+    <script defer src="../js/observability.js"></script>
+    <script defer src="../js/motion.js"></script>
+</body>
+</html>
