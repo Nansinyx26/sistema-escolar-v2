@@ -36,6 +36,17 @@
      */
     const INTERVALO_REVALIDACAO = 60000;
 
+    /**
+     * Por quanto tempo o último total conhecido serve para pintar a tela antes
+     * da resposta do servidor.
+     *
+     * Cinco minutos limita o quanto um número velho pode ficar na tela se a
+     * rede demorar. Passado isso o selo nasce escondido, que é a leitura menos
+     * errada: não mostrar nada é melhor do que afirmar uma pendência que talvez
+     * já não exista.
+     */
+    const VALIDADE_DO_CACHE = 5 * 60 * 1000;
+
     let total = 0;
 
     function alvos() {
@@ -72,6 +83,52 @@
         }
     }
 
+    /**
+     * Chave do cache, presa ao dono da sessão.
+     *
+     * Sem o id no nome, sair de uma conta e entrar em outra no mesmo navegador
+     * mostraria à segunda pessoa o número da primeira. É pouca informação, mas
+     * é informação de outra pessoa — e o conserto custa uma interpolação.
+     */
+    function chaveDoCache() {
+        const meuId = obterMeuId();
+        return meuId ? `conversasNaoLidas:${meuId}` : '';
+    }
+
+    /**
+     * Pinta o último total conhecido antes de a resposta chegar.
+     *
+     * Sem isto o selo aparecia do nada uns instantes depois da página montar,
+     * empurrando o texto do item de menu ao lado — a cada navegação entre
+     * telas. O valor é reconciliado pelo `buscar()` que roda logo em seguida.
+     */
+    function pintarDoCache() {
+        const chave = chaveDoCache();
+        if (!chave) return;
+        try {
+            const bruto = sessionStorage.getItem(chave);
+            if (!bruto) return;
+
+            const { valor, em } = JSON.parse(bruto);
+            if (!em || Date.now() - em > VALIDADE_DO_CACHE) return;
+
+            total = Number(valor) || 0;
+            pintar();
+        } catch (_e) {
+            // Storage indisponível ou conteúdo corrompido: segue sem cache.
+        }
+    }
+
+    function guardarNoCache() {
+        const chave = chaveDoCache();
+        if (!chave) return;
+        try {
+            sessionStorage.setItem(chave, JSON.stringify({ valor: total, em: Date.now() }));
+        } catch (_e) {
+            // Cota estourada ou storage desligado: o selo funciona sem cache.
+        }
+    }
+
     async function buscar() {
         try {
             const res = await fetch(`${API()}/chat-direto/nao-lidas`, {
@@ -86,6 +143,7 @@
             const corpo = await res.json();
             total = Number(corpo?.data?.total) || 0;
             pintar();
+            guardarNoCache();
         } catch (_erro) {
             // Falha de rede não pode derrubar a barra lateral que hospeda o
             // selo. Fica com o último valor conhecido.
@@ -119,6 +177,7 @@
             if (!meuId || String(msg?.destinatarioId || '') !== meuId) return;
             total += 1;
             pintar();
+            guardarNoCache();
             tocarSeNinguemMaisAvisa();
         });
 
@@ -148,6 +207,7 @@
     function iniciar() {
         if (!alvos().length) return; // página sem entrada de Conversas
 
+        pintarDoCache();
         buscar();
         setInterval(buscar, INTERVALO_REVALIDACAO);
 

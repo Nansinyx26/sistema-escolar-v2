@@ -173,6 +173,47 @@ describe('o selo zera nas outras abas de quem leu', () => {
     });
 });
 
+describe('o selo não pisca a cada navegação', () => {
+    /**
+     * Sem cache, o selo aparecia do nada uns instantes depois de a página
+     * montar — empurrando o texto do item ao lado — a cada troca de tela.
+     * O último total conhecido pinta primeiro e o fetch reconcilia.
+     */
+    const script = () => ler('js/menu-conversas.js');
+
+    it('pinta o último total antes de consultar o servidor', () => {
+        const corpo = script();
+        expect(corpo).toContain('pintarDoCache');
+        // A ordem é o que remove a piscada: buscar primeiro anularia o ganho.
+        expect(corpo.indexOf('pintarDoCache();')).toBeLessThan(corpo.indexOf('setInterval(buscar'));
+    });
+
+    it('a chave do cache é presa ao dono da sessão', () => {
+        // Sem o id no nome, sair de uma conta e entrar em outra no mesmo
+        // navegador mostraria à segunda pessoa o número da primeira.
+        expect(script()).toMatch(/conversasNaoLidas:\$\{meuId\}/);
+    });
+
+    it('descarta cache velho em vez de afirmar pendência vencida', () => {
+        // Número velho na tela é pior do que nenhum: ele afirma uma pendência
+        // que talvez já não exista.
+        const corpo = script();
+        expect(corpo).toContain('VALIDADE_DO_CACHE');
+        expect(corpo).toMatch(/Date\.now\(\) - em > VALIDADE_DO_CACHE/);
+    });
+
+    it('sobrevive a storage indisponível', () => {
+        // Navegador com storage desligado (ou cota estourada) não pode derrubar
+        // a barra lateral que hospeda o selo.
+        const corpo = script();
+        const trechos = corpo.split('sessionStorage');
+        // Toda leitura/escrita mora dentro de um try.
+        expect(trechos.length).toBeGreaterThan(1);
+        expect(corpo).toMatch(/try \{[\s\S]*?sessionStorage\.getItem/);
+        expect(corpo).toMatch(/try \{[\s\S]*?sessionStorage\.setItem/);
+    });
+});
+
 describe('a entrada não é escondida por perfil', () => {
     it('o link do dashboard não usa as classes de restrição da tela', () => {
         const html = ler('html/dashboard.html');
