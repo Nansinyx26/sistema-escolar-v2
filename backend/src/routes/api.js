@@ -338,6 +338,10 @@ router.get(
 // Quem esta pessoa pode alcançar. `filtrarPorEscola` é obrigatório: sem
 // `req.escolaId` o handler devolve lista vazia em vez de vazar outras escolas.
 router.get('/chat-direto/contatos', authJWT, filtrarPorEscola, ChatDiretoController.listarContatos);
+// Total de nao lidas para o selo do menu. Sem `filtrarPorEscola`: a contagem e
+// por destinatario, e o id da sessao ja e o recorte — nenhuma outra escola
+// consegue enderecar mensagem para mim.
+router.get('/chat-direto/nao-lidas', authJWT, ChatDiretoController.contarNaoLidas);
 
 // Anexos/áudios do chat: bucket próprio de mimetypes (Word, Excel, ZIP, vídeo,
 // audio/webm) e metadata com os dois lados da conversa — o download reusa o

@@ -104,6 +104,10 @@
                 <i class="bi bi-grid-1x2-fill"></i>
                 <span>Portal de Direção</span>
             </a>
+            <a href="/html/conversas.html" class="sidebar-item" data-page="conversas" data-conversas-badge>
+                <i class="bi bi-chat-dots-fill"></i>
+                <span>Conversas</span>
+            </a>
             <a href="/direcao/direcao-notificacoes.html" class="sidebar-item" data-page="notificacoes">
                 <i class="bi bi-megaphone-fill"></i>
                 <span>Enviar Avisos</span>
@@ -366,6 +370,7 @@
     <script src="../../direcao/direcao.js"></script>
     <!-- Sons de enviar/receber mensagem e de aviso do mural, usados tanto pelo
          chat quanto pelo realtime.js. Sem defer porque chat-direto-manager.js
+    <script defer src="../../js/menu-conversas.js?v=1.0"></script>
          abaixo também roda no parse. -->
     <script src="../../js/som-notificacao.js?v=1.0"></script>
     <!-- realtime.js cria o window.socket. Sem ele o chat do painel da Direção

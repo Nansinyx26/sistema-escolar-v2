@@ -284,10 +284,29 @@
         renderizar();
     }
 
+    /**
+     * "Você leu esta conversa" — emitido para todas as MINHAS abas quando
+     * qualquer uma delas abre a conversa.
+     *
+     * Sem isto, ler numa aba deixava o contato marcado como pendente nas
+     * outras: `abrir()` só zera na aba que abriu. O evento traz o id do outro
+     * lado, então dá para zerar exatamente aquele contato sem ir ao servidor.
+     *
+     * NÃO é `chat:lidas`: aquele significa "o outro leu as minhas mensagens" e
+     * nem chega para quem leu.
+     */
+    function aoLerConversa(evento) {
+        const contato = contatos.find((c) => c.id === String(evento?.comUsuarioId || ''));
+        if (!contato || !contato.naoLidas) return;
+        contato.naoLidas = 0;
+        renderizar();
+    }
+
     function ligarSocket() {
         if (!window.socket || typeof window.socket.on !== 'function') return false;
         window.socket.on('chat:mensagem', aoChegarMensagem);
         window.socket.on('presence:professor', aoMudarPresenca);
+        window.socket.on('chat:conversa-lida', aoLerConversa);
         return true;
     }
 

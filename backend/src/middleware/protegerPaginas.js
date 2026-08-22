@@ -78,6 +78,26 @@ const AREAS = {
     // Espelha authorize('secretaria', 'diretor', 'admin') em routes/secretaria.js
     '/html/secretaria': { perfis: ['admin', 'diretor', 'secretaria'] },
     '/html/direcao': { perfis: ['admin', 'diretor'] },
+
+    // ── Conversas ────────────────────────────────────────────────────────
+    // Chave de ARQUIVO, não de diretório: `dentroDe()` casa por igualdade
+    // exata, e a tela vive solta em /html porque conversar não pertence a
+    // nenhuma área. Colocá-la dentro de /html/direcao a fecharia para
+    // professor, secretaria e responsável — que são justamente quem mais
+    // usa o chat.
+    //
+    // A lista espelha `MATRIZ_CONVERSA` do ChatDiretoController. Hoje ela
+    // cobre TODOS os perfis existentes, então na prática este gate significa
+    // "precisa estar autenticado". Enumerar mesmo assim, em vez de deixar a
+    // tela pública, é o que garante que um perfil novo sem direito a chat não
+    // ganhe a página de graça — teria de ser adicionado aqui de propósito.
+    //
+    // A proteção real do conteúdo continua na API — a página é só o shell.
+    // O que este gate resolve é o anônimo cair no login em vez de encarar uma
+    // interface que nunca vai carregar. Ver Issue #72.
+    '/html/conversas.html': {
+        perfis: ['admin', 'diretor', 'secretaria', 'professor', 'responsavel'],
+    },
     // `codigos-secretos.html` JÁ FOI admin-only aqui, por uma exceção baseada em
     // premissa errada: o comentário citava `routes/escolas.js → authorize('admin')`,
     // que é o código de cadastro de DOCENTE. A página é "Alunos — Códigos

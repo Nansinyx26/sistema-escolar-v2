@@ -111,3 +111,14 @@ describe('motion', () => {
         expect(html).not.toContain('@keyframes');
     });
 });
+
+/**
+ * A página existia e ninguém chegava nela.
+ *
+ * Este bloco não testa o chat — testa a DESCOBERTA. `html/conversas.html` foi
+ * entregue sem nenhum link apontando para ela: a tela funcionava e era
+ * inalcançável pela interface, o que na prática é o mesmo que não existir.
+ *
+ * Um teste de asset não pega isso, porque o defeito não está na página e sim
+ * na ausência dela em outro arquivo.
+ */
