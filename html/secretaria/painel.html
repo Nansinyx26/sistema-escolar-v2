@@ -196,6 +196,14 @@
                     <div><h2>Acesso Rápido</h2><p>Suas principais ações do dia a dia</p></div>
                 </div>
                 <div class="sec-quick-grid">
+                    <!-- Esta tela usa cartoes, nao barra lateral. O selo
+                         encaixa igual: menu-conversas.js procura o atributo,
+                         nao a marcacao ao redor. -->
+                    <a href="/html/conversas.html" class="sec-quick-card" data-conversas-badge>
+                        <div class="sec-quick-icon" style="background: rgba(14, 165, 233, 0.15); color: #0ea5e9;"><i class="bi bi-chat-dots-fill"></i></div>
+                        <h3>Conversas</h3>
+                        <p>Falar com professores, direcao e responsaveis</p>
+                    </a>
                     <a href="matriculas.html" class="sec-quick-card">
                         <div class="sec-quick-icon" style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6;"><i class="bi bi-card-checklist"></i></div>
                         <h3>Nova Matrícula</h3>
@@ -357,5 +365,10 @@
     <script src="../../js/libs/lucide-init.js"></script>
     <script defer src="../../js/observability.js"></script>
     <script defer src="../../js/motion.js"></script>
+    <!-- Sintetiza o som de mensagem recebida. Precisa vir antes do
+         menu-conversas.js, que e quem o chama nesta tela: aqui nao ha
+         chat-direto-manager para avisar que chegou algo. -->
+    <script defer src="../../js/som-notificacao.js?v=1.0"></script>
+    <script defer src="../../js/menu-conversas.js?v=1.0"></script>
 </body>
 </html>

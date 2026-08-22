@@ -298,3 +298,50 @@ describe('Assets das áreas restritas', () => {
         expect(res.status).toBe(200);
     });
 });
+
+/**
+ * Tela de conversas (Issue #72).
+ *
+ * Ela é a única entrada do gate que aponta para um ARQUIVO e não para um
+ * diretório: conversar não pertence a nenhuma área, e a tela vive solta em
+ * /html justamente para alcançar professor, secretaria e responsável.
+ *
+ * O gate aqui não protege conteúdo — a página é só o shell, e quem guarda a
+ * mensagem é a API. Ele existe para o anônimo cair no login em vez de encarar
+ * uma interface que nunca vai carregar.
+ */
+describe('Tela de conversas', () => {
+    it('visitante anonimo vai para o login', async () => {
+        const res = await request(app).get('/html/conversas.html');
+        expect(res.status).toBe(302);
+        expect(res.headers.location).toMatch(/login/);
+    });
+
+    // A lista espelha MATRIZ_CONVERSA: são os perfis que têm com quem falar.
+    it.each(['admin', 'diretor', 'secretaria', 'professor', 'responsavel'])(
+        '%s abre a tela de conversas',
+        async (perfil) => {
+            const cookies = await sessaoDe(perfil, `${perfil}_conv_gate@escola.test`);
+            const res = await request(app).get('/html/conversas.html').set('Cookie', cookies);
+            expect(res.status).toBe(200);
+        }
+    );
+
+    // Não há caso de perfil recusado porque não existe perfil fora da lista:
+    // o enum de `Usuario` tem exatamente estes cinco. O caso abaixo é o que
+    // guarda isso — se alguém acrescentar um perfil ao model sem decidir
+    // conscientemente sobre o chat, este teste quebra e força a decisão.
+    it('a lista do gate cobre todos os perfis do model', () => {
+        const Usuario = require('../models/Usuario');
+        const doModel = Usuario.schema.path('perfil').enumValues.slice().sort();
+        const { AREAS } = require('../middleware/protegerPaginas');
+        const doGate = AREAS['/html/conversas.html'].perfis.slice().sort();
+        expect(doGate).toEqual(doModel);
+    });
+
+    // A chave é de arquivo: não pode virar prefixo e engolir vizinhos.
+    it('o gate do arquivo nao alcanca outras paginas de /html', async () => {
+        const res = await request(app).get('/html/login.html');
+        expect(res.status).toBe(200);
+    });
+});

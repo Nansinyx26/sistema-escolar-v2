@@ -2,6 +2,19 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 const ChatDireto = require('../models/ChatDireto');
 const Usuario = require('../models/Usuario');
+const Professor = require('../models/Professor');
+const Diretor = require('../models/Diretor');
+const Secretaria = require('../models/Secretaria');
+const {
+    turmasDoProfessor,
+    turmasDosFilhos,
+    compartilhamTurma,
+    emailsDeResponsaveisDasTurmas,
+    emailsDeResponsaveisDaEscola,
+    idsDeProfessoresDasTurmas,
+} = require('../services/vinculoTurmas');
+const { formatarPresenca } = require('../utils/formatarPresenca');
+const escapeRegex = require('../utils/escapeRegex');
 const logger = require('../utils/logger');
 const NotificationService = require('../services/NotificationService');
 const { EXT_POR_MIME } = require('../middleware/uploadChat');
@@ -29,8 +42,13 @@ async function validarAnexo(bruto, remetenteId) {
         throw new Error('Anexo inválido.');
     }
 
-    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'uploads' });
-    const docs = await bucket.find({ _id: new mongoose.Types.ObjectId(gridfsId) }).limit(1).toArray();
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+        bucketName: 'uploads',
+    });
+    const docs = await bucket
+        .find({ _id: new mongoose.Types.ObjectId(gridfsId) })
+        .limit(1)
+        .toArray();
     const arquivo = docs[0];
 
     const meta = arquivo && arquivo.metadata ? arquivo.metadata : {};
@@ -44,7 +62,7 @@ async function validarAnexo(bruto, remetenteId) {
         url: `/api/chat-direto/anexo/${gridfsId}`,
         nome: String(meta.nomeOriginal || arquivo.filename || 'arquivo').slice(0, 255),
         tipo: arquivo.contentType || 'application/octet-stream',
-        tamanho: arquivo.length || 0
+        tamanho: arquivo.length || 0,
     };
 }
 
@@ -57,10 +75,12 @@ async function liberarAnexoPara(anexo, novoUsuarioId) {
     const gridfsId = anexo && anexo.gridfsId ? String(anexo.gridfsId) : '';
     if (!mongoose.Types.ObjectId.isValid(gridfsId)) return;
 
-    await mongoose.connection.db.collection('uploads.files').updateOne(
-        { _id: new mongoose.Types.ObjectId(gridfsId), 'metadata.type': 'chat_anexo' },
-        { $addToSet: { 'metadata.compartilhadoCom': String(novoUsuarioId) } }
-    );
+    await mongoose.connection.db
+        .collection('uploads.files')
+        .updateOne(
+            { _id: new mongoose.Types.ObjectId(gridfsId), 'metadata.type': 'chat_anexo' },
+            { $addToSet: { 'metadata.compartilhadoCom': String(novoUsuarioId) } }
+        );
 }
 
 /** Mesma validação para áudio, preservando só a duração informada. */
@@ -71,7 +91,7 @@ async function validarAudio(bruto, remetenteId) {
     return {
         url: validado.url,
         gridfsId: validado.gridfsId,
-        duracao: Number.isFinite(duracao) && duracao >= 0 ? Math.min(duracao, 60 * 60) : 0
+        duracao: Number.isFinite(duracao) && duracao >= 0 ? Math.min(duracao, 60 * 60) : 0,
     };
 }
 
@@ -99,7 +119,7 @@ const MATRIZ_CONVERSA = {
     secretaria: ['secretaria', 'responsavel', 'professor', 'diretor'],
     // Responsável não inicia nem recebe conversa de outro responsável: a escola
     // é sempre a intermediária entre duas famílias.
-    responsavel: ['professor', 'diretor', 'secretaria']
+    responsavel: ['professor', 'diretor', 'secretaria'],
 };
 
 /** true se o par de perfis está na matriz, em qualquer direção. */
@@ -112,18 +132,68 @@ function paresPermitidos(perfilA, perfilB) {
 }
 
 /**
+ * Confere o vínculo REAL entre um professor e um responsável (Issue #68).
+ *
+ * `paresPermitidos` autoriza a COMBINAÇÃO de perfis; esta função responde a
+ * pergunta que faltava: essas duas pessoas específicas têm algo a ver uma com a
+ * outra? Sem ela, o professor do 1º ano conversa com o responsável de um aluno
+ * do 9º — os dois são "professor" e "responsável" da mesma escola, e a matriz
+ * sozinha não vê diferença.
+ *
+ * Só se aplica ao par professor↔responsável. Diretor e secretaria falam com
+ * qualquer responsável da escola por definição do papel.
+ *
+ * @returns {Promise<{ok: boolean, status?: number, error?: string}>}
+ */
+async function vinculoDeTurmaOk(remetente, perfilRemetente, destinatario, perfilDestino) {
+    const ehParProfessorResponsavel =
+        (perfilRemetente === 'professor' && perfilDestino === 'responsavel') ||
+        (perfilRemetente === 'responsavel' && perfilDestino === 'professor');
+
+    if (!ehParProfessorResponsavel) return { ok: true };
+
+    const professor = perfilRemetente === 'professor' ? remetente : destinatario;
+    const responsavel = perfilRemetente === 'responsavel' ? remetente : destinatario;
+    const escolaId = remetente.escolaId || destinatario.escolaId;
+
+    const [turmasProf, turmasResp] = await Promise.all([
+        turmasDoProfessor(professor._id || professor.id),
+        turmasDosFilhos(responsavel.email, escolaId),
+    ]);
+
+    if (compartilhamTurma(turmasProf, turmasResp)) return { ok: true };
+
+    // Mensagem deliberadamente igual para os dois sentidos e sem detalhe: dizer
+    // "esse responsável não tem filho na sua turma" confirmaria a existência do
+    // vínculo (ou a falta dele) para quem está sondando a lista de alunos.
+    return {
+        ok: false,
+        status: 403,
+        error: 'Professores e responsáveis só conversam quando compartilham uma turma.',
+    };
+}
+
+/**
  * Verifica se dois usuários podem trocar mensagens diretas.
  *
  * Antes, `enviarMensagem` aceitava qualquer destinatarioId — sem validar
  * vínculo, perfil ou escola —, então qualquer conta autenticada mandava
  * mensagem para qualquer outra da rede inteira.
  *
- * Duas barreiras, nesta ordem: mesma escola (multi-tenant) e par de perfis
- * presente na MATRIZ_CONVERSA.
+ * TRÊS barreiras, nesta ordem — da mais barata para a mais cara:
+ *   1. mesma escola (multi-tenant);
+ *   2. par de perfis presente na MATRIZ_CONVERSA;
+ *   3. para professor↔responsável, turma em comum de verdade (Issue #68).
+ *
+ * A terceira nasceu porque as duas primeiras juntas ainda liberavam o professor
+ * do 1º ano para o responsável de um aluno do 9º: os dois passam no perfil e na
+ * escola sem terem nada a ver um com o outro.
  */
 async function podeConversar(remetente, destinatarioId) {
     const destinatario = await Usuario.findById(String(destinatarioId))
-        .select('perfil escolaId ativo')
+        // `email` entra por causa do vínculo fino: é por ele que se acha os
+        // alunos de um responsável (ver services/vinculoTurmas.js).
+        .select('perfil escolaId ativo email')
         .lean();
 
     if (!destinatario || destinatario.ativo === false) {
@@ -143,11 +213,18 @@ async function podeConversar(remetente, destinatarioId) {
 
     if (!paresPermitidos(perfilRemetente, perfilDestino)) {
         // Mensagem específica para o caso de longe mais comum, genérica para o resto.
-        const erro = (perfilRemetente === 'responsavel' && perfilDestino === 'responsavel')
-            ? 'Responsáveis não conversam entre si. Fale com a equipe escolar.'
-            : 'Este tipo de conversa não é permitido.';
+        const erro =
+            perfilRemetente === 'responsavel' && perfilDestino === 'responsavel'
+                ? 'Responsáveis não conversam entre si. Fale com a equipe escolar.'
+                : 'Este tipo de conversa não é permitido.';
         return { ok: false, status: 403, error: erro };
     }
+
+    // Perfis compatíveis não bastam: professor↔responsável ainda precisa de
+    // turma em comum. Fica DEPOIS da matriz de propósito — é a checagem cara
+    // (duas consultas), e só faz sentido para um par que já passou no barato.
+    const vinculo = await vinculoDeTurmaOk(remetente, perfilRemetente, destinatario, perfilDestino);
+    if (!vinculo.ok) return vinculo;
 
     return { ok: true, destinatario };
 }
@@ -155,8 +232,8 @@ async function podeConversar(remetente, destinatarioId) {
 // Janelas de tempo para mexer numa mensagem já entregue. Ambas contam a partir
 // de `createdAt` e são verificadas NO SERVIDOR — esconder o botão no cliente
 // não impede um POST direto.
-const JANELA_EDICAO_MS = 15 * 60 * 1000;        // 15 minutos
-const JANELA_APAGAR_TODOS_MS = 60 * 60 * 1000;  // 1 hora
+const JANELA_EDICAO_MS = 15 * 60 * 1000; // 15 minutos
+const JANELA_APAGAR_TODOS_MS = 60 * 60 * 1000; // 1 hora
 
 /** true se `criadaEm` já passou do prazo. Data ausente conta como fora. */
 function foraDaJanela(criadaEm, janelaMs) {
@@ -168,7 +245,9 @@ function foraDaJanela(criadaEm, janelaMs) {
 
 /** Prévia curta do que chegou — texto, ou o tipo do anexo quando não há texto. */
 function previaDaMensagem({ mensagem, anexo, audio }) {
-    const texto = String(mensagem || '').replace(/\s+/g, ' ').trim();
+    const texto = String(mensagem || '')
+        .replace(/\s+/g, ' ')
+        .trim();
     if (texto) return texto.length > 120 ? `${texto.slice(0, 120).trimEnd()}…` : texto;
     if (audio) return '🎤 Mensagem de voz';
     if (anexo) return anexo.nome ? `📎 ${anexo.nome}` : '📎 Anexo';
@@ -186,14 +265,21 @@ function previaDaMensagem({ mensagem, anexo, audio }) {
  *
  * Nunca lança: é chamada sem await e uma falha aqui não pode afetar o envio.
  */
-function notificarNoCelular({ destinatarioId, remetenteId, remetenteNome, mensagem, anexo, audio }) {
+function notificarNoCelular({
+    destinatarioId,
+    remetenteId,
+    remetenteNome,
+    mensagem,
+    anexo,
+    audio,
+}) {
     NotificationService.pushParaUsuario(destinatarioId, {
         title: remetenteNome,
         body: previaDaMensagem({ mensagem, anexo, audio }),
         // Abre direto na conversa de quem mandou (ver abrirConversaDaUrl em
         // js/chat-direto-manager.js), não num dashboard genérico.
         url: `/html/dashboard.html?chat=${encodeURIComponent(remetenteId)}`,
-        tag: `chat-${remetenteId}`
+        tag: `chat-${remetenteId}`,
     }).catch((err) => {
         logger.warn(`[ChatDireto] Push não entregue a ${destinatarioId}: ${err.message}`);
     });
@@ -201,11 +287,23 @@ function notificarNoCelular({ destinatarioId, remetenteId, remetenteNome, mensag
 
 exports.enviarMensagem = async (req, res) => {
     try {
-        const { destinatarioId, mensagem, anexo, audio, respostaParaId, turmaId, alunoId, contexto } = req.body;
+        const {
+            destinatarioId,
+            mensagem,
+            anexo,
+            audio,
+            respostaParaId,
+            turmaId,
+            alunoId,
+            contexto,
+        } = req.body;
         const remetenteId = String(req.user.id || req.user._id || '');
 
         if (!destinatarioId || (!mensagem && !anexo && !audio)) {
-            return res.status(400).json({ success: false, error: 'Destinatário e conteúdo (mensagem, anexo ou áudio) são obrigatórios.' });
+            return res.status(400).json({
+                success: false,
+                error: 'Destinatário e conteúdo (mensagem, anexo ou áudio) são obrigatórios.',
+            });
         }
 
         const permissao = await podeConversar(
@@ -237,7 +335,7 @@ exports.enviarMensagem = async (req, res) => {
             anexo: anexoValidado || undefined,
             audio: audioValidado || undefined,
             respostaParaId: respostaParaId || undefined,
-            escolaId: req.escolaId ? String(req.escolaId) : undefined
+            escolaId: req.escolaId ? String(req.escolaId) : undefined,
         });
 
         // Emite via Socket.IO para o destinatário e para as outras abas do
@@ -257,7 +355,7 @@ exports.enviarMensagem = async (req, res) => {
             remetenteNome: req.user.nome || 'Nova mensagem',
             mensagem: novaMensagem.mensagem,
             anexo: anexoValidado,
-            audio: audioValidado
+            audio: audioValidado,
         });
 
         res.json({ success: true, data: novaMensagem });
@@ -276,12 +374,14 @@ exports.getHistorico = async (req, res) => {
         // `$and` em vez de sobrescrever `$or`: antes o filtro de busca
         // substituía a cláusula da conversa e o `$or` original se perdia — com
         // `$and` o par de participantes é sempre respeitado.
-        const condicoes = [{
-            $or: [
-                { remetenteId: meuId, destinatarioId: String(outroUsuarioId) },
-                { remetenteId: String(outroUsuarioId), destinatarioId: meuId }
-            ]
-        }];
+        const condicoes = [
+            {
+                $or: [
+                    { remetenteId: meuId, destinatarioId: String(outroUsuarioId) },
+                    { remetenteId: String(outroUsuarioId), destinatarioId: meuId },
+                ],
+            },
+        ];
 
         // Moderação: o que não foi aprovado não chega ao DESTINATÁRIO por aqui.
         // Sem esta cláusula todo o resto da moderação é decorativo — bastava
@@ -301,8 +401,8 @@ exports.getHistorico = async (req, res) => {
             $or: [
                 { 'moderacao.status': 'aprovada' },
                 { 'moderacao.status': { $exists: false } },
-                { remetenteId: meuId }
-            ]
+                { remetenteId: meuId },
+            ],
         });
 
         const query = { $and: condicoes, apagadaPara: { $ne: meuId } };
@@ -327,7 +427,9 @@ exports.getHistorico = async (req, res) => {
         if (Object.keys(createdAt).length > 0) query.createdAt = createdAt;
 
         if (search && String(search).trim()) {
-            const termo = String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const termo = String(search)
+                .trim()
+                .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const regex = new RegExp(termo, 'i');
             condicoes.push({ $or: [{ mensagem: regex }, { 'anexo.nome': regex }] });
         }
@@ -358,7 +460,7 @@ exports.getHistorico = async (req, res) => {
             success: true,
             data: mensagens,
             hasMore,
-            cursor: mensagens.length > 0 ? mensagens[0].createdAt : null
+            cursor: mensagens.length > 0 ? mensagens[0].createdAt : null,
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -378,7 +480,7 @@ exports.marcarConversaComoLida = async (req, res) => {
         const filtro = {
             remetenteId: String(outroUsuarioId),
             destinatarioId: meuId,
-            lida: { $ne: true }
+            lida: { $ne: true },
         };
 
         const ids = await ChatDireto.find(filtro).select('_id').lean();
@@ -390,9 +492,26 @@ exports.marcarConversaComoLida = async (req, res) => {
 
         const listaIds = ids.map((m) => String(m._id));
         if (global.io) {
+            // Para o OUTRO lado: "as suas mensagens foram lidas" — é o que faz
+            // os tiques ficarem azuis na conversa dele.
             global.io.to(`user:${outroUsuarioId}`).emit('chat:lidas', {
                 mensagemIds: listaIds,
-                destinatarioId: meuId
+                destinatarioId: meuId,
+            });
+
+            // Para MIM, nas outras abas e dispositivos: "você leu esta conversa".
+            //
+            // Evento com NOME PRÓPRIO de propósito. Reemitir `chat:lidas` para
+            // mim mesmo pareceria mais simples e estaria errado: o
+            // chat-direto-manager lê aquele evento como "o outro leu as MINHAS
+            // mensagens" e marcaria as bolhas erradas como lidas.
+            //
+            // Sem isto, o selo de não lidas do menu (Issue #72) continuava
+            // aceso nas outras abas até a revalidação de 60s — o produto
+            // apontando mensagem que a pessoa já tinha lido.
+            global.io.to(`user:${meuId}`).emit('chat:conversa-lida', {
+                comUsuarioId: String(outroUsuarioId),
+                quantidade: listaIds.length,
             });
         }
 
@@ -420,7 +539,7 @@ exports.marcarComoLida = async (req, res) => {
         if (global.io) {
             global.io.to(`user:${atualizada.remetenteId}`).emit('chat:lida', {
                 mensagemId: atualizada._id,
-                destinatarioId: meuId
+                destinatarioId: meuId,
             });
         }
 
@@ -437,24 +556,33 @@ exports.editarMensagem = async (req, res) => {
         const meuId = String(req.user.id || req.user._id || '');
 
         if (!novaMensagem || !novaMensagem.trim()) {
-            return res.status(400).json({ success: false, error: 'O novo conteúdo da mensagem é obrigatório.' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'O novo conteúdo da mensagem é obrigatório.' });
         }
 
         // Janela de edição: passado o prazo, a mensagem é registro da conversa.
         // Sem isso, o autor reescrevia uma mensagem de meses atrás e o outro
         // lado via o texto novo como se sempre tivesse sido aquele.
         const original = await ChatDireto.findOne({
-            _id: String(mensagemId), remetenteId: meuId, apagadaParaTodos: { $ne: true }
-        }).select('createdAt mensagem').lean();
+            _id: String(mensagemId),
+            remetenteId: meuId,
+            apagadaParaTodos: { $ne: true },
+        })
+            .select('createdAt mensagem')
+            .lean();
         const textoAnterior = original ? original.mensagem : '';
 
         if (!original) {
-            return res.status(404).json({ success: false, error: 'Mensagem não encontrada ou sem permissão para editar.' });
+            return res.status(404).json({
+                success: false,
+                error: 'Mensagem não encontrada ou sem permissão para editar.',
+            });
         }
         if (foraDaJanela(original.createdAt, JANELA_EDICAO_MS)) {
             return res.status(403).json({
                 success: false,
-                error: `Mensagens só podem ser editadas nos primeiros ${JANELA_EDICAO_MS / 60000} minutos.`
+                error: `Mensagens só podem ser editadas nos primeiros ${JANELA_EDICAO_MS / 60000} minutos.`,
             });
         }
 
@@ -465,7 +593,10 @@ exports.editarMensagem = async (req, res) => {
         );
 
         if (!atualizada) {
-            return res.status(404).json({ success: false, error: 'Mensagem não encontrada ou sem permissão para editar.' });
+            return res.status(404).json({
+                success: false,
+                error: 'Mensagem não encontrada ou sem permissão para editar.',
+            });
         }
 
         // Edição altera um registro que a outra pessoa já leu — fica na trilha.
@@ -475,7 +606,7 @@ exports.editarMensagem = async (req, res) => {
             escolaId: atualizada.escolaId,
             valorAnterior: textoAnterior,
             valorNovo: atualizada.mensagem,
-            descricao: `Mensagem editada na conversa com ${atualizada.destinatarioId}.`
+            descricao: `Mensagem editada na conversa com ${atualizada.destinatarioId}.`,
         });
 
         if (global.io) {
@@ -504,12 +635,17 @@ exports.apagarMensagem = async (req, res) => {
         // "apagar para mim" aceitava qualquer id e ia empilhando estranhos no
         // array `apagadaPara` de mensagens alheias.
         if (String(msg.remetenteId) !== meuId && String(msg.destinatarioId) !== meuId) {
-            return res.status(403).json({ success: false, error: 'Você não participa desta conversa.' });
+            return res
+                .status(403)
+                .json({ success: false, error: 'Você não participa desta conversa.' });
         }
 
         if (tipo === 'para_todos') {
             if (String(msg.remetenteId) !== meuId) {
-                return res.status(403).json({ success: false, error: 'Apenas o autor pode apagar a mensagem para todos.' });
+                return res.status(403).json({
+                    success: false,
+                    error: 'Apenas o autor pode apagar a mensagem para todos.',
+                });
             }
             // "Apagar para todos" reescreve o que a outra pessoa já leu, então
             // vale só logo após o envio. Passada a janela, resta "apagar para
@@ -517,7 +653,7 @@ exports.apagarMensagem = async (req, res) => {
             if (foraDaJanela(msg.createdAt, JANELA_APAGAR_TODOS_MS)) {
                 return res.status(403).json({
                     success: false,
-                    error: `Só é possível apagar para todos na primeira hora. Você ainda pode apagar apenas para você.`
+                    error: `Só é possível apagar para todos na primeira hora. Você ainda pode apagar apenas para você.`,
                 });
             }
             // Auditoria ANTES de sobrescrever: registrar depois guardaria o
@@ -527,9 +663,11 @@ exports.apagarMensagem = async (req, res) => {
                 recursoId: String(msg._id),
                 escolaId: msg.escolaId,
                 valorAnterior: previaDaMensagem({
-                    mensagem: msg.mensagem, anexo: msg.anexo, audio: msg.audio
+                    mensagem: msg.mensagem,
+                    anexo: msg.anexo,
+                    audio: msg.audio,
                 }),
-                descricao: `Mensagem apagada para todos na conversa com ${msg.destinatarioId}.`
+                descricao: `Mensagem apagada para todos na conversa com ${msg.destinatarioId}.`,
             });
 
             msg.mensagem = 'Esta mensagem foi apagada.';
@@ -539,8 +677,12 @@ exports.apagarMensagem = async (req, res) => {
             await msg.save();
 
             if (global.io) {
-                global.io.to(`user:${msg.destinatarioId}`).emit('chat:apagada', { mensagemId: msg._id, paraTodos: true });
-                global.io.to(`user:${meuId}`).emit('chat:apagada', { mensagemId: msg._id, paraTodos: true });
+                global.io
+                    .to(`user:${msg.destinatarioId}`)
+                    .emit('chat:apagada', { mensagemId: msg._id, paraTodos: true });
+                global.io
+                    .to(`user:${meuId}`)
+                    .emit('chat:apagada', { mensagemId: msg._id, paraTodos: true });
             }
         } else {
             // Apagar apenas para mim
@@ -549,7 +691,9 @@ exports.apagarMensagem = async (req, res) => {
                 await msg.save();
             }
             if (global.io) {
-                global.io.to(`user:${meuId}`).emit('chat:apagada', { mensagemId: msg._id, paraTodos: false });
+                global.io
+                    .to(`user:${meuId}`)
+                    .emit('chat:apagada', { mensagemId: msg._id, paraTodos: false });
             }
         }
 
@@ -566,7 +710,9 @@ exports.reagirMensagem = async (req, res) => {
         const meuNome = req.user.nome || 'Usuário';
 
         if (!mensagemId || !emoji) {
-            return res.status(400).json({ success: false, error: 'ID da mensagem e emoji são obrigatórios.' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'ID da mensagem e emoji são obrigatórios.' });
         }
 
         const msg = await ChatDireto.findById(String(mensagemId));
@@ -578,11 +724,13 @@ exports.reagirMensagem = async (req, res) => {
         // id reagia numa conversa da qual não participa (e o nome dela aparecia
         // para os dois lados). Reagir é privilégio de quem está na conversa.
         if (String(msg.remetenteId) !== meuId && String(msg.destinatarioId) !== meuId) {
-            return res.status(403).json({ success: false, error: 'Você não participa desta conversa.' });
+            return res
+                .status(403)
+                .json({ success: false, error: 'Você não participa desta conversa.' });
         }
 
         // Remove reação anterior do mesmo usuário se existir
-        msg.reacoes = msg.reacoes.filter(r => String(r.usuarioId) !== meuId);
+        msg.reacoes = msg.reacoes.filter((r) => String(r.usuarioId) !== meuId);
 
         // Se enviou o mesmo emoji, o clique remove (toggle), se for diferente adicione
         if (emoji !== 'REMOVE') {
@@ -590,15 +738,19 @@ exports.reagirMensagem = async (req, res) => {
                 usuarioId: meuId,
                 usuarioNome: meuNome,
                 emoji,
-                criadoEm: new Date()
+                criadoEm: new Date(),
             });
         }
 
         await msg.save();
 
         if (global.io) {
-            global.io.to(`user:${msg.destinatarioId}`).emit('chat:reacao', { mensagemId: msg._id, reacoes: msg.reacoes });
-            global.io.to(`user:${msg.remetenteId}`).emit('chat:reacao', { mensagemId: msg._id, reacoes: msg.reacoes });
+            global.io
+                .to(`user:${msg.destinatarioId}`)
+                .emit('chat:reacao', { mensagemId: msg._id, reacoes: msg.reacoes });
+            global.io
+                .to(`user:${msg.remetenteId}`)
+                .emit('chat:reacao', { mensagemId: msg._id, reacoes: msg.reacoes });
         }
 
         res.json({ success: true, data: msg.reacoes });
@@ -654,8 +806,8 @@ exports.uploadAnexo = async (req, res) => {
                         usuarioId: remetenteId,
                         destinatarioId: String(destinatarioId),
                         escolaId: req.escolaId ? String(req.escolaId) : undefined,
-                        nomeOriginal: String(file.originalname || '').slice(0, 255)
-                    }
+                        nomeOriginal: String(file.originalname || '').slice(0, 255),
+                    },
                 });
                 stream.on('error', reject);
                 stream.on('finish', () => resolve(String(stream.id)));
@@ -667,7 +819,7 @@ exports.uploadAnexo = async (req, res) => {
                 url: `/api/chat-direto/anexo/${gridfsId}`,
                 nome: String(file.originalname || filename).slice(0, 255),
                 tipo: file.mimetype,
-                tamanho: file.size
+                tamanho: file.size,
             });
         }
 
@@ -689,13 +841,20 @@ exports.encaminharMensagem = async (req, res) => {
         const meuId = String(req.user.id || req.user._id || '');
 
         const ids = Array.isArray(mensagemIds) ? mensagemIds : [mensagemIds].filter(Boolean);
-        const destinos = Array.isArray(destinatarioIds) ? destinatarioIds : [destinatarioIds].filter(Boolean);
+        const destinos = Array.isArray(destinatarioIds)
+            ? destinatarioIds
+            : [destinatarioIds].filter(Boolean);
 
         if (ids.length === 0 || destinos.length === 0) {
-            return res.status(400).json({ success: false, error: 'Mensagens e destinatários são obrigatórios.' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'Mensagens e destinatários são obrigatórios.' });
         }
         if (ids.length > 20 || destinos.length > 20) {
-            return res.status(400).json({ success: false, error: 'Limite de 20 mensagens/destinatários por encaminhamento.' });
+            return res.status(400).json({
+                success: false,
+                error: 'Limite de 20 mensagens/destinatários por encaminhamento.',
+            });
         }
 
         const originais = await ChatDireto.find({
@@ -710,16 +869,22 @@ exports.encaminharMensagem = async (req, res) => {
             //
             // Vale tanto para o que está bloqueado quanto para o que está em
             // análise. Mensagem sem o campo é anterior à moderação e passa.
-            $and: [{
-                $or: [
-                    { 'moderacao.status': 'aprovada' },
-                    { 'moderacao.status': { $exists: false } }
-                ]
-            }]
-        }).sort({ createdAt: 1 }).lean();
+            $and: [
+                {
+                    $or: [
+                        { 'moderacao.status': 'aprovada' },
+                        { 'moderacao.status': { $exists: false } },
+                    ],
+                },
+            ],
+        })
+            .sort({ createdAt: 1 })
+            .lean();
 
         if (originais.length === 0) {
-            return res.status(404).json({ success: false, error: 'Nenhuma mensagem disponível para encaminhar.' });
+            return res
+                .status(404)
+                .json({ success: false, error: 'Nenhuma mensagem disponível para encaminhar.' });
         }
 
         const criadas = [];
@@ -744,7 +909,7 @@ exports.encaminharMensagem = async (req, res) => {
                     anexo: original.anexo || undefined,
                     audio: original.audio || undefined,
                     encaminhada: true,
-                    escolaId: req.escolaId ? String(req.escolaId) : undefined
+                    escolaId: req.escolaId ? String(req.escolaId) : undefined,
                 });
 
                 if (global.io) {
@@ -762,7 +927,7 @@ exports.encaminharMensagem = async (req, res) => {
                     remetenteNome: req.user.nome || 'Nova mensagem',
                     mensagem: nova.mensagem,
                     anexo: nova.anexo,
-                    audio: nova.audio
+                    audio: nova.audio,
                 });
 
                 criadas.push(nova);
@@ -770,7 +935,9 @@ exports.encaminharMensagem = async (req, res) => {
         }
 
         if (criadas.length === 0) {
-            return res.status(403).json({ success: false, error: 'Nenhum destinatário permitido.' });
+            return res
+                .status(403)
+                .json({ success: false, error: 'Nenhum destinatário permitido.' });
         }
 
         // Encaminhar 3 e ver 2 chegarem, sem explicação, é pior do que o
@@ -782,12 +949,15 @@ exports.encaminharMensagem = async (req, res) => {
             success: true,
             data: criadas,
             total: criadas.length,
-            ...(ignoradas > 0 ? {
-                ignoradas,
-                aviso: ignoradas === 1
-                    ? 'Uma mensagem não pôde ser encaminhada.'
-                    : `${ignoradas} mensagens não puderam ser encaminhadas.`
-            } : {})
+            ...(ignoradas > 0
+                ? {
+                      ignoradas,
+                      aviso:
+                          ignoradas === 1
+                              ? 'Uma mensagem não pôde ser encaminhada.'
+                              : `${ignoradas} mensagens não puderam ser encaminhadas.`,
+                  }
+                : {}),
         });
     } catch (error) {
         logger.error(`[ChatDireto] Falha ao encaminhar: ${error.message}`);
@@ -819,5 +989,226 @@ exports.getPresenca = async (req, res) => {
         res.json({ success: true, data: info });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+/**
+ * GET /api/chat-direto/contatos — com quem esta pessoa pode conversar.
+ *
+ * POR QUE UM ENDPOINT PRÓPRIO (Issue #69)
+ * ---------------------------------------
+ * Sem ele, a tela de conversas teria de listar a escola inteira e descobrir a
+ * permissão errando: mandar mensagem e ver se volta 403. Além de ruim de usar,
+ * isso vaza a existência de contas que a pessoa não pode alcançar — para um
+ * responsável, a lista de professores e de famílias da escola inteira.
+ *
+ * CONSISTÊNCIA COM `podeConversar` É A PARTE DELICADA
+ * ---------------------------------------------------
+ * Esta função responde "quem?" e `podeConversar` responde "este aqui, pode?".
+ * São dois caminhos para a mesma regra, e regra duplicada é regra que diverge:
+ * se a lista mostrar alguém que o envio recusa, a pessoa vê um contato que não
+ * consegue usar — e o contrário é pior, um contato omitido que ela poderia ter.
+ *
+ * Elas não podem virar uma só: `podeConversar` faria uma consulta por candidato,
+ * e são centenas numa escola média. Aqui os conjuntos são calculados UMA vez e
+ * a filtragem acontece em memória. O que amarra as duas é o teste — para cada
+ * pessoa da escola, esta lista tem de concordar com `podeConversar`.
+ *
+ * O que NÃO vem aqui: prévia da última mensagem. A página busca o histórico da
+ * conversa que abrir; trazer a última mensagem de cada contato custaria uma
+ * agregação a mais por um dado que a maior parte da lista não mostra.
+ */
+exports.listarContatos = async (req, res) => {
+    try {
+        const meuId = String(req.user?.id || req.user?._id || '');
+        const meuPerfil = String(req.user?.perfil || '').toLowerCase();
+        const meuEmail = String(req.user?.email || '').toLowerCase();
+        const escolaId = req.escolaId ? String(req.escolaId) : null;
+
+        // Falha FECHADA: sem escola resolvida não há como delimitar o tenant, e
+        // listar "todo mundo" seria vazamento entre escolas.
+        if (!escolaId) return res.json({ success: true, data: [] });
+
+        const perfisAlcancaveis = (MATRIZ_CONVERSA[meuPerfil] || []).filter((p) =>
+            paresPermitidos(meuPerfil, p)
+        );
+        if (!perfisAlcancaveis.length) return res.json({ success: true, data: [] });
+
+        const querResponsaveis = perfisAlcancaveis.includes('responsavel');
+
+        // ── Equipe ────────────────────────────────────────────────────────
+        // Vem das coleções de cargo, não de `Usuario.escolaId`: o vínculo de
+        // escola de professor, diretor e secretaria mora em `vinculos[]`, e é
+        // assim que o TeacherController já monta a lista da equipe. Filtrar por
+        // `Usuario.escolaId` deixaria de fora quem tem o campo vazio.
+        const escopoDeCargo = { 'vinculos.escolaId': escolaId };
+        const [profs, dirs, secs] = await Promise.all([
+            perfisAlcancaveis.includes('professor')
+                ? Professor.find(escopoDeCargo).select('idUsuario').lean()
+                : [],
+            perfisAlcancaveis.includes('diretor')
+                ? Diretor.find(escopoDeCargo).select('idUsuario').lean()
+                : [],
+            perfisAlcancaveis.includes('secretaria')
+                ? Secretaria.find(escopoDeCargo).select('idUsuario').lean()
+                : [],
+        ]);
+
+        // ── Restrição do responsável ──────────────────────────────────────
+        // Um responsável só alcança os professores dos filhos dele. Diretor e
+        // secretaria não têm recorte de turma e ficam de fora deste filtro.
+        let professoresPermitidos = null;
+        if (meuPerfil === 'responsavel' && perfisAlcancaveis.includes('professor')) {
+            const turmasDosMeusFilhos = await turmasDosFilhos(meuEmail, escolaId);
+            professoresPermitidos = await idsDeProfessoresDasTurmas(turmasDosMeusFilhos, escolaId);
+        }
+
+        const idsDaEquipe = new Set();
+        for (const doc of profs) {
+            const id = doc.idUsuario ? String(doc.idUsuario) : null;
+            if (!id) continue;
+            if (professoresPermitidos && !professoresPermitidos.has(id)) continue;
+            idsDaEquipe.add(id);
+        }
+        for (const doc of [...dirs, ...secs]) {
+            if (doc.idUsuario) idsDaEquipe.add(String(doc.idUsuario));
+        }
+
+        // ── Responsáveis ──────────────────────────────────────────────────
+        // O responsável não tem coleção de cargo: o que o liga à escola é o
+        // filho. Diretor e secretaria alcançam todas as famílias; o professor,
+        // só as das turmas dele — a mesma regra do envio (Issue #68).
+        let emailsDeResponsaveis = new Set();
+        if (querResponsaveis) {
+            emailsDeResponsaveis =
+                meuPerfil === 'professor'
+                    ? await emailsDeResponsaveisDasTurmas(await turmasDoProfessor(meuId), escolaId)
+                    : await emailsDeResponsaveisDaEscola(escolaId);
+        }
+
+        const criterios = [];
+        if (idsDaEquipe.size) criterios.push({ _id: { $in: [...idsDaEquipe] } });
+        if (emailsDeResponsaveis.size) {
+            // Regex ancorada e sem caixa, e não um `$in` de strings: o campo
+            // `Usuario.email` NÃO é normalizado para minúsculas no schema, e o
+            // e-mail no cadastro do aluno é digitado à mão. Comparar literal
+            // faria "Maria@escola.test" sumir da lista enquanto `podeConversar`
+            // — que já usa regex sem caixa — continuaria liberando o envio: a
+            // divergência entre listar e enviar que este endpoint existe para
+            // não ter. As âncoras impedem `ana@x` de casar com `joana@x`.
+            criterios.push({
+                perfil: 'responsavel',
+                email: {
+                    $in: [...emailsDeResponsaveis].map(
+                        (e) => new RegExp(`^${escapeRegex(e)}$`, 'i')
+                    ),
+                },
+            });
+        }
+        if (!criterios.length) return res.json({ success: true, data: [] });
+
+        const candidatos = await Usuario.find({
+            $or: criterios,
+            _id: { $ne: meuId },
+            perfil: { $in: perfisAlcancaveis },
+            ativo: { $ne: false },
+        })
+            .select('nome perfil foto')
+            .lean();
+
+        // Não lidas numa agregação só, agrupada por remetente — mesmo padrão do
+        // TeacherController. Uma consulta por contato viraria dezenas de idas ao
+        // banco para montar uma tela.
+        const naoLidas = await ChatDireto.aggregate([
+            { $match: { destinatarioId: meuId, lida: false } },
+            { $group: { _id: '$remetenteId', total: { $sum: 1 } } },
+        ]);
+        const naoLidasPorRemetente = new Map(
+            naoLidas.map((linha) => [String(linha._id), linha.total])
+        );
+
+        const presence = require('../realtime/presence');
+        const agora = new Date();
+
+        const contatos = candidatos
+            .map((usuario) => {
+                const id = String(usuario._id);
+                const info = presence.infoDe(escolaId, id);
+                return {
+                    id,
+                    nome: usuario.nome,
+                    perfil: usuario.perfil,
+                    foto: usuario.foto || null,
+                    presenca: {
+                        status: info.status,
+                        // Texto já pronto para a tela (Issue #70). O bruto vai
+                        // junto para quem quiser formatar de outro jeito.
+                        texto: formatarPresenca(info, agora),
+                        ultimoAcesso: info.ultimoAcesso,
+                    },
+                    naoLidas: naoLidasPorRemetente.get(id) || 0,
+                };
+            })
+            // Quem tem mensagem esperando vem primeiro, depois quem está online,
+            // o resto em ordem alfabética. É a ordem de um mensageiro, e evita
+            // obrigar a procurar na lista o que já está pendente.
+            .sort((a, b) => {
+                if (a.naoLidas !== b.naoLidas) return b.naoLidas - a.naoLidas;
+                const aOnline = a.presenca.status !== 'offline';
+                const bOnline = b.presenca.status !== 'offline';
+                if (aOnline !== bOnline) return aOnline ? -1 : 1;
+                return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR');
+            });
+
+        res.json({ success: true, data: contatos });
+    } catch (error) {
+        // A mensagem crua não vai para o cliente: ela carrega nome de campo e de
+        // coleção. O log guarda o suficiente para investigar.
+        logger.error('[chat] falha ao montar a lista de contatos', {
+            err: error,
+            action: 'chat.contatos',
+        });
+        res.status(500).json({ success: false, error: 'Não foi possível carregar seus contatos.' });
+    }
+};
+
+/**
+ * GET /api/chat-direto/nao-lidas — quantas mensagens esperam por mim.
+ *
+ * POR QUE NÃO REUSAR /contatos (Issue #72)
+ * ----------------------------------------
+ * A lista de contatos já traz `naoLidas` por pessoa, e somar no cliente daria
+ * o mesmo número. Mas o selo do menu aparece em TODA página de TODO perfil, e
+ * `/contatos` consulta quatro coleções (professores, diretores, secretaria e
+ * alunos) para montar a lista. Pagar isso a cada carregamento de página, por
+ * um número, seria trocar uma contagem indexada por uma varredura.
+ *
+ * Aqui é um `countDocuments` sobre `{destinatarioId, lida}` — que é o índice
+ * que a própria conversa já usa.
+ *
+ * O QUE ELE CONTA
+ * ---------------
+ * Mensagens endereçadas a mim e ainda não lidas, ponto. Não filtra por
+ * permissão atual de conversa: se um professor deixou de dar aula para a turma
+ * do meu filho, a mensagem que ele já me mandou continua sendo uma mensagem
+ * que eu recebi e não li. Esconder o selo faria a pessoa nunca descobrir que
+ * havia algo ali — a conversa em si continua acessível pelo histórico.
+ */
+exports.contarNaoLidas = async (req, res) => {
+    try {
+        const meuId = String(req.user?.id || req.user?._id || '');
+        if (!meuId) return res.json({ success: true, data: { total: 0 } });
+
+        const total = await ChatDireto.countDocuments({ destinatarioId: meuId, lida: false });
+
+        res.json({ success: true, data: { total } });
+    } catch (error) {
+        logger.error('[chat] falha ao contar mensagens não lidas', {
+            err: error,
+            action: 'chat.naoLidas',
+        });
+        // Um selo que não carrega não pode derrubar a página que o hospeda: o
+        // chamador trata zero como "nada a mostrar" e a navegação segue.
+        res.status(500).json({ success: false, error: 'Não foi possível contar as mensagens.' });
     }
 };

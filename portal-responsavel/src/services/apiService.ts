@@ -7,18 +7,27 @@
  * All methods throw ApiError on failure so callers can show appropriate UI.
  */
 
-import type { Student, Grade, Attendance, Notification, DocumentoArquivo, AuthUser, HeatmapEntry, BIInsights } from '../types';
+import type {
+  Attendance,
+  AuthUser,
+  BIInsights,
+  DocumentoArquivo,
+  Grade,
+  HeatmapEntry,
+  Notification,
+  Student,
+} from '../types';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const BASE_URL = import.meta.env.DEV
-  ? (import.meta.env.VITE_API_URL || 'http://localhost:3001/api')
+  ? import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
   : '/api';
 
 // ─── Error class ──────────────────────────────────────────────────────────────
 export class ApiError extends Error {
   constructor(
     message: string,
-    public readonly status: number,
+    public readonly status: number
   ) {
     super(message);
     this.name = 'ApiError';
@@ -30,7 +39,7 @@ const REQUEST_TIMEOUT_MS = 45_000;
 async function fetchWithTimeout(
   url: string,
   options: RequestInit = {},
-  timeoutMs = REQUEST_TIMEOUT_MS,
+  timeoutMs = REQUEST_TIMEOUT_MS
 ): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
@@ -48,14 +57,11 @@ async function fetchWithTimeout(
 }
 
 // ─── Base fetch wrapper ───────────────────────────────────────────────────────
-async function apiFetch<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
+async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   // Prepare headers, including CSRF token if present for mutating requests
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string> ?? {}),
+    ...((options.headers as Record<string, string>) ?? {}),
   };
 
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(options.method?.toUpperCase() ?? '')) {
@@ -71,11 +77,11 @@ async function apiFetch<T>(
     headers,
   });
 
-  const body = await res.json() as { success: boolean; data?: T; user?: T; error?: string };
+  const body = (await res.json()) as { success: boolean; data?: T; user?: T; error?: string };
 
   if (!res.ok || !body.success) {
     if (res.status === 401 && !path.includes('/auth/')) {
-        window.location.href = '/login.html?expired=true';
+      window.location.href = '/login.html?expired=true';
     }
     throw new ApiError(body.error ?? `HTTP ${res.status}`, res.status);
   }
@@ -124,9 +130,9 @@ export async function getMe(): Promise<AuthUser> {
 }
 
 /** Updates user's own profile (such as name and telephone). CPF is optional for parent accounts. */
-export async function updateProfile(payload: { 
-  nome?: string; 
-  cpf?: string; 
+export async function updateProfile(payload: {
+  nome?: string;
+  cpf?: string;
   telefone?: string;
   foto?: string;
   consentimentoAceiteEm?: boolean;
@@ -134,7 +140,7 @@ export async function updateProfile(payload: {
     portal: boolean;
     push: boolean;
     email: boolean;
-  }
+  };
 }): Promise<AuthUser> {
   return apiFetch<AuthUser>('/auth/profile', {
     method: 'PUT',
@@ -142,7 +148,7 @@ export async function updateProfile(payload: {
   });
 }
 
-/** 
+/**
  * Envia uma foto de perfil em formato Base64 para o servidor.
  * Ela é convertida para WebP no backend e armazenada diretamente no documento do usuário.
  */
@@ -153,7 +159,7 @@ export async function uploadManualPhoto(fotoB64: string): Promise<AuthUser> {
   });
 }
 
-/** 
+/**
  * Remove a foto de perfil manual do usuário.
  * O sistema voltará a usar fotoGoogle ou iniciais.
  */
@@ -198,35 +204,35 @@ interface RawAluno {
 /** Fetch the students linked to the authenticated guardian's email. */
 export async function getAlunosDoResponsavel(): Promise<Student[]> {
   const raw = await apiFetch<RawAluno[]>('/responsavel/alunos');
-  return raw.map(r => ({
+  return raw.map((r) => ({
     ...r,
-    id:              r.id,
-    _id:             r.id,
-    nome:            r.nome,
-    sobrenome:       r.sobrenome ?? '',
-    matricula:       r.matricula,
-    turma:           r.turma,
-    dataNascimento:  r.dataNascimento,
-    foto:            r.foto ?? undefined,
-    escolaNome:      r.escolaNome ?? undefined,
-    responsavelId:   '',   // not needed on the client
-    cpfAluno:        r.cpfAluno,
-    telefone:        r.telefone,
-    endereco:        r.endereco,
-    nacionalidade:   r.nacionalidade,
-    etnia:           r.etnia,
-    religiao:        r.religiao,
+    id: r.id,
+    _id: r.id,
+    nome: r.nome,
+    sobrenome: r.sobrenome ?? '',
+    matricula: r.matricula,
+    turma: r.turma,
+    dataNascimento: r.dataNascimento,
+    foto: r.foto ?? undefined,
+    escolaNome: r.escolaNome ?? undefined,
+    responsavelId: '', // not needed on the client
+    cpfAluno: r.cpfAluno,
+    telefone: r.telefone,
+    endereco: r.endereco,
+    nacionalidade: r.nacionalidade,
+    etnia: r.etnia,
+    religiao: r.religiao,
     responsavelDados: r.responsavelDados,
     alergiasAlimentos: r.alergiasAlimentos,
     alergiasRemedio: r.alergiasRemedio,
-    planoSaude:      r.planoSaude,
-    deficiencia:     r.deficiencia,
-    pcd:             r.pcd,
-    nivel:           r.nivel,
-    condicao:        r.condicao,
-    observacoes:     r.observacoes,
-    documentos:      r.documentos ?? [],
-    lgpdConsentimento: r.lgpdConsentimento ?? null
+    planoSaude: r.planoSaude,
+    deficiencia: r.deficiencia,
+    pcd: r.pcd,
+    nivel: r.nivel,
+    condicao: r.condicao,
+    observacoes: r.observacoes,
+    documentos: r.documentos ?? [],
+    lgpdConsentimento: r.lgpdConsentimento ?? null,
   }));
 }
 
@@ -261,10 +267,10 @@ interface RawGrade {
 export async function getNotasDoAluno(alunoId: string): Promise<Grade[]> {
   const raw = await apiFetch<RawGrade[]>(`/responsavel/notas/${alunoId}`);
   return raw.map((g) => ({
-    id:         g.id,
+    id: g.id,
     disciplina: g.disciplina,
-    professor:  g.professor ?? undefined,
-    bimestres:  g.bimestres,
+    professor: g.professor ?? undefined,
+    bimestres: g.bimestres,
   }));
 }
 
@@ -295,8 +301,16 @@ export async function getBoletimPdf(alunoId: string): Promise<Blob> {
 export async function postChatbotMessage(
   message: string,
   alunoId?: string
-): Promise<{ response: string; alunoId?: string | null; options?: { label: string; alunoId: string }[] }> {
-  return apiFetch<{ response: string; alunoId?: string | null; options?: { label: string; alunoId: string }[] }>('/ia/chatbot', {
+): Promise<{
+  response: string;
+  alunoId?: string | null;
+  options?: { label: string; alunoId: string }[];
+}> {
+  return apiFetch<{
+    response: string;
+    alunoId?: string | null;
+    options?: { label: string; alunoId: string }[];
+  }>('/ia/chatbot', {
     method: 'POST',
     body: JSON.stringify({ message, alunoId }),
   });
@@ -337,7 +351,7 @@ export async function streamCopiloto(
   });
 
   if (!res.ok || !res.body) {
-    const erro = await res.json().catch(() => ({} as { error?: string }));
+    const erro = await res.json().catch(() => ({}) as { error?: string });
     throw new ApiError(erro.error || 'Não foi possível falar com o assistente agora.', res.status);
   }
 
@@ -395,7 +409,7 @@ export async function getIAAnalysis(alunoId: string): Promise<any> {
 export async function marcarNotificacaoLida(notifId: string, alunoId: string): Promise<void> {
   await apiFetch<void>(`/responsavel/notificacoes/${notifId}/ler`, {
     method: 'PUT',
-    body: JSON.stringify({ alunoId })
+    body: JSON.stringify({ alunoId }),
   });
 }
 
@@ -403,7 +417,7 @@ export async function marcarNotificacaoLida(notifId: string, alunoId: string): P
 export async function ocultarNotificacao(notifId: string, alunoId: string): Promise<void> {
   await apiFetch<void>(`/responsavel/notificacoes/${notifId}/ocultar`, {
     method: 'PUT',
-    body: JSON.stringify({ alunoId })
+    body: JSON.stringify({ alunoId }),
   });
 }
 
@@ -423,14 +437,14 @@ export async function updateStudent(alunoId: string, payload: any): Promise<any>
 /** Upload document files (PDF, JPG, PNG) to GridFS. */
 export async function uploadDocumentos(files: File[]): Promise<DocumentoArquivo[]> {
   const formData = new FormData();
-  files.forEach(f => formData.append('documentos', f));
+  for (const f of files) formData.append('documentos', f);
 
   const headers: Record<string, string> = {};
   const csrf = getCsrfToken();
   if (csrf) headers['X-CSRF-Token'] = csrf;
 
   const BASE_URL = import.meta.env.DEV
-    ? (import.meta.env.VITE_API_URL || 'http://localhost:3001/api')
+    ? import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
     : '/api';
 
   const res = await fetch(`${BASE_URL}/upload/documento`, {
@@ -440,7 +454,11 @@ export async function uploadDocumentos(files: File[]): Promise<DocumentoArquivo[
     body: formData,
   });
 
-  const body = await res.json() as { success: boolean; data?: DocumentoArquivo[]; error?: string };
+  const body = (await res.json()) as {
+    success: boolean;
+    data?: DocumentoArquivo[];
+    error?: string;
+  };
   if (!res.ok || !body.success || !body.data) {
     throw new ApiError(body.error ?? `HTTP ${res.status}`, res.status);
   }
@@ -448,7 +466,10 @@ export async function uploadDocumentos(files: File[]): Promise<DocumentoArquivo[
 }
 
 /** Update guardian data and authorizations for a student. */
-export async function updateAlunoDados(alunoId: string, payload: Record<string, unknown>): Promise<Student> {
+export async function updateAlunoDados(
+  alunoId: string,
+  payload: Record<string, unknown>
+): Promise<Student> {
   const res = await apiFetch<{ data: Student }>(`/responsavel/aluno/${alunoId}/dados`, {
     method: 'PUT',
     body: JSON.stringify(payload),
@@ -457,7 +478,10 @@ export async function updateAlunoDados(alunoId: string, payload: Record<string, 
 }
 
 /** Register uploaded documents on student record. */
-export async function registrarDocumentos(alunoId: string, arquivos: DocumentoArquivo[]): Promise<void> {
+export async function registrarDocumentos(
+  alunoId: string,
+  arquivos: DocumentoArquivo[]
+): Promise<void> {
   await apiFetch(`/responsavel/aluno/${alunoId}/documentos`, {
     method: 'POST',
     body: JSON.stringify({ arquivos }),
@@ -495,18 +519,21 @@ export async function marcarComunicadoLido(id: string): Promise<void> {
 }
 
 /** Fetch comments for an announcement or notification. */
-export async function getComentarios(comunicadoId?: string, notificacaoId?: string): Promise<import('../types').Comentario[]> {
-  const path = comunicadoId 
-    ? `/comentarios/comunicado/${comunicadoId}` 
+export async function getComentarios(
+  comunicadoId?: string,
+  notificacaoId?: string
+): Promise<import('../types').Comentario[]> {
+  const path = comunicadoId
+    ? `/comentarios/comunicado/${comunicadoId}`
     : `/comentarios/notificacao/${notificacaoId}`;
   return apiFetch<import('../types').Comentario[]>(path);
 }
 
 /** Add a comment or reply to an announcement or notification. */
 export async function addComentario(
-  comunicadoId?: string, 
-  texto?: string, 
-  parentId: string | null = null, 
+  comunicadoId?: string,
+  texto?: string,
+  parentId: string | null = null,
   audioUrl?: string,
   notificacaoId?: string
 ): Promise<import('../types').Comentario> {
@@ -532,7 +559,11 @@ export async function uploadPhoto(file: File): Promise<{ id: string; filename: s
     body: formData,
   });
 
-  const body = await res.json() as { success: boolean; data?: { id: string; filename: string }; error?: string };
+  const body = (await res.json()) as {
+    success: boolean;
+    data?: { id: string; filename: string };
+    error?: string;
+  };
   if (!res.ok || !body.success || !body.data) {
     throw new ApiError(body.error ?? `HTTP ${res.status}`, res.status);
   }
@@ -555,7 +586,11 @@ export async function uploadAudio(blob: Blob): Promise<{ id: string; url: string
     body: formData,
   });
 
-  const body = await res.json() as { success: boolean; data?: { id: string; url: string }; error?: string };
+  const body = (await res.json()) as {
+    success: boolean;
+    data?: { id: string; url: string };
+    error?: string;
+  };
   if (!res.ok || !body.success || !body.data) {
     throw new ApiError(body.error ?? `HTTP ${res.status}`, res.status);
   }
@@ -568,7 +603,10 @@ export async function deleteComentario(id: string): Promise<void> {
 }
 
 /** Update a comment. */
-export async function updateComentario(id: string, texto: string): Promise<import('../types').Comentario> {
+export async function updateComentario(
+  id: string,
+  texto: string
+): Promise<import('../types').Comentario> {
   return apiFetch<import('../types').Comentario>(`/comentarios/${id}`, {
     method: 'PUT',
     body: JSON.stringify({ texto }),
@@ -576,7 +614,11 @@ export async function updateComentario(id: string, texto: string): Promise<impor
 }
 
 /** Get TTS Audio blob for announcement narration. Gênero fixo em 'male' conforme padronização. */
-export async function getTTSAudio(text: string, gender: 'male' | 'female' = 'male', provider: string = 'google-cloud'): Promise<Blob> {
+export async function getTTSAudio(
+  text: string,
+  gender: 'male' | 'female' = 'male',
+  provider: string = 'google-cloud'
+): Promise<Blob> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -619,4 +661,22 @@ export async function subscribePush(subscription: any): Promise<void> {
     method: 'POST',
     body: JSON.stringify(subscription),
   });
+}
+
+// ─── Conversas ───────────────────────────────────────────────────────────────
+
+/**
+ * Quantas mensagens do chat esperam pelo responsável.
+ *
+ * O portal é React e a tela de conversas é HTML servido separadamente
+ * (/html/conversas.html), então o que entra aqui é só o NÚMERO do selo — o
+ * cabeçalho precisa dele para dizer que há algo esperando antes da pessoa sair
+ * do portal.
+ *
+ * Usa o contador dedicado, não a lista de contatos: `/chat-direto/contatos`
+ * consulta quatro coleções para montar a lista, e o cabeçalho aparece em toda
+ * navegação. Ver Issue #72.
+ */
+export async function getChatNaoLidas(): Promise<{ total: number }> {
+  return apiFetch<{ total: number }>('/chat-direto/nao-lidas');
 }
