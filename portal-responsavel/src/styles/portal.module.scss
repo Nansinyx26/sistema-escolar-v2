@@ -277,9 +277,27 @@
   @include flex-center;
   gap: 10px;
 
+  // Este cartao e um <button> (abre as opcoes do perfil). Sem neutralizar o
+  // estilo padrao do navegador ele aparece como caixa cinza com borda em
+  // relevo sobre o cabecalho escuro, e com o texto centralizado.
+  //
+  // O reset de global.scss cobre parte disso e foi o que mascarou a falha:
+  // `*` zera padding, `input, button... { font: inherit }` corrige a fonte e
+  // `button { cursor: pointer }` corrige o ponteiro. Fundo, borda e
+  // alinhamento continuam sendo os do navegador ate serem declarados aqui.
+  background: transparent;
+  border: none;
+  text-align: left;
+  color: inherit;
+
   @include respond-to(sm) {
     gap: 6px;
   }
+
+  // Os demais botoes do cabecalho ganham o anel de foco via `button-ghost`.
+  // Este nao usa aquele mixin porque o `button-base` dentro dele traz padding,
+  // fonte e border-radius proprios, que mudariam o layout do cartao.
+  @include button-focus-ring;
 }
 
 .avatar {
