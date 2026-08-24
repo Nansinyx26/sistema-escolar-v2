@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Conversas</title>
-    <link rel="icon" type="image/png" href="../favicon/favicon.png">
+    <link rel="icon" type="image/png" href="../../favicon/favicon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../css/variables.css?v=2.0">
-    <link rel="stylesheet" href="../css/base.css?v=2.0">
-    <link rel="stylesheet" href="../css/components-new.css?v=2.0">
-    <link rel="stylesheet" href="../css/responsive-global.css?v=1.2">
+    <link rel="stylesheet" href="../../css/variables.css?v=2.0">
+    <link rel="stylesheet" href="../../css/base.css?v=2.0">
+    <link rel="stylesheet" href="../../css/components-new.css?v=2.0">
+    <link rel="stylesheet" href="../../css/responsive-global.css?v=1.2">
     <!-- Traz .sr-only, usado no rótulo do campo de busca. -->
-    <link rel="stylesheet" href="../css/system-global.css?v=1.0">
-    <link rel="stylesheet" href="../js/libs/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="../css/motion.css?v=1.0">
+    <link rel="stylesheet" href="../../css/system-global.css?v=1.0">
+    <link rel="stylesheet" href="../../js/libs/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../../css/motion.css?v=1.0">
     <!-- Precisa vir ANTES do <style> abaixo: a página redefine o container das
          janelas de conversa, e a regra mais específica só vence se for a última. -->
-    <link rel="stylesheet" href="../css/chat-flutuante.css?v=2.0">
+    <link rel="stylesheet" href="../../css/chat-flutuante.css?v=2.0">
 
     <style>
         /* ------------------------------------------------------------------
@@ -264,15 +264,12 @@
             .conv-sidebar { border-right: none; }
         }
     </style>
-    <!-- Rolagem e performance mobile — deve ser o ÚLTIMO stylesheet -->
-    <link rel="stylesheet" href="../css/mobile-scroll.css?v=1.0">
-    <script src="../js/scroll-lock.js?v=1.0"></script>
 </head>
 <body>
     <div class="conv-layout">
         <aside class="conv-sidebar">
             <div class="conv-topo">
-                <a class="conv-voltar" href="dashboard.html" aria-label="Voltar ao painel">
+                <a class="conv-voltar" href="index.html" aria-label="Voltar ao portal da direção">
                     <i class="bi bi-arrow-left" aria-hidden="true"></i>
                 </a>
                 <h1>Conversas</h1>
@@ -311,16 +308,16 @@
         </main>
     </div>
 
-    <script src="../js/api-config.js"></script>
-    <script src="../js/csrf-helper.js"></script>
-    <script defer src="../js/auth.js?v=3"></script>
+    <script src="../../js/api-config.js"></script>
+    <script src="../../js/csrf-helper.js"></script>
+    <script defer src="../../js/auth.js?v=3"></script>
     <!-- realtime.js injeta o socket.io e publica window.socket; o chat depende
          dele para presença, "digitando…" e mensagem em tempo real. -->
-    <script defer src="../js/realtime.js"></script>
-    <script defer src="../js/som-notificacao.js?v=1.0"></script>
-    <script defer src="../js/chat-direto-manager.js?v=2.0"></script>
-    <script defer src="../js/conversas.js?v=1.0"></script>
-    <script defer src="../js/observability.js"></script>
-    <script defer src="../js/motion.js"></script>
+    <script defer src="../../js/realtime.js"></script>
+    <script defer src="../../js/som-notificacao.js?v=1.0"></script>
+    <script defer src="../../js/chat-direto-manager.js?v=2.0"></script>
+    <script defer src="../../js/conversas.js?v=1.0"></script>
+    <script defer src="../../js/observability.js"></script>
+    <script defer src="../../js/motion.js"></script>
 </body>
 </html>
