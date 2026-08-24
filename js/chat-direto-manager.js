@@ -339,7 +339,7 @@
           <div class="chat-header-actions">
             <button class="chat-btn-icon" id="btnToggleSom_${this.targetUserId}" title="Som das notificações" aria-label="Som das notificações"><i class="bi ${somAtivo() ? 'bi-volume-up' : 'bi-volume-mute'}"></i></button>
             <button class="chat-btn-icon" id="btnToggleSearch_${this.targetUserId}" title="Buscar na conversa" aria-label="Buscar na conversa"><i class="bi bi-search"></i></button>
-            <button class="chat-btn-icon" id="btnMinimize_${this.targetUserId}" title="Minimizar" aria-label="Minimizar"><i class="bi bi-dash-lg"></i></button>
+            <button class="chat-btn-icon btn-minimize" id="btnMinimize_${this.targetUserId}" title="Minimizar" aria-label="Minimizar"><i class="bi bi-dash-lg"></i></button>
             <button class="chat-btn-icon close" id="btnClose_${this.targetUserId}" title="Fechar" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
           </div>
         </div>
