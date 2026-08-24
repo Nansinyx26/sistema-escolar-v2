@@ -11,7 +11,7 @@
         "build:tailwind": "tailwindcss -i ./css/tailwind-input.css -o ./css/tailwind-built.css --minify",
         "watch:css": "sass scss/main.scss css/main-compiled.css --watch --style=expanded",
         "lint": "biome check .",
-        "lint:changed": "biome check --changed --error-on-warnings=false",
+        "lint:changed": "biome check --changed --no-errors-on-unmatched",
         "lint:fix": "biome check --write .",
         "format": "biome format --write .",
         "format:check": "biome format .",
