@@ -29,24 +29,29 @@ const RAIZ = path.resolve(__dirname, '../../..');
  * A lista é derivada de `getRedirectPath` (UserController): é para onde cada
  * perfil vai depois do login. Uma tela de fora desta lista não é a casa de
  * ninguém, e uma que falte aqui deixa um perfil sem caminho para a conversa.
+ *
+ * A direção tem página própria (Issue #83): dentro de `/html/direcao` ela
+ * herda o gate da área (`admin`, `diretor`) em vez de usar a tela solta e
+ * compartilhada com os outros perfis. `dashboard.html` e
+ * `secretaria/painel.html` seguem na compartilhada.
  */
 const TELAS = [
-    ['html/dashboard.html', 'professor, diretor e admin'],
-    ['html/secretaria/painel.html', 'secretaria'],
-    ['html/direcao/index.html', 'direção'],
-    ['html/direcao/gerenciar-secretaria.html', 'direção'],
+    ['html/dashboard.html', 'professor, diretor e admin', '/html/conversas.html'],
+    ['html/secretaria/painel.html', 'secretaria', '/html/conversas.html'],
+    ['html/direcao/index.html', 'direção', '/html/direcao/conversas.html'],
+    ['html/direcao/gerenciar-secretaria.html', 'direção', '/html/direcao/conversas.html'],
 ];
 
 const ler = (rel) => fs.readFileSync(path.join(RAIZ, rel), 'utf8');
 
-describe.each(TELAS)('%s (%s)', (arquivo) => {
+describe.each(TELAS)('%s (%s)', (arquivo, _perfil, hrefEsperado) => {
     let html;
     beforeAll(() => {
         html = ler(arquivo);
     });
 
     it('tem link para a página de conversas', () => {
-        expect(html).toContain('href="/html/conversas.html"');
+        expect(html).toContain(`href="${hrefEsperado}"`);
     });
 
     it('marca o link com o atributo que o selo procura', () => {
@@ -100,8 +105,10 @@ describe('as peças combinam entre si', () => {
 
     it('o link do menu aponta para um arquivo que existe', () => {
         // Um href com erro de digitação só aparece como 404 para quem clica.
-        for (const [arquivo] of TELAS) {
-            const alvo = /href="(\/html\/conversas\.html)"/.exec(ler(arquivo));
+        for (const [arquivo, , hrefEsperado] of TELAS) {
+            const alvo = new RegExp(`href="(${hrefEsperado.replace(/\//g, '\\/')})"`).exec(
+                ler(arquivo)
+            );
             expect(alvo).not.toBeNull();
             expect(fs.existsSync(path.join(RAIZ, alvo[1].replace(/^\//, '')))).toBe(true);
         }
