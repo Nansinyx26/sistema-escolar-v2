@@ -217,6 +217,8 @@
         }
 
         idAberto = id;
+        // O manager em modo painel fecha a conversa anterior sozinho: no painel
+        // só cabe uma, e é a que a pessoa acabou de clicar.
         window.abrirChatCom(id, {
             nome: contato.nome,
             foto: contato.foto,
@@ -230,6 +232,19 @@
         // lida), então o espelho local acompanha em vez de esperar a próxima
         // recarga mostrar um número que já não existe.
         contato.naoLidas = 0;
+        renderizar();
+    }
+
+    /**
+     * A conversa foi fechada (pelo X do cabeçalho, ou porque outra tomou o
+     * painel). Só interessa quando quem saiu é a que ESTA tela abriu: trocar de
+     * contato dispara o fechamento da anterior, e repor o convite ali apagaria
+     * a conversa que acabou de entrar.
+     */
+    function aoFecharConversa(evento) {
+        if (String(evento?.detail?.userId || '') !== idAberto) return;
+        idAberto = null;
+        if (els.vazio) els.vazio.style.display = '';
         renderizar();
     }
 
@@ -312,6 +327,16 @@
 
     function iniciar() {
         if (!els.lista) return;
+
+        // Nesta tela a conversa é o painel inteiro, não uma janelinha no canto:
+        // abrir um contato tem de FECHAR o anterior, senão as janelas se
+        // empilham e fica aberta a de quem foi clicado antes.
+        if (window.chatManager && typeof window.chatManager.setModoPainel === 'function') {
+            window.chatManager.setModoPainel(true);
+        }
+
+        // O X do cabeçalho da conversa devolve o painel ao convite inicial.
+        document.addEventListener('chat:janela-fechada', aoFecharConversa);
 
         els.lista.addEventListener('click', (ev) => {
             const botao = ev.target.closest('.conv-item');
