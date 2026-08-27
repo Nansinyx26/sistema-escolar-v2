@@ -4,6 +4,11 @@ const cookieParser = require('cookie-parser');
 const JWT_SECRET = require('../utils/jwtConfig');
 const Usuario = require('../models/Usuario');
 const { tokenEstaRevogado } = require('../utils/sessionToken');
+const {
+    painelDoPerfil,
+    PAINEL_DASHBOARD,
+    PERFIS_DO_DASHBOARD,
+} = require('../utils/painelPorPerfil');
 const logger = require('../utils/logger');
 
 /**
@@ -97,6 +102,34 @@ const AREAS = {
     // interface que nunca vai carregar. Ver Issue #72.
     '/html/conversas.html': {
         perfis: ['admin', 'diretor', 'secretaria', 'professor', 'responsavel'],
+    },
+
+    // ── Painel unificado ─────────────────────────────────────────────────
+    // O dashboard se adapta ao perfil que o abre (professor, diretor, admin) e
+    // NUNCA conferiu qual era esse perfil. Um responsável que chegasse aqui —
+    // pelo botão de voltar da tela de conversas, pelo histórico do navegador ou
+    // digitando a URL — recebia a interface do professor, com a barra lateral
+    // da escola e o rótulo de cargo trocado. Nenhum dado de outra pessoa
+    // aparecia (as APIs por trás são autorizadas uma a uma), mas a pessoa via
+    // uma tela que não é a conta dela, e nada nela leva de volta ao portal.
+    //
+    // A lista vem de `PERFIS_DO_DASHBOARD` e é DECLARADA, não derivada de quem
+    // mora aqui. Derivar foi a primeira tentativa e deixava a secretaria de
+    // fora: ela tem painel próprio, mas chega a esta tela por um botão do
+    // próprio painel dela, e o dashboard sabe se desenhar para ela. O motivo de
+    // cada nome está em utils/painelPorPerfil.js.
+    //
+    // O que o defeito exigia era barrar o RESPONSÁVEL — e só ele.
+    //
+    // `redirecionarAoPainel` troca o 404 padrão da área pelo painel de quem
+    // pediu. Aqui o 404 seria a resposta errada: a página EXISTE, a pessoa está
+    // autenticada e tem um painel próprio — negar sem levar a lugar nenhum
+    // deixaria o responsável numa tela de erro em vez de no portal dele. O
+    // segredo que o 404 protege nas outras áreas (a existência delas) não se
+    // aplica: /html/dashboard.html é público e linkado em toda parte.
+    '/html/dashboard.html': {
+        perfis: PERFIS_DO_DASHBOARD,
+        redirecionarAoPainel: true,
     },
     // `codigos-secretos.html` JÁ FOI admin-only aqui, por uma exceção baseada em
     // premissa errada: o comentário citava `routes/escolas.js → authorize('admin')`,
@@ -339,6 +372,16 @@ async function autorizar(req, res, next, { config, forma }, pagina404) {
             perfil: usuario.perfil,
             action: 'protegerPaginas.negado',
         });
+
+        // Páginas que têm um equivalente por perfil mandam a pessoa para o
+        // painel DELA em vez de para o erro. Ver `redirecionarAoPainel` no mapa
+        // de áreas. A comparação com `forma` evita o laço se algum dia um
+        // perfil listar como painel a própria página que não pode abrir.
+        if (config.redirecionarAoPainel) {
+            const painel = painelDoPerfil(usuario.perfil);
+            if (painel.toLowerCase() !== forma) return res.redirect(302, painel);
+        }
+
         // 404 e não 403: um 403 confirmaria que a área existe.
         return res.status(404).sendFile(pagina404);
     }

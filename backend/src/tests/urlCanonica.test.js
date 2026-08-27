@@ -39,7 +39,11 @@ describe('URL canônica: barras repetidas', () => {
     it('o destino NUNCA e protocol-relative — nao leva para fora do dominio', async () => {
         // Sem o colapso, `Location: //evil.com/x` mandaria a pessoa para outro
         // host. O destino tem de comecar com exatamente uma barra.
-        for (const entrada of ['//evil.com/x', '////evil.com', '//attacker.test/html/dashboard.html']) {
+        for (const entrada of [
+            '//evil.com/x',
+            '////evil.com',
+            '//attacker.test/html/dashboard.html',
+        ]) {
             const res = await request(app).get(entrada);
             const loc = res.headers.location || '';
             expect(`${entrada}: ${loc.slice(0, 2)}`).not.toBe(`${entrada}: //`);
@@ -48,7 +52,12 @@ describe('URL canônica: barras repetidas', () => {
     });
 
     it('URL sem barra repetida segue intacta', async () => {
-        const res = await request(app).get('/html/dashboard.html');
+        // Página pública de propósito: o que se verifica aqui é que o colapso
+        // NÃO age quando não há barra sobrando. Usar uma página com gate de
+        // perfil (o dashboard, que este teste usava) misturaria o 302 do
+        // controle de acesso com o 308 do colapso — e o teste passaria a falhar
+        // por um motivo que não é o dele.
+        const res = await request(app).get('/html/login.html');
         expect(res.status).toBe(200);
     });
 
