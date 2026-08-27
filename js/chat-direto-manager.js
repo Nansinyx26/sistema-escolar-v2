@@ -2220,9 +2220,22 @@
     class ChatManager {
         constructor() {
             this.activeWindows = new Map();
+            /**
+             * Modo painel: a conversa está ancorada num painel fixo da página
+             * (html/conversas.html) em vez de flutuar sobre a tela. Nesse
+             * lugar só cabe UMA conversa, então abrir outra fecha a anterior —
+             * mesma regra que o celular já aplica pelo mesmo motivo.
+             * Ligado por quem monta a página, via setModoPainel().
+             */
+            this.modoPainel = false;
             this.meuId = this.getMeuId();
             this.createContainer();
             this.bindSocketEvents();
+        }
+
+        /** Ver o comentário de `modoPainel` no construtor. */
+        setModoPainel(ativo) {
+            this.modoPainel = !!ativo;
         }
 
         getMeuId() {
@@ -2267,9 +2280,10 @@
                 return win;
             }
 
-            // No celular a janela ocupa a tela toda: manter várias abertas empilharia
-            // conversas invisíveis uma sobre a outra.
-            if (window.matchMedia('(max-width: 768px)').matches) {
+            // No celular — e na página de conversas, onde a janela ocupa o painel
+            // inteiro — manter várias abertas empilharia conversas invisíveis uma
+            // sobre a outra. Só a que a pessoa clicou fica.
+            if (this.modoPainel || window.matchMedia('(max-width: 768px)').matches) {
                 this.activeWindows.forEach((w) => {
                     w.close();
                 });
@@ -2337,6 +2351,15 @@
 
         removeWindow(targetUserId) {
             this.activeWindows.delete(String(targetUserId));
+            // Quem desenha um painel em volta da conversa precisa saber que ela
+            // saiu para repor o próprio estado (o convite "escolha um contato",
+            // o item marcado na lista). Sem o aviso, a página ficaria com um
+            // painel vazio e um contato eternamente destacado.
+            document.dispatchEvent(
+                new CustomEvent('chat:janela-fechada', {
+                    detail: { userId: String(targetUserId) },
+                })
+            );
         }
 
         /**

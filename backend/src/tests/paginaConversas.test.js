@@ -142,3 +142,124 @@ describe('a página exclusiva da direção não vaza para outros perfis', () => 
         expect(html).toMatch(/class="conv-voltar" href="index\.html"/);
     });
 });
+
+/**
+ * O "voltar" levava o responsável para o painel do professor.
+ *
+ * A tela compartilhada é o ÚNICO ponto do sistema em HTML puro que o
+ * responsável alcança — ele chega vindo do portal React. O link de voltar
+ * estava fixo em `dashboard.html`, então clicar em "voltar" o depositava numa
+ * tela de professor, com a barra lateral da escola, e sem nada que o levasse de
+ * volta ao portal. Só o `perfil` de quem abriu decide esse destino, e ele não
+ * era consultado.
+ *
+ * São três peças em três arquivos que não se conhecem: o atributo no HTML, o
+ * seletor no script e o mapa de destinos — que precisa ser o MESMO do servidor,
+ * senão o link abre e toma um redirecionamento na cara da pessoa.
+ */
+describe('o "voltar" da tela compartilhada respeita o perfil', () => {
+    const blocoDePaineis = script.slice(
+        script.indexOf('const PAINEL_POR_PERFIL'),
+        script.indexOf('async function meuPerfil')
+    );
+
+    it('a página marca o link para o script reescrever', () => {
+        const html = fs.readFileSync(path.join(RAIZ, 'html/conversas.html'), 'utf8');
+        expect(html).toMatch(/class="conv-voltar"[^>]*data-voltar-perfil/);
+    });
+
+    it('o script procura exatamente o atributo que a página marca', () => {
+        // Renomear de um lado só faz o link voltar a ser fixo, em silêncio.
+        expect(script).toContain('.conv-voltar[data-voltar-perfil]');
+    });
+
+    /** O `url:` declarado para um perfil dentro do mapa do script. */
+    function urlDoPerfil(perfil) {
+        const inicio = blocoDePaineis.indexOf(`${perfil}:`);
+        if (inicio < 0) return null;
+
+        const depois = blocoDePaineis.slice(inicio);
+        const marca = depois.indexOf("url: '");
+        if (marca < 0) return null;
+
+        const valor = depois.slice(marca + "url: '".length);
+        return valor.slice(0, valor.indexOf("'"));
+    }
+
+    it('o destino de cada perfil é o mesmo que o servidor usaria', () => {
+        const { PAINEL_POR_PERFIL } = require('../utils/painelPorPerfil');
+
+        // Divergir aqui dá o pior dos casos: o link abre e o servidor
+        // redireciona na hora — uma volta de navegação que ninguém pediu.
+        for (const [perfil, url] of Object.entries(PAINEL_POR_PERFIL)) {
+            expect(`${perfil} -> ${urlDoPerfil(perfil)}`).toBe(`${perfil} -> ${url}`);
+        }
+    });
+
+    it('o script cobre todos os perfis que o servidor conhece', () => {
+        const { PAINEL_POR_PERFIL } = require('../utils/painelPorPerfil');
+        // Um perfil de fora do mapa cai no fallback do HTML — que é o dashboard.
+        // Foi assim que o responsável chegou lá.
+        for (const perfil of Object.keys(PAINEL_POR_PERFIL)) {
+            expect(blocoDePaineis).toContain(`${perfil}:`);
+        }
+    });
+
+    it('a tela da direção fica de fora — ela tem destino próprio', () => {
+        // Sem o atributo, o script não toca no link: /html/direcao/conversas.html
+        // volta para o painel da direção, não para o dashboard genérico.
+        const html = fs.readFileSync(path.join(RAIZ, 'html/direcao/conversas.html'), 'utf8');
+        expect(html).not.toContain('data-voltar-perfil');
+    });
+});
+
+/**
+ * A defesa real não é o link — é o gate.
+ *
+ * O link certo conserta a navegação; ele não impede ninguém de digitar a URL,
+ * usar o histórico ou clicar num link antigo. Quem fecha o dashboard para o
+ * responsável é `middleware/protegerPaginas.js`, e ele deriva a lista de perfis
+ * do MESMO mapa que o redirecionamento usa.
+ */
+describe('o dashboard é fechado para o responsável — e só para ele', () => {
+    const { AREAS } = require('../middleware/protegerPaginas');
+    const { PAINEL_POR_PERFIL, PAINEL_DASHBOARD } = require('../utils/painelPorPerfil');
+
+    const doGate = () => AREAS[PAINEL_DASHBOARD].perfis;
+
+    it('a área existe no gate', () => {
+        expect(AREAS[PAINEL_DASHBOARD]).toBeDefined();
+    });
+
+    it('o responsável não entra — o defeito que originou tudo isto', () => {
+        expect(doGate()).not.toContain('responsavel');
+    });
+
+    it('quem MORA no dashboard consegue abri-lo', () => {
+        // A trava contra fechar demais. A primeira versão derivava a lista de
+        // "quem mora aqui" e, por elegância, deixava a secretaria de fora —
+        // transformando o botão "Dashboard" do painel dela num no-op. Este
+        // teste garante o piso: ninguém que o login manda para cá pode
+        // encontrar a porta fechada.
+        const moradores = Object.keys(PAINEL_POR_PERFIL).filter(
+            (p) => PAINEL_POR_PERFIL[p] === PAINEL_DASHBOARD
+        );
+
+        for (const perfil of moradores) {
+            expect(`${perfil} entra: ${doGate().includes(perfil)}`).toBe(`${perfil} entra: true`);
+        }
+    });
+
+    it('a secretaria continua entrando, mesmo tendo painel próprio', () => {
+        // `html/secretaria/painel.html` tem um botão "Dashboard" no cabeçalho e
+        // `js/dashboard.js` desenha cards e barra lateral de secretaria. Tirá-la
+        // daqui quebra uma tela que funcionava.
+        expect(doGate()).toContain('secretaria');
+    });
+
+    it('negar aqui redireciona ao painel da pessoa, não a um 404', () => {
+        // A página existe e a pessoa está autenticada: mandá-la para o erro
+        // seria trocar uma tela errada por um beco sem saída.
+        expect(AREAS[PAINEL_DASHBOARD].redirecionarAoPainel).toBe(true);
+    });
+});
