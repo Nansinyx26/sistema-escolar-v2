@@ -54,7 +54,9 @@ class SecurityController {
         if (String(req.user?.perfil || '').toLowerCase() === 'admin') return null;
         if (!req.escolaId) return null;
         const Escola = require('../models/Escola');
-        return Escola.findById(String(req.escolaId)).select('+codigoSecreto nome ativo').catch(() => null);
+        return Escola.findById(String(req.escolaId))
+            .select('+codigoSecreto nome ativo')
+            .catch(() => null);
     }
 
     /**
@@ -75,8 +77,8 @@ class SecurityController {
                         codigo: escola.codigoSecreto,
                         escopo: 'escola',
                         escolaNome: escola.nome,
-                        rotacaoAtiva: false
-                    }
+                        rotacaoAtiva: false,
+                    },
                 });
             }
 
@@ -87,7 +89,7 @@ class SecurityController {
             if (String(req.user?.perfil || '').toLowerCase() !== 'admin') {
                 return res.status(409).json({
                     success: false,
-                    error: 'Não foi possível identificar sua escola. Faça login novamente para ver o código de cadastro.'
+                    error: 'Não foi possível identificar sua escola. Faça login novamente para ver o código de cadastro.',
                 });
             }
 
@@ -96,15 +98,21 @@ class SecurityController {
             if (!config) {
                 config = await SecurityConfig.create({
                     codigoSecretoEscola: this.generateCode(),
-                    dataUltimaRotacao: new Date()
+                    dataUltimaRotacao: new Date(),
                 });
             }
 
             // Verifica se precisa de rotação automática (meia-noite de Brasília passou?)
             const agora = new Date();
-            const hojeBR = new Date(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+            const hojeBR = new Date(
+                agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })
+            );
             hojeBR.setHours(0, 0, 0, 0);
-            const ultimaBR = new Date(new Date(config.dataUltimaRotacao).toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+            const ultimaBR = new Date(
+                new Date(config.dataUltimaRotacao).toLocaleString('en-US', {
+                    timeZone: 'America/Sao_Paulo',
+                })
+            );
             ultimaBR.setHours(0, 0, 0, 0);
 
             if (config.rotacaoAutomatica && hojeBR > ultimaBR) {
@@ -117,8 +125,8 @@ class SecurityController {
                     codigo: config.codigoSecretoEscola,
                     ultimaRotacao: config.dataUltimaRotacao,
                     proximaRotacao: new Date(hojeBR.getTime() + 86400000),
-                    rotacaoAtiva: config.rotacaoAutomatica
-                }
+                    rotacaoAtiva: config.rotacaoAutomatica,
+                },
             });
         } catch (e) {
             res.status(500).json({ success: false, error: e.message });
@@ -140,13 +148,17 @@ class SecurityController {
 
                 await logAction(req, 'ROTATE_SECRET_CODE', 'Segurança', {
                     recursoId: String(escola._id),
-                    descricao: `Código secreto da escola "${escola.nome}" foi alterado manualmente.`
+                    descricao: `Código secreto da escola "${escola.nome}" foi alterado manualmente.`,
                 });
 
                 return res.json({
                     success: true,
                     message: `Novo código gerado para ${escola.nome}.`,
-                    data: { codigo: escola.codigoSecreto, escopo: 'escola', escolaNome: escola.nome }
+                    data: {
+                        codigo: escola.codigoSecreto,
+                        escopo: 'escola',
+                        escolaNome: escola.nome,
+                    },
                 });
             }
 
@@ -156,7 +168,7 @@ class SecurityController {
             if (String(req.user?.perfil || '').toLowerCase() !== 'admin') {
                 return res.status(409).json({
                     success: false,
-                    error: 'Não foi possível identificar sua escola. Faça login novamente antes de gerar um novo código.'
+                    error: 'Não foi possível identificar sua escola. Faça login novamente antes de gerar um novo código.',
                 });
             }
 
@@ -165,21 +177,21 @@ class SecurityController {
                 config = await SecurityConfig.create({
                     codigoSecretoEscola: this.generateCode(),
                     dataUltimaRotacao: new Date(),
-                    rotacaoAutomatica: true
+                    rotacaoAutomatica: true,
                 });
             }
             await this.rotateCodeInternal(config, req.user.nome);
 
             await logAction(req, 'ROTATE_SECRET_CODE', 'Segurança', {
-                descricao: 'Código secreto GLOBAL foi alterado manualmente'
+                descricao: 'Código secreto GLOBAL foi alterado manualmente',
             });
 
             res.json({
                 success: true,
                 message: 'Novo código gerado com sucesso',
                 data: {
-                    codigo: config.codigoSecretoEscola
-                }
+                    codigo: config.codigoSecretoEscola,
+                },
             });
         } catch (e) {
             res.status(500).json({ success: false, error: e.message });
@@ -193,7 +205,7 @@ class SecurityController {
         const novoCodigo = this.generateCode();
         config.historicoCodigos.push({
             codigo: config.codigoSecretoEscola,
-            data: config.dataUltimaRotacao
+            data: config.dataUltimaRotacao,
         });
         config.codigoSecretoEscola = novoCodigo;
         config.dataUltimaRotacao = new Date();
@@ -206,7 +218,10 @@ class SecurityController {
             const Escola = require('../models/Escola');
             const ativas = await Escola.find({ ativo: true }).select('_id').limit(2);
             if (ativas.length === 1) {
-                await Escola.updateOne({ _id: ativas[0]._id }, { $set: { codigoSecreto: novoCodigo } });
+                await Escola.updateOne(
+                    { _id: ativas[0]._id },
+                    { $set: { codigoSecreto: novoCodigo } }
+                );
             }
         } catch (e) {
             console.error('[SECURITY] Falha ao sincronizar código com a escola ativa:', e.message);
@@ -214,8 +229,10 @@ class SecurityController {
 
         // Notifica admins
         try {
-            const admins = await Usuario.find({ perfil: 'admin', ativo: true }).select('email').lean();
-            const adminEmails = admins.map(a => a.email);
+            const admins = await Usuario.find({ perfil: 'admin', ativo: true })
+                .select('email')
+                .lean();
+            const adminEmails = admins.map((a) => a.email);
             await notificarRotacaoCodigo(adminEmails, novoCodigo, autor);
         } catch (err) {
             console.error('[SECURITY] Erro ao notificar admins sobre rotação:', err.message);
@@ -249,7 +266,7 @@ class SecurityController {
             config = await SecurityConfig.create({
                 codigoSecretoEscola: novoCodigo,
                 dataUltimaRotacao: new Date(),
-                rotacaoAutomatica: true
+                rotacaoAutomatica: true,
             });
             console.log('🔑 [SECURITY] Código secreto global criado.');
         }
@@ -257,7 +274,9 @@ class SecurityController {
 
         // 1. Escola pré-selecionada (clique no modal): código deve ser DELA
         if (escolaId) {
-            const escola = await Escola.findById(escolaId).select('+codigoSecreto nome ativo').catch(() => null);
+            const escola = await Escola.findById(escolaId)
+                .select('+codigoSecreto nome ativo')
+                .catch(() => null);
             if (!escola || !escola.ativo) return false;
             if (escola.codigoSecreto === codeStr) return { escola };
             // Transição: código global vale para a escola ativa única
@@ -269,7 +288,10 @@ class SecurityController {
         }
 
         // 2. Sem escola pré-selecionada: o código identifica a escola
-        const escolaPorCodigo = await Escola.findOne({ codigoSecreto: codeStr, ativo: true }).select('+codigoSecreto nome ativo');
+        const escolaPorCodigo = await Escola.findOne({
+            codigoSecreto: codeStr,
+            ativo: true,
+        }).select('+codigoSecreto nome ativo');
         if (escolaPorCodigo) return { escola: escolaPorCodigo };
 
         // 3. Legado: código global → escola ativa única (ou nenhuma escola cadastrada)
@@ -295,7 +317,7 @@ class SecurityController {
                 success: true,
                 valid: !!result,
                 // Nome da escola identificada pelo código (para feedback no cadastro)
-                escolaNome: (result && result.escola && result.escola.nome) || null
+                escolaNome: (result && result.escola && result.escola.nome) || null,
             });
         } catch (e) {
             res.status(500).json({ success: false, error: e.message });
