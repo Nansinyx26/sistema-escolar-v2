@@ -33,6 +33,9 @@
         lista: document.getElementById('convLista'),
         busca: document.getElementById('convBusca'),
         vazio: document.getElementById('convVazio'),
+        // Só a versão compartilhada da tela marca o link (data-voltar-perfil).
+        // A da direção volta para o painel da direção e não tem o atributo.
+        voltar: document.querySelector('.conv-voltar[data-voltar-perfil]'),
     };
 
     let contatos = [];
@@ -325,6 +328,84 @@
         return true;
     }
 
+    // ── Para onde o "voltar" leva ────────────────────────────────────────
+    //
+    // Esta tela é compartilhada por TODOS os perfis — é o único ponto do
+    // sistema em HTML puro que o responsável alcança, vindo do portal
+    // (portal-responsavel/src/components/Header.tsx). O link de voltar era fixo
+    // em `dashboard.html`, então o responsável clicava em "voltar" e caía no
+    // painel do professor, sem nada na tela que o trouxesse de volta ao portal.
+    //
+    // O mapa espelha `backend/src/utils/painelPorPerfil.js`, que é quem decide
+    // o destino pós-login e quem pode abrir cada painel. Divergir daqui daria
+    // um link que abre e imediatamente redireciona.
+    const PAINEL_POR_PERFIL = {
+        admin: { url: '/html/dashboard.html', rotulo: 'Voltar ao painel' },
+        diretor: { url: '/html/dashboard.html', rotulo: 'Voltar ao painel' },
+        professor: { url: '/html/dashboard.html', rotulo: 'Voltar ao painel' },
+        secretaria: {
+            url: '/html/secretaria/painel.html',
+            rotulo: 'Voltar ao painel da secretaria',
+        },
+        responsavel: {
+            url: '/portal-responsavel/dist/index.html',
+            rotulo: 'Voltar ao portal',
+        },
+    };
+
+    /**
+     * Perfil de quem está usando a tela.
+     *
+     * O `sessionStorage` é o caminho rápido, mas NÃO dá para depender só dele:
+     * o portal do responsável é um app React que autentica por cookie e nunca
+     * grava `currentUser`. Quem vem de lá chegaria aqui sem perfil nenhum — que
+     * é justamente o caso que este código existe para resolver. Então, sem
+     * cache, pergunta ao servidor.
+     *
+     * Isto é NAVEGAÇÃO, não autorização: o valor só escolhe um href. Quem
+     * garante que o responsável não abre o painel do professor é o gate do
+     * servidor (middleware/protegerPaginas.js).
+     */
+    async function meuPerfil() {
+        try {
+            const cache = JSON.parse(sessionStorage.getItem('currentUser') || 'null');
+            if (cache && cache.perfil) return String(cache.perfil).toLowerCase();
+        } catch (_e) {
+            // Storage desligado ou conteúdo corrompido: segue para a rede.
+        }
+
+        try {
+            const res = await fetch(`${API()}/auth/me`, {
+                credentials: 'include',
+                headers: { Accept: 'application/json' },
+            });
+            if (!res.ok) return '';
+            const corpo = await res.json();
+            return String(corpo?.user?.perfil || '').toLowerCase();
+        } catch (_e) {
+            return '';
+        }
+    }
+
+    /**
+     * Aponta o "voltar" para o painel do perfil.
+     *
+     * Sem perfil resolvido o link fica como está no HTML. Chutar um destino
+     * seria pior: o link continua clicável e levaria a pessoa para a tela
+     * errada — o servidor a devolveria ao painel certo, mas depois de uma volta
+     * de navegação que ela não pediu.
+     */
+    async function ajustarVoltar() {
+        if (!els.voltar) return;
+
+        const destino = PAINEL_POR_PERFIL[await meuPerfil()];
+        if (!destino) return;
+
+        els.voltar.href = destino.url;
+        els.voltar.setAttribute('aria-label', destino.rotulo);
+        els.voltar.title = destino.rotulo;
+    }
+
     function iniciar() {
         if (!els.lista) return;
 
@@ -345,6 +426,7 @@
 
         els.busca.addEventListener('input', renderizar);
 
+        ajustarVoltar();
         carregar();
 
         // O socket é criado por realtime.js de forma assíncrona (ele injeta o

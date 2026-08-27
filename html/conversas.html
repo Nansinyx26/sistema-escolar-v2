@@ -302,7 +302,11 @@
     <div class="conv-layout">
         <aside class="conv-sidebar">
             <div class="conv-topo">
-                <a class="conv-voltar" href="dashboard.html" aria-label="Voltar ao painel">
+                <!-- `data-voltar-perfil`: js/conversas.js reescreve o destino conforme
+                     o perfil de quem abriu a tela. O href aqui é só o fallback
+                     enquanto isso não resolve — o responsável, por exemplo, volta
+                     para o portal dele, não para o dashboard. -->
+                <a class="conv-voltar" href="dashboard.html" data-voltar-perfil aria-label="Voltar ao painel">
                     <i class="bi bi-arrow-left" aria-hidden="true"></i>
                 </a>
                 <h1>Conversas</h1>
