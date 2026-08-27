@@ -1,12 +1,49 @@
 /**
  * UserController — REFATORADO
  *
- * Agora atua como thin controller que delega para serviços especializados:
- * - AuthenticationService (login, logout, 2FA)
- * - RegistrationService (register, firstAccess)
- * - PasswordRecoveryService (forgot password, reset, etc)
+ * ⚠️ NÃO LIGUE ISTO EM `routes/auth.js` COMO ESTÁ. NÃO É DROP-IN.
+ * ============================================================================
+ * Este arquivo nunca foi roteado, e `md/GUIA_MIGRACAO_USERCONTROLLER.md` o
+ * descrevia como "pronto para migração" desde 30/06/2026. A auditoria de
+ * paridade contra o `UserController` VIVO desmente isso em quatro pontos — três
+ * deles são regressão de segurança, não diferença de estilo:
  *
- * Mantém apenas responsabilidade HTTP: validar input, formatar resposta, set cookies
+ * 1. **2FA obrigatório vira opt-in.** O login vivo decide o segundo fator por
+ *    `utils/politica2FA.exigeSegundoFator()`, que exige 2FA quando a conta tem
+ *    `twoFactorEnabled` OU quando o PERFIL está na lista obrigatória (padrão:
+ *    diretor e secretaria). O `AuthenticationService.login` olha só
+ *    `user.twoFactorEnabled`. Resultado: um diretor sem a flag na conta passaria
+ *    a entrar com e-mail e senha apenas — e diretor enxerga nota, frequência e
+ *    dado pessoal de menor. Ver docs/2FA-OBRIGATORIO.md.
+ *
+ * 2. **O alvo do 2FA volta a vir do corpo da requisição.** `exports.verify2FA`
+ *    aqui lê `userId` de `req.body`. O fluxo vivo usa o token de pré-autenticação
+ *    (`utils/preAuthToken.js`) exatamente para isso não acontecer — o comentário
+ *    em `TwoFactorController.sendCode` explica: com `userId` livre, qualquer um
+ *    dispara código e reinicia o contador de tentativas na conta que quiser.
+ *
+ * 3. **Sem limite de tentativas no 2FA.** `TwoFactorController` tem o controle de
+ *    tentativas e os códigos de backup; o `AuthenticationService` não tem nada
+ *    disso. Um código de 6 dígitos sem teto de tentativas é força bruta viável.
+ *
+ * 4. **12 endpoints roteados hoje simplesmente não existem aqui:** googleLogin,
+ *    mockGoogleLogin, getGoogleClientId, registerDiretor, registerSecretaria,
+ *    verifyEmail, updateProfile, updateTutorial, updateTTSSettings, uploadFoto,
+ *    removeFoto, update e anonymize. Trocar o require em `routes/auth.js`
+ *    derruba todos eles de uma vez.
+ *
+ * Some ainda o `req.session.escolaAtivaId` que o login vivo grava — é ele que
+ * fixa o tenant da sessão multi-escola.
+ *
+ * `backend/src/tests/userControllerRefatorado.paridade.test.js` guarda esta
+ * lista: no dia em que alguém rotear este arquivo, o teste falha e aponta o que
+ * falta. Enquanto ninguém rotear, ele só verifica que o arquivo segue órfão.
+ * ============================================================================
+ *
+ * A ideia original continua boa: thin controller delegando para serviços
+ * especializados (AuthenticationService, RegistrationService,
+ * PasswordRecoveryService), cada um testável isoladamente. O que falta é
+ * paridade — não arquitetura.
  */
 
 const AuthenticationService = require('../services/AuthenticationService');
@@ -160,7 +197,10 @@ exports.registerResponsavel = async (req, res) => {
  * Cadastro público de Docente via código secreto da escola
  */
 exports.registerDocente = async (req, res) => {
-    const { nome, email, senha, disciplina, turma, matricula, telefone, codigoEscola } = req.body;
+    // `escolaId` vem quando o modal pré-seleciona a escola: aí o código digitado
+    // tem que ser DAQUELA escola, não de qualquer uma da rede.
+    const { nome, email, senha, disciplina, turma, matricula, telefone, codigoEscola, escolaId } =
+        req.body;
 
     const result = await RegistrationService.registerDocente({
         nome,
@@ -171,10 +211,12 @@ exports.registerDocente = async (req, res) => {
         matricula,
         telefone,
         codigoEscola,
+        escolaId,
     });
 
     if (!result.success) {
-        const statusCode = result.code === 'EMAIL_DUPLICATE' ? 409 : 400;
+        const STATUS_POR_CODIGO = { EMAIL_DUPLICATE: 409, INVALID_CODE: 403 };
+        const statusCode = STATUS_POR_CODIGO[result.code] || 400;
         return res.status(statusCode).json({
             success: false,
             error: result.error,
@@ -221,7 +263,7 @@ exports.firstAccess = async (req, res) => {
  * Cadastro com código secreto
  */
 exports.registerWithCode = async (req, res) => {
-    const { nome, email, senha, codigoSecreto, cpf, telefone } = req.body;
+    const { nome, email, senha, codigoSecreto, cpf, telefone, escolaId } = req.body;
 
     const result = await RegistrationService.registerWithCode({
         nome,
@@ -230,10 +272,12 @@ exports.registerWithCode = async (req, res) => {
         codigoSecreto,
         cpf,
         telefone,
+        escolaId,
     });
 
     if (!result.success) {
-        const statusCode = result.code === 'EMAIL_DUPLICATE' ? 409 : 400;
+        const STATUS_POR_CODIGO = { EMAIL_DUPLICATE: 409, INVALID_CODE: 403 };
+        const statusCode = STATUS_POR_CODIGO[result.code] || 400;
         return res.status(statusCode).json({
             success: false,
             error: result.error,

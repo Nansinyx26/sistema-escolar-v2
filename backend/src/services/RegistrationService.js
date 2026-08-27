@@ -22,6 +22,11 @@ const ACTUAL_JWT_SECRET = require('../utils/jwtConfig');
 const { logAction } = require('../utils/auditHelper');
 const logger = require('../utils/logger');
 const { emitirParaPerfis } = require('../utils/realtime');
+// A validação do código secreto mora em um service, não no SecurityController:
+// `services/` não pode importar `controllers/` (regra `service-nao-sobe` do
+// dependency-cruiser). Foi exatamente essa amarra que deixou a validação
+// comentada aqui por tanto tempo.
+const { validarCodigoEscola } = require('./codigoEscolaService');
 
 const SALT_ROUNDS = 12;
 
@@ -208,8 +213,17 @@ class RegistrationService {
      */
     static async registerDocente(data) {
         try {
-            const { nome, email, senha, disciplina, turma, matricula, telefone, codigoEscola } =
-                data;
+            const {
+                nome,
+                email,
+                senha,
+                disciplina,
+                turma,
+                matricula,
+                telefone,
+                codigoEscola,
+                escolaId,
+            } = data;
 
             // Validações
             if (
@@ -229,12 +243,21 @@ class RegistrationService {
                 };
             }
 
-            // TODO: Validar código secreto da escola
-            // const SecurityController = require('../controllers/SecurityController');
-            // const isValidCode = await SecurityController.validateCode(codigoEscola);
-            // if (!isValidCode) {
-            //   return { success: false, error: 'Código Secreto inválido.', code: 'INVALID_CODE' };
-            // }
+            // O código secreto é a ÚNICA prova de vínculo neste cadastro público:
+            // quem digita um código válido vira professor com acesso à turma. Validar
+            // antes de qualquer escrita, e resolver por ele a escola do vínculo —
+            // sem isso o usuário nasce sem `escolaId` e o registro em `professores`
+            // fica visível a toda a rede no filtro tolerante.
+            const codeResult = await validarCodigoEscola(codigoEscola, escolaId || null);
+            if (!codeResult) {
+                return {
+                    success: false,
+                    error: 'Código Secreto da Escola inválido ou expirado. Solicite o código atual à direção da escola.',
+                    code: 'INVALID_CODE',
+                };
+            }
+            const escolaResolvida = codeResult.escola || null; // null = legado (nenhuma escola cadastrada)
+            const escolaIdFinal = escolaResolvida ? String(escolaResolvida._id) : null;
 
             if (!RegistrationService.validateEmail(email)) {
                 return {
@@ -276,6 +299,8 @@ class RegistrationService {
                 telefone,
                 perfil: 'professor',
                 ativo: true,
+                escola: escolaResolvida ? escolaResolvida.nome : undefined,
+                escolaId: escolaIdFinal || undefined,
                 ultimoLogin: now,
                 lastLogin: now,
                 consentimentoAceiteEm: now,
@@ -323,7 +348,7 @@ class RegistrationService {
                 mensagem: `${nome} se cadastrou como Docente (${disciplina} - ${turma}).`,
                 destinatarios: 'diretores',
                 status: 'enviado',
-                escolaId: undefined,
+                escolaId: escolaIdFinal || undefined,
             });
 
             // Emitir notificação em tempo real
@@ -461,7 +486,15 @@ class RegistrationService {
      */
     static async registerWithCode(data) {
         try {
-            const { nome, email, senha, codigoSecreto, cpf, telefone } = data;
+            const { nome, email, senha, codigoSecreto, cpf, telefone, escolaId } = data;
+
+            if (!nome || !email) {
+                return {
+                    success: false,
+                    error: 'Nome e e-mail são obrigatórios.',
+                    code: 'MISSING_FIELDS',
+                };
+            }
 
             if (!senha || senha.length < 8) {
                 return {
@@ -471,11 +504,26 @@ class RegistrationService {
                 };
             }
 
-            // TODO: Validar código secreto da escola
-            // const isValid = await SecurityController.validateCode(codigoSecreto);
-            // if (!isValid) {
-            //   return { success: false, error: 'Código inválido ou expirado.', code: 'INVALID_CODE' };
-            // }
+            // Este cadastro cria conta de PROFESSOR direto, sem aprovação da direção.
+            // O código secreto é a única barreira; ausente ou inválido, não passa.
+            if (!codigoSecreto) {
+                return {
+                    success: false,
+                    error: 'O Código Secreto da Escola é obrigatório.',
+                    code: 'MISSING_FIELDS',
+                };
+            }
+
+            const codeResult = await validarCodigoEscola(codigoSecreto, escolaId || null);
+            if (!codeResult) {
+                return {
+                    success: false,
+                    error: 'Código Secreto da Escola inválido ou expirado.',
+                    code: 'INVALID_CODE',
+                };
+            }
+            const escolaResolvida = codeResult.escola || null;
+            const escolaIdFinal = escolaResolvida ? String(escolaResolvida._id) : null;
 
             // Verificar duplicidade
             const existing = await Usuario.findOne({ email: email.toLowerCase() });
@@ -499,6 +547,8 @@ class RegistrationService {
                 telefone: telefone ? telefone.replace(/\D/g, '') : undefined,
                 perfil: 'professor',
                 ativo: true,
+                escola: escolaResolvida ? escolaResolvida.nome : undefined,
+                escolaId: escolaIdFinal || undefined,
                 emailVerificado: false,
                 emailVerificacaoToken,
                 emailVerificacaoExpiry: Date.now() + 24 * 60 * 60 * 1000,

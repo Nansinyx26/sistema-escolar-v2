@@ -1,39 +1,20 @@
 const SecurityConfig = require('../models/SecurityConfig');
 const Usuario = require('../models/Usuario');
-const crypto = require('crypto');
 const { logAction } = require('../utils/auditHelper');
 const { notificarRotacaoCodigo } = require('../utils/emailNotifications');
+const { gerarCodigo, validarCodigoEscola } = require('../services/codigoEscolaService');
 
 class SecurityController {
     /**
      * Gera um novo código de cadastro.
      *
-     * O ALFABETO NÃO TEM CARACTERES ESPECIAIS — de propósito.
-     * ======================================================
-     * A versão anterior sorteava de `!@#$%&*_+-=`. Como o código sempre chega
-     * ao servidor DENTRO DO CORPO da requisição (validate-code,
-     * register-diretor, register-secretaria, escolas/mudar), ele passa antes
-     * pela sanitização global do app.js, que roda `sanitize-html` em toda
-     * string do body. E ali:
-     *     'aB3&xY9'  →  'aB3&amp;xY9'      (reescrito)
-     *     'k#7$mQ<w' →  'k#7$mQ'           (truncado!)
-     * O valor comparado em `validateCode` nunca batia com o gravado no banco.
-     * Com `&` no alfabeto de 73 chars e 10 posições, ~13% dos códigos gerados
-     * nasciam INUTILIZÁVEIS — o cadastro rejeitava um código correto e não
-     * havia sintoma que apontasse para a causa.
-     *
-     * Este é o mesmo alfabeto de `gerarCodigoEscola` (routes/escolas.js) e do
-     * seed: sem caracteres ambíguos (0/O, 1/I/l), porque o código é ditado por
-     * telefone e transcrito à mão. 53^10 ≈ 2^57 de espaço — entropia de sobra
-     * para um segredo rotacionável.
+     * A regra (inclusive a explicação do alfabeto sem caracteres especiais)
+     * mora em `services/codigoEscolaService.js`. Aqui ficou só a fachada, para
+     * não quebrar os callers que já chamavam `SecurityController.generateCode()`
+     * — index.js, os métodos de rotação abaixo e o teste de sanitização.
      */
     generateCode(length = 10) {
-        const ALFABETO = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-        let code = '';
-        for (let i = 0; i < length; i++) {
-            code += ALFABETO[crypto.randomInt(ALFABETO.length)];
-        }
-        return code;
+        return gerarCodigo(length);
     }
 
     /**
@@ -242,65 +223,14 @@ class SecurityController {
     /**
      * Valida o código secreto de cadastro.
      *
-     * Multi-escola:
-     * - Com `escolaId`: o código deve bater com o codigoSecreto DAQUELA escola
-     *   (evita inconsistência entre a escola clicada no modal e o código digitado).
-     * - Sem `escolaId`: o código identifica a escola automaticamente
-     *   (busca Escola por codigoSecreto).
-     * - Transição/legado: o código global (CONFIG_GERAL, rotação diária)
-     *   continua aceito e resolve para a escola ativa única (Jaguari).
-     *
-     * Retorno: `false` se inválido; senão um objeto `{ escola }` onde
-     * `escola` é o doc da Escola resolvida (ou `null` no modo legado puro,
-     * quando ainda não há escolas cadastradas). Truthy = válido, preservando
-     * os callers que fazem `if (!isValidCode)`.
+     * A regra mora em `services/codigoEscolaService.js` — inclusive a
+     * explicação do comportamento multi-escola e do modo legado. Este método é
+     * a fachada para os callers HTTP (UserController, routes/escolas.js) e
+     * mantém o contrato de retorno intacto: `false` quando inválido, `{ escola }`
+     * quando válido.
      */
     async validateCode(code, escolaId = null) {
-        const Escola = require('../models/Escola');
-        const codeStr = String(code);
-
-        // Código global legado (rotacionado diariamente)
-        let config = await SecurityConfig.findOne({ chave: 'CONFIG_GERAL' });
-        if (!config) {
-            const novoCodigo = this.generateCode();
-            config = await SecurityConfig.create({
-                codigoSecretoEscola: novoCodigo,
-                dataUltimaRotacao: new Date(),
-                rotacaoAutomatica: true,
-            });
-            console.log('🔑 [SECURITY] Código secreto global criado.');
-        }
-        const matchGlobal = config.codigoSecretoEscola === codeStr;
-
-        // 1. Escola pré-selecionada (clique no modal): código deve ser DELA
-        if (escolaId) {
-            const escola = await Escola.findById(escolaId)
-                .select('+codigoSecreto nome ativo')
-                .catch(() => null);
-            if (!escola || !escola.ativo) return false;
-            if (escola.codigoSecreto === codeStr) return { escola };
-            // Transição: código global vale para a escola ativa única
-            if (matchGlobal) {
-                const ativas = await Escola.countDocuments({ ativo: true });
-                if (ativas === 1) return { escola };
-            }
-            return false;
-        }
-
-        // 2. Sem escola pré-selecionada: o código identifica a escola
-        const escolaPorCodigo = await Escola.findOne({
-            codigoSecreto: codeStr,
-            ativo: true,
-        }).select('+codigoSecreto nome ativo');
-        if (escolaPorCodigo) return { escola: escolaPorCodigo };
-
-        // 3. Legado: código global → escola ativa única (ou nenhuma escola cadastrada)
-        if (matchGlobal) {
-            const ativas = await Escola.find({ ativo: true }).select('nome').limit(2);
-            if (ativas.length === 1) return { escola: ativas[0] };
-            if (ativas.length === 0) return { escola: null }; // pré-migração
-        }
-        return false;
+        return validarCodigoEscola(code, escolaId);
     }
 
     /**
