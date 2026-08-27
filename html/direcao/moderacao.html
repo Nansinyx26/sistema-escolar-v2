@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Moderação de conteúdo</title>
+    <link rel="icon" type="image/png" href="../../favicon/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/variables.css?v=2.0">
+    <link rel="stylesheet" href="../../css/base.css?v=2.0">
+    <link rel="stylesheet" href="../../css/components-new.css?v=2.0">
+    <link rel="stylesheet" href="../../css/responsive-global.css?v=1.2">
+    <link rel="stylesheet" href="../../css/system-global.css?v=1.0">
+    <link rel="stylesheet" href="../../js/libs/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../../css/motion.css?v=1.0">
+
+    <style>
+        /* ------------------------------------------------------------------
+           Layout desta tela. TODO o motion vem de css/motion.css (tokens de
+           duração/curva, .skeleton e .motion-reveal). Nenhuma animação nova é
+           declarada aqui — ver AGENTS.md §8 e docs/MOTION.md.
+           ------------------------------------------------------------------ */
+        .mod-wrap {
+            max-width: 60rem;
+            margin: 0 auto;
+            padding: 1.5rem 1rem 4rem;
+        }
+
+        .mod-cabecalho h1 {
+            margin: 0 0 0.25rem;
+            font-size: 1.5rem;
+        }
+
+        .mod-cabecalho p {
+            margin: 0 0 1.5rem;
+            color: var(--text-secondary, #94a3b8);
+            font-size: 0.9rem;
+        }
+
+        .mod-metricas {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .mod-metrica {
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+            padding: 0.9rem 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-md, 0.5rem);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .mod-metrica strong { font-size: 1.5rem; line-height: 1; }
+        .mod-metrica span { font-size: 0.8rem; color: var(--text-secondary, #94a3b8); }
+
+        .mod-alerta,
+        .mod-erro {
+            margin-bottom: 1rem;
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius-md, 0.5rem);
+            font-size: 0.9rem;
+        }
+
+        .mod-alerta { border: 1px solid rgba(234, 179, 8, 0.35); background: rgba(234, 179, 8, 0.12); }
+        .mod-erro   { border: 1px solid rgba(239, 68, 68, 0.35); background: rgba(239, 68, 68, 0.12); }
+
+        .mod-lista { display: grid; gap: 0.85rem; }
+
+        .mod-card {
+            padding: 1rem 1.1rem;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-md, 0.5rem);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .mod-card__topo {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .mod-card__data { font-size: 0.8rem; color: var(--text-secondary, #94a3b8); }
+
+        .mod-selo {
+            padding: 0.2rem 0.6rem;
+            border-radius: var(--radius-full, 9999px);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        /* A cor acompanha a matriz de §5.1: crítica e grave bloqueiam, moderada
+           retém, leve só registra. */
+        .mod-selo--critica  { background: rgba(239, 68, 68, 0.25);  color: #fca5a5; }
+        .mod-selo--grave    { background: rgba(249, 115, 22, 0.22); color: #fdba74; }
+        .mod-selo--moderada { background: rgba(234, 179, 8, 0.2);   color: #fde047; }
+        .mod-selo--leve     { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
+
+        .mod-card__dados {
+            display: grid;
+            grid-template-columns: minmax(9rem, auto) 1fr;
+            gap: 0.3rem 1rem;
+            margin: 0 0 0.9rem;
+            font-size: 0.88rem;
+        }
+
+        .mod-card__dados dt { color: var(--text-secondary, #94a3b8); }
+        .mod-card__dados dd { margin: 0; }
+
+        .mod-card__contestada {
+            margin: 0 0 0.9rem;
+            font-size: 0.85rem;
+            color: #fde047;
+        }
+
+        .mod-card__acoes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .mod-card__justificativa {
+            flex: 1 1 16rem;
+            min-width: 0;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: var(--radius-md, 0.5rem);
+            background: rgba(0, 0, 0, 0.25);
+            color: inherit;
+            font: inherit;
+        }
+
+        .mod-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid transparent;
+            border-radius: var(--radius-md, 0.5rem);
+            font: inherit;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color var(--motion-fast) var(--motion-ease-out),
+                        opacity var(--motion-fast) var(--motion-ease-out);
+        }
+
+        .mod-btn:disabled { opacity: 0.5; cursor: progress; }
+        .mod-btn--aprovar { background: rgba(34, 197, 94, 0.2); color: #86efac; }
+        .mod-btn--manter  { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+
+        .mod-vazio {
+            padding: 2.5rem 1rem;
+            text-align: center;
+            color: var(--text-secondary, #94a3b8);
+        }
+    </style>
+</head>
+<body>
+    <main class="mod-wrap">
+        <header class="mod-cabecalho">
+            <h1>Moderação de conteúdo</h1>
+            <!-- Dito na tela, e não só na spec: quem revisa precisa saber que o
+                 painel mostra metadados, não a conversa. -->
+            <p>
+                Fila de revisão da sua escola. Esta tela mostra o registro da ocorrência —
+                quem enviou, quando e o que disparou a análise. O conteúdo da mensagem não
+                é armazenado aqui.
+            </p>
+        </header>
+
+        <section class="mod-metricas" id="mod-metricas" aria-label="Resumo da moderação"></section>
+
+        <p class="mod-alerta" id="mod-alerta" role="status" hidden></p>
+        <p class="mod-erro" id="mod-erro" role="alert" hidden></p>
+
+        <section class="mod-lista" id="mod-lista" aria-live="polite" aria-label="Ocorrências pendentes"></section>
+
+        <p class="mod-vazio" id="mod-vazio" hidden>Nenhuma ocorrência esperando decisão.</p>
+    </main>
+
+    <script src="../../js/csrf-helper.js"></script>
+    <script defer src="../../js/auth.js?v=3"></script>
+    <script defer src="../../js/motion.js"></script>
+    <script defer src="../../js/moderacao/painel.js?v=1.0"></script>
+    <script defer src="../../js/observability.js"></script>
+</body>
+</html>

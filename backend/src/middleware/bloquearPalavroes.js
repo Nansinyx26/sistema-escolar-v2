@@ -38,6 +38,48 @@
 const filtroPalavroes = require('../utils/filtroPalavroes');
 
 /**
+ * Envia o bloqueio para o registro de ocorrências da moderação.
+ *
+ * SEM `await`, DE PROPÓSITO — duas razões:
+ *
+ * 1. §5.3 da ESPEC-MODERACAO-CHAT.md exige que a resposta de bloqueio tenha
+ *    latência indistinguível da de sucesso. Esperar uma escrita no Mongo aqui
+ *    criaria justamente o sinal de tempo que revela qual camada disparou.
+ * 2. O chat não pode depender da moderação para funcionar (P5). Se a escrita da
+ *    ocorrência falhar, o bloqueio continua valendo e a mensagem continua
+ *    barrada — perde-se o registro, não a barreira.
+ *
+ * `opcoes.registrarOcorrencia` é OPT-IN. O middleware também protege comentários
+ * e avaliações, e transformar todo palavrão de mural em ocorrência na fila da
+ * coordenação encheria o painel de coisa que ninguém pediu para revisar. Quem
+ * liga é a rota do chat.
+ */
+function registrarOcorrencia(req, campo, opcoes) {
+    if (!opcoes.registrarOcorrencia) return;
+
+    const texto = req.body?.[campo];
+
+    // require tardio: `services/` carrega models, e puxar isso no topo faria o
+    // middleware arrastar a camada de dados para dentro de rotas que só querem
+    // filtrar um comentário.
+    const ModeracaoService = require('../services/moderacao/ModeracaoService');
+
+    ModeracaoService.analisarTexto({
+        texto,
+        contexto: {
+            escolaId: req.escolaId,
+            remetenteId: req.user?.id || req.user?._id,
+            remetentePerfil: req.user?.perfil,
+            destinatarioId: req.body?.destinatarioId,
+        },
+    }).catch((erro) => {
+        require('../utils/logger').error(
+            `[Moderacao] Falha ao registrar ocorrência do bloqueio léxico: ${erro.message}`
+        );
+    });
+}
+
+/**
  * @param {string|string[]} campos  Campo(s) de `req.body` a inspecionar.
  * @param {Object}  [opcoes]
  * @param {string}  [opcoes.recurso]     Nome do recurso, só para o log.
@@ -78,12 +120,14 @@ module.exports = function bloquearPalavroes(campos, opcoes = {}) {
             filtroPalavroes.registrarTentativa(req, {
                 campo,
                 resultado,
-                recurso: opcoes.recurso
+                recurso: opcoes.recurso,
             });
+
+            registrarOcorrencia(req, campo, opcoes);
 
             const detalhes = {
                 campo,
-                trechos: resultado.ocorrencias.map(o => o.trecho)
+                trechos: resultado.ocorrencias.map((o) => o.trecho),
             };
             if (opcoes.detalhado !== false) {
                 detalhes.nivel = resultado.nivel;
@@ -94,7 +138,7 @@ module.exports = function bloquearPalavroes(campos, opcoes = {}) {
                 success: false,
                 codigo: 'CONTEUDO_IMPROPRIO',
                 error: resultado.mensagem,
-                detalhes
+                detalhes,
             });
         }
 
