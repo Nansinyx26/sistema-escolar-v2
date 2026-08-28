@@ -41,23 +41,50 @@ router.get('/me', authJWT, async (req, res) => {
         // Agora só sai o que a UI declaradamente usa.
         // ============================================
         const CAMPOS_PUBLICOS = [
-            '_id', 'id', 'nome', 'email', 'perfil', 'foto', 'fotoGoogle',
-            'escola', 'escolaId', 'disciplina', 'turma', 'matricula',
-            'telefone', 'cpf', 'parentesco', 'contaId',
-            'ativo', 'deveMudarSenha', 'profileCompleted', 'emailVerificado',
-            'twoFactorEnabled', 'ultimoLogin', 'criadoEm',
-            'consentimentoAceiteEm', 'consentimentoVersao',
-            'tutorialProfessorConcluido', 'tutorialResponsavelConcluido',
-            'preferenciaNarracao', 'voiceSpeed', 'voiceGender', 'ttsProvider', 'settings',
-            'accessibilityFontSize', 'accessibilityContrast', 'accessibilityReadingMode',
-            'notificacoesPreferencias', 'lgpdConsents'
+            '_id',
+            'id',
+            'nome',
+            'email',
+            'perfil',
+            'foto',
+            'fotoGoogle',
+            'escola',
+            'escolaId',
+            'disciplina',
+            'turma',
+            'matricula',
+            'telefone',
+            'cpf',
+            'parentesco',
+            'contaId',
+            'ativo',
+            'deveMudarSenha',
+            'profileCompleted',
+            'emailVerificado',
+            'twoFactorEnabled',
+            'ultimoLogin',
+            'criadoEm',
+            'consentimentoAceiteEm',
+            'consentimentoVersao',
+            'tutorialProfessorConcluido',
+            'tutorialResponsavelConcluido',
+            'preferenciaNarracao',
+            'voiceSpeed',
+            'voiceGender',
+            'ttsProvider',
+            'settings',
+            'accessibilityFontSize',
+            'accessibilityContrast',
+            'accessibilityReadingMode',
+            'notificacoesPreferencias',
+            'lgpdConsents',
         ];
 
         const user = await Usuario.findById(userId).select(CAMPOS_PUBLICOS.join(' ')).lean();
         if (!user) return res.status(401).json({ success: false, error: 'Usuário não encontrado' });
 
         const safeUser = {};
-        CAMPOS_PUBLICOS.forEach(campo => {
+        CAMPOS_PUBLICOS.forEach((campo) => {
             if (user[campo] !== undefined) safeUser[campo] = user[campo];
         });
         if (!safeUser.id) safeUser.id = String(user._id);
