@@ -340,6 +340,32 @@ jobs:
           api-token: ${{ secrets.RENDER_API_TOKEN }}
         if: env.HAS_RENDER_DEV == 'true'
 
+      # ============================================
+      # UM PASSO PULADO É INVISÍVEL — ESTE FALA
+      # ============================================
+      # Sem isto, o job se chama "Build & Deploy (Dev)", reporta ✓ e não
+      # publica nada: o passo acima é pulado quando falta secret, e pular não
+      # reprova. Quem olha o PR lê "deployou".
+      #
+      # Isso mascarou um caso real (Issue #108): a correção da #101 foi
+      # mergeada, o pipeline ficou verde, e o defeito seguia no ar — porque
+      # nada tinha sido publicado em lugar nenhum.
+      #
+      # `::warning` aparece no resumo da execução. NÃO reprova o job, de
+      # propósito: enquanto não se decidir se existe ambiente de dev,
+      # reprovar todo push na develop trocaria um sinal mudo por um ruído
+      # constante. O que muda é que o pulo deixa de ser silencioso.
+      - name: ⏭️ Deploy de dev não configurado
+        if: env.HAS_RENDER_DEV != 'true'
+        run: |
+          echo "::warning title=Deploy pulado::RENDER_SERVICE_ID_DEV ausente nos secrets. NADA foi publicado neste job. Ver Issue #108."
+          {
+            echo "### ⏭️ Deploy de dev pulado"
+            echo ""
+            echo "`RENDER_SERVICE_ID_DEV` nao esta configurado, entao **nada foi publicado**."
+            echo "O check verde deste job significa apenas que o build passou. Ver Issue #108."
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: 📢 Notify on Deploy
         uses: 8398a7/action-slack@v3
         with:
@@ -393,6 +419,18 @@ jobs:
           service-id: ${{ secrets.RENDER_SERVICE_ID_PROD }}
           api-token: ${{ secrets.RENDER_API_TOKEN }}
         if: env.HAS_RENDER_PROD == 'true'
+
+      # Mesma proteção do job de dev, e aqui ela pesa mais: um deploy de
+      # PRODUÇÃO que não acontece em silêncio significa que as famílias
+      # seguem com a versão antiga enquanto o painel diz que está tudo certo.
+      #
+      # Este REPROVA, ao contrário do de dev: não existe "produção opcional".
+      # Um release que não publica é sempre um erro, e tem de aparecer como tal.
+      - name: ❌ Deploy de produção não configurado
+        if: env.HAS_RENDER_PROD != 'true'
+        run: |
+          echo "::error title=Deploy de producao pulado::RENDER_SERVICE_ID_PROD ou RENDER_API_TOKEN ausente. Nada foi publicado. Ver Issue #108."
+          exit 1
 
       - name: 🔔 Slack notification
         uses: 8398a7/action-slack@v3
