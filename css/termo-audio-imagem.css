@@ -1,0 +1,99 @@
+/**
+ * termo-audio-imagem.css — o modal de aceite da cláusula 2 do Termo.
+ *
+ * Sem `@keyframes`: toda duração e curva vem dos tokens de css/motion.css, e a
+ * entrada do modal é feita pelo `.motion-reveal` do sistema (aplicado por
+ * `Motion.reveal` em js/termo-audio-imagem.js). Ver AGENTS.md §8 e docs/MOTION.md.
+ */
+
+.termo-modal-fundo {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(2, 6, 23, 0.72);
+    backdrop-filter: blur(2px);
+}
+
+.termo-modal {
+    width: min(32rem, 100%);
+    padding: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-lg, 0.75rem);
+    background: var(--bg-secondary, #111827);
+    color: var(--text-primary, #e2e8f0);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+}
+
+.termo-modal h2 {
+    margin: 0 0 0.75rem;
+    font-size: 1.15rem;
+}
+
+.termo-modal p {
+    margin: 0 0 0.85rem;
+    font-size: 0.92rem;
+    line-height: 1.55;
+}
+
+.termo-modal__aviso {
+    color: var(--text-secondary, #94a3b8);
+    font-size: 0.85rem;
+}
+
+.termo-modal__erro {
+    padding: 0.6rem 0.8rem;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    border-radius: var(--radius-md, 0.5rem);
+    background: rgba(239, 68, 68, 0.12);
+    font-size: 0.88rem;
+}
+
+.termo-modal__acoes {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    margin-top: 1.25rem;
+}
+
+.termo-btn {
+    padding: 0.55rem 1.1rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md, 0.5rem);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    /* `--motion-fast` é a faixa de micro-feedback (hover/press) do sistema. */
+    transition:
+        background-color var(--motion-fast) var(--motion-ease-out),
+        opacity var(--motion-fast) var(--motion-ease-out);
+}
+
+.termo-btn:disabled {
+    opacity: 0.55;
+    cursor: progress;
+}
+
+.termo-btn--principal {
+    background: var(--accent-primary, #2563eb);
+    color: #fff;
+}
+
+.termo-btn--secundario {
+    border-color: rgba(255, 255, 255, 0.16);
+    background: transparent;
+    color: inherit;
+}
+
+/**
+ * O controle bloqueado continua VISÍVEL e clicável — o clique é interceptado
+ * para abrir o Termo. Um botão `disabled` de verdade não dispara evento, e a
+ * pessoa ficaria olhando para um ícone morto sem saber o que fazer.
+ */
+.esta-bloqueado-pelo-termo {
+    opacity: 0.55;
+    cursor: help;
+}

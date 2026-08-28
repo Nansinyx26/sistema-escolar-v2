@@ -249,6 +249,10 @@ router.use('/comunicados', authJWT, filtrarPorEscola, require('./comunicados'));
 // `filtrarPorEscola` aqui pelo mesmo motivo de /comunicados: sem req.escolaId
 // o escopo de tenant do guard de thread (assertAcessoAThread) vira no-op.
 router.use('/comentarios', authJWT, filtrarPorEscola, require('./comentarios'));
+// `filtrarPorEscola` NÃO é opcional aqui: é ele que resolve o req.escolaId de
+// que o `authorize.estrito` depende para exigir tenant explícito do admin, e
+// que o controller usa para isolar a fila. Sem ele, a moderação vira global.
+router.use('/moderacao', authJWT, filtrarPorEscola, require('./moderacao'));
 router.use('/relatorios', authJWT, horizontalFilter, filtrarPorEscola, require('./relatorios'));
 router.use('/audio', require('./audio'));
 router.use('/tts', authJWT, require('./tts'));
@@ -302,7 +306,11 @@ router.post(
     filtrarPorEscola,
     chatIpLimiter,
     chatMensagemLimiter,
-    bloquearPalavroes('mensagem', { recurso: 'chat-direto', detalhado: false }),
+    bloquearPalavroes('mensagem', {
+        recurso: 'chat-direto',
+        detalhado: false,
+        registrarOcorrencia: true,
+    }),
     ChatDiretoController.enviarMensagem
 );
 router.get('/chat-direto/historico/:outroUsuarioId', authJWT, ChatDiretoController.getHistorico);
@@ -315,7 +323,11 @@ router.patch(
 router.put(
     '/chat-direto/mensagem/:mensagemId',
     authJWT,
-    bloquearPalavroes('novaMensagem', { recurso: 'chat-direto', detalhado: false }),
+    bloquearPalavroes('novaMensagem', {
+        recurso: 'chat-direto',
+        detalhado: false,
+        registrarOcorrencia: true,
+    }),
     ChatDiretoController.editarMensagem
 );
 router.delete('/chat-direto/mensagem/:mensagemId', authJWT, ChatDiretoController.apagarMensagem);
