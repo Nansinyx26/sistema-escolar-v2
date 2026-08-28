@@ -139,5 +139,9 @@ module.exports = {
     perfisComPainel,
     PAINEL_POR_PERFIL,
     PAINEL_DASHBOARD,
+    // Exportado para `utils/matrizAcesso.js`: o guard do navegador precisa do
+    // mesmo destino de fallback que `painelDoPerfil` usa, senão um perfil que
+    // ele não reconhece ficaria sem para onde ir.
+    PAINEL_SEM_PERFIL,
     PERFIS_DO_DASHBOARD,
 };

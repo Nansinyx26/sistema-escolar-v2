@@ -566,7 +566,19 @@ class AuthManager {
             console.log('Logout silencioso no backend');
         }
 
-        window.location.href = 'login.html';
+        // ============================================
+        // CAMINHO ABSOLUTO, E NÃO 'login.html'
+        // ============================================
+        // O relativo resolvia contra o diretório da página atual. Sair de
+        // `/html/secretaria/painel.html` procurava `/html/secretaria/login.html`,
+        // que não existe — a pessoa deslogava e caía num 404, com a sessão já
+        // encerrada e sem link de volta. O mesmo valia para /html/direcao,
+        // /html/admin e /direcao; só funcionava a partir das telas que já
+        // moravam na raiz de /html.
+        //
+        // O destino é o mesmo que `js/guarda-acesso.js` usa ao barrar alguém sem
+        // sessão. Divergir aqui daria dois "lugares de onde se faz login".
+        window.location.replace('/html/login.html');
     }
 
     /**
