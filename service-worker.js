@@ -13,7 +13,7 @@
 // Bump obrigatório a cada mudança em JS já cacheado: os assets usam
 // stale-while-revalidate, então sem trocar a versão o usuário recebe o arquivo
 // antigo no primeiro acesso após o deploy.
-const VERSION = 'v6';
+const VERSION = 'v7';
 const STATIC_CACHE = `escola-static-${VERSION}`;
 const PAGES_CACHE = `escola-pages-${VERSION}`;
 const CURRENT_CACHES = [STATIC_CACHE, PAGES_CACHE];
@@ -42,6 +42,11 @@ const STATIC_ASSETS = [
     '/js/theme.js',
     '/js/settings-drawer.js',
     '/js/libs/bootstrap-icons.min.css',
+    // A fonte precisa entrar aqui explicitamente: o preload da página usa
+    // `crossorigin`, então a resposta chega como `cors` e o stale-while-revalidate
+    // abaixo (que só guarda `basic`) nunca a cacheia. Sem esta linha os ícones
+    // somem offline.
+    '/js/libs/fonts/bootstrap-icons.woff2',
     '/js/libs/purify.min.js',
     '/js/libs/chart.umd.min.js',
     '/js/libs/sweetalert2.min.js',
