@@ -1,7 +1,7 @@
 const Aluno = require('../models/Aluno');
 const ImageProcessor = require('../utils/imageProcessor');
 const { saveToGridFS, deleteFile } = require('../utils/gridfs');
-const escapeRegex = require('../utils/escapeRegex');
+const busca = require('../utils/buscaAluno');
 const { generateUniqueSecretCode, assignSecretCodes } = require('../utils/secretCodeHelper');
 const logger = require('../utils/logger');
 const assertAcessoAoAluno = require('../middleware/assertAcessoAoAluno');
@@ -24,67 +24,41 @@ const studentWhitelist = [
 exports.list = async (req, res) => {
     try {
         const { turma, turmaId, q, page = 1, limit = 100 } = req.query;
-        const query = { ativo: { $ne: false } };
+        const base = { ativo: { $ne: false } };
 
         // Multi-escola: isola por tenant quando o contexto está resolvido
-        if (req.escolaId) query.escolaId = req.escolaId;
+        if (req.escolaId) base.escolaId = req.escolaId;
 
-        // Filtro de Turma Flexível: busca em ambos os campos e aceita variações (1C vs 1ºC)
-        if (turmaId || turma) {
-            const val = turmaId || turma;
-            const norm = val.replace('º', '');
-            const variations = [val, norm];
-            if (norm.length >= 2) variations.push(`${norm[0]}º${norm.slice(1)}`);
-            
-            query.$or = [
-                { turmaId: { $in: variations } },
-                { turma: { $in: variations } }
-            ];
-        }
+        // Filtro de Turma Flexível.
+        // A lista fixa de variações que existia aqui ("1C", "1ºC") só acertava
+        // as grafias que alguém lembrou de escrever; "1 C" e "1º C" — que a
+        // professora digita no cadastro — passavam batido e o aluno sumia da
+        // listagem da secretaria. `filtroDeSala` casa qualquer uma delas.
+        const condicaoSala = busca.filtroDeSala(turmaId || turma);
 
-        // Aplica Controle de Acesso Horizontal (Professores veem apenas suas turmas)
-        if (req.horizontalFilter) {
-            // Se já existir um $or (do filtro de turma acima), precisamos combinar
-            if (query.$or) {
-                query.$and = [
-                    { $or: query.$or },
-                    req.horizontalFilter
-                ];
-                delete query.$or;
-            } else {
-                Object.assign(query, req.horizontalFilter);
-            }
-            
-            // Verificação de segurança extra: se pediu uma turma específica, 
-            // ela DEVE estar entre as permitidas (req.allowedTurmas)
-            if ((turma || turmaId) && req.allowedTurmas) {
-                const requested = (turma || turmaId).replace('º', '');
-                const isAllowed = req.allowedTurmas.some(t => t.replace('º', '') === requested);
-                if (!isAllowed) {
-                    query.turma = "ACESSO_NEGADO";
-                }
-            }
-        }
-        if (q) {
-            const safeQ = escapeRegex(q);
-            const searchFilter = {
-                $or: [
-                    { nome: { $regex: safeQ, $options: 'i' } },
-                    { matricula: { $regex: safeQ, $options: 'i' } }
-                ]
-            };
+        // Busca livre: sem acento, multi-termo, cobrindo nome, sobrenome, RA e
+        // sala. Antes era uma regex crua só em `nome` e `matricula` — procurar
+        // "joao" não achava "João", e "silva joao" não achava "João da Silva".
+        const condicaoBusca = busca.filtroDeBusca(q);
 
-            if (query.$and) {
-                query.$and.push(searchFilter);
-            } else if (query.$or) {
-                // Se já tem um $or (filtro de turma), precisamos mover para um $and
-                query.$and = [
-                    { $or: query.$or },
-                    searchFilter
-                ];
-                delete query.$or;
-            } else {
-                query.$or = searchFilter.$or;
+        // Controle de Acesso Horizontal (professor só vê as próprias turmas).
+        // Entra como mais uma condição do `$and`: o encadeamento manual de
+        // `$or`/`$and` que existia aqui dependia da ordem em que os filtros
+        // eram montados e já tinha sobrescrito um filtro anterior.
+        const query = busca.combinar(
+            base,
+            condicaoSala,
+            condicaoBusca,
+            req.horizontalFilter || null
+        );
+
+        // Verificação de segurança extra: se pediu uma turma específica,
+        // ela DEVE estar entre as permitidas (req.allowedTurmas)
+        if (req.horizontalFilter && (turma || turmaId) && req.allowedTurmas) {
+            const requested = busca.normalizarSala(turma || turmaId);
+            const isAllowed = req.allowedTurmas.some(t => busca.normalizarSala(t) === requested);
+            if (!isAllowed) {
+                query.turma = 'ACESSO_NEGADO';
             }
         }
 
@@ -358,47 +332,36 @@ exports.delete = async (req, res) => {
 exports.listSecretCodes = async (req, res) => {
     try {
         const { turma, q } = req.query;
-        const query = { ativo: { $ne: false } };
+        const base = { ativo: { $ne: false } };
 
         // Multi-escola: códigos visíveis apenas da escola ativa da sessão
-        if (req.escolaId) query.escolaId = req.escolaId;
+        if (req.escolaId) base.escolaId = req.escolaId;
 
-        if (turma) {
-            if (turma.startsWith('SERIE_')) {
-                // ESCAPADO: `serie` vem cru de ?turma=SERIE_... e ia direto para
-                // o $regex. `?turma=SERIE_(a+)+$` travava o event loop (ReDoS).
-                const serie = escapeRegex(turma.replace('SERIE_', ''));
-                query.$or = [
-                    { turmaId: { $regex: `^${serie}`, $options: 'i' } },
-                    { turma: { $regex: `^${serie}`, $options: 'i' } }
-                ];
-            } else {
-                const norm = turma.replace('º', '');
-                const variations = [turma, norm];
-                if (norm.length >= 2) variations.push(`${norm[0]}º${norm.slice(1)}`);
-                query.$or = [
-                    { turmaId: { $in: variations } },
-                    { turma: { $in: variations } }
-                ];
-            }
-        }
+        // ── Turmas da escola ─────────────────────────────────────────────────
+        // Carregadas ANTES da busca por duas razões: resolvem o nome de exibição
+        // da sala e, quando há filtro por sala, dão os `_id` das turmas que
+        // casam — alcançando também o aluno cujo vínculo foi gravado por
+        // ObjectId em vez do nome da sala.
+        const Turma = require('../models/Turma');
+        const turmaQuery = req.escolaId ? { escolaId: req.escolaId } : {};
+        const turmas = await Turma.find(turmaQuery).lean();
 
-        if (q) {
-            const safeQ = escapeRegex(q);
-            const searchFilter = {
-                $or: [
-                    { nome: { $regex: safeQ, $options: 'i' } },
-                    { matricula: { $regex: safeQ, $options: 'i' } },
-                    { codigoSecreto: { $regex: safeQ, $options: 'i' } }
-                ]
-            };
-            if (query.$or) {
-                query.$and = [{ $or: query.$or }, searchFilter];
-                delete query.$or;
-            } else {
-                query.$or = searchFilter.$or;
-            }
-        }
+        const idsDaSala = turma
+            ? turmas
+                  .filter((t) => busca.salaCasa(t.nome, turma) || busca.salaCasa(t.id, turma))
+                  .flatMap((t) => [String(t._id), t.id, t.nome])
+                  .filter(Boolean)
+            : [];
+
+        // A sala é um filtro (E), a busca livre é outro (E) — nunca um `$or`
+        // sobrescrevendo o outro, que era o efeito de montar isso à mão.
+        const query = busca.combinar(
+            base,
+            busca.filtroDeSala(turma, { idsEquivalentes: idsDaSala }),
+            // O código secreto entra na busca aqui (e só aqui): esta é a tela
+            // que existe para lê-lo.
+            busca.filtroDeBusca(q, { incluirCodigo: true })
+        );
 
         // ── Query única ──────────────────────────────────────────────────────
         const students = await Aluno.find(query)
@@ -418,15 +381,16 @@ exports.listSecretCodes = async (req, res) => {
         }
 
         // ── Mapear turmas para exibição ──────────────────────────────────────
-        const Turma = require('../models/Turma');
-        const turmaQuery = req.escolaId ? { escolaId: req.escolaId } : {};
-        const turmas = await Turma.find(turmaQuery).lean();
+        // A chave é a forma canônica da sala (`1º A`, `1ºA` e `1A` colapsam em
+        // "1A"). Com `.toUpperCase()` puro, o aluno cadastrado pela professora
+        // como "1ºA" não encontrava a turma "1A" e caía no ramo de fallback,
+        // aparecendo com o ano errado na lista de códigos.
         const turmaMap = {};
         turmas.forEach(t => {
-            const key = (t.nome || t.id || '').toUpperCase();
-            if (key) {
-                turmaMap[key] = t;
-            }
+            [t.nome, t.id].forEach((valor) => {
+                const key = busca.normalizarSala(valor);
+                if (key && !turmaMap[key]) turmaMap[key] = t;
+            });
         });
 
         // ── Montar resposta ──────────────────────────────────────────────────
@@ -442,7 +406,7 @@ exports.listSecretCodes = async (req, res) => {
         }
 
         const data = students.map(s => {
-            const studentTurmaKey = (s.turma || s.turmaId || '').toUpperCase();
+            const studentTurmaKey = busca.normalizarSala(s.turma || s.turmaId || '');
             const tInfo = turmaMap[studentTurmaKey] || {};
             
             let ano = '-';
@@ -470,6 +434,9 @@ exports.listSecretCodes = async (req, res) => {
                 nome: [s.nome, s.sobrenome].filter(Boolean).join(' ') || '(sem nome)',
                 ano,
                 turma: turmaNome,
+                // Sala como está gravada no aluno: é por ela que o filtro do
+                // modal pergunta, então é ela que a tela precisa mostrar.
+                sala: s.turma || s.turmaId || '',
                 codigoSecreto: codigoExibido,
                 codigoFalhou: falhouSet.has(String(s._id)),
                 matricula: s.matricula || '-',
@@ -478,9 +445,30 @@ exports.listSecretCodes = async (req, res) => {
             };
         });
 
+        // ── Salas disponíveis para o filtro ──────────────────────────────────
+        // Vai junto da listagem, e SEM os filtros aplicados: um seletor que
+        // encolhe conforme o que já foi filtrado deixa a secretaria sem como
+        // voltar para outra sala. Inclui as salas que só existem no cadastro do
+        // aluno (turma digitada pela professora, sem documento `Turma`), senão
+        // essas turmas ficam invisíveis no filtro.
+        const salasDeTurmas = turmas.map((t) => t.nome || t.id).filter(Boolean);
+        const salasDeAlunos = await Aluno.distinct('turma', {
+            ...(req.escolaId ? { escolaId: req.escolaId } : {}),
+            ativo: { $ne: false },
+        });
+        const salas = [];
+        const vistas = new Set();
+        salasDeTurmas.concat(salasDeAlunos).forEach((valor) => {
+            const chave = busca.normalizarSala(valor);
+            if (!chave || vistas.has(chave)) return;
+            vistas.add(chave);
+            salas.push(String(valor));
+        });
+        salas.sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true }));
+
         // `pendingCodes` fica para clientes antigos que ainda fazem polling —
         // false porque não há mais nada sendo gerado em background.
-        res.json({ success: true, data, pendingCodes: false, failedCodes: naoGerados.length });
+        res.json({ success: true, data, salas, pendingCodes: false, failedCodes: naoGerados.length });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }

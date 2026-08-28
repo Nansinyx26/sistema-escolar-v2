@@ -46,6 +46,28 @@ class StudentManager {
     }
 
     /**
+     * Busca alunos NO SERVIDOR por nome/sobrenome/matrícula e/ou sala.
+     *
+     * Use isto em vez de `getAll()` + filtro no navegador sempre que houver um
+     * termo digitado: `getAll()` devolve só os 100 primeiros alunos da escola,
+     * então a busca local nunca enxergava a escola inteira.
+     *
+     * @param {{termo?: string, turma?: string, limite?: number}} filtros
+     * @returns {Promise<Array>}
+     */
+    async buscar(filtros = {}) {
+        try {
+            const alunos = await db.buscarAlunos(filtros);
+            return alunos
+                .filter(a => a.ativo !== false)
+                .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
+        } catch (error) {
+            console.error('Erro ao buscar alunos:', error);
+            return [];
+        }
+    }
+
+    /**
      * Busca um aluno por ID
      * @param {number} id - ID do aluno
      * @returns {Promise<Object|null>}

@@ -104,6 +104,35 @@ class DatabaseManager {
         } catch (e) { return []; }
     }
 
+    /**
+     * Busca de aluno NO SERVIDOR (nome, sobrenome, matrícula e sala).
+     *
+     * `getAll('alunos')` traz no máximo 100 registros — é o limite padrão da
+     * rota. Filtrar essa lista no navegador significava que uma busca por nome
+     * sem turma selecionada só enxergava os 100 primeiros alunos da escola: o
+     * aluno existia, estava cadastrado, e a tela dizia que não.
+     *
+     * @param {{termo?: string, turma?: string, limite?: number}} filtros
+     * @returns {Promise<Array>}
+     */
+    async buscarAlunos({ termo = '', turma = '', limite = 500 } = {}) {
+        const params = new URLSearchParams();
+        if (termo) params.set('q', termo);
+        if (turma) params.set('turma', turma);
+        params.set('limit', String(limite));
+
+        try {
+            const res = await fetch(`${this.baseUrl}/alunos?${params.toString()}`, {
+                credentials: 'include',
+            });
+            const json = await res.json();
+            return this.normalizeData(json.data);
+        } catch (e) {
+            console.error('Erro na busca de alunos:', e);
+            return [];
+        }
+    }
+
     async get(storeName, id) {
         const endpoint = this.getEndpoint(storeName);
         try {

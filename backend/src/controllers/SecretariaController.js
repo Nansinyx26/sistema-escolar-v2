@@ -14,6 +14,7 @@ const JustificativaFalta = require('../models/JustificativaFalta');
 const CalendarioEscolar = require('../models/CalendarioEscolar');
 const AuditLog = require('../models/AuditLog');
 const logger = require('../utils/logger');
+const busca = require('../utils/buscaAluno');
 const { emitirParaEscola } = require('../utils/realtime');
 
 // ─── Helper: registrar auditoria ─────────────────────────────────────────────
@@ -509,16 +510,38 @@ exports.criarResponsavel = async (req, res) => {
 // GET /api/secretaria/turmas — listagem
 exports.listarTurmas = async (req, res) => {
     try {
-        const turmas = await Turma.find(escopo(req, { ativo: true })).sort({ nome: 1 }).lean();
+        const turmas = await Turma.find(escopo(req, { ativo: { $ne: false } })).sort({ nome: 1 }).lean();
 
-        // Conta alunos por turma
-        const turmasComContagem = await Promise.all(turmas.map(async (t) => {
-            const totalAlunos = await Aluno.countDocuments(escopo(req, {
-                $or: [{ turma: t.nome }, { turma: t.id }, { turmaId: t._id }],
-                ativo: true
-            }));
+        // ── Contagem de alunos por turma ─────────────────────────────────────
+        // Era um `countDocuments` POR TURMA (N+1) e comparava a sala por
+        // igualdade exata de string com `ativo: true`. Duas consequências para
+        // a secretaria: a turma que a professora escreveu como "1ºA" contava
+        // zero aluno, e o cadastro antigo sem o campo `ativo` não contava nunca.
+        //
+        // Agora é uma consulta só, agrupada em memória pela forma canônica da
+        // sala — a mesma chave usada pelo relatório de alunos por turma.
+        const alunos = await Aluno.find(escopo(req, { ativo: { $ne: false } }))
+            .select('turma turmaId')
+            .lean();
+
+        const contagem = new Map();
+        alunos.forEach((a) => {
+            // Um aluno conta UMA vez por turma, mesmo que `turma` e `turmaId`
+            // apontem para a mesma sala escrita de formas diferentes.
+            const chaves = new Set([a.turma, a.turmaId].map(busca.normalizarSala).filter(Boolean));
+            chaves.forEach((k) => {
+                contagem.set(k, (contagem.get(k) || 0) + 1);
+            });
+        });
+
+        const turmasComContagem = turmas.map((t) => {
+            const chaves = new Set([t.nome, t.id, t._id].map(busca.normalizarSala).filter(Boolean));
+            let totalAlunos = 0;
+            chaves.forEach((k) => {
+                totalAlunos = Math.max(totalAlunos, contagem.get(k) || 0);
+            });
             return { ...t, totalAlunos };
-        }));
+        });
 
         res.json({ success: true, data: turmasComContagem });
     } catch (error) {
@@ -995,9 +1018,25 @@ exports.relatorioAlunosPorTurma = async (req, res) => {
         // Agora: DUAS consultas no total. Os alunos vêm de uma vez e são
         // agrupados em memória — agrupar alguns milhares de documentos em JS é
         // ordens de grandeza mais barato que uma ida a mais ao banco.
+        // Filtros da tela: nome/RA do aluno e sala. Aplicados no banco (e não no
+        // navegador) para que o relatório continue correto quando a escola tem
+        // mais alunos do que cabe em uma resposta.
+        const termo = String(req.query.q || '').trim();
+        const salaPedida = String(req.query.turma || req.query.sala || '').trim();
+
         const [turmas, alunos] = await Promise.all([
-            Turma.find(escopo(req, { ativo: true })).sort({ nome: 1 }).lean(),
-            Aluno.find(escopo(req, { ativo: true }))
+            Turma.find(escopo(req, { ativo: { $ne: false } })).sort({ nome: 1 }).lean(),
+            Aluno.find(
+                busca.combinar(
+                    // `ativo: true` estrito omitia todo aluno cujo cadastro não
+                    // grava o campo — entre eles os criados pela professora em
+                    // versões anteriores. O relatório dizia "turma vazia" com a
+                    // turma cheia no banco.
+                    escopo(req, { ativo: { $ne: false } }),
+                    busca.filtroDeBusca(termo),
+                    busca.filtroDeSala(salaPedida)
+                )
+            )
                 .select('nome sobrenome matricula turma turmaId ativo')
                 .sort({ nome: 1 })
                 .lean(),
@@ -1006,10 +1045,14 @@ exports.relatorioAlunosPorTurma = async (req, res) => {
         // O vínculo aluno→turma é gravado de três formas no histórico da base
         // (nome da turma, id textual, ObjectId). O índice cobre as três para
         // que o agrupamento reproduza exatamente o `$or` anterior.
+        // A chave de agrupamento é a forma CANÔNICA da sala: "1A", "1ºA", "1º A"
+        // e "1 A" colapsam em "1A". Comparando string com string, o aluno que a
+        // professora cadastrou como "1ºA" não entrava na turma "1A" — ele
+        // existia no banco e não aparecia em relatório nenhum.
         const porChave = new Map();
         const indexar = (chave, aluno) => {
-            if (chave === undefined || chave === null || chave === '') return;
-            const k = String(chave);
+            const k = busca.normalizarSala(chave);
+            if (!k) return;
             if (!porChave.has(k)) porChave.set(k, []);
             porChave.get(k).push(aluno);
         };
@@ -1018,6 +1061,8 @@ exports.relatorioAlunosPorTurma = async (req, res) => {
             if (a.turmaId) indexar(a.turmaId, a);
         });
 
+        const agrupados = new Set();
+
         const resultado = turmas.map((t) => {
             // Um mesmo aluno pode casar por mais de uma chave (ex.: `turma` com
             // o nome E `turmaId` com o _id). O Set desduplica por _id, senão a
@@ -1025,10 +1070,11 @@ exports.relatorioAlunosPorTurma = async (req, res) => {
             const vistos = new Set();
             const daTurma = [];
             [t.nome, t.id, t._id].forEach((chave) => {
-                (porChave.get(String(chave)) || []).forEach((a) => {
+                (porChave.get(busca.normalizarSala(chave)) || []).forEach((a) => {
                     const id = String(a._id);
                     if (vistos.has(id)) return;
                     vistos.add(id);
+                    agrupados.add(id);
                     daTurma.push(a);
                 });
             });
@@ -1041,7 +1087,36 @@ exports.relatorioAlunosPorTurma = async (req, res) => {
             };
         });
 
-        res.json({ success: true, data: resultado });
+        // ── Alunos sem turma cadastrada ──────────────────────────────────────
+        // Quem não casou com nenhum documento `Turma` desaparecia do relatório
+        // sem deixar rastro — é o caso do aluno cadastrado com a sala digitada
+        // à mão. Agora ele vem em um bloco próprio, agrupado pela sala que está
+        // na ficha, para a secretaria ver o que precisa ser regularizado.
+        const avulsos = alunos.filter((a) => !agrupados.has(String(a._id)));
+        const porSalaAvulsa = new Map();
+        avulsos.forEach((a) => {
+            const rotulo = String(a.turma || a.turmaId || '').trim() || 'Sem turma';
+            if (!porSalaAvulsa.has(rotulo)) porSalaAvulsa.set(rotulo, []);
+            porSalaAvulsa.get(rotulo).push(a);
+        });
+
+        [...porSalaAvulsa.entries()]
+            .sort((a, b) => a[0].localeCompare(b[0], 'pt-BR', { numeric: true }))
+            .forEach(([rotulo, lista]) => {
+                resultado.push({
+                    turma: rotulo,
+                    turmaId: null,
+                    semTurmaCadastrada: true,
+                    totalAlunos: lista.length,
+                    alunos: lista,
+                });
+            });
+
+        res.json({
+            success: true,
+            data: resultado,
+            filtros: { q: termo || null, turma: salaPedida || null },
+        });
     } catch (error) {
         logger.error(`[Secretaria.relatorioAlunosPorTurma] ${error.message}`);
         res.status(500).json({ success: false, error: error.message });
@@ -1052,9 +1127,49 @@ exports.relatorioAlunosPorTurma = async (req, res) => {
 exports.relatorioMatriculas = async (req, res) => {
     try {
         const { anoLetivo, status } = req.query;
+        const termo = String(req.query.q || '').trim();
+        const salaPedida = String(req.query.turma || req.query.sala || '').trim();
+
         const query = escopo(req, {});
         if (anoLetivo) query.anoLetivo = parseInt(anoLetivo);
         if (status) query.status = String(status);
+
+        // ── Filtro por nome de aluno e por sala ──────────────────────────────
+        // A matrícula guarda `alunoId`, não o nome, então filtrar por nome exige
+        // resolver antes quais alunos casam. É uma ida a mais ao banco, e é o
+        // que permite a secretaria procurar "joão 1A" nesta tela em vez de
+        // percorrer a lista inteira com o olho.
+        //
+        // A sala é aplicada nos DOIS lados: no vínculo da matrícula (`turmaId`,
+        // que pode ser o _id da turma) e na ficha do aluno — historicamente as
+        // duas pontas guardam a sala de jeitos diferentes, e exigir só uma
+        // esconderia matrículas legítimas.
+        if (termo || salaPedida) {
+            const idsDaSala = salaPedida
+                ? (
+                      await Turma.find(escopo(req, {}))
+                          .select('nome id')
+                          .lean()
+                  )
+                      .filter((t) => busca.salaCasa(t.nome, salaPedida) || busca.salaCasa(t.id, salaPedida))
+                      .flatMap((t) => [String(t._id), t.id, t.nome])
+                      .filter(Boolean)
+                : [];
+
+            const alunosFiltrados = await Aluno.find(
+                busca.combinar(
+                    escopo(req, { ativo: { $ne: false } }),
+                    busca.filtroDeBusca(termo),
+                    busca.filtroDeSala(salaPedida, { idsEquivalentes: idsDaSala })
+                )
+            )
+                .select('_id')
+                .lean();
+
+            const ids = alunosFiltrados.map((a) => String(a._id));
+            // Nenhum aluno casou: a resposta é uma lista vazia, não a base toda.
+            query.alunoId = { $in: ids };
+        }
 
         // ============================================
         // PAGINAÇÃO — a consulta não tinha teto nenhum
@@ -1111,6 +1226,7 @@ exports.relatorioMatriculas = async (req, res) => {
             data: {
                 matriculas: dados,
                 resumo,
+                filtros: { q: termo || null, turma: salaPedida || null },
                 paginacao: {
                     pagina,
                     limite,
@@ -1132,17 +1248,34 @@ exports.relatorioMatriculas = async (req, res) => {
 exports.exportarRelatorio = async (req, res) => {
     try {
         const { tipo } = req.query; // 'alunos', 'matriculas', 'frequencia'
+        const termo = String(req.query.q || '').trim();
+        const salaPedida = String(req.query.turma || req.query.sala || '').trim();
 
         let dados = [];
         let headers = [];
 
+        // O CSV segue os MESMOS filtros da tela. Exportar sempre a base inteira
+        // enquanto a tela mostra um recorte é como o arquivo baixado passa a não
+        // bater com o que a secretaria acabou de conferir.
+        const filtroAlunos = busca.combinar(
+            // `ativo: true` estrito deixava de fora o cadastro sem o campo.
+            escopo(req, { ativo: { $ne: false } }),
+            busca.filtroDeBusca(termo),
+            busca.filtroDeSala(salaPedida)
+        );
+
         // O CSV carrega nome, turma, nascimento, telefone e e-mail do
         // responsável — sem escopo, exportava a rede inteira.
         if (tipo === 'alunos') {
-            dados = await Aluno.find(escopo(req, { ativo: true })).select('nome sobrenome turma matricula nascimento telefone responsavel').sort({ nome: 1 }).lean();
+            dados = await Aluno.find(filtroAlunos).select('nome sobrenome turma matricula nascimento telefone responsavel').sort({ nome: 1 }).lean();
             headers = ['Nome', 'Sobrenome', 'Turma', 'Matrícula', 'Nascimento', 'Telefone', 'Responsável'];
         } else if (tipo === 'matriculas') {
-            const matriculas = await Matricula.find(escopo(req, {})).sort({ anoLetivo: -1, createdAt: -1 }).lean();
+            const matriculaQuery = escopo(req, {});
+            if (termo || salaPedida) {
+                const alvos = await Aluno.find(filtroAlunos).select('_id').lean();
+                matriculaQuery.alunoId = { $in: alvos.map(a => String(a._id)) };
+            }
+            const matriculas = await Matricula.find(matriculaQuery).sort({ anoLetivo: -1, createdAt: -1 }).lean();
             const alunoIds = [...new Set(matriculas.map(m => m.alunoId))];
             const alunos = await Aluno.find(escopo(req, { _id: { $in: alunoIds } })).select('nome').lean();
             const map = {};

@@ -23,6 +23,11 @@
         .sec-form-card { background:rgba(30,41,59,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:1.5rem; margin-bottom:1.5rem; }
         .sec-form-card h3 { color:#fff; font-size:1rem; margin:0 0 1rem; display:flex; align-items:center; gap:0.5rem; }
         .sec-input,.sec-select { width:100%; padding:0.6rem 0.8rem; background:rgba(15,23,42,0.8); border:1px solid rgba(255,255,255,0.12); border-radius:10px; color:#fff; font-size:0.85rem; }
+        .sec-filtros { display:flex; gap:0.75rem; flex-wrap:wrap; align-items:flex-end; background:rgba(30,41,59,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:1rem 1.25rem; margin-bottom:1.25rem; }
+        .sec-filtro-campo { display:flex; flex-direction:column; gap:0.35rem; flex:1 1 220px; min-width:0; }
+        .sec-filtro-campo.compacto { flex:0 1 180px; }
+        .sec-filtro-campo label { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.04em; color:#94a3b8; font-weight:600; }
+        .sec-filtro-status { flex-basis:100%; font-size:0.78rem; color:#94a3b8; }
         .sec-btn { padding:0.6rem 1.2rem; border-radius:10px; font-size:0.85rem; font-weight:600; cursor:pointer; border:none; transition:all 0.2s; }
         .sec-btn-primary { background:#10b981; color:#fff; }
         .sec-btn-primary:hover { background:#059669; }
@@ -36,6 +41,11 @@
         .sec-badge-green { background:rgba(16,185,129,0.15); color:#10b981; }
         .sec-badge-blue { background:rgba(59,130,246,0.15); color:#3b82f6; }
         .sec-badge-purple { background:rgba(139,92,246,0.15); color:#8b5cf6; }
+        /* `badgeMap` já citava red/yellow/gray, mas as regras não existiam:
+           reprovado, transferido e evadido saíam sem cor nenhuma. */
+        .sec-badge-red { background:rgba(239,68,68,0.15); color:#ef4444; }
+        .sec-badge-yellow { background:rgba(245,158,11,0.15); color:#f59e0b; }
+        .sec-badge-gray { background:rgba(148,163,184,0.15); color:#94a3b8; }
         .sec-tabs { display:flex; gap:0.5rem; margin-bottom:1.5rem; flex-wrap:wrap; }
         .sec-tab { padding:0.5rem 1.2rem; border-radius:10px; font-size:0.85rem; cursor:pointer; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); color:#94a3b8; transition:all 0.2s; font-weight:500; }
         .sec-tab.active { background:rgba(16,185,129,0.15); color:#10b981; border-color:rgba(16,185,129,0.3); }
@@ -101,8 +111,27 @@
                 <button class="sec-tab" onclick="switchTab('matriculas')"><i class="bi bi-card-checklist"></i> Matrículas</button>
             </div>
 
+            <!-- Filtros: valem para as DUAS abas e para a exportação -->
+            <div class="sec-filtros">
+                <div class="sec-filtro-campo">
+                    <label for="filtroAluno">Aluno (nome, sobrenome ou matrícula)</label>
+                    <input type="search" id="filtroAluno" class="sec-input" autocomplete="off"
+                           placeholder="Ex.: joao silva">
+                </div>
+                <div class="sec-filtro-campo compacto">
+                    <label for="filtroSala">Sala</label>
+                    <select id="filtroSala" class="sec-select">
+                        <option value="">Todas as salas</option>
+                    </select>
+                </div>
+                <button type="button" class="sec-btn sec-btn-outline" id="btnLimparFiltros">
+                    <i class="bi bi-x-circle"></i> Limpar
+                </button>
+                <div class="sec-filtro-status" id="filtroStatus" role="status" aria-live="polite"></div>
+            </div>
+
             <!-- Export -->
-            <div style="display:flex;gap:0.5rem;margin-bottom:1.5rem;">
+            <div style="display:flex;gap:0.5rem;margin-bottom:1.5rem;flex-wrap:wrap;">
                 <button class="sec-btn sec-btn-blue" onclick="exportar('alunos')"><i class="bi bi-download"></i> Exportar Alunos (CSV)</button>
                 <button class="sec-btn sec-btn-blue" onclick="exportar('matriculas')"><i class="bi bi-download"></i> Exportar Matrículas (CSV)</button>
             </div>
@@ -139,9 +168,103 @@ function toast(m,t='success'){const d=document.createElement('div');d.className=
 document.addEventListener('DOMContentLoaded', async () => {
     if (typeof db !== 'undefined') await db.init();
     if (typeof auth !== 'undefined') await auth.init();
+    iniciarFiltros();
+    carregarSalas();
+    recarregarRelatorios();
+});
+
+// ============================================================================
+// FILTROS — nome do aluno e sala
+// ============================================================================
+// Os dois relatórios desta página listavam a escola inteira e não havia como
+// procurar um aluno: a secretaria rolava a tela até achar. Agora o filtro vai
+// para o SERVIDOR (`?q=` e `?turma=`) em vez de esconder linhas já baixadas —
+// filtrar no navegador só funcionaria se tudo coubesse na resposta, e a lista
+// de matrículas é paginada justamente por não caber.
+// ============================================================================
+
+/** Filtros correntes, na forma em que vão para a querystring. */
+function filtrosAtuais() {
+    return {
+        q: (document.getElementById('filtroAluno')?.value || '').trim(),
+        turma: document.getElementById('filtroSala')?.value || '',
+    };
+}
+
+/** Sufixo de querystring com os filtros ativos (vazio quando não há nenhum). */
+function queryDosFiltros(separador = '?') {
+    const { q, turma } = filtrosAtuais();
+    const partes = [];
+    if (q) partes.push('q=' + encodeURIComponent(q));
+    if (turma) partes.push('turma=' + encodeURIComponent(turma));
+    return partes.length ? separador + partes.join('&') : '';
+}
+
+function iniciarFiltros() {
+    const campo = document.getElementById('filtroAluno');
+    const sala = document.getElementById('filtroSala');
+    const limpar = document.getElementById('btnLimparFiltros');
+
+    let timer;
+    campo?.addEventListener('input', () => {
+        clearTimeout(timer);
+        timer = setTimeout(recarregarRelatorios, 400);
+    });
+    // Enter recarrega na hora — esperar o debounce depois de um Enter parece
+    // que a tela ignorou a busca.
+    campo?.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        clearTimeout(timer);
+        recarregarRelatorios();
+    });
+    sala?.addEventListener('change', recarregarRelatorios);
+    limpar?.addEventListener('click', () => {
+        if (campo) campo.value = '';
+        if (sala) sala.value = '';
+        recarregarRelatorios();
+    });
+}
+
+/** Popula o seletor de sala a partir das turmas da escola. */
+async function carregarSalas() {
+    const select = document.getElementById('filtroSala');
+    if (!select) return;
+    try {
+        const json = await buscarComPrazo(`${API()}/secretaria/turmas`);
+        if (!json.success) return;
+        (json.data || []).forEach((t) => {
+            const nome = t.nome || t.id;
+            if (!nome) return;
+            const opt = document.createElement('option');
+            opt.value = nome;
+            opt.textContent = t.totalAlunos != null ? `${nome} (${t.totalAlunos})` : nome;
+            select.appendChild(opt);
+        });
+    } catch (e) {
+        // Sem o seletor a página continua utilizável pela busca por nome, então
+        // isto nunca vira erro de tela cheia — só um aviso no console.
+        console.warn('[relatorios] não foi possível carregar as salas:', e.message);
+    }
+}
+
+function recarregarRelatorios() {
+    atualizarStatusDosFiltros();
     carregarAlunosPorTurma();
     carregarMatriculas();
-});
+}
+
+function atualizarStatusDosFiltros() {
+    const alvo = document.getElementById('filtroStatus');
+    if (!alvo) return;
+    const { q, turma } = filtrosAtuais();
+    const partes = [];
+    if (q) partes.push(`aluno "${q}"`);
+    if (turma) partes.push(`sala ${turma}`);
+    alvo.textContent = partes.length
+        ? `Filtrando por ${partes.join(' · ')}. A exportação em CSV segue os mesmos filtros.`
+        : '';
+}
 
 function switchTab(tab) {
     document.querySelectorAll('.sec-tab').forEach(t => t.classList.remove('active'));
@@ -232,24 +355,43 @@ async function carregarAlunosPorTurma() {
     container.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:2rem;">Carregando...</div>';
 
     try {
-        const json = await buscarComPrazo(`${API()}/secretaria/relatorios/alunos-por-turma`);
+        const json = await buscarComPrazo(
+            `${API()}/secretaria/relatorios/alunos-por-turma${queryDosFiltros()}`
+        );
         if (!json.success) throw new Error(json.error || 'O servidor recusou o relatório.');
 
-        const turmas = json.data || [];
+        // Turma sem nenhum aluno depois do filtro vira ruído: com "joao" na
+        // busca, 29 cartões vazios enterram o único que interessa.
+        const temFiltro = !!queryDosFiltros();
+        const turmas = (json.data || []).filter((t) => !temFiltro || t.totalAlunos > 0);
+
         // Estado vazio é diferente de erro: "não há turmas" é uma resposta
         // correta, e mostrá-la como falha mandaria a secretaria procurar um
         // problema que não existe.
         if (!turmas.length) {
-            container.innerHTML = blocoVazio('Nenhuma turma ativa cadastrada.');
+            container.innerHTML = blocoVazio(
+                temFiltro
+                    ? 'Nenhum aluno encontrado com estes filtros.'
+                    : 'Nenhuma turma ativa cadastrada.'
+            );
             return;
         }
 
         container.innerHTML = turmas.map(t => `
                 <div class="sec-form-card">
-                    <h3><i class="bi bi-people" style="color:#0ea5e9;"></i> ${t.turma} <span class="sec-badge sec-badge-blue" style="margin-left:0.5rem;">${t.totalAlunos} alunos</span></h3>
+                    <h3>
+                        <i class="bi bi-people" style="color:${t.semTurmaCadastrada ? '#f59e0b' : '#0ea5e9'};"></i>
+                        ${escapar(t.turma)}
+                        <span class="sec-badge sec-badge-blue" style="margin-left:0.5rem;">${t.totalAlunos} alunos</span>
+                        ${t.semTurmaCadastrada ? '<span class="sec-badge sec-badge-yellow" style="margin-left:0.25rem;">sala não cadastrada</span>' : ''}
+                    </h3>
+                    ${t.semTurmaCadastrada ? `<p style="color:#fbbf24;font-size:0.78rem;margin:0 0 0.75rem;">
+                        Estes alunos têm a sala digitada na ficha, mas não há uma turma com esse nome no cadastro.
+                        Eles apareciam em relatório nenhum até agora.
+                    </p>` : ''}
                     ${t.alunos.length > 0 ? `<div style="overflow-x:auto;"><table class="sec-table">
                         <thead><tr><th>#</th><th>Nome</th><th>Matrícula</th></tr></thead>
-                        <tbody>${t.alunos.map((a, i) => `<tr><td>${i+1}</td><td>${a.nome}${a.sobrenome ? ' ' + a.sobrenome : ''}</td><td>${a.matricula || '-'}</td></tr>`).join('')}</tbody>
+                        <tbody>${t.alunos.map((a, i) => `<tr><td>${i+1}</td><td>${escapar(`${a.nome || ''}${a.sobrenome ? ' ' + a.sobrenome : ''}`)}</td><td>${escapar(a.matricula || '-')}</td></tr>`).join('')}</tbody>
                     </table></div>` : '<div style="color:#94a3b8;font-size:0.85rem;padding:0.5rem;">Nenhum aluno nesta turma</div>'}
                 </div>
             `).join('');
@@ -265,7 +407,9 @@ async function carregarMatriculas() {
     body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#94a3b8;">Carregando...</td></tr>';
 
     try {
-        const json = await buscarComPrazo(`${API()}/secretaria/relatorios/matriculas`);
+        const json = await buscarComPrazo(
+            `${API()}/secretaria/relatorios/matriculas${queryDosFiltros()}`
+        );
         if (!json.success) throw new Error(json.error || 'O servidor recusou o relatório.');
         {
             const r = json.data.resumo;
@@ -281,15 +425,19 @@ async function carregarMatriculas() {
             if (matriculas.length > 0) {
                 const badgeMap = { cursando:'sec-badge-green', aprovado:'sec-badge-blue', reprovado:'sec-badge-red', transferido:'sec-badge-yellow', evadido:'sec-badge-gray' };
                 body.innerHTML = matriculas.map(m => `<tr>
-                    <td>${m.alunoNome}</td>
-                    <td>${m.matriculaNumero || '-'}</td>
-                    <td>${m.anoLetivo}</td>
-                    <td><span class="sec-badge ${badgeMap[m.status] || 'sec-badge-purple'}">${m.status}</span></td>
+                    <td>${escapar(`${m.alunoNome || ''}${m.alunoSobrenome ? ' ' + m.alunoSobrenome : ''}`)}</td>
+                    <td>${escapar(m.matriculaNumero || '-')}</td>
+                    <td>${escapar(m.anoLetivo)}</td>
+                    <td><span class="sec-badge ${badgeMap[m.status] || 'sec-badge-purple'}">${escapar(m.status)}</span></td>
                     <td>${m.dataMatricula ? new Date(m.dataMatricula).toLocaleDateString('pt-BR') : '-'}</td>
                 </tr>`).join('');
             } else {
                 // Sem matrícula no período é resultado válido, não falha.
-                body.innerHTML = '<tr><td colspan="5">' + blocoVazio('Nenhuma matrícula no período.') + '</td></tr>';
+                body.innerHTML = '<tr><td colspan="5">' + blocoVazio(
+                    queryDosFiltros()
+                        ? 'Nenhuma matrícula para estes filtros.'
+                        : 'Nenhuma matrícula no período.'
+                ) + '</td></tr>';
             }
 
             // O backend limita as LINHAS mas conta o resumo sobre a base
@@ -312,9 +460,12 @@ async function carregarMatriculas() {
 }
 
 function exportar(tipo) {
-    const url = `${API()}/secretaria/relatorios/exportar?tipo=${tipo}`;
+    // O CSV sai com os MESMOS filtros da tela. Baixar a base inteira enquanto a
+    // tela mostra um recorte é como o arquivo deixa de bater com o que a
+    // secretaria acabou de conferir.
+    const url = `${API()}/secretaria/relatorios/exportar?tipo=${tipo}${queryDosFiltros('&')}`;
     window.open(url, '_blank');
-    toast('Download iniciado!');
+    toast(queryDosFiltros() ? 'Download iniciado (com os filtros da tela).' : 'Download iniciado!');
 }
 </script>
 <script src="../../js/sidebar-voice.js?v=4.0"></script>

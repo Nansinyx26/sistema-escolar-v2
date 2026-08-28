@@ -189,7 +189,8 @@ async function loadAlunos() {
 
     // Elementos de UI
     const searchInput = document.getElementById('searchAluno');
-    const termo = searchInput ? searchInput.value.toLowerCase() : '';
+    const termo = searchInput ? searchInput.value : '';
+    const termos = termosDeBusca(termo);
 
     const turmaSelect = document.getElementById('filtroTurma');
     const turmaId = turmaSelect ? turmaSelect.value : '';
@@ -207,11 +208,16 @@ async function loadAlunos() {
         ui.loading(true, 'Buscando alunos...');
         
         let alunosRaw;
-        // Se tiver uma turma selecionada, busca APENAS os alunos dela (Muito mais rápido!)
-        if (turmaId) {
+        if (termos.length) {
+            // Com termo digitado a busca vai para o SERVIDOR (sozinha ou junto
+            // da sala). `getAll()` devolve só os 100 primeiros alunos da escola:
+            // a busca global por nome nunca enxergou além disso, e o aluno que
+            // estava no banco simplesmente não aparecia.
+            alunosRaw = await students.buscar({ termo, turma: turmaId });
+        } else if (turmaId) {
+            // Sem termo e com turma: busca APENAS os alunos dela (mais rápido).
             alunosRaw = await students.getByTurma(turmaId);
         } else {
-            // Se não tiver turma (ex: busca por nome global), busca todos
             alunosRaw = await students.getAll();
         }
         
@@ -221,13 +227,23 @@ async function loadAlunos() {
 
         // Aplicar filtros
         let alunos = alunosRaw.filter(a => {
-            // Filtro Nome/Matricula (Safe)
-            const nome = a.nome ? a.nome.toLowerCase() : '';
-            const matricula = a.matricula ? String(a.matricula) : '';
-            const matchNome = nome.includes(termo) || matricula.includes(termo);
+            // Filtro Nome/Matrícula/Sala.
+            // A versão anterior era `nome.toLowerCase().includes(termo)`: quem
+            // digitava "joao" não achava "João", quem digitava "silva joao" não
+            // achava "João da Silva" (a ordem tinha que bater), e `sobrenome`
+            // ficava de fora — que é onde metade do nome do aluno mora depois da
+            // importação. Agora cada palavra digitada precisa aparecer em ALGUM
+            // dos campos, sem acento e em qualquer ordem.
+            const campos = normalizarBusca(
+                [a.nome, a.sobrenome, a.matricula, a.turma, a.turmaId]
+                    .filter(Boolean)
+                    .join(' ')
+            );
+            const matchNome = termos.every(t => campos.includes(t));
 
-            // Filtro Turma
-            const matchTurma = turmaId ? String(a.turmaId) === String(turmaId) : true;
+            // Filtro Turma: "1A", "1ºA" e "1 A" são a mesma sala. Comparar as
+            // strings cruas escondia o aluno cadastrado com a outra grafia.
+            const matchTurma = turmaId ? salasIguais(a.turmaId, turmaId) || salasIguais(a.turma, turmaId) : true;
 
             // Filtro PCD (Lógica igual ao dashboard: apenas verifica se tem valor truthy)
             let matchPCD = true;
@@ -538,4 +554,38 @@ function debounce(func, wait) {
         clearTimeout(timeout);
         timeout = setTimeout(later, wait);
     };
+}
+
+// ============================================================================
+// BUSCA DE ALUNO — mesmas regras do servidor (backend/src/utils/buscaAluno.js)
+// ============================================================================
+// Esta tela filtra no navegador uma lista já baixada, então precisa repetir o
+// critério que o backend aplica. Ter os dois lados divergindo é como a mesma
+// busca acha o aluno em uma tela e jura que ele não existe na outra.
+
+/** Minúsculo, sem acento, sem espaço duplo. */
+function normalizarBusca(texto) {
+    return String(texto == null ? '' : texto)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+/** Quebra o termo digitado em palavras normalizadas. */
+function termosDeBusca(texto) {
+    return normalizarBusca(texto).split(' ').filter(Boolean);
+}
+
+/** Forma canônica de uma sala: "1º A", "1ºA" e "1 A" viram todas "1A". */
+function normalizarSala(sala) {
+    return normalizarBusca(sala).replace(/[\u00ba\u00b0\u00aa._\-/\s]/g, '').toUpperCase();
+}
+
+/** As duas salas são a mesma, escritas de formas diferentes? */
+function salasIguais(a, b) {
+    const x = normalizarSala(a);
+    const y = normalizarSala(b);
+    return !!x && x === y;
 }
