@@ -23,7 +23,9 @@ html_content = """<!DOCTYPE html>
     <link rel="stylesheet" href="horario-jaguari.css">
 
     <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Preload da fonte: sem ele o .woff2 só é descoberto depois do CSS. -->
+    <link rel="preload" href="../js/libs/fonts/bootstrap-icons.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="../js/libs/bootstrap-icons.min.css">
 </head>
 
 <body>

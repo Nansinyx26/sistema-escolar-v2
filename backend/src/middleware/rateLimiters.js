@@ -362,8 +362,28 @@ const importacaoIpLimiter = limiterPorIp({
     },
 });
 
+// ── Moderação: denúncia e contestação ────────────────────────────────────────
+// Os dois endpoints são vetores de abuso ANTES de serem vetores de custo (R7 da
+// ESPEC-MODERACAO-CHAT.md): sem teto, uma conta consegue encher a fila da
+// coordenação de denúncias infundadas até a fila deixar de ser usável — e o
+// alvo das denúncias vira vítima de assédio por processo, não por mensagem.
+//
+// 10/hora por CONTA, como sugere §8.4. Ninguém denuncia dez mensagens por hora
+// de boa-fé; quem precisa disso está reportando um incidente que merece
+// telefonema à direção, não formulário.
+const moderacaoAbusoLimiter = limiterPorUsuario({
+    windowMs: UMA_HORA,
+    maxProd: tetoEnv('RATE_LIMIT_MODERACAO', 10),
+    maxDev: 100,
+    mensagem: {
+        success: false,
+        error: 'Você atingiu o limite de envios por hora. Se for urgente, procure a direção da escola.',
+    },
+});
+
 module.exports = {
     globalLimiter,
+    moderacaoAbusoLimiter,
     importacaoPreviewLimiter,
     importacaoIpLimiter,
     authIpLimiter,
