@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
     <!-- O drawer de ajustes (settings-drawer.js, global) injeta ícones
          <i class="bi bi-…">; sem esta fonte eles ficavam com 0x0 aqui. -->
+    <!-- Preload da fonte: sem ele o .woff2 só é descoberto depois do CSS. -->
+    <link rel="preload" href="../../js/libs/fonts/bootstrap-icons.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="../../js/libs/bootstrap-icons.min.css">
     <style>
         :root {
