@@ -51,19 +51,21 @@ const STATIC_ASSETS = [
     '/js/libs/chart.umd.min.js',
     '/js/libs/sweetalert2.min.js',
     '/img/icons/icon-192.png',
-    '/img/icons/icon-512.png'
+    '/img/icons/icon-512.png',
 ];
 
 async function precache() {
     const cache = await caches.open(STATIC_CACHE);
-    await Promise.all(STATIC_ASSETS.map(async (url) => {
-        try {
-            const res = await fetch(new Request(url, { cache: 'reload' }));
-            if (res && res.ok) await cache.put(url, res);
-        } catch (err) {
-            // Recurso indisponível não impede a instalação do SW.
-        }
-    }));
+    await Promise.all(
+        STATIC_ASSETS.map(async (url) => {
+            try {
+                const res = await fetch(new Request(url, { cache: 'reload' }));
+                if (res && res.ok) await cache.put(url, res);
+            } catch (err) {
+                // Recurso indisponível não impede a instalação do SW.
+            }
+        })
+    );
 }
 
 self.addEventListener('install', (event) => {
@@ -71,16 +73,22 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-    event.waitUntil((async () => {
-        const keys = await caches.keys();
-        await Promise.all(
-            keys.filter((k) => !CURRENT_CACHES.includes(k)).map((k) => caches.delete(k))
-        );
-        if (self.registration.navigationPreload) {
-            try { await self.registration.navigationPreload.enable(); } catch (e) { /* noop */ }
-        }
-        await self.clients.claim();
-    })());
+    event.waitUntil(
+        (async () => {
+            const keys = await caches.keys();
+            await Promise.all(
+                keys.filter((k) => !CURRENT_CACHES.includes(k)).map((k) => caches.delete(k))
+            );
+            if (self.registration.navigationPreload) {
+                try {
+                    await self.registration.navigationPreload.enable();
+                } catch (e) {
+                    /* noop */
+                }
+            }
+            await self.clients.claim();
+        })()
+    );
 });
 
 // Permite que a página force a ativação de uma nova versão.
@@ -109,7 +117,7 @@ async function handleNavigation(event) {
         if (offline) return offline;
         return new Response('Você está offline.', {
             status: 503,
-            headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
         });
     }
 }
@@ -133,23 +141,25 @@ self.addEventListener('fetch', (event) => {
     }
 
     // Stale-while-revalidate para assets do próprio domínio.
-    event.respondWith((async () => {
-        const cached = await caches.match(request);
-        const networkPromise = fetch(request).then((response) => {
-            if (response && response.status === 200 && response.type === 'basic') {
-                const clone = response.clone();
-                caches.open(STATIC_CACHE).then((cache) => cache.put(request, clone));
-            }
-            return response;
-        });
+    event.respondWith(
+        (async () => {
+            const cached = await caches.match(request);
+            const networkPromise = fetch(request).then((response) => {
+                if (response && response.status === 200 && response.type === 'basic') {
+                    const clone = response.clone();
+                    caches.open(STATIC_CACHE).then((cache) => cache.put(request, clone));
+                }
+                return response;
+            });
 
-        if (cached) {
-            // Revalida em segundo plano sem deixar rejeição sem tratamento.
-            event.waitUntil(networkPromise.catch(() => { }));
-            return cached;
-        }
-        return networkPromise;
-    })());
+            if (cached) {
+                // Revalida em segundo plano sem deixar rejeição sem tratamento.
+                event.waitUntil(networkPromise.catch(() => {}));
+                return cached;
+            }
+            return networkPromise;
+        })()
+    );
 });
 
 // ============================================
@@ -171,11 +181,11 @@ self.addEventListener('push', (event) => {
         badge: '/img/icons/icon-96.png',
         vibrate: [100, 50, 100],
         // Reabre a mesma notificação em vez de empilhar duplicatas do mesmo aviso
-        tag: (data.data && data.data.id) ? String(data.data.id) : undefined,
+        tag: data.data && data.data.id ? String(data.data.id) : undefined,
         renotify: true,
         data: {
-            url: (data.data && data.data.url) || data.url || '/'
-        }
+            url: (data.data && data.data.url) || data.url || '/',
+        },
     };
 
     event.waitUntil(self.registration.showNotification(data.title, options));
