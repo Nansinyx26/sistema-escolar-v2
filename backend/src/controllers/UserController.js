@@ -16,6 +16,8 @@ const { emitirParaPerfis } = require('../utils/realtime');
 // Usado nos dados vindos do Google, que não passam pela sanitização global
 // do app.js (ela cobre req.body/query/params, não payload de OAuth).
 const { sanitizeInput } = require('../utils/sanitize');
+// A casa de cada perfil: a mesma tabela que o gate de páginas consulta.
+const { painelDoPerfil } = require('../utils/painelPorPerfil');
 // Emissão de sessão centralizada: garante `jti` em todo token (pré-requisito
 // para o logout conseguir revogar) e opções de cookie idênticas em todo lugar.
 const { emitirTokenSessao } = require('../utils/sessionToken');
@@ -392,18 +394,29 @@ exports.registerWithCode = async (req, res) => {
     }
 };
 
-// IMPORTANTE: os paths devem existir de verdade no servidor estático.
-// As páginas do sistema vivem em /html/*; um path como '/dashboard.html' (raiz)
-// cai no catch-all do Express e devolve a landing page — causa histórica do
-// bug "voltar para a página inicial" após login/cadastro.
+// A TABELA DE DESTINO MORA EM utils/painelPorPerfil.js (Issue #104).
+//
+// Esta função tinha a lista de perfis escrita à mão, e o gate de páginas tinha
+// a mesma lista do outro lado — "para onde este perfil vai" e "quem pode abrir
+// esta página" são a MESMA regra vista de dois ângulos. A duplicação não era
+// escolha de design: delegar obrigaria a reformatar este arquivo inteiro, e a
+// dívida de formatação do Biome empurrava a cópia para dentro do código. Paga a
+// dívida, a delegação é o que sobra.
+//
+// O que continua aqui são as duas decisões que NÃO são "onde este perfil mora",
+// e por isso não pertencem àquela tabela: sem usuário vai para o login, e senha
+// a trocar tem precedência sobre qualquer painel.
+//
+// MUDANÇA DE COMPORTAMENTO, DELIBERADA: um perfil desconhecido antes caía no
+// `return '/html/dashboard.html'` do fim — ou seja, ganhava o painel do
+// professor de graça. `painelDoPerfil` falha FECHADA e manda para a tela de
+// escolha. `painelPorPerfil.test.js` cobra que todo perfil do enum de
+// `models/Usuario.js` tenha destino declarado, então o caso "desconhecido" é
+// barrado no CI no dia em que o enum crescer, não em produção.
 function getRedirectPath(user) {
     if (!user) return '/html/login.html';
     if (user.deveMudarSenha) return '/html/mudar-senha.html';
-    if (user.perfil === 'responsavel') return '/portal-responsavel/dist/index.html';
-    if (user.perfil === 'secretaria') return '/html/secretaria/painel.html';
-    if (!user.perfil) return '/html/escolher-perfil.html';
-    // admin, diretor e professor usam o dashboard unificado (adapta-se ao perfil)
-    return '/html/dashboard.html';
+    return painelDoPerfil(user.perfil);
 }
 exports.getRedirectPath = getRedirectPath;
 
