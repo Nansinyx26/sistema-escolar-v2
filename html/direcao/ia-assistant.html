@@ -479,6 +479,52 @@
       }
       .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+      /* ── Aviso de recurso em desenvolvimento ────────────────────
+         Esta é a única tela do sistema em que o conteúdo é gerado por IA.
+         Tratar a saída como informação institucional conferida é risco real
+         para quem decide em cima dela — e o cabeçalho não dizia nada. Ver
+         Issue #130.
+
+         Fica no topo do painel de conversa, acima do .chat-header, e vale para
+         os três perfis autorizados (diretor, professor, secretaria), já que a
+         página é compartilhada.
+
+         Paleta institucional (--accent/--accent2), nunca --erro: aqui o
+         vermelho significa falha de geração, e isto é informação, não erro.
+         O objetivo é calibrar expectativa na entrada da tela, não alarmar. */
+      .aviso-desenvolvimento {
+        display: flex; align-items: flex-start; gap: 9px;
+        /* O recuo à direita não é estética: o botão de configurações do
+           `settings-drawer` é fixo no canto superior direito da janela e passa
+           por cima de qualquer coisa que esteja ali. Sem esta folga, a primeira
+           linha do aviso corre por baixo dele. */
+        padding: 9px 62px 9px 18px; flex-shrink: 0;
+        border-bottom: 1px solid var(--border);
+        background: rgba(16, 185, 129, 0.07);
+        font-size: 12.5px; line-height: 1.45; color: var(--accent3);
+        animation: aviso-desenvolvimento-entra 180ms
+          var(--motion-ease-out, cubic-bezier(0.16, 1, 0.3, 1)) both;
+      }
+      /* `i` E `svg`: o lucide-init troca a tag `<i data-lucide>` por um `<svg>`
+         em runtime, então uma regra só em `i` não vale mais depois que a página
+         carrega — o ícone aparecia sem tamanho nem cor. */
+      .aviso-desenvolvimento i,
+      .aviso-desenvolvimento svg {
+        width: 15px; height: 15px; flex-shrink: 0;
+        margin-top: 1px; color: var(--accent);
+      }
+      .aviso-desenvolvimento strong { font-weight: 600; color: var(--accent3); }
+      .aviso-desenvolvimento span { color: var(--text); opacity: 0.82; }
+
+      /* Entrada única, na chegada à tela: 180ms é o teto do projeto, e só
+         `opacity`/`transform` — nada de `height`, que provocaria reflow no
+         painel inteiro. Frequência rara (uma vez por abertura), então cabe;
+         em loop pedindo atenção, não caberia. */
+      @keyframes aviso-desenvolvimento-entra {
+        from { opacity: 0; transform: translateY(-6px); }
+        to   { opacity: 1; transform: none; }
+      }
+
       /* ── Responsivo ─────────────────────────────────────────────── */
       @media (max-width: 1024px) {
         .app { grid-template-columns: 1fr; grid-template-rows: minmax(220px, 30vh) 1fr; }
@@ -491,6 +537,11 @@
         .app { grid-template-rows: 0 1fr; }
         /* No celular a tela inteira é a conversa: o orb vira só o cabeçalho. */
         .stage { display: none; }
+        /* O aviso continua inteiro aqui — é onde a `.stage` some e o painel de
+           conversa ocupa a tela toda, então é a única coisa que calibra a
+           expectativa antes da primeira resposta. Só o respiro lateral encolhe,
+           acompanhando o resto da tela. */
+        .aviso-desenvolvimento { padding: 9px 56px 9px 13px; font-size: 12px; }
         .messages { padding: 16px 13px; gap: 15px; }
         .ia-msg { max-width: 94%; }
         .input-wrap { padding: 11px 13px; }
@@ -498,7 +549,8 @@
 
       @media (prefers-reduced-motion: reduce) {
         .orb, .orb.pensando, .orb.falando, .orb.ouvindo,
-        .bars.active .bar, .ia-pensando span, .ia-cursor { animation: none !important; }
+        .bars.active .bar, .ia-pensando span, .ia-cursor,
+        .aviso-desenvolvimento { animation: none !important; }
         * { transition-duration: 0.01ms !important; }
       }
     </style>
@@ -639,6 +691,19 @@
 
       <!-- Conversa -->
       <div class="chat-panel">
+        <!-- role="note": conteúdo informativo que o leitor de tela anuncia
+             quando a pessoa chega nele, sem interromper nem puxar o foco de
+             quem abriu a tela para digitar. `role="alert"`/`status` fariam o
+             contrário, e isto não é um evento — é o estado do recurso. -->
+        <div class="aviso-desenvolvimento" role="note">
+          <i data-lucide="hammer" aria-hidden="true"></i>
+          <p>
+            <strong>Assistente em desenvolvimento.</strong>
+            <span>Respostas geradas por IA podem estar erradas ou incompletas — confira
+            antes de decidir. Comandos e ações ainda estão sendo adicionados.</span>
+          </p>
+        </div>
+
         <header class="chat-header">
           <div class="chat-header-orb" aria-hidden="true"></div>
           <div class="chat-header-info">
