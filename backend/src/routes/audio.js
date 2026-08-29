@@ -16,13 +16,13 @@ router.post('/upload', authJWT, filtrarPorEscola, audioUpload.single('audio'), a
     try {
         const db = mongoose.connection.db;
         const bucket = new mongoose.mongo.GridFSBucket(db, { bucketName: 'uploads' });
-        
+
         // Determinar extensão
         let ext = '.webm';
         if (req.file.mimetype === 'audio/mpeg') ext = '.mp3';
         else if (req.file.mimetype === 'audio/wav') ext = '.wav';
         else if (req.file.mimetype === 'audio/ogg') ext = '.ogg';
-        
+
         const filename = crypto.randomBytes(16).toString('hex') + ext;
         const uploadStream = bucket.openUploadStream(filename, {
             contentType: req.file.mimetype,
@@ -34,27 +34,26 @@ router.post('/upload', authJWT, filtrarPorEscola, audioUpload.single('audio'), a
                 originalName: req.file.originalname,
                 usuarioId: String(req.user.id || req.user._id || ''),
                 escolaId: req.escolaId ? String(req.escolaId) : undefined,
-                type: 'voice_message'
-            }
+                type: 'voice_message',
+            },
         });
 
         uploadStream.end(req.file.buffer);
 
         uploadStream.on('finish', () => {
-            res.status(201).json({ 
-                success: true, 
-                data: { 
-                    id: uploadStream.id, 
+            res.status(201).json({
+                success: true,
+                data: {
+                    id: uploadStream.id,
                     filename: filename,
-                    url: `/api/audio/${uploadStream.id}`
-                } 
+                    url: `/api/audio/${uploadStream.id}`,
+                },
             });
         });
 
         uploadStream.on('error', (err) => {
             res.status(500).json({ success: false, error: err.message });
         });
-
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
@@ -86,13 +85,17 @@ router.get('/:id', authJWT, filtrarPorEscola, async (req, res) => {
 
         const file = await findFileDoc(id);
         if (!file) {
-            return res.status(404).json({ success: false, error: 'Arquivo de áudio não encontrado.' });
+            return res
+                .status(404)
+                .json({ success: false, error: 'Arquivo de áudio não encontrado.' });
         }
 
         // 1. Só áudio sai por aqui. Responde 404 (e não 403) de propósito: um
         //    403 confirmaria a existência daquele id no bucket.
         if (!String(file.contentType || '').startsWith('audio/')) {
-            return res.status(404).json({ success: false, error: 'Arquivo de áudio não encontrado.' });
+            return res
+                .status(404)
+                .json({ success: false, error: 'Arquivo de áudio não encontrado.' });
         }
 
         // 2. Mesma autorização das rotas de arquivo/documento.
@@ -101,17 +104,17 @@ router.get('/:id', authJWT, filtrarPorEscola, async (req, res) => {
             return res.status(permissao.status).json({ success: false, error: permissao.error });
         }
 
-        const db     = mongoose.connection.db;
+        const db = mongoose.connection.db;
         const bucket = new mongoose.mongo.GridFSBucket(db, { bucketName: 'uploads' });
         const objectId = file._id;
 
         // Headers de streaming com suporte a range (para player HTML5)
-        res.set('Content-Type',   file.contentType || 'audio/mpeg');
+        res.set('Content-Type', file.contentType || 'audio/mpeg');
         res.set('Content-Length', file.length);
-        res.set('Accept-Ranges',  'bytes');
+        res.set('Accept-Ranges', 'bytes');
         // 'private': resposta autenticada não pode ficar em cache de proxy
         // compartilhado e ser servida a outro usuário.
-        res.set('Cache-Control',  'private, max-age=3600');
+        res.set('Cache-Control', 'private, max-age=3600');
 
         const downloadStream = bucket.openDownloadStream(objectId);
         downloadStream.pipe(res);
@@ -119,10 +122,12 @@ router.get('/:id', authJWT, filtrarPorEscola, async (req, res) => {
         downloadStream.on('error', (err) => {
             // Evita enviar headers duplos se a resposta já começou
             if (!res.headersSent) {
-                res.status(500).json({ success: false, error: 'Erro ao transmitir o arquivo de áudio.' });
+                res.status(500).json({
+                    success: false,
+                    error: 'Erro ao transmitir o arquivo de áudio.',
+                });
             }
         });
-
     } catch (error) {
         if (!res.headersSent) {
             res.status(500).json({ success: false, error: 'Erro interno ao buscar áudio.' });
