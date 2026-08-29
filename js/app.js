@@ -22,6 +22,85 @@ function escHtml(v) {
     return String(v).replace(/[&<>"'`]/g, c => _ESC_MAP_APP[c]);
 }
 
+// ============================================
+// RELATÓRIOS DIÁRIOS
+// ============================================
+// Apoio da aba "Relatórios Diários" da página de turma. Fora da classe porque
+// nada aqui depende do estado do App — são conversões de data e as duas
+// chamadas de rede.
+
+const REL_MATERIA_PADRAO = 'Sala Principal';
+const REL_DIAS_NA_QUINZENA = 15;
+const REL_LIMITE_CONTEUDO = 8000;   // mesmo teto do backend
+const REL_DEBOUNCE_MS = 1200;
+const REL_DIAS_SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+const REL_ROTULOS_ESTADO = {
+    vazio: '',
+    pendente: 'Não salvo',
+    salvando: 'Salvando',
+    salvo: 'Salvo',
+    erro: 'Não salvou',
+};
+
+/**
+ * Chave do dia em `AAAA-MM-DD` a partir dos componentes LOCAIS da data.
+ *
+ * `toISOString()` aqui seria bug: ele converte para UTC antes de cortar, então
+ * a meia-noite local de um fuso a leste vira o dia anterior e o relatório
+ * aparece na casinha errada. O dia do diário de classe é o dia do calendário
+ * de quem está na escola.
+ */
+function relChaveDoDia(data) {
+    const mes = String(data.getMonth() + 1).padStart(2, '0');
+    const dia = String(data.getDate()).padStart(2, '0');
+    return `${data.getFullYear()}-${mes}-${dia}`;
+}
+
+function relDataCurta(data) {
+    return data.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+}
+
+function relMesEAno(data) {
+    return data.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+}
+
+function relDataPorExtenso(data) {
+    return data.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+/** Resposta do backend, com o erro preservado — `catch` mudo aqui vira "salvo" mentiroso. */
+async function relResposta(res) {
+    const json = await res.json().catch(() => null);
+    if (!res.ok || !json || json.success !== true) {
+        throw new Error((json && json.error) || `O servidor respondeu ${res.status}.`);
+    }
+    return json;
+}
+
+async function relBuscarQuinzena({ turma, materia, de, ate }) {
+    const busca = new URLSearchParams({ turma, materia, de, ate });
+    const res = await fetch(`${window.API_BASE_URL}/relatorios/diarios?${busca}`, {
+        credentials: 'include',
+    });
+    return (await relResposta(res)).data || [];
+}
+
+async function relGravarDia({ turma, materia, dia, conteudo }) {
+    // Sem o X-CSRF-Token o backend devolve 403 e nada é gravado.
+    const headers = typeof window.csrfHeaders === 'function'
+        ? window.csrfHeaders(true)
+        : { 'Content-Type': 'application/json' };
+
+    const res = await fetch(`${window.API_BASE_URL}/relatorios/diarios`, {
+        method: 'PUT',
+        credentials: 'include',
+        keepalive: true,
+        headers,
+        body: JSON.stringify({ turma, materia, dia, conteudo }),
+    });
+    return relResposta(res);
+}
+
 class App {
     constructor() {
         this.initialized = false;
@@ -832,29 +911,48 @@ class App {
             else window.location.href = 'selecionar.html';
         });
 
-        // Toggle View Tabs (Alunos, Faltas, Relatorios)
+        // Abas de visão (Alunos, Faltas, Relatórios)
         const viewTabs = document.querySelectorAll('#viewTabs button');
         viewTabs.forEach(btn => {
             btn.addEventListener('click', (e) => {
-                // Remove active class
-                viewTabs.forEach(b => b.classList.remove('active'));
+                viewTabs.forEach(b => {
+                    b.classList.remove('active');
+                    b.setAttribute('aria-selected', 'false');
+                    b.setAttribute('tabindex', '-1');
+                });
                 e.currentTarget.classList.add('active');
+                e.currentTarget.setAttribute('aria-selected', 'true');
+                e.currentTarget.setAttribute('tabindex', '0');
 
                 const view = e.currentTarget.dataset.view;
 
-                // Toggle containers
                 const alunosContainer = document.querySelector('.alunos-container');
                 const faltasContainer = document.querySelector('.faltas-container');
                 const relatoriosContainer = document.querySelector('.relatorios-container');
 
-                if (alunosContainer) alunosContainer.style.display = view === 'notas' ? 'block' : 'none';
-                if (faltasContainer) faltasContainer.style.display = view === 'faltas' ? 'block' : 'none';
-                if (relatoriosContainer) relatoriosContainer.style.display = view === 'relatorios' ? 'block' : 'none';
+                if (alunosContainer) alunosContainer.hidden = view !== 'notas';
+                if (faltasContainer) faltasContainer.hidden = view !== 'faltas';
+                if (relatoriosContainer) relatoriosContainer.hidden = view !== 'relatorios';
 
                 if (view === 'faltas') this.renderFaltas(turmaId, bimestre);
-                if (view === 'relatorios') this.renderRelatorios(turmaId, bimestre);
+
+                // Só monta na primeira visita. Remontar a cada clique jogaria
+                // fora o parágrafo que ainda está no debounce.
+                if (view === 'relatorios' && !this.relatoriosEstado) {
+                    this.renderRelatorios(turmaId, bimestre);
+                }
             });
         });
+
+        // Fechar a aba com texto pendente não pode custar o relatório do dia.
+        // `pagehide` (e não `beforeunload`) é o que dispara também no iOS.
+        if (!this.relatoriosDescargaLigada) {
+            this.relatoriosDescargaLigada = true;
+            window.addEventListener('pagehide', () => { this.salvarRelatoriosPendentes(); });
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') this.salvarRelatoriosPendentes();
+            });
+        }
 
         // Adicionar aluno
         document.getElementById('btnAddAluno')?.addEventListener('click', () => {
@@ -1184,251 +1282,358 @@ class App {
         });
     }
 
+    /**
+     * Aba "Relatórios Diários" — o diário de classe da turma.
+     *
+     * Quinze dias por tela, um cartão por dia. O texto é gravado por
+     * `PUT /relatorios/diarios`, que é um upsert idempotente: não há consulta
+     * antes de gravar e o mesmo dia enviado duas vezes converge para uma linha
+     * só. Cada dia tem o seu próprio debounce e a sua própria fila — digitar no
+     * dia 12 não pode cancelar nem atropelar o auto-save pendente do dia 11.
+     *
+     * Motion (docs/MOTION.md · Emil primário): digitar e salvar são de altíssima
+     * frequência, então o estado do save é troca de texto instantânea, nunca
+     * animação. O único movimento é a entrada do conteúdo depois do skeleton.
+     *
+     * @param {string} turmaId
+     * @param {number} bimestre
+     * @param {number} quinzenaOffset  0 = quinzena que termina hoje; -1 = anterior
+     */
     async renderRelatorios(turmaId, bimestre, quinzenaOffset = 0) {
         const container = document.querySelector('.relatorios-container');
         if (!container) return;
 
-        const params = new URLSearchParams(window.location.search);
-        const materia = params.get('materia') || 'Sala Principal';
+        // O que estiver no debounce vai para o servidor antes de a tela mudar.
+        await this.salvarRelatoriosPendentes();
 
-        // Calcular quinzena baseada no offset (0 = atual, -1 = anterior, +1 = próxima)
+        const params = new URLSearchParams(window.location.search);
+        const materia = params.get('materia') || REL_MATERIA_PADRAO;
+
         const hoje = new Date();
-        hoje.setDate(hoje.getDate() + (quinzenaOffset * 15)); // Mover 15 dias por vez
+        hoje.setHours(0, 0, 0, 0);
+        const chaveHoje = relChaveDoDia(hoje);
+
+        // A quinzena termina hoje e anda 15 dias por vez para trás. Relatório
+        // de aula que ainda não aconteceu não é caso de uso: `offset` positivo
+        // não existe e o botão "Próxima" trava no presente.
+        const offset = Math.min(0, quinzenaOffset);
+        const fim = new Date(hoje);
+        fim.setDate(fim.getDate() + offset * REL_DIAS_NA_QUINZENA);
 
         const dias = [];
-        for (let i = 0; i < 15; i++) {
-            const d = new Date(hoje);
-            d.setDate(hoje.getDate() - (14 - i));
+        for (let i = REL_DIAS_NA_QUINZENA - 1; i >= 0; i--) {
+            const d = new Date(fim);
+            d.setDate(fim.getDate() - i);
             dias.push(d);
         }
+        const chaveInicio = relChaveDoDia(dias[0]);
+        const chaveFim = relChaveDoDia(dias[dias.length - 1]);
 
-        // Formatar período da quinzena
-        const dataInicio = dias[0].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
-        const dataFim = dias[14].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+        // Estado da tela. Um registro por dia, com o texto conhecido pelo
+        // servidor (`gravado`) separado do que está na caixa (`texto`) — é a
+        // diferença entre os dois que diz se há algo pendente.
+        const estado = {
+            turma: turmaId,
+            materia,
+            offset,
+            dias: new Map(dias.map(d => {
+                const chave = relChaveDoDia(d);
+                return [chave, { chave, texto: '', gravado: '', falhou: false, timer: null, fila: Promise.resolve() }];
+            }))
+        };
+        this.relatoriosEstado = estado;
 
-        const boxesHtml = dias.map((data, index) => {
-            const dia = data.getDate();
-            const mes = data.toLocaleDateString('pt-BR', { month: 'long' });
-            const ano = data.getFullYear();
-            const dataKey = data.toISOString().split('T')[0];
-
-            return `
-                <div class="report-card">
-                    <div class="report-card-header">
-                        <div class="report-date-badge">
-                            <span class="report-day">${dia}</span>
-                        </div>
-                        <div class="report-date-info">
-                            <span class="report-month-year">${mes} de ${ano}</span>
-                        </div>
-                    </div>
-                    <div class="report-card-body">
-                        <textarea 
-                            class="form-input relatorio-text" 
-                            data-date="${dataKey}" 
-                            rows="4" 
-                            placeholder="Descreva as atividades e observações do dia..."
-                        ></textarea>
-                    </div>
-                    <div class="report-card-footer">
-                        <button class="btn btn-primary btn-salvar-individual" data-date="${dataKey}">
-                            <i class="bi bi-check2-circle"></i> Salvar
-                        </button>
-                    </div>
-                </div>
-            `;
-        }).join('');
+        const periodo = `${relDataCurta(dias[0])} – ${relDataCurta(dias[dias.length - 1])}`;
 
         container.innerHTML = `
-            <div class="relatorios-modern-layout">
-                <div class="relatorios-header-card">
-                    <div class="header-title">
-                        <div class="icon-wrapper">
-                            <i class="bi bi-journal-richtext"></i>
-                        </div>
-                        <div class="title-text">
-                            <h3>Relatórios Diários</h3>
-                            <p>${materia}</p>
-                        </div>
+            <div class="relatorios-painel">
+                <header class="relatorios-cabecalho">
+                    <div class="relatorios-identificacao">
+                        <h3>Relatórios diários</h3>
+                        <p class="relatorios-materia">${escHtml(materia)} · turma ${escHtml(turmaId)}</p>
                     </div>
-                    
-                    <div class="date-navigation">
-                        <button class="btn btn-outline btn-sm btn-quinzena" id="btnQuinzenaAnterior">
+                    <div class="relatorios-navegacao">
+                        <button type="button" class="btn btn-outline btn-sm" id="btnQuinzenaAnterior"
+                            aria-label="Quinzena anterior">
                             <i class="bi bi-chevron-left"></i> Anterior
                         </button>
-                        <div class="current-period">
-                            <span class="period-badge">${dataInicio} - ${dataFim}</span>
-                        </div>
-                        <button class="btn btn-outline btn-sm btn-quinzena" id="btnQuinzenaSeguinte">
+                        <span class="relatorios-periodo">${escHtml(periodo)}</span>
+                        <button type="button" class="btn btn-outline btn-sm" id="btnQuinzenaSeguinte"
+                            aria-label="Próxima quinzena" ${offset >= 0 ? 'disabled' : ''}>
                             Próxima <i class="bi bi-chevron-right"></i>
                         </button>
                     </div>
+                </header>
+
+                <div class="relatorios-medidor" id="relatoriosMedidor" role="group"
+                    aria-label="Dias da quinzena">
                 </div>
 
-                <div class="relatorios-grid">
-                    ${boxesHtml}
-                </div>
-                
-                <div class="relatorios-bottom-bar">
-                    <div class="autosave-info">
-                        <i class="bi bi-arrow-repeat"></i>
-                        <span><strong>Auto-save ativado:</strong> As alterações são salvas automaticamente após digitar.</span>
-                    </div>
-                    <button class="btn btn-success btn-salvar-todos" id="btnSalvarTodos">
-                        <i class="bi bi-cloud-check-fill"></i> Salvar Todos os Registros
+                <div class="relatorios-resumo">
+                    <p class="relatorios-contagem" id="relatoriosContagem">Carregando a quinzena…</p>
+                    <button type="button" class="btn btn-primary btn-sm" id="btnSalvarTodos"
+                        data-busy-label="Salvando…">
+                        <i class="bi bi-check2-all"></i> Salvar tudo
                     </button>
                 </div>
+
+                <div id="relatoriosCorpo"></div>
+                <p class="sr-only" id="relatoriosAviso" role="status" aria-live="polite"></p>
             </div>
         `;
 
-        // Sistema de persistência com API Backend
-        const salvarRelatorio = async (data, texto, turmaId, materia) => {
-            try {
-                // Verificar se já existe relatório para este dia/turma/materia
-                // Como não temos ID, buscamos primeiro? Ou o backend trata upsert?
-                // Backend 'create' é insert. 'list' filtra.
-                // Vamos tentar salvar novo. O ideal seria update se existe.
-                // Para simplificar, vou buscar todos da API primeiro e ver se tem update.
+        const corpo = container.querySelector('#relatoriosCorpo');
+        const medidor = container.querySelector('#relatoriosMedidor');
+        const contagem = container.querySelector('#relatoriosContagem');
+        const aviso = container.querySelector('#relatoriosAviso');
 
-                // Melhor abordagem: POST para criar ou atualizar (backend deve lidar, mas ReportController é simples CRUD)
-                // Vou implementar Logica de Busca e Update aqui no front
+        // Skeleton em vez de spinner (docs/MOTION.md, regra 1).
+        if (window.Motion) window.Motion.skeleton(corpo, { preset: 'card', count: 6 });
 
-                // Otimização: buscar apenas desta turma
-                const reports = await db.getByIndex('relatorios', 'turma', turmaId);
-                const existing = reports.find(r =>
-                    r.turma === turmaId &&
-                    r.materia === materia &&
-                    new Date(r.data).toISOString().split('T')[0] === data
-                );
+        let salvos;
+        try {
+            salvos = await relBuscarQuinzena({ turma: turmaId, materia, de: chaveInicio, ate: chaveFim });
+        } catch (erro) {
+            const conteudoErro = `
+                <div class="relatorios-falha" role="alert">
+                    <i class="bi bi-cloud-slash"></i>
+                    <div>
+                        <h4>Não foi possível carregar os relatórios</h4>
+                        <p>${escHtml(erro.message)}</p>
+                    </div>
+                    <button type="button" class="btn btn-outline btn-sm" id="btnRelatoriosTentarDeNovo">
+                        Tentar de novo
+                    </button>
+                </div>
+            `;
+            if (window.Motion) window.Motion.ready(corpo, conteudoErro);
+            else corpo.innerHTML = conteudoErro;
+            contagem.textContent = 'Os relatórios desta quinzena não foram carregados.';
+            corpo.querySelector('#btnRelatoriosTentarDeNovo')
+                ?.addEventListener('click', () => this.renderRelatorios(turmaId, bimestre, offset));
+            container.querySelector('#btnSalvarTodos')?.setAttribute('disabled', 'disabled');
+            this.ligarNavegacaoRelatorios(container, turmaId, bimestre, offset);
+            return;
+        }
 
-                const payload = {
-                    turma: turmaId,
-                    materia: materia,
-                    data: new Date(data),
-                    conteudo: texto,
-                    periodo: 'diario',
-                    autor: auth.getCurrentUser()._id
-                };
-
-                if (existing) {
-                    payload.id = existing.id || existing._id;
-                    await db.update('relatorios', payload);
-                    console.log('Relatório atualizado:', data);
-                } else {
-                    await db.insert('relatorios', payload);
-                    console.log('Relatório criado:', data);
-                }
-                return true;
-            } catch (e) {
-                console.error('Erro ao salvar relatório:', e);
-                return false;
+        salvos.forEach(registro => {
+            const item = estado.dias.get(registro.dia);
+            if (item) {
+                item.texto = registro.conteudo || '';
+                item.gravado = item.texto;
             }
+        });
+
+        const cartoes = dias.map((data, i) => {
+            const chave = relChaveDoDia(data);
+            const item = estado.dias.get(chave);
+            const fimDeSemana = data.getDay() === 0 || data.getDay() === 6;
+            const ehHoje = chave === chaveHoje;
+            const rotulo = relDataPorExtenso(data);
+            // O mês só aparece onde ele muda. Repeti-lo nos quinze cartões era
+            // ruído: o que distingue um dia do outro é o número e o dia da
+            // semana, não "agosto de 2026" quinze vezes.
+            const novoMes = i === 0 || data.getMonth() !== dias[i - 1].getMonth();
+
+            return `
+                <article class="relatorio-dia${fimDeSemana ? ' e-fim-de-semana' : ''}${ehHoje ? ' e-hoje' : ''}"
+                    data-dia="${chave}" data-preenchido="${item.texto ? 'sim' : 'nao'}">
+                    <header class="relatorio-dia-topo">
+                        <time class="relatorio-dia-data" datetime="${chave}">
+                            <span class="relatorio-dia-numero">${data.getDate()}</span>
+                            <span class="relatorio-dia-semana">${REL_DIAS_SEMANA[data.getDay()]}</span>
+                        </time>
+                        <div class="relatorio-dia-contexto">
+                            ${novoMes ? `<span class="relatorio-dia-mes">${escHtml(relMesEAno(data))}</span>` : ''}
+                            ${ehHoje ? '<span class="relatorio-etiqueta e-destaque">Hoje</span>' : ''}
+                        </div>
+                        <span class="relatorio-estado" data-estado="vazio"></span>
+                    </header>
+                    <label class="sr-only" for="relatorio-${chave}">Relatório de ${escHtml(rotulo)}</label>
+                    <textarea id="relatorio-${chave}" class="relatorio-texto" data-dia="${chave}" rows="4"
+                        maxlength="${REL_LIMITE_CONTEUDO}"
+                        placeholder="O que foi trabalhado com a turma neste dia?"></textarea>
+                </article>
+            `;
+        }).join('');
+
+        const grade = `<div class="relatorios-grade">${cartoes}</div>`;
+        if (window.Motion) window.Motion.ready(corpo, grade);
+        else corpo.innerHTML = grade;
+
+        // Texto vai por `value`, nunca por innerHTML: é conteúdo escrito por um
+        // usuário e lido por outros.
+        corpo.querySelectorAll('.relatorio-texto').forEach(caixa => {
+            const item = estado.dias.get(caixa.dataset.dia);
+            if (item) caixa.value = item.texto;
+        });
+
+        medidor.innerHTML = dias.map(data => {
+            const chave = relChaveDoDia(data);
+            const classes = ['relatorios-marca'];
+            if (chave === chaveHoje) classes.push('e-hoje');
+            if (data.getDay() === 0 || data.getDay() === 6) classes.push('e-fim-de-semana');
+            return `<button type="button" class="${classes.join(' ')}" data-ir-para="${chave}"></button>`;
+        }).join('');
+
+        // O medidor é montado uma vez e depois só troca de classe e de rótulo.
+        // Recriar o innerHTML a cada save tirava o foco de quem navegava por
+        // ele pelo teclado.
+        const atualizarMedidor = () => {
+            let preenchidos = 0;
+            dias.forEach((data, i) => {
+                const chave = relChaveDoDia(data);
+                const preenchido = Boolean(estado.dias.get(chave).texto.trim());
+                if (preenchido) preenchidos++;
+                const marca = medidor.children[i];
+                if (!marca || marca.dataset.preenchida === String(preenchido)) return;
+
+                marca.dataset.preenchida = String(preenchido);
+                marca.classList.toggle('e-preenchida', preenchido);
+                const rotulo = `${relDataPorExtenso(data)}: ${preenchido ? 'relatório escrito' : 'sem relatório'}`;
+                marca.title = rotulo;
+                marca.setAttribute('aria-label', rotulo);
+            });
+
+            contagem.textContent = preenchidos === REL_DIAS_NA_QUINZENA
+                ? `Quinzena completa: ${REL_DIAS_NA_QUINZENA} de ${REL_DIAS_NA_QUINZENA} dias escritos.`
+                : `${preenchidos} de ${REL_DIAS_NA_QUINZENA} dias escritos nesta quinzena.`;
+        };
+        atualizarMedidor();
+
+        const marcarEstado = (chave, valor, detalhe) => {
+            const cartao = corpo.querySelector(`.relatorio-dia[data-dia="${chave}"]`);
+            if (!cartao) return;
+            const marcador = cartao.querySelector('.relatorio-estado');
+            marcador.dataset.estado = valor;
+            marcador.textContent = detalhe || REL_ROTULOS_ESTADO[valor] || '';
+            cartao.dataset.preenchido = estado.dias.get(chave).texto.trim() ? 'sim' : 'nao';
         };
 
-        const carregarRelatorios = async () => {
-            try {
-                // Fetch only for this class (backend filtering)
-                const reports = await db.getByIndex('relatorios', 'turma', turmaId);
-                // Still filter by materia on client as getByIndex only supports one field usually
-                return reports.filter(r => r.materia === materia);
-            } catch (e) {
-                console.error('Erro ao carregar relatórios:', e);
-                return [];
-            }
+        /**
+         * Grava um dia. A fila por dia é o que impede duas respostas fora de
+         * ordem — o texto mais novo é sempre o último a chegar ao servidor.
+         */
+        const gravarDia = (chave) => {
+            const item = estado.dias.get(chave);
+            if (!item) return Promise.resolve();
+
+            item.fila = item.fila.then(async () => {
+                const texto = item.texto;
+                if (texto === item.gravado) return;
+
+                marcarEstado(chave, 'salvando');
+                try {
+                    await relGravarDia({ turma: turmaId, materia, dia: chave, conteudo: texto });
+                    item.gravado = texto;
+                    item.falhou = false;
+                    marcarEstado(chave, texto.trim() ? 'salvo' : 'vazio');
+                    if (aviso && texto.trim()) aviso.textContent = `Relatório de ${relDataPorExtenso(new Date(`${chave}T12:00:00`))} salvo.`;
+                } catch (erro) {
+                    item.falhou = true;
+                    marcarEstado(chave, 'erro', 'Não salvou');
+                    if (aviso) aviso.textContent = `O relatório de ${relDataPorExtenso(new Date(`${chave}T12:00:00`))} não foi salvo: ${erro.message}`;
+                    console.error(`[relatorios] falha ao salvar ${chave}:`, erro);
+                } finally {
+                    atualizarMedidor();
+                }
+            });
+
+            return item.fila;
         };
+        estado.gravarDia = gravarDia;
 
-        // Carregar dados salvos
-        const relatoriosSalvos = await carregarRelatorios();
+        corpo.addEventListener('input', (e) => {
+            const caixa = e.target.closest('.relatorio-texto');
+            if (!caixa) return;
+            const chave = caixa.dataset.dia;
+            const item = estado.dias.get(chave);
+            if (!item) return;
 
-        document.querySelectorAll('.relatorio-text').forEach(textarea => {
-            const data = textarea.dataset.date;
-            const report = relatoriosSalvos.find(r => new Date(r.data).toISOString().split('T')[0] === data);
-            if (report) {
-                textarea.value = report.conteudo;
+            item.texto = caixa.value;
+            atualizarMedidor();
+
+            clearTimeout(item.timer);
+
+            // Voltou a bater com o que está no servidor: não há o que enviar, e
+            // deixar "Não salvo" no cartão seria mentira.
+            if (item.texto === item.gravado) {
+                item.timer = null;
+                marcarEstado(chave, item.texto.trim() ? 'salvo' : 'vazio');
+                return;
             }
+
+            marcarEstado(chave, 'pendente');
+
+            // Um timer POR DIA. Um timer compartilhado fazia o dia anterior
+            // perder o save quando o professor pulava para o dia seguinte.
+            item.timer = setTimeout(() => { item.timer = null; gravarDia(chave); }, REL_DEBOUNCE_MS);
         });
 
-        // Auto-save ao digitar
-        let saveTimeout;
-        document.querySelectorAll('.relatorio-text').forEach(textarea => {
-            textarea.addEventListener('input', (e) => {
-                clearTimeout(saveTimeout);
-                saveTimeout = setTimeout(async () => {
-                    const data = e.target.dataset.date;
-                    const texto = e.target.value;
-
-                    // Salvar no Backend
-                    const sucesso = await salvarRelatorio(data, texto, turmaId, materia);
-
-                    // Feedback visual
-                    if (sucesso) {
-                        e.target.style.borderColor = '#4caf50';
-                        setTimeout(() => { e.target.style.borderColor = '#555'; }, 1000);
-                    } else {
-                        e.target.style.borderColor = '#f44336';
-                    }
-                }, 2000);
-            });
+        // Sair do campo grava na hora: esperar o debounce quando o professor já
+        // terminou é só chance de perder o texto.
+        corpo.addEventListener('focusout', (e) => {
+            const caixa = e.target.closest('.relatorio-texto');
+            if (!caixa) return;
+            const item = estado.dias.get(caixa.dataset.dia);
+            if (!item || item.texto === item.gravado) return;
+            clearTimeout(item.timer);
+            item.timer = null;
+            gravarDia(caixa.dataset.dia);
         });
 
-        // Navegação entre quinzenas
-        document.getElementById('btnQuinzenaAnterior')?.addEventListener('click', () => {
-            this.renderRelatorios(turmaId, bimestre, quinzenaOffset - 1);
+        medidor.addEventListener('click', (e) => {
+            const marca = e.target.closest('[data-ir-para]');
+            if (!marca) return;
+            const caixa = corpo.querySelector(`.relatorio-texto[data-dia="${marca.dataset.irPara}"]`);
+            if (!caixa) return;
+            caixa.scrollIntoView({ block: 'center', behavior: window.Motion?.enabled ? 'smooth' : 'auto' });
+            caixa.focus({ preventScroll: true });
         });
 
-        document.getElementById('btnQuinzenaSeguinte')?.addEventListener('click', () => {
-            this.renderRelatorios(turmaId, bimestre, quinzenaOffset + 1);
+        const botaoSalvarTodos = container.querySelector('#btnSalvarTodos');
+        botaoSalvarTodos?.addEventListener('click', async () => {
+            if (window.Motion) window.Motion.busy(botaoSalvarTodos, true);
+            const resultado = await this.salvarRelatoriosPendentes();
+            if (window.Motion) window.Motion.busy(botaoSalvarTodos, false);
+
+            if (resultado.pendentes === 0) ui.success('Tudo já estava salvo.');
+            else if (resultado.falhas === 0) ui.success(`${resultado.pendentes} relatório(s) salvos.`);
+            else ui.error(`${resultado.falhas} relatório(s) não foram salvos. Confira os dias marcados.`);
         });
 
-        // Botões de salvar individual
-        document.querySelectorAll('.btn-salvar-individual').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const btnOriginal = e.currentTarget;
-                const textoOriginal = btnOriginal.innerHTML;
-                btnOriginal.innerHTML = '<i class="bi bi-hourglass-split"></i> ...';
+        this.ligarNavegacaoRelatorios(container, turmaId, bimestre, offset);
+        if (window.renderLucideIcons) window.renderLucideIcons();
+    }
 
-                const data = e.currentTarget.dataset.date;
-                const textarea = document.querySelector(`textarea[data-date="${data}"]`);
-                const texto = textarea.value;
-
-                const sucesso = await salvarRelatorio(data, texto, turmaId, materia);
-
-                if (sucesso) {
-                    btnOriginal.innerHTML = '<i class="bi bi-check-all"></i> Salvo!';
-                    btnOriginal.style.background = 'linear-gradient(135deg, #3498db, #2980b9)';
-                    setTimeout(() => {
-                        btnOriginal.innerHTML = textoOriginal;
-                        btnOriginal.style.background = 'linear-gradient(135deg, #27ae60, #229954)';
-                    }, 2000);
-                    ui.success(`✅ Relatório salvo!`);
-                } else {
-                    btnOriginal.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Erro';
-                    btnOriginal.style.background = '#e74c3c';
-                    ui.error('Erro ao salvar relatório.');
-                }
-            });
+    /** Botões de quinzena. Fora do render para valer também na tela de falha. */
+    ligarNavegacaoRelatorios(container, turmaId, bimestre, offset) {
+        container.querySelector('#btnQuinzenaAnterior')?.addEventListener('click', () => {
+            this.renderRelatorios(turmaId, bimestre, offset - 1);
         });
-
-        // Botão Salvar Todos
-        document.getElementById('btnSalvarTodos')?.addEventListener('click', async () => {
-            ui.loading(true, 'Salvando relatórios...');
-            let contador = 0;
-            const promises = [];
-
-            document.querySelectorAll('.relatorio-text').forEach(textarea => {
-                const data = textarea.dataset.date;
-                const texto = textarea.value;
-                if (texto.trim()) {
-                    promises.push(salvarRelatorio(data, texto, turmaId, materia).then(res => {
-                        if (res) contador++;
-                    }));
-                }
-            });
-
-            await Promise.all(promises);
-            ui.loading(false);
-            ui.success(`✅ ${contador} relatório(s) processados/salvos!`);
+        container.querySelector('#btnQuinzenaSeguinte')?.addEventListener('click', () => {
+            if (offset < 0) this.renderRelatorios(turmaId, bimestre, offset + 1);
         });
+    }
+
+    /**
+     * Manda para o servidor tudo que ainda não foi gravado — o que está no
+     * debounce e o que falhou antes. Chamado ao trocar de quinzena, ao clicar
+     * em "Salvar tudo" e ao sair da página.
+     *
+     * @returns {Promise<{pendentes: number, falhas: number}>}
+     */
+    async salvarRelatoriosPendentes() {
+        const estado = this.relatoriosEstado;
+        if (!estado || !estado.gravarDia) return { pendentes: 0, falhas: 0 };
+
+        const pendentes = [...estado.dias.values()].filter(item => item.texto !== item.gravado);
+        pendentes.forEach(item => { clearTimeout(item.timer); item.timer = null; });
+
+        await Promise.all(pendentes.map(item => estado.gravarDia(item.chave)));
+
+        const falhas = pendentes.filter(item => item.falhou).length;
+        return { pendentes: pendentes.length, falhas };
     }
 
     /**

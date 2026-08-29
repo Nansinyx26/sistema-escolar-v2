@@ -130,22 +130,24 @@
                     <!-- Renderizado pelo JavaScript -->
                 </div>
 
-                <!-- Tabs de Visão (Notas, Faltas, Relatórios) -->
-                <div class="view-tabs" id="viewTabs"
-                    style="display:flex; gap:10px; margin-bottom:15px; border-bottom:1px solid var(--border-color); padding-bottom:10px;">
-                    <button class="btn btn-ghost active" data-view="notas">
+                <!-- Abas de visão (Notas, Faltas, Relatórios) -->
+                <div class="view-tabs" id="viewTabs" role="tablist" aria-label="Visões da turma">
+                    <button class="btn btn-ghost active" type="button" role="tab" id="tabNotas"
+                        data-view="notas" aria-selected="true" aria-controls="painelNotas" tabindex="0">
                         <i class="bi bi-person-lines-fill"></i> Alunos/Notas
                     </button>
-                    <button class="btn btn-ghost" data-view="faltas">
+                    <button class="btn btn-ghost" type="button" role="tab" id="tabFaltas"
+                        data-view="faltas" aria-selected="false" aria-controls="painelFaltas" tabindex="-1">
                         <i class="bi bi-calendar-check-fill"></i> Faltas
                     </button>
-                    <button class="btn btn-ghost" data-view="relatorios">
+                    <button class="btn btn-ghost" type="button" role="tab" id="tabRelatorios"
+                        data-view="relatorios" aria-selected="false" aria-controls="painelRelatorios" tabindex="-1">
                         <i class="bi bi-file-text-fill"></i> Relatórios Diários
                     </button>
                 </div>
 
                 <!-- Container de Alunos -->
-                <div class="alunos-container">
+                <div class="alunos-container" role="tabpanel" id="painelNotas" aria-labelledby="tabNotas">
                     <!-- Toolbar -->
                     <div class="alunos-toolbar">
                         <div class="alunos-count">
@@ -188,7 +190,7 @@
                 </div>
 
                 <!-- Container de Faltas (Oculto inicialmente) -->
-                <div class="faltas-container" style="display:none;">
+                <div class="faltas-container" role="tabpanel" id="painelFaltas" aria-labelledby="tabFaltas" hidden>
                     <div class="empty-state">
                         <i class="bi bi-calendar-x"></i>
                         <h3>Faltas</h3>
@@ -196,14 +198,9 @@
                     </div>
                 </div>
 
-                <!-- Container de Relatórios (Oculto inicialmente) -->
-                <div class="relatorios-container" style="display:none;">
-                    <div class="empty-state">
-                        <i class="bi bi-file-text"></i>
-                        <h3>Relatórios Diários</h3>
-                        <p>Funcionalidade de relatórios diários em desenvolvimento.</p>
-                    </div>
-                </div>
+                <!-- Relatórios diários — montado por App.renderRelatorios() -->
+                <div class="relatorios-container" role="tabpanel" id="painelRelatorios"
+                    aria-labelledby="tabRelatorios" hidden></div>
             </div>
         </main>
 
@@ -219,6 +216,7 @@
 
     <!-- Scripts -->
     <script src="../js/api-config.js"></script>
+    <script src="../js/csrf-helper.js"></script>
     <script src="../js/database.js"></script>
     <script type="module" src="../js/app.js"></script>
     <script defer src="../js/watermark.js"></script>
