@@ -333,12 +333,18 @@ jobs:
         working-directory: ./backend
         run: npm run build --if-present
 
+      # A action `johnbeynon/render-deploy-action` saiu daqui na Issue #108: ela
+      # nomeia o input como `api-key`, o workflow passava `api-token`, e o
+      # Actions apenas AVISA sobre input desconhecido. A chamada ia sem
+      # autenticação, o Render devolvia 401, e a action não trata isso como
+      # falha — passo verde sem ter publicado nada. Ver scripts/deploy-render.sh.
       - name: 📤 Deploy to Render (Dev)
-        uses: johnbeynon/render-deploy-action@v0.0.8
-        with:
-          service-id: ${{ secrets.RENDER_SERVICE_ID_DEV }}
-          api-token: ${{ secrets.RENDER_API_TOKEN }}
         if: env.HAS_RENDER_DEV == 'true'
+        env:
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID_DEV }}
+          RENDER_API_TOKEN: ${{ secrets.RENDER_API_TOKEN }}
+          RENDER_AMBIENTE: dev
+        run: bash scripts/deploy-render.sh
 
       # ============================================
       # UM PASSO PULADO É INVISÍVEL — ESTE FALA
@@ -362,7 +368,7 @@ jobs:
           {
             echo "### ⏭️ Deploy de dev pulado"
             echo ""
-            echo "`RENDER_SERVICE_ID_DEV` nao esta configurado, entao **nada foi publicado**."
+            echo "\`RENDER_SERVICE_ID_DEV\` nao esta configurado, entao **nada foi publicado**."
             echo "O check verde deste job significa apenas que o build passou. Ver Issue #108."
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -413,12 +419,16 @@ jobs:
         working-directory: ./backend
         run: npm audit --audit-level=high
 
+      # Mesmo script do job de dev, e por isso mesmo: o erro da Issue #108 vivia
+      # nos DOIS lugares porque o bloco era copiado. Com a lógica em um arquivo
+      # só, os dois ambientes não têm como divergir de novo.
       - name: 📤 Deploy to Render (Prod)
-        uses: johnbeynon/render-deploy-action@v0.0.8
-        with:
-          service-id: ${{ secrets.RENDER_SERVICE_ID_PROD }}
-          api-token: ${{ secrets.RENDER_API_TOKEN }}
         if: env.HAS_RENDER_PROD == 'true'
+        env:
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID_PROD }}
+          RENDER_API_TOKEN: ${{ secrets.RENDER_API_TOKEN }}
+          RENDER_AMBIENTE: produção
+        run: bash scripts/deploy-render.sh
 
       # Mesma proteção do job de dev, e aqui ela pesa mais: um deploy de
       # PRODUÇÃO que não acontece em silêncio significa que as famílias
