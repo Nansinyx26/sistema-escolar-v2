@@ -392,6 +392,13 @@ const startServer = async () => {
 
         global.io = io;
 
+        // A observabilidade também registra listeners nestes dois eventos, e
+        // registrar listener neles SUBSTITUI o comportamento padrão do Node.
+        // Até aqui ela mantinha a saída padrão armada, para uma exceção durante
+        // o boot não ser reportada e engolida. A partir desta linha o dono da
+        // política é este arquivo — ver Issue #129 e docs/OBSERVABILITY.md.
+        observability.assumirEncerramento();
+
         // Tratamento de Rejeições Não Tratadas (Promises)
         process.on('unhandledRejection', (err, promise) => {
             logger.alert('UNHANDLED_REJECTION', err?.message || 'Rejeição não tratada', {

@@ -108,6 +108,52 @@ Envia **apenas** `id`, `perfil` e `escolaId`. Nunca nome, e-mail ou documento.
 
 ---
 
+## Quem é dono do encerramento do processo
+
+**`backend/src/index.js` é o único dono da política de encerramento.** Ele
+registra os handlers de `uncaughtException` e `unhandledRejection` que decidem
+se o processo sai.
+
+A observabilidade **também** registra listeners nesses dois eventos, mas o papel
+dela ali é só reportar. A distinção importa porque registrar um listener nesses
+eventos **substitui o comportamento padrão do Node**, não o preserva — e o
+comentário que vivia em `observability/index.js` afirmava exatamente o oposto
+(Issue #129):
+
+| Evento | Sem listener | Com listener registrado |
+|---|---|---|
+| `uncaughtException` | imprime o stack e sai com 1 | **não sai** — segue rodando |
+| `unhandledRejection` | derruba o processo (padrão desde o Node 15) | **não derruba** — segue rodando |
+
+### O repasse é explícito
+
+`observability.init()` roda na **primeira linha do processo**. Os handlers do
+`index.js` só entram **depois do `app.listen`** — e entre um ponto e outro
+passam `connectDB`, o cache, os códigos secretos, a migração de voz e o
+alinhamento de retenção. Nessa janela, só o listener da observabilidade
+existiria: com ela ligada, uma exceção no boot seria reportada e **engolida**, e
+o boot continuaria a partir de um passo que falhou.
+
+Por isso o repasse é explícito, e não implícito na ordem dos arquivos:
+
+```js
+// observability/init() — arma a saída padrão que o próprio listener suprimiu
+saidaPadraoArmada = true;
+
+// src/index.js, depois do listen — assume a política
+observability.assumirEncerramento();
+```
+
+Armada, a observabilidade **reporta e encerra como o Node faria** (stack em
+`stderr`, saída 1). Desarmada, ela volta a **só reportar**. Nenhum dos dois
+estados engole exceção.
+
+Se um dia o `index.js` deixar de chamar `assumirEncerramento()`, o pior caso é
+o processo encerrar como o Node encerraria — nunca ficar de pé em estado
+inconsistente.
+
+---
+
 ## PII: a regra que não se negocia
 
 > Nunca sai daqui CPF, RG, endereço, telefone, e-mail, nome ou data de
