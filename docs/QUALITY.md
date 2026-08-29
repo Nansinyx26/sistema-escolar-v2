@@ -167,6 +167,52 @@ npm run arch:graph    # diagrama em docs/arquitetura.svg (precisa do graphviz)
 
 ---
 
+## Código morto (Knip)
+
+O Knip cruza **os três workspaces** declarados em `knip.json`: a raiz, o `backend/`
+e o `portal-responsavel/`. Para o workspace do portal, ele carrega
+`portal-responsavel/vite.config.ts` — que importa `vite` e `@vitejs/plugin-react`.
+
+**Por isso o Knip exige as três instalações**, não só a da raiz:
+
+```bash
+npm run setup   # npm ci na raiz, no backend e no portal-responsavel
+```
+
+Sem a terceira, o Knip aborta no carregamento da configuração com
+`ERROR: Error loading .../vite.config.ts` — e é isso que derruba `npm run verify`
+num checkout limpo, sem nenhuma relação com o que a pessoa mudou.
+
+### Achado não trava PR; erro de configuração trava
+
+Esta distinção é feita pelo **código de saída**, e ela é sutil o bastante para ter
+passado despercebida por meses (Issue #124):
+
+| Situação | `knip --no-exit-code` sai com | No CI |
+|---|---|---|
+| Achou código/dependência/export morto | `0` | ✅ relatório, não trava |
+| Não conseguiu carregar a configuração | `2` | ❌ reprova o job |
+
+O `--no-exit-code` zera o código de saída dos **achados**. Ele não cobre falha de
+carregamento — o processo ainda sai com 2.
+
+O passo do CI **não tem `continue-on-error`**, de propósito. Era ele que apagava a
+distinção: o passo terminava verde em 1 segundo, sem ter cruzado um único arquivo,
+e o relatório de código morto que aparecia no PR era um relatório vazio por falha,
+não por limpeza. Se alguém reintroduzir o `continue-on-error` para "destravar o CI",
+o portão volta a ser decorativo.
+
+### Como conferir a distinção na mão
+
+```bash
+npm run knip; echo "saida=$?"                       # achados  -> 0
+mv portal-responsavel/node_modules /tmp/nm-portal
+npm run knip; echo "saida=$?"                       # config   -> 2
+mv /tmp/nm-portal portal-responsavel/node_modules
+```
+
+---
+
 ## Cobertura
 
 `codecov.yml` tem dois gates:
