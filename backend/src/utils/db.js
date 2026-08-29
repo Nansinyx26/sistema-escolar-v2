@@ -75,12 +75,31 @@ const connectDB = async () => {
             });
         });
     } catch (error) {
+        // LOGA E RELANÇA (Issue #126).
+        //
+        // Antes, este catch engolia o erro e agendava `process.exit(1)` em 1s.
+        // Como a função é `async` e não relançava, `await connectDB()` RESOLVIA
+        // COM SUCESSO mesmo com o banco fora — o `try/catch` de `startServer` não
+        // era acionado, e o boot seguia para o cache, os códigos secretos e as
+        // migrações contra uma conexão que não existe. O invariante que o
+        // `index.js` declara ("iniciar o servidor somente se o banco estiver OK")
+        // não era garantido pelo fluxo de controle.
+        //
+        // Na prática o processo morria mesmo, porque o `setTimeout` de 1s vencia a
+        // corrida com os passos seguintes (que travam nos 5s do
+        // `serverSelectionTimeoutMS`). Ou seja: o comportamento certo era resultado
+        // de uma coincidência de tempos. Qualquer passo novo entre a conexão e o
+        // `listen` que respondesse em menos de 1s passaria a rodar num estado que o
+        // código afirma ser impossível.
+        //
+        // O atraso de 1s que existia aqui por causa do log no Render não se perde:
+        // ele mudou de lugar, para o `catch` de `startServer` em index.js — o
+        // ponto que é dono da decisão de encerrar.
         logger.alert('DB_FATAL', `Erro fatal de conexão: ${error.message}`, {
             error: error.message,
             stack: error.stack,
         });
-        // Não encerra o processo imediatamente para permitir ver o log no Render
-        setTimeout(() => process.exit(1), 1000);
+        throw error;
     }
 };
 

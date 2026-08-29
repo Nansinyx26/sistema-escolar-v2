@@ -51,6 +51,10 @@ const { criarEncerrador } = require('./utils/encerramento');
 
 const PORT = process.env.PORT || 3001;
 
+// Tempo que o processo espera antes de sair numa falha de boot, só para o log
+// chegar ao Render. Ver o `catch` de startServer e utils/db.js (Issue #126).
+const ATRASO_SAIDA_BOOT_MS = 1000;
+
 const startServer = async () => {
     try {
         // 1. Conectar ao Banco de Dados primeiro
@@ -425,7 +429,12 @@ const startServer = async () => {
         });
     } catch (err) {
         logger.fatal(`❌ Erro fatal ao iniciar o servidor: ${err.message}`, { stack: err.stack });
-        process.exit(1);
+        // O atraso vem de utils/db.js, onde nasceu (Issue #126): sem ele, o
+        // processo sai antes do transporte de log despachar a linha, e no
+        // Render a falha aparece como um serviço que morreu sem dizer por quê.
+        // Mora aqui, e não lá, porque este é o ponto dono da decisão de
+        // encerrar — `connectDB` agora só loga e relança.
+        setTimeout(() => process.exit(1), ATRASO_SAIDA_BOOT_MS);
     }
 };
 
