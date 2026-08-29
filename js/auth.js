@@ -29,10 +29,10 @@
 // ============================================================================
 
 const PERFIS_CONHECIDOS = {
-    admin:       'Administrador(a)',
-    diretor:     'Diretor(a)',
-    secretaria:  'Secretário(a)',
-    professor:   'Professor(a)',
+    admin: 'Administrador(a)',
+    diretor: 'Diretor(a)',
+    secretaria: 'Secretário(a)',
+    professor: 'Professor(a)',
     responsavel: 'Responsável',
 };
 
@@ -57,7 +57,7 @@ function resolverPerfilAtivo(usuario, escolaIdAtiva) {
 
     // 1. Vínculo da escola ativa (multi-escola).
     if (escolaIdAtiva && Array.isArray(usuario.vinculos)) {
-        const vinculo = usuario.vinculos.find(v => String(v?.escolaId) === String(escolaIdAtiva));
+        const vinculo = usuario.vinculos.find((v) => String(v?.escolaId) === String(escolaIdAtiva));
         const normalizado = normalizarPerfil(vinculo?.cargo || vinculo?.perfil);
         if (normalizado) return montar(normalizado, usuario, 'vinculo');
     }
@@ -69,7 +69,7 @@ function resolverPerfilAtivo(usuario, escolaIdAtiva) {
     // 3. Nada resolveu. Não inventa: registra e devolve indefinido.
     console.error(
         '[perfil] Não foi possível resolver o perfil do usuário. ' +
-        'Verifique se /api/auth/me está devolvendo o campo `perfil`.',
+            'Verifique se /api/auth/me está devolvendo o campo `perfil`.',
         { id: usuario.id || usuario._id, perfilRecebido: usuario.perfil, escolaIdAtiva }
     );
     return PERFIL_INDEFINIDO;
@@ -79,7 +79,7 @@ function resolverPerfilAtivo(usuario, escolaIdAtiva) {
 function normalizarPerfil(valor) {
     if (typeof valor !== 'string') return null;
     const chave = valor.trim().toLowerCase();
-    return Object.prototype.hasOwnProperty.call(PERFIS_CONHECIDOS, chave) ? chave : null;
+    return Object.hasOwn(PERFIS_CONHECIDOS, chave) ? chave : null;
 }
 
 /**
@@ -114,7 +114,9 @@ function escolaAtivaId() {
     try {
         const salva = JSON.parse(localStorage.getItem('escolaSelecionada') || 'null');
         if (salva && salva.id) return String(salva.id);
-    } catch (e) { /* valor corrompido — segue sem contexto */ }
+    } catch (e) {
+        /* valor corrompido — segue sem contexto */
+    }
     return null;
 }
 
@@ -136,9 +138,9 @@ window.escolaAtivaId = escolaAtivaId;
 // tema de quem apenas trocou de usuário seria uma regressão de usabilidade.
 // ============================================================================
 const CHAVES_DA_CONTA = [
-    'escola_jwt',        // legado
-    'escola_jwt_user',   // legado
-    'escola_session',    // legado
+    'escola_jwt', // legado
+    'escola_jwt_user', // legado
+    'escola_session', // legado
     'escolaSelecionada',
     'aichat_cfg_local',
     'user_narration_mode',
@@ -157,7 +159,11 @@ function limparEstadoDaConta() {
         console.warn('[auth] Não foi possível limpar o sessionStorage.', e);
     }
     CHAVES_DA_CONTA.forEach((chave) => {
-        try { localStorage.removeItem(chave); } catch (e) { /* storage indisponível */ }
+        try {
+            localStorage.removeItem(chave);
+        } catch (e) {
+            /* storage indisponível */
+        }
     });
 }
 
@@ -240,7 +246,7 @@ class AuthManager {
         await this.checkSession();
         // Tenta atualizar os dados do usuário em background para sincronizar fotos/infos
         if (this.isAuthenticated()) {
-            this.refreshUser().catch(e => console.warn('Falha ao sincronizar perfil:', e));
+            this.refreshUser().catch((e) => console.warn('Falha ao sincronizar perfil:', e));
         }
     }
 
@@ -311,7 +317,7 @@ class AuthManager {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
-                credentials: 'include' // IMPORTANTE: Para receber o cookie HttpOnly
+                credentials: 'include', // IMPORTANTE: Para receber o cookie HttpOnly
             });
 
             const data = await res.json();
@@ -357,7 +363,7 @@ class AuthManager {
                     redirect_to: data.redirect_to,
                     canal: data.canal || 'email',
                     destinoMascarado: data.destinoMascarado || '',
-                    envioConfirmado: data.envioConfirmado
+                    envioConfirmado: data.envioConfirmado,
                 };
             }
 
@@ -375,7 +381,11 @@ class AuthManager {
             const escolaDesteLogin = escolaId ? localStorage.getItem('escolaSelecionada') : null;
             limparEstadoDaConta();
             if (escolaDesteLogin) {
-                try { localStorage.setItem('escolaSelecionada', escolaDesteLogin); } catch (e) { /* noop */ }
+                try {
+                    localStorage.setItem('escolaSelecionada', escolaDesteLogin);
+                } catch (e) {
+                    /* noop */
+                }
             }
 
             if (data.user.deveMudarSenha) {
@@ -395,8 +405,6 @@ class AuthManager {
         }
     }
 
-
-
     // Métodos de login social removidos por segurança.
 
     /**
@@ -409,7 +417,7 @@ class AuthManager {
             const res = await fetch(`${baseUrl}/auth/register-code`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, senha, nome, codigoEscola, cpf, telefone })
+                body: JSON.stringify({ email, senha, nome, codigoEscola, cpf, telefone }),
             });
 
             const data = await res.json();
@@ -433,14 +441,32 @@ class AuthManager {
     // registerWithEmail legado REMOVIDO por segurança — criava usuário localmente sem hash/validação.
     // Use registerWithCode() para novos cadastros.
 
-    async registerDocente(nome, email, senha, disciplina, turma, matricula, telefone, codigoEscola) {
+    async registerDocente(
+        nome,
+        email,
+        senha,
+        disciplina,
+        turma,
+        matricula,
+        telefone,
+        codigoEscola
+    ) {
         try {
             const baseUrl = this._apiBase();
             const res = await fetch(`${baseUrl}/auth/register-docente`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nome, email, senha, disciplina, turma, matricula, telefone, codigoEscola }),
-                credentials: 'include'
+                body: JSON.stringify({
+                    nome,
+                    email,
+                    senha,
+                    disciplina,
+                    turma,
+                    matricula,
+                    telefone,
+                    codigoEscola,
+                }),
+                credentials: 'include',
             });
             const data = await res.json();
             if (!data.success) {
@@ -463,8 +489,16 @@ class AuthManager {
             const res = await fetch(`${baseUrl}/auth/register-responsavel`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nome, email, senha, nomeAluno, turma, telefone, parentesco }),
-                credentials: 'include'
+                body: JSON.stringify({
+                    nome,
+                    email,
+                    senha,
+                    nomeAluno,
+                    turma,
+                    telefone,
+                    parentesco,
+                }),
+                credentials: 'include',
             });
             const data = await res.json();
             if (!data.success) {
@@ -491,11 +525,11 @@ class AuthManager {
             const res = await fetch(`${baseUrl}/usuarios/${userId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     perfil,
-                    perfilDefinidoEm: new Date().toISOString()
+                    perfilDefinidoEm: new Date().toISOString(),
                 }),
-                credentials: 'include'
+                credentials: 'include',
             });
 
             const data = await res.json();
@@ -532,7 +566,19 @@ class AuthManager {
             console.log('Logout silencioso no backend');
         }
 
-        window.location.href = 'login.html';
+        // ============================================
+        // CAMINHO ABSOLUTO, E NÃO 'login.html'
+        // ============================================
+        // O relativo resolvia contra o diretório da página atual. Sair de
+        // `/html/secretaria/painel.html` procurava `/html/secretaria/login.html`,
+        // que não existe — a pessoa deslogava e caía num 404, com a sessão já
+        // encerrada e sem link de volta. O mesmo valia para /html/direcao,
+        // /html/admin e /direcao; só funcionava a partir das telas que já
+        // moravam na raiz de /html.
+        //
+        // O destino é o mesmo que `js/guarda-acesso.js` usa ao barrar alguém sem
+        // sessão. Divergir aqui daria dois "lugares de onde se faz login".
+        window.location.replace('/html/login.html');
     }
 
     /**
@@ -603,7 +649,7 @@ class AuthManager {
         this.currentUser = userData;
         sessionStorage.setItem('currentUser', JSON.stringify(userData));
         // SEGURANÇA: Removido localStorage — dados ficam apenas em sessionStorage
-        
+
         // Sincroniza fotos em toda a interface
         if (window.updateAllAvatars) {
             window.updateAllAvatars(userData);

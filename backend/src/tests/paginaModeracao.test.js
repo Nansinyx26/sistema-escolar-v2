@@ -26,7 +26,13 @@ describe('html/direcao/moderacao.html', () => {
 
         const quebrados = locais.filter((caminho) => {
             const semQuery = caminho.split('?')[0];
-            return !fs.existsSync(path.resolve(path.dirname(PAGINA), semQuery));
+            // Caminho iniciado por '/' é relativo à RAIZ DO SITE, não ao diretório
+            // da página — é assim que o navegador resolve, e é a forma usada por
+            // `/manifest.json` e pelo guard de acesso. Resolver tudo contra
+            // `dirname(PAGINA)` dava um caminho absoluto do sistema de arquivos
+            // (`/js/...`), que nunca existe, e reprovava uma referência correta.
+            const base = semQuery.startsWith('/') ? RAIZ : path.dirname(PAGINA);
+            return !fs.existsSync(path.resolve(base, `.${path.sep}${semQuery.replace(/^\//, '')}`));
         });
 
         expect(quebrados).toEqual([]);

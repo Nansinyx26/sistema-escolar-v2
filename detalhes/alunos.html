@@ -2,6 +2,10 @@
 <html lang="pt-BR" data-theme="dark">
 
 <head>
+    <!-- Trava de acesso por perfil. SEM defer e antes de tudo: a decisao
+         precisa acontecer antes do primeiro pixel. Ver js/guarda-acesso.js. -->
+    <script src="/js/guarda-acesso.js?v=1.0"></script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="description" content="Sistema de Cadastro Escolar - Lista de Alunos">
@@ -117,7 +121,7 @@
                         </div>
                         <div class="search-box">
                             <span class="search-icon"><i class="bi bi-search"></i></span>
-                            <input type="text" class="form-input" placeholder="Buscar aluno..." id="searchAluno">
+                            <input type="text" class="form-input" placeholder="Buscar por nome, sobrenome, matrícula ou sala..." id="searchAluno">
                         </div>
                     </div>
 

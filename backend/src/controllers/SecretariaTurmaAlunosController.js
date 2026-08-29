@@ -20,7 +20,7 @@ const Turma = require('../models/Turma');
 const ImportacaoAlunos = require('../models/ImportacaoAlunos');
 const AuditLog = require('../models/AuditLog');
 const logger = require('../utils/logger');
-const escapeRegex = require('../utils/escapeRegex');
+const busca = require('../utils/buscaAluno');
 const { assignSecretCodes } = require('../utils/secretCodeHelper');
 const { emitirParaEscola } = require('../utils/realtime');
 const importacao = require('../services/importacaoAlunos');
@@ -222,21 +222,33 @@ exports.listarAlunosDaTurma = async (req, res) => {
 exports.buscarAlunos = async (req, res) => {
     try {
         const termo = normalizacao.colapsarEspacos(req.query?.q || '');
-        if (termo.length < 3) {
+        const sala = normalizacao.colapsarEspacos(req.query?.turma || req.query?.sala || '');
+
+        // Sem sala, o termo precisa de 3 letras — buscar a escola inteira por
+        // uma letra é caro e inútil. Com uma sala escolhida o universo já está
+        // recortado, então qualquer termo (inclusive nenhum) vale.
+        if (!sala && termo.length < 3) {
             return res.json({ success: true, data: { alunos: [], total: 0 } });
         }
 
-        const somenteDigitos = normalizacao.normalizarRa(termo);
-        const porNome = escapeRegex(normalizacao.normalizarNome(termo));
+        // `nomeNormalizado` sozinho não bastava: ele só existe nos documentos
+        // gravados pelo pre-save do Mongoose. Cadastro legado e escrita por
+        // bulkWrite ficam sem o campo, e o aluno simplesmente não aparecia na
+        // secretaria mesmo estando no banco. `filtroDeBusca` procura também em
+        // `nome`, `sobrenome` e `matricula`, sem acento e em qualquer ordem.
+        const filtro = busca.combinar(
+            // `ativo: true` estrito escondia todo cadastro antigo em que o campo
+            // nem existe. `$ne: false` é o critério usado no resto do sistema.
+            escopo(req, { ativo: { $ne: false } }),
+            busca.filtroDeBusca(termo),
+            busca.filtroDeSala(sala)
+        );
 
-        const condicoes = [{ nomeNormalizado: { $regex: porNome } }];
-        if (somenteDigitos.length >= 3)
-            condicoes.push({ matricula: { $regex: `^${escapeRegex(somenteDigitos)}` } });
-
-        const alunos = await Aluno.find(escopo(req, { $or: condicoes, ativo: true }))
+        const alunos = await Aluno.find(filtro)
             .select(
                 'nome sobrenome matricula raDigito raUf nascimento situacao pcd transtornos turma turmaId'
             )
+            .sort({ nome: 1 })
             .limit(20)
             .lean();
 

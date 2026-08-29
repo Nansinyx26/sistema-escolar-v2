@@ -58,7 +58,13 @@ describe.each(PAGINAS)('%s (%s)', (relPagina) => {
             for (const caminho of caminhosLocais(html)) {
                 // A query de cache-busting (?v=1.0) não faz parte do nome do arquivo.
                 const semQuery = caminho.split('?')[0];
-                const absoluto = path.resolve(path.dirname(PAGINA), semQuery);
+                // Caminho iniciado por '/' é relativo à RAIZ DO SITE, não ao diretório
+                // da página — é assim que o navegador resolve, e é a forma usada por
+                // `/manifest.json` e pelo guard de acesso. Resolver tudo contra
+                // `dirname(PAGINA)` dava um caminho absoluto do sistema de arquivos
+                // (`/js/...`), que nunca existe, e reprovava uma referência correta.
+                const base = semQuery.startsWith('/') ? RAIZ : path.dirname(PAGINA);
+                const absoluto = path.resolve(base, `.${path.sep}${semQuery.replace(/^\//, '')}`);
                 if (!fs.existsSync(absoluto)) quebrados.push(caminho);
             }
             expect(quebrados).toEqual([]);

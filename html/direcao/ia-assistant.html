@@ -1,6 +1,10 @@
 <!doctype html>
 <html lang="pt-br" data-theme="dark">
   <head>
+    <!-- Trava de acesso por perfil. SEM defer e antes de tudo: a decisao
+         precisa acontecer antes do primeiro pixel. Ver js/guarda-acesso.js. -->
+    <script src="/js/guarda-acesso.js?v=1.0"></script>
+
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Assistente da Escola | Portal do Docente</title>
@@ -122,6 +126,31 @@
         display: flex; flex-direction: column; height: 100vh;
         background: var(--surface); border-left: 1px solid var(--border);
       }
+
+      /* ── Faixa de estado: "em desenvolvimento" ──────────────────────
+         Verde institucional, NÃO vermelho: `--erro` nesta página já
+         significa falha de geração (.ia-aviso-erro), e reaproveitar a cor
+         faria a faixa ser lida como algo quebrado, e não como um recurso
+         em construção.
+
+         Sem animação de entrada, de propósito. A faixa já está na primeira
+         pintura da página e reaparece a cada carregamento — animá-la seria
+         decoração, não feedback, e cobraria atenção repetida por uma
+         informação que não muda. Nada aqui anima, então não há o que
+         degradar em `prefers-reduced-motion`.
+
+         `flex-shrink: 0` na coluna do .chat-panel: a faixa reduz a área
+         das mensagens (que é `flex: 1`) em vez de espremer a caixa de
+         texto ou vazar da tela. */
+      .ia-faixa-dev {
+        display: flex; align-items: flex-start; gap: 8px; flex-shrink: 0;
+        padding: 9px 18px;
+        background: rgba(16, 185, 129, 0.08);
+        border-bottom: 1px solid rgba(16, 185, 129, 0.22);
+        font-size: 12px; line-height: 1.45; color: var(--text);
+      }
+      .ia-faixa-dev i { flex-shrink: 0; color: var(--accent3); line-height: 1.45; }
+      .ia-faixa-dev strong { font-weight: 600; color: var(--accent3); }
 
       .chat-header {
         display: flex; align-items: center; gap: 12px;
@@ -490,6 +519,9 @@
         .messages { padding: 16px 13px; gap: 15px; }
         .ia-msg { max-width: 94%; }
         .input-wrap { padding: 11px 13px; }
+        /* Acompanha o recuo das mensagens; a faixa continua visível, porque
+           no celular esta coluna é a tela inteira. */
+        .ia-faixa-dev { padding: 8px 13px; }
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -635,6 +667,16 @@
 
       <!-- Conversa -->
       <div class="chat-panel">
+        <!-- role="note" e não "alert": o aviso é permanente e não decorre de
+             nenhuma ação: um live region anunciaria a mesma frase a cada
+             carregamento e tiraria o leitor de tela do caminho de quem chegou
+             para digitar. Como "note" ele é lido na ordem do documento, antes
+             do cabeçalho da conversa. -->
+        <div class="ia-faixa-dev" role="note">
+          <i class="bi bi-cone-striped" aria-hidden="true"></i>
+          <p><strong>Em desenvolvimento.</strong> Respostas geradas por IA podem conter erros — confira antes de decidir.</p>
+        </div>
+
         <header class="chat-header">
           <div class="chat-header-orb" aria-hidden="true"></div>
           <div class="chat-header-info">

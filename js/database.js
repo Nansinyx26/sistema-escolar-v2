@@ -26,16 +26,16 @@ class DatabaseManager {
 
     getEndpoint(storeName) {
         const map = {
-            'usuarios': '/usuarios',
-            'professores': '/professores',
-            'diretores': '/diretores',
-            'turmas': '/turmas',
-            'alunos': '/alunos',
-            'notas': '/notas',
-            'faltas': '/faltas',
-            'relatorios': '/relatorios',
-            'especiais': '/especiais',
-            'config': '/config'
+            usuarios: '/usuarios',
+            professores: '/professores',
+            diretores: '/diretores',
+            turmas: '/turmas',
+            alunos: '/alunos',
+            notas: '/notas',
+            faltas: '/faltas',
+            relatorios: '/relatorios',
+            especiais: '/especiais',
+            config: '/config',
         };
         return map[storeName] || `/${storeName}`;
     }
@@ -46,8 +46,8 @@ class DatabaseManager {
             // Executa buscas em paralelo para ganhar tempo
             const fetchOpts = { credentials: 'include' };
             const [configRes, turmasRes] = await Promise.allSettled([
-                fetch(`${this.baseUrl}/config`, fetchOpts).then(res => res.json()),
-                fetch(`${this.baseUrl}/turmas`, fetchOpts).then(res => res.json())
+                fetch(`${this.baseUrl}/config`, fetchOpts).then((res) => res.json()),
+                fetch(`${this.baseUrl}/turmas`, fetchOpts).then((res) => res.json()),
             ]);
 
             if (configRes.status === 'fulfilled' && configRes.value.success) {
@@ -59,7 +59,6 @@ class DatabaseManager {
                 this.turmas = { turmas: turmasRes.value.data };
                 console.log('✅ Turmas carregadas em paralelo');
             }
-
         } catch (e) {
             console.error('Erro crítico no carregamento inicial:', e);
         } finally {
@@ -76,7 +75,7 @@ class DatabaseManager {
 
     normalizeData(data) {
         if (!data) return [];
-        if (Array.isArray(data)) return data.map(i => this.normalizeItem(i));
+        if (Array.isArray(data)) return data.map((i) => this.normalizeItem(i));
         return [this.normalizeItem(data)];
     }
 
@@ -98,10 +97,44 @@ class DatabaseManager {
         if (storeName === 'alunos' && indexName === 'turmaId') param = 'turma';
 
         try {
-            const res = await fetch(`${this.baseUrl}${endpoint}?${param}=${encodeURIComponent(value)}`, { credentials: 'include' });
+            const res = await fetch(
+                `${this.baseUrl}${endpoint}?${param}=${encodeURIComponent(value)}`,
+                { credentials: 'include' }
+            );
             const json = await res.json();
             return this.normalizeData(json.data);
-        } catch (e) { return []; }
+        } catch (e) {
+            return [];
+        }
+    }
+
+    /**
+     * Busca de aluno NO SERVIDOR (nome, sobrenome, matrícula e sala).
+     *
+     * `getAll('alunos')` traz no máximo 100 registros — é o limite padrão da
+     * rota. Filtrar essa lista no navegador significava que uma busca por nome
+     * sem turma selecionada só enxergava os 100 primeiros alunos da escola: o
+     * aluno existia, estava cadastrado, e a tela dizia que não.
+     *
+     * @param {{termo?: string, turma?: string, limite?: number}} filtros
+     * @returns {Promise<Array>}
+     */
+    async buscarAlunos({ termo = '', turma = '', limite = 500 } = {}) {
+        const params = new URLSearchParams();
+        if (termo) params.set('q', termo);
+        if (turma) params.set('turma', turma);
+        params.set('limit', String(limite));
+
+        try {
+            const res = await fetch(`${this.baseUrl}/alunos?${params.toString()}`, {
+                credentials: 'include',
+            });
+            const json = await res.json();
+            return this.normalizeData(json.data);
+        } catch (e) {
+            console.error('Erro na busca de alunos:', e);
+            return [];
+        }
     }
 
     async get(storeName, id) {
@@ -110,7 +143,9 @@ class DatabaseManager {
             const res = await fetch(`${this.baseUrl}${endpoint}/${id}`, { credentials: 'include' });
             const json = await res.json();
             return json.success ? this.normalizeItem(json.data) : null;
-        } catch (e) { return null; }
+        } catch (e) {
+            return null;
+        }
     }
 
     async add(storeName, data) {
@@ -119,7 +154,7 @@ class DatabaseManager {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
+            body: JSON.stringify(data),
         });
         const json = await res.json();
         return json.success ? this.normalizeItem(json.data) : null;
@@ -132,7 +167,7 @@ class DatabaseManager {
             method: 'PUT',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
+            body: JSON.stringify(data),
         });
         const json = await res.json();
         return json.success ? this.normalizeItem(json.data) : null;
@@ -140,18 +175,25 @@ class DatabaseManager {
 
     async delete(storeName, id) {
         const endpoint = this.getEndpoint(storeName);
-        const res = await fetch(`${this.baseUrl}${endpoint}/${id}`, { method: 'DELETE', credentials: 'include' });
+        const res = await fetch(`${this.baseUrl}${endpoint}/${id}`, {
+            method: 'DELETE',
+            credentials: 'include',
+        });
         const json = await res.json();
         return json.success;
     }
 
     // Getters
-    getConfig() { return this.config; }
+    getConfig() {
+        return this.config;
+    }
     getTurmas() {
         if (!this.turmas) return [];
-        return Array.isArray(this.turmas) ? this.turmas : (this.turmas.turmas || []);
+        return Array.isArray(this.turmas) ? this.turmas : this.turmas.turmas || [];
     }
-    getTurmaById(id) { return this.getTurmas().find(t => t.id === id || t._id === id); }
+    getTurmaById(id) {
+        return this.getTurmas().find((t) => t.id === id || t._id === id);
+    }
 
     getMaterias() {
         return this.config?.materias || [];
@@ -162,20 +204,29 @@ class DatabaseManager {
         const res = await this.getByIndex(store, idx, val);
         if (Array.isArray(res)) {
             if (res.length === 0) return null;
-            const match = res.find(item => 
-                String(item[idx]) === String(val) || 
-                String(item.idUsuario) === String(val) || 
-                String(item.email) === String(val) || 
-                String(item._id || item.id) === String(val)
+            const match = res.find(
+                (item) =>
+                    String(item[idx]) === String(val) ||
+                    String(item.idUsuario) === String(val) ||
+                    String(item.email) === String(val) ||
+                    String(item._id || item.id) === String(val)
             );
             return match || null;
         }
         return res;
     }
-    async findById(store, id) { return this.get(store, id); }
-    async getById(store, id) { return this.get(store, id); }
-    async insert(store, data) { return this.add(store, data); }
-    async findAll(store) { return this.getAll(store); }
+    async findById(store, id) {
+        return this.get(store, id);
+    }
+    async getById(store, id) {
+        return this.get(store, id);
+    }
+    async insert(store, data) {
+        return this.add(store, data);
+    }
+    async findAll(store) {
+        return this.getAll(store);
+    }
 
     getTiposAvaliacao() {
         return this.config?.tiposAvaliacao || [];
