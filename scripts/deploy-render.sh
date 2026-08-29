@@ -36,6 +36,9 @@
 #   RENDER_API_TOKEN   — token da API do Render (rnd_...)
 #   RENDER_AMBIENTE    — rótulo para as mensagens ("dev" | "produção")
 #   RENDER_API_BASE    — opcional; só para teste apontar a um servidor local
+#
+# Espaço em branco em RENDER_SERVICE_ID e RENDER_API_TOKEN é removido antes do
+# uso, com aviso no log (Issue #138).
 # ============================================================================
 set -euo pipefail
 
@@ -43,6 +46,38 @@ set -euo pipefail
 : "${RENDER_API_TOKEN:?RENDER_API_TOKEN não definido}"
 ambiente="${RENDER_AMBIENTE:-desconhecido}"
 base="${RENDER_API_BASE:-https://api.render.com}"
+
+# ── Espaço em branco no secret (Issue #138) ─────────────────────────────────
+# Um Enter a mais na hora de colar o valor no GitHub derrubava o deploy de
+# produção antes de sair da máquina:
+#
+#     curl: (3) URL rejected: Malformed input to a URL function
+#
+# O id entra no MEIO da URL, então uma quebra de linha ali a invalida inteira.
+# Nem `srv-...` nem `rnd_...` contêm espaço legitimamente, então descartar
+# qualquer um é seguro — e evita que o mesmo Enter derrube o próximo ambiente.
+#
+# Mas limpar em silêncio esconderia a configuração errada, que é o defeito de
+# fundo das Issues #108 e #133. Por isso o aviso: o deploy passa E o secret
+# continua aparecendo como algo a corrigir na origem.
+limpar_espacos() {
+    printf '%s' "${1:-}" | tr -d '[:space:]'
+}
+
+for var in RENDER_SERVICE_ID RENDER_API_TOKEN; do
+    limpo="$(limpar_espacos "${!var}")"
+
+    if [ "$limpo" != "${!var}" ]; then
+        echo "::warning title=Secret com espaço em branco::${var} tem espaço ou quebra de linha no valor. O deploy segue com o valor limpo, mas corrija o secret na origem (GitHub → Settings → Secrets → Actions). Ver Issue #138."
+    fi
+
+    if [ -z "$limpo" ]; then
+        echo "::error title=Secret vazio::${var} ficou vazio depois de remover espaço em branco. Nada foi publicado."
+        exit 1
+    fi
+
+    printf -v "$var" '%s' "$limpo"
+done
 
 corpo="$(mktemp)"
 trap 'rm -f "$corpo"' EXIT
