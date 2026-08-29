@@ -213,6 +213,49 @@ mv /tmp/nm-portal portal-responsavel/node_modules
 
 ---
 
+## Service worker: o bump do `VERSION`
+
+O `service-worker.js` guarda os assets em **stale-while-revalidate** e depende de
+um número escrito à mão (`VERSION`) para invalidar o cache. Sem trocá-lo, quem já
+usou o sistema recebe o arquivo **antigo** no primeiro acesso depois do deploy.
+
+Era um passo obrigatório, manual, sem verificação, num arquivo que quase ninguém
+abre — e já foi esquecido: o commit `059577d` alterou `js/auth.js` sem bump. Não
+causou dano porque outro commit bumpou antes do release; sorte de sequência, não
+processo.
+
+```bash
+npm run sw:verificar            # compara com origin/develop
+npm run sw:verificar -- --base origin/main
+```
+
+O gate roda no CI **em pull request** (passo `🔁 Bump do VERSION do service
+worker`, no job de lint e teste), e depende do `fetch-depth: 0` do checkout para
+ter com o que comparar.
+
+### Por que aqui isso pesa mais que em outro projeto
+
+`js/auth.js` e `js/guarda-acesso.js` estão na shell mínima. O guard é o que
+impede uma página restrita em cache de aparecer sem verificação depois de um
+logout ou numa troca de conta no mesmo aparelho. Servir a versão anterior desses
+dois arquivos não deixa a interface feia — deixa a **checagem de acesso
+desatualizada** no aparelho.
+
+### A lista vem do próprio service worker
+
+`scripts/verificar-bump-sw.js` extrai `STATIC_ASSETS` executando o
+`service-worker.js` num contexto isolado. Não existe cópia da lista no script, e
+há teste que reprova se passar a existir: uma cópia sai de sincronia no dia em
+que alguém acrescenta um asset, e a verificação passaria a mentir exatamente
+quando mais importa.
+
+Caminho não escolhido, e por quê: gerar o `VERSION` a partir de um hash dos
+assets no build eliminaria o passo humano de vez, mas exige um passo de build
+para o service worker que hoje não existe. A verificação no CI resolve o
+esquecimento a custo quase zero e não fecha a porta para isso.
+
+---
+
 ## Cobertura
 
 `codecov.yml` tem dois gates:
