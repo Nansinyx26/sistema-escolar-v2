@@ -685,26 +685,43 @@ input:checked + .slider:before {
 }
 
 /* ==========================================
-   RELATÓRIOS DIÁRIOS (Modernized)
+   RELATÓRIOS DIÁRIOS
+   ==========================================
+   Reescrito na Issue #132. O bloco anterior usava azul-céu (#38bdf8), índigo
+   (#818cf8) e sombra roxa — o DESIGN-SYSTEM.md define verde institucional
+   esmeralda + teal, sem roxo/neon. Aqui tudo vem de token: trocar a paleta do
+   sistema passa a alcançar esta aba também.
+
+   Motion: nada acima de 180ms, e nada animado em interação de alta frequência
+   (digitar, salvar). O feedback de salvamento é TEXTO, não cor piscando — a
+   versão anterior animava `border-color` e voltava para o literal `#555`, que
+   quebrava no tema claro. Ver docs/MOTION.md.
    ========================================== */
 
 .relatorios-modern-layout {
-    animation: fadeIn 0.4s var(--ease-out);
+    animation: fadeIn 180ms var(--ease-out);
     padding-bottom: 3rem;
+
+    /* Tinta translúcida da cor primária.
+       NÃO use `--primary-light` aqui: `css/variables.css` o define como
+       `rgba(16,185,129,0.08)`, mas `css/main.css` — carregado depois — o
+       redefine como a cor SÓLIDA `#34d399`. Em `turma.html` os dois entram, e o
+       sólido vence: um "fundo levinho" virava um bloco verde-berrante com texto
+       verde por cima, ilegível. `--primary-rgb` não tem esse conflito e
+       acompanha o tema claro. */
+    --tinta-primaria: rgba(var(--primary-rgb), 0.1);
 }
 
 .relatorios-header-card {
-    background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.8));
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-secondary);
     border-radius: var(--radius-lg);
     padding: 1.5rem 2rem;
     margin-bottom: 2rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--shadow-sm);
     flex-wrap: wrap;
     gap: 1.5rem;
 }
@@ -718,30 +735,28 @@ input:checked + .slider:before {
 .icon-wrapper {
     width: 50px;
     height: 50px;
-    border-radius: 14px;
-    background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(129, 140, 248, 0.2));
-    color: #38bdf8;
+    border-radius: var(--radius-lg);
+    background: var(--tinta-primaria);
+    color: var(--primary);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.8rem;
-    border: 1px solid rgba(56, 189, 248, 0.3);
-    box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);
+    border: 1px solid var(--border-secondary);
 }
 
+/* Título em texto sólido: o gradiente recortado (`background-clip: text`) tinha
+   contraste baixo, não acompanhava o tema claro e destoava das outras telas. */
 .title-text h3 {
     margin: 0;
     font-size: 1.5rem;
     font-weight: 700;
-    background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: var(--text-primary);
 }
 
 .title-text p {
     margin: 0;
-    color: var(--text-muted);
+    color: var(--text-tertiary);
     font-size: 0.9rem;
     font-weight: 500;
 }
@@ -750,29 +765,47 @@ input:checked + .slider:before {
     display: flex;
     align-items: center;
     gap: 1rem;
-    background: rgba(0, 0, 0, 0.2);
+    background: var(--bg-tertiary);
     padding: 0.5rem 1rem;
     border-radius: var(--radius-md);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-primary);
 }
 
 .current-period .period-badge {
     font-weight: 700;
-    color: #e2e8f0;
+    color: var(--text-primary);
     letter-spacing: 0.5px;
     font-size: 1rem;
 }
 
 .btn-quinzena {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.1);
-    color: white;
+    background: var(--bg-elevated);
+    border-color: var(--border-secondary);
+    color: var(--text-primary);
+    transition: background-color 140ms var(--ease-out), border-color 140ms var(--ease-out);
 }
 
-.btn-quinzena:hover {
-    background: rgba(56, 189, 248, 0.15);
-    border-color: #38bdf8;
-    color: white;
+.btn-quinzena:hover:not(:disabled) {
+    background: var(--tinta-primaria);
+    border-color: var(--primary);
+}
+
+/* "Próxima" fica desabilitado na quinzena corrente: preencher relatório de data
+   futura não é caso de uso, é jeito de sujar o histórico. */
+.btn-quinzena:disabled,
+.btn-quinzena[aria-disabled='true'] {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.relatorios-aviso {
+    margin: 0 0 1.5rem;
+    padding: 0.85rem 1.15rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--warning);
+    background: var(--warning-light);
+    color: var(--text-primary);
+    font-size: 0.9rem;
 }
 
 /* Grid */
@@ -784,53 +817,44 @@ input:checked + .slider:before {
 }
 
 .report-card {
-    background: var(--bg-medium);
-    border: 1px solid var(--border-color);
-    border-radius: 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-xl);
     padding: 1.5rem;
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    transition: all 0.3s var(--ease-standard);
+    /* Antes: `transition: all 0.3s` — 300ms e propriedade coringa, que arrasta
+       layout junto. Só a borda muda, e em 140ms. */
+    transition: border-color 140ms var(--ease-out);
     box-shadow: var(--shadow-sm);
     position: relative;
     overflow: hidden;
 }
 
-.report-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 4px;
-    height: 100%;
-    background: transparent;
-    transition: all 0.3s ease;
-}
-
+/* Sem `translateY` no hover: o cartão é uma área de digitação, o ponteiro passa
+   por ele o tempo todo, e mover o alvo debaixo do cursor é o oposto de ajudar. */
 .report-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 30px rgba(0,0,0,0.4);
-    border-color: rgba(56, 189, 248, 0.4);
+    border-color: var(--primary);
 }
 
-.report-card:hover::before {
-    background: linear-gradient(to bottom, #38bdf8, #818cf8);
+.report-card:focus-within {
+    border-color: var(--border-focus);
 }
 
 .report-card-header {
     display: flex;
     align-items: center;
     gap: 1rem;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-secondary);
     padding-bottom: 1rem;
 }
 
 .report-date-badge {
-    background: rgba(56, 189, 248, 0.15);
-    border: 1px solid rgba(56, 189, 248, 0.3);
-    color: #38bdf8;
-    border-radius: 10px;
+    background: var(--tinta-primaria);
+    border: 1px solid var(--border-secondary);
+    color: var(--primary);
+    border-radius: var(--radius-md);
     padding: 0.5rem;
     min-width: 45px;
     text-align: center;
@@ -849,24 +873,47 @@ input:checked + .slider:before {
     font-weight: 500;
 }
 
+/* Estado do salvamento, em palavra. Fica vazio enquanto nada aconteceu — um
+   rótulo permanente viraria ruído em 15 cartões. */
+.report-status {
+    margin-left: auto;
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--text-tertiary);
+}
+
+.report-status[data-status='salvo'] {
+    color: var(--success);
+}
+
+.report-status[data-status='erro'] {
+    color: var(--error);
+}
+
+.report-status[data-status='nao-salvo'] {
+    color: var(--warning);
+}
+
 .relatorio-text {
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-md);
     padding: 1rem;
-    color: var(--text-white);
+    color: var(--text-primary);
     resize: vertical;
     width: 100%;
     min-height: 120px;
     font-size: 0.95rem;
     line-height: 1.5;
-    transition: all 0.3s ease;
+    /* Digitar é a interação mais frequente desta tela: o campo não anima. Só o
+       foco tem transição, e curta. */
+    transition: border-color 140ms var(--ease-out), box-shadow 140ms var(--ease-out);
 }
 
 .relatorio-text:focus {
-    background: rgba(0, 0, 0, 0.4);
-    border-color: #38bdf8;
-    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px var(--tinta-primaria);
     outline: none;
 }
 
@@ -881,32 +928,29 @@ input:checked + .slider:before {
     justify-content: center;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(16, 185, 129, 0.1);
-    border: 1px solid rgba(16, 185, 129, 0.3);
-    color: #10b981;
-    border-radius: 10px;
+    background: var(--tinta-primaria);
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    border-radius: var(--radius-md);
     font-weight: 600;
-    transition: all 0.3s;
+    transition: background-color 140ms var(--ease-out), color 140ms var(--ease-out);
 }
 
 .btn-salvar-individual:hover {
-    background: linear-gradient(135deg, #10b981, #059669);
-    border-color: transparent;
-    color: white;
-    box-shadow: 0 5px 15px rgba(16, 185, 129, 0.3);
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--text-inverse);
 }
 
 .relatorios-bottom-bar {
-    background: rgba(30, 41, 59, 0.7);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-secondary);
     border-radius: var(--radius-lg);
     padding: 1.5rem 2rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    box-shadow: var(--shadow-sm);
     flex-wrap: wrap;
     gap: 1.5rem;
 }
@@ -915,12 +959,12 @@ input:checked + .slider:before {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    color: var(--text-muted);
+    color: var(--text-tertiary);
     font-size: 0.9rem;
 }
 
 .autosave-info i {
-    color: #38bdf8;
+    color: var(--primary);
     font-size: 1.2rem;
 }
 
@@ -928,20 +972,38 @@ input:checked + .slider:before {
     padding: 0.75rem 2rem;
     font-weight: 700;
     font-size: 1rem;
-    border-radius: 12px;
+    border-radius: var(--radius-lg);
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
-    border: none;
-    color: white;
-    box-shadow: 0 5px 15px rgba(124, 58, 237, 0.4);
-    transition: transform 0.2s, box-shadow 0.2s;
+    background: var(--primary);
+    border: 1px solid var(--primary);
+    color: var(--text-inverse);
+    transition: background-color 140ms var(--ease-out);
 }
 
 .btn-salvar-todos:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(124, 58, 237, 0.6);
+    background: var(--primary-hover);
+}
+
+/* Skeleton do carregamento, para o caso de a página não ter o js/motion.js:
+   regra 1 do docs/MOTION.md é skeleton, nunca tela em branco. */
+.report-card-skeleton {
+    min-height: 260px;
+    border-radius: var(--radius-xl);
+}
+
+/* `.sr-only` vive em css/system-global.css, que esta página não carrega. */
+.relatorios-modern-layout .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 
 @media (max-width: 768px) {
@@ -949,20 +1011,34 @@ input:checked + .slider:before {
         flex-direction: column;
         align-items: flex-start;
     }
-    
+
     .date-navigation {
         width: 100%;
         justify-content: space-between;
     }
-    
+
     .relatorios-bottom-bar {
         flex-direction: column;
         text-align: center;
     }
-    
+
     .btn-salvar-todos {
         width: 100%;
         justify-content: center;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .relatorios-modern-layout {
+        animation: none;
+    }
+
+    .report-card,
+    .relatorio-text,
+    .btn-quinzena,
+    .btn-salvar-individual,
+    .btn-salvar-todos {
+        transition: none;
     }
 }
 

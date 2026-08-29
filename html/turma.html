@@ -130,22 +130,30 @@
                     <!-- Renderizado pelo JavaScript -->
                 </div>
 
-                <!-- Tabs de Visão (Notas, Faltas, Relatórios) -->
-                <div class="view-tabs" id="viewTabs"
+                <!-- Tabs de Visão (Notas, Faltas, Relatórios)
+                     Semântica de abas acrescentada na Issue #132: sem
+                     `role="tablist"`, `aria-selected` e `aria-controls`, o leitor
+                     de tela anunciava três botões soltos, sem dizer qual estava
+                     ativo nem o que cada um controla. `aria-selected` e o
+                     `tabindex` móvel são mantidos pelo js/app.js. -->
+                <div class="view-tabs" id="viewTabs" role="tablist" aria-label="Visões da turma"
                     style="display:flex; gap:10px; margin-bottom:15px; border-bottom:1px solid var(--border-color); padding-bottom:10px;">
-                    <button class="btn btn-ghost active" data-view="notas">
-                        <i class="bi bi-person-lines-fill"></i> Alunos/Notas
+                    <button class="btn btn-ghost active" data-view="notas" role="tab"
+                        id="tabNotas" aria-selected="true" aria-controls="painelNotas">
+                        <i class="bi bi-person-lines-fill" aria-hidden="true"></i> Alunos/Notas
                     </button>
-                    <button class="btn btn-ghost" data-view="faltas">
-                        <i class="bi bi-calendar-check-fill"></i> Faltas
+                    <button class="btn btn-ghost" data-view="faltas" role="tab"
+                        id="tabFaltas" aria-selected="false" aria-controls="painelFaltas" tabindex="-1">
+                        <i class="bi bi-calendar-check-fill" aria-hidden="true"></i> Faltas
                     </button>
-                    <button class="btn btn-ghost" data-view="relatorios">
-                        <i class="bi bi-file-text-fill"></i> Relatórios Diários
+                    <button class="btn btn-ghost" data-view="relatorios" role="tab"
+                        id="tabRelatorios" aria-selected="false" aria-controls="painelRelatorios" tabindex="-1">
+                        <i class="bi bi-file-text-fill" aria-hidden="true"></i> Relatórios Diários
                     </button>
                 </div>
 
                 <!-- Container de Alunos -->
-                <div class="alunos-container">
+                <div class="alunos-container" id="painelNotas" role="tabpanel" aria-labelledby="tabNotas">
                     <!-- Toolbar -->
                     <div class="alunos-toolbar">
                         <div class="alunos-count">
@@ -188,7 +196,7 @@
                 </div>
 
                 <!-- Container de Faltas (Oculto inicialmente) -->
-                <div class="faltas-container" style="display:none;">
+                <div class="faltas-container" id="painelFaltas" role="tabpanel" aria-labelledby="tabFaltas" style="display:none;">
                     <div class="empty-state">
                         <i class="bi bi-calendar-x"></i>
                         <h3>Faltas</h3>
@@ -197,7 +205,7 @@
                 </div>
 
                 <!-- Container de Relatórios (Oculto inicialmente) -->
-                <div class="relatorios-container" style="display:none;">
+                <div class="relatorios-container" id="painelRelatorios" role="tabpanel" aria-labelledby="tabRelatorios" style="display:none;">
                     <div class="empty-state">
                         <i class="bi bi-file-text"></i>
                         <h3>Relatórios Diários</h3>
