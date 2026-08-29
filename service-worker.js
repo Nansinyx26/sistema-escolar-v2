@@ -13,7 +13,7 @@
 // Bump obrigatório a cada mudança em JS já cacheado: os assets usam
 // stale-while-revalidate, então sem trocar a versão o usuário recebe o arquivo
 // antigo no primeiro acesso após o deploy.
-const VERSION = 'v7';
+const VERSION = 'v8';
 const STATIC_CACHE = `escola-static-${VERSION}`;
 const PAGES_CACHE = `escola-pages-${VERSION}`;
 const CURRENT_CACHES = [STATIC_CACHE, PAGES_CACHE];
@@ -37,6 +37,19 @@ const STATIC_ASSETS = [
     '/css/watermark.css',
     '/js/login.js',
     '/js/auth.js',
+    // ============================================
+    // O GUARD PRECISA ESTAR AQUI, E O MOTIVO É ESTE ARQUIVO
+    // ============================================
+    // As navegações são guardadas em PAGES_CACHE e devolvidas quando a rede
+    // falha (`handleNavigation`). Isso significa que uma página restrita pode
+    // aparecer inteira SEM passar pelo gate do servidor — depois de um logout,
+    // numa troca de conta no mesmo aparelho, ou simplesmente offline. É a única
+    // situação em que a checagem do navegador deixa de ser cosmética.
+    //
+    // Se o guard não estiver em cache, ele é justamente o script que falta
+    // carregar nesse cenário, e a página cacheada aparece sem verificação
+    // nenhuma. Ele entra na shell mínima por isso — e não pelo desempenho.
+    '/js/guarda-acesso.js',
     '/js/utils.js',
     '/js/api-config.js',
     '/js/theme.js',

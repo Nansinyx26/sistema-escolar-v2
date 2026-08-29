@@ -41,23 +41,50 @@ router.get('/me', authJWT, async (req, res) => {
         // Agora só sai o que a UI declaradamente usa.
         // ============================================
         const CAMPOS_PUBLICOS = [
-            '_id', 'id', 'nome', 'email', 'perfil', 'foto', 'fotoGoogle',
-            'escola', 'escolaId', 'disciplina', 'turma', 'matricula',
-            'telefone', 'cpf', 'parentesco', 'contaId',
-            'ativo', 'deveMudarSenha', 'profileCompleted', 'emailVerificado',
-            'twoFactorEnabled', 'ultimoLogin', 'criadoEm',
-            'consentimentoAceiteEm', 'consentimentoVersao',
-            'tutorialProfessorConcluido', 'tutorialResponsavelConcluido',
-            'preferenciaNarracao', 'voiceSpeed', 'voiceGender', 'ttsProvider', 'settings',
-            'accessibilityFontSize', 'accessibilityContrast', 'accessibilityReadingMode',
-            'notificacoesPreferencias', 'lgpdConsents'
+            '_id',
+            'id',
+            'nome',
+            'email',
+            'perfil',
+            'foto',
+            'fotoGoogle',
+            'escola',
+            'escolaId',
+            'disciplina',
+            'turma',
+            'matricula',
+            'telefone',
+            'cpf',
+            'parentesco',
+            'contaId',
+            'ativo',
+            'deveMudarSenha',
+            'profileCompleted',
+            'emailVerificado',
+            'twoFactorEnabled',
+            'ultimoLogin',
+            'criadoEm',
+            'consentimentoAceiteEm',
+            'consentimentoVersao',
+            'tutorialProfessorConcluido',
+            'tutorialResponsavelConcluido',
+            'preferenciaNarracao',
+            'voiceSpeed',
+            'voiceGender',
+            'ttsProvider',
+            'settings',
+            'accessibilityFontSize',
+            'accessibilityContrast',
+            'accessibilityReadingMode',
+            'notificacoesPreferencias',
+            'lgpdConsents',
         ];
 
         const user = await Usuario.findById(userId).select(CAMPOS_PUBLICOS.join(' ')).lean();
         if (!user) return res.status(401).json({ success: false, error: 'Usuário não encontrado' });
 
         const safeUser = {};
-        CAMPOS_PUBLICOS.forEach(campo => {
+        CAMPOS_PUBLICOS.forEach((campo) => {
             if (user[campo] !== undefined) safeUser[campo] = user[campo];
         });
         if (!safeUser.id) safeUser.id = String(user._id);
@@ -95,6 +122,32 @@ router.get('/rotas', authJWT, async (req, res) => {
     } catch (e) {
         res.status(500).json({ success: false, error: 'Erro ao resolver rotas.' });
     }
+});
+
+// --- Matriz de acesso das páginas ---
+// Espelho publicável de `utils/matrizAcesso.js`, para o guard do navegador
+// (`js/guarda-acesso.js`) conferir se a versão que ele carrega ainda bate com a
+// do servidor. O guard traz a matriz embutida de propósito — ele precisa
+// decidir antes do primeiro pixel, e uma decisão que espera resposta de rede
+// não decide nada antes de pixel nenhum. Este endpoint é a correção de rota
+// para quando o JS cacheado ficar mais velho que o servidor.
+//
+// É PÚBLICO, e isso é deliberado: o que ele devolve é "quem pode abrir
+// /html/secretaria", que não é segredo — está no repositório e o próprio 302
+// para o login já denuncia. O que NÃO sai daqui é o prefixo secreto da área
+// administrativa: `matrizPublicavel()` remove a área inteira, e o motivo
+// completo está no comentário dessa função.
+//
+// Exigir sessão aqui seria pior: a página de login precisa saber que ela é
+// pública, e uma matriz que só chega autenticado deixaria todo anônimo no
+// veredito "desconhecido" — que é fechado. Toda tela pública abriria pedindo
+// login.
+router.get('/matriz-acesso', (req, res) => {
+    const { matrizPublicavel } = require('../utils/matrizAcesso');
+    // Cacheável por pouco tempo: a matriz muda em deploy, não em runtime, e um
+    // cache longo atrasaria justamente a correção de rota que este endpoint é.
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json({ success: true, matriz: matrizPublicavel() });
 });
 
 router.put('/profile', authJWT, UserController.updateProfile);

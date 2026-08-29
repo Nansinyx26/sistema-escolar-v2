@@ -52,116 +52,29 @@ const logger = require('../utils/logger');
  */
 
 /**
- * Mapa das áreas restritas. O perfil mais restrito é sempre o padrão da área,
- * então uma página nova nasce protegida sem depender de alguém cadastrá-la.
- * As chaves DEVEM estar em minúsculas — a comparação é feita em caixa baixa.
- */
-/**
- * Páginas alcançáveis SEM sessão dentro de uma área restrita.
+ * ─────────────────────────────────────────────────────────────────────────
+ * A TABELA MORA EM `utils/matrizAcesso.js`, NÃO MAIS AQUI
+ * ─────────────────────────────────────────────────────────────────────────
+ * O mapa de áreas nasceu neste arquivo e ficou nele enquanto o servidor era o
+ * único a consultá-lo. Deixou de ser: `utils/rotasFront.js` já espelhava a
+ * lista de perfis da área administrativa por comentário, e agora o navegador
+ * também precisa da mesma resposta (`js/guarda-acesso.js`) para não deixar a
+ * tela errada piscar antes de sumir.
  *
- * Só a tela de login entra aqui, e por impasse: exigir sessão para chegar à
- * página que cria a sessão tornaria a área inacessível. O que a protege é o
- * prefixo secreto (ADMIN_PATH) — com ele configurado, /html/admin/entrar.html
- * responde 404 como todo o resto do caminho previsível.
+ * Três leitores e uma tabela escrita em um deles é a receita da divergência
+ * silenciosa. A tabela saiu para um util sem dependências, e este arquivo
+ * voltou a ser só o que sempre foi de fato: o GATE — quem normaliza a URL,
+ * resolve o apelido secreto, lê a sessão e responde.
  *
- * A isenção vale APENAS para a checagem de perfil. Tudo mais continua: o
- * caminho é normalizado antes, o apelido é resolvido antes, e a página não dá
- * acesso a nada — quem entra ainda precisa da senha.
+ * `AREAS` continua reexportado porque quatro suítes o consultam por aqui
+ * (fluxos, paginasAdmin, paginaConversas, paginaModeracao) e o endereço antigo
+ * ainda é o endereço natural para quem procura "o gate".
  */
-const PAGINAS_SEM_SESSAO = new Set(['entrar.html']);
-
-const AREAS = {
-    '/html/admin': {
-        perfis: ['admin'],
-        excecoes: {
-            // Gestão de contas e cadastro de secretaria: o diretor cria equipe
-            // da própria escola (UserController.create → isDiretorCreatingStaff).
-            'usuarios.html': ['admin', 'diretor'],
-            'cadastro-secretaria.html': ['admin', 'diretor'],
-        },
-    },
-    // Espelha authorize('secretaria', 'diretor', 'admin') em routes/secretaria.js
-    '/html/secretaria': { perfis: ['admin', 'diretor', 'secretaria'] },
-    '/html/direcao': { perfis: ['admin', 'diretor'] },
-
-    // ── Conversas ────────────────────────────────────────────────────────
-    // Chave de ARQUIVO, não de diretório: `dentroDe()` casa por igualdade
-    // exata, e a tela vive solta em /html porque conversar não pertence a
-    // nenhuma área. Colocá-la dentro de /html/direcao a fecharia para
-    // professor, secretaria e responsável — que são justamente quem mais
-    // usa o chat.
-    //
-    // A lista espelha `MATRIZ_CONVERSA` do ChatDiretoController. Hoje ela
-    // cobre TODOS os perfis existentes, então na prática este gate significa
-    // "precisa estar autenticado". Enumerar mesmo assim, em vez de deixar a
-    // tela pública, é o que garante que um perfil novo sem direito a chat não
-    // ganhe a página de graça — teria de ser adicionado aqui de propósito.
-    //
-    // A proteção real do conteúdo continua na API — a página é só o shell.
-    // O que este gate resolve é o anônimo cair no login em vez de encarar uma
-    // interface que nunca vai carregar. Ver Issue #72.
-    '/html/conversas.html': {
-        perfis: ['admin', 'diretor', 'secretaria', 'professor', 'responsavel'],
-    },
-
-    // ── Painel unificado ─────────────────────────────────────────────────
-    // O dashboard se adapta ao perfil que o abre (professor, diretor, admin) e
-    // NUNCA conferiu qual era esse perfil. Um responsável que chegasse aqui —
-    // pelo botão de voltar da tela de conversas, pelo histórico do navegador ou
-    // digitando a URL — recebia a interface do professor, com a barra lateral
-    // da escola e o rótulo de cargo trocado. Nenhum dado de outra pessoa
-    // aparecia (as APIs por trás são autorizadas uma a uma), mas a pessoa via
-    // uma tela que não é a conta dela, e nada nela leva de volta ao portal.
-    //
-    // A lista vem de `PERFIS_DO_DASHBOARD` e é DECLARADA, não derivada de quem
-    // mora aqui. Derivar foi a primeira tentativa e deixava a secretaria de
-    // fora: ela tem painel próprio, mas chega a esta tela por um botão do
-    // próprio painel dela, e o dashboard sabe se desenhar para ela. O motivo de
-    // cada nome está em utils/painelPorPerfil.js.
-    //
-    // O que o defeito exigia era barrar o RESPONSÁVEL — e só ele.
-    //
-    // `redirecionarAoPainel` troca o 404 padrão da área pelo painel de quem
-    // pediu. Aqui o 404 seria a resposta errada: a página EXISTE, a pessoa está
-    // autenticada e tem um painel próprio — negar sem levar a lugar nenhum
-    // deixaria o responsável numa tela de erro em vez de no portal dele. O
-    // segredo que o 404 protege nas outras áreas (a existência delas) não se
-    // aplica: /html/dashboard.html é público e linkado em toda parte.
-    '/html/dashboard.html': {
-        perfis: PERFIS_DO_DASHBOARD,
-        redirecionarAoPainel: true,
-    },
-    // `codigos-secretos.html` JÁ FOI admin-only aqui, por uma exceção baseada em
-    // premissa errada: o comentário citava `routes/escolas.js → authorize('admin')`,
-    // que é o código de cadastro de DOCENTE. A página é "Alunos — Códigos
-    // Secretos" e consome `GET /api/alunos/codigos-secretos`, que é
-    // `authorize('admin', 'diretor', 'secretaria')`.
-    //
-    // A exceção não protegia nada: o diretor obtinha os mesmos dados chamando a
-    // API direto. Bloquear só o HTML impedia a tela, não o acesso ao dado — e
-    // ainda produzia um 404 em um link que o próprio menu da direção oferece.
-    //
-    // Isolamento multi-escola continua garantido no controller:
-    // `StudentController.listSecretCodes` filtra por `req.escolaId`.
-    //
-    // A secretaria entra por exceção nesta tela (ver bloco abaixo): ela já
-    // tinha o modal de consulta individual no próprio painel e a mesma
-    // permissão na API. Ver Issue #56.
-    '/direcao': {
-        perfis: ['admin', 'diretor'],
-        excecoes: {
-            // AMPLIA o acesso (como `usuarios.html` faz em /html/admin), não
-            // restringe. A tela lista o código secreto que o RESPONSÁVEL usa
-            // para se vincular ao aluno — trabalho corriqueiro de secretaria,
-            // e `GET /api/alunos/codigos-secretos` já a autoriza.
-            //
-            // A secretaria só entra nestes dois arquivos; o resto de /direcao
-            // continua fechado para ela pelos perfis acima.
-            'codigos-secretos.html': ['admin', 'diretor', 'secretaria'],
-            'codigos-secretos.js': ['admin', 'diretor', 'secretaria'],
-        },
-    },
-};
+const {
+    AREAS,
+    PAGINAS_SEM_SESSAO,
+    perfisPermitidos: perfisDaMatriz,
+} = require('../utils/matrizAcesso');
 
 /**
  * Apelido secreto da área administrativa, vindo do ambiente.
@@ -324,9 +237,11 @@ async function autorizar(req, res, next, { config, forma }, pagina404) {
     const arquivo = path.basename(forma);
 
     // Tela de login da área: segue adiante sem sessão (ver PAGINAS_SEM_SESSAO).
-    if (PAGINAS_SEM_SESSAO.has(arquivo)) return next();
+    if (PAGINAS_SEM_SESSAO.includes(arquivo)) return next();
 
-    const perfisPermitidos = (config.excecoes && config.excecoes[arquivo]) || config.perfis;
+    // A precedência da exceção por arquivo sobre a área é decidida na matriz,
+    // em um lugar só — o navegador aplica exatamente a mesma.
+    const perfisPermitidos = perfisDaMatriz(forma);
 
     if (!extrairToken(req)) {
         // ============================================
@@ -415,13 +330,15 @@ async function redirecionarSeAutorizado(req, res, apelido, pagina404) {
 
     // A tela de login da área não redireciona: ela é alcançável sem sessão, e
     // redirecionar sem sessão publicaria o prefixo para qualquer um.
-    if (PAGINAS_SEM_SESSAO.has(apelido.arquivo)) return responder404();
+    if (PAGINAS_SEM_SESSAO.includes(apelido.arquivo)) return responder404();
 
     const usuario = await sessaoDoRequest(req);
     if (!usuario) return responder404();
 
-    const config = AREAS[AREA_ADMIN_REAL];
-    const perfisPermitidos = (config.excecoes && config.excecoes[apelido.arquivo]) || config.perfis;
+    // Pergunta feita sobre o caminho REAL (/html/admin/...), não sobre o
+    // apelidado: a matriz não conhece o prefixo secreto, e é assim que deve
+    // continuar.
+    const perfisPermitidos = perfisDaMatriz(`${AREA_ADMIN_REAL}/${apelido.arquivo}`);
     if (!perfisPermitidos.includes(usuario.perfil)) return responder404();
 
     logger.info('Redirecionando link antigo da área administrativa', {
