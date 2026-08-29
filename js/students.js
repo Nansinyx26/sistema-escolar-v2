@@ -36,9 +36,31 @@ class StudentManager {
     async getByTurma(turmaId) {
         try {
             const alunos = await db.getByIndex('alunos', 'turmaId', turmaId);
-            return alunos.filter(a => a.ativo !== false).sort((a, b) =>
-                a.nome.localeCompare(b.nome, 'pt-BR')
-            );
+            return alunos
+                .filter((a) => a.ativo !== false)
+                .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+        } catch (error) {
+            console.error('Erro ao buscar alunos:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Busca alunos NO SERVIDOR por nome/sobrenome/matrícula e/ou sala.
+     *
+     * Use isto em vez de `getAll()` + filtro no navegador sempre que houver um
+     * termo digitado: `getAll()` devolve só os 100 primeiros alunos da escola,
+     * então a busca local nunca enxergava a escola inteira.
+     *
+     * @param {{termo?: string, turma?: string, limite?: number}} filtros
+     * @returns {Promise<Array>}
+     */
+    async buscar(filtros = {}) {
+        try {
+            const alunos = await db.buscarAlunos(filtros);
+            return alunos
+                .filter((a) => a.ativo !== false)
+                .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
         } catch (error) {
             console.error('Erro ao buscar alunos:', error);
             return [];
@@ -66,7 +88,7 @@ class StudentManager {
     async getAll() {
         try {
             const alunos = await db.getAll('alunos');
-            return alunos.filter(a => a.ativo !== false);
+            return alunos.filter((a) => a.ativo !== false);
         } catch (error) {
             console.error('Erro ao buscar todos alunos:', error);
             return [];
@@ -107,7 +129,7 @@ class StudentManager {
                 observacoesBimestre: {},
                 nivelBimestre: {},
                 faltasBimestre: {},
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
             };
 
             const id = await db.add('alunos', aluno);
@@ -136,7 +158,7 @@ class StudentManager {
             // o backend fará o merge/update.
             const aluno = {
                 ...alunoData,
-                updatedAt: new Date().toISOString()
+                updatedAt: new Date().toISOString(),
             };
 
             const result = await db.update('alunos', aluno);
@@ -166,7 +188,6 @@ class StudentManager {
             // Hard delete - remove permanentemente do banco
             await db.delete('alunos', id);
             console.log('✅ Aluno removido do banco:', id);
-
         } catch (error) {
             console.error('Erro ao remover aluno:', error);
             throw error;
@@ -245,18 +266,18 @@ class StudentManager {
 
             if (filters.nome) {
                 const termo = filters.nome.toLowerCase();
-                alunos = alunos.filter(a =>
-                    a.nome.toLowerCase().includes(termo)
-                );
+                alunos = alunos.filter((a) => a.nome.toLowerCase().includes(termo));
             }
 
             if (filters.turmaId) {
-                alunos = alunos.filter(a => a.turmaId === filters.turmaId);
+                alunos = alunos.filter((a) => a.turmaId === filters.turmaId);
             }
 
             if (filters.deficiencia) {
-                alunos = alunos.filter(a =>
-                    a.deficiencia && a.deficiencia.toLowerCase().includes(filters.deficiencia.toLowerCase())
+                alunos = alunos.filter(
+                    (a) =>
+                        a.deficiencia &&
+                        a.deficiencia.toLowerCase().includes(filters.deficiencia.toLowerCase())
                 );
             }
 
@@ -276,7 +297,7 @@ class StudentManager {
             const alunos = await this.getAll();
             const count = {};
 
-            alunos.forEach(aluno => {
+            alunos.forEach((aluno) => {
                 if (!count[aluno.turmaId]) {
                     count[aluno.turmaId] = 0;
                 }
@@ -302,8 +323,8 @@ class StudentManager {
             return {
                 total: alunos.length,
                 porTurma: countByTurma,
-                comDeficiencia: alunos.filter(a => a.deficiencia).length,
-                turmasAtivas: Object.keys(countByTurma).length
+                comDeficiencia: alunos.filter((a) => a.deficiencia).length,
+                turmasAtivas: Object.keys(countByTurma).length,
             };
         } catch (error) {
             console.error('Erro ao obter estatísticas:', error);

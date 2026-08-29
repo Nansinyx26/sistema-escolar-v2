@@ -14,6 +14,7 @@ const JustificativaFalta = require('../models/JustificativaFalta');
 const CalendarioEscolar = require('../models/CalendarioEscolar');
 const AuditLog = require('../models/AuditLog');
 const logger = require('../utils/logger');
+const busca = require('../utils/buscaAluno');
 const { emitirParaEscola } = require('../utils/realtime');
 
 // ─── Helper: registrar auditoria ─────────────────────────────────────────────
@@ -28,9 +29,13 @@ async function audit(req, acao, recurso, recursoId, detalhes = {}) {
             recurso,
             recursoId: recursoId?.toString(),
             escolaId: req.escolaId ? String(req.escolaId) : undefined,
-            detalhes: { descricao: detalhes.descricao, valorAnterior: detalhes.anterior, valorNovo: detalhes.novo },
+            detalhes: {
+                descricao: detalhes.descricao,
+                valorAnterior: detalhes.anterior,
+                valorNovo: detalhes.novo,
+            },
             ip: req.ip,
-            userAgent: req.get('User-Agent')
+            userAgent: req.get('User-Agent'),
         });
     } catch (e) {
         logger.warn(`Audit log failed: ${e.message}`);
@@ -40,7 +45,9 @@ async function audit(req, acao, recurso, recursoId, detalhes = {}) {
 // ─── Helper: gerar número de documento sequencial ────────────────────────────
 async function gerarNumeroDocumento() {
     const ano = new Date().getFullYear();
-    const count = await DocumentoEmitido.countDocuments({ createdAt: { $gte: new Date(`${ano}-01-01`) } });
+    const count = await DocumentoEmitido.countDocuments({
+        createdAt: { $gte: new Date(`${ano}-01-01`) },
+    });
     return `DOC-${ano}-${String(count + 1).padStart(6, '0')}`;
 }
 
@@ -80,17 +87,46 @@ async function carregarAlunoDaEscola(req, alunoId, projecao) {
 // credencial de vínculo, os outros dois sequestrariam o aluno para outra
 // escola / outra família.
 const CAMPOS_EDICAO_ALUNO = [
-    'nome', 'sobrenome', 'matricula', 'turma', 'turmaId', 'email', 'telefone',
-    'dataNascimento', 'nascimento', 'sexo', 'foto', 'ativo', 'observacoes',
-    'responsavelNome', 'responsavelTelefone',
-    'nivel', 'nivelBimestre', 'condicao', 'condicaoOutro',
-    'observacoesBimestre', 'recuperacaoBimestre', 'faltasBimestre',
-    'deficiencia', 'pcd',
-    'endereco', 'cpfAluno', 'nacionalidade', 'etnia', 'religiao',
-    'responsavelDados', 'responsaveis', 'guardaLegal', 'pessoasAutorizadasRetirada',
-    'autorizacoesEscolares', 'fichaDocumentoStatus',
-    'alergiasAlimentos', 'alergiasRemedio', 'planoSaude',
-    'documentos', 'lgpdConsentimento'
+    'nome',
+    'sobrenome',
+    'matricula',
+    'turma',
+    'turmaId',
+    'email',
+    'telefone',
+    'dataNascimento',
+    'nascimento',
+    'sexo',
+    'foto',
+    'ativo',
+    'observacoes',
+    'responsavelNome',
+    'responsavelTelefone',
+    'nivel',
+    'nivelBimestre',
+    'condicao',
+    'condicaoOutro',
+    'observacoesBimestre',
+    'recuperacaoBimestre',
+    'faltasBimestre',
+    'deficiencia',
+    'pcd',
+    'endereco',
+    'cpfAluno',
+    'nacionalidade',
+    'etnia',
+    'religiao',
+    'responsavelDados',
+    'responsaveis',
+    'guardaLegal',
+    'pessoasAutorizadasRetirada',
+    'autorizacoesEscolares',
+    'fichaDocumentoStatus',
+    'alergiasAlimentos',
+    'alergiasRemedio',
+    'planoSaude',
+    'documentos',
+    'lgpdConsentimento',
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -102,7 +138,7 @@ exports.criarAluno = async (req, res) => {
     try {
         // Whitelist: o corpo nunca decide codigoSecreto nem escolaId
         const dados = {};
-        CAMPOS_EDICAO_ALUNO.forEach(campo => {
+        CAMPOS_EDICAO_ALUNO.forEach((campo) => {
             if (req.body[campo] !== undefined) dados[campo] = req.body[campo];
         });
         if (!dados.nome) {
@@ -115,7 +151,9 @@ exports.criarAluno = async (req, res) => {
         const aluno = new Aluno(dados);
         await aluno.save();
 
-        await audit(req, 'CREATE_STUDENT', 'Alunos', aluno._id, { descricao: `Aluno ${aluno.nome} cadastrado pela secretaria` });
+        await audit(req, 'CREATE_STUDENT', 'Alunos', aluno._id, {
+            descricao: `Aluno ${aluno.nome} cadastrado pela secretaria`,
+        });
 
         res.status(201).json({ success: true, data: aluno });
     } catch (error) {
@@ -127,9 +165,19 @@ exports.criarAluno = async (req, res) => {
 // ─── Importação em massa de alunos ───────────────────────────────────────────
 // Campos aceitos na importação (whitelist — ignora colunas desconhecidas)
 const CAMPOS_IMPORT_ALUNO = [
-    'nome', 'sobrenome', 'matricula', 'turma', 'nascimento',
-    'responsavel', 'telefone', 'cpfAluno', 'nacionalidade',
-    'etnia', 'religiao', 'endereco', 'observacoes'
+    'nome',
+    'sobrenome',
+    'matricula',
+    'turma',
+    'nascimento',
+    'responsavel',
+    'telefone',
+    'cpfAluno',
+    'nacionalidade',
+    'etnia',
+    'religiao',
+    'endereco',
+    'observacoes',
 ];
 
 // Normaliza uma data solta ("dd/mm/aaaa", "aaaa-mm-dd" ou ISO) para Date válido
@@ -159,7 +207,8 @@ function montarDadosAluno(linha, escolaId) {
     }
     if (dados.nascimento !== undefined) {
         const dt = parseDataNascimento(dados.nascimento);
-        if (dt) dados.nascimento = dt; else delete dados.nascimento;
+        if (dt) dados.nascimento = dt;
+        else delete dados.nascimento;
     }
     if (escolaId) dados.escolaId = escolaId;
     dados.ativo = true;
@@ -173,10 +222,14 @@ exports.importarAlunos = async (req, res) => {
     try {
         const linhas = Array.isArray(req.body?.alunos) ? req.body.alunos : null;
         if (!linhas || linhas.length === 0) {
-            return res.status(400).json({ success: false, error: 'Envie uma lista de alunos em "alunos".' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'Envie uma lista de alunos em "alunos".' });
         }
         if (linhas.length > 1000) {
-            return res.status(400).json({ success: false, error: 'Limite de 1000 alunos por importação.' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'Limite de 1000 alunos por importação.' });
         }
 
         const criados = [];
@@ -189,7 +242,11 @@ exports.importarAlunos = async (req, res) => {
             const nome = typeof linha.nome === 'string' ? linha.nome.trim() : '';
 
             if (!nome) {
-                erros.push({ linha: numeroLinha, nome: linha.nome || '', erro: 'Nome é obrigatório.' });
+                erros.push({
+                    linha: numeroLinha,
+                    nome: linha.nome || '',
+                    erro: 'Nome é obrigatório.',
+                });
                 continue;
             }
 
@@ -201,7 +258,12 @@ exports.importarAlunos = async (req, res) => {
                 if (req.escolaId) filtroDup.escolaId = req.escolaId;
                 const existente = await Aluno.findOne(filtroDup).select('_id nome').lean();
                 if (existente) {
-                    ignorados.push({ linha: numeroLinha, nome, matricula: dados.matricula, motivo: 'Matrícula já cadastrada.' });
+                    ignorados.push({
+                        linha: numeroLinha,
+                        nome,
+                        matricula: dados.matricula,
+                        motivo: 'Matrícula já cadastrada.',
+                    });
                     continue;
                 }
             }
@@ -209,10 +271,20 @@ exports.importarAlunos = async (req, res) => {
             try {
                 const aluno = new Aluno(dados); // pre-save gera codigoSecreto único
                 await aluno.save();
-                criados.push({ id: aluno._id, nome: aluno.nome, matricula: aluno.matricula, codigoSecreto: aluno.codigoSecreto });
+                criados.push({
+                    id: aluno._id,
+                    nome: aluno.nome,
+                    matricula: aluno.matricula,
+                    codigoSecreto: aluno.codigoSecreto,
+                });
             } catch (e) {
                 if (e.code === 11000) {
-                    ignorados.push({ linha: numeroLinha, nome, matricula: dados.matricula, motivo: 'Registro duplicado (matrícula/código).' });
+                    ignorados.push({
+                        linha: numeroLinha,
+                        nome,
+                        matricula: dados.matricula,
+                        motivo: 'Registro duplicado (matrícula/código).',
+                    });
                 } else {
                     erros.push({ linha: numeroLinha, nome, erro: e.message });
                 }
@@ -220,7 +292,7 @@ exports.importarAlunos = async (req, res) => {
         }
 
         await audit(req, 'IMPORT_STUDENTS', 'Alunos', null, {
-            descricao: `Importação em massa: ${criados.length} criados, ${ignorados.length} ignorados, ${erros.length} com erro`
+            descricao: `Importação em massa: ${criados.length} criados, ${ignorados.length} ignorados, ${erros.length} com erro`,
         });
 
         res.status(criados.length > 0 ? 201 : 200).json({
@@ -232,8 +304,8 @@ exports.importarAlunos = async (req, res) => {
                 totalErros: erros.length,
                 criados,
                 ignorados,
-                erros
-            }
+                erros,
+            },
         });
     } catch (error) {
         logger.error(`[Secretaria.importarAlunos] ${error.message}`);
@@ -247,7 +319,9 @@ exports.estruturarTextoAlunos = async (req, res) => {
     try {
         const texto = typeof req.body?.texto === 'string' ? req.body.texto.trim() : '';
         if (!texto || texto.length < 10) {
-            return res.status(400).json({ success: false, error: 'Texto do documento vazio ou muito curto.' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'Texto do documento vazio ou muito curto.' });
         }
 
         const voiceService = require('../services/voiceService');
@@ -266,10 +340,16 @@ JSON:`;
 
         let bruto = '';
         try {
-            bruto = await voiceService.generateInsightText(prompt, { maxOutputTokens: 2000, temperature: 0 });
+            bruto = await voiceService.generateInsightText(prompt, {
+                maxOutputTokens: 2000,
+                temperature: 0,
+            });
         } catch (e) {
             const status = e.quotaExceeded ? 503 : 502;
-            return res.status(status).json({ success: false, error: `Não foi possível processar o documento por IA: ${e.message}` });
+            return res.status(status).json({
+                success: false,
+                error: `Não foi possível processar o documento por IA: ${e.message}`,
+            });
         }
 
         // Extrai o array JSON mesmo que venha com texto ao redor
@@ -277,19 +357,31 @@ JSON:`;
         try {
             const inicio = bruto.indexOf('[');
             const fim = bruto.lastIndexOf(']');
-            const json = (inicio !== -1 && fim !== -1) ? bruto.slice(inicio, fim + 1) : bruto;
+            const json = inicio !== -1 && fim !== -1 ? bruto.slice(inicio, fim + 1) : bruto;
             linhas = JSON.parse(json);
         } catch (e) {
-            return res.status(422).json({ success: false, error: 'A IA não retornou dados estruturados legíveis. Revise o documento ou use CSV.' });
+            return res.status(422).json({
+                success: false,
+                error: 'A IA não retornou dados estruturados legíveis. Revise o documento ou use CSV.',
+            });
         }
 
         if (!Array.isArray(linhas)) linhas = [];
         // Mantém apenas linhas com nome e só as chaves conhecidas
-        const CHAVES = ['nome', 'sobrenome', 'matricula', 'turma', 'nascimento', 'responsavel', 'telefone', 'cpfAluno'];
+        const CHAVES = [
+            'nome',
+            'sobrenome',
+            'matricula',
+            'turma',
+            'nascimento',
+            'responsavel',
+            'telefone',
+            'cpfAluno',
+        ];
         const limpos = linhas
-            .filter(l => l && typeof l === 'object' && String(l.nome || '').trim())
+            .filter((l) => l && typeof l === 'object' && String(l.nome || '').trim())
             .slice(0, 1000)
-            .map(l => {
+            .map((l) => {
                 const o = {};
                 for (const k of CHAVES) o[k] = l[k] != null ? String(l[k]).trim() : '';
                 return o;
@@ -313,7 +405,7 @@ exports.editarAluno = async (req, res) => {
         if (!aluno) return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
 
         const anterior = aluno.toObject();
-        CAMPOS_EDICAO_ALUNO.forEach(campo => {
+        CAMPOS_EDICAO_ALUNO.forEach((campo) => {
             if (req.body[campo] !== undefined) aluno[campo] = req.body[campo];
         });
         await aluno.save();
@@ -321,7 +413,7 @@ exports.editarAluno = async (req, res) => {
         await audit(req, 'UPDATE_STUDENT', 'Alunos', aluno._id, {
             descricao: `Aluno ${aluno.nome} atualizado`,
             anterior,
-            novo: aluno.toObject()
+            novo: aluno.toObject(),
         });
 
         res.json({ success: true, data: aluno });
@@ -337,7 +429,9 @@ exports.criarMatricula = async (req, res) => {
         const { alunoId, turmaId, anoLetivo, numeroChamada, observacoes } = req.body;
 
         if (!alunoId || !turmaId || !anoLetivo) {
-            return res.status(400).json({ success: false, error: 'alunoId, turmaId e anoLetivo são obrigatórios.' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'alunoId, turmaId e anoLetivo são obrigatórios.' });
         }
 
         const aluno = await Aluno.findOne(escopo(req, { _id: String(alunoId) }));
@@ -358,7 +452,7 @@ exports.criarMatricula = async (req, res) => {
             numeroChamada,
             observacoes,
             escolaId: escolaAtual(req),
-            criadoPor: req.user._id || req.user.id
+            criadoPor: req.user._id || req.user.id,
         });
 
         await matricula.save();
@@ -369,13 +463,15 @@ exports.criarMatricula = async (req, res) => {
         await aluno.save();
 
         await audit(req, 'CREATE_ENROLLMENT', 'Matriculas', matricula._id, {
-            descricao: `Matrícula ${matriculaNumero} criada para ${aluno.nome}`
+            descricao: `Matrícula ${matriculaNumero} criada para ${aluno.nome}`,
         });
 
         res.status(201).json({ success: true, data: matricula });
     } catch (error) {
         if (error.code === 11000) {
-            return res.status(409).json({ success: false, error: 'Aluno já matriculado neste ano letivo.' });
+            return res
+                .status(409)
+                .json({ success: false, error: 'Aluno já matriculado neste ano letivo.' });
         }
         logger.error(`[Secretaria.criarMatricula] ${error.message}`);
         res.status(500).json({ success: false, error: error.message });
@@ -387,7 +483,8 @@ exports.transferirMatricula = async (req, res) => {
     try {
         const { novaTurmaId, motivo } = req.body;
         const matricula = await Matricula.findOne(escopo(req, { _id: String(req.params.id) }));
-        if (!matricula) return res.status(404).json({ success: false, error: 'Matrícula não encontrada.' });
+        if (!matricula)
+            return res.status(404).json({ success: false, error: 'Matrícula não encontrada.' });
 
         // A turma de destino também precisa ser da escola ativa
         const turma = await Turma.findOne(escopo(req, { _id: String(novaTurmaId) }));
@@ -399,15 +496,14 @@ exports.transferirMatricula = async (req, res) => {
         await matricula.save();
 
         // Atualiza cache no aluno
-        await Aluno.updateOne(
-            escopo(req, { _id: String(matricula.alunoId) }),
-            { $set: { turma: turma.nome || turma.id, turmaId: novaTurmaId } }
-        );
+        await Aluno.updateOne(escopo(req, { _id: String(matricula.alunoId) }), {
+            $set: { turma: turma.nome || turma.id, turmaId: novaTurmaId },
+        });
 
         await audit(req, 'TRANSFER_ENROLLMENT', 'Matriculas', matricula._id, {
             descricao: `Transferência de turma ${turmaAnterior} → ${novaTurmaId}`,
             anterior: { turmaId: turmaAnterior },
-            novo: { turmaId: novaTurmaId }
+            novo: { turmaId: novaTurmaId },
         });
 
         res.json({ success: true, data: matricula });
@@ -422,7 +518,8 @@ exports.atualizarStatusMatricula = async (req, res) => {
     try {
         const { status, motivoSaida } = req.body;
         const matricula = await Matricula.findOne(escopo(req, { _id: String(req.params.id) }));
-        if (!matricula) return res.status(404).json({ success: false, error: 'Matrícula não encontrada.' });
+        if (!matricula)
+            return res.status(404).json({ success: false, error: 'Matrícula não encontrada.' });
 
         const statusAnterior = matricula.status;
         matricula.status = status;
@@ -437,7 +534,7 @@ exports.atualizarStatusMatricula = async (req, res) => {
         await audit(req, 'UPDATE_ENROLLMENT_STATUS', 'Matriculas', matricula._id, {
             descricao: `Status alterado de ${statusAnterior} → ${status}`,
             anterior: { status: statusAnterior },
-            novo: { status }
+            novo: { status },
         });
 
         res.json({ success: true, data: matricula });
@@ -453,7 +550,9 @@ exports.criarResponsavel = async (req, res) => {
         const { nome, email, telefone, cpf, alunoId, parentesco } = req.body;
 
         if (!nome || !email || !telefone) {
-            return res.status(400).json({ success: false, error: 'Nome, email e telefone são obrigatórios.' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'Nome, email e telefone são obrigatórios.' });
         }
 
         // Cria o usuário responsável
@@ -467,7 +566,7 @@ exports.criarResponsavel = async (req, res) => {
                 perfil: 'responsavel',
                 parentesco,
                 escolaId: escolaAtual(req),
-                nomeAluno: ''
+                nomeAluno: '',
             });
             await usuario.save();
         }
@@ -483,7 +582,7 @@ exports.criarResponsavel = async (req, res) => {
                     parentesco,
                     cpf,
                     telefone,
-                    email
+                    email,
                 });
                 aluno.responsavel = nome;
                 usuario.nomeAluno = aluno.nome;
@@ -493,7 +592,7 @@ exports.criarResponsavel = async (req, res) => {
         }
 
         await audit(req, 'CREATE_GUARDIAN', 'Usuarios', usuario._id, {
-            descricao: `Responsável ${nome} cadastrado${alunoId ? ` e vinculado ao aluno ${alunoId}` : ''}`
+            descricao: `Responsável ${nome} cadastrado${alunoId ? ` e vinculado ao aluno ${alunoId}` : ''}`,
         });
 
         res.status(201).json({ success: true, data: usuario });
@@ -509,16 +608,40 @@ exports.criarResponsavel = async (req, res) => {
 // GET /api/secretaria/turmas — listagem
 exports.listarTurmas = async (req, res) => {
     try {
-        const turmas = await Turma.find(escopo(req, { ativo: true })).sort({ nome: 1 }).lean();
+        const turmas = await Turma.find(escopo(req, { ativo: { $ne: false } }))
+            .sort({ nome: 1 })
+            .lean();
 
-        // Conta alunos por turma
-        const turmasComContagem = await Promise.all(turmas.map(async (t) => {
-            const totalAlunos = await Aluno.countDocuments(escopo(req, {
-                $or: [{ turma: t.nome }, { turma: t.id }, { turmaId: t._id }],
-                ativo: true
-            }));
+        // ── Contagem de alunos por turma ─────────────────────────────────────
+        // Era um `countDocuments` POR TURMA (N+1) e comparava a sala por
+        // igualdade exata de string com `ativo: true`. Duas consequências para
+        // a secretaria: a turma que a professora escreveu como "1ºA" contava
+        // zero aluno, e o cadastro antigo sem o campo `ativo` não contava nunca.
+        //
+        // Agora é uma consulta só, agrupada em memória pela forma canônica da
+        // sala — a mesma chave usada pelo relatório de alunos por turma.
+        const alunos = await Aluno.find(escopo(req, { ativo: { $ne: false } }))
+            .select('turma turmaId')
+            .lean();
+
+        const contagem = new Map();
+        alunos.forEach((a) => {
+            // Um aluno conta UMA vez por turma, mesmo que `turma` e `turmaId`
+            // apontem para a mesma sala escrita de formas diferentes.
+            const chaves = new Set([a.turma, a.turmaId].map(busca.normalizarSala).filter(Boolean));
+            chaves.forEach((k) => {
+                contagem.set(k, (contagem.get(k) || 0) + 1);
+            });
+        });
+
+        const turmasComContagem = turmas.map((t) => {
+            const chaves = new Set([t.nome, t.id, t._id].map(busca.normalizarSala).filter(Boolean));
+            let totalAlunos = 0;
+            chaves.forEach((k) => {
+                totalAlunos = Math.max(totalAlunos, contagem.get(k) || 0);
+            });
             return { ...t, totalAlunos };
-        }));
+        });
 
         res.json({ success: true, data: turmasComContagem });
     } catch (error) {
@@ -538,7 +661,10 @@ exports.gerarDeclaracaoMatricula = async (req, res) => {
         const aluno = await carregarAlunoDaEscola(req, req.params.alunoId);
         if (!aluno) return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
 
-        const matricula = await Matricula.findOne({ alunoId: String(req.params.alunoId), status: 'cursando' }).lean();
+        const matricula = await Matricula.findOne({
+            alunoId: String(req.params.alunoId),
+            status: 'cursando',
+        }).lean();
 
         const turma = aluno.turma || (matricula ? matricula.turmaId : 'N/A');
         const anoLetivo = matricula ? matricula.anoLetivo : new Date().getFullYear();
@@ -565,13 +691,13 @@ exports.gerarDeclaracaoMatricula = async (req, res) => {
             arquivo: { nome: `declaracao_matricula_${aluno._id}.html`, mimeType: 'text/html' },
             escolaId: escolaAtual(req),
             emitidoPor: req.user._id || req.user.id,
-            emitidoPorNome: req.user.nome
+            emitidoPorNome: req.user.nome,
         });
 
         await doc.save();
 
         await audit(req, 'GENERATE_DOCUMENT', 'Documentos', doc._id, {
-            descricao: `Declaração de matrícula gerada para ${aluno.nome}`
+            descricao: `Declaração de matrícula gerada para ${aluno.nome}`,
         });
 
         res.status(201).json({ success: true, data: { documento: doc, conteudoHTML } });
@@ -587,10 +713,17 @@ exports.gerarDeclaracaoFrequencia = async (req, res) => {
         const aluno = await carregarAlunoDaEscola(req, req.params.alunoId);
         if (!aluno) return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
 
-        const totalFaltas = await Falta.countDocuments({ aluno: String(req.params.alunoId), presente: false });
-        const totalPresencas = await Falta.countDocuments({ aluno: String(req.params.alunoId), presente: true });
+        const totalFaltas = await Falta.countDocuments({
+            aluno: String(req.params.alunoId),
+            presente: false,
+        });
+        const totalPresencas = await Falta.countDocuments({
+            aluno: String(req.params.alunoId),
+            presente: true,
+        });
         const totalRegistros = totalFaltas + totalPresencas;
-        const percentual = totalRegistros > 0 ? ((totalPresencas / totalRegistros) * 100).toFixed(1) : 'N/A';
+        const percentual =
+            totalRegistros > 0 ? ((totalPresencas / totalRegistros) * 100).toFixed(1) : 'N/A';
         const numDoc = await gerarNumeroDocumento();
 
         const conteudoHTML = `
@@ -617,13 +750,13 @@ exports.gerarDeclaracaoFrequencia = async (req, res) => {
             arquivo: { nome: `declaracao_frequencia_${aluno._id}.html`, mimeType: 'text/html' },
             escolaId: escolaAtual(req),
             emitidoPor: req.user._id || req.user.id,
-            emitidoPorNome: req.user.nome
+            emitidoPorNome: req.user.nome,
         });
 
         await doc.save();
 
         await audit(req, 'GENERATE_DOCUMENT', 'Documentos', doc._id, {
-            descricao: `Declaração de frequência gerada para ${aluno.nome}`
+            descricao: `Declaração de frequência gerada para ${aluno.nome}`,
         });
 
         res.status(201).json({ success: true, data: { documento: doc, conteudoHTML } });
@@ -639,7 +772,9 @@ exports.gerarHistoricoEscolar = async (req, res) => {
         const aluno = await carregarAlunoDaEscola(req, req.params.alunoId);
         if (!aluno) return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
 
-        const matriculas = await Matricula.find({ alunoId: String(req.params.alunoId) }).sort({ anoLetivo: 1 }).lean();
+        const matriculas = await Matricula.find({ alunoId: String(req.params.alunoId) })
+            .sort({ anoLetivo: 1 })
+            .lean();
         const numDoc = await gerarNumeroDocumento();
 
         let historicoRows = '';
@@ -675,13 +810,13 @@ exports.gerarHistoricoEscolar = async (req, res) => {
             arquivo: { nome: `historico_escolar_${aluno._id}.html`, mimeType: 'text/html' },
             escolaId: escolaAtual(req),
             emitidoPor: req.user._id || req.user.id,
-            emitidoPorNome: req.user.nome
+            emitidoPorNome: req.user.nome,
         });
 
         await doc.save();
 
         await audit(req, 'GENERATE_DOCUMENT', 'Documentos', doc._id, {
-            descricao: `Histórico escolar gerado para ${aluno.nome}`
+            descricao: `Histórico escolar gerado para ${aluno.nome}`,
         });
 
         res.status(201).json({ success: true, data: { documento: doc, conteudoHTML } });
@@ -699,7 +834,8 @@ exports.listarDocumentosAluno = async (req, res) => {
         if (!aluno) return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
 
         const docs = await DocumentoEmitido.find({ alunoId: String(req.params.alunoId) })
-            .sort({ createdAt: -1 }).lean();
+            .sort({ createdAt: -1 })
+            .lean();
 
         res.json({ success: true, data: docs });
     } catch (error) {
@@ -716,7 +852,9 @@ exports.uploadDocumentoAluno = async (req, res) => {
 
         const { nomeArquivo, base64, tipo } = req.body;
         if (!nomeArquivo || !base64) {
-            return res.status(400).json({ success: false, error: 'nomeArquivo e base64 são obrigatórios.' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'nomeArquivo e base64 são obrigatórios.' });
         }
 
         if (!aluno.documentos) aluno.documentos = [];
@@ -725,7 +863,7 @@ exports.uploadDocumentoAluno = async (req, res) => {
             nome: nomeArquivo,
             tipo: tipo || 'outros',
             base64,
-            enviadoEm: new Date()
+            enviadoEm: new Date(),
         };
 
         if (Array.isArray(aluno.documentos)) {
@@ -737,7 +875,7 @@ exports.uploadDocumentoAluno = async (req, res) => {
         await aluno.save();
 
         await audit(req, 'UPLOAD_DOCUMENT', 'Alunos', aluno._id, {
-            descricao: `Documento '${nomeArquivo}' enviado para ${aluno.nome}`
+            descricao: `Documento '${nomeArquivo}' enviado para ${aluno.nome}`,
         });
 
         res.status(201).json({ success: true, data: docEntry });
@@ -756,7 +894,7 @@ exports.frequenciaConsolidada = async (req, res) => {
     try {
         const { turma, dataInicio, dataFim } = req.query;
 
-        let matchQuery = escopo(req, {});
+        const matchQuery = escopo(req, {});
         if (turma) matchQuery.turma = String(turma);
         if (dataInicio || dataFim) {
             matchQuery.data = {};
@@ -772,19 +910,25 @@ exports.frequenciaConsolidada = async (req, res) => {
                     totalRegistros: { $sum: 1 },
                     presencas: { $sum: { $cond: ['$presente', 1, 0] } },
                     faltas: { $sum: { $cond: ['$presente', 0, 1] } },
-                    faltasJustificadas: { $sum: { $cond: [{ $and: [{ $not: '$presente' }, '$justificada'] }, 1, 0] } }
-                }
+                    faltasJustificadas: {
+                        $sum: { $cond: [{ $and: [{ $not: '$presente' }, '$justificada'] }, 1, 0] },
+                    },
+                },
             },
-            { $sort: { faltas: -1 } }
+            { $sort: { faltas: -1 } },
         ]);
 
         // Popula nomes dos alunos
-        const alunoIds = resultado.map(r => r._id);
-        const alunos = await Aluno.find(escopo(req, { _id: { $in: alunoIds } })).select('nome turma').lean();
+        const alunoIds = resultado.map((r) => r._id);
+        const alunos = await Aluno.find(escopo(req, { _id: { $in: alunoIds } }))
+            .select('nome turma')
+            .lean();
         const alunosMap = {};
-        alunos.forEach(a => { alunosMap[a._id.toString()] = a; });
+        alunos.forEach((a) => {
+            alunosMap[a._id.toString()] = a;
+        });
 
-        const dados = resultado.map(r => {
+        const dados = resultado.map((r) => {
             const al = alunosMap[r._id?.toString()] || {};
             const total = r.totalRegistros || 1;
             return {
@@ -795,7 +939,7 @@ exports.frequenciaConsolidada = async (req, res) => {
                 presencas: r.presencas,
                 faltas: r.faltas,
                 faltasJustificadas: r.faltasJustificadas,
-                percentualFrequencia: ((r.presencas / total) * 100).toFixed(1)
+                percentualFrequencia: ((r.presencas / total) * 100).toFixed(1),
             };
         });
 
@@ -824,10 +968,23 @@ exports.listarCalendario = async (req, res) => {
 // POST /api/secretaria/calendario
 exports.criarEventoCalendario = async (req, res) => {
     try {
-        const { titulo, descricao, dataInicio, dataFim, tipo, anoLetivo, abrangencia, turmasIds, cor } = req.body;
+        const {
+            titulo,
+            descricao,
+            dataInicio,
+            dataFim,
+            tipo,
+            anoLetivo,
+            abrangencia,
+            turmasIds,
+            cor,
+        } = req.body;
 
         if (!titulo || !dataInicio || !dataFim || !tipo) {
-            return res.status(400).json({ success: false, error: 'titulo, dataInicio, dataFim e tipo são obrigatórios.' });
+            return res.status(400).json({
+                success: false,
+                error: 'titulo, dataInicio, dataFim e tipo são obrigatórios.',
+            });
         }
 
         const evento = new CalendarioEscolar({
@@ -842,13 +999,13 @@ exports.criarEventoCalendario = async (req, res) => {
             cor: cor || '#4A90D9',
             escolaId: escolaAtual(req),
             criadoPor: req.user._id || req.user.id,
-            criadoPorNome: req.user.nome
+            criadoPorNome: req.user.nome,
         });
 
         await evento.save();
 
         await audit(req, 'CREATE_CALENDAR_EVENT', 'Calendario', evento._id, {
-            descricao: `Evento '${titulo}' criado no calendário`
+            descricao: `Evento '${titulo}' criado no calendário`,
         });
 
         res.status(201).json({ success: true, data: evento });
@@ -880,11 +1037,16 @@ exports.analisarJustificativa = async (req, res) => {
         const { status, motivoRejeicao } = req.body;
 
         if (!['aprovada', 'rejeitada'].includes(status)) {
-            return res.status(400).json({ success: false, error: 'Status deve ser "aprovada" ou "rejeitada".' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'Status deve ser "aprovada" ou "rejeitada".' });
         }
 
-        const justificativa = await JustificativaFalta.findOne(escopo(req, { _id: String(req.params.id) }));
-        if (!justificativa) return res.status(404).json({ success: false, error: 'Justificativa não encontrada.' });
+        const justificativa = await JustificativaFalta.findOne(
+            escopo(req, { _id: String(req.params.id) })
+        );
+        if (!justificativa)
+            return res.status(404).json({ success: false, error: 'Justificativa não encontrada.' });
 
         justificativa.status = status;
         justificativa.analisadoPor = req.user._id || req.user.id;
@@ -900,14 +1062,14 @@ exports.analisarJustificativa = async (req, res) => {
                 {
                     aluno: justificativa.alunoId,
                     data: { $gte: justificativa.dataInicio, $lte: justificativa.dataFim },
-                    presente: false
+                    presente: false,
                 },
                 { $set: { justificada: true, motivo: justificativa.motivo } }
             );
         }
 
         await audit(req, 'REVIEW_JUSTIFICATION', 'Justificativas', justificativa._id, {
-            descricao: `Justificativa ${status} para ${justificativa.alunoNome}`
+            descricao: `Justificativa ${status} para ${justificativa.alunoNome}`,
         });
 
         res.json({ success: true, data: justificativa });
@@ -927,7 +1089,10 @@ exports.criarComunicado = async (req, res) => {
         const { titulo, conteudo, destinatarios, categoria, prioridade } = req.body;
 
         if (!titulo || !conteudo || !destinatarios || destinatarios.length === 0) {
-            return res.status(400).json({ success: false, error: 'Título, conteúdo e destinatários são obrigatórios.' });
+            return res.status(400).json({
+                success: false,
+                error: 'Título, conteúdo e destinatários são obrigatórios.',
+            });
         }
 
         const userId = req.user._id || req.user.id;
@@ -945,7 +1110,7 @@ exports.criarComunicado = async (req, res) => {
             destinatarios,
             categoria: categoria || 'Secretaria',
             prioridade: prioridade || 'Normal',
-            escolaId: escolaAtual(req)
+            escolaId: escolaAtual(req),
         });
 
         await comunicado.save();
@@ -955,7 +1120,7 @@ exports.criarComunicado = async (req, res) => {
         emitirParaEscola(comunicado.escolaId, 'comunicado:new', comunicado.toObject());
 
         await audit(req, 'CREATE_ANNOUNCEMENT', 'Comunicados', comunicado._id, {
-            descricao: `Comunicado '${titulo}' criado pela secretaria`
+            descricao: `Comunicado '${titulo}' criado pela secretaria`,
         });
 
         res.status(201).json({ success: true, data: comunicado });
@@ -995,9 +1160,27 @@ exports.relatorioAlunosPorTurma = async (req, res) => {
         // Agora: DUAS consultas no total. Os alunos vêm de uma vez e são
         // agrupados em memória — agrupar alguns milhares de documentos em JS é
         // ordens de grandeza mais barato que uma ida a mais ao banco.
+        // Filtros da tela: nome/RA do aluno e sala. Aplicados no banco (e não no
+        // navegador) para que o relatório continue correto quando a escola tem
+        // mais alunos do que cabe em uma resposta.
+        const termo = String(req.query.q || '').trim();
+        const salaPedida = String(req.query.turma || req.query.sala || '').trim();
+
         const [turmas, alunos] = await Promise.all([
-            Turma.find(escopo(req, { ativo: true })).sort({ nome: 1 }).lean(),
-            Aluno.find(escopo(req, { ativo: true }))
+            Turma.find(escopo(req, { ativo: { $ne: false } }))
+                .sort({ nome: 1 })
+                .lean(),
+            Aluno.find(
+                busca.combinar(
+                    // `ativo: true` estrito omitia todo aluno cujo cadastro não
+                    // grava o campo — entre eles os criados pela professora em
+                    // versões anteriores. O relatório dizia "turma vazia" com a
+                    // turma cheia no banco.
+                    escopo(req, { ativo: { $ne: false } }),
+                    busca.filtroDeBusca(termo),
+                    busca.filtroDeSala(salaPedida)
+                )
+            )
                 .select('nome sobrenome matricula turma turmaId ativo')
                 .sort({ nome: 1 })
                 .lean(),
@@ -1006,10 +1189,14 @@ exports.relatorioAlunosPorTurma = async (req, res) => {
         // O vínculo aluno→turma é gravado de três formas no histórico da base
         // (nome da turma, id textual, ObjectId). O índice cobre as três para
         // que o agrupamento reproduza exatamente o `$or` anterior.
+        // A chave de agrupamento é a forma CANÔNICA da sala: "1A", "1ºA", "1º A"
+        // e "1 A" colapsam em "1A". Comparando string com string, o aluno que a
+        // professora cadastrou como "1ºA" não entrava na turma "1A" — ele
+        // existia no banco e não aparecia em relatório nenhum.
         const porChave = new Map();
         const indexar = (chave, aluno) => {
-            if (chave === undefined || chave === null || chave === '') return;
-            const k = String(chave);
+            const k = busca.normalizarSala(chave);
+            if (!k) return;
             if (!porChave.has(k)) porChave.set(k, []);
             porChave.get(k).push(aluno);
         };
@@ -1018,6 +1205,8 @@ exports.relatorioAlunosPorTurma = async (req, res) => {
             if (a.turmaId) indexar(a.turmaId, a);
         });
 
+        const agrupados = new Set();
+
         const resultado = turmas.map((t) => {
             // Um mesmo aluno pode casar por mais de uma chave (ex.: `turma` com
             // o nome E `turmaId` com o _id). O Set desduplica por _id, senão a
@@ -1025,10 +1214,11 @@ exports.relatorioAlunosPorTurma = async (req, res) => {
             const vistos = new Set();
             const daTurma = [];
             [t.nome, t.id, t._id].forEach((chave) => {
-                (porChave.get(String(chave)) || []).forEach((a) => {
+                (porChave.get(busca.normalizarSala(chave)) || []).forEach((a) => {
                     const id = String(a._id);
                     if (vistos.has(id)) return;
                     vistos.add(id);
+                    agrupados.add(id);
                     daTurma.push(a);
                 });
             });
@@ -1041,7 +1231,36 @@ exports.relatorioAlunosPorTurma = async (req, res) => {
             };
         });
 
-        res.json({ success: true, data: resultado });
+        // ── Alunos sem turma cadastrada ──────────────────────────────────────
+        // Quem não casou com nenhum documento `Turma` desaparecia do relatório
+        // sem deixar rastro — é o caso do aluno cadastrado com a sala digitada
+        // à mão. Agora ele vem em um bloco próprio, agrupado pela sala que está
+        // na ficha, para a secretaria ver o que precisa ser regularizado.
+        const avulsos = alunos.filter((a) => !agrupados.has(String(a._id)));
+        const porSalaAvulsa = new Map();
+        avulsos.forEach((a) => {
+            const rotulo = String(a.turma || a.turmaId || '').trim() || 'Sem turma';
+            if (!porSalaAvulsa.has(rotulo)) porSalaAvulsa.set(rotulo, []);
+            porSalaAvulsa.get(rotulo).push(a);
+        });
+
+        [...porSalaAvulsa.entries()]
+            .sort((a, b) => a[0].localeCompare(b[0], 'pt-BR', { numeric: true }))
+            .forEach(([rotulo, lista]) => {
+                resultado.push({
+                    turma: rotulo,
+                    turmaId: null,
+                    semTurmaCadastrada: true,
+                    totalAlunos: lista.length,
+                    alunos: lista,
+                });
+            });
+
+        res.json({
+            success: true,
+            data: resultado,
+            filtros: { q: termo || null, turma: salaPedida || null },
+        });
     } catch (error) {
         logger.error(`[Secretaria.relatorioAlunosPorTurma] ${error.message}`);
         res.status(500).json({ success: false, error: error.message });
@@ -1052,9 +1271,48 @@ exports.relatorioAlunosPorTurma = async (req, res) => {
 exports.relatorioMatriculas = async (req, res) => {
     try {
         const { anoLetivo, status } = req.query;
+        const termo = String(req.query.q || '').trim();
+        const salaPedida = String(req.query.turma || req.query.sala || '').trim();
+
         const query = escopo(req, {});
         if (anoLetivo) query.anoLetivo = parseInt(anoLetivo);
         if (status) query.status = String(status);
+
+        // ── Filtro por nome de aluno e por sala ──────────────────────────────
+        // A matrícula guarda `alunoId`, não o nome, então filtrar por nome exige
+        // resolver antes quais alunos casam. É uma ida a mais ao banco, e é o
+        // que permite a secretaria procurar "joão 1A" nesta tela em vez de
+        // percorrer a lista inteira com o olho.
+        //
+        // A sala é aplicada nos DOIS lados: no vínculo da matrícula (`turmaId`,
+        // que pode ser o _id da turma) e na ficha do aluno — historicamente as
+        // duas pontas guardam a sala de jeitos diferentes, e exigir só uma
+        // esconderia matrículas legítimas.
+        if (termo || salaPedida) {
+            const idsDaSala = salaPedida
+                ? (await Turma.find(escopo(req, {})).select('nome id').lean())
+                      .filter(
+                          (t) =>
+                              busca.salaCasa(t.nome, salaPedida) || busca.salaCasa(t.id, salaPedida)
+                      )
+                      .flatMap((t) => [String(t._id), t.id, t.nome])
+                      .filter(Boolean)
+                : [];
+
+            const alunosFiltrados = await Aluno.find(
+                busca.combinar(
+                    escopo(req, { ativo: { $ne: false } }),
+                    busca.filtroDeBusca(termo),
+                    busca.filtroDeSala(salaPedida, { idsEquivalentes: idsDaSala })
+                )
+            )
+                .select('_id')
+                .lean();
+
+            const ids = alunosFiltrados.map((a) => String(a._id));
+            // Nenhum aluno casou: a resposta é uma lista vazia, não a base toda.
+            query.alunoId = { $in: ids };
+        }
 
         // ============================================
         // PAGINAÇÃO — a consulta não tinha teto nenhum
@@ -1077,17 +1335,21 @@ exports.relatorioMatriculas = async (req, res) => {
             .lean();
 
         // Popula nomes
-        const alunoIds = [...new Set(matriculas.map(m => m.alunoId))];
-        const alunos = await Aluno.find(escopo(req, { _id: { $in: alunoIds } })).select('nome sobrenome').lean();
+        const alunoIds = [...new Set(matriculas.map((m) => m.alunoId))];
+        const alunos = await Aluno.find(escopo(req, { _id: { $in: alunoIds } }))
+            .select('nome sobrenome')
+            .lean();
         const alunosMap = {};
-        alunos.forEach(a => { alunosMap[a._id.toString()] = a; });
+        alunos.forEach((a) => {
+            alunosMap[a._id.toString()] = a;
+        });
 
-        const dados = matriculas.map(m => {
+        const dados = matriculas.map((m) => {
             const al = alunosMap[m.alunoId?.toString()] || {};
             return {
                 ...m,
                 alunoNome: al.nome || 'Desconhecido',
-                alunoSobrenome: al.sobrenome || ''
+                alunoSobrenome: al.sobrenome || '',
             };
         });
 
@@ -1100,7 +1362,14 @@ exports.relatorioMatriculas = async (req, res) => {
             { $group: { _id: '$status', total: { $sum: 1 } } },
         ]);
 
-        const resumo = { total: 0, cursando: 0, aprovado: 0, reprovado: 0, transferido: 0, evadido: 0 };
+        const resumo = {
+            total: 0,
+            cursando: 0,
+            aprovado: 0,
+            reprovado: 0,
+            transferido: 0,
+            evadido: 0,
+        };
         porStatus.forEach(({ _id, total }) => {
             resumo.total += total;
             if (Object.prototype.hasOwnProperty.call(resumo, _id)) resumo[_id] = total;
@@ -1111,6 +1380,7 @@ exports.relatorioMatriculas = async (req, res) => {
             data: {
                 matriculas: dados,
                 resumo,
+                filtros: { q: termo || null, turma: salaPedida || null },
                 paginacao: {
                     pagina,
                     limite,
@@ -1132,37 +1402,76 @@ exports.relatorioMatriculas = async (req, res) => {
 exports.exportarRelatorio = async (req, res) => {
     try {
         const { tipo } = req.query; // 'alunos', 'matriculas', 'frequencia'
+        const termo = String(req.query.q || '').trim();
+        const salaPedida = String(req.query.turma || req.query.sala || '').trim();
 
         let dados = [];
         let headers = [];
 
+        // O CSV segue os MESMOS filtros da tela. Exportar sempre a base inteira
+        // enquanto a tela mostra um recorte é como o arquivo baixado passa a não
+        // bater com o que a secretaria acabou de conferir.
+        const filtroAlunos = busca.combinar(
+            // `ativo: true` estrito deixava de fora o cadastro sem o campo.
+            escopo(req, { ativo: { $ne: false } }),
+            busca.filtroDeBusca(termo),
+            busca.filtroDeSala(salaPedida)
+        );
+
         // O CSV carrega nome, turma, nascimento, telefone e e-mail do
         // responsável — sem escopo, exportava a rede inteira.
         if (tipo === 'alunos') {
-            dados = await Aluno.find(escopo(req, { ativo: true })).select('nome sobrenome turma matricula nascimento telefone responsavel').sort({ nome: 1 }).lean();
-            headers = ['Nome', 'Sobrenome', 'Turma', 'Matrícula', 'Nascimento', 'Telefone', 'Responsável'];
+            dados = await Aluno.find(filtroAlunos)
+                .select('nome sobrenome turma matricula nascimento telefone responsavel')
+                .sort({ nome: 1 })
+                .lean();
+            headers = [
+                'Nome',
+                'Sobrenome',
+                'Turma',
+                'Matrícula',
+                'Nascimento',
+                'Telefone',
+                'Responsável',
+            ];
         } else if (tipo === 'matriculas') {
-            const matriculas = await Matricula.find(escopo(req, {})).sort({ anoLetivo: -1, createdAt: -1 }).lean();
-            const alunoIds = [...new Set(matriculas.map(m => m.alunoId))];
-            const alunos = await Aluno.find(escopo(req, { _id: { $in: alunoIds } })).select('nome').lean();
+            const matriculaQuery = escopo(req, {});
+            if (termo || salaPedida) {
+                const alvos = await Aluno.find(filtroAlunos).select('_id').lean();
+                matriculaQuery.alunoId = { $in: alvos.map((a) => String(a._id)) };
+            }
+            const matriculas = await Matricula.find(matriculaQuery)
+                .sort({ anoLetivo: -1, createdAt: -1 })
+                .lean();
+            const alunoIds = [...new Set(matriculas.map((m) => m.alunoId))];
+            const alunos = await Aluno.find(escopo(req, { _id: { $in: alunoIds } }))
+                .select('nome')
+                .lean();
             const map = {};
-            alunos.forEach(a => { map[a._id.toString()] = a.nome; });
-            dados = matriculas.map(m => ({
+            alunos.forEach((a) => {
+                map[a._id.toString()] = a.nome;
+            });
+            dados = matriculas.map((m) => ({
                 alunoNome: map[m.alunoId?.toString()] || 'N/A',
                 matriculaNumero: m.matriculaNumero,
                 anoLetivo: m.anoLetivo,
                 status: m.status,
-                dataMatricula: m.dataMatricula ? new Date(m.dataMatricula).toLocaleDateString('pt-BR') : ''
+                dataMatricula: m.dataMatricula
+                    ? new Date(m.dataMatricula).toLocaleDateString('pt-BR')
+                    : '',
             }));
             headers = ['Aluno', 'Nº Matrícula', 'Ano Letivo', 'Status', 'Data Matrícula'];
         } else {
-            return res.status(400).json({ success: false, error: 'Tipo de relatório inválido. Use: alunos, matriculas' });
+            return res.status(400).json({
+                success: false,
+                error: 'Tipo de relatório inválido. Use: alunos, matriculas',
+            });
         }
 
         // Gerar CSV
         const csvRows = [headers.join(';')];
-        dados.forEach(d => {
-            const values = Object.values(d).map(v => {
+        dados.forEach((d) => {
+            const values = Object.values(d).map((v) => {
                 if (v instanceof Date) return v.toLocaleDateString('pt-BR');
                 return String(v || '').replace(/;/g, ',');
             });
@@ -1172,7 +1481,10 @@ exports.exportarRelatorio = async (req, res) => {
         const csv = csvRows.join('\n');
 
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename=relatorio_${tipo}_${Date.now()}.csv`);
+        res.setHeader(
+            'Content-Disposition',
+            `attachment; filename=relatorio_${tipo}_${Date.now()}.csv`
+        );
         res.send('\uFEFF' + csv); // BOM for Excel UTF-8 compatibility
     } catch (error) {
         logger.error(`[Secretaria.exportarRelatorio] ${error.message}`);
@@ -1183,13 +1495,16 @@ exports.exportarRelatorio = async (req, res) => {
 // GET /api/secretaria/dashboard/resumo — estatísticas para o dashboard
 exports.dashboardResumo = async (req, res) => {
     try {
-        const [totalAlunos, totalTurmas, totalMatriculas, justificativasPendentes, docsEmitidos] = await Promise.all([
-            Aluno.countDocuments(escopo(req, { ativo: { $ne: false } })),
-            Turma.countDocuments(escopo(req, { ativo: { $ne: false } })),
-            Matricula.countDocuments(escopo(req, { status: 'cursando' })),
-            JustificativaFalta.countDocuments(escopo(req, { status: 'pendente' })),
-            DocumentoEmitido.countDocuments(escopo(req, { createdAt: { $gte: new Date(new Date().getFullYear(), 0, 1) } }))
-        ]);
+        const [totalAlunos, totalTurmas, totalMatriculas, justificativasPendentes, docsEmitidos] =
+            await Promise.all([
+                Aluno.countDocuments(escopo(req, { ativo: { $ne: false } })),
+                Turma.countDocuments(escopo(req, { ativo: { $ne: false } })),
+                Matricula.countDocuments(escopo(req, { status: 'cursando' })),
+                JustificativaFalta.countDocuments(escopo(req, { status: 'pendente' })),
+                DocumentoEmitido.countDocuments(
+                    escopo(req, { createdAt: { $gte: new Date(new Date().getFullYear(), 0, 1) } })
+                ),
+            ]);
 
         res.json({
             success: true,
@@ -1198,8 +1513,8 @@ exports.dashboardResumo = async (req, res) => {
                 totalTurmas,
                 totalMatriculas,
                 justificativasPendentes,
-                docsEmitidos
-            }
+                docsEmitidos,
+            },
         });
     } catch (error) {
         logger.error(`[Secretaria.dashboardResumo] ${error.message}`);
