@@ -6,58 +6,79 @@ const audioUpload = require('../middleware/audioUpload');
 const authJWT = require('../middleware/authJWT');
 const filtrarPorEscola = require('../middleware/filtrarPorEscola');
 const { autorizarArquivo, findFileDoc } = require('../controllers/FileController');
+const exigirAceiteTermo = require('../middleware/exigirAceiteTermo');
 
 // POST /api/audio/upload
-router.post('/upload', authJWT, filtrarPorEscola, audioUpload.single('audio'), async (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ success: false, error: 'Nenhum arquivo de áudio enviado.' });
-    }
+//
+// A mesma barreira do `/chat-direto/upload` (Issue #118). Esta rota grava
+// `type: 'voice_message'` — é o áudio do chat, exatamente o que a cláusula 2.1
+// do Termo condiciona ao aceite. Ela não está citada na Issue, mas deixá-la de
+// fora reproduziria o defeito num segundo endereço: bastaria chamar esta em vez
+// daquela.
+//
+// `exigirAceiteTermo` vem ANTES do multer pelo mesmo motivo de lá: recusar
+// depois seria receber o áudio de quem não aceitou para então descartá-lo, e é
+// justamente o armazenamento e o processamento que a cláusula 3 condiciona ao
+// consentimento.
+router.post(
+    '/upload',
+    authJWT,
+    filtrarPorEscola,
+    exigirAceiteTermo,
+    audioUpload.single('audio'),
+    async (req, res) => {
+        if (!req.file) {
+            return res
+                .status(400)
+                .json({ success: false, error: 'Nenhum arquivo de áudio enviado.' });
+        }
 
-    try {
-        const db = mongoose.connection.db;
-        const bucket = new mongoose.mongo.GridFSBucket(db, { bucketName: 'uploads' });
+        try {
+            const db = mongoose.connection.db;
+            const bucket = new mongoose.mongo.GridFSBucket(db, { bucketName: 'uploads' });
 
-        // Determinar extensão
-        let ext = '.webm';
-        if (req.file.mimetype === 'audio/mpeg') ext = '.mp3';
-        else if (req.file.mimetype === 'audio/wav') ext = '.wav';
-        else if (req.file.mimetype === 'audio/ogg') ext = '.ogg';
+            // Determinar extensão
+            let ext = '.webm';
+            if (req.file.mimetype === 'audio/mpeg') ext = '.mp3';
+            else if (req.file.mimetype === 'audio/wav') ext = '.wav';
+            else if (req.file.mimetype === 'audio/ogg') ext = '.ogg';
 
-        const filename = crypto.randomBytes(16).toString('hex') + ext;
-        const uploadStream = bucket.openUploadStream(filename, {
-            contentType: req.file.mimetype,
-            // `usuarioId`/`escolaId` com os MESMOS nomes usados pelos outros
-            // uploads: é esse metadata que o FileController lê para autorizar o
-            // download. Antes gravava-se `userId`, que nada lia — o arquivo
-            // ficava sem dono e sem escola do ponto de vista da autorização.
-            metadata: {
-                originalName: req.file.originalname,
-                usuarioId: String(req.user.id || req.user._id || ''),
-                escolaId: req.escolaId ? String(req.escolaId) : undefined,
-                type: 'voice_message',
-            },
-        });
-
-        uploadStream.end(req.file.buffer);
-
-        uploadStream.on('finish', () => {
-            res.status(201).json({
-                success: true,
-                data: {
-                    id: uploadStream.id,
-                    filename: filename,
-                    url: `/api/audio/${uploadStream.id}`,
+            const filename = crypto.randomBytes(16).toString('hex') + ext;
+            const uploadStream = bucket.openUploadStream(filename, {
+                contentType: req.file.mimetype,
+                // `usuarioId`/`escolaId` com os MESMOS nomes usados pelos outros
+                // uploads: é esse metadata que o FileController lê para autorizar o
+                // download. Antes gravava-se `userId`, que nada lia — o arquivo
+                // ficava sem dono e sem escola do ponto de vista da autorização.
+                metadata: {
+                    originalName: req.file.originalname,
+                    usuarioId: String(req.user.id || req.user._id || ''),
+                    escolaId: req.escolaId ? String(req.escolaId) : undefined,
+                    type: 'voice_message',
                 },
             });
-        });
 
-        uploadStream.on('error', (err) => {
-            res.status(500).json({ success: false, error: err.message });
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+            uploadStream.end(req.file.buffer);
+
+            uploadStream.on('finish', () => {
+                res.status(201).json({
+                    success: true,
+                    data: {
+                        id: uploadStream.id,
+                        filename: filename,
+                        url: `/api/audio/${uploadStream.id}`,
+                    },
+                });
+            });
+
+            uploadStream.on('error', (err) => {
+                res.status(500).json({ success: false, error: err.message });
+            });
+        } catch (error) {
+            res.status(500).json({ success: false, error: error.message });
+        }
     }
-});
+);
 
 // GET /api/audio/:id
 // ============================================
