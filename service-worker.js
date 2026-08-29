@@ -13,6 +13,12 @@
 // Bump obrigatório a cada mudança em JS já cacheado: os assets usam
 // stale-while-revalidate, então sem trocar a versão o usuário recebe o arquivo
 // antigo no primeiro acesso após o deploy.
+//
+// ISTO NÃO DEPENDE MAIS DA SUA MEMÓRIA (Issue #128): `npm run sw:verificar`
+// reprova um PR que altere qualquer arquivo de STATIC_ASSETS sem trocar esta
+// linha, e o CI roda essa verificação. O script lê a lista daqui de baixo —
+// não mantém cópia — então acrescentar um asset já o coloca sob a regra.
+// Detalhes em docs/QUALITY.md, seção "Service worker: o bump do VERSION".
 const VERSION = 'v8';
 const STATIC_CACHE = `escola-static-${VERSION}`;
 const PAGES_CACHE = `escola-pages-${VERSION}`;

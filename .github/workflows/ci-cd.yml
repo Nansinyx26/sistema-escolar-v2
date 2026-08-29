@@ -107,6 +107,20 @@ jobs:
         run: npm run lint
         continue-on-error: true
 
+      # O bump do VERSION do service worker era um passo obrigatório, manual e
+      # sem verificação, num arquivo que quase ninguém abre — e já foi esquecido
+      # (commit 059577d mexeu em js/auth.js sem bump; só não deu problema porque
+      # outro commit bumpou antes do release). Ver Issue #128.
+      #
+      # Só em PR: o script compara com a branch base, e num push direto não há
+      # base contra a qual comparar. O `fetch-depth: 0` do checkout acima é o
+      # que torna essa comparação possível.
+      - name: 🔁 Bump do VERSION do service worker
+        if: ${{ github.event_name == 'pull_request' }}
+        run: npm run sw:verificar
+        env:
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+
       # `--runInBand` já vem do script do backend: os testes usam
       # mongodb-memory-server e concorrer entre si dá porta ocupada.
       - name: 🧪 Testes com cobertura
