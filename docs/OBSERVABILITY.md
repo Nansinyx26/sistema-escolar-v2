@@ -126,8 +126,34 @@ Node**, não o preserva:
 | `unhandledRejection` | derruba o processo (padrão desde o Node 15) | **não derruba** — segue rodando |
 
 O Node executa *todos* os listeners registrados, então quem garante a saída é o
-handler do `index.js`. Se um dia ele sair de cena, a observabilidade sozinha
-engoliria a exceção — e o serviço ficaria de pé em estado inconsistente.
+handler do `index.js`.
+
+### O repasse é explícito (Issue #129)
+
+`observability.init()` roda na **primeira linha do processo**. Os handlers do
+`index.js` só entram **depois do `app.listen`** — e entre um ponto e outro
+passam `connectDB`, o cache, os códigos secretos, a migração de voz e o
+alinhamento de retenção. Nessa janela, só o listener da observabilidade
+existiria: com ela ligada, uma exceção no boot seria reportada e **engolida**, e
+o boot continuaria a partir de um passo que falhou.
+
+Por isso o repasse é explícito, e não implícito na ordem dos arquivos:
+
+```js
+// observability/init() — arma a saída padrão que o próprio listener suprimiu
+saidaPadraoArmada = true;
+
+// src/index.js, depois do listen — assume a política
+observability.assumirEncerramento();
+```
+
+Armada, a observabilidade **reporta e encerra como o Node faria** (stack em
+`stderr`, saída 1). Desarmada, ela volta a **só reportar**. Nenhum dos dois
+estados engole exceção.
+
+Se um dia o `index.js` deixar de chamar `assumirEncerramento()`, o pior caso é
+o processo encerrar como o Node encerraria — nunca ficar de pé em estado
+inconsistente.
 
 ### Por que existe um prazo máximo (Issue #125)
 
