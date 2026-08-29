@@ -190,14 +190,11 @@ const staticDirectories = [
     'favicon',
     'portal-responsavel/dist',
 ];
-const staticFiles = [
-    'index.html',
-    'manifest.json',
-    'sw.js',
-    'service-worker.js',
-    'favicon.ico',
-    'favicon.svg',
-];
+// `favicon.ico` SAIU desta lista (Issue #109): o caminho estava declarado, mas
+// o arquivo não existe no repositório — o que existe é `favicon.svg` e a pasta
+// `favicon/`. Cada `GET /favicon.ico` do navegador virava um ENOENT no handler
+// de erro, com stack completo. A rota explícita mais abaixo responde 204.
+const staticFiles = ['index.html', 'manifest.json', 'sw.js', 'service-worker.js', 'favicon.svg'];
 const staticOptions = {
     setHeaders: (res, filePath) => {
         if (filePath.endsWith('.woff2')) res.setHeader('Content-Type', 'font/woff2');
@@ -258,6 +255,20 @@ staticFiles.forEach((file) => {
     app.get(`/${file}`, (req, res) => {
         res.sendFile(path.join(frontendRootPath, file));
     });
+});
+
+// O navegador pede `/favicon.ico` da raiz por conta própria, mesmo quando a
+// página declara `<link rel="icon">` — e nenhuma página deste sistema
+// referencia um `.ico`. Sem esta rota o pedido cai no 404 e gera ruído de erro
+// a cada visita (Issue #109).
+//
+// 204 e não 404: "não há ícone aqui, e isso não é uma falha". O cache longo
+// evita que o navegador volte a perguntar a cada navegação. Trocar por um
+// arquivo `.ico` de verdade continua sendo uma opção — aí basta devolvê-lo
+// aqui; muda a resposta, não o resto do sistema.
+app.get('/favicon.ico', (req, res) => {
+    res.set('Cache-Control', 'public, max-age=604800, immutable');
+    res.status(204).end();
 });
 
 // Raiz do site → landing page
@@ -580,11 +591,27 @@ app.use((err, req, res, next) => {
     // O stack vai para o LOG em produção também — é lá que ele é indispensável.
     // O que não pode vazar é para a RESPOSTA, e isso é tratado abaixo.
     // requestId/userId/escolaId entram sozinhos pelo contexto da requisição.
-    logger.error(`[Error Handler] ${err.message}`, { err, status: statusCode });
-
-    // Alerta automático para erros 5xx no handler global
+    // 4xx NÃO É ERRO DO SERVIDOR (Issue #109).
+    //
+    // Antes, o `logger.error` rodava para QUALQUER status, e um 404 comum
+    // entrava no canal de erro com stack completo. Medido no job de E2E da
+    // execução 33078040754: de 7 linhas `"level":"error"`, 6 eram
+    // `GET /favicon.ico` e ZERO eram 5xx de verdade — 86% do canal de erro era
+    // um arquivo que não existe. Em produção é uma entrada por visita.
+    //
+    // Um canal de erro dominado por ruído é um canal que ninguém lê, e é assim
+    // que o 5xx real passa despercebido.
     if (statusCode >= 500) {
+        logger.error(`[Error Handler] ${err.message}`, { err, status: statusCode });
         logger.alert('UNHANDLED_ERROR', err.message, { status: statusCode });
+    } else {
+        // Sem `err` no payload: o stack de um 404 de asset não diz nada que o
+        // método e o caminho já não digam, e era ele que dominava o volume.
+        logger.warn(`[Error Handler] ${err.message}`, {
+            status: statusCode,
+            metodo: req.method,
+            caminho: req.path,
+        });
     }
 
     const isProduction = process.env.NODE_ENV === 'production';
