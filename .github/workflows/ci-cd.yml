@@ -333,12 +333,48 @@ jobs:
         working-directory: ./backend
         run: npm run build --if-present
 
+      # ============================================
+      # UM DEPLOY REJEITADO PRECISA REPROVAR
+      # ============================================
+      # Aqui rodava `johnbeynon/render-deploy-action@v0.0.8`, e o passo passava
+      # verde em 0 segundo sem publicar nada. Dois defeitos em sequência
+      # (Issue #133):
+      #
+      #   1. O input era passado como `api-token`, mas a action declara
+      #      `api-key`. O Actions avisava — "Unexpected input(s) 'api-token'" —
+      #      e seguia: a action rodava SEM token.
+      #   2. A API do Render respondia 401, e a action apenas imprimia
+      #      "Response received: 401". Ela não reprova em resposta de erro.
+      #
+      # O aviso do passo seguinte não cobria este caso: ele olha para a
+      # AUSÊNCIA do secret, e aqui o secret existe — o que falhava era a
+      # chamada. O sinal de "não publicou" ficava só no log, que ninguém abre
+      # quando o check está verde.
+      #
+      # A chamada agora é direta (é o que a action fazia por dentro), o código
+      # HTTP fica visível, e qualquer não-2xx reprova o job.
       - name: 📤 Deploy to Render (Dev)
-        uses: johnbeynon/render-deploy-action@v0.0.8
-        with:
-          service-id: ${{ secrets.RENDER_SERVICE_ID_DEV }}
-          api-token: ${{ secrets.RENDER_API_TOKEN }}
         if: env.HAS_RENDER_DEV == 'true'
+        env:
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID_DEV }}
+          RENDER_API_TOKEN: ${{ secrets.RENDER_API_TOKEN }}
+        run: |
+          # `-sS` cala a barra de progresso mas mantém o erro de rede visível.
+          # O corpo vai para arquivo para que o token nunca apareça no comando.
+          codigo=$(curl -sS -o resposta.json -w '%{http_code}' \
+            -X POST "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys" \
+            -H "Authorization: Bearer $RENDER_API_TOKEN" \
+            -H 'Content-Type: application/json' \
+            -d '{}')
+
+          if [ "$codigo" -lt 200 ] || [ "$codigo" -ge 300 ]; then
+            echo "::error title=Deploy de dev recusado::O Render respondeu HTTP $codigo. NADA foi publicado. Ver Issue #133."
+            # O corpo do erro do Render não traz segredo — traz o motivo.
+            cat resposta.json
+            exit 1
+          fi
+
+          echo "Render aceitou o deploy de dev (HTTP $codigo)."
 
       # ============================================
       # UM PASSO PULADO É INVISÍVEL — ESTE FALA
@@ -413,12 +449,30 @@ jobs:
         working-directory: ./backend
         run: npm audit --audit-level=high
 
+      # Mesma correção da Issue #133 aplicada ao job de dev, e aqui ela pesa
+      # mais: com o input errado, uma promoção para produção respondia 401 e
+      # fechava verde. Ou seja, o release dizia "publicado" e as famílias
+      # seguiam com a versão antiga — exatamente o cenário que a Issue #108
+      # tentou fechar e que este caminho ainda deixava passar.
       - name: 📤 Deploy to Render (Prod)
-        uses: johnbeynon/render-deploy-action@v0.0.8
-        with:
-          service-id: ${{ secrets.RENDER_SERVICE_ID_PROD }}
-          api-token: ${{ secrets.RENDER_API_TOKEN }}
         if: env.HAS_RENDER_PROD == 'true'
+        env:
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID_PROD }}
+          RENDER_API_TOKEN: ${{ secrets.RENDER_API_TOKEN }}
+        run: |
+          codigo=$(curl -sS -o resposta.json -w '%{http_code}' \
+            -X POST "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys" \
+            -H "Authorization: Bearer $RENDER_API_TOKEN" \
+            -H 'Content-Type: application/json' \
+            -d '{}')
+
+          if [ "$codigo" -lt 200 ] || [ "$codigo" -ge 300 ]; then
+            echo "::error title=Deploy de producao recusado::O Render respondeu HTTP $codigo. NADA foi publicado. Ver Issue #133."
+            cat resposta.json
+            exit 1
+          fi
+
+          echo "Render aceitou o deploy de producao (HTTP $codigo)."
 
       # Mesma proteção do job de dev, e aqui ela pesa mais: um deploy de
       # PRODUÇÃO que não acontece em silêncio significa que as famílias
