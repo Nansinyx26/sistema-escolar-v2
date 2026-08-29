@@ -263,14 +263,24 @@ Rodam no hook de pre-commit, no CI e devem passar antes de qualquer PR:
 
 Atalho: **`npm run verify`** roda o conjunto obrigatório de uma vez.
 
+Num checkout limpo, instale antes os **três** workspaces — o Knip cruza todos eles,
+e sem o do portal ele aborta no carregamento da configuração:
+
+```bash
+npm run setup   # npm ci na raiz, no backend e no portal-responsavel
+```
+
 Detalhes, armadilhas de configuração e o estado atual de cada portão em
-[`docs/QUALITY.md`](docs/QUALITY.md). Dois pontos que economizam tempo:
+[`docs/QUALITY.md`](docs/QUALITY.md). Três pontos que economizam tempo:
 
 - O gate de lint hoje é **incremental** (`lint:changed`): existe dívida legada de
   831 problemas anteriores à adoção do Biome, e travar tudo de uma vez só faria o
   time desligar o lint. Código novo, porém, precisa entrar limpo.
 - **Nunca coloque comentário no `biome.json`.** Um único comentário faz todos os
   `overrides` pararem de valer, sem emitir erro nenhum.
+- No Knip, **achado de código morto não trava; erro de configuração trava.** O
+  `--no-exit-code` zera a saída dos achados, não a de uma configuração que não
+  carrega — ver [`docs/QUALITY.md`](docs/QUALITY.md#código-morto-knip).
 
 ---
 
