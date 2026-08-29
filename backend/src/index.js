@@ -47,6 +47,7 @@ const SecurityConfig = require('./models/SecurityConfig');
 const { initializeSecretCodes } = require('./utils/secretCodeHelper');
 const logger = require('./utils/logger');
 const { startHealthMonitor } = require('./utils/healthMonitor');
+const { criarEncerrador } = require('./utils/encerramento');
 
 const PORT = process.env.PORT || 3001;
 
@@ -392,12 +393,27 @@ const startServer = async () => {
 
         global.io = io;
 
+        // Saída do processo com prazo máximo. O porquê (e o modo de falha que
+        // isso conserta) está em utils/encerramento.js — Issue #125.
+        const encerrarComPrazo = criarEncerrador({
+            server,
+            io,
+            logger,
+            prazoMs: Number(process.env.SHUTDOWN_TIMEOUT_MS) || undefined,
+        });
+
         // Tratamento de Rejeições Não Tratadas (Promises)
+        //
+        // NOTA: hoje qualquer promise solta em job, cron ou handler de socket
+        // encerra o servidor inteiro. É a política escolhida (o processo é
+        // considerado em estado desconhecido), e está registrada aqui de
+        // propósito — este módulo é o dono da política de encerramento do
+        // processo. Ver docs/OBSERVABILITY.md.
         process.on('unhandledRejection', (err, promise) => {
             logger.alert('UNHANDLED_REJECTION', err?.message || 'Rejeição não tratada', {
                 stack: err?.stack,
             });
-            server.close(() => process.exit(1));
+            encerrarComPrazo(1);
         });
 
         // Tratamento de Exceções Não Capturadas (Síncrono)
@@ -405,7 +421,7 @@ const startServer = async () => {
             logger.alert('UNCAUGHT_EXCEPTION', err.message, {
                 stack: err.stack,
             });
-            server.close(() => process.exit(1));
+            encerrarComPrazo(1);
         });
     } catch (err) {
         logger.fatal(`❌ Erro fatal ao iniciar o servidor: ${err.message}`, { stack: err.stack });
