@@ -108,6 +108,48 @@ Envia **apenas** `id`, `perfil` e `escolaId`. Nunca nome, e-mail ou documento.
 
 ---
 
+## Quem é dono do encerramento do processo
+
+**`backend/src/index.js` é o único dono da política de encerramento.** Ele
+registra os handlers de `uncaughtException` e `unhandledRejection` que decidem
+*se* o processo sai, e delega o *como* para
+`backend/src/utils/encerramento.js`.
+
+A observabilidade **também** registra listeners nesses dois eventos, mas o papel
+dela ali é só reportar — ela nunca decide encerrar. A distinção importa porque
+registrar um listener nesses eventos **substitui o comportamento padrão do
+Node**, não o preserva:
+
+| Evento | Sem listener | Com listener registrado |
+|---|---|---|
+| `uncaughtException` | imprime o stack e sai com 1 | **não sai** — segue rodando |
+| `unhandledRejection` | derruba o processo (padrão desde o Node 15) | **não derruba** — segue rodando |
+
+O Node executa *todos* os listeners registrados, então quem garante a saída é o
+handler do `index.js`. Se um dia ele sair de cena, a observabilidade sozinha
+engoliria a exceção — e o serviço ficaria de pé em estado inconsistente.
+
+### Por que existe um prazo máximo (Issue #125)
+
+`server.close()` só chama o callback quando **todas** as conexões terminam, e as
+do Socket.IO são persistentes. Sem prazo, uma promise rejeitada não derrubava o
+servidor: transformava-o em zumbi — socket de escuta fechado (recusando conexão
+nova), `process.exit` nunca alcançado, Render sem motivo para reiniciar.
+
+`criarEncerrador()` fecha o `io` primeiro, chama `server.close()` e mantém um
+prazo (`SHUTDOWN_TIMEOUT_MS`, padrão 5s) com `unref()` — que é o que impede o
+prazo de virar custo no caminho normal.
+
+### A política em si
+
+Hoje **qualquer** promise rejeitada sem tratamento encerra o processo inteiro,
+inclusive vinda de job, cron ou handler de socket. É uma escolha, não um
+acidente: o processo é considerado em estado desconhecido, e um reinício de
+segundos é preferível a um servidor de pé com estado corrompido. Está escrito
+aqui para que uma mudança dessa política seja deliberada.
+
+---
+
 ## PII: a regra que não se negocia
 
 > Nunca sai daqui CPF, RG, endereço, telefone, e-mail, nome ou data de
