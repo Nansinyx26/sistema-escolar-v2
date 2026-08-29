@@ -8,17 +8,46 @@ const assertAcessoAoAluno = require('../middleware/assertAcessoAoAluno');
 
 // Whitelist de campos permitidos para o Aluno (Prevenção de Injeção de Parâmetros)
 const studentWhitelist = [
-    'nome', 'matricula', 'turma', 'turmaId', 'email', 'telefone', 
-    'dataNascimento', 'nascimento', 'sexo', 'foto', 'ativo', 'observacoes', 
-    'responsavelNome', 'responsavelTelefone', 'responsavel',
-    'nivel', 'nivelBimestre', 'condicao', 'condicaoOutro',
-    'observacoesBimestre', 'recuperacaoBimestre', 'faltasBimestre',
-    'deficiencia', 'pcd',
-    'endereco', 'cpfAluno', 'nacionalidade', 'etnia', 'religiao', 
-    'responsavelDados', 'responsaveis', 'guardaLegal', 'pessoasAutorizadasRetirada',
-    'autorizacoesEscolares', 'fichaDocumentoStatus',
-    'alergiasAlimentos', 'alergiasRemedio', 'planoSaude', 
-    'documentos', 'lgpdConsentimento'
+    'nome',
+    'matricula',
+    'turma',
+    'turmaId',
+    'email',
+    'telefone',
+    'dataNascimento',
+    'nascimento',
+    'sexo',
+    'foto',
+    'ativo',
+    'observacoes',
+    'responsavelNome',
+    'responsavelTelefone',
+    'responsavel',
+    'nivel',
+    'nivelBimestre',
+    'condicao',
+    'condicaoOutro',
+    'observacoesBimestre',
+    'recuperacaoBimestre',
+    'faltasBimestre',
+    'deficiencia',
+    'pcd',
+    'endereco',
+    'cpfAluno',
+    'nacionalidade',
+    'etnia',
+    'religiao',
+    'responsavelDados',
+    'responsaveis',
+    'guardaLegal',
+    'pessoasAutorizadasRetirada',
+    'autorizacoesEscolares',
+    'fichaDocumentoStatus',
+    'alergiasAlimentos',
+    'alergiasRemedio',
+    'planoSaude',
+    'documentos',
+    'lgpdConsentimento',
 ];
 
 exports.list = async (req, res) => {
@@ -56,7 +85,7 @@ exports.list = async (req, res) => {
         // ela DEVE estar entre as permitidas (req.allowedTurmas)
         if (req.horizontalFilter && (turma || turmaId) && req.allowedTurmas) {
             const requested = busca.normalizarSala(turma || turmaId);
-            const isAllowed = req.allowedTurmas.some(t => busca.normalizarSala(t) === requested);
+            const isAllowed = req.allowedTurmas.some((t) => busca.normalizarSala(t) === requested);
             if (!isAllowed) {
                 query.turma = 'ACESSO_NEGADO';
             }
@@ -69,7 +98,7 @@ exports.list = async (req, res) => {
             .lean();
 
         // Normalização para o frontend: garante que cada item tenha um campo 'id' e resolve URLs de fotos
-        const normalizedStudents = students.map(s => {
+        const normalizedStudents = students.map((s) => {
             const student = { ...s, id: s.id || s._id };
 
             // Nunca em listagem genérica: quem tem o código vincula o aluno
@@ -79,7 +108,7 @@ exports.list = async (req, res) => {
             if (student.foto && student.foto.length > 20 && !student.foto.startsWith('data:')) {
                 student.foto = `/api/upload/photo/${student.foto}`;
             }
-            
+
             return student;
         });
 
@@ -91,8 +120,8 @@ exports.list = async (req, res) => {
             pagination: {
                 total: count,
                 page: Number(page),
-                pages: Math.ceil(count / limit)
-            }
+                pages: Math.ceil(count / limit),
+            },
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -134,7 +163,7 @@ exports.create = async (req, res) => {
     try {
         // Whitelist: Filtra apenas campos permitidos
         const filteredBody = {};
-        studentWhitelist.forEach(field => {
+        studentWhitelist.forEach((field) => {
             if (req.body[field] !== undefined) filteredBody[field] = req.body[field];
         });
 
@@ -152,11 +181,17 @@ exports.create = async (req, res) => {
         if (req.user && req.user.perfil === 'professor') {
             const targetTurma = filteredBody.turma || filteredBody.turmaId;
             if (!targetTurma) {
-                return res.status(400).json({ success: false, error: 'A turma é obrigatória para cadastrar um aluno.' });
+                return res.status(400).json({
+                    success: false,
+                    error: 'A turma é obrigatória para cadastrar um aluno.',
+                });
             }
             const allowed = req.allowedTurmas || [];
             if (!allowed.includes(targetTurma)) {
-                return res.status(403).json({ success: false, error: `Acesso negado. Você não tem permissão para cadastrar alunos na turma ${targetTurma}.` });
+                return res.status(403).json({
+                    success: false,
+                    error: `Acesso negado. Você não tem permissão para cadastrar alunos na turma ${targetTurma}.`,
+                });
             }
         }
         // -------------------------------------------------------------------------
@@ -164,7 +199,9 @@ exports.create = async (req, res) => {
         // Conversão automática de imagem para WebP e salvamento no GridFS
         if (filteredBody.foto && ImageProcessor.isBase64Image(filteredBody.foto)) {
             try {
-                const base64Data = filteredBody.foto.includes('base64,') ? filteredBody.foto.split('base64,')[1] : filteredBody.foto;
+                const base64Data = filteredBody.foto.includes('base64,')
+                    ? filteredBody.foto.split('base64,')[1]
+                    : filteredBody.foto;
                 const buffer = Buffer.from(base64Data, 'base64');
                 const sharp = require('sharp');
                 const webpBuffer = await sharp(buffer).webp({ quality: 80 }).toBuffer();
@@ -186,14 +223,21 @@ exports.create = async (req, res) => {
         await logAction(req, 'CREATE_STUDENT', 'Alunos', {
             recursoId: student._id,
             valorNovo: { nome: student.nome },
-            descricao: `Aluno ${student.nome} cadastrado (código secreto gerado).`
+            descricao: `Aluno ${student.nome} cadastrado (código secreto gerado).`,
         });
 
         console.log(`✅ [STUDENT-CREATE] Aluno ${student.nome} criado com sucesso.`);
-        res.status(201).json({ success: true, data: student, message: 'Estudante cadastrado com sucesso!' });
+        res.status(201).json({
+            success: true,
+            data: student,
+            message: 'Estudante cadastrado com sucesso!',
+        });
     } catch (error) {
         console.error(`❌ [STUDENT-CREATE] Erro ao criar aluno:`, error.message);
-        res.status(400).json({ success: false, error: 'Erro ao cadastrar estudante. Verifique se os dados estão corretos.' });
+        res.status(400).json({
+            success: false,
+            error: 'Erro ao cadastrar estudante. Verifique se os dados estão corretos.',
+        });
     }
 };
 
@@ -204,12 +248,14 @@ exports.update = async (req, res) => {
         // Conversão automática de imagem para WebP e salvamento no GridFS
         if (req.body.foto && ImageProcessor.isBase64Image(req.body.foto)) {
             try {
-                const base64Data = req.body.foto.includes('base64,') ? req.body.foto.split('base64,')[1] : req.body.foto;
+                const base64Data = req.body.foto.includes('base64,')
+                    ? req.body.foto.split('base64,')[1]
+                    : req.body.foto;
                 const buffer = Buffer.from(base64Data, 'base64');
-                
+
                 const sharp = require('sharp');
                 const webpBuffer = await sharp(buffer).webp({ quality: 80 }).toBuffer();
-                
+
                 const filename = `aluno_upd_${Date.now()}.webp`;
                 const fileId = await saveToGridFS(webpBuffer, filename, 'image/webp');
 
@@ -222,24 +268,29 @@ exports.update = async (req, res) => {
                     } catch (e) {
                         // Não bloqueia a troca de foto, mas cada falha aqui deixa
                         // um arquivo órfão ocupando espaço no GridFS para sempre.
-                        logger.warn('Não foi possível remover a foto antiga do GridFS (arquivo órfão)', {
-                            err: e, gridfsId: oldId, action: 'aluno.trocarFoto',
-                        });
+                        logger.warn(
+                            'Não foi possível remover a foto antiga do GridFS (arquivo órfão)',
+                            {
+                                err: e,
+                                gridfsId: oldId,
+                                action: 'aluno.trocarFoto',
+                            }
+                        );
                     }
                 }
-                
+
                 req.body.foto = `gridfs:${fileId}`;
             } catch (imgError) {
                 console.warn('Falha ao processar imagem do aluno no update:', imgError);
             }
         }
 
-        delete req.body._id; 
-        delete req.body.id;  
+        delete req.body._id;
+        delete req.body.id;
 
         // SEGURANÇA: Whitelist de campos permitidos (previne injeção de parâmetros)
         const filteredBody = {};
-        studentWhitelist.forEach(field => {
+        studentWhitelist.forEach((field) => {
             if (req.body[field] !== undefined) filteredBody[field] = req.body[field];
         });
 
@@ -249,7 +300,8 @@ exports.update = async (req, res) => {
 
         // --- SEGURANÇA: escola (multi-tenant) + turma (professor) ---
         const acesso = await assertAcessoAoAluno(req, req.params.id);
-        if (!acesso.ok) return res.status(acesso.status).json({ success: false, error: acesso.error });
+        if (!acesso.ok)
+            return res.status(acesso.status).json({ success: false, error: acesso.error });
         const existingStudent = acesso.aluno;
 
         if (req.user && req.user.perfil === 'professor') {
@@ -258,7 +310,10 @@ exports.update = async (req, res) => {
             // Se tentar alterar a turma do aluno, valida se a nova turma também é autorizada
             const targetTurma = filteredBody.turma || filteredBody.turmaId;
             if (targetTurma && !allowed.includes(targetTurma)) {
-                return res.status(403).json({ success: false, error: `Acesso negado. Você não tem permissão para mover alunos para a turma ${targetTurma}.` });
+                return res.status(403).json({
+                    success: false,
+                    error: `Acesso negado. Você não tem permissão para mover alunos para a turma ${targetTurma}.`,
+                });
             }
         }
         // -------------------------------------------------------------------------
@@ -275,7 +330,8 @@ exports.update = async (req, res) => {
             filteredBody,
             { new: true, runValidators: true }
         );
-        if (!student) return res.status(404).json({ success: false, error: 'Aluno não encontrado' });
+        if (!student)
+            return res.status(404).json({ success: false, error: 'Aluno não encontrado' });
 
         // Mantém a escola do RESPONSÁVEL em sincronia com a do aluno: se o aluno
         // mudou de escola, o responsável vinculado passa a pertencer à mesma escola.
@@ -288,7 +344,10 @@ exports.update = async (req, res) => {
                 );
             }
         } catch (syncErr) {
-            console.warn('[Student Update] Falha ao sincronizar escola do responsável:', syncErr.message);
+            console.warn(
+                '[Student Update] Falha ao sincronizar escola do responsável:',
+                syncErr.message
+            );
         }
 
         res.json({ success: true, data: student });
@@ -301,14 +360,18 @@ exports.delete = async (req, res) => {
     try {
         // --- SEGURANÇA: escola (multi-tenant) + turma (professor) ---
         const acesso = await assertAcessoAoAluno(req, req.params.id);
-        if (!acesso.ok) return res.status(acesso.status).json({ success: false, error: acesso.error });
+        if (!acesso.ok)
+            return res.status(acesso.status).json({ success: false, error: acesso.error });
         // -------------------------------------------------------------------------
 
         // Soft delete preferido via 'ativo: false', mas implementando delete real conforme pedido ou soft se 'ativo' existir
         // O pedido diz "DELETE", mas o schema tem 'ativo'. Vou fazer soft delete se não for especificado hard.
         // Na verdade, DELETE verb usually means delete/archive.
-        const student = await Aluno.findOneAndDelete({ $or: [{ _id: req.params.id }, { id: req.params.id }] });
-        if (!student) return res.status(404).json({ success: false, error: 'Aluno não encontrado' });
+        const student = await Aluno.findOneAndDelete({
+            $or: [{ _id: req.params.id }, { id: req.params.id }],
+        });
+        if (!student)
+            return res.status(404).json({ success: false, error: 'Aluno não encontrado' });
         res.json({ success: true, data: { message: 'Aluno removido' } });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -371,13 +434,18 @@ exports.listSecretCodes = async (req, res) => {
 
         // ── Geração dos códigos faltantes (em lote, dentro do request) ───────
         const missingIds = students
-            .filter(s => !s.codigoSecreto || ['N/A', 'n/a', ''].includes(String(s.codigoSecreto).trim()))
-            .map(s => s._id);
+            .filter(
+                (s) =>
+                    !s.codigoSecreto || ['N/A', 'n/a', ''].includes(String(s.codigoSecreto).trim())
+            )
+            .map((s) => s._id);
 
         let novosCodigos = new Map();
         if (missingIds.length > 0) {
             novosCodigos = await assignSecretCodes(missingIds);
-            logger.info(`[SECRET-CODES] ${novosCodigos.size}/${missingIds.length} código(s) gerado(s).`);
+            logger.info(
+                `[SECRET-CODES] ${novosCodigos.size}/${missingIds.length} código(s) gerado(s).`
+            );
         }
 
         // ── Mapear turmas para exibição ──────────────────────────────────────
@@ -386,7 +454,7 @@ exports.listSecretCodes = async (req, res) => {
         // como "1ºA" não encontrava a turma "1A" e caía no ramo de fallback,
         // aparecendo com o ano errado na lista de códigos.
         const turmaMap = {};
-        turmas.forEach(t => {
+        turmas.forEach((t) => {
             [t.nome, t.id].forEach((valor) => {
                 const key = busca.normalizarSala(valor);
                 if (key && !turmaMap[key]) turmaMap[key] = t;
@@ -397,21 +465,21 @@ exports.listSecretCodes = async (req, res) => {
         // Pendente = aluno que entrou sem código E cuja gravação não confirmou.
         // Nesse caso o problema é o documento em si (não uma espera), então o
         // front precisa dizer isso em vez de ficar recarregando para sempre.
-        const naoGerados = missingIds.filter(id => !novosCodigos.has(String(id)));
+        const naoGerados = missingIds.filter((id) => !novosCodigos.has(String(id)));
         const falhouSet = new Set(naoGerados.map(String));
         if (naoGerados.length > 0) {
             logger.warn(`[SECRET-CODES] ${naoGerados.length} aluno(s) sem código após a geração.`, {
-                ids: naoGerados.map(String).slice(0, 20)
+                ids: naoGerados.map(String).slice(0, 20),
             });
         }
 
-        const data = students.map(s => {
+        const data = students.map((s) => {
             const studentTurmaKey = busca.normalizarSala(s.turma || s.turmaId || '');
             const tInfo = turmaMap[studentTurmaKey] || {};
-            
+
             let ano = '-';
             let turmaNome = s.turma || s.turmaId || '-';
-            
+
             if (tInfo.ano) {
                 ano = `${tInfo.ano}º ano`;
                 turmaNome = tInfo.sala || s.turma || s.turmaId || '-';
@@ -423,9 +491,10 @@ exports.listSecretCodes = async (req, res) => {
                 }
             }
 
-            const codigoExibido = novosCodigos.get(String(s._id))
-                || (falhouSet.has(String(s._id)) ? null : s.codigoSecreto)
-                || null;
+            const codigoExibido =
+                novosCodigos.get(String(s._id)) ||
+                (falhouSet.has(String(s._id)) ? null : s.codigoSecreto) ||
+                null;
 
             return {
                 id: s._id,
@@ -441,7 +510,7 @@ exports.listSecretCodes = async (req, res) => {
                 codigoFalhou: falhouSet.has(String(s._id)),
                 matricula: s.matricula || '-',
                 vinculado: !!s.responsavel,
-                responsavelEmail: s.responsavel || null
+                responsavelEmail: s.responsavel || null,
             };
         });
 
@@ -468,7 +537,13 @@ exports.listSecretCodes = async (req, res) => {
 
         // `pendingCodes` fica para clientes antigos que ainda fazem polling —
         // false porque não há mais nada sendo gerado em background.
-        res.json({ success: true, data, salas, pendingCodes: false, failedCodes: naoGerados.length });
+        res.json({
+            success: true,
+            data,
+            salas,
+            pendingCodes: false,
+            failedCodes: naoGerados.length,
+        });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
@@ -483,7 +558,7 @@ exports.listSecretCodes = async (req, res) => {
 exports.regenerateSecretCode = async (req, res) => {
     try {
         const aluno = await Aluno.findOne({
-            $or: [{ _id: req.params.id }, { id: req.params.id }]
+            $or: [{ _id: req.params.id }, { id: req.params.id }],
         });
         if (!aluno) {
             return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
@@ -491,7 +566,9 @@ exports.regenerateSecretCode = async (req, res) => {
 
         // Multi-escola: só regenera código de aluno da escola ativa
         if (req.escolaId && aluno.escolaId && String(aluno.escolaId) !== String(req.escolaId)) {
-            return res.status(403).json({ success: false, error: 'Este aluno pertence a outra escola.' });
+            return res
+                .status(403)
+                .json({ success: false, error: 'Este aluno pertence a outra escola.' });
         }
 
         const codigoAnterior = aluno.codigoSecreto;
@@ -501,7 +578,7 @@ exports.regenerateSecretCode = async (req, res) => {
         const { logAction } = require('../utils/auditHelper');
         await logAction(req, 'REGENERATE_STUDENT_CODE', 'Aluno', {
             recursoId: aluno._id,
-            descricao: `Código secreto do aluno "${aluno.nome}" regenerado (anterior invalidado).`
+            descricao: `Código secreto do aluno "${aluno.nome}" regenerado (anterior invalidado).`,
         });
 
         res.json({
@@ -511,8 +588,8 @@ exports.regenerateSecretCode = async (req, res) => {
                 alunoId: aluno._id,
                 nome: `${aluno.nome}${aluno.sobrenome ? ' ' + aluno.sobrenome : ''}`,
                 codigoSecreto: aluno.codigoSecreto,
-                codigoAnteriorInvalidado: !!codigoAnterior
-            }
+                codigoAnteriorInvalidado: !!codigoAnterior,
+            },
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
