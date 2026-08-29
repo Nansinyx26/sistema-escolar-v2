@@ -3,12 +3,12 @@
  * Inicializa e coordena todos os módulos
  */
 
-import auth from './auth-module.js';
 import db from './db.js';
-import exportManager from './export.js';
-import notes from './notes.js';
-import students from './students.js';
+import auth from './auth-module.js';
 import ui from './ui.js';
+import students from './students.js';
+import notes from './notes.js';
+import exportManager from './export.js';
 
 // ============================================
 // ESCAPE DE HTML
@@ -16,17 +16,89 @@ import ui from './ui.js';
 // Nome de professor, matéria, turma e escola vêm do cadastro (dados de um
 // usuário, exibidos para outros) e eram interpolados crus em innerHTML.
 // Ver js/escape-html.js.
-const _ESC_MAP_APP = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-    '`': '&#96;',
-};
+const _ESC_MAP_APP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' };
 function escHtml(v) {
     if (v === null || v === undefined) return '';
-    return String(v).replace(/[&<>"'`]/g, (c) => _ESC_MAP_APP[c]);
+    return String(v).replace(/[&<>"'`]/g, c => _ESC_MAP_APP[c]);
+}
+
+// ============================================
+// RELATÓRIOS DIÁRIOS
+// ============================================
+// Apoio da aba "Relatórios Diários" da página de turma. Fora da classe porque
+// nada aqui depende do estado do App — são conversões de data e as duas
+// chamadas de rede.
+
+const REL_MATERIA_PADRAO = 'Sala Principal';
+const REL_DIAS_NA_QUINZENA = 15;
+const REL_LIMITE_CONTEUDO = 8000;   // mesmo teto do backend
+const REL_DEBOUNCE_MS = 1200;
+const REL_DIAS_SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+const REL_ROTULOS_ESTADO = {
+    vazio: '',
+    pendente: 'Não salvo',
+    salvando: 'Salvando',
+    salvo: 'Salvo',
+    erro: 'Não salvou',
+};
+
+/**
+ * Chave do dia em `AAAA-MM-DD` a partir dos componentes LOCAIS da data.
+ *
+ * `toISOString()` aqui seria bug: ele converte para UTC antes de cortar, então
+ * a meia-noite local de um fuso a leste vira o dia anterior e o relatório
+ * aparece na casinha errada. O dia do diário de classe é o dia do calendário
+ * de quem está na escola.
+ */
+function relChaveDoDia(data) {
+    const mes = String(data.getMonth() + 1).padStart(2, '0');
+    const dia = String(data.getDate()).padStart(2, '0');
+    return `${data.getFullYear()}-${mes}-${dia}`;
+}
+
+function relDataCurta(data) {
+    return data.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+}
+
+function relMesEAno(data) {
+    return data.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+}
+
+function relDataPorExtenso(data) {
+    return data.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+/** Resposta do backend, com o erro preservado — `catch` mudo aqui vira "salvo" mentiroso. */
+async function relResposta(res) {
+    const json = await res.json().catch(() => null);
+    if (!res.ok || !json || json.success !== true) {
+        throw new Error((json && json.error) || `O servidor respondeu ${res.status}.`);
+    }
+    return json;
+}
+
+async function relBuscarQuinzena({ turma, materia, de, ate }) {
+    const busca = new URLSearchParams({ turma, materia, de, ate });
+    const res = await fetch(`${window.API_BASE_URL}/relatorios/diarios?${busca}`, {
+        credentials: 'include',
+    });
+    return (await relResposta(res)).data || [];
+}
+
+async function relGravarDia({ turma, materia, dia, conteudo }) {
+    // Sem o X-CSRF-Token o backend devolve 403 e nada é gravado.
+    const headers = typeof window.csrfHeaders === 'function'
+        ? window.csrfHeaders(true)
+        : { 'Content-Type': 'application/json' };
+
+    const res = await fetch(`${window.API_BASE_URL}/relatorios/diarios`, {
+        method: 'PUT',
+        credentials: 'include',
+        keepalive: true,
+        headers,
+        body: JSON.stringify({ turma, materia, dia, conteudo }),
+    });
+    return relResposta(res);
 }
 
 class App {
@@ -194,11 +266,10 @@ class App {
         const updatedUser = await auth.refreshUser();
         const userToUpdate = updatedUser || user;
 
-        const nomeExibir = userToUpdate.nome || 'Usuário';
-
+        let nomeExibir = userToUpdate.nome || 'Usuário';
+        
         // Atualizar nome na navbar
-        const navUserName =
-            document.getElementById('navUserName') || document.getElementById('userNameSelecionar');
+        const navUserName = document.getElementById('navUserName') || document.getElementById('userNameSelecionar');
         if (navUserName) {
             navUserName.textContent = nomeExibir;
         }
@@ -209,13 +280,11 @@ class App {
         }
 
         // Fallback para elementos que não possuem imagem mas precisam de iniciais
-        ['userAvatar', 'userAvatarSelecionar'].forEach((id) => {
+        ['userAvatar', 'userAvatarSelecionar'].forEach(id => {
             const el = document.getElementById(id);
             if (el && !el.querySelector('img')) {
                 el.classList.add('avatar-placeholder');
-                el.textContent = window.utils?.getInitials
-                    ? window.utils.getInitials(nomeExibir)
-                    : nomeExibir.charAt(0)?.toUpperCase() || 'U';
+                el.textContent = window.utils?.getInitials ? window.utils.getInitials(nomeExibir) : (nomeExibir.charAt(0)?.toUpperCase() || 'U');
             }
         });
     }
@@ -240,9 +309,7 @@ class App {
             if (sessionData) {
                 try {
                     const userData = JSON.parse(sessionData);
-                    const turmasPermitidas = await this.getTurmasPermitidasProfessor(
-                        userData._id || userData.id
-                    );
+                    const turmasPermitidas = await this.getTurmasPermitidasProfessor(userData._id || userData.id);
 
                     if (turmasPermitidas && turmasPermitidas.length > 0) {
                         const mapName = (name) => {
@@ -256,16 +323,13 @@ class App {
                             return n;
                         };
 
-                        const turmasNormalizadas = turmasPermitidas.map((t) => mapName(t));
+                        const turmasNormalizadas = turmasPermitidas.map(t => mapName(t));
 
                         // Strict filter
-                        myTurmas = turmas.filter((turma) => {
+                        myTurmas = turmas.filter(turma => {
                             const turmaIdNorm = mapName(turma.id);
                             // Check both exact match and mapped match
-                            return (
-                                turmasNormalizadas.includes(turma.id) ||
-                                turmasNormalizadas.includes(turmaIdNorm)
-                            );
+                            return turmasNormalizadas.includes(turma.id) || turmasNormalizadas.includes(turmaIdNorm);
                         });
                         filtered = true;
                     }
@@ -293,10 +357,7 @@ class App {
 
             const stats = await notes.getStatsTurma(turma.id);
             turma.media = stats.media;
-            const profsDaTurma = professoresCadastrados[turma.id] || {
-                regente: null,
-                especiais: [],
-            };
+            const profsDaTurma = professoresCadastrados[turma.id] || { regente: null, especiais: [] };
             turma.professorRegente = profsDaTurma.regente;
             turma.professoresEspeciais = profsDaTurma.especiais;
             turmasPorAno[turma.ano].push(turma);
@@ -313,39 +374,21 @@ class App {
                 </div>
             `;
         } else {
-            Object.keys(turmasPorAno)
-                .sort()
-                .forEach((ano) => {
-                    html += `
+            Object.keys(turmasPorAno).sort().forEach(ano => {
+                html += `
                     <div class="ano-section">
                         <h3 class="ano-title">${ano}º Ano</h3>
                         <div class="turmas-row">
-                            ${turmasPorAno[ano]
-                                .map((turma) => {
-                                    const mediaClass =
-                                        turma.media !== null ? ui.getNotaClass(turma.media) : '';
-                                    const mediaDisplay =
-                                        turma.media !== null ? ui.formatNota(turma.media) : '-';
-                                    const nomeRegente = turma.professorRegente
-                                        ? turma.professorRegente.nome
-                                        : turma.professor || 'Sem Professor';
-                                    const fotoRegente =
-                                        turma.professorRegente && turma.professorRegente.foto
-                                            ? turma.professorRegente.foto
-                                            : null;
+                            ${turmasPorAno[ano].map(turma => {
+                    const mediaClass = turma.media !== null ? ui.getNotaClass(turma.media) : '';
+                    const mediaDisplay = turma.media !== null ? ui.formatNota(turma.media) : '-';
+                    const nomeRegente = turma.professorRegente ? turma.professorRegente.nome : (turma.professor || 'Sem Professor');
+                    const fotoRegente = turma.professorRegente && turma.professorRegente.foto ? turma.professorRegente.foto : null;
 
-                                    // Materias buttons
-                                    const materias = [
-                                        'Sala Principal',
-                                        'Artes',
-                                        'Inglês',
-                                        'Educação Física',
-                                        'SEBRAE',
-                                        'Oficina de Leitura',
-                                        'Of. Maker',
-                                    ];
+                    // Materias buttons
+                    const materias = ['Sala Principal', 'Artes', 'Inglês', 'Educação Física', 'SEBRAE', 'Oficina de Leitura', 'Of. Maker'];
 
-                                    return `
+                    return `
                         <div class="turma-card" id="card-${turma.id}">
                             <!-- Header do Card (Clicável para expandir via delegation) -->
                             <div class="turma-card-content">
@@ -360,12 +403,9 @@ class App {
                                     <p>${turma.turno}</p>
                                     <div class="professor-info" style="display:flex; align-items:center; gap:8px; margin-top:5px;">
                                         <div class="foto-mini" style="width:24px; height:24px; border-radius:50%; overflow:hidden; background:#eee;">
-                                            ${
-                                                window.getPhotoUrl(fotoRegente) !==
-                                                '/img/default-avatar.png'
-                                                    ? `<img src="${window.getPhotoUrl(fotoRegente)}" style="width:100%; height:100%; object-fit:cover;">`
-                                                    : `<div style="display:flex; align-items:center; justify-content:center; width:100%; height:100%; font-size:10px; color:#666;">${nomeRegente.charAt(0)}</div>`
-                                            }
+                                            ${window.getPhotoUrl(fotoRegente) !== '/img/default-avatar.png'
+                            ? `<img src="${window.getPhotoUrl(fotoRegente)}" style="width:100%; height:100%; object-fit:cover;">`
+                            : `<div style="display:flex; align-items:center; justify-content:center; width:100%; height:100%; font-size:10px; color:#666;">${nomeRegente.charAt(0)}</div>`}
                                         </div>
                                         <p class="professor" style="margin:0;">${nomeRegente}</p>
                                     </div>
@@ -375,25 +415,19 @@ class App {
 
                             <!-- Abas Expansíveis -->
                             <div class="turma-expand-tabs" id="tabs-${turma.id}">
-                                ${materias
-                                    .map(
-                                        (mat) => `
+                                ${materias.map(mat => `
                                     <button class="turma-tab-btn ${mat === 'Sala Principal' ? 'sala-principal' : ''}" 
                                             data-turma="${turma.id}" data-materia="${mat}">
                                         <i class="bi ${this.getMateriaIcon(mat)}"></i> ${mat}
                                     </button>
-                                `
-                                    )
-                                    .join('')}
+                                `).join('')}
                             </div>
                         </div>
-                    `;
-                                })
-                                .join('')}
+                    `}).join('')}
                         </div>
                     </div>
                 `;
-                });
+            });
         }
 
         container.innerHTML = html;
@@ -403,12 +437,12 @@ class App {
     getMateriaIcon(mat) {
         const icons = {
             'Sala Principal': 'bi-people-fill',
-            Artes: 'bi-palette-fill',
-            Inglês: 'bi-translate',
+            'Artes': 'bi-palette-fill',
+            'Inglês': 'bi-translate',
             'Educação Física': 'bi-bicycle',
-            SEBRAE: 'bi-lightbulb-fill',
+            'SEBRAE': 'bi-lightbulb-fill',
             'Oficina de Leitura': 'bi-book-half',
-            'Of. Maker': 'bi-tools',
+            'Of. Maker': 'bi-tools'
         };
         return icons[mat] || 'bi-book';
     }
@@ -420,7 +454,7 @@ class App {
         const card = document.getElementById(`card-${turmaId}`);
         if (card) {
             // Fecha outros abertos
-            document.querySelectorAll('.turma-card.expanded').forEach((c) => {
+            document.querySelectorAll('.turma-card.expanded').forEach(c => {
                 if (c.id !== `card-${turmaId}`) c.classList.remove('expanded');
             });
             card.classList.toggle('expanded');
@@ -442,17 +476,9 @@ class App {
                 console.log('  -> Professor:', prof.nome, '| Sala:', prof.salaPrincipal);
 
                 // Verifica se é professor especial (Artes, Ed. Física, Inglês)
-                const materiasEspeciais = [
-                    'Inglês',
-                    'Educação Física',
-                    'Artes',
-                    'SEBRAE',
-                    'Oficina de Leitura',
-                    'Of. Maker',
-                ];
-                const ehEspecial =
-                    prof.tipoEspecial ||
-                    (prof.materias && prof.materias.some((m) => materiasEspeciais.includes(m)));
+                const materiasEspeciais = ['Inglês', 'Educação Física', 'Artes', 'SEBRAE', 'Oficina de Leitura', 'Of. Maker'];
+                const ehEspecial = prof.tipoEspecial ||
+                    (prof.materias && prof.materias.some(m => materiasEspeciais.includes(m)));
 
                 if (ehEspecial) {
                     // Professor especial - adiciona a todas as turmas que ele selecionou
@@ -464,7 +490,7 @@ class App {
                         }
                         resultado[turmaIdNormalizado].especiais.push({
                             nome: prof.nome,
-                            materias: prof.materias || [],
+                            materias: prof.materias || []
                         });
                     }
                 } else {
@@ -478,7 +504,7 @@ class App {
                         resultado[salaPrincipal].regente = {
                             nome: prof.nome,
                             foto: prof.foto || null,
-                            materias: prof.materias || [],
+                            materias: prof.materias || []
                         };
                     }
                 }
@@ -504,13 +530,9 @@ class App {
             console.log('Professores no banco:', professores.length);
 
             // Tenta encontrar por ID ou Email
-            const professor = professores.find(
-                (p) =>
-                    (p.idUsuario &&
-                        (p.idUsuario === userId ||
-                            p.idUsuario === user?.id ||
-                            p.idUsuario === user?._id)) ||
-                    (userEmail && p.email === userEmail)
+            const professor = professores.find(p =>
+                (p.idUsuario && (p.idUsuario === userId || p.idUsuario === user?.id || p.idUsuario === user?._id)) ||
+                (userEmail && p.email === userEmail)
             );
 
             console.log('Professor encontrado:', professor ? professor.nome : 'NENHUM');
@@ -561,9 +583,7 @@ class App {
                     e.stopPropagation();
                     e.preventDefault();
                     // Suporte tanto para dataset quanto para atributos legados se a renderização antiga persistir
-                    const turmaId =
-                        tabBtn.dataset.turma ||
-                        tabBtn.getAttribute('onclick')?.match(/'([^']+)'/)[1];
+                    const turmaId = tabBtn.dataset.turma || tabBtn.getAttribute('onclick')?.match(/'([^']+)'/)[1];
                     const materia = tabBtn.dataset.materia || tabBtn.innerText.trim();
 
                     // Fallback se o regex falhar ou attributes não existirem (caso do render antigo)
@@ -654,7 +674,7 @@ class App {
 
         if (!turmaId) {
             ui.error('Turma não especificada');
-            setTimeout(() => (window.location.href = 'selecionar.html'), 2000);
+            setTimeout(() => window.location.href = 'selecionar.html', 2000);
             return;
         }
 
@@ -697,17 +717,15 @@ class App {
             icone.textContent = turmaId;
         }
 
-        const tituloBimestre = document.getElementById('bimestreTitle');
-        if (tituloBimestre?.textContent) tituloBimestre.textContent = `${bimestre}º Bimestre`;
+        document.getElementById('bimestreTitle')?.textContent &&
+            (document.getElementById('bimestreTitle').textContent = `${bimestre}º Bimestre`);
 
         const professoresPorTurma = await this.getProfessoresPorTurma();
         const profDaTurma = professoresPorTurma[turmaId] || { regente: null };
-        const nomeProfessor = profDaTurma.regente
-            ? profDaTurma.regente.nome
-            : turma?.professor || '';
+        const nomeProfessor = profDaTurma.regente ? profDaTurma.regente.nome : (turma?.professor || '');
 
-        const nomeNaBarra = document.getElementById('professorName');
-        if (nomeNaBarra?.textContent) nomeNaBarra.textContent = nomeProfessor;
+        document.getElementById('professorName')?.textContent &&
+            (document.getElementById('professorName').textContent = nomeProfessor);
 
         // Sempre mantém o usuário logado na navbar
         this.updateUserNavbar();
@@ -728,15 +746,11 @@ class App {
         if (!container) return;
 
         const bimestres = [1, 2, 3, 4];
-        container.innerHTML = bimestres
-            .map(
-                (bim) => `
+        container.innerHTML = bimestres.map(bim => `
             <button class="bimestre-tab ${bim === bimestreAtual ? 'active' : ''}" data-bimestre="${bim}">
                 ${bim}º Bim
             </button>
-        `
-            )
-            .join('');
+        `).join('');
     }
 
     /**
@@ -752,8 +766,8 @@ class App {
         // Dynamic Headers
         const theadRow = document.querySelector('.alunos-table thead tr');
         if (theadRow) {
-            const mediaHeader = theadRow.querySelector('.col-media');
-            const mediaGeralHeader = theadRow.querySelector('.col-media-geral');
+            let mediaHeader = theadRow.querySelector('.col-media');
+            let mediaGeralHeader = theadRow.querySelector('.col-media-geral');
 
             if (materia === 'Sala Principal') {
                 if (mediaHeader) mediaHeader.textContent = 'Média Interna';
@@ -789,19 +803,13 @@ class App {
         let html = '';
 
         for (const [index, aluno] of alunos.entries()) {
-            let media,
-                mediaGeral = null;
+            let media, mediaGeral = null;
 
             if (materia === 'Sala Principal') {
                 media = await notes.getMediaSalaPrincipal(aluno.id, bimestre, preloadedNotas);
                 mediaGeral = await notes.getMediaGeralAluno(aluno.id, bimestre, preloadedNotas);
             } else {
-                media = await notes.getMediaAlunoMateria(
-                    aluno.id,
-                    materia,
-                    bimestre,
-                    preloadedNotas
-                );
+                media = await notes.getMediaAlunoMateria(aluno.id, materia, bimestre, preloadedNotas);
             }
 
             const mediaClass = media !== null ? ui.getNotaClass(media) : '';
@@ -812,11 +820,10 @@ class App {
                     <td class="col-num">${index + 1}</td>
                     <td class="col-foto">
                         <div class="foto-container" onclick="app.triggerPhotoUpload('${aluno.id}')" style="cursor: pointer;">
-                            ${
-                                window.getPhotoUrl(aluno.foto) !== '/img/default-avatar.png'
-                                    ? `<img src="${window.getPhotoUrl(aluno.foto)}" alt="${aluno.nome}" class="foto-aluno">`
-                                    : `<div class="foto-placeholder">${aluno.nome.charAt(0)}</div>`
-                            }
+                            ${window.getPhotoUrl(aluno.foto) !== '/img/default-avatar.png'
+                    ? `<img src="${window.getPhotoUrl(aluno.foto)}" alt="${aluno.nome}" class="foto-aluno">`
+                    : `<div class="foto-placeholder">${aluno.nome.charAt(0)}</div>`
+                }
                         </div>
                     </td>
                     <td class="col-nome">
@@ -824,35 +831,23 @@ class App {
                             <span class="nome">${aluno.nome}</span>
                             ${aluno.deficiencia ? `<span class="badge-deficiencia" title="${aluno.deficiencia}">PCD</span>` : ''}
                         </div>
-                        ${
-                            aluno.observacoesBimestre
-                                ? aluno.observacoesBimestre[bimestre]
-                                    ? `<small class="observacoes">${aluno.observacoesBimestre[bimestre]}</small>`
-                                    : ''
-                                : aluno.observacoes
-                                  ? `<small class="observacoes">${aluno.observacoes}</small>`
-                                  : ''
-                        }
+                        ${(aluno.observacoesBimestre)
+                    ? (aluno.observacoesBimestre[bimestre] ? `<small class="observacoes">${aluno.observacoesBimestre[bimestre]}</small>` : '')
+                    : (aluno.observacoes ? `<small class="observacoes">${aluno.observacoes}</small>` : '')}
                     </td>
                     <td class="col-nivel">
                         <div class="level-badge-container">
                             ${(() => {
-                                const niv =
-                                    aluno.nivelBimestre && aluno.nivelBimestre[bimestre]
-                                        ? aluno.nivelBimestre[bimestre]
-                                        : '-';
-                                let circleClass = '';
-                                if (niv === 'PS' || niv === '1') circleClass = 'level-red';
-                                else if (niv === 'SSV' || niv === 'S' || niv === 'S/V/S')
-                                    circleClass = 'level-orange';
-                                else if (niv === 'SCV' || niv === '2') circleClass = 'level-yellow';
-                                else if (niv === 'SA' || niv === '3') circleClass = 'level-blue';
-                                else if (niv === 'A' || niv === '4') circleClass = 'level-green';
+                    const niv = (aluno.nivelBimestre && aluno.nivelBimestre[bimestre]) ? aluno.nivelBimestre[bimestre] : '-';
+                    let circleClass = '';
+                    if (niv === 'PS' || niv === '1') circleClass = 'level-red';
+                    else if (niv === 'SSV' || niv === 'S' || niv === 'S/V/S') circleClass = 'level-orange';
+                    else if (niv === 'SCV' || niv === '2') circleClass = 'level-yellow';
+                    else if (niv === 'SA' || niv === '3') circleClass = 'level-blue';
+                    else if (niv === 'A' || niv === '4') circleClass = 'level-green';
 
-                                return circleClass
-                                    ? `<span class="level-circle ${circleClass}"></span><span>${niv}</span>`
-                                    : niv;
-                            })()}
+                    return circleClass ? `<span class="level-circle ${circleClass}"></span><span>${niv}</span>` : niv;
+                })()}
                         </div>
                     </td>
                     <td class="col-condicao">${aluno.condicao || aluno.deficiencia || '-'}</td>
@@ -860,34 +855,28 @@ class App {
                     <td class="col-faltas" style="font-weight: 500; text-align: center;">${(aluno.faltasBimestre && aluno.faltasBimestre[bimestre]) !== undefined ? aluno.faltasBimestre[bimestre] : '0'}</td>
                     <td class="col-recuperacao">
                         ${(() => {
-                            if (aluno.recuperacaoBimestre && aluno.recuperacaoBimestre[bimestre]) {
-                                const rec = aluno.recuperacaoBimestre[bimestre];
-                                const tags = [];
-                                if (rec.lp)
-                                    tags.push('<span class="badge badge-warning">LP</span>');
-                                if (rec.mat)
-                                    tags.push('<span class="badge badge-warning">Mat</span>');
-                                return tags.length ? tags.join(' ') : '-';
-                            }
-                            return '-';
-                        })()}
+                    if (aluno.recuperacaoBimestre && aluno.recuperacaoBimestre[bimestre]) {
+                        const rec = aluno.recuperacaoBimestre[bimestre];
+                        let tags = [];
+                        if (rec.lp) tags.push('<span class="badge badge-warning">LP</span>');
+                        if (rec.mat) tags.push('<span class="badge badge-warning">Mat</span>');
+                        return tags.length ? tags.join(' ') : '-';
+                    }
+                    return '-';
+                })()}
                     </td>
                     <td class="col-media">
                         <span class="media-valor ${mediaClass}">
                             ${media !== null ? ui.formatNota(media) : '-'}
                         </span>
                     </td>
-                    ${
-                        materia === 'Sala Principal'
-                            ? `
+                    ${materia === 'Sala Principal' ? `
                     <td class="col-media col-media-geral">
                         <span class="media-valor ${mediaGeralClass}">
                             ${mediaGeral !== null ? ui.formatNota(mediaGeral) : '-'}
                         </span>
                     </td>
-                    `
-                            : ''
-                    }
+                    ` : ''}
                     <td class="col-acoes">
                         <button class="btn-icon btn-editar" title="Editar" data-action="editar">
                             <i class="bi bi-pencil-fill"></i>
@@ -922,57 +911,48 @@ class App {
             else window.location.href = 'selecionar.html';
         });
 
-        // ── Abas de visão (Alunos, Faltas, Relatórios) ──────────────────
-        // O markup ganhou `role="tablist"`/`aria-selected`/`aria-controls` na
-        // Issue #132; aqui o estado é mantido em sincronia e as setas passam a
-        // navegar entre as abas, como o padrão de `tablist` exige. Sem isso a
-        // semântica seria uma promessa que o teclado não cumpre.
-        const viewTabs = [...document.querySelectorAll('#viewTabs [role="tab"]')];
+        // Abas de visão (Alunos, Faltas, Relatórios)
+        const viewTabs = document.querySelectorAll('#viewTabs button');
+        viewTabs.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                viewTabs.forEach(b => {
+                    b.classList.remove('active');
+                    b.setAttribute('aria-selected', 'false');
+                    b.setAttribute('tabindex', '-1');
+                });
+                e.currentTarget.classList.add('active');
+                e.currentTarget.setAttribute('aria-selected', 'true');
+                e.currentTarget.setAttribute('tabindex', '0');
 
-        const ativarAba = (aba, moverFoco = false) => {
-            const view = aba.dataset.view;
+                const view = e.currentTarget.dataset.view;
 
-            viewTabs.forEach((b) => {
-                const ativa = b === aba;
-                b.classList.toggle('active', ativa);
-                b.setAttribute('aria-selected', String(ativa));
-                // Uma aba só na ordem de tabulação: o Tab entra e sai do
-                // conjunto, e as setas escolhem qual.
-                b.tabIndex = ativa ? 0 : -1;
-            });
+                const alunosContainer = document.querySelector('.alunos-container');
+                const faltasContainer = document.querySelector('.faltas-container');
+                const relatoriosContainer = document.querySelector('.relatorios-container');
 
-            const paineis = {
-                notas: document.querySelector('.alunos-container'),
-                faltas: document.querySelector('.faltas-container'),
-                relatorios: document.querySelector('.relatorios-container'),
-            };
-            for (const [nome, painel] of Object.entries(paineis)) {
-                if (painel) painel.style.display = nome === view ? 'block' : 'none';
-            }
+                if (alunosContainer) alunosContainer.hidden = view !== 'notas';
+                if (faltasContainer) faltasContainer.hidden = view !== 'faltas';
+                if (relatoriosContainer) relatoriosContainer.hidden = view !== 'relatorios';
 
-            if (moverFoco) aba.focus();
+                if (view === 'faltas') this.renderFaltas(turmaId, bimestre);
 
-            if (view === 'faltas') this.renderFaltas(turmaId, bimestre);
-            if (view === 'relatorios') this.renderRelatorios(turmaId, bimestre);
-        };
-
-        viewTabs.forEach((btn, indice) => {
-            btn.addEventListener('click', (e) => ativarAba(e.currentTarget));
-
-            btn.addEventListener('keydown', (e) => {
-                const passo = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
-                if (passo) {
-                    e.preventDefault();
-                    const total = viewTabs.length;
-                    ativarAba(viewTabs[(indice + passo + total) % total], true);
-                    return;
-                }
-                if (e.key === 'Home' || e.key === 'End') {
-                    e.preventDefault();
-                    ativarAba(e.key === 'Home' ? viewTabs[0] : viewTabs[viewTabs.length - 1], true);
+                // Só monta na primeira visita. Remontar a cada clique jogaria
+                // fora o parágrafo que ainda está no debounce.
+                if (view === 'relatorios' && !this.relatoriosEstado) {
+                    this.renderRelatorios(turmaId, bimestre);
                 }
             });
         });
+
+        // Fechar a aba com texto pendente não pode custar o relatório do dia.
+        // `pagehide` (e não `beforeunload`) é o que dispara também no iOS.
+        if (!this.relatoriosDescargaLigada) {
+            this.relatoriosDescargaLigada = true;
+            window.addEventListener('pagehide', () => { this.salvarRelatoriosPendentes(); });
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') this.salvarRelatoriosPendentes();
+            });
+        }
 
         // Adicionar aluno
         document.getElementById('btnAddAluno')?.addEventListener('click', () => {
@@ -1029,11 +1009,10 @@ class App {
                 case 'grafico':
                     window.location.href = `../graficos/index.html?aluno=${alunoId}`;
                     break;
-                case 'excluir': {
+                case 'excluir':
                     const alunoNomeExcluir = row.querySelector('.nome')?.textContent || 'Aluno';
                     this.confirmDeleteAluno(alunoId, alunoNomeExcluir);
                     break;
-                }
             }
         });
     }
@@ -1062,9 +1041,7 @@ class App {
                 if (user.perfil === 'professor') {
                     // Busca perfil completo para ter a escola
                     const professores = await db.getAll('professores');
-                    const professor = professores.find(
-                        (p) => p.idUsuario === user._id || p.email === user.email
-                    );
+                    const professor = professores.find(p => p.idUsuario === user._id || p.email === user.email);
                     if (professor) {
                         nomeProfessor = professor.nome || user.nome;
                         nomeEscola = professor.escola || 'Escola não informada';
@@ -1072,11 +1049,11 @@ class App {
                 } else if (user.perfil === 'diretor') {
                     // Busca perfil completo do diretor
                     const diretores = await db.getAll('diretores');
-                    const diretor = diretores.find((d) => d.idUsuario === user._id);
+                    const diretor = diretores.find(d => d.idUsuario === user._id);
                     if (diretor) {
-                        nomeProfessor = user.nome; // No caso de diretor vendo, mostra nome dele ou generic?
+                        nomeProfessor = user.nome; // No caso de diretor vendo, mostra nome dele ou generic? 
                         // O user pediu "nome do professor". Se for diretor vendo a turma, deveria ser o prof da turma?
-                        // Por simplificação e segurança no momento, assumimos o usuário logado se for prof.
+                        // Por simplificação e segurança no momento, assumimos o usuário logado se for prof. 
                         // Se for diretor, talvez quisesse ver o prof da turma.
                         // Vamos tentar pegar o prof da turma se possível.
                         nomeEscola = diretor.escola || 'Escola não informada';
@@ -1110,8 +1087,8 @@ class App {
                         data: data,
                         materia: materia,
                         nomeProfessor: nomeProfessor, // Necessário para validação de grade
-                        presencas: presencas, // [{ alunoId, presente }]
-                    }),
+                        presencas: presencas // [{ alunoId, presente }]
+                    })
                 });
                 const json = await response.json();
                 if (!json.success) throw new Error(json.error);
@@ -1125,15 +1102,13 @@ class App {
 
         const carregarFaltas = async (data) => {
             try {
-                const response = await fetch(`${db.baseUrl}/faltas?turma=${turmaId}&data=${data}`, {
-                    credentials: 'include',
-                });
+                const response = await fetch(`${db.baseUrl}/faltas?turma=${turmaId}&data=${data}`, { credentials: 'include' });
                 const json = await response.json();
                 if (json.success) {
                     // Filtra apenas as faltas (presente: false) para manter compatibilidade com a lógica visual
-                    return json.data
-                        .filter((a) => !a.presente && a.materia === materia)
-                        .map((a) => (typeof a.aluno === 'string' ? a.aluno : a.aluno._id));
+                    return json.data.filter(a => !a.presente && a.materia === materia).map(a =>
+                        (typeof a.aluno === 'string' ? a.aluno : a.aluno._id)
+                    );
                 }
                 return [];
             } catch (e) {
@@ -1152,7 +1127,7 @@ class App {
             const totalPresentes = totalAlunos - totalFaltas;
 
             // Atualizar checkboxes e visual
-            document.querySelectorAll('.falta-check').forEach((chk) => {
+            document.querySelectorAll('.falta-check').forEach(chk => {
                 const isAbsent = faltasSalvas.includes(chk.dataset.alunoId);
                 chk.checked = isAbsent;
                 const card = document.getElementById(`card-aluno-${chk.dataset.alunoId}`);
@@ -1169,6 +1144,7 @@ class App {
             if (marcadorPresentes) marcadorPresentes.textContent = totalPresentes;
             if (marcadorFaltas) marcadorFaltas.textContent = totalFaltas;
         };
+
 
         container.innerHTML = `
             <div class="faltas-content">
@@ -1212,19 +1188,13 @@ class App {
 
                 <!-- Lista de Alunos (Grid) -->
                 <div class="attendance-grid">
-                    ${
-                        alunos.length > 0
-                            ? alunos
-                                  .map(
-                                      (aluno) => `
+                    ${alunos.length > 0 ? alunos.map(aluno => `
                         <div class="student-attendance-card" id="card-aluno-${aluno.id}" onclick="document.getElementById('check-${aluno.id}').click()">
                             <div class="student-data">
                                 <div class="student-mini-avatar">
-                                    ${
-                                        aluno.foto
-                                            ? `<img src="${aluno.foto}">`
-                                            : aluno.nome.charAt(0)
-                                    }
+                                    ${aluno.foto
+                ? `<img src="${aluno.foto}">`
+                : aluno.nome.charAt(0)}
                                 </div>
                                 <div class="student-names">
                                     <h4>${aluno.nome.split(' ')[0]} ${aluno.nome.split(' ')[1] || ''}</h4>
@@ -1237,11 +1207,7 @@ class App {
                                 <span class="slider"></span>
                             </label>
                         </div>
-                    `
-                                  )
-                                  .join('')
-                            : '<div class="empty-state"><p>Nenhum aluno encontrado para esta turma.</p></div>'
-                    }
+                    `).join('') : '<div class="empty-state"><p>Nenhum aluno encontrado para esta turma.</p></div>'}
                 </div>
 
                 <!-- Botão Flutuante Salvar -->
@@ -1257,7 +1223,7 @@ class App {
         await atualizarMarcadores();
 
         // Atualizar marcadores ao marcar/desmarcar checkbox
-        document.querySelectorAll('.falta-check').forEach((chk) => {
+        document.querySelectorAll('.falta-check').forEach(chk => {
             chk.addEventListener('change', (e) => {
                 const isAbsent = e.target.checked;
                 const card = document.getElementById(`card-aluno-${e.target.dataset.alunoId}`);
@@ -1288,10 +1254,10 @@ class App {
 
             // Prepara presenças de TODOS os alunos
             const presencas = [];
-            document.querySelectorAll('.falta-check').forEach((chk) => {
+            document.querySelectorAll('.falta-check').forEach(chk => {
                 presencas.push({
                     alunoId: chk.dataset.alunoId,
-                    presente: !chk.checked,
+                    presente: !chk.checked
                 });
             });
 
@@ -1300,12 +1266,10 @@ class App {
             ui.loading(false);
 
             if (sucesso) {
-                const faltasCount = presencas.filter((p) => !p.presente).length;
-                ui.success(
-                    `✅ Chamada salva e sincronizada! ${new Date(data + 'T00:00:00').toLocaleDateString('pt-BR')} - ${faltasCount} falta(s).`
-                );
+                const faltasCount = presencas.filter(p => !p.presente).length;
+                ui.success(`✅ Chamada salva e sincronizada! ${new Date(data + 'T00:00:00').toLocaleDateString('pt-BR')} - ${faltasCount} falta(s).`);
 
-                // Avançar para o próximo dia?
+                // Avançar para o próximo dia? 
                 // Talvez melhor deixar o usuário ver o feedback, mas vou manter a lógica original de avançar.
                 // Mas geralmente professores lançam um dia por vez.
                 const dataAtual = new Date(data + 'T00:00:00');
@@ -1319,384 +1283,357 @@ class App {
     }
 
     /**
-     * Chave do dia, em hora LOCAL.
+     * Aba "Relatórios Diários" — o diário de classe da turma.
      *
-     * O código anterior usava `toISOString().split('T')[0]` sobre uma data
-     * local. `toISOString` converte para UTC, então em qualquer fuso a oeste de
-     * Greenwich a data de um cartão da noite virava o dia seguinte — e o
-     * relatório de segunda era gravado como terça. Em UTC-3 isso acontece a
-     * partir das 21h. Ver Issue #132.
-     */
-    _chaveDoDia(data) {
-        const mes = String(data.getMonth() + 1).padStart(2, '0');
-        const dia = String(data.getDate()).padStart(2, '0');
-        return `${data.getFullYear()}-${mes}-${dia}`;
-    }
-
-    /**
-     * Grava um dia. Idempotente do lado do servidor (`PUT /relatorios/diario`
-     * faz upsert por turma + matéria + dia), então repetir a chamada não cria
-     * registro duplicado — que era o defeito de "salvar duas vezes seguidas".
-     */
-    async _salvarRelatorioDiario({ turma, materia, data, conteudo }) {
-        const res = await fetch(`${window.API_BASE_URL}/relatorios/diario`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ turma, materia, data, conteudo }),
-        });
-        const json = await res.json().catch(() => ({}));
-        if (!res.ok || !json.success) {
-            throw new Error(json.error || `Falha ao salvar (HTTP ${res.status})`);
-        }
-        return json.data;
-    }
-
-    /**
-     * Descarrega TUDO que estiver esperando o debounce.
+     * Quinze dias por tela, um cartão por dia. O texto é gravado por
+     * `PUT /relatorios/diarios`, que é um upsert idempotente: não há consulta
+     * antes de gravar e o mesmo dia enviado duas vezes converge para uma linha
+     * só. Cada dia tem o seu próprio debounce e a sua própria fila — digitar no
+     * dia 12 não pode cancelar nem atropelar o auto-save pendente do dia 11.
      *
-     * Trocar de quinzena ou sair da página descartava silenciosamente o texto
-     * que ainda não tinha sido enviado. Aqui o que está pendente é gravado
-     * antes de a tela mudar.
+     * Motion (docs/MOTION.md · Emil primário): digitar e salvar são de altíssima
+     * frequência, então o estado do save é troca de texto instantânea, nunca
+     * animação. O único movimento é a entrada do conteúdo depois do skeleton.
+     *
+     * @param {string} turmaId
+     * @param {number} bimestre
+     * @param {number} quinzenaOffset  0 = quinzena que termina hoje; -1 = anterior
      */
-    async _descarregarRelatoriosPendentes() {
-        const estado = this._relatorios;
-        if (!estado) return;
-
-        const pendentes = [...estado.pendentes.values()];
-        estado.pendentes.clear();
-        for (const timer of estado.timers.values()) clearTimeout(timer);
-        estado.timers.clear();
-
-        await Promise.allSettled(pendentes.map((p) => this._salvarRelatorioDiario(p)));
-    }
-
     async renderRelatorios(turmaId, bimestre, quinzenaOffset = 0) {
         const container = document.querySelector('.relatorios-container');
         if (!container) return;
 
-        // Antes de qualquer coisa: o que estava no debounce da quinzena
-        // anterior precisa chegar ao servidor. Sem isto, navegar entre
-        // quinzenas apagava o último parágrafo digitado.
-        await this._descarregarRelatoriosPendentes();
+        // O que estiver no debounce vai para o servidor antes de a tela mudar.
+        await this.salvarRelatoriosPendentes();
 
         const params = new URLSearchParams(window.location.search);
-        const materia = params.get('materia') || 'Sala Principal';
+        const materia = params.get('materia') || REL_MATERIA_PADRAO;
 
-        const ATRASO_AUTOSAVE_MS = 1200;
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        const chaveHoje = relChaveDoDia(hoje);
 
-        // Estado desta renderização. Vive na instância, e não no escopo da
-        // função, porque o descarregamento acima precisa alcançá-lo mesmo
-        // depois de a tela ter sido redesenhada.
-        this._relatorios = {
-            turma: turmaId,
-            materia,
-            timers: new Map(),
-            pendentes: new Map(),
-        };
-        const estado = this._relatorios;
-
-        // ── Quinzena ────────────────────────────────────────────────────
-        // O fim da janela é hoje deslocado de 15 dias por passo; os 15 dias
-        // exibidos terminam nele.
-        const fimDaJanela = new Date();
-        fimDaJanela.setHours(0, 0, 0, 0);
-        fimDaJanela.setDate(fimDaJanela.getDate() + quinzenaOffset * 15);
+        // A quinzena termina hoje e anda 15 dias por vez para trás. Relatório
+        // de aula que ainda não aconteceu não é caso de uso: `offset` positivo
+        // não existe e o botão "Próxima" trava no presente.
+        const offset = Math.min(0, quinzenaOffset);
+        const fim = new Date(hoje);
+        fim.setDate(fim.getDate() + offset * REL_DIAS_NA_QUINZENA);
 
         const dias = [];
-        for (let i = 14; i >= 0; i--) {
-            const d = new Date(fimDaJanela);
-            d.setDate(fimDaJanela.getDate() - i);
+        for (let i = REL_DIAS_NA_QUINZENA - 1; i >= 0; i--) {
+            const d = new Date(fim);
+            d.setDate(fim.getDate() - i);
             dias.push(d);
         }
+        const chaveInicio = relChaveDoDia(dias[0]);
+        const chaveFim = relChaveDoDia(dias[dias.length - 1]);
 
-        const formatoCurto = { day: '2-digit', month: 'short' };
-        const dataInicio = dias[0].toLocaleDateString('pt-BR', formatoCurto);
-        const dataFim = dias[14].toLocaleDateString('pt-BR', formatoCurto);
+        // Estado da tela. Um registro por dia, com o texto conhecido pelo
+        // servidor (`gravado`) separado do que está na caixa (`texto`) — é a
+        // diferença entre os dois que diz se há algo pendente.
+        const estado = {
+            turma: turmaId,
+            materia,
+            offset,
+            dias: new Map(dias.map(d => {
+                const chave = relChaveDoDia(d);
+                return [chave, { chave, texto: '', gravado: '', falhou: false, timer: null, fila: Promise.resolve() }];
+            }))
+        };
+        this.relatoriosEstado = estado;
 
-        // "Próxima" só faz sentido para trás: preencher relatório de data
-        // futura não é um caso de uso, é um jeito de sujar o histórico.
-        const naQuinzenaCorrente = quinzenaOffset >= 0;
+        const periodo = `${relDataCurta(dias[0])} – ${relDataCurta(dias[dias.length - 1])}`;
 
-        // ── Carregamento com skeleton ───────────────────────────────────
-        // Regra 1 do docs/MOTION.md: nada de tela em branco nem spinner solto.
-        const temMotion = typeof window.Motion?.skeleton === 'function';
-        if (temMotion) {
-            window.Motion.skeleton(container, { preset: 'card', count: 6 });
-        } else {
-            container.innerHTML =
-                '<div class="relatorios-grid" aria-busy="true">' +
-                Array.from(
-                    { length: 6 },
-                    () => '<div class="skeleton report-card-skeleton"></div>'
-                ).join('') +
-                '</div>';
-        }
-
-        let relatoriosSalvos = [];
-        let falhaAoCarregar = false;
-        try {
-            const busca = new URLSearchParams({
-                turma: turmaId,
-                materia,
-                de: this._chaveDoDia(dias[0]),
-                ate: this._chaveDoDia(dias[14]),
-            });
-            const res = await fetch(`${window.API_BASE_URL}/relatorios?${busca}`);
-            const json = await res.json();
-            relatoriosSalvos = Array.isArray(json.data) ? json.data : [];
-        } catch (e) {
-            // Falha ao carregar não pode virar "tudo em branco" silencioso: a
-            // pessoa digitaria por cima de um texto que existe no servidor.
-            falhaAoCarregar = true;
-        }
-
-        const porDia = new Map();
-        for (const r of relatoriosSalvos) {
-            const d = new Date(r.data);
-            // A data vem do servidor em UTC 00:00; ler as partes em UTC evita
-            // que o fuso local a jogue para o dia anterior.
-            const chave = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
-            porDia.set(chave, r.conteudo || '');
-        }
-
-        const escapar = (texto) =>
-            String(texto).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-        const boxesHtml = dias
-            .map((data) => {
-                const chave = this._chaveDoDia(data);
-                const diaDoMes = data.getDate();
-                const mes = data.toLocaleDateString('pt-BR', { month: 'long' });
-                const ano = data.getFullYear();
-                const rotulo = data.toLocaleDateString('pt-BR', {
-                    weekday: 'long',
-                    day: '2-digit',
-                    month: 'long',
-                });
-                const idCampo = `relatorio-${chave}`;
-                const conteudo = porDia.get(chave) || '';
-
-                return `
-                <div class="report-card" data-date="${chave}">
-                    <div class="report-card-header">
-                        <div class="report-date-badge">
-                            <span class="report-day">${diaDoMes}</span>
-                        </div>
-                        <div class="report-date-info">
-                            <span class="report-month-year">${mes} de ${ano}</span>
-                        </div>
-                        <span class="report-status" data-status="" data-date="${chave}"></span>
+        container.innerHTML = `
+            <div class="relatorios-painel">
+                <header class="relatorios-cabecalho">
+                    <div class="relatorios-identificacao">
+                        <h3>Relatórios diários</h3>
+                        <p class="relatorios-materia">${escHtml(materia)} · turma ${escHtml(turmaId)}</p>
                     </div>
-                    <div class="report-card-body">
-                        <label class="sr-only" for="${idCampo}">Relatório de ${rotulo}</label>
-                        <textarea
-                            class="form-input relatorio-text"
-                            id="${idCampo}"
-                            data-date="${chave}"
-                            rows="4"
-                            placeholder="Descreva as atividades e observações do dia..."
-                        >${escapar(conteudo)}</textarea>
-                    </div>
-                    <div class="report-card-footer">
-                        <button type="button" class="btn btn-salvar-individual" data-date="${chave}">
-                            <i class="bi bi-check2-circle" aria-hidden="true"></i> Salvar
+                    <div class="relatorios-navegacao">
+                        <button type="button" class="btn btn-outline btn-sm" id="btnQuinzenaAnterior"
+                            aria-label="Quinzena anterior">
+                            <i class="bi bi-chevron-left"></i> Anterior
+                        </button>
+                        <span class="relatorios-periodo">${escHtml(periodo)}</span>
+                        <button type="button" class="btn btn-outline btn-sm" id="btnQuinzenaSeguinte"
+                            aria-label="Próxima quinzena" ${offset >= 0 ? 'disabled' : ''}>
+                            Próxima <i class="bi bi-chevron-right"></i>
                         </button>
                     </div>
-                </div>
-            `;
-            })
-            .join('');
+                </header>
 
-        const html = `
-            <div class="relatorios-modern-layout">
-                <div class="relatorios-header-card">
-                    <div class="header-title">
-                        <div class="icon-wrapper" aria-hidden="true">
-                            <i class="bi bi-journal-richtext"></i>
-                        </div>
-                        <div class="title-text">
-                            <h3>Relatórios Diários</h3>
-                            <p>${escapar(materia)}</p>
-                        </div>
-                    </div>
-
-                    <div class="date-navigation">
-                        <button type="button" class="btn btn-outline btn-sm btn-quinzena" id="btnQuinzenaAnterior">
-                            <i class="bi bi-chevron-left" aria-hidden="true"></i> Anterior
-                        </button>
-                        <div class="current-period">
-                            <span class="period-badge">${dataInicio} - ${dataFim}</span>
-                        </div>
-                        <button type="button" class="btn btn-outline btn-sm btn-quinzena" id="btnQuinzenaSeguinte"
-                            ${naQuinzenaCorrente ? 'disabled aria-disabled="true" title="Esta já é a quinzena mais recente"' : ''}>
-                            Próxima <i class="bi bi-chevron-right" aria-hidden="true"></i>
-                        </button>
-                    </div>
+                <div class="relatorios-medidor" id="relatoriosMedidor" role="group"
+                    aria-label="Dias da quinzena">
                 </div>
 
-                ${
-                    falhaAoCarregar
-                        ? `<p class="relatorios-aviso" role="alert">
-                               Não foi possível carregar os relatórios já salvos desta quinzena.
-                               Recarregue a página antes de digitar, para não escrever por cima do que existe.
-                           </p>`
-                        : ''
-                }
-
-                <div class="relatorios-grid">
-                    ${boxesHtml}
-                </div>
-
-                <div class="relatorios-bottom-bar">
-                    <div class="autosave-info">
-                        <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
-                        <span><strong>Auto-save ativado:</strong> cada dia é salvo sozinho pouco depois de você parar de digitar.</span>
-                    </div>
-                    <button type="button" class="btn btn-success btn-salvar-todos" id="btnSalvarTodos">
-                        <i class="bi bi-cloud-check-fill" aria-hidden="true"></i> Salvar Todos os Registros
+                <div class="relatorios-resumo">
+                    <p class="relatorios-contagem" id="relatoriosContagem">Carregando a quinzena…</p>
+                    <button type="button" class="btn btn-primary btn-sm" id="btnSalvarTodos"
+                        data-busy-label="Salvando…">
+                        <i class="bi bi-check2-all"></i> Salvar tudo
                     </button>
                 </div>
 
-                <!-- Uma única região viva para a aba inteira, em vez de 15.
-                     Só um cartão muda de estado por vez, e um leitor de tela com
-                     quinze regiões vivas concorrentes é ruído, não informação. -->
-                <p class="sr-only" id="relatoriosAnuncio" role="status" aria-live="polite"></p>
+                <div id="relatoriosCorpo"></div>
+                <p class="sr-only" id="relatoriosAviso" role="status" aria-live="polite"></p>
             </div>
         `;
 
-        if (temMotion && typeof window.Motion.ready === 'function') {
-            window.Motion.ready(container, html);
-        } else {
-            container.innerHTML = html;
+        const corpo = container.querySelector('#relatoriosCorpo');
+        const medidor = container.querySelector('#relatoriosMedidor');
+        const contagem = container.querySelector('#relatoriosContagem');
+        const aviso = container.querySelector('#relatoriosAviso');
+
+        // Skeleton em vez de spinner (docs/MOTION.md, regra 1).
+        if (window.Motion) window.Motion.skeleton(corpo, { preset: 'card', count: 6 });
+
+        let salvos;
+        try {
+            salvos = await relBuscarQuinzena({ turma: turmaId, materia, de: chaveInicio, ate: chaveFim });
+        } catch (erro) {
+            const conteudoErro = `
+                <div class="relatorios-falha" role="alert">
+                    <i class="bi bi-cloud-slash"></i>
+                    <div>
+                        <h4>Não foi possível carregar os relatórios</h4>
+                        <p>${escHtml(erro.message)}</p>
+                    </div>
+                    <button type="button" class="btn btn-outline btn-sm" id="btnRelatoriosTentarDeNovo">
+                        Tentar de novo
+                    </button>
+                </div>
+            `;
+            if (window.Motion) window.Motion.ready(corpo, conteudoErro);
+            else corpo.innerHTML = conteudoErro;
+            contagem.textContent = 'Os relatórios desta quinzena não foram carregados.';
+            corpo.querySelector('#btnRelatoriosTentarDeNovo')
+                ?.addEventListener('click', () => this.renderRelatorios(turmaId, bimestre, offset));
+            container.querySelector('#btnSalvarTodos')?.setAttribute('disabled', 'disabled');
+            this.ligarNavegacaoRelatorios(container, turmaId, bimestre, offset);
+            return;
         }
 
-        // ── Estado de salvamento ────────────────────────────────────────
-        const anuncio = container.querySelector('#relatoriosAnuncio');
-        const ROTULOS = {
-            salvando: 'Salvando…',
-            salvo: 'Salvo',
-            'nao-salvo': 'Não salvo',
-            erro: 'Erro ao salvar',
-        };
-
-        const marcarEstado = (chave, estadoDoDia) => {
-            const marcador = container.querySelector(`.report-status[data-date="${chave}"]`);
-            if (!marcador) return;
-            marcador.dataset.status = estadoDoDia;
-            marcador.textContent = ROTULOS[estadoDoDia] || '';
-            if (anuncio && (estadoDoDia === 'salvo' || estadoDoDia === 'erro')) {
-                const cartao = container.querySelector(
-                    `.report-card[data-date="${chave}"] .report-day`
-                );
-                anuncio.textContent = `Relatório do dia ${cartao?.textContent || chave}: ${ROTULOS[estadoDoDia]}`;
+        salvos.forEach(registro => {
+            const item = estado.dias.get(registro.dia);
+            if (item) {
+                item.texto = registro.conteudo || '';
+                item.gravado = item.texto;
             }
+        });
+
+        const cartoes = dias.map((data, i) => {
+            const chave = relChaveDoDia(data);
+            const item = estado.dias.get(chave);
+            const fimDeSemana = data.getDay() === 0 || data.getDay() === 6;
+            const ehHoje = chave === chaveHoje;
+            const rotulo = relDataPorExtenso(data);
+            // O mês só aparece onde ele muda. Repeti-lo nos quinze cartões era
+            // ruído: o que distingue um dia do outro é o número e o dia da
+            // semana, não "agosto de 2026" quinze vezes.
+            const novoMes = i === 0 || data.getMonth() !== dias[i - 1].getMonth();
+
+            return `
+                <article class="relatorio-dia${fimDeSemana ? ' e-fim-de-semana' : ''}${ehHoje ? ' e-hoje' : ''}"
+                    data-dia="${chave}" data-preenchido="${item.texto ? 'sim' : 'nao'}">
+                    <header class="relatorio-dia-topo">
+                        <time class="relatorio-dia-data" datetime="${chave}">
+                            <span class="relatorio-dia-numero">${data.getDate()}</span>
+                            <span class="relatorio-dia-semana">${REL_DIAS_SEMANA[data.getDay()]}</span>
+                        </time>
+                        <div class="relatorio-dia-contexto">
+                            ${novoMes ? `<span class="relatorio-dia-mes">${escHtml(relMesEAno(data))}</span>` : ''}
+                            ${ehHoje ? '<span class="relatorio-etiqueta e-destaque">Hoje</span>' : ''}
+                        </div>
+                        <span class="relatorio-estado" data-estado="vazio"></span>
+                    </header>
+                    <label class="sr-only" for="relatorio-${chave}">Relatório de ${escHtml(rotulo)}</label>
+                    <textarea id="relatorio-${chave}" class="relatorio-texto" data-dia="${chave}" rows="4"
+                        maxlength="${REL_LIMITE_CONTEUDO}"
+                        placeholder="O que foi trabalhado com a turma neste dia?"></textarea>
+                </article>
+            `;
+        }).join('');
+
+        const grade = `<div class="relatorios-grade">${cartoes}</div>`;
+        if (window.Motion) window.Motion.ready(corpo, grade);
+        else corpo.innerHTML = grade;
+
+        // Texto vai por `value`, nunca por innerHTML: é conteúdo escrito por um
+        // usuário e lido por outros.
+        corpo.querySelectorAll('.relatorio-texto').forEach(caixa => {
+            const item = estado.dias.get(caixa.dataset.dia);
+            if (item) caixa.value = item.texto;
+        });
+
+        medidor.innerHTML = dias.map(data => {
+            const chave = relChaveDoDia(data);
+            const classes = ['relatorios-marca'];
+            if (chave === chaveHoje) classes.push('e-hoje');
+            if (data.getDay() === 0 || data.getDay() === 6) classes.push('e-fim-de-semana');
+            return `<button type="button" class="${classes.join(' ')}" data-ir-para="${chave}"></button>`;
+        }).join('');
+
+        // O medidor é montado uma vez e depois só troca de classe e de rótulo.
+        // Recriar o innerHTML a cada save tirava o foco de quem navegava por
+        // ele pelo teclado.
+        const atualizarMedidor = () => {
+            let preenchidos = 0;
+            dias.forEach((data, i) => {
+                const chave = relChaveDoDia(data);
+                const preenchido = Boolean(estado.dias.get(chave).texto.trim());
+                if (preenchido) preenchidos++;
+                const marca = medidor.children[i];
+                if (!marca || marca.dataset.preenchida === String(preenchido)) return;
+
+                marca.dataset.preenchida = String(preenchido);
+                marca.classList.toggle('e-preenchida', preenchido);
+                const rotulo = `${relDataPorExtenso(data)}: ${preenchido ? 'relatório escrito' : 'sem relatório'}`;
+                marca.title = rotulo;
+                marca.setAttribute('aria-label', rotulo);
+            });
+
+            contagem.textContent = preenchidos === REL_DIAS_NA_QUINZENA
+                ? `Quinzena completa: ${REL_DIAS_NA_QUINZENA} de ${REL_DIAS_NA_QUINZENA} dias escritos.`
+                : `${preenchidos} de ${REL_DIAS_NA_QUINZENA} dias escritos nesta quinzena.`;
+        };
+        atualizarMedidor();
+
+        const marcarEstado = (chave, valor, detalhe) => {
+            const cartao = corpo.querySelector(`.relatorio-dia[data-dia="${chave}"]`);
+            if (!cartao) return;
+            const marcador = cartao.querySelector('.relatorio-estado');
+            marcador.dataset.estado = valor;
+            marcador.textContent = detalhe || REL_ROTULOS_ESTADO[valor] || '';
+            cartao.dataset.preenchido = estado.dias.get(chave).texto.trim() ? 'sim' : 'nao';
         };
 
-        const gravar = async (chave, conteudo) => {
-            estado.pendentes.delete(chave);
-            marcarEstado(chave, 'salvando');
-            try {
-                await this._salvarRelatorioDiario({
-                    turma: turmaId,
-                    materia,
-                    data: chave,
-                    conteudo,
-                });
-                marcarEstado(chave, 'salvo');
-                return true;
-            } catch (e) {
-                estado.pendentes.set(chave, { turma: turmaId, materia, data: chave, conteudo });
-                marcarEstado(chave, 'erro');
-                return false;
+        /**
+         * Grava um dia. A fila por dia é o que impede duas respostas fora de
+         * ordem — o texto mais novo é sempre o último a chegar ao servidor.
+         */
+        const gravarDia = (chave) => {
+            const item = estado.dias.get(chave);
+            if (!item) return Promise.resolve();
+
+            item.fila = item.fila.then(async () => {
+                const texto = item.texto;
+                if (texto === item.gravado) return;
+
+                marcarEstado(chave, 'salvando');
+                try {
+                    await relGravarDia({ turma: turmaId, materia, dia: chave, conteudo: texto });
+                    item.gravado = texto;
+                    item.falhou = false;
+                    marcarEstado(chave, texto.trim() ? 'salvo' : 'vazio');
+                    if (aviso && texto.trim()) aviso.textContent = `Relatório de ${relDataPorExtenso(new Date(`${chave}T12:00:00`))} salvo.`;
+                } catch (erro) {
+                    item.falhou = true;
+                    marcarEstado(chave, 'erro', 'Não salvou');
+                    if (aviso) aviso.textContent = `O relatório de ${relDataPorExtenso(new Date(`${chave}T12:00:00`))} não foi salvo: ${erro.message}`;
+                    console.error(`[relatorios] falha ao salvar ${chave}:`, erro);
+                } finally {
+                    atualizarMedidor();
+                }
+            });
+
+            return item.fila;
+        };
+        estado.gravarDia = gravarDia;
+
+        corpo.addEventListener('input', (e) => {
+            const caixa = e.target.closest('.relatorio-texto');
+            if (!caixa) return;
+            const chave = caixa.dataset.dia;
+            const item = estado.dias.get(chave);
+            if (!item) return;
+
+            item.texto = caixa.value;
+            atualizarMedidor();
+
+            clearTimeout(item.timer);
+
+            // Voltou a bater com o que está no servidor: não há o que enviar, e
+            // deixar "Não salvo" no cartão seria mentira.
+            if (item.texto === item.gravado) {
+                item.timer = null;
+                marcarEstado(chave, item.texto.trim() ? 'salvo' : 'vazio');
+                return;
             }
-        };
 
-        // ── Auto-save POR DIA ───────────────────────────────────────────
-        // Antes havia UM `saveTimeout` compartilhado pelos 15 campos: digitar
-        // no dia 12 cancelava o salvamento pendente do dia 11, e o texto do
-        // dia 11 nunca chegava ao servidor. Um temporizador por dia resolve.
-        container.querySelectorAll('.relatorio-text').forEach((textarea) => {
-            textarea.addEventListener('input', (e) => {
-                const chave = e.target.dataset.date;
-                const conteudo = e.target.value;
+            marcarEstado(chave, 'pendente');
 
-                estado.pendentes.set(chave, { turma: turmaId, materia, data: chave, conteudo });
-                marcarEstado(chave, 'nao-salvo');
-
-                clearTimeout(estado.timers.get(chave));
-                estado.timers.set(
-                    chave,
-                    setTimeout(() => {
-                        estado.timers.delete(chave);
-                        gravar(chave, conteudo);
-                    }, ATRASO_AUTOSAVE_MS)
-                );
-            });
+            // Um timer POR DIA. Um timer compartilhado fazia o dia anterior
+            // perder o save quando o professor pulava para o dia seguinte.
+            item.timer = setTimeout(() => { item.timer = null; gravarDia(chave); }, REL_DEBOUNCE_MS);
         });
 
-        // ── Navegação entre quinzenas ───────────────────────────────────
-        document.getElementById('btnQuinzenaAnterior')?.addEventListener('click', () => {
-            this.renderRelatorios(turmaId, bimestre, quinzenaOffset - 1);
+        // Sair do campo grava na hora: esperar o debounce quando o professor já
+        // terminou é só chance de perder o texto.
+        corpo.addEventListener('focusout', (e) => {
+            const caixa = e.target.closest('.relatorio-texto');
+            if (!caixa) return;
+            const item = estado.dias.get(caixa.dataset.dia);
+            if (!item || item.texto === item.gravado) return;
+            clearTimeout(item.timer);
+            item.timer = null;
+            gravarDia(caixa.dataset.dia);
         });
 
-        document.getElementById('btnQuinzenaSeguinte')?.addEventListener('click', () => {
-            if (naQuinzenaCorrente) return;
-            this.renderRelatorios(turmaId, bimestre, quinzenaOffset + 1);
+        medidor.addEventListener('click', (e) => {
+            const marca = e.target.closest('[data-ir-para]');
+            if (!marca) return;
+            const caixa = corpo.querySelector(`.relatorio-texto[data-dia="${marca.dataset.irPara}"]`);
+            if (!caixa) return;
+            caixa.scrollIntoView({ block: 'center', behavior: window.Motion?.enabled ? 'smooth' : 'auto' });
+            caixa.focus({ preventScroll: true });
         });
 
-        // ── Salvar um dia ───────────────────────────────────────────────
-        container.querySelectorAll('.btn-salvar-individual').forEach((btn) => {
-            btn.addEventListener('click', async (e) => {
-                const chave = e.currentTarget.dataset.date;
-                const textarea = container.querySelector(`textarea[data-date="${chave}"]`);
-                if (!textarea) return;
+        const botaoSalvarTodos = container.querySelector('#btnSalvarTodos');
+        botaoSalvarTodos?.addEventListener('click', async () => {
+            if (window.Motion) window.Motion.busy(botaoSalvarTodos, true);
+            const resultado = await this.salvarRelatoriosPendentes();
+            if (window.Motion) window.Motion.busy(botaoSalvarTodos, false);
 
-                clearTimeout(estado.timers.get(chave));
-                estado.timers.delete(chave);
-
-                const ok = await gravar(chave, textarea.value);
-                if (ok) ui.success('Relatório salvo.');
-                else ui.error('Não foi possível salvar o relatório.');
-            });
+            if (resultado.pendentes === 0) ui.success('Tudo já estava salvo.');
+            else if (resultado.falhas === 0) ui.success(`${resultado.pendentes} relatório(s) salvos.`);
+            else ui.error(`${resultado.falhas} relatório(s) não foram salvos. Confira os dias marcados.`);
         });
 
-        // ── Salvar todos ────────────────────────────────────────────────
-        document.getElementById('btnSalvarTodos')?.addEventListener('click', async () => {
-            for (const timer of estado.timers.values()) clearTimeout(timer);
-            estado.timers.clear();
+        this.ligarNavegacaoRelatorios(container, turmaId, bimestre, offset);
+        if (window.renderLucideIcons) window.renderLucideIcons();
+    }
 
-            const campos = [...container.querySelectorAll('.relatorio-text')];
-            ui.loading(true, 'Salvando relatórios...');
-            const resultados = await Promise.all(
-                campos.map((campo) => gravar(campo.dataset.date, campo.value))
-            );
-            ui.loading(false);
-
-            const falhas = resultados.filter((r) => !r).length;
-            if (falhas === 0) ui.success(`${resultados.length} relatório(s) salvos.`);
-            else ui.error(`${falhas} relatório(s) não puderam ser salvos.`);
+    /** Botões de quinzena. Fora do render para valer também na tela de falha. */
+    ligarNavegacaoRelatorios(container, turmaId, bimestre, offset) {
+        container.querySelector('#btnQuinzenaAnterior')?.addEventListener('click', () => {
+            this.renderRelatorios(turmaId, bimestre, offset - 1);
         });
+        container.querySelector('#btnQuinzenaSeguinte')?.addEventListener('click', () => {
+            if (offset < 0) this.renderRelatorios(turmaId, bimestre, offset + 1);
+        });
+    }
 
-        // ── Sair da página com texto pendente ───────────────────────────
-        // `visibilitychange` é o gancho confiável no celular, onde `unload`
-        // muitas vezes não dispara. `sendBeacon` não serve aqui: a rota exige
-        // o header de CSRF, que ele não permite definir.
-        if (!this._relatoriosSaidaLigada) {
-            this._relatoriosSaidaLigada = true;
+    /**
+     * Manda para o servidor tudo que ainda não foi gravado — o que está no
+     * debounce e o que falhou antes. Chamado ao trocar de quinzena, ao clicar
+     * em "Salvar tudo" e ao sair da página.
+     *
+     * @returns {Promise<{pendentes: number, falhas: number}>}
+     */
+    async salvarRelatoriosPendentes() {
+        const estado = this.relatoriosEstado;
+        if (!estado || !estado.gravarDia) return { pendentes: 0, falhas: 0 };
 
-            document.addEventListener('visibilitychange', () => {
-                if (document.visibilityState === 'hidden') this._descarregarRelatoriosPendentes();
-            });
+        const pendentes = [...estado.dias.values()].filter(item => item.texto !== item.gravado);
+        pendentes.forEach(item => { clearTimeout(item.timer); item.timer = null; });
 
-            window.addEventListener('beforeunload', (e) => {
-                if (!this._relatorios || this._relatorios.pendentes.size === 0) return;
-                this._descarregarRelatoriosPendentes();
-                // O aviso do navegador é a única forma de não perder o texto se
-                // a gravação não terminar antes de a aba fechar.
-                e.preventDefault();
-                e.returnValue = '';
-            });
-        }
+        await Promise.all(pendentes.map(item => estado.gravarDia(item.chave)));
+
+        const falhas = pendentes.filter(item => item.falhou).length;
+        return { pendentes: pendentes.length, falhas };
     }
 
     /**
@@ -1756,9 +1693,7 @@ class App {
      * @param {string} alunoNome - Nome do aluno para exibição
      */
     async confirmDeleteAluno(alunoId, alunoNome) {
-        const confirmado = confirm(
-            `⚠️ ATENÇÃO!\n\nDeseja realmente excluir o aluno "${alunoNome}"?\n\nEsta ação é IRREVERSÍVEL e removerá:\n• Todos os dados do aluno\n• Todas as notas\n• Todas as faltas\n\nClique OK para confirmar.`
-        );
+        const confirmado = confirm(`⚠️ ATENÇÃO!\n\nDeseja realmente excluir o aluno "${alunoNome}"?\n\nEsta ação é IRREVERSÍVEL e removerá:\n• Todos os dados do aluno\n• Todas as notas\n• Todas as faltas\n\nClique OK para confirmar.`);
 
         if (confirmado) {
             try {
@@ -1773,6 +1708,7 @@ class App {
                 setTimeout(() => {
                     location.reload();
                 }, 1000);
+
             } catch (error) {
                 console.error('Erro ao excluir aluno:', error);
                 ui.error('Erro ao excluir aluno: ' + error.message);
@@ -1780,6 +1716,7 @@ class App {
             }
         }
     }
+
 
     // ... (ShowEditAlunoModal mantido igual até showNotasModal)
 
@@ -1789,6 +1726,7 @@ class App {
      * @param {string} turmaId - ID da turma
      * @param {number} bimestre - Bimestre
      */
+
 
     /**
      * Helper: File to Base64 (com conversão para WebP)
@@ -1802,7 +1740,7 @@ class App {
                     const canvas = document.createElement('canvas');
                     let width = img.width;
                     let height = img.height;
-
+                    
                     // Dimensões máximas
                     const maxSize = 800;
                     if (width > height && width > maxSize) {
@@ -1817,14 +1755,14 @@ class App {
                     canvas.height = height;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
-
+                    
                     // Converte para WebP com 80% de qualidade
                     resolve(canvas.toDataURL('image/webp', 0.8));
                 };
-                img.onerror = (error) => reject(error);
+                img.onerror = error => reject(error);
                 img.src = e.target.result;
             };
-            reader.onerror = (error) => reject(error);
+            reader.onerror = error => reject(error);
             reader.readAsDataURL(file);
         });
     }
@@ -1885,7 +1823,7 @@ class App {
                     text: 'Cancelar',
                     class: 'btn-secondary',
                     action: 'cancel',
-                    onClick: () => ui.closeModal('modal-add-aluno'),
+                    onClick: () => ui.closeModal('modal-add-aluno')
                 },
                 {
                     text: 'Salvar',
@@ -1893,9 +1831,9 @@ class App {
                     action: 'save',
                     onClick: async () => {
                         await this.saveNewAluno(turmaId);
-                    },
-                },
-            ],
+                    }
+                }
+            ]
         });
     }
 
@@ -1920,7 +1858,7 @@ class App {
             telefone: document.getElementById('alunoTelefone')?.value || '',
             email: document.getElementById('alunoEmail')?.value || '',
             deficiencia: document.getElementById('alunoDeficiencia')?.value || '',
-            observacoes: document.getElementById('alunoObservacoes')?.value || '',
+            observacoes: document.getElementById('alunoObservacoes')?.value || ''
         };
 
         try {
@@ -2024,21 +1962,21 @@ class App {
                                 <option value="TDAH" ${aluno.condicao === 'TDAH' ? 'selected' : ''}>TDAH</option>
                                 <option value="TOD" ${aluno.condicao === 'TOD' ? 'selected' : ''}>TOD</option>
                                 <option value="Autismo" ${aluno.condicao === 'Autismo' ? 'selected' : ''}>Autismo</option>
-                                <option value="Outros" ${aluno.condicao && !['TDAH', 'TOD', 'Autismo'].includes(aluno.condicao) ? 'selected' : ''}>Outros</option>
+                                <option value="Outros" ${(aluno.condicao && !['TDAH', 'TOD', 'Autismo'].includes(aluno.condicao)) ? 'selected' : ''}>Outros</option>
                             </select>
-                            <div id="editAlunoCondicaoOutroContainer" style="display: ${aluno.condicao && !['TDAH', 'TOD', 'Autismo'].includes(aluno.condicao) ? 'block' : 'none'}; margin-top: 5px;">
-                                <input type="text" id="editAlunoCondicaoOutro" class="form-input" placeholder="Especifique a condição..." value="${aluno.condicao && !['TDAH', 'TOD', 'Autismo'].includes(aluno.condicao) ? aluno.condicao : ''}">
+                            <div id="editAlunoCondicaoOutroContainer" style="display: ${(aluno.condicao && !['TDAH', 'TOD', 'Autismo'].includes(aluno.condicao)) ? 'block' : 'none'}; margin-top: 5px;">
+                                <input type="text" id="editAlunoCondicaoOutro" class="form-input" placeholder="Especifique a condição..." value="${(aluno.condicao && !['TDAH', 'TOD', 'Autismo'].includes(aluno.condicao)) ? aluno.condicao : ''}">
                             </div>
                         </div>
                     </div>
                     
                     <div style="margin-bottom: 15px; display: flex; gap: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
                         <label style="display:flex; align-items:center; gap: 10px; cursor:pointer; flex: 1; user-select: none;">
-                            <input type="checkbox" id="editAlunoRecupLP" style="transform: scale(1.6); cursor: pointer; margin: 5px;" ${aluno.recuperacaoBimestre && aluno.recuperacaoBimestre[currentBimestre] && aluno.recuperacaoBimestre[currentBimestre].lp ? 'checked' : ''}>
+                            <input type="checkbox" id="editAlunoRecupLP" style="transform: scale(1.6); cursor: pointer; margin: 5px;" ${(aluno.recuperacaoBimestre && aluno.recuperacaoBimestre[currentBimestre] && aluno.recuperacaoBimestre[currentBimestre].lp) ? 'checked' : ''}>
                             <span style="font-size:1rem; font-weight: 500; color: #333;">Recuperação em Português</span>
                         </label>
                         <label style="display:flex; align-items:center; gap: 10px; cursor:pointer; flex: 1; user-select: none;">
-                            <input type="checkbox" id="editAlunoRecupMat" style="transform: scale(1.6); cursor: pointer; margin: 5px;" ${aluno.recuperacaoBimestre && aluno.recuperacaoBimestre[currentBimestre] && aluno.recuperacaoBimestre[currentBimestre].mat ? 'checked' : ''}>
+                            <input type="checkbox" id="editAlunoRecupMat" style="transform: scale(1.6); cursor: pointer; margin: 5px;" ${(aluno.recuperacaoBimestre && aluno.recuperacaoBimestre[currentBimestre] && aluno.recuperacaoBimestre[currentBimestre].mat) ? 'checked' : ''}>
                             <span style="font-size:1rem; font-weight: 500; color: #333;">Recuperação em Matemática</span>
                         </label>
                     </div>
@@ -2059,7 +1997,7 @@ class App {
                     text: 'Cancelar',
                     class: 'btn-secondary',
                     action: 'cancel',
-                    onClick: () => ui.closeModal('modal-edit-aluno'),
+                    onClick: () => ui.closeModal('modal-edit-aluno')
                 },
                 {
                     text: 'Salvar',
@@ -2067,9 +2005,9 @@ class App {
                     action: 'save',
                     onClick: async () => {
                         await this.saveEditedAluno(alunoId, currentBimestre);
-                    },
-                },
-            ],
+                    }
+                }
+            ]
         });
     }
 
@@ -2143,7 +2081,7 @@ class App {
 
         // Filter by materia if not Sala Principal
         if (materia !== 'Sala Principal') {
-            notasAluno = notasAluno.filter((n) => n.materiaId === materia);
+            notasAluno = notasAluno.filter(n => n.materiaId === materia);
         }
 
         const materias = db.getMaterias();
@@ -2164,22 +2102,16 @@ class App {
                                 <label>Matéria *</label>
                                 <select id="notaMateria" class="form-input" required>
                                     <option value="">Selecione...</option>
-                                    ${materias
-                                        .map((m) => {
-                                            const selected =
-                                                materia !== 'Sala Principal' &&
-                                                (m.nome === materia || m.id === materia)
-                                                    ? 'selected'
-                                                    : '';
-                                            return `<option value="${m.id}" ${selected}>${m.icone} ${m.nome}</option>`;
-                                        })
-                                        .join('')}
+                                    ${materias.map(m => {
+            const selected = (materia !== 'Sala Principal' && (m.nome === materia || m.id === materia)) ? 'selected' : '';
+            return `<option value="${m.id}" ${selected}>${m.icone} ${m.nome}</option>`;
+        }).join('')}
                                 </select>
                             </div>
                             <div class="form-group">
                                 <label>Tipo *</label>
                                 <select id="notaTipo" class="form-input" required>
-                                    ${tiposAvaliacao.map((t) => `<option value="${t.id}" data-peso="${t.pesoDefault}">${t.nome}</option>`).join('')}
+                                    ${tiposAvaliacao.map(t => `<option value="${t.id}" data-peso="${t.pesoDefault}">${t.nome}</option>`).join('')}
                                 </select>
                             </div>
                         </div>
@@ -2207,10 +2139,9 @@ class App {
 
                 <div class="notas-lista">
                     <h5>Notas Registradas</h5>
-                    ${
-                        notasAluno.length === 0
-                            ? '<p class="empty-notas">Nenhuma nota registrada neste bimestre.</p>'
-                            : `<table class="table-notas">
+                    ${notasAluno.length === 0
+                ? '<p class="empty-notas">Nenhuma nota registrada neste bimestre.</p>'
+                : `<table class="table-notas">
                             <thead>
                                 <tr>
                                     <th>Matéria</th>
@@ -2223,12 +2154,9 @@ class App {
                                 </tr>
                             </thead>
                             <tbody>
-                                ${notasAluno
-                                    .map((nota) => {
-                                        const materia = materias.find(
-                                            (m) => m.id === nota.materiaId
-                                        );
-                                        return `
+                                ${notasAluno.map(nota => {
+                    const materia = materias.find(m => m.id === nota.materiaId);
+                    return `
                                         <tr data-nota-id="${nota.id}">
                                             <td>${materia?.icone || ''} ${materia?.nome || nota.materiaId}</td>
                                             <td>${nota.tipo}</td>
@@ -2241,11 +2169,10 @@ class App {
                                             </td>
                                         </tr>
                                     `;
-                                    })
-                                    .join('')}
+                }).join('')}
                             </tbody>
                         </table>`
-                    }
+            }
                 </div>
             </div>
         `;
@@ -2264,9 +2191,9 @@ class App {
                         ui.closeModal('modal-notas');
                         // Recarrega tabela para atualizar médias
                         this.renderTurmaPage(turmaId, bimestre);
-                    },
-                },
-            ],
+                    }
+                }
+            ]
         });
 
         // Eventos do modal
@@ -2282,7 +2209,7 @@ class App {
         });
 
         // Excluir nota
-        modal.querySelectorAll('.btn-delete-nota').forEach((btn) => {
+        modal.querySelectorAll('.btn-delete-nota').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const notaId = parseInt(btn.dataset.notaId);
                 const confirmado = await ui.confirm('Deseja realmente excluir esta nota?');
@@ -2321,10 +2248,8 @@ class App {
                 tipo,
                 nota: parseFloat(valor),
                 peso: parseInt(document.getElementById('notaPeso')?.value) || 1,
-                data:
-                    document.getElementById('notaData')?.value ||
-                    new Date().toISOString().split('T')[0],
-                descricao: document.getElementById('notaDescricao')?.value || '',
+                data: document.getElementById('notaData')?.value || new Date().toISOString().split('T')[0],
+                descricao: document.getElementById('notaDescricao')?.value || ''
             });
 
             // Recarrega modal

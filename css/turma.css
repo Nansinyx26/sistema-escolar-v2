@@ -687,359 +687,394 @@ input:checked + .slider:before {
 /* ==========================================
    RELATÓRIOS DIÁRIOS
    ==========================================
-   Reescrito na Issue #132. O bloco anterior usava azul-céu (#38bdf8), índigo
-   (#818cf8) e sombra roxa — o DESIGN-SYSTEM.md define verde institucional
-   esmeralda + teal, sem roxo/neon. Aqui tudo vem de token: trocar a paleta do
-   sistema passa a alcançar esta aba também.
+   O diário de classe da turma: quinze dias por tela, um cartão por dia.
 
-   Motion: nada acima de 180ms, e nada animado em interação de alta frequência
-   (digitar, salvar). O feedback de salvamento é TEXTO, não cor piscando — a
-   versão anterior animava `border-color` e voltava para o literal `#555`, que
-   quebrava no tema claro. Ver docs/MOTION.md.
+   Cor: só tokens do design system (DESIGN-SYSTEM.md) — verde institucional.
+   A versão anterior desta aba usava azul-céu, índigo e sombra roxa, que não
+   existem na paleta e não apareciam em nenhuma outra tela do sistema.
+
+   Motion: escrever e salvar relatório é a tarefa mais repetida desta tela, e
+   pela regra de frequência do docs/MOTION.md isso é instantâneo — o estado do
+   save troca de texto, não anima. O único movimento é a entrada do conteúdo
+   depois do skeleton, que o próprio css/motion.css já cuida.
    ========================================== */
 
-.relatorios-modern-layout {
-    animation: fadeIn 180ms var(--ease-out);
-    padding-bottom: 3rem;
-
-    /* Tinta translúcida da cor primária.
-       NÃO use `--primary-light` aqui: `css/variables.css` o define como
-       `rgba(16,185,129,0.08)`, mas `css/main.css` — carregado depois — o
-       redefine como a cor SÓLIDA `#34d399`. Em `turma.html` os dois entram, e o
-       sólido vence: um "fundo levinho" virava um bloco verde-berrante com texto
-       verde por cima, ilegível. `--primary-rgb` não tem esse conflito e
-       acompanha o tema claro. */
-    --tinta-primaria: rgba(var(--primary-rgb), 0.1);
-}
-
-.relatorios-header-card {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-secondary);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem 2rem;
-    margin-bottom: 2rem;
+.view-tabs {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: var(--shadow-sm);
     flex-wrap: wrap;
-    gap: 1.5rem;
+    gap: 10px;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
 }
 
-.header-title {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.icon-wrapper {
-    width: 50px;
-    height: 50px;
-    border-radius: var(--radius-lg);
-    background: var(--tinta-primaria);
-    color: var(--primary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.8rem;
-    border: 1px solid var(--border-secondary);
-}
-
-/* Título em texto sólido: o gradiente recortado (`background-clip: text`) tinha
-   contraste baixo, não acompanhava o tema claro e destoava das outras telas. */
-.title-text h3 {
-    margin: 0;
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--text-primary);
-}
-
-.title-text p {
-    margin: 0;
-    color: var(--text-tertiary);
-    font-size: 0.9rem;
-    font-weight: 500;
-}
-
-.date-navigation {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    background: var(--bg-tertiary);
-    padding: 0.5rem 1rem;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border-primary);
-}
-
-.current-period .period-badge {
-    font-weight: 700;
-    color: var(--text-primary);
-    letter-spacing: 0.5px;
-    font-size: 1rem;
-}
-
-.btn-quinzena {
-    background: var(--bg-elevated);
-    border-color: var(--border-secondary);
-    color: var(--text-primary);
-    transition: background-color 140ms var(--ease-out), border-color 140ms var(--ease-out);
-}
-
-.btn-quinzena:hover:not(:disabled) {
-    background: var(--tinta-primaria);
-    border-color: var(--primary);
-}
-
-/* "Próxima" fica desabilitado na quinzena corrente: preencher relatório de data
-   futura não é caso de uso, é jeito de sujar o histórico. */
-.btn-quinzena:disabled,
-.btn-quinzena[aria-disabled='true'] {
-    opacity: 0.45;
-    cursor: not-allowed;
-}
-
-.relatorios-aviso {
-    margin: 0 0 1.5rem;
-    padding: 0.85rem 1.15rem;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--warning);
-    background: var(--warning-light);
-    color: var(--text-primary);
-    font-size: 0.9rem;
-}
-
-/* Grid */
-.relatorios-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-}
-
-.report-card {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-secondary);
-    border-radius: var(--radius-xl);
-    padding: 1.5rem;
+.relatorios-painel {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-    /* Antes: `transition: all 0.3s` — 300ms e propriedade coringa, que arrasta
-       layout junto. Só a borda muda, e em 140ms. */
-    transition: border-color 140ms var(--ease-out);
-    box-shadow: var(--shadow-sm);
-    position: relative;
-    overflow: hidden;
+    gap: 1.25rem;
+    padding-bottom: 3rem;
 }
 
-/* Sem `translateY` no hover: o cartão é uma área de digitação, o ponteiro passa
-   por ele o tempo todo, e mover o alvo debaixo do cursor é o oposto de ajudar. */
-.report-card:hover {
-    border-color: var(--primary);
-}
+/* --- Cabeçalho --- */
 
-.report-card:focus-within {
-    border-color: var(--border-focus);
-}
-
-.report-card-header {
+.relatorios-cabecalho {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
     gap: 1rem;
-    border-bottom: 1px solid var(--border-secondary);
-    padding-bottom: 1rem;
 }
 
-.report-date-badge {
-    background: var(--tinta-primaria);
-    border: 1px solid var(--border-secondary);
-    color: var(--primary);
-    border-radius: var(--radius-md);
-    padding: 0.5rem;
-    min-width: 45px;
-    text-align: center;
+.relatorios-identificacao h3 {
+    margin: 0;
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
 }
 
-.report-day {
-    font-size: 1.4rem;
-    font-weight: 800;
-    display: block;
-    line-height: 1;
-}
-
-.report-month-year {
-    font-size: 0.95rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-}
-
-/* Estado do salvamento, em palavra. Fica vazio enquanto nada aconteceu — um
-   rótulo permanente viraria ruído em 15 cartões. */
-.report-status {
-    margin-left: auto;
-    font-size: 0.78rem;
-    font-weight: 600;
-    white-space: nowrap;
+.relatorios-materia {
+    margin: 0.15rem 0 0;
+    font-size: 0.9rem;
     color: var(--text-tertiary);
 }
 
-.report-status[data-status='salvo'] {
-    color: var(--success);
-}
-
-.report-status[data-status='erro'] {
-    color: var(--error);
-}
-
-.report-status[data-status='nao-salvo'] {
-    color: var(--warning);
-}
-
-.relatorio-text {
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-secondary);
-    border-radius: var(--radius-md);
-    padding: 1rem;
-    color: var(--text-primary);
-    resize: vertical;
-    width: 100%;
-    min-height: 120px;
-    font-size: 0.95rem;
-    line-height: 1.5;
-    /* Digitar é a interação mais frequente desta tela: o campo não anima. Só o
-       foco tem transição, e curta. */
-    transition: border-color 140ms var(--ease-out), box-shadow 140ms var(--ease-out);
-}
-
-.relatorio-text:focus {
-    border-color: var(--border-focus);
-    box-shadow: 0 0 0 3px var(--tinta-primaria);
-    outline: none;
-}
-
-.report-card-footer {
-    margin-top: auto;
-}
-
-.btn-salvar-individual {
-    width: 100%;
-    padding: 0.75rem;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 0.5rem;
-    background: var(--tinta-primaria);
-    border: 1px solid var(--primary);
-    color: var(--primary);
-    border-radius: var(--radius-md);
-    font-weight: 600;
-    transition: background-color 140ms var(--ease-out), color 140ms var(--ease-out);
-}
-
-.btn-salvar-individual:hover {
-    background: var(--primary);
-    border-color: var(--primary);
-    color: var(--text-inverse);
-}
-
-.relatorios-bottom-bar {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-secondary);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: var(--shadow-sm);
-    flex-wrap: wrap;
-    gap: 1.5rem;
-}
-
-.autosave-info {
+.relatorios-navegacao {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    color: var(--text-tertiary);
+}
+
+.relatorios-periodo {
     font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 }
 
-.autosave-info i {
-    color: var(--primary);
-    font-size: 1.2rem;
+/* --- Medidor da quinzena ---
+   Quinze marcas, uma por dia, na mesma ordem dos cartões: cheia = dia escrito,
+   vazada = dia em branco, anel = hoje. É o resumo que o professor procura ao
+   abrir a aba ("o que falta preencher?") e serve de atalho para o cartão. */
+
+.relatorios-medidor {
+    display: flex;
+    gap: 4px;
+    align-items: stretch;
+    min-height: 22px;
 }
 
-.btn-salvar-todos {
-    padding: 0.75rem 2rem;
-    font-weight: 700;
-    font-size: 1rem;
-    border-radius: var(--radius-lg);
+.relatorios-marca {
+    flex: 1 1 0;
+    min-width: 10px;
+    height: 22px;
+    padding: 0;
+    border: 1px solid var(--border-secondary);
+    border-radius: 3px;
+    background: var(--bg-tertiary);
+    cursor: pointer;
+    transition:
+        background-color var(--motion-fast, 120ms) var(--motion-ease-standard, ease),
+        border-color var(--motion-fast, 120ms) var(--motion-ease-standard, ease),
+        transform var(--motion-fast, 120ms) var(--motion-ease-standard, ease);
+}
+
+.relatorios-marca.e-preenchida {
+    background: var(--primary);
+    border-color: var(--primary);
+}
+
+.relatorios-marca.e-fim-de-semana:not(.e-preenchida) {
+    background: transparent;
+    border-style: dashed;
+}
+
+.relatorios-marca.e-hoje {
+    box-shadow: 0 0 0 2px var(--bg-secondary), 0 0 0 3px var(--primary);
+}
+
+.relatorios-marca:hover {
+    border-color: var(--primary-hover);
+}
+
+/* Emil, dica 1: a resposta ao toque é o próprio botão cedendo. */
+.relatorios-marca:active {
+    transform: scale(0.94);
+}
+
+.relatorios-marca:focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 2px;
+}
+
+/* --- Resumo e ação --- */
+
+.relatorios-resumo {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.relatorios-contagem {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+}
+
+/* --- Grade de dias --- */
+
+.relatorios-grade {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.relatorio-dia {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+    border: 1px solid var(--border-secondary);
+    border-left: 3px solid var(--border-secondary);
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
+    transition:
+        border-color var(--motion-fast, 120ms) var(--motion-ease-standard, ease),
+        box-shadow var(--motion-fast, 120ms) var(--motion-ease-standard, ease);
+}
+
+/* A borda esquerda carrega o estado do dia — a mesma informação do medidor,
+   agora junto do texto. Não é enfeite: é por onde se lê a grade de relance. */
+.relatorio-dia[data-preenchido="sim"] {
+    border-left-color: var(--primary);
+}
+
+.relatorio-dia.e-fim-de-semana {
+    background: transparent;
+}
+
+/* Fim de semana sem relatório usa a mesma linguagem do medidor: tracejado.
+   A cor sozinha não serviria — o tema claro deste projeto colapsa todos os
+   tokens de texto para preto de propósito, e ali a distinção sumiria. */
+.relatorio-dia.e-fim-de-semana[data-preenchido="nao"] {
+    border-left-style: dashed;
+}
+
+.relatorio-dia.e-fim-de-semana .relatorio-dia-numero,
+.relatorio-dia.e-fim-de-semana .relatorio-dia-semana {
+    color: var(--text-tertiary);
+}
+
+.relatorio-dia.e-hoje {
+    border-color: var(--primary);
+}
+
+.relatorio-dia:hover,
+.relatorio-dia:focus-within {
+    border-color: var(--primary-hover);
+    box-shadow: var(--shadow-md);
+}
+
+.relatorio-dia-topo {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    min-height: 1.6rem;
+}
+
+.relatorio-dia-data {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+}
+
+.relatorio-dia-numero {
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.relatorio-dia-semana {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-tertiary);
+}
+
+.relatorio-dia-contexto {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-right: auto;
+}
+
+.relatorio-dia-mes {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+}
+
+.relatorio-etiqueta {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.1rem 0.4rem;
+    border-radius: var(--radius-sm);
+    background: var(--bg-tertiary);
+    color: var(--text-tertiary);
+}
+
+.relatorio-etiqueta.e-destaque {
     background: var(--primary);
-    border: 1px solid var(--primary);
     color: var(--text-inverse);
-    transition: background-color 140ms var(--ease-out);
 }
 
-.btn-salvar-todos:hover {
-    background: var(--primary-hover);
-}
+/* --- Estado do save ---
+   Texto, não cor sozinha: "Não salvou" precisa chegar a quem não distingue
+   verde de vermelho. Sem transição de propósito — é feedback de digitação. */
 
-/* Skeleton do carregamento, para o caso de a página não ter o js/motion.js:
-   regra 1 do docs/MOTION.md é skeleton, nunca tela em branco. */
-.report-card-skeleton {
-    min-height: 260px;
-    border-radius: var(--radius-xl);
-}
-
-/* `.sr-only` vive em css/system-global.css, que esta página não carrega. */
-.relatorios-modern-layout .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
+.relatorio-estado {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
     white-space: nowrap;
-    border: 0;
+    color: var(--text-tertiary);
+}
+
+.relatorio-estado[data-estado="salvo"] { color: var(--primary); }
+.relatorio-estado[data-estado="pendente"] { color: var(--warning); }
+.relatorio-estado[data-estado="erro"] { color: var(--error); }
+
+.relatorio-texto {
+    width: 100%;
+    min-height: 110px;
+    padding: 0.7rem;
+    border: 1px solid var(--border-secondary);
+    border-radius: var(--radius-md);
+    background: var(--bg-primary);
+    color: var(--text-body);
+    font-family: inherit;
+    font-size: 0.92rem;
+    line-height: 1.55;
+    resize: vertical;
+    transition: border-color var(--motion-fast, 120ms) var(--motion-ease-standard, ease);
+}
+
+.relatorio-texto::placeholder {
+    color: var(--text-tertiary);
+}
+
+.relatorio-texto:focus {
+    outline: none;
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+/* --- Falha de carregamento --- */
+
+.relatorios-falha {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 1.25rem;
+    border: 1px solid var(--error);
+    border-radius: var(--radius-lg);
+    background: var(--error-light);
+}
+
+.relatorios-falha i {
+    font-size: 1.5rem;
+    color: var(--error);
+}
+
+.relatorios-falha h4 {
+    margin: 0 0 0.2rem;
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+
+.relatorios-falha p {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+}
+
+.relatorios-falha button {
+    margin-left: auto;
+}
+
+/* --- Skeleton da grade ---
+   O placeholder precisa ter a forma do que vai chegar; uma coluna de blocos
+   largos no lugar de uma grade de cartões é o "salto" que o skeleton existe
+   para evitar. */
+.relatorios-painel .motion-skeleton {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.relatorios-painel .motion-skeleton .skeleton-card {
+    min-height: 190px;
 }
 
 @media (max-width: 768px) {
-    .relatorios-header-card {
+    .relatorios-cabecalho,
+    .relatorios-resumo {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
     }
 
-    .date-navigation {
-        width: 100%;
+    .relatorios-navegacao {
         justify-content: space-between;
     }
 
-    .relatorios-bottom-bar {
-        flex-direction: column;
-        text-align: center;
-    }
-
-    .btn-salvar-todos {
+    .relatorios-falha button {
+        margin-left: 0;
         width: 100%;
-        justify-content: center;
     }
 }
 
+/* O sistema de motion já zera transição sob `prefers-reduced-motion`; este
+   bloco cobre a página caso ela seja aberta sem o css/motion.css. */
 @media (prefers-reduced-motion: reduce) {
-    .relatorios-modern-layout {
-        animation: none;
-    }
-
-    .report-card,
-    .relatorio-text,
-    .btn-quinzena,
-    .btn-salvar-individual,
-    .btn-salvar-todos {
+    .relatorios-marca,
+    .relatorio-dia,
+    .relatorio-texto {
         transition: none;
     }
+
+    .relatorios-marca:active {
+        transform: none;
+    }
+}
+
+/* --- Tema claro --- */
+
+:root[data-theme="light"] .relatorio-dia {
+    background: #ffffff;
+}
+
+:root[data-theme="light"] .relatorio-dia.e-fim-de-semana {
+    background: rgba(15, 23, 42, 0.03);
+}
+
+:root[data-theme="light"] .relatorio-texto {
+    background: #ffffff;
+    color: #0f172a;
+}
+
+:root[data-theme="light"] .relatorios-marca:not(.e-preenchida) {
+    background: rgba(15, 23, 42, 0.06);
 }
 
 /* Níveis de Leitura - Cores */

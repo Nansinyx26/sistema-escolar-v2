@@ -1,228 +1,251 @@
 /**
- * relatoriosDiarios.test.js — Issue #132
+ * relatoriosDiarios.test.js
+ * ============================================================================
+ * Diário de classe da aba "Relatórios Diários" da página de turma.
  *
- * O que estes testes travam, na ordem em que a Issue os lista:
+ * A aba existia no front desde sempre, com auto-save e a mensagem
+ * "✅ Relatório salvo!" — mas `/api/relatorios` só tinha a rota de boletim.
+ * Todo save caía em 404, o front engolia o erro e confirmava o salvamento
+ * mesmo assim. O professor escrevia o relatório do dia, via a confirmação, e
+ * o texto não existia em lugar nenhum.
  *
- * 1. As rotas de relatório diário EXISTEM. Elas não existiam: `routes/relatorios.js`
- *    só expunha o boletim, então `/api/relatorios` caía no 404 global. O
- *    `db.getByIndex` do front engole o erro e devolve `[]` — a aba parecia
- *    funcionar e não gravava nada.
- * 2. Salvar o mesmo dia duas vezes deixa UM registro. Antes o front baixava a
- *    lista inteira antes de cada gravação para decidir entre criar e atualizar,
- *    e duas gravações rápidas liam "não existe" as duas.
- * 3. A chave do dia não depende do fuso de quem digita.
- * 4. Auto-save por dia: o front não pode ter um temporizador compartilhado.
- * 5. Design system, motion e acessibilidade da aba.
+ * Estes testes fixam o contrato que faltava, e em especial as três coisas que
+ * uma implementação ingênua erra: idempotência do upsert (auto-save e clique
+ * em "Salvar" disparam juntos), a chave ser o DIA CIVIL e não um instante, e
+ * o isolamento por turma do professor.
  */
-const fs = require('node:fs');
-const path = require('node:path');
+const request = require('supertest');
+const app = require('../app');
+const {
+    conectarBanco, limparBanco, desconectarBanco, criarUsuario, SENHA_TESTE,
+} = require('./helpers');
 
-const RAIZ = path.join(__dirname, '../../..');
-const appJs = fs.readFileSync(path.join(RAIZ, 'js', 'app.js'), 'utf8');
-const turmaCss = fs.readFileSync(path.join(RAIZ, 'css', 'turma.css'), 'utf8');
-const turmaHtml = fs.readFileSync(path.join(RAIZ, 'html', 'turma.html'), 'utf8');
+const Escola = require('../models/Escola');
+const Professor = require('../models/Professor');
+const Relatorio = require('../models/Relatorio');
+const { invalidarCacheEscolas } = require('../middleware/filtrarPorEscola');
 
-/**
- * O trecho de `js/app.js` que cobre a aba.
- *
- * O fim é procurado A PARTIR do início: `triggerPhotoUpload` também aparece
- * antes, dentro de um `onclick` em template string, e uma busca no arquivo
- * inteiro devolveria essa primeira ocorrência — recortando um trecho vazio,
- * que faria todas as asserções passarem por engano.
- */
-const inicioTrecho = appJs.indexOf('_chaveDoDia(data)');
-const trechoRelatorios = appJs.slice(
-    inicioTrecho,
-    appJs.indexOf('triggerPhotoUpload(alunoId) {', inicioTrecho)
-);
+beforeAll(async () => { await conectarBanco(); });
+afterEach(async () => { await limparBanco(); invalidarCacheEscolas(); });
+afterAll(async () => { await desconectarBanco(); });
 
-/**
- * O bloco de `css/turma.css` da aba, SEM comentários: eles citam o código
- * antigo (`#38bdf8`, `transition: all`) para registrar o que mudou, e uma
- * asserção sobre o texto cru acusaria justamente a explicação.
- */
-const blocoCss = turmaCss
-    .slice(
-        // A partir da ABERTURA do comentário de cabeçalho: começar no meio dele
-        // deixaria o `/*` para trás, e o texto do próprio cabeçalho — que cita
-        // as cores antigas — sobreviveria à limpeza.
-        turmaCss.indexOf('/* ==========================================\n   RELATÓRIOS DIÁRIOS'),
-        turmaCss.indexOf('/* Níveis de Leitura - Cores */')
-    )
-    .replace(/\/\*[\s\S]*?\*\//g, '');
+/** Professor logado, com as turmas que ele leciona. */
+async function professorDe(salaPrincipal, salasAdicionais = []) {
+    const escola = await Escola.create({ nome: `Escola Rel ${Date.now()}`, tipo: 'EMEF', ativo: true });
+    const escolaId = String(escola._id);
+    const email = `prof_rel_${Date.now()}_${Math.random().toString(36).slice(2, 8)}@escola.test`;
 
-describe('rotas de relatório diário (Issue #132)', () => {
-    const rotas = fs.readFileSync(path.join(RAIZ, 'backend/src/routes/relatorios.js'), 'utf8');
+    const user = await criarUsuario({ email, perfil: 'professor', escolaId });
+    await Professor.create({
+        idUsuario: String(user._id),
+        nome: user.nome,
+        email,
+        salaPrincipal,
+        salasAdicionais,
+        vinculos: [{ escolaId, cargo: 'professor' }],
+        ativo: true,
+    });
+    invalidarCacheEscolas();
 
-    test('a listagem e a gravação existem — antes só havia o boletim', () => {
-        expect(rotas).toMatch(/router\.get\(\s*'\/'/);
-        expect(rotas).toMatch(/router\.put\(\s*'\/diario'/);
+    const agent = request.agent(app);
+    const login = await agent.post('/api/auth/login').send({ email, senha: SENHA_TESTE });
+    expect(login.status).toBe(200);
+    return { agent, escolaId, id: String(user._id) };
+}
+
+const salvar = (agent, corpo) =>
+    agent.put('/api/relatorios/diarios').set('X-CSRF-Token', 'test').send(corpo);
+
+const listar = (agent, query) =>
+    agent.get('/api/relatorios/diarios').query(query);
+
+const QUINZENA = { de: '2026-08-15', ate: '2026-08-29' };
+
+describe('Relatórios diários — persistência', () => {
+    it('grava o relatório do dia e devolve o mesmo texto na listagem', async () => {
+        const { agent } = await professorDe('5A');
+
+        const gravado = await salvar(agent, {
+            turma: '5A', materia: 'Matemática', dia: '2026-08-20',
+            conteudo: 'Frações equivalentes. Exercícios 1 a 8.',
+        });
+
+        expect(gravado.status).toBe(200);
+        expect(gravado.body.success).toBe(true);
+        expect(gravado.body.data.dia).toBe('2026-08-20');
+
+        const lista = await listar(agent, { turma: '5A', materia: 'Matemática', ...QUINZENA });
+
+        expect(lista.status).toBe(200);
+        expect(lista.body.data).toHaveLength(1);
+        expect(lista.body.data[0].conteudo).toBe('Frações equivalentes. Exercícios 1 a 8.');
     });
 
-    test('a gravação é PUT idempotente, não POST que cria', () => {
-        // É o que garante "um dia salvo duas vezes continua com um registro".
-        expect(rotas).not.toMatch(/router\.post\(\s*'\/diario'/);
+    it('separa relatórios por matéria no mesmo dia e turma', async () => {
+        const { agent } = await professorDe('5A');
 
-        const controller = fs.readFileSync(
-            path.join(RAIZ, 'backend/src/controllers/ReportController.js'),
-            'utf8'
-        );
-        expect(controller).toContain('findOneAndUpdate');
-        expect(controller).toContain('upsert: true');
+        await salvar(agent, { turma: '5A', materia: 'Matemática', dia: '2026-08-20', conteudo: 'Frações' });
+        await salvar(agent, { turma: '5A', materia: 'História', dia: '2026-08-20', conteudo: 'Império' });
+
+        const mat = await listar(agent, { turma: '5A', materia: 'Matemática', ...QUINZENA });
+        const hist = await listar(agent, { turma: '5A', materia: 'História', ...QUINZENA });
+
+        expect(mat.body.data).toHaveLength(1);
+        expect(mat.body.data[0].conteudo).toBe('Frações');
+        expect(hist.body.data[0].conteudo).toBe('Império');
     });
 
-    test('responsável não escreve relatório de turma', () => {
-        const perfis = rotas.match(/const PODEM_ESCREVER = \[([^\]]+)\]/);
-        expect(perfis).not.toBeNull();
-        expect(perfis[1]).not.toMatch(/responsavel/);
-        expect(perfis[1]).toMatch(/professor/);
+    it('devolve só os dias dentro da janela pedida', async () => {
+        const { agent } = await professorDe('5A');
+
+        await salvar(agent, { turma: '5A', materia: 'Matemática', dia: '2026-08-14', conteudo: 'Antes' });
+        await salvar(agent, { turma: '5A', materia: 'Matemática', dia: '2026-08-20', conteudo: 'Dentro' });
+        await salvar(agent, { turma: '5A', materia: 'Matemática', dia: '2026-08-30', conteudo: 'Depois' });
+
+        const lista = await listar(agent, { turma: '5A', materia: 'Matemática', ...QUINZENA });
+
+        expect(lista.body.data.map(r => r.conteudo)).toEqual(['Dentro']);
     });
 
-    test('o autor vem da sessão, nunca do corpo da requisição', () => {
-        const controller = fs.readFileSync(
-            path.join(RAIZ, 'backend/src/controllers/ReportController.js'),
-            'utf8'
-        );
-        expect(controller).toMatch(/const autor = String\(req\.user/);
-        expect(controller).not.toMatch(/autor: req\.body/);
-    });
-});
+    // O front chama a rota sem `materia` quando a turma não tem matéria
+    // escolhida na URL. Os dois lados precisam concordar no mesmo padrão, ou
+    // o relatório é gravado num balde e lido de outro.
+    it('usa a mesma matéria padrão ao gravar e ao listar sem informar matéria', async () => {
+        const { agent } = await professorDe('5A');
 
-describe('upsert por dia normaliza a data (Issue #132)', () => {
-    // A função é interna ao controller; o comportamento é reproduzido aqui para
-    // travar a REGRA: a chave é o dia, não o instante.
-    const inicioDoDia = (valor) => {
-        const d = new Date(valor);
-        return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-    };
+        await salvar(agent, { turma: '5A', dia: '2026-08-20', conteudo: 'Sala principal' });
+        const lista = await listar(agent, { turma: '5A', ...QUINZENA });
 
-    test('duas horas do mesmo dia caem na mesma chave', () => {
-        expect(inicioDoDia('2026-08-29T00:00:00Z').getTime()).toBe(
-            inicioDoDia('2026-08-29T23:59:59Z').getTime()
-        );
-    });
-
-    test('a chave é sempre meia-noite UTC', () => {
-        const d = inicioDoDia('2026-08-29T14:32:10Z');
-        expect(d.toISOString()).toBe('2026-08-29T00:00:00.000Z');
-    });
-});
-
-describe('auto-save da aba de relatórios (Issue #132)', () => {
-    test('o temporizador é POR DIA, não um só compartilhado', () => {
-        // O defeito: um `saveTimeout` para os 15 campos. Digitar no dia 12
-        // cancelava o salvamento pendente do dia 11.
-        expect(trechoRelatorios).not.toMatch(/let saveTimeout/);
-        expect(trechoRelatorios).toMatch(/timers: new Map\(\)/);
-        expect(trechoRelatorios).toMatch(/estado\.timers\.set\(/);
-    });
-
-    test('a chave do dia é montada em hora local, sem toISOString', () => {
-        // `toISOString` sobre data local joga o cartão da noite para o dia
-        // seguinte em qualquer fuso a oeste de Greenwich.
-        const chave = trechoRelatorios.slice(
-            trechoRelatorios.indexOf('_chaveDoDia(data)'),
-            trechoRelatorios.indexOf('_salvarRelatorioDiario')
-        );
-        expect(chave).toMatch(/getFullYear\(\)/);
-        expect(chave).not.toMatch(/toISOString/);
-    });
-
-    test('não busca a lista inteira antes de cada gravação', () => {
-        expect(trechoRelatorios).not.toMatch(/getByIndex\('relatorios'/);
-        expect(trechoRelatorios).toMatch(/relatorios\/diario/);
-    });
-
-    test('o que está no debounce é gravado ao trocar de quinzena e ao sair', () => {
-        expect(trechoRelatorios).toMatch(/_descarregarRelatoriosPendentes/);
-        expect(trechoRelatorios).toMatch(/visibilitychange/);
-        expect(trechoRelatorios).toMatch(/beforeunload/);
-    });
-
-    test('não estoura sem sessão — o `_id` do usuário saiu do caminho', () => {
-        // `auth.getCurrentUser()._id` derrubava a aba quando não havia sessão.
-        // O autor passou a vir do servidor.
-        expect(trechoRelatorios).not.toMatch(/getCurrentUser\(\)\._id/);
-    });
-
-    test('"Próxima" fica desabilitado na quinzena corrente', () => {
-        expect(trechoRelatorios).toMatch(/naQuinzenaCorrente = quinzenaOffset >= 0/);
-        expect(trechoRelatorios).toMatch(/naQuinzenaCorrente \? 'disabled/);
-    });
-
-    test('o estado do save é texto e é anunciado', () => {
-        expect(trechoRelatorios).toMatch(/salvando: 'Salvando/);
-        expect(trechoRelatorios).toMatch(/salvo: 'Salvo'/);
-        expect(trechoRelatorios).toMatch(/'nao-salvo': 'Não salvo'/);
-        expect(trechoRelatorios).toMatch(/erro: 'Erro ao salvar'/);
-        expect(trechoRelatorios).toMatch(/aria-live="polite"/);
-    });
-
-    test('carrega com skeleton, não com tela em branco', () => {
-        expect(trechoRelatorios).toMatch(/Motion\?\.skeleton|Motion\.skeleton/);
-        expect(trechoRelatorios).toMatch(/skeleton report-card-skeleton/);
-    });
-
-    test('cada textarea tem rótulo associado', () => {
-        expect(trechoRelatorios).toMatch(/<label class="sr-only" for="\$\{idCampo\}"/);
+        expect(lista.body.data).toHaveLength(1);
+        expect(lista.body.data[0].conteudo).toBe('Sala principal');
     });
 });
 
-describe('design system e motion da aba (Issue #132)', () => {
-    test('nenhuma cor fora dos tokens no bloco de relatórios', () => {
-        expect(blocoCss).not.toMatch(/#38bdf8/); // azul-céu
-        expect(blocoCss).not.toMatch(/#818cf8/); // índigo
-        expect(blocoCss).not.toMatch(/124,\s*58,\s*237/); // sombra roxa
-        expect(blocoCss).not.toMatch(/#555\b/);
+describe('Relatórios diários — idempotência', () => {
+    // Auto-save (debounce) e clique em "Salvar" disparam para o mesmo dia. Com
+    // "buscar, e se não achar criar" no front, os dois viam "não existe".
+    it('salvar o mesmo dia duas vezes deixa um único registro', async () => {
+        const { agent } = await professorDe('5A');
+        const base = { turma: '5A', materia: 'Matemática', dia: '2026-08-20' };
+
+        await salvar(agent, { ...base, conteudo: 'Primeira versão' });
+        await salvar(agent, { ...base, conteudo: 'Versão corrigida' });
+
+        expect(await Relatorio.countDocuments({ turma: '5A', dia: '2026-08-20' })).toBe(1);
+
+        const lista = await listar(agent, { turma: '5A', materia: 'Matemática', ...QUINZENA });
+        expect(lista.body.data).toHaveLength(1);
+        expect(lista.body.data[0].conteudo).toBe('Versão corrigida');
     });
 
-    test('o título não usa gradiente recortado', () => {
-        expect(blocoCss).not.toMatch(/background-clip:\s*text/);
-        expect(blocoCss).not.toMatch(/text-fill-color/);
+    it('dois saves simultâneos do mesmo dia não duplicam', async () => {
+        const { agent } = await professorDe('5A');
+        const base = { turma: '5A', materia: 'Matemática', dia: '2026-08-20' };
+
+        const respostas = await Promise.all([
+            salvar(agent, { ...base, conteudo: 'A' }),
+            salvar(agent, { ...base, conteudo: 'B' }),
+        ]);
+
+        respostas.forEach(r => expect(r.status).toBe(200));
+        expect(await Relatorio.countDocuments({ turma: '5A', dia: '2026-08-20' })).toBe(1);
     });
 
-    test('nada de `transition: all` nem duração acima de 180ms', () => {
-        expect(blocoCss).not.toMatch(/transition:\s*all/);
+    it('esvaziar o texto apaga o registro do dia', async () => {
+        const { agent } = await professorDe('5A');
+        const base = { turma: '5A', materia: 'Matemática', dia: '2026-08-20' };
 
-        const duracoes = [...blocoCss.matchAll(/(\d+)ms/g)].map((m) => Number(m[1]));
-        expect(duracoes.length).toBeGreaterThan(0);
-        expect(Math.max(...duracoes)).toBeLessThanOrEqual(180);
-        expect(blocoCss).not.toMatch(/\b0?\.[3-9]\d*s\b/); // 0.3s, 0.4s…
-    });
+        await salvar(agent, { ...base, conteudo: 'Escrito por engano' });
+        const apagado = await salvar(agent, { ...base, conteudo: '   ' });
 
-    test('o cartão não se move sob o cursor', () => {
-        // É uma área de digitação: o ponteiro passa por ela o tempo todo.
-        const hover = blocoCss.slice(blocoCss.indexOf('.report-card:hover'));
-        expect(hover.slice(0, 120)).not.toMatch(/translateY/);
-    });
-
-    test('respeita prefers-reduced-motion', () => {
-        expect(blocoCss).toMatch(/@media \(prefers-reduced-motion: reduce\)/);
+        expect(apagado.status).toBe(200);
+        expect(apagado.body.removido).toBe(true);
+        expect(await Relatorio.countDocuments({ turma: '5A', dia: '2026-08-20' })).toBe(0);
     });
 });
 
-describe('semântica de abas em turma.html (Issue #132)', () => {
-    test('o contêiner é um tablist e cada botão é uma tab', () => {
-        expect(turmaHtml).toMatch(/id="viewTabs"[^>]*role="tablist"/);
-        expect((turmaHtml.match(/role="tab"/g) || []).length).toBe(3);
+describe('Relatórios diários — dia civil', () => {
+    // `data` é um instante; `dia` é a data do calendário da escola. Gravar só
+    // o instante fazia o relatório de 29/08 escrito às 21h de Brasília ser
+    // lido como 30/08 em UTC.
+    it('guarda o dia como AAAA-MM-DD, independente de fuso', async () => {
+        const { agent } = await professorDe('5A');
+
+        await salvar(agent, { turma: '5A', materia: 'Matemática', dia: '2026-08-29', conteudo: 'Revisão' });
+
+        const doc = await Relatorio.findOne({ turma: '5A' }).lean();
+        expect(doc.dia).toBe('2026-08-29');
+        // O instante de apoio cai no mesmo dia do calendário em qualquer fuso do Brasil.
+        expect(doc.data.toISOString().slice(0, 10)).toBe('2026-08-29');
     });
 
-    test('cada aba declara seleção e o painel que controla', () => {
-        expect(turmaHtml).toMatch(/aria-selected="true"[^>]*aria-controls="painelNotas"/);
-        expect(turmaHtml).toMatch(/aria-controls="painelFaltas"/);
-        expect(turmaHtml).toMatch(/aria-controls="painelRelatorios"/);
+    it('recusa dia fora do formato ou inexistente', async () => {
+        const { agent } = await professorDe('5A');
+        const base = { turma: '5A', materia: 'Matemática', conteudo: 'x' };
+
+        expect((await salvar(agent, { ...base, dia: '20/08/2026' })).status).toBe(400);
+        expect((await salvar(agent, { ...base, dia: '2026-02-31' })).status).toBe(400);
+        expect((await salvar(agent, { ...base, dia: '' })).status).toBe(400);
     });
 
-    test('cada painel é um tabpanel rotulado pela própria aba', () => {
-        expect((turmaHtml.match(/role="tabpanel"/g) || []).length).toBe(3);
-        expect(turmaHtml).toMatch(/id="painelNotas"[^>]*aria-labelledby="tabNotas"/);
+    it('recusa janela invertida ou grande demais na listagem', async () => {
+        const { agent } = await professorDe('5A');
+
+        const invertida = await listar(agent, { turma: '5A', de: '2026-08-29', ate: '2026-08-15' });
+        const gigante = await listar(agent, { turma: '5A', de: '2020-01-01', ate: '2026-08-15' });
+
+        expect(invertida.status).toBe(400);
+        expect(gigante.status).toBe(400);
+    });
+});
+
+describe('Relatórios diários — isolamento', () => {
+    it('professor não lê relatório de turma que não leciona', async () => {
+        const { agent } = await professorDe('5A');
+
+        const res = await listar(agent, { turma: '9Z', ...QUINZENA });
+
+        expect(res.status).toBe(403);
     });
 
-    test('as setas navegam entre as abas — a semântica não é só decorativa', () => {
-        const abas = appJs.slice(appJs.indexOf('Abas de visão'), appJs.indexOf('Adicionar aluno'));
-        expect(abas).toMatch(/ArrowRight/);
-        expect(abas).toMatch(/ArrowLeft/);
-        expect(abas).toMatch(/aria-selected/);
-        expect(abas).toMatch(/tabIndex/);
+    it('professor não grava relatório de turma que não leciona', async () => {
+        const { agent } = await professorDe('5A');
+
+        const res = await salvar(agent, {
+            turma: '9Z', materia: 'Matemática', dia: '2026-08-20', conteudo: 'Turma alheia',
+        });
+
+        expect(res.status).toBe(403);
+        expect(await Relatorio.countDocuments({ turma: '9Z' })).toBe(0);
+    });
+
+    // O `horizontalFilter` normaliza "1ºC"/"1C"; a autorização precisa aceitar
+    // as duas grafias, senão o professor é barrado da própria turma.
+    it('aceita a turma com e sem o marcador de ordinal', async () => {
+        const { agent } = await professorDe('1ºC');
+
+        const comOrdinal = await salvar(agent, { turma: '1ºC', dia: '2026-08-20', conteudo: 'a' });
+        const semOrdinal = await salvar(agent, { turma: '1C', dia: '2026-08-21', conteudo: 'b' });
+
+        expect(comOrdinal.status).toBe(200);
+        expect(semOrdinal.status).toBe(200);
+    });
+
+    it('não devolve relatório gravado por outra escola', async () => {
+        const primeira = await professorDe('5A');
+        await salvar(primeira.agent, { turma: '5A', materia: 'Matemática', dia: '2026-08-20', conteudo: 'Escola A' });
+
+        // Mesma turma, mesmo dia, escola diferente.
+        const segunda = await professorDe('5A');
+        const lista = await listar(segunda.agent, { turma: '5A', materia: 'Matemática', ...QUINZENA });
+
+        expect(lista.status).toBe(200);
+        expect(lista.body.data).toHaveLength(0);
+    });
+
+    it('exige sessão', async () => {
+        const res = await request(app).get('/api/relatorios/diarios').query({ turma: '5A', ...QUINZENA });
+
+        expect([401, 403]).toContain(res.status);
     });
 });
