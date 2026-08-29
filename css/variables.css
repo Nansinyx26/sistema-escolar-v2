@@ -638,12 +638,6 @@
     border-color: rgba(15, 23, 42, 0.10);
 }
 
-/* --- Cabeçalho de relatórios da turma (turma.css) --- */
-:root[data-theme="light"] .relatorios-header-card {
-    background: linear-gradient(135deg, rgba(241, 245, 249, 0.9), rgba(226, 232, 240, 0.9));
-    border-color: rgba(15, 23, 42, 0.08);
-}
-
 /* --- Sidebar do BI pedagógico no mobile (bi-pedagogico.css) --- */
 :root[data-theme="light"] .bi-sidebar {
     background: rgba(255, 255, 255, 0.98);
@@ -1036,9 +1030,9 @@
     .login-card, .auth-card,
     .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
     .sec-form-card, .sec-quick-card, .sec-stat-card,
-    .sala-card, .report-card,
+    .sala-card,
     .mn-card, .mn-form-card, .mn-sidebar-card, .mn-dest-panel, .mn-editor-wrap, .mn-modal,
-    .relatorios-header-card, .ca-section,
+    .ca-section,
     .welcome-section, .turmas-section, .turma-card,
     .role-card-content, .checkbox-card-content, .comunicado-card-premium,
     .modal-content, .pa-modal-card) {
@@ -1057,7 +1051,7 @@
     .info-card, .login-card, .auth-card,
     .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
     .sec-form-card, .sec-quick-card, .sec-stat-card,
-    .sala-card, .report-card, .mn-card, .turma-card,
+    .sala-card, .mn-card, .turma-card,
     .role-card-content, .checkbox-card-content, .comunicado-card-premium):hover {
     background: #121212 !important;
     border-color: rgba(255, 255, 255, 0.22) !important;
@@ -1074,9 +1068,9 @@
     .login-card, .auth-card,
     .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
     .sec-form-card, .sec-quick-card, .sec-stat-card,
-    .sala-card, .report-card,
+    .sala-card,
     .mn-card, .mn-form-card, .mn-sidebar-card, .mn-dest-panel, .mn-editor-wrap, .mn-modal,
-    .relatorios-header-card, .ca-section,
+    .ca-section,
     .welcome-section, .turmas-section, .turma-card,
     .role-card-content, .checkbox-card-content, .comunicado-card-premium,
     .modal-content, .pa-modal-card) :is(h1, h2, h3, h4, h5, h6, p, span, small, strong, b, em, i, u, s,
@@ -1101,9 +1095,9 @@
     .login-card, .auth-card,
     .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
     .sec-form-card, .sec-quick-card, .sec-stat-card,
-    .sala-card, .report-card,
+    .sala-card,
     .mn-card, .mn-form-card, .mn-sidebar-card, .mn-dest-panel, .mn-editor-wrap, .mn-modal,
-    .relatorios-header-card, .ca-section,
+    .ca-section,
     .welcome-section, .turmas-section, .turma-card,
     .role-card-content, .checkbox-card-content, .comunicado-card-premium,
     .modal-content, .pa-modal-card) :is(input:not([type="checkbox"]):not([type="radio"]), textarea, select, .form-input, .sc-input) {
@@ -1122,9 +1116,9 @@
     .login-card, .auth-card,
     .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
     .sec-form-card, .sec-quick-card, .sec-stat-card,
-    .sala-card, .report-card,
+    .sala-card,
     .mn-card, .mn-form-card, .mn-sidebar-card, .mn-dest-panel, .mn-editor-wrap, .mn-modal,
-    .relatorios-header-card, .ca-section,
+    .ca-section,
     .welcome-section, .turmas-section, .turma-card,
     .role-card-content, .checkbox-card-content, .comunicado-card-premium,
     .modal-content, .pa-modal-card) option {
@@ -1139,9 +1133,9 @@
     .login-card, .auth-card,
     .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
     .sec-form-card, .sec-quick-card, .sec-stat-card,
-    .sala-card, .report-card,
+    .sala-card,
     .mn-card, .mn-form-card, .mn-sidebar-card, .mn-dest-panel, .mn-editor-wrap, .mn-modal,
-    .relatorios-header-card, .ca-section,
+    .ca-section,
     .welcome-section, .turmas-section, .turma-card,
     .role-card-content, .checkbox-card-content, .comunicado-card-premium,
     .modal-content, .pa-modal-card) ::placeholder {
@@ -1157,9 +1151,9 @@
     .login-card, .auth-card,
     .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
     .sec-form-card, .sec-quick-card, .sec-stat-card,
-    .sala-card, .report-card,
+    .sala-card,
     .mn-card, .mn-form-card, .mn-sidebar-card, .mn-dest-panel, .mn-editor-wrap, .mn-modal,
-    .relatorios-header-card, .ca-section,
+    .ca-section,
     .welcome-section, .turmas-section, .turma-card,
     .role-card-content, .checkbox-card-content, .comunicado-card-premium,
     .modal-content, .pa-modal-card) :is(input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus) {
@@ -1176,9 +1170,9 @@
     .login-card, .auth-card,
     .action-card, .portal-card, .feat-card, .tool-card, .diag-card, .grafico-card,
     .sec-form-card, .sec-quick-card, .sec-stat-card,
-    .sala-card, .report-card,
+    .sala-card,
     .mn-card, .mn-form-card, .mn-sidebar-card, .mn-dest-panel, .mn-editor-wrap, .mn-modal,
-    .relatorios-header-card, .ca-section,
+    .ca-section,
     .welcome-section, .turmas-section, .turma-card,
     .role-card-content, .checkbox-card-content, .comunicado-card-premium,
     .modal-content, .pa-modal-card) :is(table, thead, tbody, tr, th, td, hr, .divider,
