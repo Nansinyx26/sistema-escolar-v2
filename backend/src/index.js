@@ -39,7 +39,7 @@ if (process.env.CONSOLE_GUARD !== 'false') {
 const app = require('./app');
 const connectDB = require('./utils/db');
 const { initializeCache } = require('./services/CacheService');
-const { startKeepAlive } = require('./utils/keepAlive');                          // MELHORIA: Previne cold start (Roadmap #5)
+const { startKeepAlive } = require('./utils/keepAlive'); // MELHORIA: Previne cold start (Roadmap #5)
 const { startAnonimizacaoAutomatica } = require('./utils/anonimizacaoAutomatica'); // MELHORIA: LGPD cron (Roadmap #14)
 const cron = require('node-cron');
 const SecurityController = require('./controllers/SecurityController');
@@ -47,6 +47,7 @@ const SecurityConfig = require('./models/SecurityConfig');
 const { initializeSecretCodes } = require('./utils/secretCodeHelper');
 const logger = require('./utils/logger');
 const { startHealthMonitor } = require('./utils/healthMonitor');
+const { criarEncerrador } = require('./utils/encerramento');
 
 const PORT = process.env.PORT || 3001;
 
@@ -63,7 +64,7 @@ const startServer = async () => {
 
         // Migração silenciosa: garante que todos os usuários têm os campos
         // de preferência de voz/TTS/acessibilidade (roda em background)
-        _runVoiceMigrationSilent().catch(err =>
+        _runVoiceMigrationSilent().catch((err) =>
             logger.warn('[Boot] Migração de voz falhou silenciosamente:', err.message)
         );
 
@@ -102,7 +103,9 @@ const startServer = async () => {
             logger.info(`[Boot] ${politica2FA.resumoDaPolitica()}`, { action: 'boot.politica2FA' });
             const avisoPolitica2FA = politica2FA.avisoDeBoot();
             if (avisoPolitica2FA) {
-                logger.alert('SEGURANCA_2FA_DISPENSADO', avisoPolitica2FA, { action: 'boot.politica2FA' });
+                logger.alert('SEGURANCA_2FA_DISPENSADO', avisoPolitica2FA, {
+                    action: 'boot.politica2FA',
+                });
                 logger.warn(`⚠️  ${avisoPolitica2FA}`);
             }
 
@@ -115,21 +118,31 @@ const startServer = async () => {
             //
             // Não derruba o processo: o resto do sistema funciona sem e-mail, e
             // um servidor no ar com aviso é melhor que um servidor fora do ar.
-            require('./services/EnvioEmail').verificarEnvio()
+            require('./services/EnvioEmail')
+                .verificarEnvio()
                 .then((r) => {
                     if (r.ok) {
                         logger.info('✅ Canal de e-mail operacional', {
-                            transporte: r.transporte, remetente: r.remetente, action: 'boot.email',
+                            transporte: r.transporte,
+                            remetente: r.remetente,
+                            action: 'boot.email',
                         });
                     } else {
-                        logger.alert('EMAIL_INDISPONIVEL',
+                        logger.alert(
+                            'EMAIL_INDISPONIVEL',
                             `Canal de e-mail NÃO operacional (${r.etapa}): ${r.erro}`,
-                            { transporte: r.transporte, action: 'boot.email' });
-                        logger.error('⚠️  E-mail indisponível — 2FA de diretor e secretaria vai falhar. ' +
-                            'Rode GET /api/admin/diag/email para o detalhe.', { etapa: r.etapa, erro: r.erro });
+                            { transporte: r.transporte, action: 'boot.email' }
+                        );
+                        logger.error(
+                            '⚠️  E-mail indisponível — 2FA de diretor e secretaria vai falhar. ' +
+                                'Rode GET /api/admin/diag/email para o detalhe.',
+                            { etapa: r.etapa, erro: r.erro }
+                        );
                     }
                 })
-                .catch((err) => logger.error('[Boot] Falha ao verificar o canal de e-mail', { err }));
+                .catch((err) =>
+                    logger.error('[Boot] Falha ao verificar o canal de e-mail', { err })
+                );
 
             // 5b. Ativa avaliação de métricas e alertas periódicos (Roadmap #6 - Observabilidade)
             const alertService = require('./services/AlertService');
@@ -141,7 +154,10 @@ const startServer = async () => {
                         dbHealth: health.database?.ok ?? false,
                         cacheHealth: health.cache?.ok ?? false,
                         memoryUsage: monitoringService.getMemoryUsageRatio(),
-                        errorRate: health.metrics.requests > 0 ? (health.metrics.errors / health.metrics.requests) : 0,
+                        errorRate:
+                            health.metrics.requests > 0
+                                ? health.metrics.errors / health.metrics.requests
+                                : 0,
                         responseTime: health.metrics.avgResponseTime || 0,
                     };
                     await alertService.evaluateMetrics(metrics);
@@ -159,25 +175,36 @@ const startServer = async () => {
             iniciarSystemUpdateJob();
 
             // 7. Cron: Rotação automática do Código Secreto à meia-noite (horário de Brasília)
-            cron.schedule('0 0 * * *', async () => {
-                try {
-                    logger.info('🔐 [CRON] Rotação automática do código secreto (meia-noite BR)');
-                    let config = await SecurityConfig.findOne({ chave: 'CONFIG_GERAL' });
-                    if (!config) {
-                        config = await SecurityConfig.create({
-                            codigoSecretoEscola: SecurityController.generateCode(),
-                            dataUltimaRotacao: new Date(),
-                            rotacaoAutomatica: true
-                        });
-                    } else {
-                        await SecurityController.rotateCodeInternal(config, 'CRON (Meia-Noite-BR)');
+            cron.schedule(
+                '0 0 * * *',
+                async () => {
+                    try {
+                        logger.info(
+                            '🔐 [CRON] Rotação automática do código secreto (meia-noite BR)'
+                        );
+                        let config = await SecurityConfig.findOne({ chave: 'CONFIG_GERAL' });
+                        if (!config) {
+                            config = await SecurityConfig.create({
+                                codigoSecretoEscola: SecurityController.generateCode(),
+                                dataUltimaRotacao: new Date(),
+                                rotacaoAutomatica: true,
+                            });
+                        } else {
+                            await SecurityController.rotateCodeInternal(
+                                config,
+                                'CRON (Meia-Noite-BR)'
+                            );
+                        }
+                        logger.info('✅ [CRON] Código secreto atualizado com sucesso');
+                    } catch (err) {
+                        logger.error('❌ [CRON] Erro na rotação do código', { error: err.message });
                     }
-                    logger.info('✅ [CRON] Código secreto atualizado com sucesso');
-                } catch (err) {
-                    logger.error('❌ [CRON] Erro na rotação do código', { error: err.message });
-                }
-            }, { timezone: 'America/Sao_Paulo' });
-            logger.info('🔐 [SECURITY] Cron de rotação do código secreto ativo', { schedule: '00:00 BRT' });
+                },
+                { timezone: 'America/Sao_Paulo' }
+            );
+            logger.info('🔐 [SECURITY] Cron de rotação do código secreto ativo', {
+                schedule: '00:00 BRT',
+            });
         });
 
         // Configuração do Socket.IO com autenticação JWT
@@ -187,14 +214,15 @@ const startServer = async () => {
 
         const io = new Server(server, {
             cors: {
-                origin: process.env.NODE_ENV === 'production'
-                    ? [process.env.FRONTEND_URL, 'https://sistema-escolar-bfty.onrender.com']
-                    : '*',
+                origin:
+                    process.env.NODE_ENV === 'production'
+                        ? [process.env.FRONTEND_URL, 'https://sistema-escolar-bfty.onrender.com']
+                        : '*',
                 methods: ['GET', 'POST'],
-                credentials: true
+                credentials: true,
             },
             pingTimeout: 60000,
-            pingInterval: 25000
+            pingInterval: 25000,
         });
 
         // Adapter compartilhado. Com uma instância só (plano free do Render) ele
@@ -213,9 +241,10 @@ const startServer = async () => {
         io.use(async (socket, next) => {
             try {
                 // Tenta obter token do handshake (cookie ou query)
-                const token = socket.handshake.auth?.token
-                    || socket.handshake.headers?.cookie?.match(/escola_jwt=([^;]+)/)?.[1]
-                    || socket.handshake.query?.token;
+                const token =
+                    socket.handshake.auth?.token ||
+                    socket.handshake.headers?.cookie?.match(/escola_jwt=([^;]+)/)?.[1] ||
+                    socket.handshake.query?.token;
 
                 if (!token) {
                     return next(new Error('Authentication required'));
@@ -244,7 +273,9 @@ const startServer = async () => {
                 let escolaId = conta.escolaId ? String(conta.escolaId) : null;
                 if (!escolaId) {
                     const vinculos = await vinculosDoUsuario({
-                        id: conta._id, email: decoded.email, perfil: conta.perfil
+                        id: conta._id,
+                        email: decoded.email,
+                        perfil: conta.perfil,
                     });
                     if (vinculos.length === 1) escolaId = String(vinculos[0].escolaId);
                 }
@@ -273,9 +304,10 @@ const startServer = async () => {
                 const ficouOnline = presence.addUser(socket.escolaId, uid, socket.id);
                 if (ficouOnline) {
                     io.to(`escola:${socket.escolaId}`).emit('presence:professor', {
-                        userId: String(uid), online: true,
+                        userId: String(uid),
+                        online: true,
                         status: presence.statusDe(socket.escolaId, uid),
-                        perfil: user.perfil
+                        perfil: user.perfil,
                     });
                 }
             }
@@ -283,23 +315,22 @@ const startServer = async () => {
             logger.debug(`🔌 [Socket.IO] ${user.nome || 'Usuário'} conectado`, {
                 perfil: user.perfil,
                 room: `user:${user.id || user._id}`,
-                escola: socket.escolaId || 'n/d'
+                escola: socket.escolaId || 'n/d',
             });
 
             // Eventos de digitação e gravação de áudio em tempo real.
             // O destinatário sai do próprio mapa de presença da escola: assim
             // um socket não consegue disparar "digitando" para usuários de
             // outro tenant só informando um id arbitrário.
-            const mesmoTenant = (destinatarioId) => (
-                !!socket.escolaId && presence.isOnline(socket.escolaId, destinatarioId)
-            );
+            const mesmoTenant = (destinatarioId) =>
+                !!socket.escolaId && presence.isOnline(socket.escolaId, destinatarioId);
 
             socket.on('chat:typing', (data) => {
                 if (!data || !data.destinatarioId) return;
                 if (!mesmoTenant(data.destinatarioId)) return;
                 io.to(`user:${data.destinatarioId}`).emit('chat:typing', {
                     remetenteId: String(uid),
-                    isTyping: !!data.isTyping
+                    isTyping: !!data.isTyping,
                 });
             });
 
@@ -308,7 +339,7 @@ const startServer = async () => {
                 if (!mesmoTenant(data.destinatarioId)) return;
                 io.to(`user:${data.destinatarioId}`).emit('chat:recording', {
                     remetenteId: String(uid),
-                    isRecording: !!data.isRecording
+                    isRecording: !!data.isRecording,
                 });
             });
 
@@ -321,9 +352,10 @@ const startServer = async () => {
                 const mudou = presence.setAusente(socket.escolaId, uid, socket.id, ausente);
                 if (mudou) {
                     io.to(`escola:${socket.escolaId}`).emit('presence:professor', {
-                        userId: String(uid), online: true,
+                        userId: String(uid),
+                        online: true,
                         status: presence.statusDe(socket.escolaId, uid),
-                        perfil: user.perfil
+                        perfil: user.perfil,
                     });
                 }
             });
@@ -349,8 +381,10 @@ const startServer = async () => {
                     const ficouOffline = presence.removeUser(socket.escolaId, uid, socket.id);
                     if (ficouOffline) {
                         io.to(`escola:${socket.escolaId}`).emit('presence:professor', {
-                            userId: String(uid), online: false, status: 'offline',
-                            perfil: user.perfil
+                            userId: String(uid),
+                            online: false,
+                            status: 'offline',
+                            perfil: user.perfil,
                         });
                     }
                 }
@@ -359,12 +393,27 @@ const startServer = async () => {
 
         global.io = io;
 
+        // Saída do processo com prazo máximo. O porquê (e o modo de falha que
+        // isso conserta) está em utils/encerramento.js — Issue #125.
+        const encerrarComPrazo = criarEncerrador({
+            server,
+            io,
+            logger,
+            prazoMs: Number(process.env.SHUTDOWN_TIMEOUT_MS) || undefined,
+        });
+
         // Tratamento de Rejeições Não Tratadas (Promises)
+        //
+        // NOTA: hoje qualquer promise solta em job, cron ou handler de socket
+        // encerra o servidor inteiro. É a política escolhida (o processo é
+        // considerado em estado desconhecido), e está registrada aqui de
+        // propósito — este módulo é o dono da política de encerramento do
+        // processo. Ver docs/OBSERVABILITY.md.
         process.on('unhandledRejection', (err, promise) => {
             logger.alert('UNHANDLED_REJECTION', err?.message || 'Rejeição não tratada', {
                 stack: err?.stack,
             });
-            server.close(() => process.exit(1));
+            encerrarComPrazo(1);
         });
 
         // Tratamento de Exceções Não Capturadas (Síncrono)
@@ -372,9 +421,8 @@ const startServer = async () => {
             logger.alert('UNCAUGHT_EXCEPTION', err.message, {
                 stack: err.stack,
             });
-            server.close(() => process.exit(1));
+            encerrarComPrazo(1);
         });
-
     } catch (err) {
         logger.fatal(`❌ Erro fatal ao iniciar o servidor: ${err.message}`, { stack: err.stack });
         process.exit(1);
@@ -400,8 +448,11 @@ async function podeAcessarMensagem(socket, messageId) {
         ? { $or: [{ _id: messageId }, { id: messageId }] }
         : { id: messageId };
 
-    const doc = await Comunicado.findOne(filtroId).select('escolaId destinatarios').lean()
-        || await Notificacao.findOne(filtroId).select('escolaId destinatarios paraResponsavel').lean();
+    const doc =
+        (await Comunicado.findOne(filtroId).select('escolaId destinatarios').lean()) ||
+        (await Notificacao.findOne(filtroId)
+            .select('escolaId destinatarios paraResponsavel')
+            .lean());
 
     if (!doc) return false;
 
@@ -433,11 +484,13 @@ async function podeAcessarMensagem(socket, messageId) {
             $or: [
                 { responsavel: emailRegex },
                 { 'responsavelDados.email': emailRegex },
-                { 'responsaveis.email': emailRegex }
-            ]
-        }).select('turma turmaId id').lean();
+                { 'responsaveis.email': emailRegex },
+            ],
+        })
+            .select('turma turmaId id')
+            .lean();
 
-        alunos.forEach(a => {
+        alunos.forEach((a) => {
             const t = a.turma || a.turmaId;
             if (t) alvos.push(t, `turma:${t}`);
             alvos.push(String(a._id));
@@ -445,7 +498,7 @@ async function podeAcessarMensagem(socket, messageId) {
         });
     }
 
-    return destinatarios.some(d => alvos.includes(String(d)));
+    return destinatarios.some((d) => alvos.includes(String(d)));
 }
 
 /**
@@ -461,13 +514,13 @@ async function _runVoiceMigrationSilent() {
     const col = db.collection('usuarios');
 
     const DEFAULTS = {
-        voiceGender:              'male',
-        voiceSpeed:               1.0,
-        ttsProvider:              'google-cloud',
-        preferenciaNarracao:      'texto_audio',
-        accessibilityFontSize:    '100%',
-        accessibilityContrast:    false,
-        accessibilityReadingMode: false
+        voiceGender: 'male',
+        voiceSpeed: 1.0,
+        ttsProvider: 'google-cloud',
+        preferenciaNarracao: 'texto_audio',
+        accessibilityFontSize: '100%',
+        accessibilityContrast: false,
+        accessibilityReadingMode: false,
     };
 
     let total = 0;
@@ -477,7 +530,9 @@ async function _runVoiceMigrationSilent() {
             { $set: { [field]: value } }
         );
         if (result.modifiedCount > 0) {
-            logger.info(`[VoiceMigration] '${field}': ${result.modifiedCount} usuário(s) atualizados com default '${value}'`);
+            logger.info(
+                `[VoiceMigration] '${field}': ${result.modifiedCount} usuário(s) atualizados com default '${value}'`
+            );
             total += result.modifiedCount;
         }
     }
@@ -499,7 +554,8 @@ async function _runVoiceMigrationSilent() {
         // Caso normal: índice já existe ou coleção vazia. Fica em debug para não
         // poluir o boot, mas deixa de ser invisível quando a migração falha.
         logger.debug('[VoiceMigration] Passo de TTL/índice ignorado', {
-            err: e, action: 'migracao.voice',
+            err: e,
+            action: 'migracao.voice',
         });
     }
 
