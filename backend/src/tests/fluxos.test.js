@@ -296,6 +296,29 @@ describe('destino pós-login e gate de painel concordam', () => {
         }
     );
 
+    // Desde a Issue #104 o `getRedirectPath` delega para `painelDoPerfil`, e o
+    // bloco acima virou quase tautologia. Fica porque é barato e porque marca o
+    // contrato; o que passou a valer a pena travar são as três decisões que a
+    // delegação NÃO cobre — e uma delas é mudança de comportamento.
+    it('sem usuário vai para o login', () => {
+        expect(getRedirectPath(null)).toBe('/html/login.html');
+    });
+
+    it('senha a trocar tem precedência sobre qualquer painel', () => {
+        expect(getRedirectPath({ perfil: 'admin', deveMudarSenha: true })).toBe(
+            '/html/mudar-senha.html'
+        );
+    });
+
+    it('perfil desconhecido cai na tela de escolha, não no dashboard', () => {
+        // Antes da delegação, o `return` final do `getRedirectPath` entregava o
+        // painel do professor a qualquer perfil não previsto.
+        expect(getRedirectPath({ perfil: 'perfil-que-ninguem-cadastrou' })).toBe(
+            '/html/escolher-perfil.html'
+        );
+        expect(getRedirectPath({})).toBe('/html/escolher-perfil.html');
+    });
+
     it('ninguém que o login manda ao dashboard encontra a porta fechada', () => {
         // O gate pode ser MAIOR que a lista de moradores (a secretaria entra por
         // um botão do painel dela), mas nunca menor: mandar a pessoa para uma
