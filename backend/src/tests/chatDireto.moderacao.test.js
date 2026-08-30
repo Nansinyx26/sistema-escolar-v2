@@ -18,6 +18,7 @@ const {
     limparBanco,
     desconectarBanco,
     criarUsuario,
+    aceitarTermoAudioImagem,
     SENHA_TESTE,
 } = require('./helpers');
 
@@ -60,6 +61,12 @@ async function professorLogado(email) {
         .post('/api/auth/login')
         .send({ email, senha: SENHA_TESTE, escolaId: String(escola._id) });
     expect(login.status).toBe(200);
+
+    // Desde a Issue #118 o upload de mídia exige o aceite do Termo de Áudio e
+    // Imagem. Estas suítes enviam imagem, então o professor precisa ter aceitado
+    // — que é o que uma pessoa de verdade faz antes de anexar a primeira foto.
+    await aceitarTermoAudioImagem(user._id);
+
     return { agent, user, id: String(user._id) };
 }
 

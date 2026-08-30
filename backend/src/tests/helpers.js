@@ -85,11 +85,44 @@ async function criarUsuario(overrides = {}) {
     return Usuario.create({ ...defaults, ...overrides });
 }
 
+/**
+ * Registra o aceite do Termo de Uso de Áudio e Imagem para um usuário.
+ *
+ * Desde a Issue #118, `POST /api/chat-direto/upload` e `POST /api/audio/upload`
+ * recusam com 403 quem não aceitou — a barreira que o `js/termo-audio-imagem.js`
+ * sempre declarou depender. Todo teste que envia mídia precisa passar por aqui
+ * antes, porque é isso que uma pessoa de verdade faz.
+ *
+ * Helper explícito, e não um aceite embutido no `criarUsuario`: assim um teste
+ * que queira exercitar a RECUSA continua conseguindo, e quem lê o teste vê o
+ * pré-requisito em vez de herdá-lo sem saber.
+ */
+async function aceitarTermoAudioImagem(usuarioId) {
+    const { TERMO_ID, TERMO_VERSAO } = require('../utils/termoAudioImagem');
+    await Usuario.updateOne(
+        { _id: usuarioId },
+        {
+            $push: {
+                lgpdHistory: {
+                    termoId: TERMO_ID,
+                    versao: TERMO_VERSAO,
+                    aceitoEm: new Date(),
+                    ip: '127.0.0.1',
+                    browser: 'jest',
+                    os: 'test',
+                    loginType: 'Portal Local',
+                },
+            },
+        }
+    );
+}
+
 module.exports = {
     conectarBanco,
     limparBanco,
     desconectarBanco,
     criarUsuario,
+    aceitarTermoAudioImagem,
     nomeDoBanco,
     SENHA_TESTE,
     SENHA_TESTE_NOVA,
