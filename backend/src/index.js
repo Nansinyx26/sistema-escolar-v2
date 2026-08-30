@@ -397,6 +397,13 @@ const startServer = async () => {
 
         global.io = io;
 
+        // A observabilidade também registra listeners nestes dois eventos, e
+        // registrar listener neles SUBSTITUI o comportamento padrão do Node.
+        // Até aqui ela mantinha a saída padrão armada, para uma exceção durante
+        // o boot não ser reportada e engolida. A partir desta linha o dono da
+        // política é este arquivo — ver Issue #129 e docs/OBSERVABILITY.md.
+        observability.assumirEncerramento();
+
         // Saída do processo com prazo máximo. O porquê (e o modo de falha que
         // isso conserta) está em utils/encerramento.js — Issue #125.
         const encerrarComPrazo = criarEncerrador({
