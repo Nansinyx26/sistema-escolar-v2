@@ -19,6 +19,7 @@
         "arch:baseline": "depcruise --config .dependency-cruiser.cjs --output-type baseline backend/src js scripts > .dependency-cruiser-known-violations.json",
         "arch:all": "depcruise --config .dependency-cruiser.cjs backend/src js scripts",
         "arch:graph": "depcruise --config .dependency-cruiser.cjs --output-type dot backend/src | dot -T svg > docs/arquitetura.svg",
+        "setup": "npm ci && npm ci --prefix backend && npm ci --prefix portal-responsavel",
         "sw:verificar": "node scripts/verificar-bump-sw.js",
         "knip": "knip --no-exit-code",
         "knip:fix": "knip --fix",

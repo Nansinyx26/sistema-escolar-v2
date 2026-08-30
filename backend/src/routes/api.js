@@ -359,6 +359,7 @@ router.get('/chat-direto/nao-lidas', authJWT, ChatDiretoController.contarNaoLida
 // audio/webm) e metadata com os dois lados da conversa — o download reusa o
 // `serveFile`, que autoriza remetente e destinatário via FileController.
 const uploadChat = require('../middleware/uploadChat');
+const exigirAceiteTermo = require('../middleware/exigirAceiteTermo');
 // Erro do multer (tipo não permitido / arquivo grande) vira 400 legível em vez
 // de cair no handler genérico como 500.
 const receberAnexosChat = (req, res, next) => {
@@ -400,11 +401,19 @@ const receberAnexosChat = (req, res, next) => {
         return next();
     });
 };
+// A BARREIRA DO TERMO VEM ANTES DE `receberAnexosChat` (Issue #118).
+//
+// A ordem importa: `receberAnexosChat` é o multer, que já leu o corpo inteiro
+// para a memória. Recusar depois disso significaria receber o arquivo de quem
+// não aceitou o Termo para então descartá-lo — e a cláusula 3 obtém
+// consentimento justamente para ARMAZENAR e PROCESSAR essa mídia. A recusa
+// precisa acontecer antes de o conteúdo existir do lado do servidor.
 router.post(
     '/chat-direto/upload',
     authJWT,
     filtrarPorEscola,
     chatUploadLimiter,
+    exigirAceiteTermo,
     receberAnexosChat,
     ChatDiretoController.uploadAnexo
 );

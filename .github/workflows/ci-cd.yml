@@ -174,14 +174,33 @@ jobs:
         working-directory: ./backend
         run: npm ci
 
+      # O Knip cruza os TRÊS workspaces do knip.json, e para o do portal ele
+      # carrega `portal-responsavel/vite.config.ts` — que faz `import` de `vite`
+      # e de `@vitejs/plugin-react`. Sem este passo, o Knip morria no
+      # carregamento da configuração (Issue #124) em vez de analisar qualquer
+      # coisa. Não instalar aqui é economizar 5s de CI para perder o portão
+      # inteiro.
+      - name: 📥 Install dependencies (portal-responsavel)
+        working-directory: ./portal-responsavel
+        run: npm ci
+
       # Contrato de camadas: routes → controllers → services → models.
       - name: 🏛️ Contrato de arquitetura (dependency-cruiser)
         run: npm run arch
 
       # Código, dependências e exports mortos.
+      #
+      # SEM `continue-on-error`, DE PROPÓSITO (Issue #124). A distinção entre
+      # "achado" e "falha" é feita pelo `--no-exit-code` que está no script:
+      # ele zera o código de saída dos ACHADOS de código morto, que seguem como
+      # relatório sem travar PR. Um erro de CONFIGURAÇÃO (arquivo que não
+      # carrega, workspace mal declarado) continua saindo com código 2 — e aí o
+      # job precisa mesmo ficar vermelho.
+      #
+      # Era o `continue-on-error` que apagava essa distinção: por meses o passo
+      # saiu verde em 1 segundo, sem ter cruzado um único arquivo.
       - name: 🗑️ Código morto (Knip)
         run: npm run knip
-        continue-on-error: true
 
   # ================================
   # TESTES END-TO-END

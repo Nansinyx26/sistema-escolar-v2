@@ -21,8 +21,11 @@ const ModeracaoService = require('../services/moderacao/ModeracaoService');
 const { logAction } = require('../utils/auditHelper');
 const logger = require('../utils/logger');
 
-const TERMO_ID = 'termo_audio_imagem';
-const TERMO_VERSAO = '1.0';
+// A identidade e a vigência do Termo moram em utils/termoAudioImagem.js: além
+// deste controller, o middleware que EXIGE o aceite no upload precisa da mesma
+// regra (Issue #118). Duas cópias divergiriam no dia em que a versão mudasse —
+// que é exatamente o dia em que a divergência custa caro.
+const { TERMO_ID, TERMO_VERSAO, aceiteVigente } = require('../utils/termoAudioImagem');
 
 /** Perfis que enxergam ocorrência CRÍTICA (§7.1) — coordenação fica de fora. */
 const PERFIS_CASOS_CRITICOS = new Set(['admin', 'diretor']);
@@ -485,9 +488,7 @@ exports.minhasContestacoes = async (req, res) => {
 exports.consultarAceite = async (req, res) => {
     try {
         const usuario = await Usuario.findById(idDe(req)).select('lgpdHistory').lean();
-        const aceite = (usuario?.lgpdHistory || [])
-            .filter((registro) => registro.termoId === TERMO_ID && registro.versao === TERMO_VERSAO)
-            .sort((a, b) => new Date(b.aceitoEm) - new Date(a.aceitoEm))[0];
+        const aceite = aceiteVigente(usuario?.lgpdHistory);
 
         res.json({
             success: true,

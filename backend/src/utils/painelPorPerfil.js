@@ -19,24 +19,22 @@
  * de um controller. Daí esta tabela.
  *
  * ──────────────────────────────────────────────────────────────────
- * SIM, A REGRA ESTÁ ESCRITA EM DOIS LUGARES — E ISSO É DELIBERADO
+ * A REGRA MORA AQUI, E SÓ AQUI (desde a Issue #104)
  * ──────────────────────────────────────────────────────────────────
- * O natural seria `getRedirectPath` apenas delegar para cá, e a duplicação
- * sumir por construção. Não foi feito por um motivo externo ao design: o gate
- * de lint do CI é por ARQUIVO, e `UserController.js` carrega ~1000 linhas de
- * dívida de formatação anterior ao Biome. Tocar nele obrigaria a reformatar o
- * controller de autenticação inteiro junto com a correção — um diff em que a
- * mudança real fica invisível para quem revisa.
+ * Por um tempo ela esteve escrita em dois lugares, e o motivo era externo ao
+ * design: delegar obrigaria a reformatar o `UserController.js` inteiro, que
+ * carregava ~900 linhas de dívida anterior ao Biome, num diff em que a mudança
+ * real ficaria invisível. Paga a dívida, `getRedirectPath` virou
+ * `return painelDoPerfil(user.perfil)` e a duplicação sumiu por construção.
  *
- * Enquanto essa dívida não for paga num PR `chore:` próprio, o que segura a
- * consistência é um TESTE: `fluxos.test.js` → "destino pós-login e gate de
- * painel concordam" exige que `getRedirectPath` e `painelDoPerfil` devolvam o
- * mesmo destino para todo perfil, e que o gate cubra exatamente quem o login
- * manda ao dashboard. Mexer num lado sem mexer no outro fica vermelho lá.
+ * O que ficou lá são as duas decisões que não são "onde este perfil mora": sem
+ * usuário vai para o login, e senha a trocar tem precedência sobre o painel.
  *
- * Quando o `UserController.js` for formatado, troque o corpo de
- * `getRedirectPath` por `return painelDoPerfil(user.perfil)` e apague este
- * bloco — o teste de consistência vira redundante e pode ir junto.
+ * `fluxos.test.js` → "destino pós-login e gate de painel concordam" continua
+ * valendo, mas por outro motivo: a parte que compara os dois destinos virou
+ * quase tautologia, e a que importa agora é a segunda — o gate precisa cobrir
+ * todo perfil que o login manda ao dashboard, senão a pessoa cai num laço de
+ * redirecionamento logo depois de entrar.
  *
  * ──────────────────────────────────────────────────────────────────
  * O gate de verdade é `middleware/protegerPaginas.js`. Este arquivo é só a
@@ -71,10 +69,11 @@ const PAINEL_POR_PERFIL = {
  * Onde este perfil mora.
  *
  * Perfil ausente OU desconhecido cai na tela de escolha — nunca no dashboard.
- * Falha FECHADA, e aqui esta tabela diverge de propósito do `getRedirectPath`,
- * que termina em `return '/html/dashboard.html'`: um perfil novo que ninguém
- * lembrasse de cadastrar ganharia o painel do professor de graça. É exatamente
- * a forma do bug que este arquivo existe para fechar.
+ * Falha FECHADA. O `getRedirectPath` terminava em
+ * `return '/html/dashboard.html'`, então um perfil novo que ninguém lembrasse
+ * de cadastrar ganhava o painel do professor de graça — exatamente a forma do
+ * bug que este arquivo existe para fechar. Com a delegação, esse caminho
+ * deixou de existir.
  *
  * A divergência não fica solta: `painelPorPerfil.test.js` cobra que TODO perfil
  * do enum de `models/Usuario.js` tenha destino declarado aqui, então o caso

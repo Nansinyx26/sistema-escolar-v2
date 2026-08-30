@@ -109,10 +109,80 @@ fi
 deploy_id="$(jq -r '.id // empty' <"$corpo" 2>/dev/null || true)"
 echo "✅ Deploy de ${ambiente} solicitado ao Render (HTTP ${status}), deploy id: ${deploy_id:-n/d}"
 
-{
-    echo "### 🚀 Deploy de ${ambiente} solicitado"
-    echo ""
-    echo "- Serviço: \`${RENDER_SERVICE_ID}\`"
-    echo "- Deploy: \`${deploy_id:-n/d}\`"
-    echo "- Resposta da API: \`HTTP ${status}\`"
-} >>"${GITHUB_STEP_SUMMARY:-/dev/null}"
+# ============================================================================
+# SOLICITADO NÃO É PUBLICADO (Issue #108, item 3)
+# ============================================================================
+# Aceitar o 201 e encerrar deixaria de pé metade da armadilha original: o job
+# ficaria verde ao ACIONAR o deploy, mesmo que o build falhasse no Render um
+# minuto depois. "O job de deploy passou" continua sendo diferente de "o
+# arquivo novo está no servidor".
+#
+# Por isso o passo acompanha o deploy até ele virar `live` — ou até o Render
+# dizer que falhou, e aí o job fica vermelho, que é o desfecho certo.
+#
+# Estados terminais da API do Render:
+#   live                                  -> publicado
+#   build_failed | update_failed |
+#   canceled | pre_deploy_failed          -> não publicado
+#   created | queued | build_in_progress |
+#   update_in_progress | pre_deploy_in_progress -> ainda andando
+# ============================================================================
+espera_max="${RENDER_ESPERA_MAX_S:-900}"   # 15 min; um build deste projeto leva bem menos
+intervalo="${RENDER_INTERVALO_S:-15}"
+
+anotar_resumo() {
+    {
+        echo "### ${1} Deploy de ${ambiente}"
+        echo ""
+        echo "- Serviço: \`${RENDER_SERVICE_ID}\`"
+        echo "- Deploy: \`${deploy_id:-n/d}\`"
+        echo "- Resposta da API: \`HTTP ${status}\`"
+        echo "- Situação final: \`${2}\`"
+    } >>"${GITHUB_STEP_SUMMARY:-/dev/null}"
+}
+
+if [ -z "$deploy_id" ]; then
+    # Sem id não há o que acompanhar. Não é motivo para reprovar — a chamada foi
+    # aceita —, mas precisa aparecer, senão vira o mesmo silêncio de antes.
+    echo "::warning title=Deploy de ${ambiente} sem id::A API aceitou a chamada mas não devolveu o id do deploy; não dá para confirmar a publicação."
+    anotar_resumo "🚀" "solicitado (sem id para acompanhar)"
+    exit 0
+fi
+
+echo "⏳ Acompanhando o deploy ${deploy_id} (até ${espera_max}s)..."
+inicio="$(date +%s)"
+situacao="desconhecida"
+
+while :; do
+    if ! curl -sS --max-time 30 -o "$corpo" \
+            "${base}/v1/services/${RENDER_SERVICE_ID}/deploys/${deploy_id}" \
+            -H "Authorization: Bearer ${RENDER_API_TOKEN}" \
+            -H 'Accept: application/json'; then
+        # Uma consulta perdida não diz nada sobre o deploy; segue tentando até o prazo.
+        echo "   (consulta de situação falhou; nova tentativa em ${intervalo}s)"
+    else
+        situacao="$(jq -r '.status // .deploy.status // empty' <"$corpo" 2>/dev/null || true)"
+        echo "   situação: ${situacao:-desconhecida}"
+
+        case "$situacao" in
+            live)
+                echo "✅ Deploy de ${ambiente} PUBLICADO."
+                anotar_resumo "✅" "$situacao"
+                exit 0
+                ;;
+            build_failed | update_failed | canceled | pre_deploy_failed)
+                echo "::error title=Deploy de ${ambiente} falhou::O Render terminou o deploy com situação '${situacao}'. NADA foi publicado."
+                anotar_resumo "❌" "$situacao"
+                exit 1
+                ;;
+        esac
+    fi
+
+    if [ $(( $(date +%s) - inicio )) -ge "$espera_max" ]; then
+        echo "::error title=Deploy de ${ambiente} sem confirmação::Passaram ${espera_max}s e o deploy seguia em '${situacao:-desconhecida}'. Não dá para afirmar que foi publicado."
+        anotar_resumo "❌" "sem confirmação em ${espera_max}s (última: ${situacao:-desconhecida})"
+        exit 1
+    fi
+
+    sleep "$intervalo"
+done
