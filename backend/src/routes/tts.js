@@ -26,7 +26,7 @@ function textoDentroDoLimite(res, texto) {
     if (String(texto).length <= MAX_CARACTERES_TTS) return true;
     res.status(413).json({
         success: false,
-        error: `Texto muito longo para narração (máximo ${MAX_CARACTERES_TTS} caracteres).`
+        error: `Texto muito longo para narração (máximo ${MAX_CARACTERES_TTS} caracteres).`,
     });
     return false;
 }
@@ -53,8 +53,11 @@ router.post('/speak', authJWT, limitarTTS, async (req, res) => {
         }
 
         // 2. Hash para Cache — inclui voiceId para não misturar caches de vozes diferentes
-        const resolvedVoiceId = voiceId || 'adam';
-        const hash = crypto.createHash('sha256').update(`elevenlabs:${resolvedVoiceId}:${text}`).digest('hex');
+        const resolvedVoiceId = voiceId || 'brian';
+        const hash = crypto
+            .createHash('sha256')
+            .update(`elevenlabs:${resolvedVoiceId}:${text}`)
+            .digest('hex');
         const cached = await TtsAudioCache.findOne({ hash });
 
         if (cached) {
@@ -70,8 +73,8 @@ router.post('/speak', authJWT, limitarTTS, async (req, res) => {
             hash,
             audioData: result.buffer,
             text,
-            voiceId: resolvedVoiceId
-        }).catch(e => logger.warn('[TTS] Erro cache:', e.message));
+            voiceId: resolvedVoiceId,
+        }).catch((e) => logger.warn('[TTS] Erro cache:', e.message));
 
         // 5. Responder
         res.set({
@@ -79,11 +82,10 @@ router.post('/speak', authJWT, limitarTTS, async (req, res) => {
             'X-Cache': 'MISS',
             'X-Provider': 'elevenlabs',
             'X-Text': Buffer.from(text).toString('base64'), // Envia texto base64 no header se frontend precisar
-            'Access-Control-Expose-Headers': 'X-Cache, X-Text'
+            'Access-Control-Expose-Headers': 'X-Cache, X-Text',
         });
-        
-        return res.send(result.buffer);
 
+        return res.send(result.buffer);
     } catch (error) {
         logger.error('❌ [TTS/Speak] Erro:', error.message);
         res.status(500).json({ success: false, error: error.message });
@@ -114,14 +116,14 @@ router.get('/voices', authJWT, async (req, res) => {
     try {
         const [voices, validation] = await Promise.all([
             TTSService.listAvailableVoices(),
-            TTSService.validateAndUpdateVoices()
+            TTSService.validateAndUpdateVoices(),
         ]);
 
         res.json({
             success: true,
             totalVoices: voices.length,
             voices,
-            validation
+            validation,
         });
     } catch (error) {
         logger.error('❌ [TTS/Voices] Erro:', error.message);
@@ -130,4 +132,3 @@ router.get('/voices', authJWT, async (req, res) => {
 });
 
 module.exports = router;
-
