@@ -159,6 +159,26 @@ feat/144-x ──PR──▶ develop ──(deploy dev + migrations)──▶ PR
 **Hotfix de produção**: Issue `tipo:correcao` + `prioridade:critica` → branch `hotfix/<issue>-<slug>`
 a partir da `main` → PR para `main` → em seguida PR de sincronização `main` → `develop`.
 
+### Verde no job de deploy significa PUBLICADO
+
+Não é retórica: por meses o passo de deploy passava verde em 1 segundo sem publicar nada
+(Issues #108 e #133). `scripts/deploy-render.sh` fecha essa distância em três pontos, e
+mexer nele sem manter os três reabre a armadilha:
+
+1. **A resposta da API é conferida.** Qualquer status fora da faixa 2xx reprova o job, com o
+   corpo devolvido pelo Render no log.
+2. **O deploy é acompanhado até o fim.** Solicitar não é publicar: o script consulta a
+   situação até `live`, e reprova em `build_failed`, `update_failed`, `canceled` e
+   `pre_deploy_failed`, ou se o prazo (`RENDER_ESPERA_MAX_S`, padrão 900s) vencer sem
+   confirmação.
+3. **Secret ausente pula o passo COM aviso**, nunca em silêncio — um passo pulado é
+   invisível na interface do GitHub, e o job continua se chamando "Build & Deploy".
+
+Histórico da #108, que vale saber: por meses o `RENDER_SERVICE_ID_DEV` **não existia** nos
+secrets, e o job de dev passava verde sem publicar em lugar nenhum — o passo era pulado, e
+pular um passo não reprova o job. O secret foi cadastrado; se um dia ele sumir, o passo
+volta a ser pulado, agora **com aviso** no resumo da execução, e nunca em silêncio.
+
 O passo a passo dos dois fluxos, incluindo o que fazer com a produção fora do ar, está em
 [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
