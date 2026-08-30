@@ -47,8 +47,13 @@ const SecurityConfig = require('./models/SecurityConfig');
 const { initializeSecretCodes } = require('./utils/secretCodeHelper');
 const logger = require('./utils/logger');
 const { startHealthMonitor } = require('./utils/healthMonitor');
+const { criarEncerrador } = require('./utils/encerramento');
 
 const PORT = process.env.PORT || 3001;
+
+// Tempo que o processo espera antes de sair numa falha de boot, só para o log
+// chegar ao Render. Ver o `catch` de startServer e utils/db.js (Issue #126).
+const ATRASO_SAIDA_BOOT_MS = 1000;
 
 const startServer = async () => {
     try {
@@ -399,12 +404,27 @@ const startServer = async () => {
         // política é este arquivo — ver Issue #129 e docs/OBSERVABILITY.md.
         observability.assumirEncerramento();
 
+        // Saída do processo com prazo máximo. O porquê (e o modo de falha que
+        // isso conserta) está em utils/encerramento.js — Issue #125.
+        const encerrarComPrazo = criarEncerrador({
+            server,
+            io,
+            logger,
+            prazoMs: Number(process.env.SHUTDOWN_TIMEOUT_MS) || undefined,
+        });
+
         // Tratamento de Rejeições Não Tratadas (Promises)
+        //
+        // NOTA: hoje qualquer promise solta em job, cron ou handler de socket
+        // encerra o servidor inteiro. É a política escolhida (o processo é
+        // considerado em estado desconhecido), e está registrada aqui de
+        // propósito — este módulo é o dono da política de encerramento do
+        // processo. Ver docs/OBSERVABILITY.md.
         process.on('unhandledRejection', (err, promise) => {
             logger.alert('UNHANDLED_REJECTION', err?.message || 'Rejeição não tratada', {
                 stack: err?.stack,
             });
-            server.close(() => process.exit(1));
+            encerrarComPrazo(1);
         });
 
         // Tratamento de Exceções Não Capturadas (Síncrono)
@@ -412,11 +432,16 @@ const startServer = async () => {
             logger.alert('UNCAUGHT_EXCEPTION', err.message, {
                 stack: err.stack,
             });
-            server.close(() => process.exit(1));
+            encerrarComPrazo(1);
         });
     } catch (err) {
         logger.fatal(`❌ Erro fatal ao iniciar o servidor: ${err.message}`, { stack: err.stack });
-        process.exit(1);
+        // O atraso vem de utils/db.js, onde nasceu (Issue #126): sem ele, o
+        // processo sai antes do transporte de log despachar a linha, e no
+        // Render a falha aparece como um serviço que morreu sem dizer por quê.
+        // Mora aqui, e não lá, porque este é o ponto dono da decisão de
+        // encerrar — `connectDB` agora só loga e relança.
+        setTimeout(() => process.exit(1), ATRASO_SAIDA_BOOT_MS);
     }
 };
 

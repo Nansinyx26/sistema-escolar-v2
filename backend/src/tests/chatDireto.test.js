@@ -13,7 +13,12 @@ const request = require('supertest');
 const mongoose = require('mongoose');
 const app = require('../app');
 const {
-    conectarBanco, limparBanco, desconectarBanco, criarUsuario, SENHA_TESTE
+    conectarBanco,
+    limparBanco,
+    desconectarBanco,
+    criarUsuario,
+    aceitarTermoAudioImagem,
+    SENHA_TESTE,
 } = require('./helpers');
 
 const Escola = require('../models/Escola');
@@ -23,18 +28,28 @@ const Usuario = require('../models/Usuario');
 
 let escolaA, escolaB;
 
-beforeAll(async () => { await conectarBanco(); });
-afterAll(async () => { await desconectarBanco(); });
+beforeAll(async () => {
+    await conectarBanco();
+});
+afterAll(async () => {
+    await desconectarBanco();
+});
 
 beforeEach(async () => {
     await limparBanco();
     escolaA = await Escola.create({
-        nome: 'CIEP Chat A', tipo: 'CIEP', bairro: 'Centro',
-        codigoSecreto: 'CHAT-A-1', ativo: true
+        nome: 'CIEP Chat A',
+        tipo: 'CIEP',
+        bairro: 'Centro',
+        codigoSecreto: 'CHAT-A-1',
+        ativo: true,
     });
     escolaB = await Escola.create({
-        nome: 'EMEF Chat B', tipo: 'EMEF', bairro: 'Norte',
-        codigoSecreto: 'CHAT-B-2', ativo: true
+        nome: 'EMEF Chat B',
+        tipo: 'EMEF',
+        bairro: 'Norte',
+        codigoSecreto: 'CHAT-B-2',
+        ativo: true,
     });
 });
 
@@ -42,15 +57,24 @@ beforeEach(async () => {
 async function professorLogado(email, escola) {
     const user = await criarUsuario({ email, perfil: 'professor', escolaId: String(escola._id) });
     await Professor.create({
-        idUsuario: String(user._id), nome: user.nome, email,
+        idUsuario: String(user._id),
+        nome: user.nome,
+        email,
         salaPrincipal: '1A',
         vinculos: [{ escolaId: String(escola._id), cargo: 'professor' }],
-        ativo: true
+        ativo: true,
     });
     const agent = request.agent(app);
-    const login = await agent.post('/api/auth/login')
+    const login = await agent
+        .post('/api/auth/login')
         .send({ email, senha: SENHA_TESTE, escolaId: String(escola._id) });
     expect(login.status).toBe(200);
+
+    // Desde a Issue #118 o upload de mídia exige o aceite do Termo de Áudio e
+    // Imagem. Estas suítes enviam imagem, então o professor precisa ter aceitado
+    // — que é o que uma pessoa de verdade faz antes de anexar a primeira foto.
+    await aceitarTermoAudioImagem(user._id);
+
     return { agent, user, id: String(user._id) };
 }
 
@@ -60,14 +84,16 @@ async function professorLogado(email, escola) {
  * como PDF é recusado — como deve ser. As fixtures precisam ser plausíveis.
  */
 const ASSINATURAS = {
-    'application/pdf': [0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x37], // %PDF-1.7
-    'image/png': [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A],
-    'image/jpeg': [0xFF, 0xD8, 0xFF, 0xE0],
-    'audio/webm': [0x1A, 0x45, 0xDF, 0xA3],
-    'video/webm': [0x1A, 0x45, 0xDF, 0xA3],
-    'application/zip': [0x50, 0x4B, 0x03, 0x04],
-    'application/msword': [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1],
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': [0x50, 0x4B, 0x03, 0x04]
+    'application/pdf': [0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37], // %PDF-1.7
+    'image/png': [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
+    'image/jpeg': [0xff, 0xd8, 0xff, 0xe0],
+    'audio/webm': [0x1a, 0x45, 0xdf, 0xa3],
+    'video/webm': [0x1a, 0x45, 0xdf, 0xa3],
+    'application/zip': [0x50, 0x4b, 0x03, 0x04],
+    'application/msword': [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1],
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': [
+        0x50, 0x4b, 0x03, 0x04,
+    ],
 };
 
 /** Buffer com a assinatura correta do tipo, preenchido até `tamanho`. */
@@ -94,9 +120,14 @@ async function envelhecer(mensagemId, msAtras) {
 }
 
 /** Sobe um arquivo pela rota do chat e devolve o objeto `anexo` do backend. */
-async function subirAnexo(agent, destinatarioId, { nome = 'relatorio.pdf', tipo = 'application/pdf', conteudo = null } = {}) {
+async function subirAnexo(
+    agent,
+    destinatarioId,
+    { nome = 'relatorio.pdf', tipo = 'application/pdf', conteudo = null } = {}
+) {
     const buffer = conteudo ? Buffer.from(conteudo) : arquivoValido(tipo);
-    const res = await agent.post('/api/chat-direto/upload')
+    const res = await agent
+        .post('/api/chat-direto/upload')
         .field('destinatarioId', destinatarioId)
         .attach('arquivos', buffer, { filename: nome, contentType: tipo });
     expect(res.status).toBe(200);
@@ -109,7 +140,8 @@ describe('POST /api/chat-direto/enviar', () => {
         const ana = await professorLogado('ana@escola.test', escolaA);
         const bruno = await professorLogado('bruno@escola.test', escolaA);
 
-        const res = await ana.agent.post('/api/chat-direto/enviar')
+        const res = await ana.agent
+            .post('/api/chat-direto/enviar')
             .send({ destinatarioId: bruno.id, mensagem: 'Bom dia!' });
 
         expect(res.status).toBe(200);
@@ -122,7 +154,8 @@ describe('POST /api/chat-direto/enviar', () => {
         const ana = await professorLogado('ana2@escola.test', escolaA);
         const forasteiro = await professorLogado('fora@escola.test', escolaB);
 
-        const res = await ana.agent.post('/api/chat-direto/enviar')
+        const res = await ana.agent
+            .post('/api/chat-direto/enviar')
             .send({ destinatarioId: forasteiro.id, mensagem: 'oi' });
 
         expect(res.status).toBe(403);
@@ -132,14 +165,16 @@ describe('POST /api/chat-direto/enviar', () => {
         const ana = await professorLogado('ana3@escola.test', escolaA);
         const bruno = await professorLogado('bruno3@escola.test', escolaA);
 
-        const res = await ana.agent.post('/api/chat-direto/enviar')
+        const res = await ana.agent
+            .post('/api/chat-direto/enviar')
             .send({ destinatarioId: bruno.id, mensagem: '' });
 
         expect(res.status).toBe(400);
     });
 
     it('exige autenticação', async () => {
-        const res = await request(app).post('/api/chat-direto/enviar')
+        const res = await request(app)
+            .post('/api/chat-direto/enviar')
             .send({ destinatarioId: 'qualquer', mensagem: 'oi' });
         expect(res.status).toBe(401);
     });
@@ -157,10 +192,10 @@ describe('Anexo do chat — o cliente não dita os metadados', () => {
             mensagem: '',
             anexo: {
                 gridfsId: anexo.gridfsId,
-                url: 'https://site-malicioso.example/pwn',   // deve ser descartada
-                nome: 'nota-fiscal-legitima.pdf',            // deve ser descartado
-                tamanho: 999999999                           // deve ser descartado
-            }
+                url: 'https://site-malicioso.example/pwn', // deve ser descartada
+                nome: 'nota-fiscal-legitima.pdf', // deve ser descartado
+                tamanho: 999999999, // deve ser descartado
+            },
         });
 
         expect(res.status).toBe(200);
@@ -174,11 +209,13 @@ describe('Anexo do chat — o cliente não dita os metadados', () => {
         const ana = await professorLogado('ana5@escola.test', escolaA);
         const bruno = await professorLogado('bruno5@escola.test', escolaA);
 
-        const malformado = await ana.agent.post('/api/chat-direto/enviar')
+        const malformado = await ana.agent
+            .post('/api/chat-direto/enviar')
             .send({ destinatarioId: bruno.id, anexo: { gridfsId: 'nao-e-objectid' } });
         expect(malformado.status).toBe(400);
 
-        const inexistente = await ana.agent.post('/api/chat-direto/enviar')
+        const inexistente = await ana.agent
+            .post('/api/chat-direto/enviar')
             .send({ destinatarioId: bruno.id, anexo: { gridfsId: '507f1f77bcf86cd799439011' } });
         expect(inexistente.status).toBe(400);
     });
@@ -191,7 +228,8 @@ describe('Anexo do chat — o cliente não dita os metadados', () => {
         // Ana sobe um arquivo; Carla tenta referenciá-lo numa mensagem dela.
         const anexoDaAna = await subirAnexo(ana.agent, bruno.id);
 
-        const res = await carla.agent.post('/api/chat-direto/enviar')
+        const res = await carla.agent
+            .post('/api/chat-direto/enviar')
             .send({ destinatarioId: bruno.id, anexo: { gridfsId: anexoDaAna.gridfsId } });
 
         expect(res.status).toBe(400);
@@ -201,9 +239,13 @@ describe('Anexo do chat — o cliente não dita os metadados', () => {
         const ana = await professorLogado('ana7@escola.test', escolaA);
         const bruno = await professorLogado('bruno7@escola.test', escolaA);
 
-        const res = await ana.agent.post('/api/chat-direto/upload')
+        const res = await ana.agent
+            .post('/api/chat-direto/upload')
             .field('destinatarioId', bruno.id)
-            .attach('arquivos', Buffer.from('MZ'), { filename: 'virus.exe', contentType: 'application/x-msdownload' });
+            .attach('arquivos', Buffer.from('MZ'), {
+                filename: 'virus.exe',
+                contentType: 'application/x-msdownload',
+            });
 
         expect(res.status).toBe(400);
     });
@@ -212,16 +254,22 @@ describe('Anexo do chat — o cliente não dita os metadados', () => {
         const ana = await professorLogado('ana8@escola.test', escolaA);
         const bruno = await professorLogado('bruno8@escola.test', escolaA);
 
-        const audio = await subirAnexo(ana.agent, bruno.id, { nome: 'voz.webm', tipo: 'audio/webm' });
+        const audio = await subirAnexo(ana.agent, bruno.id, {
+            nome: 'voz.webm',
+            tipo: 'audio/webm',
+        });
         expect(audio.tipo).toBe('audio/webm');
 
         const word = await subirAnexo(ana.agent, bruno.id, {
             nome: 'plano.docx',
-            tipo: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            tipo: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         });
         expect(word.nome).toBe('plano.docx');
 
-        const zip = await subirAnexo(ana.agent, bruno.id, { nome: 'fotos.zip', tipo: 'application/zip' });
+        const zip = await subirAnexo(ana.agent, bruno.id, {
+            nome: 'fotos.zip',
+            tipo: 'application/zip',
+        });
         expect(zip.nome).toBe('fotos.zip');
     });
 });
@@ -268,13 +316,19 @@ describe('GET /api/chat-direto/historico', () => {
         const bruno = await professorLogado('bruno12@escola.test', escolaA);
         const carla = await professorLogado('carla12@escola.test', escolaA);
 
-        await ana.agent.post('/api/chat-direto/enviar').send({ destinatarioId: bruno.id, mensagem: 'primeira' });
-        await bruno.agent.post('/api/chat-direto/enviar').send({ destinatarioId: ana.id, mensagem: 'segunda' });
-        await ana.agent.post('/api/chat-direto/enviar').send({ destinatarioId: carla.id, mensagem: 'outra conversa' });
+        await ana.agent
+            .post('/api/chat-direto/enviar')
+            .send({ destinatarioId: bruno.id, mensagem: 'primeira' });
+        await bruno.agent
+            .post('/api/chat-direto/enviar')
+            .send({ destinatarioId: ana.id, mensagem: 'segunda' });
+        await ana.agent
+            .post('/api/chat-direto/enviar')
+            .send({ destinatarioId: carla.id, mensagem: 'outra conversa' });
 
         const res = await ana.agent.get(`/api/chat-direto/historico/${bruno.id}`);
         expect(res.status).toBe(200);
-        expect(res.body.data.map(m => m.mensagem)).toEqual(['primeira', 'segunda']);
+        expect(res.body.data.map((m) => m.mensagem)).toEqual(['primeira', 'segunda']);
     });
 
     it('pagina com hasMore e o cursor `before`', async () => {
@@ -283,9 +337,11 @@ describe('GET /api/chat-direto/historico', () => {
 
         for (let i = 1; i <= 35; i++) {
             await ChatDireto.create({
-                remetenteId: ana.id, destinatarioId: bruno.id,
-                mensagem: `msg ${i}`, escolaId: String(escolaA._id),
-                createdAt: new Date(Date.now() + i * 1000)
+                remetenteId: ana.id,
+                destinatarioId: bruno.id,
+                mensagem: `msg ${i}`,
+                escolaId: String(escolaA._id),
+                createdAt: new Date(Date.now() + i * 1000),
             });
         }
 
@@ -293,14 +349,15 @@ describe('GET /api/chat-direto/historico', () => {
         expect(pagina1.body.data).toHaveLength(30);
         expect(pagina1.body.hasMore).toBe(true);
 
-        const pagina2 = await ana.agent
-            .get(`/api/chat-direto/historico/${bruno.id}?before=${encodeURIComponent(pagina1.body.cursor)}`);
+        const pagina2 = await ana.agent.get(
+            `/api/chat-direto/historico/${bruno.id}?before=${encodeURIComponent(pagina1.body.cursor)}`
+        );
         expect(pagina2.body.data).toHaveLength(5);
         expect(pagina2.body.hasMore).toBe(false);
 
         // Sem sobreposição entre as páginas
-        const ids1 = pagina1.body.data.map(m => m._id);
-        expect(pagina2.body.data.every(m => !ids1.includes(m._id))).toBe(true);
+        const ids1 = pagina1.body.data.map((m) => m._id);
+        expect(pagina2.body.data.every((m) => !ids1.includes(m._id))).toBe(true);
     });
 
     it('busca por termo mantém o recorte da conversa', async () => {
@@ -308,9 +365,15 @@ describe('GET /api/chat-direto/historico', () => {
         const bruno = await professorLogado('bruno14@escola.test', escolaA);
         const carla = await professorLogado('carla14@escola.test', escolaA);
 
-        await ana.agent.post('/api/chat-direto/enviar').send({ destinatarioId: bruno.id, mensagem: 'reunião de sexta' });
-        await ana.agent.post('/api/chat-direto/enviar').send({ destinatarioId: bruno.id, mensagem: 'almoço' });
-        await ana.agent.post('/api/chat-direto/enviar').send({ destinatarioId: carla.id, mensagem: 'reunião com a Carla' });
+        await ana.agent
+            .post('/api/chat-direto/enviar')
+            .send({ destinatarioId: bruno.id, mensagem: 'reunião de sexta' });
+        await ana.agent
+            .post('/api/chat-direto/enviar')
+            .send({ destinatarioId: bruno.id, mensagem: 'almoço' });
+        await ana.agent
+            .post('/api/chat-direto/enviar')
+            .send({ destinatarioId: carla.id, mensagem: 'reunião com a Carla' });
 
         const res = await ana.agent.get(`/api/chat-direto/historico/${bruno.id}?search=reuni`);
         expect(res.body.data).toHaveLength(1);
@@ -321,9 +384,12 @@ describe('GET /api/chat-direto/historico', () => {
         const ana = await professorLogado('ana15@escola.test', escolaA);
         const bruno = await professorLogado('bruno15@escola.test', escolaA);
 
-        await ana.agent.post('/api/chat-direto/enviar').send({ destinatarioId: bruno.id, mensagem: 'só texto' });
+        await ana.agent
+            .post('/api/chat-direto/enviar')
+            .send({ destinatarioId: bruno.id, mensagem: 'só texto' });
         const anexo = await subirAnexo(ana.agent, bruno.id);
-        await ana.agent.post('/api/chat-direto/enviar')
+        await ana.agent
+            .post('/api/chat-direto/enviar')
             .send({ destinatarioId: bruno.id, anexo: { gridfsId: anexo.gridfsId } });
 
         const res = await ana.agent.get(`/api/chat-direto/historico/${bruno.id}?filter=anexos`);
@@ -336,7 +402,9 @@ describe('GET /api/chat-direto/historico', () => {
         const bruno = await professorLogado('bruno16@escola.test', escolaA);
         const carla = await professorLogado('carla16@escola.test', escolaA);
 
-        await ana.agent.post('/api/chat-direto/enviar').send({ destinatarioId: bruno.id, mensagem: 'segredo' });
+        await ana.agent
+            .post('/api/chat-direto/enviar')
+            .send({ destinatarioId: bruno.id, mensagem: 'segredo' });
 
         // Carla pede o histórico "entre ela e Bruno" — a de Ana não pode vazar.
         const res = await carla.agent.get(`/api/chat-direto/historico/${bruno.id}`);
@@ -352,14 +420,19 @@ describe('PATCH /api/chat-direto/lidas/:outroUsuarioId', () => {
         const bruno = await professorLogado('bruno17@escola.test', escolaA);
 
         for (let i = 0; i < 3; i++) {
-            await ana.agent.post('/api/chat-direto/enviar').send({ destinatarioId: bruno.id, mensagem: `m${i}` });
+            await ana.agent
+                .post('/api/chat-direto/enviar')
+                .send({ destinatarioId: bruno.id, mensagem: `m${i}` });
         }
 
         const res = await bruno.agent.patch(`/api/chat-direto/lidas/${ana.id}`);
         expect(res.status).toBe(200);
         expect(res.body.data.atualizadas).toBe(3);
 
-        const restantes = await ChatDireto.countDocuments({ destinatarioId: bruno.id, lida: false });
+        const restantes = await ChatDireto.countDocuments({
+            destinatarioId: bruno.id,
+            lida: false,
+        });
         expect(restantes).toBe(0);
     });
 
@@ -367,7 +440,9 @@ describe('PATCH /api/chat-direto/lidas/:outroUsuarioId', () => {
         const ana = await professorLogado('ana18@escola.test', escolaA);
         const bruno = await professorLogado('bruno18@escola.test', escolaA);
 
-        await ana.agent.post('/api/chat-direto/enviar').send({ destinatarioId: bruno.id, mensagem: 'oi' });
+        await ana.agent
+            .post('/api/chat-direto/enviar')
+            .send({ destinatarioId: bruno.id, mensagem: 'oi' });
 
         // A própria Ana chamando não pode marcar a mensagem dela como lida.
         const res = await ana.agent.patch(`/api/chat-direto/lidas/${bruno.id}`);
@@ -386,14 +461,16 @@ describe('POST /api/chat-direto/encaminhar', () => {
         const carla = await professorLogado('carla19@escola.test', escolaA);
 
         const anexo = await subirAnexo(ana.agent, bruno.id, { nome: 'circular.pdf' });
-        const envio = await ana.agent.post('/api/chat-direto/enviar')
+        const envio = await ana.agent
+            .post('/api/chat-direto/enviar')
             .send({ destinatarioId: bruno.id, anexo: { gridfsId: anexo.gridfsId } });
 
         // Carla ainda não participa dessa conversa.
         const antes = await carla.agent.get(`/api/chat-direto/anexo/${anexo.gridfsId}`);
         expect(antes.status).toBe(403);
 
-        const fwd = await ana.agent.post('/api/chat-direto/encaminhar')
+        const fwd = await ana.agent
+            .post('/api/chat-direto/encaminhar')
             .send({ mensagemIds: [envio.body.data._id], destinatarioIds: [carla.id] });
         expect(fwd.status).toBe(200);
         expect(fwd.body.total).toBe(1);
@@ -409,10 +486,12 @@ describe('POST /api/chat-direto/encaminhar', () => {
         const bruno = await professorLogado('bruno20@escola.test', escolaA);
         const carla = await professorLogado('carla20@escola.test', escolaA);
 
-        const envio = await ana.agent.post('/api/chat-direto/enviar')
+        const envio = await ana.agent
+            .post('/api/chat-direto/enviar')
             .send({ destinatarioId: bruno.id, mensagem: 'particular' });
 
-        const res = await carla.agent.post('/api/chat-direto/encaminhar')
+        const res = await carla.agent
+            .post('/api/chat-direto/encaminhar')
             .send({ mensagemIds: [envio.body.data._id], destinatarioIds: [bruno.id] });
 
         expect(res.status).toBe(404);
@@ -423,10 +502,12 @@ describe('POST /api/chat-direto/encaminhar', () => {
         const bruno = await professorLogado('bruno21@escola.test', escolaA);
         const forasteiro = await professorLogado('fora21@escola.test', escolaB);
 
-        const envio = await ana.agent.post('/api/chat-direto/enviar')
+        const envio = await ana.agent
+            .post('/api/chat-direto/enviar')
             .send({ destinatarioId: bruno.id, mensagem: 'interna' });
 
-        const res = await ana.agent.post('/api/chat-direto/encaminhar')
+        const res = await ana.agent
+            .post('/api/chat-direto/encaminhar')
             .send({ mensagemIds: [envio.body.data._id], destinatarioIds: [forasteiro.id] });
 
         expect(res.status).toBe(403);
@@ -441,15 +522,18 @@ describe('Editar e apagar', () => {
         const ana = await professorLogado('ana22@escola.test', escolaA);
         const bruno = await professorLogado('bruno22@escola.test', escolaA);
 
-        const envio = await ana.agent.post('/api/chat-direto/enviar')
+        const envio = await ana.agent
+            .post('/api/chat-direto/enviar')
             .send({ destinatarioId: bruno.id, mensagem: 'origianl' });
         const id = envio.body.data._id;
 
-        const alheia = await bruno.agent.put(`/api/chat-direto/mensagem/${id}`)
+        const alheia = await bruno.agent
+            .put(`/api/chat-direto/mensagem/${id}`)
             .send({ novaMensagem: 'texto trocado' });
         expect(alheia.status).toBe(404);
 
-        const propria = await ana.agent.put(`/api/chat-direto/mensagem/${id}`)
+        const propria = await ana.agent
+            .put(`/api/chat-direto/mensagem/${id}`)
             .send({ novaMensagem: 'original' });
         expect(propria.status).toBe(200);
         expect(propria.body.data.mensagem).toBe('original');
@@ -460,7 +544,8 @@ describe('Editar e apagar', () => {
         const ana = await professorLogado('ana23@escola.test', escolaA);
         const bruno = await professorLogado('bruno23@escola.test', escolaA);
 
-        const envio = await ana.agent.post('/api/chat-direto/enviar')
+        const envio = await ana.agent
+            .post('/api/chat-direto/enviar')
             .send({ destinatarioId: bruno.id, mensagem: 'apagável' });
         const id = envio.body.data._id;
 
@@ -484,16 +569,23 @@ describe('Editar e apagar', () => {
         // exclusão, liberaria; a lista branca nega.
         const ana = await professorLogado('ana28@escola.test', escolaA);
         const estranho = await Usuario.create({
-            nome: 'Perfil Novo', email: 'novo28@escola.test', senha: 'x',
-            perfil: 'professor', ativo: true, escolaId: String(escolaA._id),
-            cpf: 'c28', telefone: 't'
+            nome: 'Perfil Novo',
+            email: 'novo28@escola.test',
+            senha: 'x',
+            perfil: 'professor',
+            ativo: true,
+            escolaId: String(escolaA._id),
+            cpf: 'c28',
+            telefone: 't',
         });
         // Força um perfil que não existe na matriz, direto no banco.
         await Usuario.collection.updateOne(
-            { _id: estranho._id }, { $set: { perfil: 'estagiario' } }
+            { _id: estranho._id },
+            { $set: { perfil: 'estagiario' } }
         );
 
-        const res = await ana.agent.post('/api/chat-direto/enviar')
+        const res = await ana.agent
+            .post('/api/chat-direto/enviar')
             .send({ destinatarioId: String(estranho._id), mensagem: 'oi' });
         expect(res.status).toBe(403);
         expect(res.body.error).toMatch(/não é permitido/i);
@@ -503,14 +595,16 @@ describe('Editar e apagar', () => {
         const ana = await professorLogado('ana25@escola.test', escolaA);
         const bruno = await professorLogado('bruno25@escola.test', escolaA);
 
-        const envio = await ana.agent.post('/api/chat-direto/enviar')
+        const envio = await ana.agent
+            .post('/api/chat-direto/enviar')
             .send({ destinatarioId: bruno.id, mensagem: 'mensagem antiga' });
         const id = envio.body.data._id;
 
         // Envelhece a mensagem direto no banco: 16 minutos atrás.
         await envelhecer(id, 16 * 60 * 1000);
 
-        const tardia = await ana.agent.put(`/api/chat-direto/mensagem/${id}`)
+        const tardia = await ana.agent
+            .put(`/api/chat-direto/mensagem/${id}`)
             .send({ novaMensagem: 'reescrevendo o passado' });
         expect(tardia.status).toBe(403);
 
@@ -525,21 +619,29 @@ describe('Editar e apagar', () => {
         const ana = await professorLogado('ana27@escola.test', escolaA);
         const bruno = await professorLogado('bruno27@escola.test', escolaA);
 
-        const envio = await ana.agent.post('/api/chat-direto/enviar')
+        const envio = await ana.agent
+            .post('/api/chat-direto/enviar')
             .send({ destinatarioId: bruno.id, mensagem: 'texto original' });
         const id = envio.body.data._id;
 
-        await ana.agent.put(`/api/chat-direto/mensagem/${id}`)
+        await ana.agent
+            .put(`/api/chat-direto/mensagem/${id}`)
             .send({ novaMensagem: 'texto corrigido' });
         await ana.agent.delete(`/api/chat-direto/mensagem/${id}?tipo=para_todos`);
 
-        const edicao = await AuditLog.findOne({ acao: 'CHAT_EDIT_MESSAGE', recursoId: String(id) }).lean();
+        const edicao = await AuditLog.findOne({
+            acao: 'CHAT_EDIT_MESSAGE',
+            recursoId: String(id),
+        }).lean();
         expect(edicao).toBeTruthy();
         expect(edicao.detalhes.valorAnterior).toBe('texto original');
         expect(edicao.detalhes.valorNovo).toBe('texto corrigido');
 
         // O log guarda o que foi removido, não o placeholder.
-        const exclusao = await AuditLog.findOne({ acao: 'CHAT_DELETE_FOR_ALL', recursoId: String(id) }).lean();
+        const exclusao = await AuditLog.findOne({
+            acao: 'CHAT_DELETE_FOR_ALL',
+            recursoId: String(id),
+        }).lean();
         expect(exclusao).toBeTruthy();
         expect(exclusao.detalhes.valorAnterior).toBe('texto corrigido');
     });
@@ -548,7 +650,8 @@ describe('Editar e apagar', () => {
         const ana = await professorLogado('ana26@escola.test', escolaA);
         const bruno = await professorLogado('bruno26@escola.test', escolaA);
 
-        const envio = await ana.agent.post('/api/chat-direto/enviar')
+        const envio = await ana.agent
+            .post('/api/chat-direto/enviar')
             .send({ destinatarioId: bruno.id, mensagem: 'faz tempo' });
         const id = envio.body.data._id;
 
@@ -573,19 +676,26 @@ describe('Reações', () => {
         const ana = await professorLogado('ana24@escola.test', escolaA);
         const bruno = await professorLogado('bruno24@escola.test', escolaA);
 
-        const envio = await ana.agent.post('/api/chat-direto/enviar')
+        const envio = await ana.agent
+            .post('/api/chat-direto/enviar')
             .send({ destinatarioId: bruno.id, mensagem: 'reaja aqui' });
         const mensagemId = envio.body.data._id;
 
-        const add = await bruno.agent.post('/api/chat-direto/reagir').send({ mensagemId, emoji: '👍' });
+        const add = await bruno.agent
+            .post('/api/chat-direto/reagir')
+            .send({ mensagemId, emoji: '👍' });
         expect(add.body.data).toHaveLength(1);
 
         // Emoji diferente do mesmo usuário substitui, não acumula.
-        const troca = await bruno.agent.post('/api/chat-direto/reagir').send({ mensagemId, emoji: '❤️' });
+        const troca = await bruno.agent
+            .post('/api/chat-direto/reagir')
+            .send({ mensagemId, emoji: '❤️' });
         expect(troca.body.data).toHaveLength(1);
         expect(troca.body.data[0].emoji).toBe('❤️');
 
-        const remove = await bruno.agent.post('/api/chat-direto/reagir').send({ mensagemId, emoji: 'REMOVE' });
+        const remove = await bruno.agent
+            .post('/api/chat-direto/reagir')
+            .send({ mensagemId, emoji: 'REMOVE' });
         expect(remove.body.data).toHaveLength(0);
     });
 
@@ -594,10 +704,12 @@ describe('Reações', () => {
         const bruno = await professorLogado('bruno27@escola.test', escolaA);
         const xereta = await professorLogado('xereta27@escola.test', escolaA);
 
-        const envio = await ana.agent.post('/api/chat-direto/enviar')
+        const envio = await ana.agent
+            .post('/api/chat-direto/enviar')
             .send({ destinatarioId: bruno.id, mensagem: 'conversa privada' });
 
-        const res = await xereta.agent.post('/api/chat-direto/reagir')
+        const res = await xereta.agent
+            .post('/api/chat-direto/reagir')
             .send({ mensagemId: envio.body.data._id, emoji: '😂' });
 
         expect(res.status).toBe(403);
@@ -613,11 +725,13 @@ describe('Fronteira de quem participa da conversa', () => {
         const bruno = await professorLogado('bruno28@escola.test', escolaA);
         const xereta = await professorLogado('xereta28@escola.test', escolaA);
 
-        const envio = await ana.agent.post('/api/chat-direto/enviar')
+        const envio = await ana.agent
+            .post('/api/chat-direto/enviar')
             .send({ destinatarioId: bruno.id, mensagem: 'não é da sua conta' });
 
-        const res = await xereta.agent
-            .delete(`/api/chat-direto/mensagem/${envio.body.data._id}?tipo=para_mim`);
+        const res = await xereta.agent.delete(
+            `/api/chat-direto/mensagem/${envio.body.data._id}?tipo=para_mim`
+        );
 
         expect(res.status).toBe(403);
 

@@ -7,7 +7,7 @@ const { notificarVerificacaoEmail, notificarBruteForce } = require('../utils/ema
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const ImageProcessor = require('../utils/imageProcessor');
-const crypto = require('crypto');
+const crypto = require('node:crypto');
 const ACTUAL_JWT_SECRET = require('../utils/jwtConfig');
 const RecuperacaoSenha = require('../models/RecuperacaoSenha');
 const EmailService = require('../services/EmailService');
@@ -16,6 +16,8 @@ const { emitirParaPerfis } = require('../utils/realtime');
 // Usado nos dados vindos do Google, que não passam pela sanitização global
 // do app.js (ela cobre req.body/query/params, não payload de OAuth).
 const { sanitizeInput } = require('../utils/sanitize');
+// A casa de cada perfil: a mesma tabela que o gate de páginas consulta.
+const { painelDoPerfil } = require('../utils/painelPorPerfil');
 // Emissão de sessão centralizada: garante `jti` em todo token (pré-requisito
 // para o logout conseguir revogar) e opções de cookie idênticas em todo lugar.
 const { emitirTokenSessao } = require('../utils/sessionToken');
@@ -44,12 +46,12 @@ async function criarPerfilSecretaria(user, nomeEscola) {
     const email = String(user.email).toLowerCase();
 
     const existente = await Secretaria.findOne({
-        $or: [{ idUsuario: String(user._id) }, { email }]
+        $or: [{ idUsuario: String(user._id) }, { email }],
     });
 
     if (existente) {
-        const jaVinculado = !escolaId || (existente.vinculos || [])
-            .some(v => String(v.escolaId) === escolaId);
+        const jaVinculado =
+            !escolaId || (existente.vinculos || []).some((v) => String(v.escolaId) === escolaId);
         if (!jaVinculado) {
             existente.vinculos = [...(existente.vinculos || []), { escolaId, cargo: 'secretaria' }];
             existente.escolaId = escolaId;
@@ -69,7 +71,7 @@ async function criarPerfilSecretaria(user, nomeEscola) {
         vinculos: escolaId ? [{ escolaId, cargo: 'secretaria' }] : [],
         setor: 'Secretaria Geral',
         cargo: 'Secretário(a)',
-        ativo: user.ativo !== false
+        ativo: user.ativo !== false,
     });
 }
 
@@ -84,7 +86,7 @@ exports.list = async (req, res) => {
         // SEGURANÇA: coerção para String — sem isso ?perfil[$ne]=zzz chegava
         // como objeto (express extended:true) e virava um operador Mongo,
         // devolvendo a base inteira de usuários.
-        Object.keys(req.query).forEach(key => {
+        Object.keys(req.query).forEach((key) => {
             if (!ALLOWED_FILTERS.includes(key)) return;
             const valor = req.query[key];
             if (valor === null || valor === undefined || typeof valor === 'object') return;
@@ -107,9 +109,14 @@ exports.create = async (req, res) => {
     try {
         // Apenas Admin ou Diretor podem criar outros usuários diretamente via esta rota
         if (req.user && req.user.perfil !== 'admin') {
-            const isDiretorCreatingStaff = req.user.perfil === 'diretor' && ['secretaria', 'professor'].includes(req.body.perfil);
+            const isDiretorCreatingStaff =
+                req.user.perfil === 'diretor' &&
+                ['secretaria', 'professor'].includes(req.body.perfil);
             if (!isDiretorCreatingStaff) {
-                return res.status(403).json({ success: false, error: 'Apenas administradores podem criar novos administradores ou diretores.' });
+                return res.status(403).json({
+                    success: false,
+                    error: 'Apenas administradores podem criar novos administradores ou diretores.',
+                });
             }
         }
 
@@ -132,16 +139,30 @@ exports.create = async (req, res) => {
         // (plantando conta em tenant alheio) ou semear campos de controle
         // interno como `tokenVersion`, `emailVerificado` e `lockUntil`.
         // Campos de controle nunca vêm do cliente:
-        ['tokenVersion', 'loginAttempts', 'lockUntil', 'anonimizadoEm',
-         'emailVerificado', 'emailVerificacaoToken', 'resetToken', 'resetTokenExpiry',
-         'twoFactorFixedCode', 'twoFactorSecret', 'twoFactorPendingToken']
-            .forEach(campo => { delete req.body[campo]; });
+        [
+            'tokenVersion',
+            'loginAttempts',
+            'lockUntil',
+            'anonimizadoEm',
+            'emailVerificado',
+            'emailVerificacaoToken',
+            'resetToken',
+            'resetTokenExpiry',
+            'twoFactorFixedCode',
+            'twoFactorSecret',
+            'twoFactorPendingToken',
+        ].forEach((campo) => {
+            delete req.body[campo];
+        });
 
         // Não-admin só cria dentro da própria escola — o escolaId do corpo é
         // ignorado em favor do resolvido pela sessão.
         if (req.user && req.user.perfil !== 'admin') {
             if (!req.escolaId) {
-                return res.status(403).json({ success: false, error: 'Escola da sessão não identificada. Faça login novamente.' });
+                return res.status(403).json({
+                    success: false,
+                    error: 'Escola da sessão não identificada. Faça login novamente.',
+                });
             }
             req.body.escolaId = String(req.escolaId);
         }
@@ -165,7 +186,7 @@ exports.create = async (req, res) => {
         await logAction(req, 'CREATE_USER', 'Usuarios', {
             recursoId: user._id,
             valorNovo: { email: user.email, perfil: user.perfil },
-            descricao: `Usuário ${user.email} criado por ${req.user ? req.user.email : 'SISTEMA'}`
+            descricao: `Usuário ${user.email} criado por ${req.user ? req.user.email : 'SISTEMA'}`,
         });
 
         const userSafe = { ...user.toObject(), senha: undefined };
@@ -185,27 +206,34 @@ exports.firstAccess = async (req, res) => {
     try {
         // SEGURANÇA: Validação de força de senha
         if (!password || password.length < 8) {
-            return res.status(400).json({ success: false, error: 'A senha deve ter no mínimo 8 caracteres.' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'A senha deve ter no mínimo 8 caracteres.' });
         }
 
         // 1. Procura na coleção de Professores (pré-cadastrados pela direção)
         const prof = await Professor.findOne({
-            $or: [
-                { email: emailOrCpf.toLowerCase() },
-                { cpf: emailOrCpf.replace(/\D/g, '') }
-            ]
+            $or: [{ email: emailOrCpf.toLowerCase() }, { cpf: emailOrCpf.replace(/\D/g, '') }],
         });
 
         if (!prof) {
-            return res.status(404).json({ success: false, error: 'Dados não encontrados no pré-cadastro da escola.' });
+            return res.status(404).json({
+                success: false,
+                error: 'Dados não encontrados no pré-cadastro da escola.',
+            });
         }
 
         // 2. Verifica se já existe um Usuário (Login) para este professor.
         // `+senha`: o campo é `select: false` no schema; aqui precisamos saber
         // se a conta já tem senha definida (não o valor dela).
-        const existingUser = await Usuario.findOne({ email: prof.email.toLowerCase() }).select('+senha');
+        const existingUser = await Usuario.findOne({ email: prof.email.toLowerCase() }).select(
+            '+senha'
+        );
         if (existingUser && existingUser.senha) {
-            return res.status(400).json({ success: false, error: 'Este e-mail já possui uma conta ativa. Use a recuperação de senha.' });
+            return res.status(400).json({
+                success: false,
+                error: 'Este e-mail já possui uma conta ativa. Use a recuperação de senha.',
+            });
         }
 
         // 3. Cria ou Atualiza o Usuário com a nova senha
@@ -222,16 +250,16 @@ exports.firstAccess = async (req, res) => {
                 nome: prof.nome,
                 email: prof.email.toLowerCase(),
                 senha: senhaHash,
-                cpf: prof.cpf || '000.000.000-00',          // Fallback para evitar ValidationError
+                cpf: prof.cpf || '000.000.000-00', // Fallback para evitar ValidationError
                 telefone: prof.telefone || '(00) 00000-0000', // Fallback para evitar ValidationError
                 perfil: 'professor',
-                ativo: true
+                ativo: true,
             });
         }
 
         await logAction(req, 'FIRST_ACCESS_ACTIVATE', 'Usuarios', {
             recursoId: user._id,
-            descricao: `Professor ${prof.nome} ativou sua conta via Primeiro Acesso.`
+            descricao: `Professor ${prof.nome} ativou sua conta via Primeiro Acesso.`,
         });
 
         // Logar automaticamente gerando cookie JWT (mesmo padrão dos demais cadastros)
@@ -241,7 +269,7 @@ exports.firstAccess = async (req, res) => {
             success: true,
             message: 'Conta ativada com sucesso!',
             user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email },
-            redirect_to: getRedirectPath(user)
+            redirect_to: getRedirectPath(user),
         });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
@@ -256,7 +284,10 @@ exports.registerWithCode = async (req, res) => {
 
     try {
         if (!senha || senha.length < 8) {
-            return res.status(400).json({ success: false, error: 'A senha é obrigatória e deve ter no mínimo 8 caracteres.' });
+            return res.status(400).json({
+                success: false,
+                error: 'A senha é obrigatória e deve ter no mínimo 8 caracteres.',
+            });
         }
 
         // 1. Valida o código secreto e RESOLVE a escola correspondente.
@@ -266,7 +297,9 @@ exports.registerWithCode = async (req, res) => {
         //    (nenhuma escola cadastrada ainda).
         const codeResult = await SecurityController.validateCode(codigoEscola, escolaId || null);
         if (!codeResult) {
-            return res.status(403).json({ success: false, error: 'Código Secreto da Escola inválido ou expirado.' });
+            return res
+                .status(403)
+                .json({ success: false, error: 'Código Secreto da Escola inválido ou expirado.' });
         }
         const escolaResolvida = codeResult.escola || null;
         const escolaIdFinal = escolaResolvida ? String(escolaResolvida._id) : null;
@@ -274,7 +307,9 @@ exports.registerWithCode = async (req, res) => {
         // 2. Verifica duplicidade
         const existing = await Usuario.findOne({ email: email.toLowerCase() });
         if (existing) {
-            return res.status(400).json({ success: false, error: 'Este e-mail já está cadastrado.' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'Este e-mail já está cadastrado.' });
         }
 
         // 3. Cria a conta — já vinculada à escola do código
@@ -294,7 +329,7 @@ exports.registerWithCode = async (req, res) => {
             emailVerificado: false,
             emailVerificacaoToken,
             emailVerificacaoExpiry: Date.now() + 24 * 60 * 60 * 1000, // 24 horas
-            deveMudarSenha: false // usuário não precisa mudar senha no primeiro acesso
+            deveMudarSenha: false, // usuário não precisa mudar senha no primeiro acesso
         });
 
         // 3b. Registro na coleção 'professores' com o VÍNCULO da escola. É por
@@ -305,7 +340,7 @@ exports.registerWithCode = async (req, res) => {
             const mongoose = require('mongoose');
             const Professor = require('../models/Professor');
             const jaExiste = await Professor.findOne({
-                $or: [{ idUsuario: user._id.toString() }, { email: user.email.toLowerCase() }]
+                $or: [{ idUsuario: user._id.toString() }, { email: user.email.toLowerCase() }],
             }).select('_id');
             if (!jaExiste) {
                 await Professor.create({
@@ -318,7 +353,7 @@ exports.registerWithCode = async (req, res) => {
                     ativo: true,
                     escola: escolaResolvida.nome,
                     escolaId: escolaIdFinal,
-                    vinculos: [{ escolaId: escolaIdFinal, cargo: 'professor' }]
+                    vinculos: [{ escolaId: escolaIdFinal, cargo: 'professor' }],
                 });
             }
         }
@@ -332,7 +367,7 @@ exports.registerWithCode = async (req, res) => {
         await logAction(req, 'REGISTER_WITH_CODE', 'Usuarios', {
             recursoId: user._id,
             escolaId: escolaIdFinal || undefined,
-            descricao: `Nova conta criada via Código Secreto por ${email}${escolaResolvida ? ` (escola: ${escolaResolvida.nome})` : ''}`
+            descricao: `Nova conta criada via Código Secreto por ${email}${escolaResolvida ? ` (escola: ${escolaResolvida.nome})` : ''}`,
         });
 
         // Gera token JWT e define cookie HttpOnly.
@@ -343,7 +378,7 @@ exports.registerWithCode = async (req, res) => {
 
         // 4. Envia e-mail de verificação em background (não bloqueante)
         const tokenUrl = `${process.env.FRONTEND_URL || 'http://localhost:3001'}/api/auth/verify-email/${emailVerificacaoToken}`;
-        notificarVerificacaoEmail(user.email, user.nome, tokenUrl).catch(err => {
+        notificarVerificacaoEmail(user.email, user.nome, tokenUrl).catch((err) => {
             console.error('Erro ao enviar e-mail de verificação em background:', err);
         });
 
@@ -352,25 +387,36 @@ exports.registerWithCode = async (req, res) => {
             success: true,
             message: 'Conta criada e autenticada com sucesso! Redirecionando...',
             user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email },
-            redirect_to: getRedirectPath(user)
+            redirect_to: getRedirectPath(user),
         });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
 };
 
-// IMPORTANTE: os paths devem existir de verdade no servidor estático.
-// As páginas do sistema vivem em /html/*; um path como '/dashboard.html' (raiz)
-// cai no catch-all do Express e devolve a landing page — causa histórica do
-// bug "voltar para a página inicial" após login/cadastro.
+// A TABELA DE DESTINO MORA EM utils/painelPorPerfil.js (Issue #104).
+//
+// Esta função tinha a lista de perfis escrita à mão, e o gate de páginas tinha
+// a mesma lista do outro lado — "para onde este perfil vai" e "quem pode abrir
+// esta página" são a MESMA regra vista de dois ângulos. A duplicação não era
+// escolha de design: delegar obrigaria a reformatar este arquivo inteiro, e a
+// dívida de formatação do Biome empurrava a cópia para dentro do código. Paga a
+// dívida, a delegação é o que sobra.
+//
+// O que continua aqui são as duas decisões que NÃO são "onde este perfil mora",
+// e por isso não pertencem àquela tabela: sem usuário vai para o login, e senha
+// a trocar tem precedência sobre qualquer painel.
+//
+// MUDANÇA DE COMPORTAMENTO, DELIBERADA: um perfil desconhecido antes caía no
+// `return '/html/dashboard.html'` do fim — ou seja, ganhava o painel do
+// professor de graça. `painelDoPerfil` falha FECHADA e manda para a tela de
+// escolha. `painelPorPerfil.test.js` cobra que todo perfil do enum de
+// `models/Usuario.js` tenha destino declarado, então o caso "desconhecido" é
+// barrado no CI no dia em que o enum crescer, não em produção.
 function getRedirectPath(user) {
     if (!user) return '/html/login.html';
     if (user.deveMudarSenha) return '/html/mudar-senha.html';
-    if (user.perfil === 'responsavel') return '/portal-responsavel/dist/index.html';
-    if (user.perfil === 'secretaria') return '/html/secretaria/painel.html';
-    if (!user.perfil) return '/html/escolher-perfil.html';
-    // admin, diretor e professor usam o dashboard unificado (adapta-se ao perfil)
-    return '/html/dashboard.html';
+    return painelDoPerfil(user.perfil);
 }
 exports.getRedirectPath = getRedirectPath;
 
@@ -430,7 +476,8 @@ function mascararEmail(email) {
 // Avisar a equipe por fora funciona uma vez e é esquecido. O aviso precisa
 // estar onde a pessoa está no momento em que hesita: na própria mensagem,
 // a centímetros do botão.
-const AVISO_NAO_CANCELAR = '<p style="color:#b45309;font-size:12px;background:#fffbeb;border-left:3px solid #f59e0b;padding:10px 12px;margin-top:20px;border-radius:0 4px 4px 0;"><strong>Não clique em "Cancelar inscricao".</strong> Este é um e-mail do sistema, não é propaganda. Cancelando, voce deixa de receber os códigos e fica sem conseguir entrar.</p>';
+const AVISO_NAO_CANCELAR =
+    '<p style="color:#b45309;font-size:12px;background:#fffbeb;border-left:3px solid #f59e0b;padding:10px 12px;margin-top:20px;border-radius:0 4px 4px 0;"><strong>Não clique em "Cancelar inscricao".</strong> Este é um e-mail do sistema, não é propaganda. Cancelando, voce deixa de receber os códigos e fica sem conseguir entrar.</p>';
 
 /**
  * Destino guardado pelo gate quando a pessoa foi barrada sem sessão.
@@ -514,10 +561,12 @@ exports.login = async (req, res) => {
             // distinguiria "conta com senha legada" de "senha errada".
             await bcrypt.compare(senha, HASH_DUMMY);
             valid = false;
-            console.warn(`🔐 [SECURITY] Login barrado: conta ${user.email} sem hash bcrypt. Rode scripts/migrar-senhas-bcrypt.js.`);
+            console.warn(
+                `🔐 [SECURITY] Login barrado: conta ${user.email} sem hash bcrypt. Rode scripts/migrar-senhas-bcrypt.js.`
+            );
             await logAction(req, 'LOGIN_BLOCKED_LEGACY_HASH', 'Segurança', {
                 recursoId: user._id,
-                descricao: `Login bloqueado: senha de ${user.email} não está em bcrypt.`
+                descricao: `Login bloqueado: senha de ${user.email} não está em bcrypt.`,
             });
         }
 
@@ -533,8 +582,10 @@ exports.login = async (req, res) => {
 
                 // Dispara notificação de brute force para admins
                 try {
-                    const admins = await Usuario.find({ perfil: 'admin', ativo: true }).select('email').lean();
-                    const adminEmails = admins.map(a => a.email);
+                    const admins = await Usuario.find({ perfil: 'admin', ativo: true })
+                        .select('email')
+                        .lean();
+                    const adminEmails = admins.map((a) => a.email);
                     await notificarBruteForce(adminEmails, user.email, req.ip);
                 } catch (err) {
                     console.error('[BRUTE_FORCE] Erro ao notificar admins:', err.message);
@@ -543,7 +594,9 @@ exports.login = async (req, res) => {
                 await Usuario.updateOne({ _id: user._id }, { $set: updateData });
             }
 
-            await logAction(req, 'LOGIN_FAILED', 'Auth', { descricao: `Tentativa de login falha para: ${email}` });
+            await logAction(req, 'LOGIN_FAILED', 'Auth', {
+                descricao: `Tentativa de login falha para: ${email}`,
+            });
             // Mesma resposta do caso "conta não existe" — inclusive quando o
             // bloqueio acabou de ser aplicado. Um 403 'conta bloqueada' aqui
             // confirmaria a existência da conta com 5 requests e senha errada.
@@ -571,15 +624,18 @@ exports.login = async (req, res) => {
                 ok: false,
                 codigo: CODIGOS_LOGIN.MUITAS_TENTATIVAS,
                 retryEmSegundos,
-                error: `Conta bloqueada temporariamente devido a múltiplas tentativas falhas. Tente novamente em ${minutosRestantes} minutos.`
+                error: `Conta bloqueada temporariamente devido a múltiplas tentativas falhas. Tente novamente em ${minutosRestantes} minutos.`,
             });
         }
 
         // Login bem sucedido: Reseta tentativas via updateOne (bypass validation)
-        await Usuario.updateOne({ _id: user._id }, {
-            $set: { loginAttempts: 0 },
-            $unset: { lockUntil: '' }
-        });
+        await Usuario.updateOne(
+            { _id: user._id },
+            {
+                $set: { loginAttempts: 0 },
+                $unset: { lockUntil: '' },
+            }
+        );
 
         // ============================================
         // MULTI-ESCOLA: resolve a escola ativa ANTES do redirect.
@@ -594,45 +650,63 @@ exports.login = async (req, res) => {
             const { vinculosDoUsuario } = require('../middleware/filtrarPorEscola');
             const Escola = require('../models/Escola');
             const escolaIdSolicitada = req.body.escolaId || null;
-            const vinculos = await vinculosDoUsuario({ id: user._id, email: user.email, perfil: user.perfil });
+            const vinculos = await vinculosDoUsuario({
+                id: user._id,
+                email: user.email,
+                perfil: user.perfil,
+            });
 
             if (escolaIdSolicitada) {
-                const escolaSolicitada = await Escola.findById(escolaIdSolicitada).select('nome ativo').lean().catch(() => null);
+                const escolaSolicitada = await Escola.findById(escolaIdSolicitada)
+                    .select('nome ativo')
+                    .lean()
+                    .catch(() => null);
                 if (!escolaSolicitada || !escolaSolicitada.ativo) {
                     return res.status(403).json({
-                        success: false, ok: false,
+                        success: false,
+                        ok: false,
                         codigo: CODIGOS_LOGIN.ESCOLA_INDISPONIVEL,
-                        error: 'Esta escola ainda não está disponível no sistema.'
+                        error: 'Esta escola ainda não está disponível no sistema.',
                     });
                 }
-                const temVinculo = user.perfil === 'admin'
-                    || vinculos.some(v => String(v.escolaId) === String(escolaIdSolicitada));
+                const temVinculo =
+                    user.perfil === 'admin' ||
+                    vinculos.some((v) => String(v.escolaId) === String(escolaIdSolicitada));
                 if (!temVinculo) {
                     return res.status(403).json({
-                        success: false, ok: false,
+                        success: false,
+                        ok: false,
                         codigo: CODIGOS_LOGIN.SEM_VINCULO_ESCOLA,
-                        error: `Você não possui vínculo com a escola "${escolaSolicitada.nome}". Verifique com a direção da escola.`
+                        error: `Você não possui vínculo com a escola "${escolaSolicitada.nome}". Verifique com a direção da escola.`,
                     });
                 }
                 escolaAtivaId = String(escolaIdSolicitada);
             } else if (vinculos.length === 1) {
                 escolaAtivaId = String(vinculos[0].escolaId);
             } else if (vinculos.length > 1) {
-                const escolas = await Escola.find({ _id: { $in: vinculos.map(v => v.escolaId) }, ativo: true })
-                    .select('nome tipo bairro').lean();
+                const escolas = await Escola.find({
+                    _id: { $in: vinculos.map((v) => v.escolaId) },
+                    ativo: true,
+                })
+                    .select('nome tipo bairro')
+                    .lean();
                 if (escolas.length > 1) {
                     return res.json({
                         success: true,
                         ok: true,
                         requiresEscolha: true,
                         escolas,
-                        message: 'Você possui vínculo com mais de uma escola. Selecione em qual deseja entrar.'
+                        message:
+                            'Você possui vínculo com mais de uma escola. Selecione em qual deseja entrar.',
                     });
                 }
                 if (escolas.length === 1) escolaAtivaId = String(escolas[0]._id);
             }
         } catch (e) {
-            console.error('[LOGIN] Falha na resolução multi-escola (seguindo sem contexto):', e.message);
+            console.error(
+                '[LOGIN] Falha na resolução multi-escola (seguindo sem contexto):',
+                e.message
+            );
         }
 
         // ============================================
@@ -646,14 +720,18 @@ exports.login = async (req, res) => {
         // do painel padrão — e o caminho nunca passou pela barra de endereço.
         const redirect_to = destinoAposLogin(req, res) || getRedirectPath(user);
         // Seleciona campos extras necessários para o fluxo 2FA
-        const userWith2FA = await Usuario.findById(user._id).select('+twoFactorEnabled +twoFactorFixedCode +twoFactorPendingToken +twoFactorPendingExpiry');
+        const userWith2FA = await Usuario.findById(user._id).select(
+            '+twoFactorEnabled +twoFactorFixedCode +twoFactorPendingToken +twoFactorPendingExpiry'
+        );
         // Política do segundo fator: utils/politica2FA.js (fonte única).
         // A regra estava hardcoded aqui e duplicada no TwoFactorController.
         const politica2FA = require('../utils/politica2FA');
-        const precisa2FA = userWith2FA && politica2FA.exigeSegundoFator({
-            perfil: user.perfil,
-            twoFactorEnabled: userWith2FA.twoFactorEnabled,
-        });
+        const precisa2FA =
+            userWith2FA &&
+            politica2FA.exigeSegundoFator({
+                perfil: user.perfil,
+                twoFactorEnabled: userWith2FA.twoFactorEnabled,
+            });
 
         // Dispensa ativa (DISPENSAR_2FA_EMAIL): o login termina aqui mesmo, com
         // sessão completa. Registrado em auditoria porque "quem entrou sem
@@ -661,10 +739,12 @@ exports.login = async (req, res) => {
         if (userWith2FA && !precisa2FA && politica2FA.dispensado(user.perfil)) {
             await logAction(req, 'LOGIN_SEM_2FA', 'Segurança', {
                 recursoId: user._id,
-                descricao: `Login sem segundo fator (perfil ${user.perfil} dispensado por configuração) — ${user.email}`
+                descricao: `Login sem segundo fator (perfil ${user.perfil} dispensado por configuração) — ${user.email}`,
             });
             logger.warn('[2FA] Login sem segundo fator — perfil dispensado', {
-                perfil: user.perfil, usuarioId: String(user._id), action: 'auth.2faDispensado',
+                perfil: user.perfil,
+                usuarioId: String(user._id),
+                action: 'auth.2faDispensado',
             });
         }
 
@@ -693,15 +773,17 @@ exports.login = async (req, res) => {
                 await Usuario.findByIdAndUpdate(user._id, {
                     twoFactorPendingToken: null,
                     twoFactorPendingExpiry: expiry,
-                    twoFactorAttempts: 0
+                    twoFactorAttempts: 0,
                 });
 
                 logger.info('[2FA] Código fixo aplicado', {
-                    usuarioId: String(user._id), perfil: user.perfil, action: 'auth.2fa.codigoFixo',
+                    usuarioId: String(user._id),
+                    perfil: user.perfil,
+                    action: 'auth.2fa.codigoFixo',
                 });
                 await logAction(req, 'LOGIN_2FA_REQUIRED', 'Auth', {
                     recursoId: user._id,
-                    descricao: `Login 2FA (fixo) exigido para ${user.email}`
+                    descricao: `Login 2FA (fixo) exigido para ${user.email}`,
                 });
 
                 if (req.session && escolaAtivaId) req.session.escolaPendenteId = escolaAtivaId;
@@ -715,11 +797,11 @@ exports.login = async (req, res) => {
                     success: true,
                     ok: true,
                     requires2FA: true,
-                    require2FA: true,          // alias do contrato padronizado
+                    require2FA: true, // alias do contrato padronizado
                     canal: 'email',
                     destinoMascarado: mascararEmail(user.email),
                     redirect_to,
-                    message: `Código de verificação fixo habilitado para ${mascararEmail(user.email)}`
+                    message: `Código de verificação fixo habilitado para ${mascararEmail(user.email)}`,
                 });
             }
 
@@ -731,7 +813,7 @@ exports.login = async (req, res) => {
             await Usuario.findByIdAndUpdate(user._id, {
                 twoFactorPendingToken: codigoHash,
                 twoFactorPendingExpiry: expiry,
-                twoFactorAttempts: 0
+                twoFactorAttempts: 0,
             });
 
             // ============================================
@@ -764,14 +846,15 @@ exports.login = async (req, res) => {
                     // O código continua válido no banco: o admin pode reenviar
                     // por /api/auth/2fa/send sem o usuário refazer a senha.
                     logger.error('[2FA] Código gerado mas NÃO entregue', {
-                        etapa: resultado.etapa, erro: resultado.erro,
+                        etapa: resultado.etapa,
+                        erro: resultado.erro,
                         action: 'auth.2fa.envioFalhou',
                     });
                 }
             }
             await logAction(req, 'LOGIN_2FA_REQUIRED', 'Auth', {
                 recursoId: user._id,
-                descricao: `Login 2FA exigido para ${user.email}`
+                descricao: `Login 2FA exigido para ${user.email}`,
             });
 
             if (req.session && escolaAtivaId) req.session.escolaPendenteId = escolaAtivaId;
@@ -782,14 +865,14 @@ exports.login = async (req, res) => {
                 success: true,
                 ok: true,
                 requires2FA: true,
-                require2FA: true,          // alias do contrato padronizado
+                require2FA: true, // alias do contrato padronizado
                 canal: 'email',
                 destinoMascarado: mascararEmail(user.email),
-                envioConfirmado,           // false = o e-mail NAO saiu; a tela avisa
+                envioConfirmado, // false = o e-mail NAO saiu; a tela avisa
                 redirect_to,
                 message: envioConfirmado
                     ? `Código de verificação enviado para ${mascararEmail(user.email)}`
-                    : 'Não foi possível enviar o código por e-mail agora. Tente novamente ou fale com o administrador.'
+                    : 'Não foi possível enviar o código por e-mail agora. Tente novamente ou fale com o administrador.',
             });
         }
 
@@ -831,8 +914,8 @@ exports.login = async (req, res) => {
                 tutorialProfessorConcluido: !!user.tutorialProfessorConcluido,
                 tutorialResponsavelConcluido: !!user.tutorialResponsavelConcluido,
                 foto: user.foto || '',
-                fotoGoogle: user.fotoGoogle || ''
-            }
+                fotoGoogle: user.fotoGoogle || '',
+            },
         });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
@@ -854,27 +937,29 @@ exports.mockGoogleLogin = async (req, res) => {
     const { email } = req.body;
 
     try {
-        let user = await Usuario.findOne({ email: email.toLowerCase() });
+        const user = await Usuario.findOne({ email: email.toLowerCase() });
 
-        const payload = user ? {
-            id: user._id,
-            perfil: user.perfil,
-            email: user.email,
-            nome: user.nome,
-            cpf: user.cpf,
-            telefone: user.telefone,
-            consentimentoAceiteEm: user.consentimentoAceiteEm,
-            tokenVersion: user.tokenVersion || 0
-        } : {
-            id: 'mock-google-id',
-            perfil: 'responsavel',
-            email: email,
-            nome: email.split('@')[0],
-            tokenVersion: 0
-        };
+        const payload = user
+            ? {
+                  id: user._id,
+                  perfil: user.perfil,
+                  email: user.email,
+                  nome: user.nome,
+                  cpf: user.cpf,
+                  telefone: user.telefone,
+                  consentimentoAceiteEm: user.consentimentoAceiteEm,
+                  tokenVersion: user.tokenVersion || 0,
+              }
+            : {
+                  id: 'mock-google-id',
+                  perfil: 'responsavel',
+                  email: email,
+                  nome: email.split('@')[0],
+                  tokenVersion: 0,
+              };
 
         emitirTokenSessao(res, user || payload, {
-            profileCompleted: user ? !!user.profileCompleted : false
+            profileCompleted: user ? !!user.profileCompleted : false,
         });
 
         res.json({ success: true, user: payload });
@@ -884,8 +969,11 @@ exports.mockGoogleLogin = async (req, res) => {
 };
 
 exports.getGoogleClientId = async (req, res) => {
-    const DEFAULT_CLIENT_ID = '372860477730-co8eq29vbsafmffmfm2v2ot5givurar1.apps.googleusercontent.com';
-    const clientId = process.env.GOOGLE_CLIENT_ID ? process.env.GOOGLE_CLIENT_ID.trim() : DEFAULT_CLIENT_ID;
+    const DEFAULT_CLIENT_ID =
+        '372860477730-co8eq29vbsafmffmfm2v2ot5givurar1.apps.googleusercontent.com';
+    const clientId = process.env.GOOGLE_CLIENT_ID
+        ? process.env.GOOGLE_CLIENT_ID.trim()
+        : DEFAULT_CLIENT_ID;
     res.json({ success: true, clientId });
 };
 
@@ -924,9 +1012,14 @@ exports.googleLogin = async (req, res) => {
     }
 
     try {
-        let email, nome, picture = '';
-        const DEFAULT_CLIENT_ID = '372860477730-co8eq29vbsafmffmfm2v2ot5givurar1.apps.googleusercontent.com';
-        const clientId = process.env.GOOGLE_CLIENT_ID ? process.env.GOOGLE_CLIENT_ID.trim() : DEFAULT_CLIENT_ID;
+        let email,
+            nome,
+            picture = '';
+        const DEFAULT_CLIENT_ID =
+            '372860477730-co8eq29vbsafmffmfm2v2ot5givurar1.apps.googleusercontent.com';
+        const clientId = process.env.GOOGLE_CLIENT_ID
+            ? process.env.GOOGLE_CLIENT_ID.trim()
+            : DEFAULT_CLIENT_ID;
 
         // Se o token for um ID Token (JWT), ele começa com "eyJ" (cabeçalho padrão de JWT)
         if (token.startsWith('eyJ')) {
@@ -946,7 +1039,7 @@ exports.googleLogin = async (req, res) => {
             // Caso contrário, é um Access Token (fluxo popup de botão customizado)
             // Buscamos as informações do usuário diretamente na API oficial do Google
             const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                headers: { Authorization: `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` },
             });
 
             if (!response.ok) {
@@ -971,7 +1064,9 @@ exports.googleLogin = async (req, res) => {
         // `<img src=x onerror=...>`, logava, e o nome ia parar na notificação
         // de cadastro que a direção lê — XSS armazenado com origem externa,
         // sem passar por nenhum campo de formulário.
-        nome = sanitizeInput(String(nome || '')).trim().slice(0, 120);
+        nome = sanitizeInput(String(nome || ''))
+            .trim()
+            .slice(0, 120);
         if (!nome) nome = email.split('@')[0];
 
         // A foto vira atributo `src` no frontend. Além de sanitizar, exigimos
@@ -985,7 +1080,7 @@ exports.googleLogin = async (req, res) => {
         if (!user) {
             // Senha fantasma que não será usada, pois ele loga com Google
             const bcrypt = require('bcryptjs');
-            const crypto = require('crypto');
+            const crypto = require('node:crypto');
             const randomPass = crypto.randomBytes(16).toString('hex');
             const senhaHash = await bcrypt.hash(randomPass, 10);
             const tempCpf = `temp_cpf_${crypto.randomBytes(6).toString('hex')}`;
@@ -1000,7 +1095,7 @@ exports.googleLogin = async (req, res) => {
                 loginGoogle: true,
                 fotoGoogle: picture,
                 ativo: true,
-                consentimentoAceiteEm: new Date()
+                consentimentoAceiteEm: new Date(),
             });
         } else {
             // Usuário existente: sincronizar foto do Google se houver mudança
@@ -1033,15 +1128,14 @@ exports.googleLogin = async (req, res) => {
                 loginGoogle: true,
                 profileCompleted: !!user.profileCompleted,
                 tutorialProfessorConcluido: !!user.tutorialProfessorConcluido,
-                tutorialResponsavelConcluido: !!user.tutorialResponsavelConcluido
-            }
+                tutorialResponsavelConcluido: !!user.tutorialResponsavelConcluido,
+            },
         });
     } catch (e) {
         console.error('Erro na validação do Google Token:', e);
         res.status(401).json({ success: false, error: `Autenticação Google falhou: ${e.message}` });
     }
 };
-
 
 exports.logout = async (req, res) => {
     // ============================================
@@ -1052,8 +1146,9 @@ exports.logout = async (req, res) => {
     // compartilhada, XSS anterior) seguia autenticando após o logout.
     // Agora o `jti` entra na denylist e o token morre de fato.
     // ============================================
-    const tokenAtual = req.cookies?.escola_jwt
-        || (req.headers.authorization?.startsWith('Bearer ')
+    const tokenAtual =
+        req.cookies?.escola_jwt ||
+        (req.headers.authorization?.startsWith('Bearer ')
             ? req.headers.authorization.slice(7)
             : null);
 
@@ -1092,7 +1187,7 @@ exports.logout = async (req, res) => {
  * @returns {boolean} true se o alvo pertence ao tenant de quem chama
  */
 function mesmoTenant(req, alvo) {
-    if (req.user?.perfil === 'admin') return true;   // admin é global por definição
+    if (req.user?.perfil === 'admin') return true; // admin é global por definição
 
     // FAIL-CLOSED e deliberado: sem contexto de escola, ou com alvo legado sem
     // `escolaId`, a resposta é NEGAR. A alternativa ("na dúvida, permite")
@@ -1109,7 +1204,9 @@ function mesmoTenant(req, alvo) {
         return false;
     }
     if (!alvo?.escolaId) {
-        console.warn(`[TENANT] Negado: usuário alvo ${alvo?._id} não tem escolaId (registro legado). Rode npm run migrate:multiescola.`);
+        console.warn(
+            `[TENANT] Negado: usuário alvo ${alvo?._id} não tem escolaId (registro legado). Rode npm run migrate:multiescola.`
+        );
         return false;
     }
     return String(alvo.escolaId) === String(req.escolaId);
@@ -1122,17 +1219,26 @@ exports.update = async (req, res) => {
         const callingUserPerfil = req.user.perfil;
 
         const oldData = await Usuario.findById(targetId).lean();
-        if (!oldData) return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+        if (!oldData)
+            return res.status(404).json({ success: false, error: 'Usuário não encontrado' });
 
         // Se não for admin e não for si mesmo, verificar se é diretor alterando secretaria/professor
         if (callingUserPerfil !== 'admin' && String(targetId) !== String(callingUserId)) {
-            const isDiretorManagingStaff = callingUserPerfil === 'diretor' && ['secretaria', 'professor'].includes(oldData.perfil);
+            const isDiretorManagingStaff =
+                callingUserPerfil === 'diretor' &&
+                ['secretaria', 'professor'].includes(oldData.perfil);
             if (!isDiretorManagingStaff) {
-                return res.status(403).json({ success: false, error: 'Acesso negado. Sem permissão para atualizar esta conta.' });
+                return res.status(403).json({
+                    success: false,
+                    error: 'Acesso negado. Sem permissão para atualizar esta conta.',
+                });
             }
             // ...e o alvo precisa ser da MESMA escola do diretor.
             if (!mesmoTenant(req, oldData)) {
-                return res.status(403).json({ success: false, error: 'Acesso negado. Sem permissão para atualizar esta conta.' });
+                return res.status(403).json({
+                    success: false,
+                    error: 'Acesso negado. Sem permissão para atualizar esta conta.',
+                });
             }
         }
 
@@ -1146,12 +1252,29 @@ exports.update = async (req, res) => {
         // PUT /api/usuarios/<próprioId> { "perfil": "diretor" }.
         const CAMPOS_PRIVILEGIO = ['perfil', 'ativo', 'escola', 'email', 'cpf', 'deveMudarSenha'];
         const CAMPOS_PROPRIOS = [
-            'nome', 'telefone', 'senha', 'foto', 'disciplina',
-            'whatsApp', 'vinculoAluno', 'responsavelPrincipal', 'guardaLegal', 'autorizadoRetirar',
-            'segundoResponsavel', 'pessoasAutorizadas', 'lgpdConsents',
-            'profileCompleted', 'tutorialProfessorConcluido', 'tutorialResponsavelConcluido',
-            'consentimentoAceiteEm', 'consentimentoVersao',
-            'preferenciaNarracao', 'voiceSpeed', 'accessibilityFontSize', 'accessibilityContrast', 'accessibilityReadingMode'
+            'nome',
+            'telefone',
+            'senha',
+            'foto',
+            'disciplina',
+            'whatsApp',
+            'vinculoAluno',
+            'responsavelPrincipal',
+            'guardaLegal',
+            'autorizadoRetirar',
+            'segundoResponsavel',
+            'pessoasAutorizadas',
+            'lgpdConsents',
+            'profileCompleted',
+            'tutorialProfessorConcluido',
+            'tutorialResponsavelConcluido',
+            'consentimentoAceiteEm',
+            'consentimentoVersao',
+            'preferenciaNarracao',
+            'voiceSpeed',
+            'accessibilityFontSize',
+            'accessibilityContrast',
+            'accessibilityReadingMode',
         ];
 
         // Onboarding legado (/html/escolher-perfil.html): uma conta que ainda
@@ -1162,12 +1285,15 @@ exports.update = async (req, res) => {
         const userWhitelist = isAdmin
             ? [...CAMPOS_PROPRIOS, ...CAMPOS_PRIVILEGIO, 'perfilDefinidoEm']
             : isSelfEdit
-                ? [...CAMPOS_PROPRIOS, ...(podeDefinirPerfilInicial ? ['perfil', 'perfilDefinidoEm'] : [])]
-                // Diretor gerenciando secretaria/professor: pode ativar/desativar, não muda perfil.
-                : [...CAMPOS_PROPRIOS, 'ativo'];
+              ? [
+                    ...CAMPOS_PROPRIOS,
+                    ...(podeDefinirPerfilInicial ? ['perfil', 'perfilDefinidoEm'] : []),
+                ]
+              : // Diretor gerenciando secretaria/professor: pode ativar/desativar, não muda perfil.
+                [...CAMPOS_PROPRIOS, 'ativo'];
 
         const filteredBody = {};
-        userWhitelist.forEach(field => {
+        userWhitelist.forEach((field) => {
             if (req.body[field] !== undefined) filteredBody[field] = req.body[field];
         });
 
@@ -1178,8 +1304,14 @@ exports.update = async (req, res) => {
         // Proteção: apenas admin muda o perfil de uma conta que já tem perfil
         if (filteredBody.perfil && filteredBody.perfil !== oldData.perfil) {
             if (!isAdmin) {
-                if (!podeDefinirPerfilInicial || !['professor', 'diretor'].includes(filteredBody.perfil)) {
-                    return res.status(403).json({ success: false, error: 'Você não tem permissão para atribuir este perfil.' });
+                if (
+                    !podeDefinirPerfilInicial ||
+                    !['professor', 'diretor'].includes(filteredBody.perfil)
+                ) {
+                    return res.status(403).json({
+                        success: false,
+                        error: 'Você não tem permissão para atribuir este perfil.',
+                    });
                 }
             }
             // Define a data de definição de perfil automaticamente se não informada
@@ -1200,13 +1332,15 @@ exports.update = async (req, res) => {
         const updateOps = { $set: filteredBody };
         if (mudouPrivilegio) updateOps.$inc = { tokenVersion: 1 };
 
-        const user = await Usuario.findByIdAndUpdate(targetId, updateOps, { new: true }).select('-senha');
+        const user = await Usuario.findByIdAndUpdate(targetId, updateOps, { new: true }).select(
+            '-senha'
+        );
 
         await logAction(req, 'UPDATE_USER', 'Usuarios', {
             recursoId: targetId,
             valorAnterior: { perfil: oldData.perfil, ativo: oldData.ativo },
             valorNovo: { perfil: user.perfil, ativo: user.ativo },
-            descricao: `Usuário ${user.email} atualizado.`
+            descricao: `Usuário ${user.email} atualizado.`,
         });
 
         res.json({ success: !!user, data: user });
@@ -1222,18 +1356,23 @@ exports.delete = async (req, res) => {
             // Apenas admin ou diretor (se o alvo for secretaria/professor) podem excluir
             const callingUserPerfil = req.user.perfil;
             if (callingUserPerfil !== 'admin') {
-                const isDiretorManagingStaff = callingUserPerfil === 'diretor' && ['secretaria', 'professor'].includes(user.perfil);
+                const isDiretorManagingStaff =
+                    callingUserPerfil === 'diretor' &&
+                    ['secretaria', 'professor'].includes(user.perfil);
                 // Mesma regra do update: perfil permitido E mesma escola. Sem a
                 // segunda metade, um diretor apagava professores de qualquer
                 // escola da rede só com o `_id` do alvo.
                 if (!isDiretorManagingStaff || !mesmoTenant(req, user)) {
-                    return res.status(403).json({ success: false, error: 'Acesso negado. Sem permissão para excluir esta conta.' });
+                    return res.status(403).json({
+                        success: false,
+                        error: 'Acesso negado. Sem permissão para excluir esta conta.',
+                    });
                 }
             }
 
             await logAction(req, 'DELETE_USER', 'Usuarios', {
                 recursoId: user._id,
-                descricao: `Usuário ${user.email} excluído permanentemente.`
+                descricao: `Usuário ${user.email} excluído permanentemente.`,
             });
             // Revoga sessões abertas ANTES de remover o documento: se a exclusão
             // falhar no meio, a conta já não consegue mais usar o cookie antigo.
@@ -1251,20 +1390,26 @@ exports.delete = async (req, res) => {
             const MODELOS_DE_PERFIL = {
                 secretaria: '../models/Secretaria',
                 professor: '../models/Professor',
-                diretor: '../models/Diretor'
+                diretor: '../models/Diretor',
             };
             const caminhoModelo = MODELOS_DE_PERFIL[user.perfil];
             if (caminhoModelo) {
                 const Perfil = require(caminhoModelo);
                 await Perfil.deleteMany({
-                    $or: [{ idUsuario: String(user._id) }, { email: String(user.email).toLowerCase() }]
-                }).catch(e => console.error(`[DELETE_USER] Perfil de ${user.perfil} órfão:`, e.message));
+                    $or: [
+                        { idUsuario: String(user._id) },
+                        { email: String(user.email).toLowerCase() },
+                    ],
+                }).catch((e) =>
+                    console.error(`[DELETE_USER] Perfil de ${user.perfil} órfão:`, e.message)
+                );
             }
 
             // Códigos de recuperação pendentes apontam para um _id que não
             // existe mais; sem isso ficam na coleção até o job de limpeza.
-            await RecuperacaoSenha.deleteMany({ usuarioId: user._id })
-                .catch(e => console.error('[DELETE_USER] Recuperações órfãs:', e.message));
+            await RecuperacaoSenha.deleteMany({ usuarioId: user._id }).catch((e) =>
+                console.error('[DELETE_USER] Recuperações órfãs:', e.message)
+            );
         }
         res.json({ success: true });
     } catch (error) {
@@ -1278,7 +1423,8 @@ exports.delete = async (req, res) => {
 exports.anonymize = async (req, res) => {
     try {
         const user = await Usuario.findById(req.params.id);
-        if (!user) return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
+        if (!user)
+            return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
 
         const emailOriginal = user.email;
         const idAnonimo = `anon_${Date.now()}`;
@@ -1286,7 +1432,10 @@ exports.anonymize = async (req, res) => {
         // Senha destruída de forma irrecuperável: bytes aleatórios com hash.
         // Gravar uma string fixa em texto puro deixava o caminho legado de
         // login (comparação direta) a uma única flag de distância.
-        const senhaInutilizavel = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), SALT_ROUNDS);
+        const senhaInutilizavel = await bcrypt.hash(
+            crypto.randomBytes(32).toString('hex'),
+            SALT_ROUNDS
+        );
 
         // Limpa todos os dados sensíveis e revoga as sessões abertas
         await Usuario.findByIdAndUpdate(req.params.id, {
@@ -1297,9 +1446,9 @@ exports.anonymize = async (req, res) => {
                 telefone: '(00) 00000-0000',
                 ativo: false,
                 senha: senhaInutilizavel,
-                ultimoLogin: null
+                ultimoLogin: null,
             },
-            $inc: { tokenVersion: 1 }
+            $inc: { tokenVersion: 1 },
         });
 
         // As conversas do chat ficavam intactas: anonimizar o cadastro e
@@ -1315,9 +1464,9 @@ exports.anonymize = async (req, res) => {
             {
                 $set: {
                     mensagem: 'Mensagem removida a pedido do titular (LGPD).',
-                    apagadaParaTodos: true
+                    apagadaParaTodos: true,
                 },
-                $unset: { anexo: '', audio: '' }
+                $unset: { anexo: '', audio: '' },
             }
         );
 
@@ -1330,20 +1479,21 @@ exports.anonymize = async (req, res) => {
         // função — enquanto o texto pode citar nome e nota de aluno.
         const IaConversa = require('../models/IaConversa');
         const conversasRemovidas = await IaConversa.deleteMany({
-            usuarioId: String(user._id)
+            usuarioId: String(user._id),
         });
 
         await logAction(req, 'ANONYMIZE_USER', 'Usuarios', {
             recursoId: user._id,
-            descricao: `Dados do usuário ${emailOriginal} foram anonimizados conforme LGPD. `
-                + `${mensagensAnonimizadas.modifiedCount} mensagem(ns) do chat tiveram o conteúdo removido. `
-                + `${conversasRemovidas.deletedCount} conversa(s) com o assistente foram excluídas.`
+            descricao:
+                `Dados do usuário ${emailOriginal} foram anonimizados conforme LGPD. ` +
+                `${mensagensAnonimizadas.modifiedCount} mensagem(ns) do chat tiveram o conteúdo removido. ` +
+                `${conversasRemovidas.deletedCount} conversa(s) com o assistente foram excluídas.`,
         });
 
         res.json({
             success: true,
             message: 'Usuário anonimizado com sucesso.',
-            mensagensAnonimizadas: mensagensAnonimizadas.modifiedCount
+            mensagensAnonimizadas: mensagensAnonimizadas.modifiedCount,
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -1360,7 +1510,8 @@ exports.forgotPassword = async (req, res) => {
         // Standard message response for security (to avoid email harvesting)
         const standardResponse = {
             success: true,
-            message: 'Se o e-mail estiver cadastrado no sistema, você receberá um código de recuperação em instantes.'
+            message:
+                'Se o e-mail estiver cadastrado no sistema, você receberá um código de recuperação em instantes.',
         };
 
         // Busca pelo email informado
@@ -1393,7 +1544,7 @@ exports.forgotPassword = async (req, res) => {
             criadoEm: new Date(),
             expiraEm: new Date(Date.now() + 15 * 60 * 1000), // 15 minutos
             status: 'ativo',
-            tentativas: 0
+            tentativas: 0,
         });
 
         // ============================================
@@ -1417,7 +1568,8 @@ exports.forgotPassword = async (req, res) => {
         const entregue = await EmailService.sendVerificationCode(user.email, code, user.nome);
         if (!entregue) {
             logger.error('[recuperacao] Código gerado mas NÃO entregue', {
-                usuarioId: String(user._id), action: 'auth.recuperacao.envioFalhou',
+                usuarioId: String(user._id),
+                action: 'auth.recuperacao.envioFalhou',
             });
         }
 
@@ -1427,7 +1579,6 @@ exports.forgotPassword = async (req, res) => {
         // "esqueci minha senha" num oráculo de tomada de conta.
 
         res.json(standardResponse);
-
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
@@ -1437,7 +1588,9 @@ exports.verifyRecoveryCode = async (req, res) => {
     const { email, codigo } = req.body;
     try {
         if (!email || !codigo) {
-            return res.status(400).json({ success: false, error: 'E-mail e código são obrigatórios.' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'E-mail e código são obrigatórios.' });
         }
 
         const user = await Usuario.findOne({ email: email.toLowerCase(), ativo: true });
@@ -1448,7 +1601,7 @@ exports.verifyRecoveryCode = async (req, res) => {
         // Busca código ativo para este usuário
         const recovery = await RecuperacaoSenha.findOne({
             usuarioId: user._id,
-            status: 'ativo'
+            status: 'ativo',
         });
 
         if (!recovery) {
@@ -1459,14 +1612,19 @@ exports.verifyRecoveryCode = async (req, res) => {
         if (recovery.expiraEm < Date.now()) {
             recovery.status = 'expirado';
             await recovery.save();
-            return res.status(400).json({ success: false, error: 'Código expirado. Solicite um novo código.' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'Código expirado. Solicite um novo código.' });
         }
 
         // Verifica limite de tentativas antes do código
         if (recovery.tentativas >= 5) {
             recovery.status = 'expirado';
             await recovery.save();
-            return res.status(400).json({ success: false, error: 'Código bloqueado por excesso de tentativas. Solicite um novo código.' });
+            return res.status(400).json({
+                success: false,
+                error: 'Código bloqueado por excesso de tentativas. Solicite um novo código.',
+            });
         }
 
         // Compara por HASH (o banco não guarda mais o código em texto puro).
@@ -1478,14 +1636,16 @@ exports.verifyRecoveryCode = async (req, res) => {
             if (recovery.tentativas >= 5) {
                 recovery.status = 'expirado';
                 await recovery.save();
-                return res.status(400).json({ success: false, error: 'Código bloqueado por excesso de tentativas. Solicite um novo código.' });
+                return res.status(400).json({
+                    success: false,
+                    error: 'Código bloqueado por excesso de tentativas. Solicite um novo código.',
+                });
             }
 
             return res.status(400).json({ success: false, error: 'Código inválido.' });
         }
 
         res.json({ success: true, message: 'Código verificado com sucesso.' });
-
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
@@ -1495,18 +1655,27 @@ exports.resetPassword = async (req, res) => {
     const { email, codigo, password } = req.body;
     try {
         if (!email || !codigo || !password) {
-            return res.status(400).json({ success: false, error: 'E-mail, código e nova senha são obrigatórios.' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'E-mail, código e nova senha são obrigatórios.' });
         }
 
         // Validação da força da senha (mínimo 8 caracteres, pelo menos uma maiúscula, pelo menos um número)
         if (password.length < 8) {
-            return res.status(400).json({ success: false, error: 'A senha deve ter no mínimo 8 caracteres.' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'A senha deve ter no mínimo 8 caracteres.' });
         }
         if (!/[A-Z]/.test(password)) {
-            return res.status(400).json({ success: false, error: 'A senha deve conter pelo menos uma letra maiúscula.' });
+            return res.status(400).json({
+                success: false,
+                error: 'A senha deve conter pelo menos uma letra maiúscula.',
+            });
         }
         if (!/[0-9]/.test(password)) {
-            return res.status(400).json({ success: false, error: 'A senha deve conter pelo menos um número.' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'A senha deve conter pelo menos um número.' });
         }
 
         const user = await Usuario.findOne({ email: email.toLowerCase(), ativo: true });
@@ -1517,7 +1686,7 @@ exports.resetPassword = async (req, res) => {
         // Busca o código ativo
         const recovery = await RecuperacaoSenha.findOne({
             usuarioId: user._id,
-            status: 'ativo'
+            status: 'ativo',
         });
 
         if (!recovery) {
@@ -1528,14 +1697,19 @@ exports.resetPassword = async (req, res) => {
         if (recovery.expiraEm < Date.now()) {
             recovery.status = 'expirado';
             await recovery.save();
-            return res.status(400).json({ success: false, error: 'Código expirado. Solicite um novo código.' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'Código expirado. Solicite um novo código.' });
         }
 
         // Verifica limite de tentativas
         if (recovery.tentativas >= 5) {
             recovery.status = 'expirado';
             await recovery.save();
-            return res.status(400).json({ success: false, error: 'Código bloqueado por excesso de tentativas. Solicite um novo código.' });
+            return res.status(400).json({
+                success: false,
+                error: 'Código bloqueado por excesso de tentativas. Solicite um novo código.',
+            });
         }
 
         // Valida se o código confere
@@ -1547,7 +1721,10 @@ exports.resetPassword = async (req, res) => {
             if (recovery.tentativas >= 5) {
                 recovery.status = 'expirado';
                 await recovery.save();
-                return res.status(400).json({ success: false, error: 'Código bloqueado por excesso de tentativas. Solicite um novo código.' });
+                return res.status(400).json({
+                    success: false,
+                    error: 'Código bloqueado por excesso de tentativas. Solicite um novo código.',
+                });
             }
 
             return res.status(400).json({ success: false, error: 'Código inválido.' });
@@ -1560,7 +1737,7 @@ exports.resetPassword = async (req, res) => {
             {
                 $set: { senha: senhaHash },
                 $inc: { tokenVersion: 1 },
-                $unset: { resetToken: "", resetTokenExpiry: "" }
+                $unset: { resetToken: '', resetTokenExpiry: '' },
             }
         );
 
@@ -1571,7 +1748,7 @@ exports.resetPassword = async (req, res) => {
         // Registra a atividade no log de auditoria
         await logAction(req, 'RESET_PASSWORD_SUCCESS', 'Usuarios', {
             recursoId: user._id,
-            descricao: `Senha redefinida via código de recuperação por e-mail para ${user.email}`
+            descricao: `Senha redefinida via código de recuperação por e-mail para ${user.email}`,
         });
 
         res.json({ success: true, message: 'Sua senha foi alterada com sucesso!' });
@@ -1590,7 +1767,9 @@ exports.updatePasswordForce = async (req, res) => {
     try {
         // Validação de força de senha
         if (!password || password.length < 8) {
-            return res.status(400).json({ success: false, error: 'A senha deve ter no mínimo 8 caracteres.' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'A senha deve ter no mínimo 8 caracteres.' });
         }
 
         const senhaHash = await bcrypt.hash(password, SALT_ROUNDS);
@@ -1598,13 +1777,13 @@ exports.updatePasswordForce = async (req, res) => {
         await Usuario.findByIdAndUpdate(userId, {
             $set: {
                 senha: senhaHash,
-                deveMudarSenha: false // Libera o acesso
-            }
+                deveMudarSenha: false, // Libera o acesso
+            },
         });
 
         await logAction(req, 'FORCE_CHANGE_PASSWORD', 'Usuarios', {
             recursoId: userId,
-            descricao: `Usuário ${req.user.email} atualizou a senha obrigatória.`
+            descricao: `Usuário ${req.user.email} atualizou a senha obrigatória.`,
         });
 
         res.json({ success: true, message: 'Senha atualizada com sucesso!' });
@@ -1624,7 +1803,7 @@ exports.verifyEmail = async (req, res) => {
         // Retorna o documento incluindo os campos select: false
         const user = await Usuario.findOne({
             emailVerificacaoToken: token,
-            emailVerificacaoExpiry: { $gt: Date.now() }
+            emailVerificacaoExpiry: { $gt: Date.now() },
         }).select('+emailVerificacaoToken +emailVerificacaoExpiry');
 
         const HTML_BASE = (titulo, mensagem, cor, icon) => `
@@ -1643,12 +1822,14 @@ exports.verifyEmail = async (req, res) => {
         `;
 
         if (!user) {
-            return res.send(HTML_BASE(
-                'Link Inválido',
-                'O link de verificação é inválido ou já expirou. Por favor, solicite um novo e-mail de verificação se necessário.',
-                '#dc2626',
-                '❌'
-            ));
+            return res.send(
+                HTML_BASE(
+                    'Link Inválido',
+                    'O link de verificação é inválido ou já expirou. Por favor, solicite um novo e-mail de verificação se necessário.',
+                    '#dc2626',
+                    '❌'
+                )
+            );
         }
 
         user.emailVerificado = true;
@@ -1656,13 +1837,14 @@ exports.verifyEmail = async (req, res) => {
         user.emailVerificacaoExpiry = undefined;
         await user.save();
 
-        res.send(HTML_BASE(
-            'E-mail Verificado!',
-            'Seu e-mail foi verificado com sucesso. Você já pode acessar o Sistema Escolar.',
-            '#16a34a',
-            '✅'
-        ));
-
+        res.send(
+            HTML_BASE(
+                'E-mail Verificado!',
+                'Seu e-mail foi verificado com sucesso. Você já pode acessar o Sistema Escolar.',
+                '#16a34a',
+                '✅'
+            )
+        );
     } catch (e) {
         res.status(500).send('Erro interno do servidor.');
     }
@@ -1688,11 +1870,17 @@ exports.registerResponsavel = async (req, res) => {
 
     try {
         if (!nome || !email || !senha || !telefone) {
-            return res.status(400).json({ success: false, error: 'Todos os campos de perfil são obrigatórios (Nome, E-mail, Senha e Telefone).' });
+            return res.status(400).json({
+                success: false,
+                error: 'Todos os campos de perfil são obrigatórios (Nome, E-mail, Senha e Telefone).',
+            });
         }
 
         if (!codigoSecreto) {
-            return res.status(400).json({ success: false, error: 'O Código Secreto do Aluno é obrigatório. Solicite-o à direção da escola.' });
+            return res.status(400).json({
+                success: false,
+                error: 'O Código Secreto do Aluno é obrigatório. Solicite-o à direção da escola.',
+            });
         }
 
         if (!validateEmail(email)) {
@@ -1700,7 +1888,10 @@ exports.registerResponsavel = async (req, res) => {
         }
 
         if (!validatePasswordStrength(senha)) {
-            return res.status(400).json({ success: false, error: 'A senha deve ter no mínimo 8 caracteres, uma letra maiúscula, um número e um caractere especial.' });
+            return res.status(400).json({
+                success: false,
+                error: 'A senha deve ter no mínimo 8 caracteres, uma letra maiúscula, um número e um caractere especial.',
+            });
         }
 
         const Usuario = require('../models/Usuario');
@@ -1710,12 +1901,18 @@ exports.registerResponsavel = async (req, res) => {
         // 1. Validar o código secreto — buscar o aluno correspondente
         const aluno = await Aluno.findOne({ codigoSecreto: codigoSecreto.trim().toUpperCase() });
         if (!aluno) {
-            return res.status(400).json({ success: false, error: 'Código secreto inválido. Verifique o código fornecido pela escola e tente novamente.' });
+            return res.status(400).json({
+                success: false,
+                error: 'Código secreto inválido. Verifique o código fornecido pela escola e tente novamente.',
+            });
         }
 
         // 2. Verificar se o aluno já possui um responsável vinculado (se for um email válido)
         if (aluno.responsavel && validateEmail(aluno.responsavel)) {
-            return res.status(400).json({ success: false, error: 'Este aluno já possui um responsável vinculado. Entre em contato com a direção da escola.' });
+            return res.status(400).json({
+                success: false,
+                error: 'Este aluno já possui um responsável vinculado. Entre em contato com a direção da escola.',
+            });
         }
 
         const existingUser = await Usuario.findOne({ email: email.toLowerCase() });
@@ -1742,19 +1939,29 @@ exports.registerResponsavel = async (req, res) => {
             escolaId: escolaIdDoAluno,
             ultimoLogin: now,
             lastLogin: now,
-            consentimentoAceiteEm: now
+            consentimentoAceiteEm: now,
         });
 
         // 3. Vincular o aluno ao responsável automaticamente
         aluno.responsavel = email.toLowerCase();
         await aluno.save();
-        console.log(`🔗 [VINCULAÇÃO] Aluno "${aluno.nome}" vinculado ao responsável "${nome}" (${email}) via código secreto.`);
+        console.log(
+            `🔗 [VINCULAÇÃO] Aluno "${aluno.nome}" vinculado ao responsável "${nome}" (${email}) via código secreto.`
+        );
 
         // 4. Salvar Notificação persistente no banco de dados para a direção
-        const hourStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
-        const dateStr = now.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' });
+        const hourStr = now.toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'America/Sao_Paulo',
+        });
+        const dateStr = now.toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            timeZone: 'America/Sao_Paulo',
+        });
         const notifMsg = `Novo responsável cadastrado às ${hourStr}`;
-        
+
         await Notificacao.create({
             id: 'notif_reg_' + Date.now(),
             tipo: 'cadastro',
@@ -1762,7 +1969,7 @@ exports.registerResponsavel = async (req, res) => {
             mensagem: `${nome} se cadastrou como Responsável e foi vinculado automaticamente ao aluno "${aluno.nome}" (Turma: ${aluno.turma || aluno.turmaId}) no dia ${dateStr} às ${hourStr}.`,
             destinatarios: 'diretores',
             status: 'enviado',
-            escolaId: aluno.escolaId || undefined
+            escolaId: aluno.escolaId || undefined,
         });
 
         // 5. Notificação em Tempo Real (WebSocket)
@@ -1773,7 +1980,7 @@ exports.registerResponsavel = async (req, res) => {
             perfil: 'Responsável',
             alunoVinculado: aluno.nome,
             data: dateStr,
-            horario: hourStr
+            horario: hourStr,
         });
 
         // 6. Logar automaticamente gerando cookie JWT
@@ -1783,7 +1990,7 @@ exports.registerResponsavel = async (req, res) => {
             success: true,
             message: `Conta criada com sucesso! Aluno "${aluno.nome}" vinculado automaticamente.`,
             user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email },
-            redirect_to: getRedirectPath(user)
+            redirect_to: getRedirectPath(user),
         });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
@@ -1794,19 +2001,37 @@ exports.registerResponsavel = async (req, res) => {
  * Cadastro público de Docente
  */
 exports.registerDocente = async (req, res) => {
-    const { nome, email, senha, disciplina, turma, matricula, telefone, codigoEscola, escolaId } = req.body;
+    const { nome, email, senha, disciplina, turma, matricula, telefone, codigoEscola, escolaId } =
+        req.body;
 
     try {
-        if (!nome || !email || !senha || !disciplina || !turma || !matricula || !telefone || !codigoEscola) {
-            return res.status(400).json({ success: false, error: 'Todos os campos são obrigatórios, incluindo o Código Secreto da Escola.' });
+        if (
+            !nome ||
+            !email ||
+            !senha ||
+            !disciplina ||
+            !turma ||
+            !matricula ||
+            !telefone ||
+            !codigoEscola
+        ) {
+            return res.status(400).json({
+                success: false,
+                error: 'Todos os campos são obrigatórios, incluindo o Código Secreto da Escola.',
+            });
         }
 
         // Valida o código secreto (por escola quando escolaId presente)
         const SecurityController = require('./SecurityController');
         const codeResult = await SecurityController.validateCode(codigoEscola, escolaId || null);
         if (!codeResult) {
-            console.log(`⚠️ [REGISTER-DOCENTE] Código inválido para escolaId=${escolaId || '(auto)'}`);
-            return res.status(403).json({ success: false, error: 'Código Secreto da Escola inválido ou expirado. Solicite o código atual à direção da escola.' });
+            console.log(
+                `⚠️ [REGISTER-DOCENTE] Código inválido para escolaId=${escolaId || '(auto)'}`
+            );
+            return res.status(403).json({
+                success: false,
+                error: 'Código Secreto da Escola inválido ou expirado. Solicite o código atual à direção da escola.',
+            });
         }
         const escolaResolvida = codeResult.escola || null; // null = modo legado (sem escolas cadastradas)
         const escolaIdFinal = escolaResolvida ? String(escolaResolvida._id) : null;
@@ -1816,7 +2041,10 @@ exports.registerDocente = async (req, res) => {
         }
 
         if (!validatePasswordStrength(senha)) {
-            return res.status(400).json({ success: false, error: 'A senha deve ter no mínimo 8 caracteres, uma letra maiúscula, um número e um caractere especial.' });
+            return res.status(400).json({
+                success: false,
+                error: 'A senha deve ter no mínimo 8 caracteres, uma letra maiúscula, um número e um caractere especial.',
+            });
         }
 
         const Usuario = require('../models/Usuario');
@@ -1843,15 +2071,22 @@ exports.registerDocente = async (req, res) => {
             ativo: true,
             ultimoLogin: now,
             lastLogin: now,
-            consentimentoAceiteEm: now
+            consentimentoAceiteEm: now,
         });
 
         // Auto-criação do registro na coleção 'professores' para vincular a turma e disciplina ao painel do professor
         const mongoose = require('mongoose');
         const Professor = require('../models/Professor');
-        const materiasEspeciais = ['Inglês', 'Educação Física', 'Artes', 'SEBRAE', 'Oficina de Leitura', 'Of. Maker'];
+        const materiasEspeciais = [
+            'Inglês',
+            'Educação Física',
+            'Artes',
+            'SEBRAE',
+            'Oficina de Leitura',
+            'Of. Maker',
+        ];
         const isEspecial = materiasEspeciais.includes(disciplina);
-        
+
         const salaPrincipal = isEspecial ? 'VARIADOS' : turma;
         const salasAdicionais = isEspecial ? [turma] : [];
         const materias = [disciplina];
@@ -1872,14 +2107,22 @@ exports.registerDocente = async (req, res) => {
             ativo: true,
             escola: escolaResolvida ? escolaResolvida.nome : 'default',
             vinculos: escolaIdFinal ? [{ escolaId: escolaIdFinal, cargo: 'professor' }] : [],
-            escolaId: escolaIdFinal || undefined
+            escolaId: escolaIdFinal || undefined,
         });
 
         // 1. Salvar Notificação persistente no banco de dados para a direção
-        const hourStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
-        const dateStr = now.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' });
+        const hourStr = now.toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'America/Sao_Paulo',
+        });
+        const dateStr = now.toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            timeZone: 'America/Sao_Paulo',
+        });
         const notifMsg = `Novo docente cadastrado às ${hourStr}`;
-        
+
         await Notificacao.create({
             id: 'notif_reg_' + Date.now(),
             tipo: 'cadastro',
@@ -1887,7 +2130,7 @@ exports.registerDocente = async (req, res) => {
             mensagem: `${nome} se cadastrou como Docente (${disciplina} - ${turma}) no dia ${dateStr} às ${hourStr}.`,
             destinatarios: 'diretores',
             status: 'enviado',
-            escolaId: escolaIdFinal || undefined
+            escolaId: escolaIdFinal || undefined,
         });
 
         // 2. Notificação em Tempo Real (WebSocket) — só a direção da escola
@@ -1895,7 +2138,7 @@ exports.registerDocente = async (req, res) => {
             nome: user.nome,
             perfil: 'Docente',
             data: dateStr,
-            horario: hourStr
+            horario: hourStr,
         });
 
         // 3. Logar automaticamente gerando cookie JWT
@@ -1911,7 +2154,7 @@ exports.registerDocente = async (req, res) => {
             success: true,
             message: 'Conta de docente criada com sucesso!',
             user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email },
-            redirect_to: getRedirectPath(user)
+            redirect_to: getRedirectPath(user),
         });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
@@ -1940,10 +2183,14 @@ exports.updateProfile = async (req, res) => {
 
         // ── Preferências de voz e acessibilidade (todos os perfis) ──────────
         const VOICE_FIELDS = [
-            'voiceSpeed', 'voiceGender', 'ttsProvider',
-            'accessibilityFontSize', 'accessibilityReadingMode', 'accessibilityContrast'
+            'voiceSpeed',
+            'voiceGender',
+            'ttsProvider',
+            'accessibilityFontSize',
+            'accessibilityReadingMode',
+            'accessibilityContrast',
         ];
-        VOICE_FIELDS.forEach(field => {
+        VOICE_FIELDS.forEach((field) => {
             if (body[field] !== undefined) updateData[field] = body[field];
         });
 
@@ -1954,7 +2201,9 @@ exports.updateProfile = async (req, res) => {
             }
             const existingCpf = await Usuario.findOne({ cpf: body.cpf, _id: { $ne: userId } });
             if (existingCpf) {
-                return res.status(400).json({ success: false, error: 'Este CPF já está cadastrado.' });
+                return res
+                    .status(400)
+                    .json({ success: false, error: 'Este CPF já está cadastrado.' });
             }
             updateData.cpf = body.cpf;
         }
@@ -1962,12 +2211,18 @@ exports.updateProfile = async (req, res) => {
         // Atributos específicos do Responsável (Onboarding LGPD)
         if (isResponsavel) {
             const responsavelFields = [
-                'whatsApp', 'vinculoAluno', 'responsavelPrincipal', 'guardaLegal', 
-                'autorizadoRetirar', 'segundoResponsavel', 'pessoasAutorizadas', 
-                'lgpdConsents', 'profileCompleted'
+                'whatsApp',
+                'vinculoAluno',
+                'responsavelPrincipal',
+                'guardaLegal',
+                'autorizadoRetirar',
+                'segundoResponsavel',
+                'pessoasAutorizadas',
+                'lgpdConsents',
+                'profileCompleted',
             ];
-            
-            responsavelFields.forEach(field => {
+
+            responsavelFields.forEach((field) => {
                 if (body[field] !== undefined) updateData[field] = body[field];
             });
 
@@ -1977,15 +2232,23 @@ exports.updateProfile = async (req, res) => {
 
             // Gerar contaId se profileCompleted estiver sendo marcado como true pela primeira vez
             const currentUser = await Usuario.findById(userId).select('contaId profileCompleted');
-            if (body.profileCompleted === true && (!currentUser.profileCompleted || !currentUser.contaId)) {
+            if (
+                body.profileCompleted === true &&
+                (!currentUser.profileCompleted || !currentUser.contaId)
+            ) {
                 // Se ainda não tem ID de conta, gera um novo: RP-XXXXXX
                 // Conta quantos usuários já possuem contaId para gerar o próximo
-                const count = await Usuario.countDocuments({ contaId: { $ne: null }, perfil: 'responsavel' });
+                const count = await Usuario.countDocuments({
+                    contaId: { $ne: null },
+                    perfil: 'responsavel',
+                });
                 const nextIdNum = count + 1;
                 const paddedId = String(nextIdNum).padStart(6, '0');
                 updateData.contaId = `RP-${paddedId}`;
                 updateData.profileCompletedEm = new Date();
-                console.log(`🆔 [ONBOARDING] Gerado novo ContaID: ${updateData.contaId} para ${req.user.email}`);
+                console.log(
+                    `🆔 [ONBOARDING] Gerado novo ContaID: ${updateData.contaId} para ${req.user.email}`
+                );
 
                 // Sincronização Automática: Vincular alunos que já tenham este e-mail como responsável
                 const Aluno = require('../models/Aluno');
@@ -1994,7 +2257,9 @@ exports.updateProfile = async (req, res) => {
                     { $set: { responsavelId: userId } }
                 );
                 if (result.modifiedCount > 0) {
-                    console.log(`🔗 [ONBOARDING] ${result.modifiedCount} aluno(s) vinculados automaticamente ao ID ${userId}`);
+                    console.log(
+                        `🔗 [ONBOARDING] ${result.modifiedCount} aluno(s) vinculados automaticamente ao ID ${userId}`
+                    );
                 }
             }
         }
@@ -2004,31 +2269,39 @@ exports.updateProfile = async (req, res) => {
         // Registro de Histórico LGPD (Imutável)
         if (isResponsavel && body.newLgpdRecords && Array.isArray(body.newLgpdRecords)) {
             const userAgent = req.headers['user-agent'] || 'Desconhecido';
-            const os = userAgent.includes('Windows') ? 'Windows' : 
-                       userAgent.includes('Mac') ? 'MacOS' : 
-                       userAgent.includes('Android') ? 'Android' : 
-                       userAgent.includes('iOS') ? 'iOS' : 'Outro';
-            
-            const historyEntries = body.newLgpdRecords.map(record => ({
+            const os = userAgent.includes('Windows')
+                ? 'Windows'
+                : userAgent.includes('Mac')
+                  ? 'MacOS'
+                  : userAgent.includes('Android')
+                    ? 'Android'
+                    : userAgent.includes('iOS')
+                      ? 'iOS'
+                      : 'Outro';
+
+            const historyEntries = body.newLgpdRecords.map((record) => ({
                 termoId: record.termoId,
                 versao: record.versao || '1.0',
                 aceitoEm: new Date(),
                 ip: req.ip || '127.0.0.1',
                 browser: userAgent.substring(0, 200),
                 os: os,
-                loginType: record.loginType || (req.user.loginGoogle ? 'Google' : 'Conta Local')
+                loginType: record.loginType || (req.user.loginGoogle ? 'Google' : 'Conta Local'),
             }));
 
             updateQuery.$push = { lgpdHistory: { $each: historyEntries } };
         }
 
         const user = await Usuario.findByIdAndUpdate(userId, updateQuery, { new: true }).lean();
-        if (!user) return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
+        if (!user)
+            return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
 
         // LOG DE AUDITORIA
         await logAction(req, 'UPDATE_PROFILE', 'Usuarios', {
             recursoId: userId,
-            descricao: isResponsavel ? `Perfil do Responsável ${user.email} atualizado (Onboarding/LGPD).` : `Perfil de ${user.email} atualizado.`
+            descricao: isResponsavel
+                ? `Perfil do Responsável ${user.email} atualizado (Onboarding/LGPD).`
+                : `Perfil de ${user.email} atualizado.`,
         });
 
         const { senha, loginAttempts, __v, ...safeUser } = user;
@@ -2058,19 +2331,28 @@ exports.updateTutorial = async (req, res) => {
 
         if (body.tutorialProfessorConcluido !== undefined) {
             updateData.tutorialProfessorConcluido = !!body.tutorialProfessorConcluido;
-            if (body.tutorialProfessorConcluido) updateData.tutorialProfessorConcluidoEm = new Date();
+            if (body.tutorialProfessorConcluido)
+                updateData.tutorialProfessorConcluidoEm = new Date();
         }
         if (body.tutorialResponsavelConcluido !== undefined) {
             updateData.tutorialResponsavelConcluido = !!body.tutorialResponsavelConcluido;
-            if (body.tutorialResponsavelConcluido) updateData.tutorialResponsavelConcluidoEm = new Date();
+            if (body.tutorialResponsavelConcluido)
+                updateData.tutorialResponsavelConcluidoEm = new Date();
         }
 
         if (Object.keys(updateData).length === 0) {
-            return res.status(400).json({ success: false, error: 'Nenhum campo de tutorial informado.' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'Nenhum campo de tutorial informado.' });
         }
 
-        const user = await Usuario.findByIdAndUpdate(userId, { $set: updateData }, { new: true }).lean();
-        if (!user) return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
+        const user = await Usuario.findByIdAndUpdate(
+            userId,
+            { $set: updateData },
+            { new: true }
+        ).lean();
+        if (!user)
+            return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
 
         const { senha, loginAttempts, __v, ...safeUser } = user;
         if (!safeUser.id) safeUser.id = String(user._id);
@@ -2079,9 +2361,6 @@ exports.updateTutorial = async (req, res) => {
         res.status(500).json({ success: false, error: e.message });
     }
 };
-
-
-
 
 // ============================================
 // UPLOAD MANUAL DE FOTO DE PERFIL
@@ -2100,18 +2379,26 @@ exports.uploadFoto = async (req, res) => {
     try {
         // Validação: campo obrigatório
         if (!foto || typeof foto !== 'string') {
-            return res.status(400).json({ success: false, error: 'Campo "foto" é obrigatório e deve ser uma string base64.' });
+            return res.status(400).json({
+                success: false,
+                error: 'Campo "foto" é obrigatório e deve ser uma string base64.',
+            });
         }
 
         // Validação: deve começar com data:image/
         if (!foto.startsWith('data:image/')) {
-            return res.status(400).json({ success: false, error: 'Formato inválido. A foto deve ser uma string base64 com prefixo data:image/.' });
+            return res.status(400).json({
+                success: false,
+                error: 'Formato inválido. A foto deve ser uma string base64 com prefixo data:image/.',
+            });
         }
 
         // Validação: tamanho máximo (~3MB de base64)
         const base64Part = foto.split(',')[1] || '';
         if (base64Part.length > MAX_PHOTO_B64_BYTES) {
-            return res.status(400).json({ success: false, error: 'Imagem muito grande. Máximo permitido: 3MB.' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'Imagem muito grande. Máximo permitido: 3MB.' });
         }
 
         // Converte para WebP (pula se já for WebP)
@@ -2123,7 +2410,10 @@ exports.uploadFoto = async (req, res) => {
                 fotoFinal = await ImageProcessor.convertToWebPBase64(foto, 82);
             } catch (convErr) {
                 console.error('[uploadFoto] Erro na conversão para WebP:', convErr.message);
-                return res.status(400).json({ success: false, error: 'Formato de imagem não suportado. Use JPG, PNG ou WebP.' });
+                return res.status(400).json({
+                    success: false,
+                    error: 'Formato de imagem não suportado. Use JPG, PNG ou WebP.',
+                });
             }
         }
 
@@ -2139,13 +2429,23 @@ exports.uploadFoto = async (req, res) => {
         }
 
         // Retorna sem campos sensíveis
-        const { senha, twoFactorSecret, twoFactorPendingToken, twoFactorPendingExpiry,
-                emailVerificacaoToken, emailVerificacaoExpiry, loginAttempts, lockUntil, __v, ...safeUser } = user;
+        const {
+            senha,
+            twoFactorSecret,
+            twoFactorPendingToken,
+            twoFactorPendingExpiry,
+            emailVerificacaoToken,
+            emailVerificacaoExpiry,
+            loginAttempts,
+            lockUntil,
+            __v,
+            ...safeUser
+        } = user;
         if (!safeUser.id) safeUser.id = String(user._id);
 
         await logAction(req, 'UPLOAD_PROFILE_PHOTO', 'Usuarios', {
             recursoId: userId,
-            descricao: `Foto de perfil atualizada para ${user.email}.`
+            descricao: `Foto de perfil atualizada para ${user.email}.`,
         });
 
         res.json({ success: true, user: safeUser });
@@ -2174,13 +2474,23 @@ exports.removeFoto = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
         }
 
-        const { senha, twoFactorSecret, twoFactorPendingToken, twoFactorPendingExpiry,
-                emailVerificacaoToken, emailVerificacaoExpiry, loginAttempts, lockUntil, __v, ...safeUser } = user;
+        const {
+            senha,
+            twoFactorSecret,
+            twoFactorPendingToken,
+            twoFactorPendingExpiry,
+            emailVerificacaoToken,
+            emailVerificacaoExpiry,
+            loginAttempts,
+            lockUntil,
+            __v,
+            ...safeUser
+        } = user;
         if (!safeUser.id) safeUser.id = String(user._id);
 
         await logAction(req, 'REMOVE_PROFILE_PHOTO', 'Usuarios', {
             recursoId: userId,
-            descricao: `Foto de perfil removida para ${user.email}.`
+            descricao: `Foto de perfil removida para ${user.email}.`,
         });
 
         res.json({ success: true, user: safeUser });
@@ -2190,14 +2500,14 @@ exports.removeFoto = async (req, res) => {
     }
 };
 
-
 /**
  * POST /api/auth/settings/tts
  * Atualiza as configurações de voz do usuário no MongoDB.
  */
 exports.updateTTSSettings = async (req, res) => {
     const userId = req.user.id || req.user._id;
-    const { ttsProvider, voicePreference, elevenlabsVoice, narrarAuto, speed, narrationMode } = req.body;
+    const { ttsProvider, voicePreference, elevenlabsVoice, narrarAuto, speed, narrationMode } =
+        req.body;
 
     // `voiceGender` é campo legado com enum de gênero. A tela de voz hoje manda
     // NOME DE VOZ ('adam', 'brian', ...) ou 'off' — copiar isso direto para lá,
@@ -2207,18 +2517,18 @@ exports.updateTTSSettings = async (req, res) => {
 
     try {
         const updateData = {};
-        if (ttsProvider)     updateData['settings.ttsProvider']     = ttsProvider;
+        if (ttsProvider) updateData['settings.ttsProvider'] = ttsProvider;
         if (voicePreference) updateData['settings.voicePreference'] = voicePreference;
         if (elevenlabsVoice) updateData['settings.elevenlabsVoice'] = elevenlabsVoice;
         if (narrarAuto !== undefined) updateData['settings.narrarAuto'] = Boolean(narrarAuto);
-        if (speed !== undefined) updateData['settings.speed']       = Number(speed);
-        if (narrationMode)   updateData['settings.narrationMode']   = narrationMode;
+        if (speed !== undefined) updateData['settings.speed'] = Number(speed);
+        if (narrationMode) updateData['settings.narrationMode'] = narrationMode;
 
         // Também atualiza os campos legados para retrocompatibilidade
-        if (ttsProvider)     updateData.ttsProvider         = ttsProvider;
+        if (ttsProvider) updateData.ttsProvider = ttsProvider;
         if (GENEROS_LEGADOS.includes(voicePreference)) updateData.voiceGender = voicePreference;
-        if (speed !== undefined) updateData.voiceSpeed      = Number(speed);
-        if (narrationMode)   updateData.preferenciaNarracao = narrationMode;
+        if (speed !== undefined) updateData.voiceSpeed = Number(speed);
+        if (narrationMode) updateData.preferenciaNarracao = narrationMode;
 
         const user = await Usuario.findByIdAndUpdate(
             userId,
@@ -2234,11 +2544,11 @@ exports.updateTTSSettings = async (req, res) => {
         await logAction(req, 'UPDATE_TTS_SETTINGS', 'Usuarios', {
             recursoId: userId,
             valorNovo: user.settings,
-            descricao: `Configurações de TTS atualizadas para ${user.email}.`
+            descricao: `Configurações de TTS atualizadas para ${user.email}.`,
         });
 
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             settings: user.settings,
             // Retorna safeUser completo para sync no frontend
             user: {
@@ -2246,8 +2556,8 @@ exports.updateTTSSettings = async (req, res) => {
                 nome: user.nome,
                 perfil: user.perfil,
                 email: user.email,
-                settings: user.settings
-            }
+                settings: user.settings,
+            },
         });
     } catch (e) {
         console.error('[updateTTSSettings] Erro:', e.message);
@@ -2264,15 +2574,23 @@ exports.registerDiretor = async (req, res) => {
 
     try {
         if (!nome || !email || !senha || !telefone || !codigoEscola) {
-            return res.status(400).json({ success: false, error: 'Todos os campos são obrigatórios, incluindo o Código Secreto da Escola.' });
+            return res.status(400).json({
+                success: false,
+                error: 'Todos os campos são obrigatórios, incluindo o Código Secreto da Escola.',
+            });
         }
 
         // 1. Valida o código secreto (por escola quando escolaId presente)
         const SecurityController = require('./SecurityController');
         const codeResult = await SecurityController.validateCode(codigoEscola, escolaId || null);
         if (!codeResult) {
-            console.log(`⚠️ [REGISTER-DIRETOR] Código inválido para escolaId=${escolaId || '(auto)'}`);
-            return res.status(403).json({ success: false, error: 'Código Secreto da Escola inválido ou expirado. Solicite o código atual à direção da escola.' });
+            console.log(
+                `⚠️ [REGISTER-DIRETOR] Código inválido para escolaId=${escolaId || '(auto)'}`
+            );
+            return res.status(403).json({
+                success: false,
+                error: 'Código Secreto da Escola inválido ou expirado. Solicite o código atual à direção da escola.',
+            });
         }
         const escolaResolvida = codeResult.escola || null;
         const escolaIdFinal = escolaResolvida ? String(escolaResolvida._id) : null;
@@ -2282,8 +2600,16 @@ exports.registerDiretor = async (req, res) => {
             return res.status(400).json({ success: false, error: 'E-mail inválido.' });
         }
 
-        if (senha.length < 8 || !/[A-Z]/.test(senha) || !/[0-9]/.test(senha) || !/[^A-Za-z0-9]/.test(senha)) {
-            return res.status(400).json({ success: false, error: 'A senha deve ter no mínimo 8 caracteres, uma letra maiúscula, um número e um caractere especial.' });
+        if (
+            senha.length < 8 ||
+            !/[A-Z]/.test(senha) ||
+            !/[0-9]/.test(senha) ||
+            !/[^A-Za-z0-9]/.test(senha)
+        ) {
+            return res.status(400).json({
+                success: false,
+                error: 'A senha deve ter no mínimo 8 caracteres, uma letra maiúscula, um número e um caractere especial.',
+            });
         }
 
         const Usuario = require('../models/Usuario');
@@ -2309,7 +2635,7 @@ exports.registerDiretor = async (req, res) => {
             ativo: true,
             ultimoLogin: now,
             lastLogin: now,
-            consentimentoAceiteEm: now
+            consentimentoAceiteEm: now,
         });
 
         // 4. Auto-criação do registro na coleção 'diretores'
@@ -2322,18 +2648,26 @@ exports.registerDiretor = async (req, res) => {
             nome: user.nome,
             email: user.email.toLowerCase(),
             telefone: user.telefone || telefone,
-            escola: escolaResolvida ? escolaResolvida.nome : (escola || 'default'),
+            escola: escolaResolvida ? escolaResolvida.nome : escola || 'default',
             role: 'director',
             ativo: true,
             vinculos: escolaIdFinal ? [{ escolaId: escolaIdFinal, cargo: 'diretor' }] : [],
-            escolaId: escolaIdFinal || undefined
+            escolaId: escolaIdFinal || undefined,
         });
 
         // 5. Notificação persistente
-        const hourStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
-        const dateStr = now.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' });
+        const hourStr = now.toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'America/Sao_Paulo',
+        });
+        const dateStr = now.toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            timeZone: 'America/Sao_Paulo',
+        });
         const notifMsg = `Novo diretor cadastrado às ${hourStr}`;
-        
+
         await Notificacao.create({
             id: 'notif_reg_' + Date.now(),
             tipo: 'cadastro',
@@ -2341,7 +2675,7 @@ exports.registerDiretor = async (req, res) => {
             mensagem: `${nome} se cadastrou como Diretor${escola ? ` (${escola})` : ''} no dia ${dateStr} às ${hourStr}.`,
             destinatarios: 'diretores',
             status: 'enviado',
-            escolaId: escolaIdFinal || undefined
+            escolaId: escolaIdFinal || undefined,
         });
 
         // 6. WebSocket — só a direção da escola
@@ -2349,7 +2683,7 @@ exports.registerDiretor = async (req, res) => {
             nome: user.nome,
             perfil: 'Diretor',
             data: dateStr,
-            horario: hourStr
+            horario: hourStr,
         });
 
         // 7. JWT auto-login
@@ -2365,7 +2699,7 @@ exports.registerDiretor = async (req, res) => {
             success: true,
             message: 'Conta de diretor criada com sucesso!',
             user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email },
-            redirect_to: getRedirectPath(user)
+            redirect_to: getRedirectPath(user),
         });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
@@ -2381,15 +2715,23 @@ exports.registerSecretaria = async (req, res) => {
 
     try {
         if (!nome || !email || !senha || !telefone || !codigoEscola) {
-            return res.status(400).json({ success: false, error: 'Todos os campos são obrigatórios, incluindo o Código Secreto da Escola.' });
+            return res.status(400).json({
+                success: false,
+                error: 'Todos os campos são obrigatórios, incluindo o Código Secreto da Escola.',
+            });
         }
 
         // 1. Valida o código secreto (por escola quando escolaId presente)
         const SecurityController = require('./SecurityController');
         const codeResult = await SecurityController.validateCode(codigoEscola, escolaId || null);
         if (!codeResult) {
-            console.log(`⚠️ [REGISTER-SECRETARIA] Código inválido para escolaId=${escolaId || '(auto)'}`);
-            return res.status(403).json({ success: false, error: 'Código Secreto da Escola inválido ou expirado. Solicite o código atual à direção da escola.' });
+            console.log(
+                `⚠️ [REGISTER-SECRETARIA] Código inválido para escolaId=${escolaId || '(auto)'}`
+            );
+            return res.status(403).json({
+                success: false,
+                error: 'Código Secreto da Escola inválido ou expirado. Solicite o código atual à direção da escola.',
+            });
         }
         const escolaResolvida = codeResult.escola || null;
         const escolaIdFinal = escolaResolvida ? String(escolaResolvida._id) : null;
@@ -2399,8 +2741,16 @@ exports.registerSecretaria = async (req, res) => {
             return res.status(400).json({ success: false, error: 'E-mail inválido.' });
         }
 
-        if (senha.length < 8 || !/[A-Z]/.test(senha) || !/[0-9]/.test(senha) || !/[^A-Za-z0-9]/.test(senha)) {
-            return res.status(400).json({ success: false, error: 'A senha deve ter no mínimo 8 caracteres, uma letra maiúscula, um número e um caractere especial.' });
+        if (
+            senha.length < 8 ||
+            !/[A-Z]/.test(senha) ||
+            !/[0-9]/.test(senha) ||
+            !/[^A-Za-z0-9]/.test(senha)
+        ) {
+            return res.status(400).json({
+                success: false,
+                error: 'A senha deve ter no mínimo 8 caracteres, uma letra maiúscula, um número e um caractere especial.',
+            });
         }
 
         const Usuario = require('../models/Usuario');
@@ -2425,13 +2775,13 @@ exports.registerSecretaria = async (req, res) => {
             email: email.toLowerCase(),
             senha: senhaHash,
             telefone,
-            escola: escolaResolvida ? escolaResolvida.nome : (escola || undefined),
+            escola: escolaResolvida ? escolaResolvida.nome : escola || undefined,
             escolaId: escolaIdFinal || undefined,
             perfil: 'secretaria',
             ativo: true,
             ultimoLogin: now,
             lastLogin: now,
-            consentimentoAceiteEm: now
+            consentimentoAceiteEm: now,
         });
 
         // 4. Auto-criação do registro na coleção 'secretarias' (com o vínculo
@@ -2439,10 +2789,18 @@ exports.registerSecretaria = async (req, res) => {
         await criarPerfilSecretaria(user, escolaResolvida ? escolaResolvida.nome : escola);
 
         // 5. Notificação persistente
-        const hourStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
-        const dateStr = now.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' });
+        const hourStr = now.toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'America/Sao_Paulo',
+        });
+        const dateStr = now.toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            timeZone: 'America/Sao_Paulo',
+        });
         const notifMsg = `Nova secretaria cadastrada às ${hourStr}`;
-        
+
         await Notificacao.create({
             id: 'notif_reg_' + Date.now(),
             tipo: 'cadastro',
@@ -2450,7 +2808,7 @@ exports.registerSecretaria = async (req, res) => {
             mensagem: `${nome} se cadastrou como Secretaria${escola ? ` (${escola})` : ''} no dia ${dateStr} às ${hourStr}.`,
             destinatarios: 'diretores',
             status: 'enviado',
-            escolaId: escolaIdFinal || undefined
+            escolaId: escolaIdFinal || undefined,
         });
 
         // 6. WebSocket — só a direção da escola
@@ -2458,7 +2816,7 @@ exports.registerSecretaria = async (req, res) => {
             nome: user.nome,
             perfil: 'Secretaria',
             data: dateStr,
-            horario: hourStr
+            horario: hourStr,
         });
 
         // 7. JWT auto-login
@@ -2474,7 +2832,7 @@ exports.registerSecretaria = async (req, res) => {
             success: true,
             message: 'Conta de secretaria criada com sucesso!',
             user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email },
-            redirect_to: getRedirectPath(user)
+            redirect_to: getRedirectPath(user),
         });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
