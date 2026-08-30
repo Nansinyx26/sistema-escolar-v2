@@ -11,8 +11,8 @@ const Usuario = require('../models/Usuario');
 // Centralizadas aqui para (a) um único ponto de mudança e (b) evitar
 // literais espalhados que disparam falsos positivos em scanners de segredo.
 // ─────────────────────────────────────────────────────────
-const SENHA_TESTE = 'Fixture' + '#Jest' + '2026';        // atende a política: maiúscula+número+especial
-const SENHA_TESTE_NOVA = 'Fixture' + '#Nova' + '2026';   // para fluxos de troca/primeiro acesso
+const SENHA_TESTE = 'Fixture' + '#Jest' + '2026'; // atende a política: maiúscula+número+especial
+const SENHA_TESTE_NOVA = 'Fixture' + '#Nova' + '2026'; // para fluxos de troca/primeiro acesso
 const CODIGO_ESCOLA_TESTE = 'FIXTURE' + '-COD-' + 'JEST';
 
 /**
@@ -63,7 +63,9 @@ async function desconectarBanco() {
 
 // Contador atômico para garantir CPF e email únicos mesmo em testes paralelos
 let _counter = 0;
-function nextId() { return ++_counter; }
+function nextId() {
+    return ++_counter;
+}
 
 /**
  * Cria um usuário de teste com senha hasheada.
@@ -83,4 +85,13 @@ async function criarUsuario(overrides = {}) {
     return Usuario.create({ ...defaults, ...overrides });
 }
 
-module.exports = { conectarBanco, limparBanco, desconectarBanco, criarUsuario, nomeDoBanco, SENHA_TESTE, SENHA_TESTE_NOVA, CODIGO_ESCOLA_TESTE };
+module.exports = {
+    conectarBanco,
+    limparBanco,
+    desconectarBanco,
+    criarUsuario,
+    nomeDoBanco,
+    SENHA_TESTE,
+    SENHA_TESTE_NOVA,
+    CODIGO_ESCOLA_TESTE,
+};
