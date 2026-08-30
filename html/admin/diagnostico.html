@@ -85,6 +85,53 @@
             align-items: center;
             gap: 8px;
         }
+        .refresh-btn:disabled { opacity: 0.6; cursor: progress; }
+        .refresh-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+        /* ── Teste da chave do provedor de IA ────────────────────────────── */
+        .checagem {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 30px;
+        }
+        .checagem-ajuda {
+            font-size: 0.85rem;
+            opacity: 0.7;
+            margin: 10px 0 0;
+        }
+        .resultado {
+            margin-top: 16px;
+            padding: 14px 16px;
+            border-radius: 8px;
+            border-left: 3px solid var(--accent);
+            background: rgba(255,255,255,0.04);
+        }
+        .resultado-ok    { border-left-color: var(--success); }
+        .resultado-aviso { border-left-color: #f59e0b; }
+        .resultado-erro  { border-left-color: var(--error); }
+        .resultado-titulo { font-weight: 600; margin-bottom: 6px; }
+        .resultado-ok    .resultado-titulo { color: var(--success); }
+        .resultado-aviso .resultado-titulo { color: #f59e0b; }
+        .resultado-erro  .resultado-titulo { color: var(--error); }
+        .resultado-detalhe { font-size: 0.88rem; opacity: 0.85; margin: 0; }
+        /* O que fazer a seguir. Sem isso o diagnóstico só dá o veredito e
+           deixa quem lê sem o próximo passo — que é o motivo de ter aberto
+           esta página. */
+        .resultado-acao {
+            font-size: 0.85rem;
+            margin: 10px 0 0;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+        }
+        .resultado-tecnico {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.78rem;
+            opacity: 0.6;
+            margin: 8px 0 0;
+            word-break: break-word;
+        }
     </style>
     <link rel="stylesheet" href="../../css/splash-screen.css?v=1.0">
     <link rel="stylesheet" href="../../css/reactions.css?v=1.0">
@@ -140,14 +187,34 @@
             <div>Versão Backend</div>
             <div class="stat-value">2.5.0</div>
         </div>
+        <!-- Este card dizia "Ativo" em verde, fixo no HTML: afirmava que a IA
+             estava no ar mesmo com a chave ausente ou recusada. Agora quem o
+             preenche é o teste real logo abaixo. -->
         <div class="stat-card">
             <div>Chatbot IA</div>
-            <div class="stat-value" style="color: var(--success)">Ativo</div>
+            <div class="stat-value" id="ia-status">Não verificado</div>
         </div>
         <div class="stat-card">
             <div>Animações Python</div>
             <div class="stat-value" style="color: var(--success)">Pronto</div>
         </div>
+    </div>
+
+    <h2><i class="ti ti-key"></i> Chave do provedor de IA</h2>
+    <div class="checagem">
+        <button class="refresh-btn" id="btnGemini" type="button">
+            <i class="ti ti-plug-connected" aria-hidden="true"></i>
+            <span id="btnGeminiTexto">Testar chave do Gemini</span>
+        </button>
+        <p class="checagem-ajuda">
+            Faz uma chamada real ao provedor com a chave que <strong>este servidor</strong>
+            está enxergando — não a que você acha que publicou. A chave nunca é exibida:
+            o teste diz apenas qual variável foi encontrada e se ela respondeu.
+        </p>
+        <!-- aria-live: o resultado chega depois de uma ação e precisa ser
+             anunciado; a região fica no DOM desde o início para o leitor de
+             tela já estar observando quando o texto trocar. -->
+        <div id="geminiResultado" role="status" aria-live="polite" hidden></div>
     </div>
 
     <h2><i class="ti ti-terminal-2"></i> Logs em Tempo Real (Backend Mock)</h2>
@@ -157,6 +224,11 @@
         <div class="log-entry">[2026-06-15 12:17:22] <span class="level-INFO">[INFO]</span> [Chatbot] Iniciando auditoria de IA...</div>
         <div class="log-entry">[2026-06-15 12:20:00] <span class="level-INFO">[INFO]</span> [Python] Pipeline de animação verificado.</div>
     </div>
+
+    <!-- Define window.API_BASE_URL. Clássico e sem defer: o script embutido
+         logo abaixo o lê para montar a URL do teste da chave, e em produção o
+         backend não está na mesma origem das páginas. -->
+    <script src="../../js/api-config.js"></script>
 
     <script>
         async function checkApi() {
@@ -175,6 +247,181 @@
             }
         }
         checkApi();
+
+        // ── Teste da chave do provedor de IA ─────────────────────────────────
+        //
+        // Consome GET /api/ia/gemini-status, que já existia no backend
+        // (backend/src/routes/ia.js) e não era chamado por tela nenhuma. O
+        // endpoint faz uma chamada mínima e real ao provedor e devolve
+        // { keyConfigured, variavel, liveOk, quotaExceeded, message } — sem
+        // nunca incluir a chave.
+
+        const btn = document.getElementById('btnGemini');
+        const btnTexto = document.getElementById('btnGeminiTexto');
+        const caixa = document.getElementById('geminiResultado');
+        const cardIA = document.getElementById('ia-status');
+
+        /**
+         * Monta o resultado com createElement/textContent, nunca innerHTML.
+         * `detalhe` carrega a mensagem de erro CRUA do provedor: jogá-la como
+         * HTML transformaria a resposta de um serviço externo em marcação
+         * executada nesta página.
+         */
+        function mostrarResultado({ tom, titulo, detalhe, acao, tecnico }) {
+            caixa.textContent = '';
+            caixa.className = 'resultado resultado-' + tom;
+
+            const h = document.createElement('div');
+            h.className = 'resultado-titulo';
+            h.textContent = titulo;
+            caixa.appendChild(h);
+
+            const p = document.createElement('p');
+            p.className = 'resultado-detalhe';
+            p.textContent = detalhe;
+            caixa.appendChild(p);
+
+            if (acao) {
+                const a = document.createElement('p');
+                a.className = 'resultado-acao';
+                a.textContent = acao;
+                caixa.appendChild(a);
+            }
+
+            if (tecnico) {
+                const c = document.createElement('p');
+                c.className = 'resultado-tecnico';
+                c.textContent = tecnico;
+                caixa.appendChild(c);
+            }
+
+            caixa.hidden = false;
+        }
+
+        /** Reflete o veredito no card do topo, que antes era fixo. */
+        function atualizarCard(texto, cor) {
+            cardIA.textContent = texto;
+            cardIA.style.color = cor;
+        }
+
+        async function testarGemini() {
+            btn.disabled = true;
+            btnTexto.textContent = 'Testando...';
+            caixa.hidden = true;
+
+            const base = (window.API_BASE_URL || '/api').replace(/\/$/, '');
+
+            try {
+                // `credentials: 'include'` não é opcional: a rota passa por
+                // authJWT e o token vive num cookie. Sem isso o teste responde
+                // 401 mesmo com a sessão aberta, e o diagnóstico acusaria um
+                // problema de chave que não existe.
+                const res = await fetch(base + '/ia/gemini-status', {
+                    credentials: 'include'
+                });
+
+                if (res.status === 401) {
+                    mostrarResultado({
+                        tom: 'erro',
+                        titulo: 'Sessão expirada',
+                        detalhe: 'O servidor não reconheceu sua sessão.',
+                        acao: 'Entre no sistema de novo e repita o teste.'
+                    });
+                    return;
+                }
+
+                if (res.status === 403) {
+                    mostrarResultado({
+                        tom: 'erro',
+                        titulo: 'Sem permissão para este teste',
+                        detalhe: 'A checagem da chave é restrita aos perfis diretor e admin.',
+                        acao: 'Peça a alguém com um desses perfis para rodar o teste.'
+                    });
+                    return;
+                }
+
+                if (!res.ok) {
+                    mostrarResultado({
+                        tom: 'erro',
+                        titulo: 'O servidor não respondeu ao teste',
+                        detalhe: 'A checagem não chegou a ser feita, então nada se pode dizer sobre a chave.',
+                        acao: 'Verifique se o backend está no ar e tente de novo.',
+                        tecnico: 'HTTP ' + res.status
+                    });
+                    atualizarCard('Indeterminado', '#f59e0b');
+                    return;
+                }
+
+                const dados = await res.json();
+
+                if (!dados.keyConfigured) {
+                    mostrarResultado({
+                        tom: 'erro',
+                        titulo: 'Nenhuma chave configurada',
+                        detalhe: 'O servidor não encontrou GEMINI_KEY, GEMINI_API_KEY, '
+                            + 'GOOGLE_TTS_API_KEY nem GOOGLE_API_KEY. Sem uma delas o '
+                            + 'assistente responde que está indisponível.',
+                        acao: 'Publique GEMINI_KEY no Render e refaça o deploy — variável '
+                            + 'de ambiente só vale a partir do próximo deploy.'
+                    });
+                    atualizarCard('Sem chave', 'var(--error)');
+                    return;
+                }
+
+                if (dados.liveOk) {
+                    mostrarResultado({
+                        tom: 'ok',
+                        titulo: 'Chave válida e respondendo',
+                        detalhe: 'O provedor aceitou a chave e devolveu uma resposta. '
+                            + 'O assistente está apto a funcionar.',
+                        tecnico: 'Variável em uso: ' + (dados.variavel || 'não informada')
+                    });
+                    atualizarCard('Ativo', 'var(--success)');
+                    return;
+                }
+
+                // Chave presente e recusada. Cota estourada NÃO é chave errada —
+                // separar os dois evita trocar uma chave que estava correta.
+                if (dados.quotaExceeded) {
+                    mostrarResultado({
+                        tom: 'aviso',
+                        titulo: 'Chave correta, cota esgotada',
+                        detalhe: 'A chave é válida: o que acabou foi o limite de uso do plano. '
+                            + 'Não troque a chave por causa disso.',
+                        acao: 'O limite diário volta na virada do dia. Para não depender disso, '
+                            + 'ative faturamento no projeto da chave.',
+                        tecnico: dados.message || ''
+                    });
+                    atualizarCard('Sem cota', '#f59e0b');
+                    return;
+                }
+
+                mostrarResultado({
+                    tom: 'erro',
+                    titulo: 'Chave presente, mas recusada',
+                    detalhe: 'A variável existe no servidor, porém o provedor não aceitou a chamada. '
+                        + 'Em geral é chave inválida, colada com espaço a mais, ou a API '
+                        + 'Generative Language desativada no projeto do Google.',
+                    acao: 'Gere uma chave nova no Google AI Studio, republique no Render e refaça o deploy.',
+                    tecnico: dados.message || ''
+                });
+                atualizarCard('Com falha', 'var(--error)');
+            } catch (e) {
+                mostrarResultado({
+                    tom: 'erro',
+                    titulo: 'Não foi possível falar com o servidor',
+                    detalhe: 'A requisição nem saiu daqui, então o teste não diz nada sobre a chave.',
+                    acao: 'Verifique sua conexão e se o backend está no ar.',
+                    tecnico: e && e.message ? e.message : ''
+                });
+                atualizarCard('Indeterminado', '#f59e0b');
+            } finally {
+                btn.disabled = false;
+                btnTexto.textContent = 'Testar chave do Gemini';
+            }
+        }
+
+        btn.addEventListener('click', testarGemini);
     </script>
 
 <script src="../../js/click-sound.js" defer></script>
