@@ -174,10 +174,10 @@ mexer nele sem manter os três reabre a armadilha:
 3. **Secret ausente pula o passo COM aviso**, nunca em silêncio — um passo pulado é
    invisível na interface do GitHub, e o job continua se chamando "Build & Deploy".
 
-Pendência conhecida da #108: `RENDER_SERVICE_ID_DEV` **não existe** nos secrets, então o
-deploy de dev nunca publicou em lugar nenhum. É uma decisão de quem administra o
-repositório — cadastrar o secret, ou remover o job. Um job que não faz nada é pior que job
-nenhum, porque ocupa espaço no relatório dizendo que fez.
+Histórico da #108, que vale saber: por meses o `RENDER_SERVICE_ID_DEV` **não existia** nos
+secrets, e o job de dev passava verde sem publicar em lugar nenhum — o passo era pulado, e
+pular um passo não reprova o job. O secret foi cadastrado; se um dia ele sumir, o passo
+volta a ser pulado, agora **com aviso** no resumo da execução, e nunca em silêncio.
 
 O passo a passo dos dois fluxos, incluindo o que fazer com a produção fora do ar, está em
 [`CONTRIBUTING.md`](CONTRIBUTING.md).
