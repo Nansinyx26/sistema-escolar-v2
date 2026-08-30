@@ -45,7 +45,11 @@
     function applyTheme(theme, persist) {
         theme = theme === 'light' ? 'light' : 'dark';
         // Persiste a escolha do usuário mesmo em página travada (vale no app).
-        if (persist) { try { localStorage.setItem('theme', theme); } catch (e) {} }
+        if (persist) {
+            try {
+                localStorage.setItem('theme', theme);
+            } catch (e) {}
+        }
         var effective = lockedTheme() || theme;
         document.documentElement.setAttribute('data-theme', effective);
         setThemeMeta(effective);
@@ -62,8 +66,12 @@
         window.ThemeManager = {
             __real: true,
             get: readTheme,
-            set: function (theme) { return applyTheme(theme, true); },
-            toggle: function () { return applyTheme(readTheme() === 'light' ? 'dark' : 'light', true); }
+            set: function (theme) {
+                return applyTheme(theme, true);
+            },
+            toggle: function () {
+                return applyTheme(readTheme() === 'light' ? 'dark' : 'light', true);
+            },
         };
     }
 
@@ -71,11 +79,18 @@
     // selecionada e preferências do próprio usuário.
     var PRESERVED_PREFIXES = ['sd_', 'user_', 'pwa_'];
     var PRESERVED_KEYS = [
-        'theme', 'escolaSelecionada', 'escola_session', 'escola_jwt',
-        'escola_jwt_user', 'clickSound', 'sidebar_collapsed', 'token'
+        'theme',
+        'escolaSelecionada',
+        'escola_session',
+        'escola_jwt',
+        'escola_jwt_user',
+        'clickSound',
+        'sidebar_collapsed',
+        'token',
     ];
 
-    var FOCUSABLE = 'a[href],button:not(:disabled),select:not(:disabled),input:not(:disabled),' +
+    var FOCUSABLE =
+        'a[href],button:not(:disabled),select:not(:disabled),input:not(:disabled),' +
         'textarea:not(:disabled),[tabindex]:not([tabindex="-1"])';
 
     // ---------- CAMINHOS ABSOLUTOS ----------
@@ -84,7 +99,7 @@
     var PATHS = {
         perfil: '/html/perfil.html',
         meusDados: '/html/meus-dados.html',
-        login: '/html/login.html'
+        login: '/html/login.html',
     };
 
     // ---------- CSS ----------
@@ -156,7 +171,7 @@
         ':root[data-theme="light"] .sd-step{background:rgba(15,23,42,.05);border-color:rgba(15,23,42,.08);color:#475569}',
         ':root[data-theme="light"] .sd-step:hover{background:rgba(5,150,105,.15);color:#059669}',
         ':root[data-theme="light"] .sd-version{color:#94a3b8;border-top-color:rgba(15,23,42,.06)}',
-        ':root[data-theme="light"] .settings-overlay{background:rgba(15,23,42,.35)}'
+        ':root[data-theme="light"] .settings-overlay{background:rgba(15,23,42,.35)}',
     ].join('');
 
     var styleEl = document.createElement('style');
@@ -179,12 +194,24 @@
     drawer.setAttribute('aria-hidden', 'true');
 
     function toggleRow(id, iconClass, label) {
-        return '<div class="sd-item">' +
-            '<i class="bi ' + iconClass + '" aria-hidden="true"></i>' +
-            '<span class="sd-item-label" id="' + id + '-label">' + label + '</span>' +
-            '<button type="button" class="sd-toggle" id="' + id + '" role="switch" ' +
-            'aria-checked="false" aria-labelledby="' + id + '-label"></button>' +
-            '</div>';
+        return (
+            '<div class="sd-item">' +
+            '<i class="bi ' +
+            iconClass +
+            '" aria-hidden="true"></i>' +
+            '<span class="sd-item-label" id="' +
+            id +
+            '-label">' +
+            label +
+            '</span>' +
+            '<button type="button" class="sd-toggle" id="' +
+            id +
+            '" role="switch" ' +
+            'aria-checked="false" aria-labelledby="' +
+            id +
+            '-label"></button>' +
+            '</div>'
+        );
     }
 
     drawer.innerHTML =
@@ -194,7 +221,6 @@
         '<i class="bi bi-x-lg" aria-hidden="true"></i></button>' +
         '</div>' +
         '<div class="sd-body">' +
-
         // APARÊNCIA
         '<div class="sd-section">' +
         '<h3 class="sd-section-title">Aparência</h3>' +
@@ -211,7 +237,6 @@
         '</span></div>' +
         toggleRow('sd-reading-toggle', 'bi-book', 'Modo Leitura') +
         '</div>' +
-
         // ÁUDIO
         '<div class="sd-section">' +
         '<h3 class="sd-section-title">Áudio &amp; Voz</h3>' +
@@ -229,8 +254,8 @@
         '<i class="bi bi-person-standing" aria-hidden="true"></i>' +
         '<label class="sd-item-label" for="sd-voice-name">Voz do Narrador</label>' +
         '<select id="sd-voice-name" class="select-sm" style="width:160px;">' +
-        '<option value="adam">Adam — Firme</option>' +
         '<option value="brian">Brian — Tranquilo</option>' +
+        '<option value="adam">Adam — Firme</option>' +
         '<option value="eric">Eric — Suave</option>' +
         '<option value="george">George — Caloroso</option>' +
         '</select></div>' +
@@ -249,7 +274,6 @@
         toggleRow('sd-click-sound-toggle', 'bi-mouse', 'Som dos Cliques') +
         toggleRow('sd-auto-read-toggle', 'bi-play-circle', 'Leitura Automática') +
         '</div>' +
-
         // NOTIFICAÇÕES
         '<div class="sd-section">' +
         '<h3 class="sd-section-title">Notificações</h3>' +
@@ -257,14 +281,12 @@
         toggleRow('sd-desktop-toggle', 'bi-window', 'Notificações Desktop') +
         toggleRow('sd-sound-toggle', 'bi-music-note-beamed', 'Sons') +
         '</div>' +
-
         // ACESSIBILIDADE
         '<div class="sd-section">' +
         '<h3 class="sd-section-title">Acessibilidade</h3>' +
         toggleRow('sd-contrast-toggle', 'bi-circle-half', 'Alto Contraste') +
         toggleRow('sd-motion-toggle', 'bi-pause-circle', 'Reduzir Animações') +
         '</div>' +
-
         // SISTEMA
         '<div class="sd-section">' +
         '<h3 class="sd-section-title">Sistema</h3>' +
@@ -287,15 +309,18 @@
         '<span class="sd-item-label">Conexão</span>' +
         '<span class="sd-item-value" id="sd-connection" aria-live="polite">—</span></div>' +
         '</div>' +
-
         // CONTA
         '<div class="sd-section">' +
         '<h3 class="sd-section-title">Conta</h3>' +
-        '<a href="' + PATHS.perfil + '" class="sd-item">' +
+        '<a href="' +
+        PATHS.perfil +
+        '" class="sd-item">' +
         '<i class="bi bi-person-circle" aria-hidden="true"></i>' +
         '<span class="sd-item-label">Editar Perfil</span>' +
         '<i class="bi bi-chevron-right" style="font-size:.85rem;width:auto;" aria-hidden="true"></i></a>' +
-        '<a href="' + PATHS.meusDados + '" class="sd-item">' +
+        '<a href="' +
+        PATHS.meusDados +
+        '" class="sd-item">' +
         '<i class="bi bi-shield-lock" aria-hidden="true"></i>' +
         '<span class="sd-item-label">Privacidade LGPD</span>' +
         '<i class="bi bi-chevron-right" style="font-size:.85rem;width:auto;" aria-hidden="true"></i></a>' +
@@ -303,7 +328,6 @@
         '<i class="bi bi-box-arrow-right" aria-hidden="true"></i>' +
         '<span class="sd-item-label">Sair da Conta</span></button>' +
         '</div>' +
-
         '</div>' +
         '<div class="sd-version">Sistema Escolar v3.0 — NanDev</div>';
 
@@ -327,7 +351,7 @@
         updateConnection();
         // Reflete a preferência de voz mais recente (pode ter mudado no seletor legado)
         var voiceSel = document.getElementById('sd-voice-name');
-        if (voiceSel) voiceSel.value = read('user_elevenlabs_voice', 'adam');
+        if (voiceSel) voiceSel.value = read('user_elevenlabs_voice', 'brian');
         var first = drawer.querySelector('#sdClose');
         if (first) first.focus();
     }
@@ -348,10 +372,9 @@
     // Focus trap: Tab não escapa do drawer enquanto ele estiver aberto.
     function trapFocus(e) {
         if (e.key !== 'Tab' || !isOpen()) return;
-        var items = Array.prototype.filter.call(
-            drawer.querySelectorAll(FOCUSABLE),
-            function (el) { return el.offsetParent !== null; }
-        );
+        var items = Array.prototype.filter.call(drawer.querySelectorAll(FOCUSABLE), function (el) {
+            return el.offsetParent !== null;
+        });
         if (!items.length) return;
         var first = items[0];
         var last = items[items.length - 1];
@@ -367,7 +390,14 @@
     // ---------- HELPERS ----------
     function showFeedback(msg, type) {
         if (typeof window.showToast === 'function') window.showToast(msg, type || 'success');
-        else if (window.Swal) window.Swal.fire({ text: msg, icon: type || 'success', background: '#0a0a0c', color: '#fafafa', confirmButtonColor: '#10b981' });
+        else if (window.Swal)
+            window.Swal.fire({
+                text: msg,
+                icon: type || 'success',
+                background: '#0a0a0c',
+                color: '#fafafa',
+                confirmButtonColor: '#10b981',
+            });
         else alert(msg);
     }
 
@@ -381,7 +411,11 @@
     }
 
     function write(key, value) {
-        try { localStorage.setItem(key, String(value)); } catch (e) { /* storage cheio/bloqueado */ }
+        try {
+            localStorage.setItem(key, String(value));
+        } catch (e) {
+            /* storage cheio/bloqueado */
+        }
     }
 
     function bindToggle(id, storageKey, onToggle, defaultOn) {
@@ -455,15 +489,13 @@
                 if (row) row.style.display = 'none';
                 return;
             }
-            var iconEl = toggle.parentElement
-                ? toggle.parentElement.querySelector('i.bi')
-                : null;
+            var iconEl = toggle.parentElement ? toggle.parentElement.querySelector('i.bi') : null;
             var labelEl = document.getElementById('sd-theme-toggle-label');
 
             function currentTheme() {
-                return (window.ThemeManager && window.ThemeManager.get)
+                return window.ThemeManager && window.ThemeManager.get
                     ? window.ThemeManager.get()
-                    : (document.documentElement.getAttribute('data-theme') || 'dark');
+                    : document.documentElement.getAttribute('data-theme') || 'dark';
             }
             function reflect(theme) {
                 var isDark = theme !== 'light';
@@ -510,7 +542,7 @@
         // como voiceId em window.speak(). Sincroniza com o seletor legado
         // (#voice-provider-select) quando presente na página.
         var voiceSelect = document.getElementById('sd-voice-name');
-        voiceSelect.value = read('user_elevenlabs_voice', 'adam');
+        voiceSelect.value = read('user_elevenlabs_voice', 'brian');
         voiceSelect.addEventListener('change', function () {
             var chosen = voiceSelect.value;
             write('user_elevenlabs_voice', chosen);
@@ -563,7 +595,12 @@
 
         // ----- Notificações -----
         bindToggle('sd-push-toggle', 'sd_push_notifications', function (on, restoring) {
-            if (on && !restoring && 'Notification' in window && Notification.permission === 'default') {
+            if (
+                on &&
+                !restoring &&
+                'Notification' in window &&
+                Notification.permission === 'default'
+            ) {
                 Notification.requestPermission();
             }
         });
@@ -583,7 +620,11 @@
             try {
                 if ('caches' in window) {
                     var names = await caches.keys();
-                    await Promise.all(names.map(function (n) { return caches.delete(n); }));
+                    await Promise.all(
+                        names.map(function (n) {
+                            return caches.delete(n);
+                        })
+                    );
                 }
 
                 // Remove apenas dados em cache. A sessão (sessionStorage), a
@@ -594,11 +635,16 @@
                 for (var i = 0; i < localStorage.length; i++) {
                     var key = localStorage.key(i);
                     if (!key) continue;
-                    var keep = PRESERVED_KEYS.indexOf(key) !== -1 ||
-                        PRESERVED_PREFIXES.some(function (p) { return key.indexOf(p) === 0; });
+                    var keep =
+                        PRESERVED_KEYS.indexOf(key) !== -1 ||
+                        PRESERVED_PREFIXES.some(function (p) {
+                            return key.indexOf(p) === 0;
+                        });
                     if (!keep) removable.push(key);
                 }
-                removable.forEach(function (k) { localStorage.removeItem(k); });
+                removable.forEach(function (k) {
+                    localStorage.removeItem(k);
+                });
 
                 showFeedback('Cache limpo. Sua sessão foi mantida.', 'success');
             } catch (e) {
@@ -609,7 +655,9 @@
 
         document.getElementById('sd-sync-data').addEventListener('click', function () {
             showFeedback('Sincronizando dados…', 'info');
-            setTimeout(function () { window.location.reload(); }, 600);
+            setTimeout(function () {
+                window.location.reload();
+            }, 600);
         });
 
         document.getElementById('sd-check-update').addEventListener('click', function () {
@@ -617,23 +665,32 @@
                 showFeedback('Atualizações automáticas não suportadas neste navegador.', 'info');
                 return;
             }
-            navigator.serviceWorker.getRegistration().then(function (reg) {
-                if (!reg) {
-                    showFeedback('Nenhuma instalação encontrada.', 'info');
-                    return;
-                }
-                return reg.update().then(function () {
-                    showFeedback('Você está na versão mais recente.', 'success');
+            navigator.serviceWorker
+                .getRegistration()
+                .then(function (reg) {
+                    if (!reg) {
+                        showFeedback('Nenhuma instalação encontrada.', 'info');
+                        return;
+                    }
+                    return reg.update().then(function () {
+                        showFeedback('Você está na versão mais recente.', 'success');
+                    });
+                })
+                .catch(function () {
+                    showFeedback('Não foi possível verificar atualizações.', 'error');
                 });
-            }).catch(function () {
-                showFeedback('Não foi possível verificar atualizações.', 'error');
-            });
         });
 
         // ----- Logout -----
         document.getElementById('sd-logout').addEventListener('click', function () {
-            if (typeof window.sair === 'function') { window.sair(); return; }
-            if (window.auth && typeof window.auth.logout === 'function') { window.auth.logout(); return; }
+            if (typeof window.sair === 'function') {
+                window.sair();
+                return;
+            }
+            if (window.auth && typeof window.auth.logout === 'function') {
+                window.auth.logout();
+                return;
+            }
             window.location.href = PATHS.login;
         });
 

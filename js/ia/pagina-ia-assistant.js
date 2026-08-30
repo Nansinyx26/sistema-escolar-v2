@@ -9,8 +9,8 @@
  */
 
 import { ChatController, ESTADO_VAZIO_HTML } from './ChatController.js';
-import { ConversationSidebar } from './ConversationSidebar.js';
 import { CommandPalette } from './CommandPalette.js';
+import { ConversationSidebar } from './ConversationSidebar.js';
 
 // ── Toast ────────────────────────────────────────────────────────────────────
 
@@ -34,7 +34,7 @@ const TEXTO_ESTADO = {
     ocioso: 'Pronto para ajudar',
     pensando: 'Pensando...',
     falando: 'Narrando a resposta...',
-    ouvindo: 'Ouvindo você...'
+    ouvindo: 'Ouvindo você...',
 };
 
 function definirEstado(estado) {
@@ -50,7 +50,8 @@ function definirEstado(estado) {
     if (texto) texto.textContent = TEXTO_ESTADO[estado] || estado;
     // As barras representam áudio em movimento — vale tanto para o assistente
     // narrando quanto para o microfone captando a pessoa.
-    if (barras) barras.className = 'bars' + (estado === 'falando' || estado === 'ouvindo' ? ' active' : '');
+    if (barras)
+        barras.className = 'bars' + (estado === 'falando' || estado === 'ouvindo' ? ' active' : '');
 }
 
 // ── Destino do botão "voltar" ────────────────────────────────────────────────
@@ -63,7 +64,7 @@ const PAINEL_POR_PERFIL = {
     diretor: { url: '/html/direcao/index.html', rotulo: 'Voltar ao painel de direção' },
     secretaria: { url: '/html/secretaria/painel.html', rotulo: 'Voltar ao painel da secretaria' },
     professor: { url: '/html/dashboard.html', rotulo: 'Voltar ao painel' },
-    responsavel: { url: '/portal-responsavel/dist/index.html', rotulo: 'Voltar ao portal' }
+    responsavel: { url: '/portal-responsavel/dist/index.html', rotulo: 'Voltar ao portal' },
 };
 
 const PAINEL_PADRAO = { url: '/html/dashboard.html', rotulo: 'Voltar ao painel' };
@@ -105,20 +106,26 @@ const VOZES_VALIDAS = ['adam', 'brian', 'eric', 'george', 'off'];
 function normalizarVoz(valor) {
     const v = String(valor || '').toLowerCase();
     if (VOZES_VALIDAS.includes(v)) return v;
-    if (v === 'female' || v === 'male') return 'adam';
-    return 'adam';
+    if (v === 'female' || v === 'male') return 'brian';
+    return 'brian';
 }
 
 let cfg = {
     voice: normalizarVoz(
-        localStorage.getItem('user_elevenlabs_voice') || localStorage.getItem('user_voice_preference')
+        localStorage.getItem('user_elevenlabs_voice') ||
+            localStorage.getItem('user_voice_preference')
     ),
     lang: 'pt-BR',
     provider: localStorage.getItem('user_tts_provider') || 'elevenlabs',
-    // Narração automática fica DESLIGADA por padrão: a página é usada em sala e
-    // na secretaria, e áudio disparando sozinho no primeiro acesso incomoda
-    // mais do que ajuda. Quem quer a voz liga uma vez e a escolha persiste.
-    narrarAuto: localStorage.getItem('user_narrar_auto') === '1'
+    // Narração automática fica LIGADA por padrão NESTA página — e só nela.
+    // Aqui a tela inteira é um orb de voz: quem abre o assistente vem para
+    // conversar, e uma resposta que só aparece escrita entrega metade do que a
+    // página promete. Nas outras telas o áudio continua sendo opt-in.
+    //
+    // O `!== '0'` (e não `=== '1'`) é o que faz o padrão valer: quem nunca
+    // mexeu na preferência não tem a chave gravada, e desligar é uma escolha
+    // registrada que continua sendo respeitada em toda visita seguinte.
+    narrarAuto: (localStorage.getItem('user_narrar_auto') ?? '1') !== '0',
 };
 
 function carregarConfig() {
@@ -178,8 +185,8 @@ function salvarConfig() {
             elevenlabsVoice: cfg.voice,
             narrarAuto: cfg.narrarAuto,
             speed: Number(localStorage.getItem('user_voice_speed') || 1.0),
-            narrationMode: localStorage.getItem('user_narration_mode') || 'texto_audio'
-        })
+            narrationMode: localStorage.getItem('user_narration_mode') || 'texto_audio',
+        }),
     })
         // `fetch` só rejeita em falha de rede. Sem checar o `ok`, uma recusa do
         // servidor (o 500 da validação, por exemplo) passava como sucesso e a
@@ -202,7 +209,7 @@ function fecharConfig() {
 const FORMATOS = [
     { id: 'pdf', rotulo: 'PDF' },
     { id: 'docx', rotulo: 'Word (DOCX)' },
-    { id: 'txt', rotulo: 'Texto (TXT)' }
+    { id: 'txt', rotulo: 'Texto (TXT)' },
 ];
 
 /**
@@ -220,7 +227,7 @@ async function baixarConversa(conversaId, formato) {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
-        body: JSON.stringify({ formato })
+        body: JSON.stringify({ formato }),
     });
 
     if (!res.ok) {
@@ -229,8 +236,9 @@ async function baixarConversa(conversaId, formato) {
     }
 
     const blob = await res.blob();
-    const nome = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1]
-        || `conversa.${formato}`;
+    const nome =
+        /filename="([^"]+)"/.exec(res.headers.get('content-disposition') || '')?.[1] ||
+        `conversa.${formato}`;
 
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -289,13 +297,13 @@ async function mostrarAjuda(controlador, paleta) {
         '',
         '**Comandos disponíveis para o seu perfil:**',
         '',
-        ...paleta.comandos.map(c => `- \`/${c.nome}\` — ${c.descricao}`),
+        ...paleta.comandos.map((c) => `- \`/${c.nome}\` — ${c.descricao}`),
         '',
-        'Também dá para perguntar em português mesmo, sem comando: *"quantos alunos temos no 6ºB?"*'
+        'Também dá para perguntar em português mesmo, sem comando: *"quantos alunos temos no 6ºB?"*',
     ];
 
     controlador.renderer.adicionarRespostaPronta(linhas.join('\n'), {
-        aoCopiar: (t, b) => controlador._copiar(t, b)
+        aoCopiar: (t, b) => controlador._copiar(t, b),
     });
     controlador.renderer.rolarParaFim();
 }
@@ -321,23 +329,26 @@ async function iniciar() {
     const mensagens = document.getElementById('messages');
     mensagens.innerHTML = ESTADO_VAZIO_HTML;
 
-    const controlador = new ChatController({
-        mensagens,
-        entrada: document.getElementById('inputBox'),
-        botaoEnviar: document.getElementById('sendBtn'),
-        botaoParar: document.getElementById('stopBtn'),
-        botaoNova: document.getElementById('newChatBtn'),
-        contexto: document.getElementById('ctxBadge'),
-        saudacao: document.getElementById('greeting')
-    }, {
-        aoMudarEstado: definirEstado,
-        aoAvisar: avisar,
-        // Corrige o "voltar" com o perfil que o SERVIDOR confirmou.
-        aoReceberContexto: (ctx) => definirVoltar(ctx.perfil),
-        // O título só existe depois que o servidor grava o turno.
-        aoSalvarConversa: (c) => sidebar.registrar(c),
-        narrarAuto: cfg.narrarAuto && cfg.voice !== 'off'
-    });
+    const controlador = new ChatController(
+        {
+            mensagens,
+            entrada: document.getElementById('inputBox'),
+            botaoEnviar: document.getElementById('sendBtn'),
+            botaoParar: document.getElementById('stopBtn'),
+            botaoNova: document.getElementById('newChatBtn'),
+            contexto: document.getElementById('ctxBadge'),
+            saudacao: document.getElementById('greeting'),
+        },
+        {
+            aoMudarEstado: definirEstado,
+            aoAvisar: avisar,
+            // Corrige o "voltar" com o perfil que o SERVIDOR confirmou.
+            aoReceberContexto: (ctx) => definirVoltar(ctx.perfil),
+            // O título só existe depois que o servidor grava o turno.
+            aoSalvarConversa: (c) => sidebar.registrar(c),
+            narrarAuto: cfg.narrarAuto && cfg.voice !== 'off',
+        }
+    );
 
     controladorAtivo = controlador;
 
@@ -361,7 +372,7 @@ async function iniciar() {
         aoApagar: (id) => {
             if (controlador.conversaId === id) controlador.novaConversa();
         },
-        aoAvisar: avisar
+        aoAvisar: avisar,
     });
 
     function fecharHistorico() {
@@ -370,20 +381,25 @@ async function iniciar() {
     }
 
     // ── Paleta de comandos (/) ──────────────────────────────────────────────
-    const paleta = new CommandPalette({
-        painel: document.getElementById('iaPaleta'),
-        entrada: controlador.el.entrada
-    }, {
-        aoEscolher: (comando) => {
-            // O controller resolve prompt/navegação/nova; o resto é da página.
-            if (controlador.executarComando(comando)) return;
-            if (comando.nome === 'exportar') abrirExportacao(controlador);
-            if (comando.nome === 'ajuda') mostrarAjuda(controlador, paleta);
+    const paleta = new CommandPalette(
+        {
+            painel: document.getElementById('iaPaleta'),
+            entrada: controlador.el.entrada,
+        },
+        {
+            aoEscolher: (comando) => {
+                // O controller resolve prompt/navegação/nova; o resto é da página.
+                if (controlador.executarComando(comando)) return;
+                if (comando.nome === 'exportar') abrirExportacao(controlador);
+                if (comando.nome === 'ajuda') mostrarAjuda(controlador, paleta);
+            },
         }
-    });
+    );
     controlador.conectarPaleta(paleta);
 
-    document.getElementById('exportBtn')?.addEventListener('click', () => abrirExportacao(controlador));
+    document
+        .getElementById('exportBtn')
+        ?.addEventListener('click', () => abrirExportacao(controlador));
 
     botaoHistorico?.addEventListener('click', () => {
         const abrindo = painelSidebar.hidden;
@@ -410,7 +426,9 @@ async function iniciar() {
     });
 
     const overlayExport = document.getElementById('exportOverlay');
-    document.getElementById('expCancel')?.addEventListener('click', () => overlayExport?.classList.remove('open'));
+    document
+        .getElementById('expCancel')
+        ?.addEventListener('click', () => overlayExport?.classList.remove('open'));
     overlayExport?.addEventListener('click', (e) => {
         if (e.target.id === 'exportOverlay') overlayExport.classList.remove('open');
     });
@@ -438,12 +456,16 @@ function iniciarReconhecimentoVoz(controlador) {
         if (btnMic) {
             btnMic.title = 'Reconhecimento de voz não suportado neste navegador';
             btnMic.addEventListener('click', () => {
-                avisar('Seu navegador não suporta reconhecimento de voz. Use Chrome, Edge ou Safari.');
+                avisar(
+                    'Seu navegador não suporta reconhecimento de voz. Use Chrome, Edge ou Safari.'
+                );
             });
         }
         // Falta de microfone não tira a NARRAÇÃO: aqui o orb continua servindo
         // para calar o assistente, que é o único gesto de voz que resta.
-        document.getElementById('orb')?.addEventListener('click', () => controlador.pararNarracao());
+        document
+            .getElementById('orb')
+            ?.addEventListener('click', () => controlador.pararNarracao());
         return;
     }
 

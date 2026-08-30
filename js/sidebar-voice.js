@@ -17,7 +17,7 @@ function initSidebar() {
     const sidebar = document.getElementById('mainSidebar');
     const toggle = document.getElementById('sidebarToggle');
     const wrapper = document.getElementById('pageWrapper');
-    
+
     if (!sidebar || !toggle) return;
 
     // Troca o chevron do botão de recolher.
@@ -108,14 +108,22 @@ function initSidebar() {
         open: openMobileSidebar,
         close: closeMobileSidebar,
         toggle: toggleMobileSidebar,
-        isOpen: () => sidebar.classList.contains('mobile-open')
+        isOpen: () => sidebar.classList.contains('mobile-open'),
     };
 
     // Add mobile burger só se a página não já tiver um hambúrguer no header.
     // (o dashboard já traz #headerHamburger no HTML — injetar outro criava DOIS
     // menus hambúrguer idênticos no mobile.)
-    const menuBtnContainer = document.querySelector('.header-left') || document.querySelector('.navbar-content') || document.querySelector('.dashboard-header');
-    if (sidebar && menuBtnContainer && !document.getElementById('mobileHamburger') && !document.getElementById('headerHamburger')) {
+    const menuBtnContainer =
+        document.querySelector('.header-left') ||
+        document.querySelector('.navbar-content') ||
+        document.querySelector('.dashboard-header');
+    if (
+        sidebar &&
+        menuBtnContainer &&
+        !document.getElementById('mobileHamburger') &&
+        !document.getElementById('headerHamburger')
+    ) {
         const burger = document.createElement('button');
         burger.id = 'mobileHamburger';
         burger.type = 'button';
@@ -180,7 +188,7 @@ function setActiveSidebarItem() {
     const currentPath = normalize(window.location.pathname);
     const sidebarItems = Array.from(document.querySelectorAll('.sidebar-item'));
 
-    const match = sidebarItems.find(item => {
+    const match = sidebarItems.find((item) => {
         const href = item.getAttribute('href');
         if (!href || href === '#' || href.toLowerCase().startsWith('javascript:')) return false;
         try {
@@ -192,7 +200,9 @@ function setActiveSidebarItem() {
 
     if (!match) return;
 
-    sidebarItems.forEach(item => item.classList.remove('active'));
+    sidebarItems.forEach((item) => {
+        item.classList.remove('active');
+    });
     match.classList.add('active');
 }
 
@@ -223,7 +233,9 @@ function initSidebarProfile() {
                             location.reload();
                             return;
                         }
-                    } catch (e) { /* noop */ }
+                    } catch (e) {
+                        /* noop */
+                    }
                 }
                 // Mesmo id, só nome/foto desatualizados: re-render simples.
                 if (fresh.nome !== user.nome) updateProfile();
@@ -236,7 +248,9 @@ function initSidebarProfile() {
         const escola = document.getElementById('sidebarUserEscola');
 
         if (avatar) {
-            avatar.src = window.getPhotoUrl ? window.getPhotoUrl(user.foto, user.fotoGoogle) : (user.foto || user.fotoGoogle || '/img/default-avatar.png');
+            avatar.src = window.getPhotoUrl
+                ? window.getPhotoUrl(user.foto, user.fotoGoogle)
+                : user.foto || user.fotoGoogle || '/img/default-avatar.png';
         }
         if (name) name.textContent = user.nome || 'Usuário';
         if (role) {
@@ -252,7 +266,7 @@ function initSidebarProfile() {
         }
 
         // --- CARREGAMENTO DE PREFERÊNCIAS (MONGODB - SOURCE OF TRUTH) ---
-        
+
         // 1. Narração/Display Mode
         const mode = user.settings?.narrationMode || user.preferenciaNarracao || 'texto_audio';
         localStorage.setItem('user_narration_mode', mode);
@@ -265,24 +279,23 @@ function initSidebarProfile() {
 
         // 3. Provedor TTS preferido (Fixo em ElevenLabs)
         localStorage.setItem('user_tts_provider', 'elevenlabs');
-        
+
         // 4. Voz ElevenLabs (persiste preferência do usuário)
         if (!localStorage.getItem('user_elevenlabs_voice')) {
-            localStorage.setItem('user_elevenlabs_voice', 'adam');
+            localStorage.setItem('user_elevenlabs_voice', 'brian');
         }
         // Gênero fixo Masculino
         localStorage.setItem('user_voice_preference', 'male');
-        
+
         // --- ENSURE VISIBILITY ---
         // Ensure voice selector is never hidden by "Apenas Texto" mode initialization
         const wrapper = document.querySelector('.voice-selector-wrapper');
         if (wrapper) wrapper.style.display = 'block';
 
-
         // 5. Tamanho da Fonte
         const fontSize = user.accessibilityFontSize || '100%';
         document.documentElement.style.fontSize = fontSize;
-        
+
         // 6. Modo Leitura
         const reading = !!user.accessibilityReadingMode;
         document.body.classList.toggle('reading-mode', reading);
@@ -311,26 +324,26 @@ let currentAudio = null;
 
 window.speak = async (text, forceSpeak = false) => {
     if (!text) return null;
-    
+
     // Cancela áudio anterior
     if (window.stopTtsAudio) window.stopTtsAudio();
 
     try {
         console.log('[Voice] Enviando texto para TTS backend:', text.substring(0, 60) + '...');
-        
+
         const response = await fetch(`${window.API_BASE_URL || '/api'}/tts/speak`, {
             method: 'POST',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-Token': document.cookie.match(/csrf_token=([^;]+)/)?.[1] || ''
+                'X-CSRF-Token': document.cookie.match(/csrf_token=([^;]+)/)?.[1] || '',
             },
-            body: JSON.stringify({ 
+            body: JSON.stringify({
                 text: text,
                 voice: 'male',
                 provider: 'elevenlabs',
-                voiceId: localStorage.getItem('user_elevenlabs_voice') || 'adam'
+                voiceId: localStorage.getItem('user_elevenlabs_voice') || 'brian',
             }),
-            credentials: 'include'
+            credentials: 'include',
         });
 
         if (!response.ok) {
@@ -338,7 +351,10 @@ window.speak = async (text, forceSpeak = false) => {
             console.error(`[Voice] TTS falhou: HTTP ${response.status}`, errBody);
             // Mostrar erro visível ao usuário
             if (window.showToast) {
-                window.showToast(`Erro na voz: ${response.status === 401 ? 'Sessão expirada' : 'Servidor indisponível'}`, 'error');
+                window.showToast(
+                    `Erro na voz: ${response.status === 401 ? 'Sessão expirada' : 'Servidor indisponível'}`,
+                    'error'
+                );
             }
             return null;
         }
@@ -348,13 +364,13 @@ window.speak = async (text, forceSpeak = false) => {
             console.warn('[Voice] Áudio retornado muito pequeno:', blob.size, 'bytes');
             return null;
         }
-        
+
         const url = URL.createObjectURL(blob);
         const audio = new Audio(url);
-        
+
         window.currentTtsAudio = audio;
         currentAudio = audio;
-        
+
         audio.onended = () => {
             window.dispatchEvent(new CustomEvent('tts:ended'));
             URL.revokeObjectURL(url);
@@ -365,7 +381,6 @@ window.speak = async (text, forceSpeak = false) => {
         console.log('[Voice] ✅ Áudio reproduzindo com sucesso');
         window.dispatchEvent(new CustomEvent('tts:started'));
         return audio;
-
     } catch (error) {
         console.error('[Voice] Erro no pipeline TTS:', error.message);
         if (window.showToast) {
@@ -376,8 +391,13 @@ window.speak = async (text, forceSpeak = false) => {
 };
 
 window.stopTtsAudio = () => {
-    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
-    document.querySelectorAll('.voice-wave-container, .voice-animation-container').forEach(el => el.style.display = 'none');
+    if (currentAudio) {
+        currentAudio.pause();
+        currentAudio = null;
+    }
+    document.querySelectorAll('.voice-wave-container, .voice-animation-container').forEach((el) => {
+        el.style.display = 'none';
+    });
     if (window.VoiceOrbManager) window.VoiceOrbManager.destroy();
 };
 
@@ -394,7 +414,9 @@ document.addEventListener('click', (e) => {
     if (action === 'sair') {
         if (typeof window.sair === 'function') window.sair();
         else if (window.auth) window.auth.logout();
-    } else if (href) { window.location.href = href; }
+    } else if (href) {
+        window.location.href = href;
+    }
 });
 
 function initVoiceToggles() {
@@ -409,7 +431,9 @@ function initVoiceToggles() {
             e.stopPropagation();
             panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
         });
-        document.addEventListener('click', () => { if (panel) panel.style.display = 'none'; });
+        document.addEventListener('click', () => {
+            if (panel) panel.style.display = 'none';
+        });
         panel.addEventListener('click', (e) => e.stopPropagation());
     }
 
@@ -447,19 +471,19 @@ function initVoiceToggles() {
         const hasVoiceOptions = voiceSelect.querySelector('option[data-elevenlabs-voice]');
         if (!hasVoiceOptions) {
             const voices = [
-                { id: 'adam',   label: 'Adam — Firme e Dominante' },
-                { id: 'brian',  label: 'Brian — Profundo e Tranquilo' },
-                { id: 'eric',   label: 'Eric — Suave e Confiável' },
+                { id: 'brian', label: 'Brian — Profundo e Tranquilo' },
+                { id: 'adam', label: 'Adam — Firme e Dominante' },
+                { id: 'eric', label: 'Eric — Suave e Confiável' },
                 { id: 'george', label: 'George — Caloroso e Narrativo' },
             ];
             // Substitui o select pelo de vozes
-            voiceSelect.innerHTML = voices.map(v =>
-                `<option value="${v.id}" data-elevenlabs-voice="1">${v.label}</option>`
-            ).join('');
+            voiceSelect.innerHTML = voices
+                .map((v) => `<option value="${v.id}" data-elevenlabs-voice="1">${v.label}</option>`)
+                .join('');
         }
 
         // Restaura a preferência salva
-        const saved = localStorage.getItem('user_elevenlabs_voice') || 'adam';
+        const saved = localStorage.getItem('user_elevenlabs_voice') || 'brian';
         voiceSelect.value = saved;
 
         voiceSelect.addEventListener('change', () => {
@@ -472,9 +496,12 @@ function initVoiceToggles() {
     }
 
     const updateVoiceUI = () => {
-        optBtns.forEach(btn => {
+        optBtns.forEach((btn) => {
             const v = btn.getAttribute('data-voice');
-            if (v === 'female') { btn.style.display = 'none'; return; }
+            if (v === 'female') {
+                btn.style.display = 'none';
+                return;
+            }
             if (v === 'male') {
                 btn.style.borderColor = '#10b981';
                 btn.style.background = 'rgba(16, 185, 129, 0.1)';
@@ -504,12 +531,15 @@ async function saveAccessibilityPreference(prefs = {}) {
 }
 
 function applyDisplayModeClass(mode) {
-    document.body.classList.remove('preference-texto', 'preference-texto-audio', 'preference-audio');
+    document.body.classList.remove(
+        'preference-texto',
+        'preference-texto-audio',
+        'preference-audio'
+    );
     if (mode === 'texto') document.body.classList.add('preference-texto');
     else if (mode === 'audio') document.body.classList.add('preference-audio');
     else document.body.classList.add('preference-texto-audio');
 }
-
 
 function getCsrfToken() {
     const match = document.cookie.match(/csrf_token=([^;]+)/);
