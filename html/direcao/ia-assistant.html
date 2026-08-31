@@ -520,6 +520,12 @@
         width: 42px; height: 42px; flex-shrink: 0; display: grid; place-items: center;
         border: 0; border-radius: 11px; cursor: pointer; transition: all 0.2s;
       }
+      /* O `display: grid` acima é uma classe (especificidade 0,1,0) e vencia a
+         regra `[hidden] { display: none }` da folha do NAVEGADOR, que é de
+         origem mais fraca. Resultado: o `hidden` do #stopBtn não tinha efeito e
+         o botão vermelho de "parar geração" ficava visível o tempo todo, mesmo
+         com o assistente parado. Ver Issue #173. */
+      .send-btn[hidden], .stop-btn[hidden], .mic-btn[hidden] { display: none; }
       .send-btn { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #04120e; }
       .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
       .stop-btn { background: rgba(248, 113, 113, 0.15); color: var(--erro); border: 1px solid rgba(248, 113, 113, 0.35); }
