@@ -40,6 +40,15 @@ export class ConversationSidebar {
         this.aoAvisar = aoAvisar;
         this.conversas = [];
         this.idAtiva = null;
+        /**
+         * Mensagem da última falha de carregamento, ou `null`.
+         *
+         * Existe para separar "você não tem conversas" de "não deu para
+         * buscar": antes as duas situações desenhavam a MESMA tela, e uma
+         * sessão expirada era lida como histórico vazio. Ver Issue #172.
+         * @type {string|null}
+         */
+        this.erro = null;
 
         // Delegação: a lista é redesenhada inteira a cada mudança, e religar
         // listener por item a cada repintura vazaria handlers.
@@ -55,13 +64,40 @@ export class ConversationSidebar {
         return partes.length === 2 ? partes.pop().split(';').shift() : '';
     }
 
+    /**
+     * Busca a lista do servidor.
+     *
+     * Toda falha vira `this.erro` + toast. A versão anterior devolvia lista
+     * vazia em TODOS os casos — 401, 500, rede fora — e a pessoa via
+     * "Suas conversas aparecem aqui." achando que o botão estava quebrado.
+     * O 401 tem texto próprio porque é o caso mais provável e o único em que
+     * ela pode resolver sozinha. Ver Issue #172.
+     */
     async carregar() {
+        this.erro = null;
+
         try {
             const res = await fetch(this.baseApi + '/ia/conversas', { credentials: 'include' });
-            const json = await res.json();
-            this.conversas = json.success ? (json.data || []) : [];
+
+            if (!res.ok) {
+                this.erro =
+                    res.status === 401 || res.status === 403
+                        ? 'Sua sessão expirou. Entre de novo para ver suas conversas.'
+                        : 'Não foi possível carregar suas conversas.';
+            } else {
+                // `json()` pode estourar sozinho: um proxy no meio do caminho
+                // responde 200 com HTML de erro, e aí não há `success` nenhum.
+                const json = await res.json();
+                if (json.success) this.conversas = json.data || [];
+                else this.erro = json.error || 'Não foi possível carregar suas conversas.';
+            }
         } catch {
+            this.erro = 'Não foi possível carregar suas conversas. Verifique a conexão.';
+        }
+
+        if (this.erro) {
             this.conversas = [];
+            this.aoAvisar(this.erro);
         }
         this.desenhar();
     }
@@ -74,17 +110,22 @@ export class ConversationSidebar {
     registrar({ id, titulo }) {
         if (!id) return;
         this.idAtiva = id;
+        // Uma conversa recém-salva prova que a sessão está viva. Sem limpar o
+        // erro anterior, `desenhar()` continuaria mostrando a tela de falha
+        // por cima de uma lista que já tem conteúdo.
+        this.erro = null;
 
-        const existente = this.conversas.find(c => c.id === id);
+        const existente = this.conversas.find((c) => c.id === id);
         if (existente) {
             existente.titulo = titulo || existente.titulo;
             existente.atualizadoEm = new Date().toISOString();
             // Sobe para o topo: a ordem é por atividade.
-            this.conversas = [existente, ...this.conversas.filter(c => c.id !== id)];
+            this.conversas = [existente, ...this.conversas.filter((c) => c.id !== id)];
         } else {
             this.conversas.unshift({
-                id, titulo: titulo || 'Nova conversa',
-                atualizadoEm: new Date().toISOString()
+                id,
+                titulo: titulo || 'Nova conversa',
+                atualizadoEm: new Date().toISOString(),
             });
         }
         this.desenhar();
@@ -96,13 +137,30 @@ export class ConversationSidebar {
     }
 
     desenhar() {
+        // Erro tem precedência: sem isto uma falha de rede continuaria
+        // aparecendo como "você ainda não tem conversas".
+        if (this.erro) {
+            this.container.innerHTML =
+                '<div class="ia-sidebar-erro" role="alert">' +
+                '<p class="ia-sidebar-erro-texto"></p>' +
+                '<button type="button" class="ia-sidebar-retry" data-acao="recarregar">' +
+                'Tentar de novo</button>' +
+                '</div>';
+            // A mensagem pode vir do servidor: entra por textContent, nunca
+            // interpolada no HTML acima.
+            this.container.querySelector('.ia-sidebar-erro-texto').textContent = this.erro;
+            return;
+        }
+
         if (this.conversas.length === 0) {
             this.container.innerHTML =
                 '<p class="ia-sidebar-vazio">Suas conversas aparecem aqui.</p>';
             return;
         }
 
-        this.container.innerHTML = this.conversas.map(c => `
+        this.container.innerHTML = this.conversas
+            .map(
+                (c) => `
             <div class="ia-conversa${c.id === this.idAtiva ? ' ativa' : ''}" data-id="${c.id}">
               <button type="button" class="ia-conversa-abrir" data-acao="abrir">
                 <span class="ia-conversa-titulo"></span>
@@ -113,12 +171,14 @@ export class ConversationSidebar {
                 <i data-lucide="trash-2" aria-hidden="true"></i>
               </button>
             </div>
-        `).join('');
+        `
+            )
+            .join('');
 
         // O título vem do texto que o usuário digitou: entra por textContent,
         // nunca interpolado no HTML acima.
-        this.container.querySelectorAll('.ia-conversa').forEach(el => {
-            const c = this.conversas.find(x => x.id === el.dataset.id);
+        this.container.querySelectorAll('.ia-conversa').forEach((el) => {
+            const c = this.conversas.find((x) => x.id === el.dataset.id);
             el.querySelector('.ia-conversa-titulo').textContent = c ? c.titulo : '';
         });
 
@@ -128,6 +188,13 @@ export class ConversationSidebar {
     async _aoClicar(e) {
         const botao = e.target.closest('[data-acao]');
         if (!botao) return;
+
+        // "Tentar de novo" vive fora da lista, então é resolvido antes da
+        // exigência de um `data-id`.
+        if (botao.dataset.acao === 'recarregar') {
+            await this.carregar();
+            return;
+        }
 
         const item = botao.closest('.ia-conversa');
         const id = item?.dataset.id;
@@ -149,12 +216,12 @@ export class ConversationSidebar {
             const res = await fetch(this.baseApi + '/ia/conversas/' + encodeURIComponent(id), {
                 method: 'DELETE',
                 credentials: 'include',
-                headers: { 'X-CSRF-Token': this._csrf() }
+                headers: { 'X-CSRF-Token': this._csrf() },
             });
             const json = await res.json();
             if (!json.success) throw new Error(json.error || 'falha');
 
-            this.conversas = this.conversas.filter(c => c.id !== id);
+            this.conversas = this.conversas.filter((c) => c.id !== id);
             this.desenhar();
             this.aoApagar(id);
         } catch {
@@ -165,7 +232,7 @@ export class ConversationSidebar {
     /** Busca o histórico completo de uma conversa. */
     async obter(id) {
         const res = await fetch(this.baseApi + '/ia/conversas/' + encodeURIComponent(id), {
-            credentials: 'include'
+            credentials: 'include',
         });
         const json = await res.json();
         if (!json.success) throw new Error(json.error || 'Conversa não encontrada.');
