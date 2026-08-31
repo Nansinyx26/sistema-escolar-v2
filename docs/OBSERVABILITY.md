@@ -108,6 +108,73 @@ Envia **apenas** `id`, `perfil` e `escolaId`. Nunca nome, e-mail ou documento.
 
 ---
 
+## Quem é dono do encerramento do processo
+
+**`backend/src/index.js` é o único dono da política de encerramento.** Ele
+registra os handlers de `uncaughtException` e `unhandledRejection` que decidem
+*se* o processo sai, e delega o *como* para
+`backend/src/utils/encerramento.js`.
+
+A observabilidade **também** registra listeners nesses dois eventos, mas o papel
+dela ali é só reportar — ela nunca decide encerrar. A distinção importa porque
+registrar um listener nesses eventos **substitui o comportamento padrão do
+Node**, não o preserva — e o comentário que vivia em `observability/index.js`
+afirmava exatamente o oposto (Issue #129):
+
+| Evento | Sem listener | Com listener registrado |
+|---|---|---|
+| `uncaughtException` | imprime o stack e sai com 1 | **não sai** — segue rodando |
+| `unhandledRejection` | derruba o processo (padrão desde o Node 15) | **não derruba** — segue rodando |
+
+### O repasse é explícito
+
+`observability.init()` roda na **primeira linha do processo**. Os handlers do
+`index.js` só entram **depois do `app.listen`** — e entre um ponto e outro
+passam `connectDB`, o cache, os códigos secretos, a migração de voz e o
+alinhamento de retenção. Nessa janela, só o listener da observabilidade
+existiria: com ela ligada, uma exceção no boot seria reportada e **engolida**, e
+o boot continuaria a partir de um passo que falhou.
+
+Por isso o repasse é explícito, e não implícito na ordem dos arquivos:
+
+```js
+// observability/init() — arma a saída padrão que o próprio listener suprimiu
+saidaPadraoArmada = true;
+
+// src/index.js, depois do listen — assume a política
+observability.assumirEncerramento();
+```
+
+Armada, a observabilidade **reporta e encerra como o Node faria** (stack em
+`stderr`, saída 1). Desarmada, ela volta a **só reportar**. Nenhum dos dois
+estados engole exceção.
+
+O Node executa *todos* os listeners registrados, então quem garante a saída no
+caminho normal é o handler do `index.js`. Se um dia ele deixar de chamar
+`assumirEncerramento()`, o pior caso é o processo encerrar como o Node
+encerraria — nunca ficar de pé em estado inconsistente.
+
+### Por que existe um prazo máximo (Issue #125)
+
+`server.close()` só chama o callback quando **todas** as conexões terminam, e as
+do Socket.IO são persistentes. Sem prazo, uma promise rejeitada não derrubava o
+servidor: transformava-o em zumbi — socket de escuta fechado (recusando conexão
+nova), `process.exit` nunca alcançado, Render sem motivo para reiniciar.
+
+`criarEncerrador()` fecha o `io` primeiro, chama `server.close()` e mantém um
+prazo (`SHUTDOWN_TIMEOUT_MS`, padrão 5s) com `unref()` — que é o que impede o
+prazo de virar custo no caminho normal.
+
+### A política em si
+
+Hoje **qualquer** promise rejeitada sem tratamento encerra o processo inteiro,
+inclusive vinda de job, cron ou handler de socket. É uma escolha, não um
+acidente: o processo é considerado em estado desconhecido, e um reinício de
+segundos é preferível a um servidor de pé com estado corrompido. Está escrito
+aqui para que uma mudança dessa política seja deliberada.
+
+---
+
 ## PII: a regra que não se negocia
 
 > Nunca sai daqui CPF, RG, endereço, telefone, e-mail, nome ou data de

@@ -3,31 +3,34 @@ const logger = require('../utils/logger');
 
 // ─── Vozes ElevenLabs PT-BR (Masculinas) ──────────────────────────────────────
 // Verificado em 2026-06-25 via API /v1/voices — 22 vozes premade disponíveis
-// Ordem de prioridade: Adam (padrão) → Brian → Eric → George
+// Ordem de prioridade: Brian (padrão) → Adam → Eric → George
+//
+// Brian é a voz do assistente da escola: das quatro premade é a mais grave e
+// pausada em português, e é a que a página do assistente narra por padrão.
+// Trocar esta ordem troca a voz de TODA narração do sistema, não só a do chat.
 const ELEVENLABS_VOICES = {
-    adam: 'pNInz6obpgDQGcFmaJgB',    // Adam - Dominant, Firm (premade ✅)
-    brian: 'nPczCjzI2devNBz1zQrb',   // Brian - Deep, Resonant and Comforting (premade ✅)
-    eric: 'cjVigY5qzO86Huf0OWal',   // Eric - Smooth, Trustworthy (premade ✅)
+    adam: 'pNInz6obpgDQGcFmaJgB', // Adam - Dominant, Firm (premade ✅)
+    brian: 'nPczCjzI2devNBz1zQrb', // Brian - Deep, Resonant and Comforting (premade ✅)
+    eric: 'cjVigY5qzO86Huf0OWal', // Eric - Smooth, Trustworthy (premade ✅)
     george: 'JBFqnCBsd6RMkjVDRZzb', // George - Warm, Captivating Storyteller (premade ✅)
 };
 
 // Lista de fallback: tenta cada voz na ordem até encontrar uma que funcione
 // (será atualizada dinamicamente por validateAndUpdateVoices)
 let VOICE_FALLBACK_ORDER = [
-    ELEVENLABS_VOICES.adam,
     ELEVENLABS_VOICES.brian,
+    ELEVENLABS_VOICES.adam,
     ELEVENLABS_VOICES.eric,
     ELEVENLABS_VOICES.george,
 ];
 
-let DEFAULT_VOICE_ID = ELEVENLABS_VOICES.adam;
+let DEFAULT_VOICE_ID = ELEVENLABS_VOICES.brian;
 const ELEVENLABS_MODEL = 'eleven_multilingual_v2';
 
 /**
  * TTSService: Gerencia síntese de voz EXCLUSIVAMENTE via ElevenLabs.
  */
 class TTSService {
-
     /**
      * Gera áudio a partir de texto usando ElevenLabs.
      * Tenta múltiplas vozes em caso de falha (voice not found).
@@ -36,10 +39,14 @@ class TTSService {
         const apiKey = process.env.ELEVENLABS_API_KEY || process.env.ELEVEN_LABS_API_KEY;
 
         if (!apiKey) {
-            throw new Error('Configuração ELEVENLABS_API_KEY ou ELEVEN_LABS_API_KEY ausente no servidor.');
+            throw new Error(
+                'Configuração ELEVENLABS_API_KEY ou ELEVEN_LABS_API_KEY ausente no servidor.'
+            );
         }
 
-        console.log(`[TTS] Backend - ElevenLabs: ${apiKey ? 'Present' : 'MISSING'}. Gerando áudio via ElevenLabs.`);
+        console.log(
+            `[TTS] Backend - ElevenLabs: ${apiKey ? 'Present' : 'MISSING'}. Gerando áudio via ElevenLabs.`
+        );
 
         // Tenta cada voz na ordem de fallback
         let lastError = null;
@@ -69,14 +76,14 @@ class TTSService {
      * Sintetiza com uma voz específica pelo nome (adam, brian, eric, george).
      * Se o nome não for encontrado, usa fallback automático.
      */
-    async synthesizeWithVoice(text, voiceName = 'adam') {
+    async synthesizeWithVoice(text, voiceName = 'brian') {
         const apiKey = process.env.ELEVENLABS_API_KEY || process.env.ELEVEN_LABS_API_KEY;
         if (!apiKey) {
             throw new Error('ELEVENLABS_API_KEY ausente no servidor.');
         }
 
         // Resolve o ID a partir do nome ou usa o valor diretamente se já for um ID
-        const voiceId = ELEVENLABS_VOICES[voiceName] || ELEVENLABS_VOICES.adam;
+        const voiceId = ELEVENLABS_VOICES[voiceName] || ELEVENLABS_VOICES.brian;
         console.log(`[TTS] synthesizeWithVoice: name=${voiceName}, resolvedId=${voiceId}`);
 
         try {
@@ -95,10 +102,10 @@ class TTSService {
     async testConnectivity() {
         const results = {};
         try {
-            await this._synthesizeElevenLabs(".", DEFAULT_VOICE_ID);
-            results['elevenlabs'] = { status: "healthy", name: 'ElevenLabs' };
+            await this._synthesizeElevenLabs('.', DEFAULT_VOICE_ID);
+            results['elevenlabs'] = { status: 'healthy', name: 'ElevenLabs' };
         } catch (err) {
-            results['elevenlabs'] = { status: "error", name: 'ElevenLabs', message: err.message };
+            results['elevenlabs'] = { status: 'error', name: 'ElevenLabs', message: err.message };
         }
         return results;
     }
@@ -114,7 +121,7 @@ class TTSService {
         }
 
         const response = await fetch('https://api.elevenlabs.io/v1/voices', {
-            headers: { 'xi-api-key': apiKey }
+            headers: { 'xi-api-key': apiKey },
         });
 
         if (!response.ok) {
@@ -123,10 +130,10 @@ class TTSService {
         }
 
         const data = await response.json();
-        return data.voices.map(v => ({
+        return data.voices.map((v) => ({
             name: v.name,
             voice_id: v.voice_id,
-            category: v.category
+            category: v.category,
         }));
     }
 
@@ -140,11 +147,11 @@ class TTSService {
 
         try {
             const available = await this.listAvailableVoices();
-            const availableIds = new Set(available.map(v => v.voice_id));
+            const availableIds = new Set(available.map((v) => v.voice_id));
 
             for (const [name, id] of Object.entries(ELEVENLABS_VOICES)) {
                 if (availableIds.has(id)) {
-                    const voiceInfo = available.find(v => v.voice_id === id);
+                    const voiceInfo = available.find((v) => v.voice_id === id);
                     report.valid.push({ name, id, category: voiceInfo?.category });
                 } else {
                     report.invalid.push({ name, id });
@@ -153,11 +160,13 @@ class TTSService {
             }
 
             // Atualizar fallback para conter apenas vozes válidas
-            const validIds = report.valid.map(v => v.id);
+            const validIds = report.valid.map((v) => v.id);
             if (validIds.length > 0) {
                 VOICE_FALLBACK_ORDER = validIds;
                 DEFAULT_VOICE_ID = validIds[0];
-                console.log(`[TTS] ✅ Fallback atualizado: ${report.valid.map(v => v.name).join(' → ')}`);
+                console.log(
+                    `[TTS] ✅ Fallback atualizado: ${report.valid.map((v) => v.name).join(' → ')}`
+                );
             } else {
                 console.error('[TTS] ❌ Nenhuma voz hardcoded está disponível na conta!');
             }
@@ -182,17 +191,17 @@ class TTSService {
             headers: {
                 'xi-api-key': apiKey,
                 'Content-Type': 'application/json',
-                'Accept': 'audio/mpeg'
+                Accept: 'audio/mpeg',
             },
             body: JSON.stringify({
                 text: text.substring(0, 5000),
                 model_id: ELEVENLABS_MODEL,
                 voice_settings: {
                     stability: 0.5,
-                    similarity_boost: 0.75
-                }
+                    similarity_boost: 0.75,
+                },
             }),
-            signal
+            signal,
         });
 
         if (!response.ok) {
@@ -206,10 +215,9 @@ class TTSService {
         return {
             buffer: Buffer.from(arrayBuffer),
             contentType: 'audio/mpeg',
-            provider: 'elevenlabs'
+            provider: 'elevenlabs',
         };
     }
 }
 
 module.exports = new TTSService();
-

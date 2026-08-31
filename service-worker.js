@@ -13,7 +13,13 @@
 // Bump obrigatório a cada mudança em JS já cacheado: os assets usam
 // stale-while-revalidate, então sem trocar a versão o usuário recebe o arquivo
 // antigo no primeiro acesso após o deploy.
-const VERSION = 'v8';
+//
+// ISTO NÃO DEPENDE MAIS DA SUA MEMÓRIA (Issue #128): `npm run sw:verificar`
+// reprova um PR que altere qualquer arquivo de STATIC_ASSETS sem trocar esta
+// linha, e o CI roda essa verificação. O script lê a lista daqui de baixo —
+// não mantém cópia — então acrescentar um asset já o coloca sob a regra.
+// Detalhes em docs/QUALITY.md, seção "Service worker: o bump do VERSION".
+const VERSION = 'v9';
 const STATIC_CACHE = `escola-static-${VERSION}`;
 const PAGES_CACHE = `escola-pages-${VERSION}`;
 const CURRENT_CACHES = [STATIC_CACHE, PAGES_CACHE];
@@ -109,16 +115,46 @@ self.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
+/**
+ * Uma resposta de navegação só pode entrar no PAGES_CACHE se for conteúdo de
+ * verdade (Issue #127).
+ *
+ * O ramo do `navigationPreload` guardava QUALQUER resposta, inclusive 404 e
+ * 500 — enquanto o ramo de rede, logo abaixo, já checava `.ok`. Como o
+ * navigationPreload está habilitado, ele é o caminho normal das navegações em
+ * Chrome/Edge: era o caminho normal que não checava.
+ *
+ * O estrago dura mais que o erro. A página de erro entrava no cache como se
+ * fosse o conteúdo daquela URL, e o `catch` abaixo passava a devolvê-la sempre
+ * que a rede falhasse — em vez de `offline.html`. Um 500 momentâneo do servidor
+ * virava estado persistente no aparelho, até o próximo bump de `VERSION`. E o
+ * `ignoreSearch: true` do `catch` amplia o alcance: o 404 gravado para
+ * `?turma=3A` responderia por qualquer query da mesma rota.
+ *
+ * `opaqueredirect` também fica de fora: é o que aparece quando o gate de
+ * páginas restritas redireciona uma sessão expirada. Guardar isso no cache da
+ * URL de destino significaria servir um redirecionamento antigo no lugar da
+ * página.
+ */
+function podeCachearNavegacao(resposta) {
+    return Boolean(resposta) && resposta.ok && resposta.type !== 'opaqueredirect';
+}
+
 async function handleNavigation(event) {
     try {
         const preload = await event.preloadResponse;
         if (preload) {
-            const cache = await caches.open(PAGES_CACHE);
-            cache.put(event.request, preload.clone());
+            // A resposta é devolvida de qualquer forma — quem pediu a página
+            // precisa ver o 404 do servidor. O que não acontece é ela virar
+            // conteúdo cacheado daquela URL.
+            if (podeCachearNavegacao(preload)) {
+                const cache = await caches.open(PAGES_CACHE);
+                cache.put(event.request, preload.clone());
+            }
             return preload;
         }
         const network = await fetch(event.request);
-        if (network && network.ok) {
+        if (podeCachearNavegacao(network)) {
             const cache = await caches.open(PAGES_CACHE);
             cache.put(event.request, network.clone());
         }
