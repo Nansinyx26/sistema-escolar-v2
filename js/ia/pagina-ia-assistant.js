@@ -8,9 +8,11 @@
  * página inteira. Arquivo externo é coberto por `'self'` e não tem esse risco.
  */
 
+import { AssistantSphere } from './AssistantSphere.js';
 import { ChatController, ESTADO_VAZIO_HTML } from './ChatController.js';
 import { CommandPalette } from './CommandPalette.js';
 import { ConversationSidebar } from './ConversationSidebar.js';
+import { criarMedidorDeVoz } from './NivelDeVoz.js';
 
 // ── Toast ────────────────────────────────────────────────────────────────────
 
@@ -35,23 +37,125 @@ const TEXTO_ESTADO = {
     pensando: 'Pensando...',
     falando: 'Narrando a resposta...',
     ouvindo: 'Ouvindo você...',
+    erro: 'Algo deu errado na voz',
 };
 
-function definirEstado(estado) {
+/** Quanto o estado de erro fica visível antes de voltar ao repouso. */
+const MS_ESTADO_ERRO = 5000;
+
+/** @type {AssistantSphere|null} */
+let esfera = null;
+/** @type {ReturnType<typeof criarMedidorDeVoz>|null} */
+let medidor = null;
+let timerEstadoErro;
+
+/**
+ * @param {'ocioso'|'pensando'|'falando'|'ouvindo'|'erro'} estado
+ * @param {string} [mensagem] rótulo alternativo — usado pelo estado de erro,
+ *   que mostra a causa real em vez do texto genérico.
+ */
+function definirEstado(estado, mensagem) {
     const orb = document.getElementById('orb');
     const pilula = document.getElementById('statusPill');
     const barras = document.getElementById('bars');
     const texto = document.getElementById('statusText');
     if (!orb) return;
 
+    clearTimeout(timerEstadoErro);
+
     const animado = estado === 'pensando' || estado === 'falando' || estado === 'ouvindo';
     orb.className = 'orb' + (animado ? ' ' + estado : '');
     if (pilula) pilula.className = 'status-pill ' + estado;
-    if (texto) texto.textContent = TEXTO_ESTADO[estado] || estado;
+    if (texto) texto.textContent = mensagem || TEXTO_ESTADO[estado] || estado;
     // As barras representam áudio em movimento — vale tanto para o assistente
-    // narrando quanto para o microfone captando a pessoa.
+    // narrando quanto para o microfone captando a pessoa. Ficam escondidas
+    // quando a esfera em canvas assume esse papel (ver .stage.esfera-ativa).
     if (barras)
         barras.className = 'bars' + (estado === 'falando' || estado === 'ouvindo' ? ' active' : '');
+
+    if (esfera) esfera.definirEstado(estado);
+    // Fora de "falando" o medidor não tem áudio a acompanhar. Soltar aqui, e
+    // não num evento de fim de áudio, cobre também a narração interrompida
+    // pelo microfone — que para o som sem disparar `ended`.
+    if (estado !== 'falando' && medidor) medidor.soltar();
+
+    // O erro é um aviso, não um estado de trabalho: ele mesmo se retira.
+    if (estado === 'erro') {
+        timerEstadoErro = setTimeout(() => definirEstado('ocioso'), MS_ESTADO_ERRO);
+    }
+}
+
+// ── Esfera do assistente ─────────────────────────────────────────────────────
+
+/**
+ * Devolve o palco ao orb estático em CSS.
+ *
+ * É o "error boundary" desta página: chamado quando `AssistantSphere` não sobe,
+ * ou quando o laço de render acumula erros e desiste. O orb em CSS nunca sai do
+ * documento justamente para poder reaparecer aqui, sem tela em branco.
+ */
+function reverterParaOrbEstatico() {
+    document.getElementById('orbWrap')?.classList.remove('esfera-ativa');
+    document.getElementById('stage')?.classList.remove('esfera-ativa');
+    // Solta rAF e observadores. `destruir` é idempotente, então também é seguro
+    // aqui no caminho em que a própria esfera já desistiu e chamou de volta.
+    esfera?.destruir();
+    esfera = null;
+}
+
+function encerrarEsfera() {
+    esfera?.destruir();
+    medidor?.destruir();
+    esfera = null;
+    medidor = null;
+}
+
+/**
+ * Sobe a esfera em canvas sobre o orb em CSS.
+ *
+ * Falhar aqui é aceitável e silencioso para quem usa: a página continua
+ * inteira com o orb estático. O que não pode acontecer é a exceção subir e
+ * interromper `iniciar()`, que ainda tem o chat para montar.
+ */
+function iniciarEsfera() {
+    const canvas = document.getElementById('orbCanvas');
+    const wrap = document.getElementById('orbWrap');
+    if (!canvas || !wrap) return;
+
+    // As classes entram ANTES de construir: é `.esfera-ativa` que dá ao wrap o
+    // tamanho final (--esfera-tam). Medir o canvas antes disso o dimensionaria
+    // pelos 160px do orb, e só um ResizeObserver o corrigiria depois — num
+    // navegador sem ResizeObserver a esfera ficaria miniatura para sempre.
+    wrap.classList.add('esfera-ativa');
+    document.getElementById('stage')?.classList.add('esfera-ativa');
+
+    try {
+        medidor = criarMedidorDeVoz();
+        esfera = new AssistantSphere(canvas, { medidor, aoFalhar: reverterParaOrbEstatico });
+    } catch (e) {
+        console.error('[IA] Esfera indisponível; seguindo com o orb estático:', e);
+        medidor?.destruir();
+        medidor = null;
+        reverterParaOrbEstatico();
+        return;
+    }
+
+    // `tts:started` é disparado por sidebar-voice.js depois do play(), com o
+    // elemento já em `window.currentTtsAudio`. É o gancho para ligar o
+    // analisador ao áudio real — o Blob URL de lá é same-origin, então o
+    // espectro vem preenchido em vez de zerado.
+    window.addEventListener('tts:started', () => medidor?.observar(window.currentTtsAudio));
+
+    // O AudioContext nasce suspenso e só um gesto do usuário o libera. Um
+    // listener `once` no documento cobre qualquer gesto — clicar em enviar,
+    // no microfone, na esfera ou digitar.
+    const destravar = () => medidor?.desbloquear();
+    document.addEventListener('pointerdown', destravar, { once: true, passive: true });
+    document.addEventListener('keydown', destravar, { once: true });
+
+    // `pagehide` e não `unload`: com bfcache o `unload` pode nunca rodar, e o
+    // rAF continuaria vivo numa página congelada.
+    window.addEventListener('pagehide', encerrarEsfera, { once: true });
 }
 
 // ── Destino do botão "voltar" ────────────────────────────────────────────────
@@ -325,6 +429,7 @@ async function iniciar() {
 
     carregarConfig();
     definirVoltar(perfilProvavel());
+    iniciarEsfera();
 
     const mensagens = document.getElementById('messages');
     mensagens.innerHTML = ESTADO_VAZIO_HTML;
@@ -448,6 +553,26 @@ async function iniciar() {
 let recVoz = null;
 let gravandoVoz = false;
 
+/**
+ * Liga a ação de voz ao gesto na esfera.
+ *
+ * O alvo é o `.orb-wrap`, e não o `#orb`: quando a esfera em canvas assume, o
+ * orb sai da tela e um listener nele ficaria inalcançável. Como o wrap ganhou
+ * `role="button"`, o teclado precisa funcionar junto com o ponteiro.
+ *
+ * @param {() => void} acao
+ */
+function ligarGestoDaEsfera(acao) {
+    const alvo = document.getElementById('orbWrap');
+    if (!alvo) return;
+    alvo.addEventListener('click', acao);
+    alvo.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault(); // Espaço rolaria o palco.
+        acao();
+    });
+}
+
 function iniciarReconhecimentoVoz(controlador) {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const btnMic = document.getElementById('micBtn');
@@ -461,11 +586,12 @@ function iniciarReconhecimentoVoz(controlador) {
                 );
             });
         }
-        // Falta de microfone não tira a NARRAÇÃO: aqui o orb continua servindo
-        // para calar o assistente, que é o único gesto de voz que resta.
+        // Falta de microfone não tira a NARRAÇÃO: aqui a esfera continua
+        // servindo para calar o assistente, o único gesto de voz que resta.
         document
-            .getElementById('orb')
-            ?.addEventListener('click', () => controlador.pararNarracao());
+            .getElementById('orbWrap')
+            ?.setAttribute('aria-label', 'Parar a narração do assistente');
+        ligarGestoDaEsfera(() => controlador.pararNarracao());
         return;
     }
 
@@ -558,7 +684,7 @@ function iniciarReconhecimentoVoz(controlador) {
     }
 
     btnMic?.addEventListener('click', calarENovamenteOuvir);
-    document.getElementById('orb')?.addEventListener('click', calarENovamenteOuvir);
+    ligarGestoDaEsfera(calarENovamenteOuvir);
 }
 
 if (document.readyState === 'loading') {

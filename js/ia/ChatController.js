@@ -15,8 +15,8 @@
  * geração no servidor em vez de só esconder o texto.
  */
 
-import { StreamRenderer } from './StreamRenderer.js';
 import { ActionConfirm } from './ActionConfirm.js';
+import { StreamRenderer } from './StreamRenderer.js';
 
 /** Teto por mensagem. Espelha MAX_CHARS_MENSAGEM do IaCopilotoController. */
 const MAX_CHARS_MENSAGEM = 4000;
@@ -48,7 +48,8 @@ export class ChatController {
     /**
      * @param {Object} elementos  nós do DOM já resolvidos pela página
      * @param {Object} [opcoes]
-     * @param {Function} [opcoes.aoMudarEstado]     'ocioso'|'pensando'|'falando'
+     * @param {Function} [opcoes.aoMudarEstado]     (estado, mensagem?) — 'ocioso'|
+     *   'pensando'|'falando'|'erro'; `mensagem` só acompanha o estado de erro
      * @param {Function} [opcoes.aoAvisar]          exibe um toast
      * @param {Function} [opcoes.aoReceberContexto] contexto confirmado pelo servidor
      * @param {boolean}  [opcoes.narrarAuto] narrar toda resposta ao terminá-la
@@ -73,17 +74,17 @@ export class ChatController {
                 this.el.entrada.value = texto;
                 this._ajustarAltura();
                 this.el.entrada.focus();
-            }
+            },
         });
         // A partir da Fase 3 o histórico vive no servidor. O cliente guarda
         // apenas QUAL conversa está aberta e a última pergunta, para o botão
         // "gerar outra resposta".
         this.conversaId = null;
         this.ultimaPergunta = null;
-        this.controlador = null;   // AbortController do envio em curso
+        this.controlador = null; // AbortController do envio em curso
         this.gerando = false;
-        this.narrando = false;     // áudio em reprodução — ver _definirGerando
-        this.paleta = null;        // definida por conectarPaleta()
+        this.narrando = false; // áudio em reprodução — ver _definirGerando
+        this.paleta = null; // definida por conectarPaleta()
 
         this._ligarEventos();
     }
@@ -178,7 +179,9 @@ export class ChatController {
         if (!texto) return;
 
         if (texto.length > MAX_CHARS_MENSAGEM) {
-            this.aoAvisar('Mensagem muito longa. Reduza para no máximo ' + MAX_CHARS_MENSAGEM + ' caracteres.');
+            this.aoAvisar(
+                'Mensagem muito longa. Reduza para no máximo ' + MAX_CHARS_MENSAGEM + ' caracteres.'
+            );
             return;
         }
 
@@ -246,7 +249,7 @@ export class ChatController {
                     ferramentas: m.ferramentas,
                     aoCopiar: (t, b) => this._copiar(t, b),
                     aoRegenerar: () => this.regenerar(),
-                    aoOuvir: typeof window.speak === 'function' ? (t) => this._falar(t) : null
+                    aoOuvir: typeof window.speak === 'function' ? (t) => this._falar(t) : null,
                 });
             }
         }
@@ -272,7 +275,9 @@ export class ChatController {
 
         this.controlador = new AbortController();
         let cancelado = false;
-        this.controlador.signal.addEventListener('abort', () => { cancelado = true; });
+        this.controlador.signal.addEventListener('abort', () => {
+            cancelado = true;
+        });
 
         try {
             const resposta = await fetch(this.baseApi + '/ia/chat', {
@@ -280,17 +285,17 @@ export class ChatController {
                 credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'text/event-stream',
-                    'X-CSRF-Token': lerCookie('csrf_token')
+                    Accept: 'text/event-stream',
+                    'X-CSRF-Token': lerCookie('csrf_token'),
                 },
                 body: JSON.stringify({
                     mensagem: texto,
                     // Só o PONTEIRO da conversa. O conteúdo do histórico é lido
                     // do banco pelo servidor; um id que não seja desta pessoa
                     // (ou desta escola) simplesmente abre uma conversa nova.
-                    conversaId: this.conversaId || undefined
+                    conversaId: this.conversaId || undefined,
                 }),
-                signal: this.controlador.signal
+                signal: this.controlador.signal,
             });
 
             // Erro tratado (rate limit, sem configuração, sem permissão) volta
@@ -394,7 +399,7 @@ export class ChatController {
         const texto = this.renderer.finalizarResposta({
             aoCopiar: (t, botao) => this._copiar(t, botao),
             aoRegenerar: () => this.regenerar(),
-            aoOuvir: typeof window.speak === 'function' ? (t) => this._falar(t) : null
+            aoOuvir: typeof window.speak === 'function' ? (t) => this._falar(t) : null,
         });
 
         // Os cards vêm DEPOIS do texto: o assistente primeiro explica o que
@@ -466,8 +471,17 @@ export class ChatController {
      * aqui nunca invalida a resposta de texto.
      */
     async _falar(texto) {
+        // Falha de voz vira estado `erro` (esfera âmbar + rótulo com a causa),
+        // e não `ocioso`: cair direto no repouso fazia a narração sumir sem
+        // que a tela registrasse nada — só o toast, que passa em 3,5s.
+        const falhar = (mensagem) => {
+            this.narrando = false;
+            this.aoMudarEstado('erro', mensagem);
+            this.aoAvisar(mensagem);
+        };
+
         if (typeof window.speak !== 'function') {
-            this.aoAvisar('A narração não está disponível nesta página.');
+            falhar('A narração não está disponível nesta página.');
             return;
         }
         const encerrar = () => {
@@ -480,7 +494,10 @@ export class ChatController {
             this.narrando = true;
             this.aoMudarEstado('falando');
             // Marcação de Markdown não deve ser lida em voz alta.
-            const limpo = texto.replace(/[*_~`#|>]/g, ' ').replace(/\s+/g, ' ').trim();
+            const limpo = texto
+                .replace(/[*_~`#|>]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
             const audio = await window.speak(limpo);
 
             if (audio && 'onended' in audio) {
@@ -495,12 +512,10 @@ export class ChatController {
             // `window.speak` devolve null quando o servidor de voz recusa. Sem
             // aviso, a pessoa clica em "Ouvir" e não acontece absolutamente
             // nada — parecia que o botão estava quebrado.
-            encerrar();
-            this.aoAvisar('Não foi possível gerar o áudio agora. O texto da resposta continua acima.');
+            falhar('Não foi possível gerar o áudio agora. O texto da resposta continua acima.');
         } catch (e) {
             console.warn('[IA] Narração indisponível:', e?.message);
-            encerrar();
-            this.aoAvisar('Não foi possível gerar o áudio agora.');
+            falhar('Não foi possível gerar o áudio agora.');
         }
     }
 }
