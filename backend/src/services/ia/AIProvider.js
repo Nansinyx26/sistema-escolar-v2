@@ -39,7 +39,15 @@
  * usuário final possa ler (ver assistantPersona.js).
  */
 
-const fetch = globalThis.fetch || (function() { try { return require('node-fetch'); } catch { return null; } })();
+const fetch =
+    globalThis.fetch ||
+    (function () {
+        try {
+            return require('node-fetch');
+        } catch {
+            return null;
+        }
+    })();
 const logger = require('../../utils/logger');
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -52,7 +60,10 @@ const logger = require('../../utils/logger');
  * conter o nome comercial dele ou detalhes internos da conta.
  */
 class ErroProvedorIA extends Error {
-    constructor(mensagem, { status = 502, semChave = false, cotaExcedida = false, cancelado = false } = {}) {
+    constructor(
+        mensagem,
+        { status = 502, semChave = false, cotaExcedida = false, cancelado = false } = {}
+    ) {
         super(mensagem);
         this.name = 'ErroProvedorIA';
         this.status = status;
@@ -117,7 +128,7 @@ const MODELOS_FALLBACK = [
     'gemini-2.5-flash',
     'gemini-2.0-flash',
     'gemini-2.5-flash-lite',
-    'gemini-2.0-flash-lite'
+    'gemini-2.0-flash-lite',
 ];
 
 class GeminiProvider extends AIProvider {
@@ -125,10 +136,11 @@ class GeminiProvider extends AIProvider {
         super();
         // Mesma cascata de nomes usada por voiceService.js e ChatbotService.js —
         // no Render a chave está publicada como GEMINI_KEY.
-        this.chave = process.env.GEMINI_KEY
-            || process.env.GEMINI_API_KEY
-            || process.env.GOOGLE_TTS_API_KEY
-            || process.env.GOOGLE_API_KEY;
+        this.chave =
+            process.env.GEMINI_KEY ||
+            process.env.GEMINI_API_KEY ||
+            process.env.GOOGLE_TTS_API_KEY ||
+            process.env.GOOGLE_API_KEY;
         this.modelo = process.env.IA_MODELO || MODELO_PADRAO;
         this.maxTokensSaida = Number(process.env.IA_MAX_TOKENS_SAIDA) || 2048;
         this.temperatura = Number(process.env.IA_TEMPERATURA) || 0.7;
@@ -165,12 +177,14 @@ class GeminiProvider extends AIProvider {
                 // Retorno de ferramenta. Gemini espera papel 'user' com functionResponse.
                 contents.push({
                     role: 'user',
-                    parts: [{
-                        functionResponse: {
-                            name: msg.nome,
-                            response: { resultado: msg.resultado ?? null }
-                        }
-                    }]
+                    parts: [
+                        {
+                            functionResponse: {
+                                name: msg.nome,
+                                response: { resultado: msg.resultado ?? null },
+                            },
+                        },
+                    ],
                 });
                 continue;
             }
@@ -181,9 +195,9 @@ class GeminiProvider extends AIProvider {
             if (Array.isArray(msg.chamadas) && msg.chamadas.length > 0) {
                 contents.push({
                     role,
-                    parts: msg.chamadas.map(c => ({
-                        functionCall: { name: c.nome, args: c.argumentos || {} }
-                    }))
+                    parts: msg.chamadas.map((c) => ({
+                        functionCall: { name: c.nome, args: c.argumentos || {} },
+                    })),
                 });
                 continue;
             }
@@ -209,13 +223,15 @@ class GeminiProvider extends AIProvider {
      */
     _traduzirFerramentas(ferramentas) {
         if (!Array.isArray(ferramentas) || ferramentas.length === 0) return undefined;
-        return [{
-            functionDeclarations: ferramentas.map(f => ({
-                name: f.name,
-                description: f.description,
-                parameters: f.schema || { type: 'object', properties: {} }
-            }))
-        }];
+        return [
+            {
+                functionDeclarations: ferramentas.map((f) => ({
+                    name: f.name,
+                    description: f.description,
+                    parameters: f.schema || { type: 'object', properties: {} },
+                })),
+            },
+        ];
     }
 
     // ── Streaming ────────────────────────────────────────────────────────────
@@ -223,22 +239,25 @@ class GeminiProvider extends AIProvider {
     async *stream(mensagens, ferramentas, signal) {
         if (!this.configurado()) {
             throw new ErroProvedorIA('Serviço de assistente não configurado neste servidor.', {
-                status: 503, semChave: true
+                status: 503,
+                semChave: true,
             });
         }
 
         const { instrucoesSistema, contents } = this._traduzirMensagens(mensagens);
 
         if (contents.length === 0) {
-            throw new ErroProvedorIA('Nenhuma mensagem para enviar ao assistente.', { status: 400 });
+            throw new ErroProvedorIA('Nenhuma mensagem para enviar ao assistente.', {
+                status: 400,
+            });
         }
 
         const corpo = {
             contents,
             generationConfig: {
                 temperature: this.temperatura,
-                maxOutputTokens: this.maxTokensSaida
-            }
+                maxOutputTokens: this.maxTokensSaida,
+            },
         };
         if (instrucoesSistema.length > 0) {
             corpo.systemInstruction = { parts: [{ text: instrucoesSistema.join('\n\n') }] };
@@ -246,7 +265,9 @@ class GeminiProvider extends AIProvider {
         const tools = this._traduzirFerramentas(ferramentas);
         if (tools) corpo.tools = tools;
 
-        const modelosParaTentar = [this.modelo, ...MODELOS_FALLBACK].filter((m, i, arr) => m && arr.indexOf(m) === i);
+        const modelosParaTentar = [this.modelo, ...MODELOS_FALLBACK].filter(
+            (m, i, arr) => m && arr.indexOf(m) === i
+        );
         let respostaSucesso = null;
         let ultimoDetalheErro = '';
         let cotaExcedidaGeral = false;
@@ -266,14 +287,17 @@ class GeminiProvider extends AIProvider {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(corpo),
-                    signal
+                    signal,
                 });
             } catch (e) {
                 if (e.name === 'AbortError' || signal?.aborted) {
                     yield { tipo: 'fim', motivo: 'cancelado' };
                     return;
                 }
-                logger.error('[IA] Falha de rede ao contatar o provedor (' + mod + ')', { err: e, action: 'ia.stream' });
+                logger.error('[IA] Falha de rede ao contatar o provedor (' + mod + ')', {
+                    err: e,
+                    action: 'ia.stream',
+                });
                 continue;
             }
 
@@ -287,7 +311,10 @@ class GeminiProvider extends AIProvider {
             const cota = resposta.status === 429 || /quota|rate limit/i.test(detalhe);
 
             logger.warn('[IA] Provedor recusou a requisição no modelo ' + mod, {
-                status: resposta.status, action: 'ia.stream', cota, detalhe: detalhe.slice(0, 300)
+                status: resposta.status,
+                action: 'ia.stream',
+                cota,
+                detalhe: detalhe.slice(0, 300),
             });
 
             // 404 aqui quase sempre é modelo desativado ou nome errado em
@@ -295,7 +322,7 @@ class GeminiProvider extends AIProvider {
             // não mandar o suporte caçar limite de uso que não existe.
             if (resposta.status === 404) {
                 logger.error('[IA] Modelo inexistente ou desativado: ' + mod, {
-                    action: 'ia.stream.modelo'
+                    action: 'ia.stream.modelo',
                 });
             }
 
@@ -305,9 +332,10 @@ class GeminiProvider extends AIProvider {
                 if (info.diaria) cotaDiaria = true;
                 // Guarda a MENOR espera: é quando a primeira família libera.
                 if (info.esperaSegundos > 0) {
-                    esperaSegundos = esperaSegundos === 0
-                        ? info.esperaSegundos
-                        : Math.min(esperaSegundos, info.esperaSegundos);
+                    esperaSegundos =
+                        esperaSegundos === 0
+                            ? info.esperaSegundos
+                            : Math.min(esperaSegundos, info.esperaSegundos);
                 }
             }
         }
@@ -352,12 +380,16 @@ class GeminiProvider extends AIProvider {
     /** Mensagem de cota mostrada ao usuário — sem citar o provedor. */
     _mensagemDeCota(diaria, esperaSegundos) {
         if (diaria) {
-            return 'O assistente atingiu o limite de uso previsto para hoje. '
-                + 'O serviço volta a responder amanhã.';
+            return (
+                'O assistente atingiu o limite de uso previsto para hoje. ' +
+                'O serviço volta a responder amanhã.'
+            );
         }
         if (esperaSegundos > 0 && esperaSegundos <= 120) {
-            return `O assistente atingiu o limite de uso do momento. `
-                + `Tente novamente em cerca de ${esperaSegundos} segundos.`;
+            return (
+                `O assistente atingiu o limite de uso do momento. ` +
+                `Tente novamente em cerca de ${esperaSegundos} segundos.`
+            );
         }
         return 'O assistente atingiu o limite de uso do momento. Tente novamente em alguns minutos.';
     }
@@ -387,9 +419,10 @@ class GeminiProvider extends AIProvider {
                     return;
                 }
 
-                buffer += typeof pedaco === 'string'
-                    ? pedaco
-                    : decodificador.decode(pedaco, { stream: true });
+                buffer +=
+                    typeof pedaco === 'string'
+                        ? pedaco
+                        : decodificador.decode(pedaco, { stream: true });
 
                 // Um evento SSE termina em linha em branco; até lá, acumula.
                 // O passo do for recalcula a quebra a cada volta — inclusive
@@ -427,7 +460,7 @@ class GeminiProvider extends AIProvider {
                             chamadas.push({
                                 id: `${parte.functionCall.name}-${chamadas.length}`,
                                 nome: parte.functionCall.name,
-                                argumentos: parte.functionCall.args || {}
+                                argumentos: parte.functionCall.args || {},
                             });
                         }
                     }
@@ -459,7 +492,7 @@ const MOTIVOS = {
     MAX_TOKENS: 'limite_tokens',
     SAFETY: 'seguranca',
     RECITATION: 'seguranca',
-    OTHER: 'completo'
+    OTHER: 'completo',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -467,7 +500,7 @@ const MOTIVOS = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PROVEDORES = {
-    gemini: GeminiProvider
+    gemini: GeminiProvider,
 };
 
 let instancia = null;
@@ -482,9 +515,12 @@ function obterProvider() {
     const escolhido = (process.env.IA_PROVIDER || 'gemini').toLowerCase();
     const Classe = PROVEDORES[escolhido];
     if (!Classe) {
-        logger.error(`[IA] Provedor desconhecido em IA_PROVIDER: "${escolhido}" — usando o padrão.`, {
-            action: 'ia.provider'
-        });
+        logger.error(
+            `[IA] Provedor desconhecido em IA_PROVIDER: "${escolhido}" — usando o padrão.`,
+            {
+                action: 'ia.provider',
+            }
+        );
         instancia = new GeminiProvider();
         return instancia;
     }
@@ -502,5 +538,5 @@ module.exports = {
     GeminiProvider,
     ErroProvedorIA,
     obterProvider,
-    _resetarProvider
+    _resetarProvider,
 };
