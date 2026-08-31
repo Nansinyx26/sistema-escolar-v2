@@ -993,6 +993,27 @@ exports.getPresenca = async (req, res) => {
 };
 
 /**
+ * IDs de todo mundo com quem esta pessoa já trocou mensagem.
+ *
+ * `listarContatos` monta a lista a partir do ORGANOGRAMA — coleções de cargo e
+ * vínculo aluno↔responsável. Quem não está em nenhuma dessas estruturas nunca
+ * apareceria nela, e é exatamente o caso do admin. O histórico é a evidência
+ * que falta: se a conversa já existe, o contato existe.
+ *
+ * Devolve só o que é ObjectId válido: `remetenteId`/`destinatarioId` são String
+ * no schema, e um valor fora do formato quebraria o cast do `$in`.
+ */
+async function idsComQuemJaConversei(meuId) {
+    const [recebidos, enviados] = await Promise.all([
+        ChatDireto.distinct('remetenteId', { destinatarioId: meuId }),
+        ChatDireto.distinct('destinatarioId', { remetenteId: meuId }),
+    ]);
+    return [...new Set([...recebidos, ...enviados].map(String))].filter(
+        (id) => id !== meuId && mongoose.Types.ObjectId.isValid(id)
+    );
+}
+
+/**
  * GET /api/chat-direto/contatos — com quem esta pessoa pode conversar.
  *
  * POR QUE UM ENDPOINT PRÓPRIO (Issue #69)
@@ -1029,10 +1050,23 @@ exports.listarContatos = async (req, res) => {
         // listar "todo mundo" seria vazamento entre escolas.
         if (!escolaId) return res.json({ success: true, data: [] });
 
-        const perfisAlcancaveis = (MATRIZ_CONVERSA[meuPerfil] || []).filter((p) =>
-            paresPermitidos(meuPerfil, p)
-        );
+        // O admin NÃO está na MATRIZ_CONVERSA — `paresPermitidos` o libera à
+        // parte, porque é o papel de suporte da rede. Sem este ramo,
+        // `MATRIZ_CONVERSA['admin']` é `undefined`, `perfisAlcancaveis` nasce
+        // vazio e a lista do próprio admin voltava sempre vazia.
+        const perfisAlcancaveis =
+            meuPerfil === 'admin'
+                ? [...Object.keys(MATRIZ_CONVERSA)]
+                : (MATRIZ_CONVERSA[meuPerfil] || []).filter((p) => paresPermitidos(meuPerfil, p));
         if (!perfisAlcancaveis.length) return res.json({ success: true, data: [] });
+
+        // O outro lado do mesmo buraco, e o que fazia a mensagem do admin
+        // "não chegar": 'admin' não aparece em nenhuma lista da matriz, então o
+        // `perfil: { $in: perfisAlcancaveis }` lá embaixo descartava o admin da
+        // lista de TODO MUNDO. O envio dele passava (`podeConversar` libera), a
+        // mensagem era gravada e emitida pelo socket — mas o destinatário não
+        // tinha por onde reabrir a conversa, e sumia no recarregar da página.
+        perfisAlcancaveis.push('admin');
 
         const querResponsaveis = perfisAlcancaveis.includes('responsavel');
 
@@ -1105,6 +1139,19 @@ exports.listarContatos = async (req, res) => {
                 },
             });
         }
+        // ── Admin (suporte da rede) ───────────────────────────────────────
+        // O admin não tem coleção de cargo nem vínculo de escola: nenhum dos
+        // critérios acima o alcança. Ele entra pelo HISTÓRICO — quem já trocou
+        // mensagem com ele passa a vê-lo na lista, que é o que reabre a
+        // conversa depois de recarregar a página.
+        //
+        // Por que não listar todos os admins da rede para todo mundo: o admin
+        // atravessa escolas, então nem o tenant delimitaria essa lista, e ela
+        // entregaria o time de suporte a toda família da rede. Quem nunca falou
+        // com o admin não precisa saber que a conta existe.
+        const jaConversei = await idsComQuemJaConversei(meuId);
+        if (jaConversei.length) criterios.push({ perfil: 'admin', _id: { $in: jaConversei } });
+
         if (!criterios.length) return res.json({ success: true, data: [] });
 
         const candidatos = await Usuario.find({

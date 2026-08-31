@@ -179,6 +179,64 @@ describe('quem cada perfil enxerga', () => {
     });
 });
 
+/**
+ * O ADMIN — o caso que a matriz não cobre.
+ *
+ * `paresPermitidos` libera o admin à parte ("conversa com qualquer perfil"),
+ * mas ele não aparece em nenhuma lista da MATRIZ_CONVERSA e não tem coleção de
+ * cargo nem vínculo aluno↔responsável. O resultado era o pior dos dois lados:
+ * o envio do admin passava e a mensagem era gravada, mas o destinatário não
+ * via o admin na lista — não tinha por onde reabrir a conversa, e a mensagem
+ * parecia nunca ter chegado.
+ */
+describe('admin', () => {
+    it('enxerga a escola inteira', async () => {
+        const prof = await professorDe('adm.prof@escola.test', '1A');
+        const dir = await conta('adm.dir@escola.test', 'diretor');
+        const sec = await conta('adm.sec@escola.test', 'secretaria');
+        const mae = await responsavelDe('adm.mae@escola.test', '1A');
+        const admin = await conta('admin@escola.test', 'admin');
+
+        expect(idsDe(await contatos(admin))).toEqual([prof.id, dir.id, sec.id, mae.id].sort());
+    });
+
+    it('aparece na lista de quem já recebeu mensagem dele', async () => {
+        const admin = await conta('admin2@escola.test', 'admin');
+        const mae = await responsavelDe('mae.suporte@escola.test', '2B');
+
+        const envio = await admin.agent
+            .post('/api/chat-direto/enviar')
+            .send({ destinatarioId: mae.id, mensagem: 'oi' });
+        expect(envio.status).toBe(200);
+
+        const lista = await contatos(mae);
+        expect(idsDe(lista)).toContain(admin.id);
+        expect(lista.find((c) => c.id === admin.id).naoLidas).toBe(1);
+    });
+
+    it('aparece também para quem escreveu para ele primeiro', async () => {
+        const admin = await conta('admin3@escola.test', 'admin');
+        const prof = await professorDe('prof.suporte@escola.test', '4C');
+
+        const envio = await prof.agent
+            .post('/api/chat-direto/enviar')
+            .send({ destinatarioId: admin.id, mensagem: 'preciso de ajuda' });
+        expect(envio.status).toBe(200);
+
+        expect(idsDe(await contatos(prof))).toContain(admin.id);
+    });
+
+    it('não aparece para quem nunca conversou com ele', async () => {
+        const admin = await conta('admin4@escola.test', 'admin');
+        const prof = await professorDe('prof.sem.suporte@escola.test', '5A');
+
+        // Sem histórico, a conta de suporte não é enumerável: listar todos os
+        // admins da rede para toda família entregaria o time de suporte a quem
+        // nunca falou com ele.
+        expect(idsDe(await contatos(prof))).not.toContain(admin.id);
+    });
+});
+
 describe('a lista concorda com o envio', () => {
     /**
      * Para cada conta da escola: se ela está na lista, o envio tem de passar;
