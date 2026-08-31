@@ -59,6 +59,10 @@
         diretor: 'Direção',
         secretaria: 'Secretaria',
         responsavel: 'Responsável',
+        // O admin entra na lista quando já existe conversa com ele. Sem o
+        // rótulo, a linha exibiria o valor cru do banco ("admin") no lugar de
+        // um cargo.
+        admin: 'Suporte',
     };
 
     /**
