@@ -52,7 +52,7 @@ function provedorQueRegistra(textos = ['Olá, ', 'tudo certo!']) {
 function provedorSemChave() {
     return {
         configurado: () => false,
-        // eslint-disable-next-line require-yield
+        // biome-ignore lint/correctness/useYield: dublê que só lança; um yield aqui mudaria o que o teste verifica.
         async *stream() { throw new Error('não deveria ser chamado'); }
     };
 }
@@ -282,7 +282,7 @@ describe('POST /api/ia/chat — contexto vem do servidor, nunca do cliente', () 
         const { ErroProvedorIA } = jest.requireActual('../services/ia/AIProvider');
         global.__provedorIA = {
             configurado: () => true,
-            // eslint-disable-next-line require-yield
+            // biome-ignore lint/correctness/useYield: dublê que só lança; um yield aqui mudaria o que o teste verifica.
             async *stream() {
                 throw new ErroProvedorIA('O assistente está indisponível no momento.');
             }
@@ -303,7 +303,7 @@ describe('POST /api/ia/chat — contexto vem do servidor, nunca do cliente', () 
     it('erro inesperado não expõe stack trace nem mensagem crua ao usuário', async () => {
         global.__provedorIA = {
             configurado: () => true,
-            // eslint-disable-next-line require-yield
+            // biome-ignore lint/correctness/useYield: dublê que só lança; um yield aqui mudaria o que o teste verifica.
             async *stream() {
                 throw new Error('ECONNREFUSED 10.0.0.7:443 interno-do-projeto');
             }
@@ -460,5 +460,54 @@ describe('AIProvider — recusa por cota', () => {
         for (const m of mensagens) {
             expect(m).not.toMatch(/gemini|google|openai|claude/i);
         }
+    });
+});
+
+describe('AIProvider — decodificação do stream SSE (_lerSSE)', () => {
+    const { GeminiProvider } = jest.requireActual('../services/ia/AIProvider');
+
+    /** Consome o gerador inteiro sobre um corpo falso feito de chunks. */
+    async function coletar(chunks) {
+        const eventos = [];
+        for await (const ev of new GeminiProvider()._lerSSE(chunks, null)) {
+            eventos.push(ev);
+        }
+        return eventos;
+    }
+
+    const sse = (texto) =>
+        `data: ${JSON.stringify({
+            candidates: [{ content: { parts: [{ text: texto }] } }]
+        })}\n\n`;
+
+    const fim = (texto) => [
+        { tipo: 'texto', texto },
+        { tipo: 'fim', motivo: 'completo' }
+    ];
+
+    it('decodifica os chunks que o fetch nativo entrega como Uint8Array', async () => {
+        // Regressão direta: com `pedaco.toString('utf8')` o Uint8Array virava
+        // "100,97,116,...", nenhuma linha começava com `data:` e a tela ficava
+        // vazia — sem erro no log, que é o que tornava o bug difícil de achar.
+        const chunks = [new TextEncoder().encode(sse('Olá mundo!'))];
+        expect(await coletar(chunks)).toEqual(fim('Olá mundo!'));
+    });
+
+    it('remonta um caractere multibyte cortado entre dois chunks', async () => {
+        const texto = sse('Atenção');
+        const bytes = new TextEncoder().encode(texto);
+        // Tudo antes do 'ç' é ASCII, então índice de caractere = índice de byte;
+        // o +1 corta entre os dois bytes que formam o 'ç'.
+        const corte = texto.indexOf('Atenção') + 'Aten'.length + 1;
+        const chunks = [bytes.slice(0, corte), bytes.slice(corte)];
+        expect(await coletar(chunks)).toEqual(fim('Atenção'));
+    });
+
+    it('aceita Buffer, que é o outro formato possível do corpo no Node', async () => {
+        // Este passa também no código antigo. Existe para travar a regressão:
+        // voltar ao `toString('utf8')` continuaria certo aqui e errado nos dois
+        // testes acima.
+        const chunks = [Buffer.from(sse('Bom dia'), 'utf8')];
+        expect(await coletar(chunks)).toEqual(fim('Bom dia'));
     });
 });

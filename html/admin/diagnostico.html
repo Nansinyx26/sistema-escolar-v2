@@ -74,6 +74,60 @@
         .level-INFO { color: var(--success); }
         .level-DEBUG { color: #888; }
         
+        /* Tons do veredito. Um atributo, não uma classe por cor: o estado vem
+           do JS como dado (data-tom) e o CSS decide a aparência. */
+        [data-tom="sucesso"] { color: var(--success); }
+        [data-tom="erro"]    { color: var(--error); }
+        [data-tom="alerta"]  { color: var(--warning, #f59e0b); }
+        [data-tom="neutro"]  { color: var(--text-secondary, #888); }
+
+        .gemini-box {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 30px;
+        }
+        .gemini-intro {
+            margin: 0 0 16px;
+            color: var(--text-secondary, #888);
+            font-size: 0.9rem;
+            max-width: 60ch;
+        }
+        /* Entrada com os tokens de css/motion.css. Só opacity e transform —
+           prefers-reduced-motion já é neutralizado globalmente lá. */
+        .gemini-resultado {
+            margin-top: 18px;
+            padding: 16px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.04);
+            border-left: 3px solid currentColor;
+            opacity: 0;
+            transform: translateY(var(--motion-enter-y, 8px));
+            transition:
+                opacity var(--motion-enter, 260ms) var(--motion-ease-out, ease-out),
+                transform var(--motion-enter, 260ms) var(--motion-ease-out, ease-out);
+        }
+        .gemini-resultado.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .gemini-resultado p {
+            margin: 8px 0 0;
+            color: var(--text);
+            max-width: 70ch;
+        }
+        .gemini-detalhe {
+            font-family: 'Fira Code', monospace;
+            font-size: 0.8rem;
+            color: var(--text-secondary, #888) !important;
+            word-break: break-word;
+        }
+        .refresh-btn:disabled {
+            opacity: 0.6;
+            cursor: progress;
+        }
+
         .refresh-btn {
             background: var(--accent);
             color: white;
@@ -142,11 +196,34 @@
         </div>
         <div class="stat-card">
             <div>Chatbot IA</div>
-            <div class="stat-value" style="color: var(--success)">Ativo</div>
+            <!-- Era "Ativo" fixo em verde, escrito no HTML: afirmava que a IA
+                 estava no ar mesmo com a chave ausente, recusada ou sem cota —
+                 desmentindo justamente o sintoma que a pessoa veio investigar.
+                 Agora nasce sem veredito e só muda depois do teste. Ver #155. -->
+            <div class="stat-value" id="ia-status" data-tom="neutro">Não verificado</div>
         </div>
         <div class="stat-card">
             <div>Animações Python</div>
             <div class="stat-value" style="color: var(--success)">Pronto</div>
+        </div>
+    </div>
+
+    <h2><i class="ti ti-key"></i> Chave do Gemini</h2>
+    <div class="gemini-box">
+        <p class="gemini-intro">
+            Faz uma chamada real e mínima ao provedor para descobrir por que o assistente parou
+            de responder. A chave nunca é exibida — só o veredito.
+        </p>
+        <button class="refresh-btn" id="btn-testar-gemini" type="button">
+            <i class="ti ti-plug-connected" aria-hidden="true"></i>
+            <span data-rotulo>Testar chave do Gemini</span>
+        </button>
+        <div class="gemini-resultado" id="gemini-resultado" role="status" aria-live="polite" hidden>
+            <strong id="gemini-titulo"></strong>
+            <p id="gemini-acao"></p>
+            <!-- Mensagem crua do provedor. Preenchida por textContent, nunca
+                 innerHTML: é texto de serviço externo. -->
+            <p class="gemini-detalhe" id="gemini-detalhe" hidden></p>
         </div>
     </div>
 
@@ -177,6 +254,8 @@
         checkApi();
     </script>
 
+<script src="../../js/api-config.js"></script>
+    <script src="../../js/diagnostico-gemini.js" defer></script>
 <script src="../../js/click-sound.js" defer></script>
     <script defer src="../../js/reactions.js"></script>
     <script defer src="../../js/push-notifications.js"></script>

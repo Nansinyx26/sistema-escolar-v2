@@ -132,6 +132,12 @@ gh pr create \
 
 O template em `.github/PULL_REQUEST_TEMPLATE.md` é preenchido automaticamente — **não apague a linha `Closes #`**.
 
+**Caixa vazia no template significa trabalho pendente — e só isso.** Tipo do PR e destino
+do deploy são texto, não caixa; seção `Interface` ou `Observabilidade` que não se aplica ao
+PR é apagada inteira, não deixada com as caixas em branco. Um PR pronto para merge tem
+todas as caixas marcadas, e o contador do GitHub volta a apontar pendência de verdade.
+Ver Issue #161.
+
 ### Um PR deve
 
 - Resolver **uma** Issue. PR que resolve três Issues é três PRs.
