@@ -48,7 +48,8 @@ export class ChatController {
     /**
      * @param {Object} elementos  nós do DOM já resolvidos pela página
      * @param {Object} [opcoes]
-     * @param {Function} [opcoes.aoMudarEstado]     'ocioso'|'pensando'|'falando'
+     * @param {Function} [opcoes.aoMudarEstado]     (estado, mensagem?) — 'ocioso'|
+     *   'pensando'|'falando'|'erro'; `mensagem` só acompanha o estado de erro
      * @param {Function} [opcoes.aoAvisar]          exibe um toast
      * @param {Function} [opcoes.aoReceberContexto] contexto confirmado pelo servidor
      * @param {boolean}  [opcoes.narrarAuto] narrar toda resposta ao terminá-la
@@ -466,8 +467,17 @@ export class ChatController {
      * aqui nunca invalida a resposta de texto.
      */
     async _falar(texto) {
+        // Falha de voz vira estado `erro` (esfera âmbar + rótulo com a causa),
+        // e não `ocioso`: cair direto no repouso fazia a narração sumir sem
+        // que a tela registrasse nada — só o toast, que passa em 3,5s.
+        const falhar = (mensagem) => {
+            this.narrando = false;
+            this.aoMudarEstado('erro', mensagem);
+            this.aoAvisar(mensagem);
+        };
+
         if (typeof window.speak !== 'function') {
-            this.aoAvisar('A narração não está disponível nesta página.');
+            falhar('A narração não está disponível nesta página.');
             return;
         }
         const encerrar = () => {
@@ -495,12 +505,10 @@ export class ChatController {
             // `window.speak` devolve null quando o servidor de voz recusa. Sem
             // aviso, a pessoa clica em "Ouvir" e não acontece absolutamente
             // nada — parecia que o botão estava quebrado.
-            encerrar();
-            this.aoAvisar('Não foi possível gerar o áudio agora. O texto da resposta continua acima.');
+            falhar('Não foi possível gerar o áudio agora. O texto da resposta continua acima.');
         } catch (e) {
             console.warn('[IA] Narração indisponível:', e?.message);
-            encerrar();
-            this.aoAvisar('Não foi possível gerar o áudio agora.');
+            falhar('Não foi possível gerar o áudio agora.');
         }
     }
 }

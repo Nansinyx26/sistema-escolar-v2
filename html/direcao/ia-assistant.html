@@ -35,6 +35,16 @@
         --glow2: rgba(13, 148, 136, 0.18);
         --erro: #f87171;
         --orb-size: 160px;
+        /* Lado do canvas da esfera. Precisa caber a nuvem de pontos MAIS os
+           anéis orbitais (raio até 2.3x) e o halo, então é bem maior que o
+           orb em CSS que ele substitui.
+
+           Os três limites são todos necessários: `vh` para não empurrar a
+           pílula de status para fora em telas baixas, `vw` porque o palco é
+           só ~66% da largura da janela (o resto é a conversa), e o valor fixo
+           como teto — acima disso a esfera vira o assunto da tela, e o
+           assunto é a conversa. */
+        --esfera-tam: min(540px, 54vh, 44vw);
         --raio: 14px;
       }
 
@@ -83,6 +93,48 @@
       .ring-1 { width: calc(var(--orb-size) * 1.4); height: calc(var(--orb-size) * 1.4); }
       .ring-2 { width: calc(var(--orb-size) * 1.9); height: calc(var(--orb-size) * 1.9); }
       .ring-3 { width: calc(var(--orb-size) * 2.5); height: calc(var(--orb-size) * 2.5); }
+
+      /* ── Esfera em canvas ───────────────────────────────────────────
+         O orb em CSS acima continua no documento de propósito: ele é o
+         fallback estático. O canvas só assume quando `AssistantSphere`
+         consegue subir (JS ligado, contexto 2D concedido) — e a página
+         devolve o orb se o laço de render desistir. Assim nenhuma falha da
+         esfera deixa o palco vazio.
+
+         A esfera anima em laço permanente, o que o docs/MOTION.md proíbe
+         para a interface. Ela é a exceção: não é enfeite pedindo atenção, é
+         o indicador de que o assistente está ouvindo/pensando/falando — a
+         mesma função da forma de onda de um gravador. Em repouso o
+         movimento é mínimo (amplitude 0.02) e `prefers-reduced-motion`
+         congela a água por completo. */
+      /* Some por padrão e só aparece com .esfera-ativa. Isso cobre os dois
+         lados: antes do JS subir não há canvas em branco sobre o orb, e se a
+         página tirar a classe (fallback) o último quadro pintado não fica
+         sobrando por cima do orb que voltou. */
+      .orb-canvas {
+        position: absolute; inset: 0;
+        width: 100%; height: 100%;
+        display: none;
+        /* O clique é do .orb-wrap: o canvas não precisa receber ponteiro e
+           não deve virar alvo de foco. */
+        pointer-events: none;
+      }
+      .orb-wrap.esfera-ativa .orb-canvas { display: block; }
+
+      .orb-wrap.esfera-ativa {
+        width: var(--esfera-tam); height: var(--esfera-tam);
+        cursor: pointer;
+      }
+      .orb-wrap.esfera-ativa .orb,
+      .orb-wrap.esfera-ativa .ring { display: none; }
+      .orb-wrap.esfera-ativa:focus-visible { outline: 2px solid var(--accent); outline-offset: 6px; border-radius: 50%; }
+
+      /* As barras eram a única pista visual de áudio em movimento. Com a
+         esfera reagindo à voz elas passam a repetir a mesma informação. */
+      .stage.esfera-ativa .bars { display: none; }
+      /* Erro na narração pinta a pílula de âmbar, junto com a esfera. */
+      .status-pill.erro { border-color: rgba(251, 191, 36, 0.4); color: #fbbf24; }
+      .status-pill.erro .status-dot { background: #fbbf24; }
 
       .bars { display: flex; gap: 5px; align-items: flex-end; height: 34px; opacity: 0.25; transition: opacity 0.3s; }
       .bars.active { opacity: 1; }
@@ -508,7 +560,7 @@
       @media (max-width: 1024px) {
         .app { grid-template-columns: 1fr; grid-template-rows: minmax(220px, 30vh) 1fr; }
         .chat-panel { border-left: 0; border-top: 1px solid var(--border); height: auto; min-height: 0; }
-        :root { --orb-size: 110px; }
+        :root { --orb-size: 110px; --esfera-tam: min(200px, 24vh); }
         .ring-3 { display: none; }
       }
 
@@ -635,7 +687,7 @@
 
     <div class="app">
       <!-- Painel visual -->
-      <div class="stage">
+      <div class="stage" id="stage">
         <!-- href/title são reescritos por perfil em pagina-ia-assistant.js:
              a página é compartilhada por diretor, professor e secretaria. -->
         <a class="stage-btn back-btn" id="backBtn" href="/html/dashboard.html" title="Voltar ao painel" aria-label="Voltar ao painel">
@@ -646,10 +698,17 @@
           <i class="bi bi-gear" aria-hidden="true"></i>
         </button>
 
-        <div class="orb-wrap">
+        <!-- O clique (calar a narração / abrir o microfone) fica no wrap, e
+             não no orb: quando a esfera em canvas assume, o orb some e o alvo
+             de clique precisa continuar existindo. `role="button"` + tabindex
+             porque o gesto passa a ter significado próprio. -->
+        <div class="orb-wrap" id="orbWrap" role="button" tabindex="0"
+             aria-label="Falar com o assistente">
           <div class="ring ring-1"></div>
           <div class="ring ring-2"></div>
           <div class="ring ring-3"></div>
+          <!-- aria-hidden: o estado já é anunciado pela pílula abaixo. -->
+          <canvas class="orb-canvas" id="orbCanvas" aria-hidden="true"></canvas>
           <div class="orb" id="orb" role="presentation"></div>
         </div>
 
