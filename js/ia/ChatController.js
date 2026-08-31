@@ -500,12 +500,18 @@ export class ChatController {
                 .trim();
             const audio = await window.speak(limpo);
 
-            if (audio && 'onended' in audio) {
-                // `onended` só cobre o fim natural. Sem o `onerror` o orb ficava
-                // preso em "Narrando a resposta..." quando o áudio falhava no
-                // meio da reprodução.
-                audio.onended = encerrar;
-                audio.onerror = encerrar;
+            if (audio && typeof audio.addEventListener === 'function') {
+                // `addEventListener` e NÃO `audio.onended = ...`: a atribuição
+                // apagava o handler que o sidebar-voice.js já tinha posto no
+                // mesmo elemento — o que revoga o Blob URL e dispara
+                // `tts:ended`. Cada resposta narrada vazava um Blob por causa
+                // disso. Ver Issue #175.
+                //
+                // O 'error' continua necessário por conta própria: sem ele o
+                // orb ficava preso em "Narrando a resposta..." quando o áudio
+                // falhava no meio da reprodução.
+                audio.addEventListener('ended', encerrar, { once: true });
+                audio.addEventListener('error', encerrar, { once: true });
                 return;
             }
 

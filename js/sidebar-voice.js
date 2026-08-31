@@ -371,11 +371,31 @@ window.speak = async (text, forceSpeak = false) => {
         window.currentTtsAudio = audio;
         currentAudio = audio;
 
-        audio.onended = () => {
-            window.dispatchEvent(new CustomEvent('tts:ended'));
-            URL.revokeObjectURL(url);
-            currentAudio = null;
-        };
+        // `addEventListener` e NÃO `audio.onended = ...`: a propriedade guarda
+        // um handler só, e quem recebe este elemento de volta (o
+        // ChatController do copiloto) atribuía o dele por cima. A limpeza
+        // abaixo deixava de rodar e cada resposta narrada vazava um Blob na
+        // memória da aba, além de nunca disparar `tts:ended`. Ver Issue #175.
+        audio.addEventListener(
+            'ended',
+            () => {
+                window.dispatchEvent(new CustomEvent('tts:ended'));
+                URL.revokeObjectURL(url);
+                currentAudio = null;
+            },
+            { once: true }
+        );
+
+        // O áudio também pode morrer sem chegar ao fim (rede caiu no meio,
+        // codec recusado). Sem isto o Blob desse caminho ficava retido.
+        audio.addEventListener(
+            'error',
+            () => {
+                URL.revokeObjectURL(url);
+                currentAudio = null;
+            },
+            { once: true }
+        );
 
         await audio.play();
         console.log('[Voice] ✅ Áudio reproduzindo com sucesso');
