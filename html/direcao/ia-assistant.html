@@ -218,11 +218,19 @@
         font-size: 12px; color: var(--muted);
         overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
       }
-      .header-btn {
+      /* Slot de ações do cabeçalho. O botão de Configurações é injetado aqui
+         por js/settings-drawer.js — daí `.settings-trigger` herdar as medidas
+         do `.header-btn` logo abaixo, para ele não entrar 40px no meio de
+         botões de 34px. */
+      .header-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+      .header-btn, .header-actions .settings-trigger {
         width: 34px; height: 34px; display: grid; place-items: center; flex-shrink: 0;
         border-radius: 9px; border: 1px solid var(--border); background: transparent;
         color: var(--muted); cursor: pointer; transition: color 0.2s, border-color 0.2s;
       }
+      .header-actions .settings-trigger { font-size: 15px; }
+      .header-actions .settings-trigger:hover { color: var(--accent); border-color: var(--accent); background: transparent; }
       .header-btn:hover { color: var(--accent); border-color: var(--accent); }
       .header-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
@@ -765,15 +773,22 @@
             <h1 id="greeting">Assistente da escola</h1>
             <p id="ctxBadge">Carregando contexto...</p>
           </div>
-          <button type="button" class="header-btn" id="exportBtn" title="Exportar conversa" aria-label="Exportar conversa">
-            <i data-lucide="download" aria-hidden="true"></i>
-          </button>
-          <button type="button" class="header-btn" id="historyBtn" title="Conversas anteriores" aria-label="Conversas anteriores" aria-expanded="false">
-            <i data-lucide="history" aria-hidden="true"></i>
-          </button>
-          <button type="button" class="header-btn" id="newChatBtn" title="Nova conversa" aria-label="Nova conversa">
-            <i data-lucide="plus" aria-hidden="true"></i>
-          </button>
+          <!-- `header-actions` NÃO é decoração: é o slot que
+               js/settings-drawer.js procura (`mountTrigger`) para ancorar o
+               botão de Configurações. Sem ele o drawer caía no fallback
+               flutuante `position: fixed` no canto da janela, que pousava em
+               cima da faixa "Em desenvolvimento" logo acima. Ver Issue #174. -->
+          <div class="header-actions">
+            <button type="button" class="header-btn" id="exportBtn" title="Exportar conversa" aria-label="Exportar conversa">
+              <i data-lucide="download" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="header-btn" id="historyBtn" title="Conversas anteriores" aria-label="Conversas anteriores" aria-expanded="false">
+              <i data-lucide="history" aria-hidden="true"></i>
+            </button>
+            <button type="button" class="header-btn" id="newChatBtn" title="Nova conversa" aria-label="Nova conversa">
+              <i data-lucide="plus" aria-hidden="true"></i>
+            </button>
+          </div>
         </header>
 
         <!-- Conversas anteriores. Fica recolhida por padrão: o uso comum é
