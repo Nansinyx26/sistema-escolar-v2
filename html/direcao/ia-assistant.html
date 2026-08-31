@@ -328,6 +328,23 @@
       .ia-sidebar-lista { padding: 8px; display: flex; flex-direction: column; gap: 3px; }
       .ia-sidebar-vazio { padding: 18px 12px; text-align: center; font-size: 12.5px; color: var(--muted); }
 
+      /* Falha ao carregar o histórico. Precisa ser visualmente DIFERENTE do
+         estado vazio: as duas telas eram idênticas, e uma sessão expirada
+         passava por "você não tem conversas". Ver Issue #172. */
+      .ia-sidebar-erro {
+        display: flex; flex-direction: column; align-items: center; gap: 10px;
+        padding: 16px 12px; text-align: center;
+      }
+      .ia-sidebar-erro-texto { font-size: 12.5px; line-height: 1.5; color: var(--erro); }
+      .ia-sidebar-retry {
+        padding: 6px 14px; border-radius: 999px; cursor: pointer;
+        background: transparent; border: 1px solid var(--border);
+        color: var(--text); font-family: inherit; font-size: 12.5px;
+        transition: border-color 0.2s;
+      }
+      .ia-sidebar-retry:hover { border-color: var(--accent); }
+      .ia-sidebar-retry:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
       .ia-conversa {
         display: flex; align-items: center; gap: 4px;
         border-radius: 9px; transition: background 0.15s;
