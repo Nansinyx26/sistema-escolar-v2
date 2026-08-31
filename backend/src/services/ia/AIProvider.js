@@ -83,7 +83,7 @@ class AIProvider {
      * @param {AbortSignal} [signal]
      * @returns {AsyncGenerator<Object>}
      */
-    // eslint-disable-next-line require-yield
+    // biome-ignore lint/correctness/useYield: método abstrato — quem gera é a subclasse; aqui só avisa que não foi implementado.
     async *stream(mensagens, ferramentas, signal) {
         throw new Error('AIProvider.stream não implementado.');
     }
@@ -370,6 +370,13 @@ class GeminiProvider extends AIProvider {
      * abaixo é justamente o que impede um chunk partido de virar JSON inválido.
      */
     async *_lerSSE(corpo, signal) {
+        // O `fetch` nativo do Node entrega o corpo em pedaços de `Uint8Array`, e
+        // `Uint8Array` não define `toString` próprio: a chamada caía no do `Array`,
+        // que devolve "100,97,116,..." em vez do texto, com o 'utf8' ignorado em
+        // silêncio. Decodificar aqui cobre também o `Buffer`, e o `{ stream: true }`
+        // guarda os bytes pendentes — um caractere multibyte cortado na fronteira
+        // do pacote TCP se remonta na volta seguinte em vez de virar U+FFFD.
+        const decodificador = new TextDecoder('utf-8');
         let buffer = '';
         let motivo = 'completo';
 
@@ -380,11 +387,18 @@ class GeminiProvider extends AIProvider {
                     return;
                 }
 
-                buffer += pedaco.toString('utf8');
+                buffer += typeof pedaco === 'string'
+                    ? pedaco
+                    : decodificador.decode(pedaco, { stream: true });
 
                 // Um evento SSE termina em linha em branco; até lá, acumula.
-                let quebra;
-                while ((quebra = buffer.indexOf('\n')) !== -1) {
+                // O passo do for recalcula a quebra a cada volta — inclusive
+                // depois de um continue —, porque o buffer encolhe aqui dentro.
+                for (
+                    let quebra = buffer.indexOf('\n');
+                    quebra !== -1;
+                    quebra = buffer.indexOf('\n')
+                ) {
                     const linha = buffer.slice(0, quebra).trim();
                     buffer = buffer.slice(quebra + 1);
 
