@@ -15,7 +15,9 @@
  *   - Barra de progresso do upload: feedback funcional (parse de PDF leva
  *     segundos); sem ela o usuário acha que travou.
  * O que NÃO anima, de propósito:
- *   - Lista do autocomplete: se refaz a cada tecla, é alta frequência.
+ *   - Lista do autocomplete: se refaz a cada tecla, é alta frequência. O estado
+ *     de "buscando" também é texto parado, não skeleton nem spinner, pela mesma
+ *     razão — nada pisca sob quem está digitando.
  *   - Checkbox de cada linha da pré-visualização: o usuário marca dezenas.
  *   - Redesenho da tabela após salvar: ação de alta frequência da secretaria.
  *
@@ -406,9 +408,8 @@
         });
         $('areaTranstornos').hidden = true;
         $('rotuloSalvar').textContent = 'Cadastrar e vincular';
-        $('listaBusca').hidden = true;
         $('buscaAluno').value = '';
-        $('buscaAluno').setAttribute('aria-expanded', 'false');
+        encerrarBusca();
     }
 
     /** Preenche e trava os campos quando o usuário escolhe um aluno existente. */
@@ -446,8 +447,178 @@
         area.appendChild(caixa);
 
         $('rotuloSalvar').textContent = 'Vincular à turma';
+        encerrarBusca();
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Autocomplete de aluno — combobox + listbox (WAI-ARIA)
+    //
+    // O foco NUNCA sai do campo de texto: quem está destacado é dito por
+    // `aria-activedescendant`, não por `focus()`. É isso que deixa continuar
+    // digitando enquanto se percorre a lista com as setas — e o motivo de os
+    // itens serem `div role="option"` em vez de `button`: filho de listbox tem
+    // que ser `option`, e botão entraria na ordem do Tab, roubando o campo.
+    //
+    // `Home` / `End` de propósito NÃO mexem na lista. Este combobox é editável,
+    // e nele essas teclas pertencem ao cursor do texto (APG, combobox com
+    // autocomplete de lista). Sequestrá-las quebraria a edição do termo.
+    // ═════════════════════════════════════════════════════════════════════════
+
+    var PREFIXO_OPCAO = 'opcaoBusca-';
+
+    /** Controlador da consulta em curso — abortado quando outra começa. */
+    var buscaEmVoo = null;
+    /** Cada consulta leva um número; resposta de número velho é descartada. */
+    var buscaSequencia = 0;
+    /** Índice do item destacado pelo teclado. -1 = nenhum. */
+    var indiceAtivo = -1;
+
+    function itensDaBusca() {
+        return Array.prototype.slice.call($('listaBusca').children);
+    }
+
+    function buscaAberta() {
+        return !$('listaBusca').hidden;
+    }
+
+    /**
+     * Mensagem visível abaixo do campo e anúncio para leitor de tela.
+     *
+     * São dois elementos de propósito: o visível não é região `aria-live`, então
+     * escrever nos dois não gera anúncio em dobro — e o anúncio pode dizer algo
+     * que a tela já mostra por si (a contagem de resultados, que está na lista).
+     */
+    function avisarBusca(visivel, anuncio) {
+        var aviso = $('avisoBusca');
+        aviso.textContent = visivel || '';
+        aviso.hidden = !visivel;
+        $('statusBusca').textContent = anuncio === undefined ? visivel || '' : anuncio;
+    }
+
+    /**
+     * Destaca o item `indice` sem tirar o foco do campo. `rolar` fica falso
+     * quando o destaque veio do mouse: rolar a lista sob o ponteiro dispara
+     * outro `mouseover`, e a lista entra em vaivém.
+     */
+    function destacarItemDaBusca(indice, rolar) {
+        var itens = itensDaBusca();
+        var campo = $('buscaAluno');
+
+        itens.forEach(function (item, posicao) {
+            item.setAttribute('aria-selected', posicao === indice ? 'true' : 'false');
+        });
+
+        indiceAtivo = itens[indice] ? indice : -1;
+
+        if (indiceAtivo < 0) {
+            campo.removeAttribute('aria-activedescendant');
+            return;
+        }
+        campo.setAttribute('aria-activedescendant', itens[indiceAtivo].id);
+        // `nearest` rola o mínimo necessário: com `center` a lista saltaria sob
+        // o olho a cada seta.
+        if (rolar) itens[indiceAtivo].scrollIntoView({ block: 'nearest' });
+    }
+
+    function abrirListaDeBusca() {
+        $('listaBusca').hidden = false;
+        $('buscaAluno').setAttribute('aria-expanded', 'true');
+    }
+
+    function fecharListaDeBusca() {
         $('listaBusca').hidden = true;
         $('buscaAluno').setAttribute('aria-expanded', 'false');
+        destacarItemDaBusca(-1, false);
+    }
+
+    /** Move o destaque com volta circular nas pontas. */
+    function moverDestaqueDaBusca(passo) {
+        var total = itensDaBusca().length;
+        if (total === 0) return;
+        var proximo = indiceAtivo + passo;
+        if (proximo < 0) proximo = total - 1;
+        if (proximo >= total) proximo = 0;
+        destacarItemDaBusca(proximo, true);
+    }
+
+    /**
+     * Cancela a consulta em curso e queima o número da sequência, para que a
+     * resposta dela — se ainda chegar — caia no descarte em vez de reabrir uma
+     * lista que o usuário já fechou.
+     */
+    function cancelarBuscaEmVoo() {
+        if (buscaEmVoo) buscaEmVoo.abort();
+        buscaEmVoo = null;
+        buscaSequencia++;
+        $('buscaAluno').removeAttribute('aria-busy');
+    }
+
+    /** Fecha a lista, esquece o que foi buscado e limpa os avisos. */
+    function encerrarBusca() {
+        cancelarBuscaEmVoo();
+        limpar($('listaBusca'));
+        fecharListaDeBusca();
+        avisarBusca('');
+    }
+
+    /**
+     * Consulta o servidor.
+     *
+     * Duas defesas contra resposta atrasada, porque o plano free do Render tem
+     * cold start de segundos: a consulta anterior é abortada, e a resposta cujo
+     * número de sequência não é mais o atual é jogada fora. Sem isso, o
+     * resultado de "ana" chega depois do de "ana c" e sobrescreve a lista certa.
+     */
+    async function buscarAlunos(termo) {
+        if (buscaEmVoo) buscaEmVoo.abort();
+
+        var controlador = new AbortController();
+        var sequencia = ++buscaSequencia;
+        buscaEmVoo = controlador;
+
+        $('buscaAluno').setAttribute('aria-busy', 'true');
+        avisarBusca('Buscando…');
+
+        try {
+            var dados = await chamarApi(
+                '/secretaria/alunos/buscar?q=' + encodeURIComponent(termo),
+                { signal: controlador.signal }
+            );
+            if (sequencia !== buscaSequencia) return;
+            desenharResultadosBusca(dados.alunos || []);
+        } catch (erro) {
+            // Aborto é o caminho feliz: quem abortou já pediu outra consulta.
+            if (erro && erro.name === 'AbortError') return;
+            if (sequencia !== buscaSequencia) return;
+            // Descarta o resultado anterior junto: guardá-lo faria a seta para
+            // baixo reabrir, depois do erro, uma lista que já não vale.
+            limpar($('listaBusca'));
+            fecharListaDeBusca();
+            avisarBusca('Não foi possível buscar agora. Tente de novo.');
+        } finally {
+            // Só quem ainda é a consulta atual desliga o "ocupado" — senão a
+            // consulta abortada apagaria o estado da que a substituiu.
+            if (sequencia === buscaSequencia) {
+                buscaEmVoo = null;
+                $('buscaAluno').removeAttribute('aria-busy');
+            }
+        }
+    }
+
+    /**
+     * Seta para baixo com a lista fechada: se o resultado da última consulta
+     * ainda está montado, reabre; senão dispara a consulta na hora, sem esperar
+     * o debounce — quem apertou a seta já decidiu que quer ver a lista.
+     */
+    function reabrirBusca(paraBaixo) {
+        var itens = itensDaBusca();
+        if (itens.length) {
+            abrirListaDeBusca();
+            destacarItemDaBusca(paraBaixo ? 0 : itens.length - 1, true);
+            return;
+        }
+        var termo = $('buscaAluno').value.trim();
+        if (termo.length >= MINIMO_BUSCA) buscarAlunos(termo);
     }
 
     function instalarAutocomplete() {
@@ -460,31 +631,69 @@
             var termo = campo.value.trim();
 
             if (termo.length < MINIMO_BUSCA) {
-                lista.hidden = true;
-                campo.setAttribute('aria-expanded', 'false');
+                encerrarBusca();
                 return;
             }
 
             // Debounce de 300 ms: sem ele cada tecla vira uma consulta ao banco.
-            temporizador = window.setTimeout(async function () {
-                try {
-                    var dados = await chamarApi(
-                        '/secretaria/alunos/buscar?q=' + encodeURIComponent(termo)
-                    );
-                    desenharResultadosBusca(dados.alunos);
-                } catch {
-                    lista.hidden = true;
-                    campo.setAttribute('aria-expanded', 'false');
-                }
+            temporizador = window.setTimeout(function () {
+                buscarAlunos(termo);
             }, DEBOUNCE_BUSCA_MS);
         });
 
-        // Fecha a lista ao sair do campo, mas depois do clique no item.
+        campo.addEventListener('keydown', function (evento) {
+            if (evento.key === 'ArrowDown' || evento.key === 'ArrowUp') {
+                // Sem isto a seta move o cursor dentro do texto digitado.
+                evento.preventDefault();
+                if (!buscaAberta()) return reabrirBusca(evento.key === 'ArrowDown');
+                return moverDestaqueDaBusca(evento.key === 'ArrowDown' ? 1 : -1);
+            }
+
+            if (evento.key === 'Enter') {
+                if (!buscaAberta() || indiceAtivo < 0) return;
+                // Sem isto o Enter submeteria o formulário com o aluno ainda não
+                // escolhido — e o cadastro sairia duplicado.
+                evento.preventDefault();
+                selecionarAlunoExistente(
+                    JSON.parse(itensDaBusca()[indiceAtivo].getAttribute('data-aluno'))
+                );
+                return;
+            }
+
+            if (evento.key === 'Escape') {
+                // Com a lista fechada o Esc é do modal: deixa subir.
+                if (!buscaAberta()) return;
+                evento.preventDefault();
+                // Com a lista aberta o Esc é dela. `instalarAcessibilidadeDeModal`
+                // escuta no `document`; parar a propagação aqui evita que quem
+                // só queria fechar a lista perca o formulário inteiro.
+                evento.stopPropagation();
+                fecharListaDeBusca();
+            }
+        });
+
+        // `mousedown` no item tiraria o foco do campo e dispararia o `blur`
+        // antes do `click`. Segurando o foco aqui, o clique acontece com o campo
+        // ainda focado — e a lista não precisa da espera artificial que havia.
+        lista.addEventListener('mousedown', function (evento) {
+            evento.preventDefault();
+        });
+
+        // Sair do campo também cancela a consulta em curso: sem isso a resposta
+        // chegaria depois e reabriria a lista sobre um campo que já perdeu o
+        // foco. O clique num item não passa por aqui — o `mousedown` acima
+        // segura o foco no campo.
         campo.addEventListener('blur', function () {
-            window.setTimeout(function () {
-                lista.hidden = true;
-                campo.setAttribute('aria-expanded', 'false');
-            }, 150);
+            cancelarBuscaEmVoo();
+            fecharListaDeBusca();
+        });
+
+        // Mouse e teclado apontam para o mesmo item: sem isto, o Enter depois de
+        // passar o mouse escolheria uma linha diferente da que está sob o cursor.
+        lista.addEventListener('mouseover', function (evento) {
+            var item = evento.target.closest('[data-aluno]');
+            if (!item) return;
+            destacarItemDaBusca(itensDaBusca().indexOf(item), false);
         });
 
         lista.addEventListener('click', function (evento) {
@@ -497,36 +706,39 @@
     function desenharResultadosBusca(alunos) {
         var lista = $('listaBusca');
         limpar(lista);
+        destacarItemDaBusca(-1, false);
 
         if (!alunos.length) {
-            lista.appendChild(
-                elemento(
-                    'p',
-                    'autocomplete-vazio',
-                    'Nenhum aluno encontrado. Preencha os campos abaixo para cadastrar.'
-                )
-            );
-        } else {
-            alunos.forEach(function (aluno) {
-                var item = elemento('button', 'autocomplete-item');
-                item.type = 'button';
-                item.setAttribute('role', 'option');
-                item.setAttribute('data-aluno', JSON.stringify(aluno));
-                item.appendChild(document.createTextNode(aluno.nomeExibicao || aluno.nome));
-                var detalhe = elemento(
-                    'small',
-                    null,
-                    'RA ' +
-                        (aluno.ra || '—') +
-                        (aluno.turmaAtual ? ' · turma ' + aluno.turmaAtual : '')
-                );
-                item.appendChild(detalhe);
-                lista.appendChild(item);
-            });
+            // A mensagem fica FORA do listbox: `role="listbox"` só admite
+            // `role="option"` como filho, e um parágrafo ali quebra a leitura.
+            fecharListaDeBusca();
+            avisarBusca('Nenhum aluno encontrado. Preencha os campos abaixo para cadastrar.');
+            return;
         }
 
-        lista.hidden = false;
-        $('buscaAluno').setAttribute('aria-expanded', 'true');
+        alunos.forEach(function (aluno, posicao) {
+            var item = elemento('div', 'autocomplete-item');
+            item.id = PREFIXO_OPCAO + posicao;
+            item.setAttribute('role', 'option');
+            item.setAttribute('aria-selected', 'false');
+            item.setAttribute('data-aluno', JSON.stringify(aluno));
+            item.appendChild(document.createTextNode(aluno.nomeExibicao || aluno.nome));
+            var detalhe = elemento(
+                'small',
+                null,
+                'RA ' + (aluno.ra || '—') + (aluno.turmaAtual ? ' · turma ' + aluno.turmaAtual : '')
+            );
+            item.appendChild(detalhe);
+            lista.appendChild(item);
+        });
+
+        abrirListaDeBusca();
+        // Nada visível a acrescentar — a lista já está na tela. O anúncio existe
+        // para quem não a enxerga.
+        avisarBusca(
+            '',
+            alunos.length === 1 ? '1 aluno encontrado.' : alunos.length + ' alunos encontrados.'
+        );
     }
 
     /** Validação de espelho do servidor — o servidor revalida tudo de qualquer forma. */

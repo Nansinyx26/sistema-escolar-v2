@@ -86,14 +86,19 @@
 
         /* ── Autocomplete ───────────────────────────────────────────────────
            A lista NÃO anima: o usuário digita e ela se refaz a cada tecla —
-           é interação de alta frequência (Emil, regra da frequência). */
+           é interação de alta frequência (Emil, regra da frequência). Pela
+           mesma razão o aviso de "buscando" é texto parado: nada pulsa ou
+           desliza sob quem está no meio de uma palavra.
+           O destaque do item vem de `aria-selected`, escrito pelo teclado, e
+           casa com o `:hover` — mouse e setas apontam sempre a mesma linha. */
         .autocomplete { position: relative; }
         .autocomplete-lista { position: absolute; inset-inline: 0; top: calc(100% + 4px); background: #111c33; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; max-height: 230px; overflow-y: auto; z-index: 20; padding: 0.25rem; }
         .autocomplete-lista[hidden] { display: none; }
         .autocomplete-item { width: 100%; text-align: left; background: transparent; border: none; color: #e2e8f0; padding: 0.5rem 0.6rem; border-radius: 7px; cursor: pointer; font-size: 0.82rem; font-family: inherit; display: block; }
         .autocomplete-item:hover, .autocomplete-item[aria-selected="true"] { background: rgba(16,185,129,0.16); }
         .autocomplete-item small { display: block; color: #94a3b8; font-size: 0.72rem; margin-top: 0.1rem; }
-        .autocomplete-vazio { color: #94a3b8; font-size: 0.78rem; padding: 0.55rem 0.6rem; }
+        .autocomplete-aviso { color: #94a3b8; font-size: 0.78rem; margin: 0.4rem 0 0; }
+        .autocomplete-aviso[hidden] { display: none; }
 
         /* ── Dropzone ───────────────────────────────────────────────────────
            Só a borda/fundo muda no drag: é feedback de estado, não decoração. */
@@ -249,6 +254,8 @@
                        placeholder="Digite ao menos 3 letras do nome ou do RA"
                        role="combobox" aria-expanded="false" aria-controls="listaBusca" aria-autocomplete="list">
                 <div class="autocomplete-lista" id="listaBusca" role="listbox" aria-label="Alunos encontrados" hidden></div>
+                <p class="autocomplete-aviso" id="avisoBusca" hidden></p>
+                <span class="sr-only" id="statusBusca" role="status" aria-live="polite"></span>
                 <div id="alunoSelecionado"></div>
             </div>
 
