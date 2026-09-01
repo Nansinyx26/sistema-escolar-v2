@@ -14,10 +14,12 @@ const RAIZ = path.resolve(__dirname, '../../..');
 const PAGINA = path.join(RAIZ, 'html/direcao/moderacao.html');
 const PAINEL = path.join(RAIZ, 'js/moderacao/painel.js');
 const TERMO = path.join(RAIZ, 'js/termo-audio-imagem.js');
+const CHAT = path.join(RAIZ, 'js/chat-direto-manager.js');
 
 const html = fs.readFileSync(PAGINA, 'utf8');
 const painel = fs.readFileSync(PAINEL, 'utf8');
 const termo = fs.readFileSync(TERMO, 'utf8');
+const chat = fs.readFileSync(CHAT, 'utf8');
 
 describe('html/direcao/moderacao.html', () => {
     it('todo href/src local aponta para um arquivo que existe', () => {
@@ -126,6 +128,53 @@ describe('js/termo-audio-imagem.js — cláusula 2', () => {
             const pagina = fs.readFileSync(path.join(RAIZ, rel), 'utf8');
             expect(pagina).toContain('termo-audio-imagem.js');
             expect(pagina).toContain('termo-audio-imagem.css');
+        }
+    });
+});
+
+describe('caminho até o aceite do Termo (Issue #189)', () => {
+    /**
+     * A regressão que motivou a Issue: os quatro seletores originais do
+     * `termo-audio-imagem.js` não existiam em lugar nenhum do compositor do
+     * chat. A cortesia de interface nunca ligava, o modal nunca abria, e a
+     * única notícia do Termo que a pessoa recebia era o 403 do servidor —
+     * depois de já ter gravado o áudio. Estes testes amarram os dois arquivos:
+     * mexer no nome dos botões do chat sem mexer aqui volta a quebrar o
+     * caminho, e agora falha no CI em vez de falhar na escola.
+     */
+    it('bloqueia seletores que existem de verdade no compositor do chat', () => {
+        for (const seletor of ['.chat-btn-mic', '[id^="btnMic_"]', '[id^="btnAttach_"]']) {
+            expect(termo).toContain(seletor);
+        }
+
+        expect(chat).toContain('chat-btn-mic');
+        expect(chat).toContain('btnMic_');
+        expect(chat).toContain('btnAttach_');
+    });
+
+    it('reaplica o estado nas janelas de conversa montadas depois do load', () => {
+        // O chat monta a janela quando alguém abre um contato, muito depois do
+        // DOMContentLoaded: sem observador, o indicador de bloqueio não
+        // apareceria em janela nenhuma.
+        expect(termo).toContain('MutationObserver');
+    });
+
+    it('oferece a página completa do Termo dentro do modal', () => {
+        expect(termo).toContain('/html/termo-audio-imagem.html');
+    });
+
+    it('tem entrada para a página do Termo em toda tela com sidebar', () => {
+        const telas = [
+            'html/dashboard.html',
+            'html/direcao/index.html',
+            'html/direcao/gerenciar-secretaria.html',
+            'html/conversas.html',
+            'html/direcao/conversas.html',
+        ];
+
+        for (const rel of telas) {
+            const pagina = fs.readFileSync(path.join(RAIZ, rel), 'utf8');
+            expect(pagina).toContain('termo-audio-imagem.html');
         }
     });
 });
