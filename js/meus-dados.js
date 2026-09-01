@@ -73,6 +73,13 @@ async function loadStatus() {
                     ${c.aceiteEm ? 'Aceito em ' + fmtDate(c.aceiteEm) : 'Não registrado'}
                 </span>
             </div>
+            <div class="status-row">
+                <span class="status-label"><i class="bi bi-mic"></i> Áudio e Imagem (Chat)</span>
+                <span class="badge ${c.termoAudioImagem?.aceito ? 'badge-green' : 'badge-yellow'}">
+                    <i class="bi bi-${c.termoAudioImagem?.aceito ? 'check-circle' : 'clock-history'}"></i>
+                    ${c.termoAudioImagem?.aceito ? 'Autorizado (' + fmtDate(c.termoAudioImagem.aceitoEm) + ')' : 'Pendente de aceite'}
+                </span>
+            </div>
         `;
     } catch {
         document.getElementById('statusBody').innerHTML = '<p style="color:var(--text-secondary)">Erro ao carregar status.</p>';

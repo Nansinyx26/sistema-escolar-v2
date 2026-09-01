@@ -25,7 +25,7 @@
  * entrada. O número de termos e o tamanho de cada um também têm teto.
  */
 const escapeRegex = require('./escapeRegex');
-const { colapsarEspacos, removerAcentos } = require('./nomeAluno');
+const { colapsarEspacos, normalizarNome, removerAcentos } = require('./nomeAluno');
 
 /** Termos além disto são ignorados: ninguém digita 7 palavras para achar um aluno. */
 const MAX_TERMOS = 6;
@@ -217,6 +217,144 @@ function filtroDeBusca(texto, opcoes = {}) {
     return porTermo.length === 1 ? porTermo[0] : { $and: porTermo };
 }
 
+// ─── Autocomplete: prefixo, relevância e ordenação ───────────────────────────
+//
+// A busca livre acima ("cada termo casa em algum campo, em qualquer ordem")
+// serve para ACHAR um aluno que se sabe existir. O autocomplete tem outra
+// exigência: enquanto a pessoa digita, o que aparece precisa PARECER derivado
+// do que ela digitou. Um `$regex` sem âncora faz "as" trazer "Cássia" e "de"
+// trazer "Anderson" — nomes corretos do banco, mas sem relação visível com a
+// digitação. É o que fazia a lista parecer aleatória.
+//
+// A regra aqui é a do autocomplete de buscador: primeiro quem COMEÇA com o
+// texto, depois quem começa uma PALAVRA com o texto, e só então quem apenas
+// contém o texto no meio de uma palavra.
+
+/** Separadores internos de nome próprio: espaço, hífen e apóstrofo. */
+const SEPARADOR_DE_PALAVRA = /[\s'-]/;
+
+/** Graus de relevância — menor é melhor; a ORDEM é a da ordenação final. */
+const RELEVANCIA = {
+    /** O nome inteiro começa com o texto: "Joã" → "João Pedro". */
+    INICIO: 0,
+    /** Alguma palavra do nome começa com o texto: "Ped" → "João Pedro". */
+    PALAVRA: 1,
+    /** O texto aparece no meio de uma palavra: "edr" → "João Pedro". */
+    CONTEM: 2,
+    /** Não casa. */
+    NENHUMA: -1,
+};
+
+/**
+ * Fonte de regex ancorada no início do nome, sem acento.
+ * É a forma que o índice `{escolaId, nomeNormalizado}` consegue usar — um
+ * regex ancorado em `^` vira varredura de um intervalo do índice, e não da
+ * coleção inteira. É o que mantém o autocomplete barato com milhares de alunos.
+ *
+ * @param {string} texto
+ * @returns {string|null}
+ */
+function fontePrefixo(texto) {
+    const fonte = fonteSemAcento(texto);
+    return fonte ? `^${fonte}` : null;
+}
+
+/**
+ * Filtro Mongo "o nome COMEÇA com o texto".
+ * Cobre `nome` além de `nomeNormalizado` porque cadastro legado (e escrita por
+ * bulkWrite) não passa pelo pre-save que deriva a chave normalizada.
+ *
+ * @param {string} texto
+ * @returns {object|null}
+ */
+function filtroDePrefixo(texto) {
+    const fonte = fontePrefixo(texto);
+    if (!fonte) return null;
+    return {
+        $or: [{ nomeNormalizado: { $regex: fonte } }, { nome: { $regex: fonte, $options: 'i' } }],
+    };
+}
+
+/** Relevância de UM termo contra um nome já normalizado. */
+function relevanciaDeTermo(nomeNormalizado, termoNormalizado) {
+    if (!termoNormalizado) return RELEVANCIA.INICIO;
+    if (nomeNormalizado.startsWith(termoNormalizado)) return RELEVANCIA.INICIO;
+    const posicao = nomeNormalizado.indexOf(termoNormalizado);
+    if (posicao < 0) return RELEVANCIA.NENHUMA;
+    return SEPARADOR_DE_PALAVRA.test(nomeNormalizado[posicao - 1])
+        ? RELEVANCIA.PALAVRA
+        : RELEVANCIA.CONTEM;
+}
+
+/**
+ * Relevância de um nome contra o texto digitado.
+ *
+ * Com mais de um termo ("silva joao"), vale o PIOR casamento: todos os termos
+ * precisam aparecer, e a posição mais fraca define o grupo em que o nome cai.
+ * O texto inteiro como prefixo ("joao pe" → "João Pedro") é verificado antes,
+ * senão o segundo termo rebaixaria um casamento que é, visivelmente, o começo
+ * do nome.
+ *
+ * @param {string} nome   nome exibido (com acento e caixa)
+ * @param {string} texto  texto digitado
+ * @returns {number} um valor de RELEVANCIA (NENHUMA quando não casa)
+ */
+function relevanciaDeNome(nome, texto) {
+    const alvo = normalizarNome(nome);
+    if (!alvo) return RELEVANCIA.NENHUMA;
+
+    const inteiro = normalizarNome(texto);
+    if (!inteiro) return RELEVANCIA.INICIO;
+    if (alvo.startsWith(inteiro)) return RELEVANCIA.INICIO;
+
+    let pior = RELEVANCIA.INICIO;
+    for (const termo of termosDe(inteiro)) {
+        const grau = relevanciaDeTermo(alvo, termo);
+        if (grau === RELEVANCIA.NENHUMA) return RELEVANCIA.NENHUMA;
+        if (grau > pior) pior = grau;
+    }
+    return pior;
+}
+
+/**
+ * Ordena e corta sugestões: relevância primeiro, alfabética (pt-BR) depois.
+ *
+ * Recebe e devolve `{ id, nome, ... }` — a deduplicação é por `id`, então o
+ * mesmo aluno vindo das duas etapas de consulta aparece uma vez só.
+ *
+ * @param {Array<{id: string, nome: string}>} alunos
+ * @param {string} texto  texto digitado
+ * @param {{limite?: number, relevanciaMaxima?: number}} [opcoes]
+ * @returns {Array} sugestões ordenadas, com `relevancia` anexada
+ */
+function ordenarSugestoes(alunos, texto, opcoes = {}) {
+    const { limite = 10, relevanciaMaxima = RELEVANCIA.CONTEM } = opcoes;
+
+    const vistos = new Set();
+    const pontuados = [];
+    for (const aluno of alunos || []) {
+        const id = aluno?.id ? String(aluno.id) : '';
+        if (!id || vistos.has(id)) continue;
+        const relevancia = relevanciaDeNome(aluno.nome, texto);
+        if (relevancia === RELEVANCIA.NENHUMA || relevancia > relevanciaMaxima) continue;
+        vistos.add(id);
+        pontuados.push({ ...aluno, relevancia });
+    }
+
+    pontuados.sort((a, b) => {
+        if (a.relevancia !== b.relevancia) return a.relevancia - b.relevancia;
+        const porNome = String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR', {
+            sensitivity: 'base',
+        });
+        if (porNome !== 0) return porNome;
+        // Desempate estável: dois homônimos não podem trocar de posição entre
+        // duas digitações iguais.
+        return a.id < b.id ? -1 : 1;
+    });
+
+    return limite > 0 ? pontuados.slice(0, limite) : pontuados;
+}
+
 // ─── Composição ──────────────────────────────────────────────────────────────
 
 /**
@@ -248,13 +386,17 @@ function combinar(base, ...condicoes) {
 }
 
 module.exports = {
+    RELEVANCIA,
     combinar,
     filtroDeBusca,
+    filtroDePrefixo,
     filtroDeSala,
     fonteDeSala,
     fonteSemAcento,
     normalizarSala,
+    ordenarSugestoes,
     pareceSala,
+    relevanciaDeNome,
     salaCasa,
     termosDe,
 };

@@ -16,6 +16,8 @@
  */
 
 import { ActionConfirm } from './ActionConfirm.js';
+import { NarradorStream } from './NarradorStream.js';
+import { SegmentadorFala } from './SegmentadorFala.js';
 import { StreamRenderer } from './StreamRenderer.js';
 
 /** Teto por mensagem. Espelha MAX_CHARS_MENSAGEM do IaCopilotoController. */
@@ -83,8 +85,13 @@ export class ChatController {
         this.ultimaPergunta = null;
         this.controlador = null; // AbortController do envio em curso
         this.gerando = false;
-        this.narrando = false; // áudio em reprodução — ver _definirGerando
+        this.narrando = false; // narração em curso — ver _definirGerando
         this.paleta = null; // definida por conectarPaleta()
+
+        /** @type {NarradorStream|null} fila de áudio da narração em curso */
+        this.narrador = null;
+        /** @type {SegmentadorFala|null} corta a resposta em trechos falados */
+        this.segmentador = null;
 
         this._ligarEventos();
     }
@@ -249,7 +256,7 @@ export class ChatController {
                     ferramentas: m.ferramentas,
                     aoCopiar: (t, b) => this._copiar(t, b),
                     aoRegenerar: () => this.regenerar(),
-                    aoOuvir: typeof window.speak === 'function' ? (t) => this._falar(t) : null,
+                    aoOuvir: (t, b) => this._falar(t, b),
                 });
             }
         }
@@ -272,6 +279,11 @@ export class ChatController {
         this.renderer.adicionarMensagemUsuario(texto);
         this.renderer.iniciarResposta();
         this._definirGerando(true);
+
+        // A narração é aberta AQUI, antes do primeiro token, e não no fim da
+        // resposta: é o que permite ao primeiro trecho ir para a síntese assim
+        // que a primeira frase fechar, com o resto do texto ainda chegando.
+        if (this.narrarAuto) this._abrirNarracao(this.renderer.corpoAtual);
 
         this.controlador = new AbortController();
         let cancelado = false;
@@ -301,6 +313,7 @@ export class ChatController {
             // Erro tratado (rate limit, sem configuração, sem permissão) volta
             // como JSON comum, não como stream.
             if (!resposta.ok || !resposta.body) {
+                this.pararNarracao();
                 const erro = await resposta.json().catch(() => ({}));
                 this.renderer.mostrarAviso(
                     erro.error || 'Não foi possível falar com o assistente agora.'
@@ -312,9 +325,11 @@ export class ChatController {
             await this._consumirStream(resposta.body);
 
             if (cancelado) {
+                this.pararNarracao();
                 this.renderer.mostrarAviso('Geração interrompida.', { tipo: 'info' });
             }
         } catch (e) {
+            this.pararNarracao();
             if (cancelado || e.name === 'AbortError') {
                 this.renderer.mostrarAviso('Geração interrompida.', { tipo: 'info' });
             } else {
@@ -364,6 +379,9 @@ export class ChatController {
 
                     if (evento.tipo === 'delta') {
                         this.renderer.adicionarDelta(evento.texto || '');
+                        // Fora do renderer de propósito: o que vai para a voz
+                        // é o texto-fonte, não o HTML que acabou de ser pintado.
+                        this._alimentarNarracao();
                     } else if (evento.tipo === 'ferramenta') {
                         this.renderer.mostrarFerramenta(evento.nome);
                     } else if (evento.tipo === 'inicio') {
@@ -390,6 +408,9 @@ export class ChatController {
         }
 
         if (houveErro) {
+            // A resposta não vai ficar de pé; seguir narrando o pedaço que
+            // chegou deixaria a voz contando uma história que a tela desmentiu.
+            this.pararNarracao();
             // Houve erro, mas pode ter ficado uma ação pendente no servidor.
             // Descartar evita um token vivo sem card correspondente na tela.
             for (const c of confirmacoes) this.confirmacao._descartar(c.confirmToken);
@@ -399,8 +420,12 @@ export class ChatController {
         const texto = this.renderer.finalizarResposta({
             aoCopiar: (t, botao) => this._copiar(t, botao),
             aoRegenerar: () => this.regenerar(),
-            aoOuvir: typeof window.speak === 'function' ? (t) => this._falar(t) : null,
+            aoOuvir: (t, botao) => this._falar(t, botao),
         });
+
+        // O resto do texto que não fechou frase entra como último trecho, e a
+        // fila é fechada: o áudio que ainda está tocando termina em paz.
+        this._concluirNarracao();
 
         // Os cards vêm DEPOIS do texto: o assistente primeiro explica o que
         // entendeu, e só então a pessoa decide.
@@ -408,14 +433,6 @@ export class ChatController {
             this.confirmacao.renderizar(this.el.mensagens, acao);
         }
         if (confirmacoes.length > 0) this.renderer.rolarParaFim();
-
-        // Narração automática. Fica aqui, e não em `finalizarResposta`, para NÃO
-        // disparar em `retomar()`: reabrir uma conversa antiga não deve começar
-        // a ler respostas que a pessoa já leu. O `aborted` cobre o caso de ter
-        // clicado em "parar" — narrar meia resposta seria pior que silêncio.
-        if (this.narrarAuto && texto && !this.controlador?.signal.aborted) {
-            this._falar(texto);
-        }
 
         return texto;
     }
@@ -456,73 +473,124 @@ export class ChatController {
      * Interrompe a narração em curso.
      *
      * Existe para quem está FORA do controller (o microfone da página) poder
-     * calar o áudio sem chamar `window.stopTtsAudio` direto: aquela chamada
-     * pararia o som mas deixaria `narrando` ligado, e o controller pararia de
-     * devolver o orb ao repouso a partir dali.
+     * calar o áudio sem mexer na fila direto: parar só o som deixaria
+     * `narrando` ligado e os trechos seguintes continuariam sendo sintetizados
+     * — gastando cota para produzir áudio que ninguém vai ouvir.
+     *
+     * NÃO mexe no estado visual: quem cala a narração costuma estar indo para
+     * outro estado (o microfone vai para "ouvindo", uma conversa nova vai para
+     * o repouso), e um "ocioso" aqui piscaria no meio do caminho.
      */
     pararNarracao() {
+        // Continua chamando o `stopTtsAudio` global: fora desta fila ainda há
+        // áudio que pode estar tocando (a prévia de voz do painel, por exemplo).
         if (window.stopTtsAudio) window.stopTtsAudio();
-        this.narrando = false;
+        this._encerrarNarracao();
     }
 
     /**
-     * Narra a resposta usando o serviço de voz já existente na página
-     * (`window.speak`, definido em sidebar-voice.js). Voz é opcional: uma falha
-     * aqui nunca invalida a resposta de texto.
+     * Abre uma narração nova, cancelando a que estiver em curso.
+     *
+     * @param {HTMLElement|null} corpo bolha onde marcar o trecho falado
+     * @param {object} [opcoes]
+     * @param {boolean} [opcoes.anunciar=false] põe a esfera em "falando" já na
+     *   abertura. É o que o botão "Ouvir" precisa: ali o gesto foi explícito e
+     *   ficar sem resposta durante a síntese parece botão quebrado. No fluxo
+     *   automático fica false — a esfera continua "pensando" enquanto o texto
+     *   chega, e só vira "falando" quando sai a primeira nota de áudio.
+     * @returns {NarradorStream}
      */
-    async _falar(texto) {
-        // Falha de voz vira estado `erro` (esfera âmbar + rótulo com a causa),
-        // e não `ocioso`: cair direto no repouso fazia a narração sumir sem
-        // que a tela registrasse nada — só o toast, que passa em 3,5s.
-        const falhar = (mensagem) => {
-            this.narrando = false;
-            this.aoMudarEstado('erro', mensagem);
-            this.aoAvisar(mensagem);
-        };
+    _abrirNarracao(corpo, { anunciar = false } = {}) {
+        this.pararNarracao();
+        this.renderer.definirAlvoNarracao(corpo);
 
-        if (typeof window.speak !== 'function') {
-            falhar('A narração não está disponível nesta página.');
-            return;
+        this.segmentador = new SegmentadorFala();
+        this.narrador = new NarradorStream({
+            aoTocarTrecho: (trecho) => this.renderer.marcarNarracao(trecho.fala),
+            aoComecar: () => this.aoMudarEstado('falando'),
+            aoTerminar: () => {
+                this._encerrarNarracao();
+                // Se a resposta ainda está sendo gerada, o estado é da geração:
+                // devolver ao repouso aqui apagaria o "pensando" com o texto
+                // ainda chegando na tela.
+                if (!this.gerando) this.aoMudarEstado('ocioso');
+            },
+            aoFalhar: (mensagem) => {
+                this._encerrarNarracao();
+                // Falha de voz vira estado `erro` (esfera âmbar + rótulo com a
+                // causa), e não `ocioso`: cair direto no repouso fazia a
+                // narração sumir sem que a tela registrasse nada — só o toast,
+                // que passa em 3,5s.
+                this.aoMudarEstado('erro', mensagem);
+                this.aoAvisar(mensagem);
+            },
+        });
+
+        // Ligado desde a ABERTURA, e não a partir da primeira nota: entre o fim
+        // da geração e o início do áudio existe a janela da síntese, e sem esta
+        // marca o `_definirGerando(false)` devolveria a esfera ao repouso no
+        // meio dela — um "Pronto para ajudar" piscando logo antes da voz sair.
+        this.narrando = true;
+        if (anunciar) this.aoMudarEstado('falando');
+
+        return this.narrador;
+    }
+
+    /** Larga a fila e a marca de trecho, sem tocar no estado visual. */
+    _encerrarNarracao() {
+        this.narrador?.parar();
+        this.narrador = null;
+        this.segmentador = null;
+        this.narrando = false;
+        this.renderer.encerrarNarracao();
+    }
+
+    /** Manda para a fila os trechos que fecharam frase até agora. */
+    _alimentarNarracao() {
+        if (!this.narrador || !this.segmentador) return;
+        for (const trecho of this.segmentador.alimentar(this.renderer.textoAcumulado)) {
+            this.narrador.enfileirar(trecho);
         }
-        const encerrar = () => {
-            this.narrando = false;
-            this.aoMudarEstado('ocioso');
-        };
+    }
 
-        try {
-            if (window.stopTtsAudio) window.stopTtsAudio();
-            this.narrando = true;
-            this.aoMudarEstado('falando');
-            // Marcação de Markdown não deve ser lida em voz alta.
-            const limpo = texto
-                .replace(/[*_~`#|>]/g, ' ')
-                .replace(/\s+/g, ' ')
-                .trim();
-            const audio = await window.speak(limpo);
+    /** Entrega o resto do texto e fecha a fila. O áudio pendente ainda toca. */
+    _concluirNarracao() {
+        if (!this.narrador || !this.segmentador) return;
+        for (const trecho of this.segmentador.finalizar()) this.narrador.enfileirar(trecho);
+        this.narrador.fechar();
+    }
 
-            if (audio && typeof audio.addEventListener === 'function') {
-                // `addEventListener` e NÃO `audio.onended = ...`: a atribuição
-                // apagava o handler que o sidebar-voice.js já tinha posto no
-                // mesmo elemento — o que revoga o Blob URL e dispara
-                // `tts:ended`. Cada resposta narrada vazava um Blob por causa
-                // disso. Ver Issue #175.
-                //
-                // O 'error' continua necessário por conta própria: sem ele o
-                // orb ficava preso em "Narrando a resposta..." quando o áudio
-                // falhava no meio da reprodução.
-                audio.addEventListener('ended', encerrar, { once: true });
-                audio.addEventListener('error', encerrar, { once: true });
-                return;
-            }
+    /**
+     * Narra um texto completo — o botão "Ouvir" de uma resposta que já está
+     * inteira na tela, seja desta sessão ou vinda do histórico.
+     *
+     * Passa pela MESMA fila do fluxo automático, e não por uma chamada única de
+     * `window.speak`: assim a fala começa depois da primeira frase em vez de
+     * depois da síntese da resposta toda, e a frase corrente fica marcada na
+     * bolha igual ao caminho automático. Voz é opcional: uma falha aqui nunca
+     * invalida a resposta de texto.
+     *
+     * @param {string} texto
+     * @param {HTMLElement} [botao] botão clicado — serve para achar a bolha
+     *   desta mensagem, que é onde o trecho falado será marcado
+     */
+    _falar(texto, botao) {
+        if (!texto || !texto.trim()) return;
 
-            // `window.speak` devolve null quando o servidor de voz recusa. Sem
-            // aviso, a pessoa clica em "Ouvir" e não acontece absolutamente
-            // nada — parecia que o botão estava quebrado.
-            falhar('Não foi possível gerar o áudio agora. O texto da resposta continua acima.');
-        } catch (e) {
-            console.warn('[IA] Narração indisponível:', e?.message);
-            falhar('Não foi possível gerar o áudio agora.');
-        }
+        // A bolha desta mensagem — que pode ser uma bem acima da última, se a
+        // pessoa clicou em "Ouvir" numa resposta antiga. Sem ela, a marca do
+        // trecho narrado cairia na bolha errada.
+        const bolha = botao?.closest('.ia-msg')?.querySelector('.ia-bolha') || null;
+
+        const narrador = this._abrirNarracao(bolha, { anunciar: true });
+        const segmentador = this.segmentador;
+
+        // O texto já está inteiro: `alimentar` tira os trechos que fecham
+        // frase (o primeiro deles curto, que é o que começa a falar rápido) e
+        // `finalizar` leva o resto.
+        for (const trecho of segmentador.alimentar(texto)) narrador.enfileirar(trecho);
+        for (const trecho of segmentador.finalizar()) narrador.enfileirar(trecho);
+        narrador.fechar();
     }
 }
 

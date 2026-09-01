@@ -429,6 +429,115 @@
 }
 
 
+/* ─── Autocomplete de aluno ─────────────────────────────────────────────────
+   A lista sobe A PARTIR do campo (ancorada em `bottom`), e não desce sobre o
+   chat: o campo fica na base da janela, e uma lista para baixo sairia da tela
+   no celular. O contentor abaixo é o que dá o ponto de ancoragem. */
+
+.chatbot-input-field {
+    position: relative;
+    flex: 1;
+    display: flex;
+}
+
+.chatbot-sugestoes {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    z-index: 20;
+    max-height: 264px;
+    overflow-y: auto;
+    background: var(--chat-bg, #0f172a);
+    border: 1px solid var(--chat-border);
+    border-radius: 14px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    padding: 6px;
+    animation: chatbotSugestoesEntrada 0.14s var(--ease-out, ease-out);
+}
+
+@keyframes chatbotSugestoesEntrada {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.chatbot-sugestoes::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chatbot-sugestoes::-webkit-scrollbar-thumb {
+    background: rgba(var(--chat-accent-rgb), 0.3);
+    border-radius: 3px;
+}
+
+.chatbot-sugestao {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--chat-text-strong, #fff);
+    /* Só a cor faz a transição: mover o item sob o cursor atrapalha a mira
+       em uma lista que a pessoa percorre depressa. */
+    transition: background-color 0.12s ease-out;
+}
+
+.chatbot-sugestao:hover,
+.chatbot-sugestao.ativa {
+    background: rgba(var(--chat-accent-rgb), 0.16);
+}
+
+.chatbot-sugestao i {
+    color: var(--chat-accent);
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.chatbot-sugestao-nome {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* O trecho digitado. É o negrito que mostra POR QUE aquele nome está na lista. */
+.chatbot-sugestao-nome strong {
+    font-weight: 700;
+    color: var(--chat-accent-light);
+}
+
+.chatbot-sugestao-turma {
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    color: var(--chat-text-muted);
+}
+
+.chatbot-sugestao-vazia {
+    padding: 12px;
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--chat-text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .chatbot-sugestoes {
+        animation: none;
+    }
+    .chatbot-sugestao {
+        transition: none;
+    }
+}
+
+
 /* VoiceOrb Modo 1 (Chat) */
 
 #chatbot-voice-orb-container {

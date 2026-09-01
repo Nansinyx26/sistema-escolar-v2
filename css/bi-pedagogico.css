@@ -1101,11 +1101,17 @@ body::after {
 }
 
 
-/* Orb filho centralizado */
+/* Orb filho centralizado.
+ *
+ * A esfera em canvas (.voice-orb-canvas) ficou DE FORA: ela é posicionada em
+ * absoluto por css/voice-orb.css e, principalmente, nasce `display: none` até
+ * que o módulo suba e o container ganhe `.esfera-ativa`. Um seletor com id
+ * ganha da classe e a forçava a `display: block` desde o primeiro quadro —
+ * um canvas vazio por cima do orb em CSS enquanto o import não chegava, e
+ * para sempre nos navegadores em que ele não chega. */
 
-#bi-ai-orb-container .voice-orb-canvas,
-#bi-ai-orb-container canvas,
-#bi-ai-orb-container>* {
+#bi-ai-orb-container canvas:not(.voice-orb-canvas),
+#bi-ai-orb-container> :not(.voice-orb-canvas) {
     display: block;
     margin: 0 auto;
 }

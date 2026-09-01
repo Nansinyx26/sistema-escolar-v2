@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <!-- Trava de acesso por perfil. SEM defer e antes de tudo: a decisao
+         precisa acontecer antes do primeiro pixel. Ver js/guarda-acesso.js. -->
+    <script src="/js/guarda-acesso.js?v=1.0"></script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Termo de Uso e Consentimento para Áudio e Imagem no Chat Escolar">
+    <title>Termo de Uso — Áudio e Imagem no Chat | Sistema Escolar</title>
+
+    <!-- Google Fonts & Bootstrap Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="preload" href="../js/libs/fonts/bootstrap-icons.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="../js/libs/bootstrap-icons.min.css">
+
+    <!-- CSS Base & Sistema -->
+    <link rel="stylesheet" href="../css/variables.css?v=2.0">
+    <link rel="stylesheet" href="../css/base.css?v=2.0">
+    <link rel="stylesheet" href="../css/components-new.css?v=2.0">
+    <link rel="stylesheet" href="../css/responsive-global.css?v=1.2">
+    <link rel="stylesheet" href="../css/motion.css?v=1.0">
+
+    <style>
+        :root {
+            --bg: #0b0f19;
+            --surface: #131b2e;
+            --surface2: #1a243d;
+            --border: rgba(255, 255, 255, 0.08);
+            --primary: #3b82f6;
+            --primary-light: rgba(59, 130, 246, 0.15);
+            --accent-green: #10b981;
+            --accent-green-bg: rgba(16, 185, 129, 0.12);
+            --accent-yellow: #f59e0b;
+            --accent-yellow-bg: rgba(245, 158, 11, 0.12);
+            --danger: #ef4444;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+            padding-bottom: 4rem;
+        }
+
+        .header-termo {
+            background: rgba(19, 27, 46, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 1.5rem;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .btn-voltar {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            transition: all 0.2s ease;
+        }
+
+        .btn-voltar:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .badge-lgpd {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.3rem 0.75rem;
+            border-radius: 99px;
+            background: var(--primary-light);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .container-termo {
+            max-width: 860px;
+            margin: 2rem auto;
+            padding: 0 1.25rem;
+        }
+
+        /* Hero Banner */
+        .hero-banner {
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.2) 0%, rgba(16, 185, 129, 0.15) 100%);
+            border: 1px solid rgba(59, 130, 246, 0.25);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-banner h1 {
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .hero-banner p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            max-width: 650px;
+            margin-bottom: 1.25rem;
+        }
+
+        /* Card de Status */
+        .status-box {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 1rem 1.25rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .status-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .dot-green { background: var(--accent-green); box-shadow: 0 0 12px var(--accent-green); }
+        .dot-yellow { background: var(--accent-yellow); box-shadow: 0 0 12px var(--accent-yellow); }
+
+        .status-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .status-desc {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        /* Seções de Cláusulas */
+        .clausulas-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .clausula-item {
+            margin-bottom: 1.75rem;
+            padding-bottom: 1.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .clausula-item:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .clausula-item h2 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #60a5fa;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .clausula-item p {
+            font-size: 0.9rem;
+            color: #cbd5e1;
+            margin-bottom: 0.75rem;
+            line-height: 1.6;
+        }
+
+        .clausula-item ul {
+            padding-left: 1.25rem;
+            margin-bottom: 0.75rem;
+            font-size: 0.88rem;
+            color: #94a3b8;
+        }
+
+        .clausula-item li {
+            margin-bottom: 0.4rem;
+        }
+
+        .destaque-box {
+            background: rgba(59, 130, 246, 0.08);
+            border-left: 3px solid var(--primary);
+            padding: 0.75rem 1rem;
+            border-radius: 4px 8px 8px 4px;
+            font-size: 0.85rem;
+            color: #cbd5e1;
+            margin-top: 0.5rem;
+        }
+
+        .destaque-aviso {
+            background: rgba(245, 158, 11, 0.08);
+            border-left: 3px solid var(--accent-yellow);
+            padding: 0.75rem 1rem;
+            border-radius: 4px 8px 8px 4px;
+            font-size: 0.85rem;
+            color: #fde68a;
+            margin-top: 0.5rem;
+        }
+
+        /* Ação e Aceite */
+        .painel-aceite {
+            background: var(--surface2);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: var(--radius-lg);
+            padding: 1.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .checkbox-wrap {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .checkbox-wrap input {
+            width: 20px;
+            height: 20px;
+            margin-top: 2px;
+            cursor: pointer;
+            accent-color: var(--primary);
+        }
+
+        .checkbox-wrap span {
+            font-size: 0.92rem;
+            font-weight: 500;
+            color: #f1f5f9;
+        }
+
+        .btn-aceitar {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem;
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 700;
+            padding: 0.85rem 1.75rem;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        .btn-aceitar:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        }
+
+        .btn-aceitar:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-chat-direto {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--accent-green-bg);
+            color: var(--accent-green);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 0.6rem 1.25rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn-chat-direto:hover {
+            background: rgba(16, 185, 129, 0.2);
+            color: #fff;
+        }
+
+        /* Toast Container */
+        .toast-container {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .toast {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            padding: 0.85rem 1.25rem;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            animation: toastIn 0.25s ease;
+        }
+
+        .toast.success { border-color: var(--accent-green); color: #fff; }
+        .toast.error { border-color: var(--danger); color: #fff; }
+
+        @keyframes toastIn {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header com navegação e badge -->
+    <header class="header-termo">
+        <a href="perfil.html" class="btn-voltar" id="btnVoltarNav">
+            <i class="bi bi-arrow-left"></i>
+            <span>Voltar</span>
+        </a>
+        <div class="badge-lgpd">
+            <i class="bi bi-shield-check"></i>
+            <span>LGPD • Cláusula 2</span>
+        </div>
+    </header>
+
+    <main class="container-termo motion-stagger">
+
+        <!-- Hero Banner com Título e Resumo -->
+        <section class="hero-banner">
+            <h1><i class="bi bi-mic-fill" style="color: #60a5fa;"></i> Envio de Áudio e Imagem</h1>
+            <p>
+                Termo de Consentimento e Uso para gravação de mensagens de voz e envio de fotos/anexos no chat escolar, em conformidade com a Lei Geral de Proteção de Dados (LGPD).
+            </p>
+
+            <!-- Box de Status Dinâmico -->
+            <div class="status-box" id="boxStatusTermo">
+                <div class="status-info">
+                    <span class="status-dot dot-yellow" id="statusDot"></span>
+                    <div>
+                        <div class="status-title" id="statusTextoTitulo">Consultando autorização...</div>
+                        <div class="status-desc" id="statusTextoDesc">Verificando registro no sistema</div>
+                    </div>
+                </div>
+                <div id="statusAcoesTopo"></div>
+            </div>
+        </section>
+
+        <!-- Cláusulas do Termo -->
+        <section class="clausulas-card">
+            
+            <div class="clausula-item">
+                <h2><i class="bi bi-1-circle"></i> 1. Objetivo da Funcionalidade</h2>
+                <p>
+                    O chat do Sistema Escolar permite a comunicação direta entre a equipe escolar (direção, coordenação, secretaria e professores) e a comunidade escolar para acompanhamento pedagógico, avisos e rotinas administrativas.
+                </p>
+                <p>
+                    O envio de <strong>mensagens de voz gravadas</strong> e <strong>fotos/documentos digitalizados</strong> facilita o envio de atestados, justificativas e recados rápidos sem necessidade de digitação longa.
+                </p>
+                <div class="destaque-aviso">
+                    <i class="bi bi-info-circle-fill"></i> O chat não substitui os canais oficiais para situações de emergência ou denúncias formais que exijam registro em ata ou protocolo na secretaria.
+                </div>
+            </div>
+
+            <div class="clausula-item">
+                <h2><i class="bi bi-2-circle"></i> 2. Consentimento e Privacidade (LGPD)</h2>
+                <p>
+                    Ao autorizar este Termo, você consente que o sistema:
+                </p>
+                <ul>
+                    <li>Acesse o microfone e a câmera/galeria <strong>apenas e exclusivamente</strong> no momento em que você acionar os botões de gravação ou anexo.</li>
+                    <li>Armazene os arquivos em ambiente seguro da escola com controle estrito de acesso.</li>
+                    <li>Realize a <strong>transcrição automática do áudio</strong> e análise automatizada exclusivamente para fins de segurança e moderação de conteúdo impróprio.</li>
+                </ul>
+                <div class="destaque-box">
+                    <i class="bi bi-shield-lock-fill"></i> <strong>Garantia:</strong> O sistema <strong>não</strong> realiza reconhecimento facial, biometria vocal e <strong>não</strong> utiliza os dados para treinamento de modelos públicos de inteligência artificial.
+                </div>
+            </div>
+
+            <div class="clausula-item">
+                <h2><i class="bi bi-3-circle"></i> 3. Regras de Uso Aceitável</h2>
+                <p>É estritamente proibido o envio de qualquer conteúdo que:</p>
+                <ul>
+                    <li>Contenha ofensas pessoais, linguagem abusiva, ameaças ou discriminação;</li>
+                    <li>Exponha imagens de alunos ou terceiros sem autorização formal;</li>
+                    <li>Contenha nudez, insinuações impróprias ou violência;</li>
+                    <li>Viole a integridade do ambiente escolar ou constitua prática de cyberbullying.</li>
+                </ul>
+            </div>
+
+            <div class="clausula-item">
+                <h2><i class="bi bi-4-circle"></i> 4. Moderação e Segurança</h2>
+                <p>
+                    Mensagens com suspeita de conteúdo impróprio podem ser filtradas preventivamente ou encaminhadas para revisão humana pela equipe de coordenação/direção. É assegurado o direito a contestação de decisões de moderação.
+                </p>
+            </div>
+
+        </section>
+
+        <!-- Painel de Ação e Aceite -->
+        <section class="painel-aceite" id="painelAcaoAceite">
+            <label class="checkbox-wrap" id="labelCheckbox">
+                <input type="checkbox" id="checkAceito">
+                <span>
+                    Li e concordo com os termos de consentimento, regras de uso e moderação para envio de áudio e imagem no chat.
+                </span>
+            </label>
+
+            <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                <button class="btn-aceitar" id="btnConfirmarAceite" disabled>
+                    <i class="bi bi-check2-circle"></i>
+                    <span>Autorizar e Liberar Áudio/Imagem</span>
+                </button>
+                <a href="conversas.html" class="btn-chat-direto" id="btnIrChat" style="display: none;">
+                    <i class="bi bi-chat-dots-fill"></i>
+                    <span>Abrir Conversas</span>
+                </a>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="../js/api-config.js"></script>
+    <script src="../js/csrf-helper.js"></script>
+    <script src="../js/motion.js"></script>
+
+    <script>
+        const API_ACEITE = '/api/moderacao/aceite-termo';
+
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const el = document.createElement('div');
+            el.className = `toast ${type}`;
+            el.innerHTML = `<i class="bi bi-${type === 'success' ? 'check-circle-fill' : 'exclamation-circle-fill'}" style="color:${type === 'success' ? '#10b981' : '#ef4444'}"></i> <span>${msg}</span>`;
+            container.appendChild(el);
+            setTimeout(() => el.remove(), 4500);
+        }
+
+        function formatarData(dataIso) {
+            if (!dataIso) return '';
+            try {
+                return new Date(dataIso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+            } catch {
+                return dataIso;
+            }
+        }
+
+        async function consultarStatus() {
+            const dot = document.getElementById('statusDot');
+            const titulo = document.getElementById('statusTextoTitulo');
+            const desc = document.getElementById('statusTextoDesc');
+            const check = document.getElementById('checkAceito');
+            const btnAceitar = document.getElementById('btnConfirmarAceite');
+            const btnChat = document.getElementById('btnIrChat');
+            const labelCheck = document.getElementById('labelCheckbox');
+
+            try {
+                const res = await fetch(API_ACEITE, { credentials: 'include' });
+                if (!res.ok) throw new Error('Falha ao consultar aceite.');
+                const json = await res.json();
+                const aceito = Boolean(json?.data?.aceito);
+                const aceitoEm = json?.data?.aceitoEm;
+
+                if (aceito) {
+                    dot.className = 'status-dot dot-green';
+                    titulo.textContent = 'Envio de Áudio e Imagem Liberado';
+                    desc.textContent = `Autorização ativa (registrada em ${formatarData(aceitoEm)})`;
+                    
+                    check.checked = true;
+                    check.disabled = true;
+                    if (labelCheck) labelCheck.style.opacity = '0.7';
+
+                    btnAceitar.style.display = 'none';
+                    btnChat.style.display = 'inline-flex';
+                } else {
+                    dot.className = 'status-dot dot-yellow';
+                    titulo.textContent = 'Autorização Pendente';
+                    desc.textContent = 'Aceite os termos para habilitar o envio de mídias no chat';
+
+                    check.checked = false;
+                    check.disabled = false;
+                    btnAceitar.style.display = 'inline-flex';
+                    btnAceitar.disabled = true;
+                    btnChat.style.display = 'none';
+                }
+            } catch (err) {
+                dot.className = 'status-dot dot-yellow';
+                titulo.textContent = 'Não foi possível verificar status';
+                desc.textContent = 'Você pode tentar registrar o aceite novamente abaixo.';
+            }
+        }
+
+        document.getElementById('checkAceito').addEventListener('change', (e) => {
+            const btn = document.getElementById('btnConfirmarAceite');
+            btn.disabled = !e.target.checked;
+        });
+
+        document.getElementById('btnConfirmarAceite').addEventListener('click', async () => {
+            const btn = document.getElementById('btnConfirmarAceite');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> <span>Registrando autorização...</span>';
+
+            try {
+                const res = await fetch(API_ACEITE, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: window.csrfHeaders
+                        ? window.csrfHeaders(true)
+                        : { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+
+                if (!res.ok) throw new Error('Não foi possível registrar o aceite.');
+                const json = await res.json();
+
+                showToast('Termo aceito com sucesso! Envio de áudio e imagem liberado.', 'success');
+                await consultarStatus();
+
+            } catch (err) {
+                showToast(err.message || 'Erro ao registrar autorização.', 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check2-circle"></i> <span>Autorizar e Liberar Áudio/Imagem</span>';
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            consultarStatus();
+        });
+    </script>
+</body>
+</html>

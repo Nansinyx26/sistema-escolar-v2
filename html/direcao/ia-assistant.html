@@ -492,6 +492,31 @@
       }
       @keyframes piscar { 50% { opacity: 0; } }
 
+      /* ── Trecho sendo narrado ────────────────────────────────────────
+         Pintado por js/ia/DestaqueNarracao.js com a CSS Custom Highlight
+         API — um Range marcado, sem nenhum elemento novo no DOM. Tinha de
+         ser assim: a bolha é repintada a cada ~30ms enquanto a resposta
+         chega, e um <span> seria desfeito a cada repintura (além de picotar
+         a seleção de texto e a árvore de acessibilidade).
+
+         SEM TRANSIÇÃO, de propósito. A marca troca de frase a cada poucos
+         segundos durante a narração inteira: animar essa troca seria motion
+         de alta frequência competindo com o texto que está sendo lido —
+         exatamente o que o docs/MOTION.md manda não fazer. Ela é legenda,
+         não efeito. Por isso também nada muda em prefers-reduced-motion:
+         não há movimento nenhum a degradar.
+
+         Fundo fraco + texto acima do normal: em ::highlight só valem cor,
+         fundo, sublinhado e sombra de texto, e a marca precisa sobreviver
+         por cima de negrito, link e item de lista sem repintar nenhum deles.
+
+         Navegador sem a API (Safari < 17.2, Firefox antigo) simplesmente
+         não pinta nada — a narração continua inteira. */
+      ::highlight(ia-narracao) {
+        background-color: rgba(16, 185, 129, 0.16);
+        color: #f2fbf8;
+      }
+
       .ia-aviso { font-size: 13px; padding: 8px 11px; border-radius: 9px; margin-top: 8px; }
       .ia-aviso-erro { background: rgba(248, 113, 113, 0.12); color: var(--erro); border: 1px solid rgba(248, 113, 113, 0.3); }
       .ia-aviso-info { background: rgba(255, 255, 255, 0.05); color: var(--muted); border: 1px solid var(--border); }
@@ -829,7 +854,7 @@
     <script src="../../js/auth.js"></script>
     <script src="../../js/utils.js"></script>
     <script src="../../js/libs/purify.min.js"></script>
-    <script src="../../js/sidebar-voice.js?v=4.0"></script>
+    <script src="../../js/sidebar-voice.js?v=5.0"></script>
 
     <!-- Ícones antes do módulo: pagina-ia-assistant.js chama renderLucideIcons -->
     <script src="../../js/libs/lucide.min.js"></script>

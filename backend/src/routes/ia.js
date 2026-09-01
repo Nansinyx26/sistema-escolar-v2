@@ -98,6 +98,11 @@ router.post('/exportar/:id',
 // Rota de Chatbot (ChatbotController / Refatorado)
 router.post('/chatbot', authorize(['diretor', 'professor', 'responsavel', 'admin', 'coordenador', 'secretaria']), IAController.ChatbotController.sendMessage);
 
+// Autocomplete de aluno do campo de mensagem do chatbot. Mesmos perfis do POST
+// acima e o MESMO recorte de acesso (`ChatbotService.enforceRBAC`): quem não
+// pode perguntar sobre um aluno também não o vê sugerido enquanto digita.
+router.get('/chatbot/alunos', authorize(['diretor', 'professor', 'responsavel', 'admin', 'coordenador', 'secretaria']), IAController.ChatbotController.sugerirAlunos);
+
 // Rota de Plano de Aula (Diretor, Professor, Admin - Legado/Mantido)
 router.post('/plano-aula', authorize(['diretor', 'professor', 'admin']), IAController.gerarPlanoAula);
 

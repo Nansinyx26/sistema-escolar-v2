@@ -58,6 +58,40 @@
   justify-content: center;
 }
 
+/* ── Camada da esfera em canvas ────────────────────────────────────────────
+ *
+ * Duas camadas convivem no mesmo wrapper, e é de propósito: a esfera por
+ * cima, o orb em CSS por baixo. `.esferaAtiva` (posta pelo componente) decide
+ * quem aparece — e some do container assim que a esfera avisa que desistiu,
+ * revelando o orb em CSS sem nenhum buraco na tela.
+ *
+ * O canvas nasce escondido: enquanto o import() do motor não chega, o que se
+ * vê é o orb em CSS, não um retângulo vazio.
+ */
+.esferaCanvas {
+  display: none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* O clique é do container inteiro; o canvas não disputa o ponteiro. */
+  pointer-events: none;
+}
+
+.esferaAtiva {
+  .esferaCanvas {
+    display: block;
+  }
+
+  /* Com a esfera no ar, o orb em CSS sai inteiro: as órbitas ela desenha em
+     perspectiva, e o equalizador ela substitui pela própria superfície. */
+  .outerRing,
+  .middleRing,
+  .core {
+    display: none;
+  }
+}
+
 .outerRing {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -212,4 +246,34 @@
     60% { box-shadow: 0 0 50px rgba(0, 255, 255, 0.6); }  // Cyan
     80% { box-shadow: 0 0 50px rgba(255, 255, 0, 0.6); }  // Yellow
     100% { box-shadow: 0 0 50px rgba(255, 0, 128, 0.6); } // back to Rose
+}
+
+/* ── Movimento reduzido ────────────────────────────────────────────────────
+ *
+ * Estava faltando. O orb em CSS deste portal gira duas órbitas sem parar,
+ * pulsa os pontos e faz o núcleo percorrer o espectro RGB — exatamente o
+ * conjunto de animações em loop que `prefers-reduced-motion` existe para
+ * desligar, e nada disso carrega informação: o estado já está escrito na
+ * pill, em texto.
+ *
+ * As posições finais são preservadas (só a animação para), então o orb
+ * continua legível — parado.
+ *
+ * A esfera em canvas tem o caminho dela dentro de AssistantSphere.js, que lê
+ * a mesma preferência e congela a geometria em vez de parar de desenhar.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .orbContainer,
+  .orbContainer *,
+  .orbContainer *::before,
+  .orbContainer *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* O hover cresce 5% do orb inteiro; num orb fixo de 80px isso é um salto,
+     não um retorno tátil. Sem transição ele viraria um degrau seco. */
+  .orbContainer:hover {
+    transform: none;
+  }
 }

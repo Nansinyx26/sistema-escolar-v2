@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupForm();
     setupInputMasks();
     setupAvaliacao();
+    carregarStatusTermoAudioImagem();
 
     // Mostra botão Ferramentas apenas para admin
     const user = auth.getCurrentUser();
@@ -763,4 +764,37 @@ function setupAvaliacao() {
             btnEnviar.disabled = false;
         }
     });
+}
+
+// === STATUS DO TERMO DE ÁUDIO E IMAGEM ===
+async function carregarStatusTermoAudioImagem() {
+    const badge = document.getElementById('badgeTermoStatus');
+    const txtBtn = document.getElementById('txtBtnTermo');
+    if (!badge) return;
+
+    try {
+        const res = await fetch(`${apiBaseUrl()}/moderacao/aceite-termo`, { credentials: 'include' });
+        if (!res.ok) throw new Error();
+        const json = await res.json();
+        const aceito = Boolean(json?.data?.aceito);
+
+        if (aceito) {
+            badge.style.background = 'rgba(16,185,129,0.15)';
+            badge.style.color = '#10b981';
+            badge.style.borderColor = 'rgba(16,185,129,0.3)';
+            badge.innerHTML = '<i class="bi bi-check-circle-fill"></i> Autorizado';
+            if (txtBtn) txtBtn.textContent = 'Ver Termo de Uso';
+        } else {
+            badge.style.background = 'rgba(245,158,11,0.15)';
+            badge.style.color = '#f59e0b';
+            badge.style.borderColor = 'rgba(245,158,11,0.3)';
+            badge.innerHTML = '<i class="bi bi-clock-history"></i> Pendente';
+            if (txtBtn) txtBtn.textContent = 'Autorizar Áudio e Imagem';
+        }
+    } catch {
+        badge.style.background = 'rgba(245,158,11,0.15)';
+        badge.style.color = '#f59e0b';
+        badge.style.borderColor = 'rgba(245,158,11,0.3)';
+        badge.innerHTML = '<i class="bi bi-shield-exclamation"></i> Não verificado';
+    }
 }

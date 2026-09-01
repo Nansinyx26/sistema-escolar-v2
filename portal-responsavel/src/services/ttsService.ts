@@ -1,3 +1,5 @@
+import { vozAtual } from '../constants/vozes';
+
 interface TTSState {
   isPlaying: boolean;
   isFetching: boolean;
@@ -52,8 +54,11 @@ class TTSService {
     this.stop();
     this.updateState({ isFetching: true, error: null });
 
-    // Sempre usa ElevenLabs via /api/tts/speak
-    const voiceName = localStorage.getItem('user_elevenlabs_voice') || 'adam';
+    // Sempre usa ElevenLabs via /api/tts/speak.
+    // `vozAtual()` normaliza: instalações antigas gravaram 'male' nesta chave,
+    // e mandar 'male' como voiceId fazia o backend cair no fallback — a pessoa
+    // ouvia uma voz que não era a marcada no seletor.
+    const voiceName = vozAtual();
 
     try {
       const csrfMatch = document.cookie.match(/csrf_token=([^;]+)/);
@@ -115,6 +120,23 @@ class TTSService {
 
   getState() {
     return this.state;
+  }
+
+  /**
+   * O elemento de áudio da narração, para quem precisa LER o som — hoje a
+   * esfera de voz, que desenha o espectro em tempo real.
+   *
+   * É sempre o MESMO elemento: `play()` troca o `src` em vez de criar um
+   * `new Audio()`. Isso não é detalhe de estilo — `createMediaElementSource`
+   * só pode ser chamado uma vez por elemento, e um elemento novo por narração
+   * faria a segunda tentativa lançar `InvalidStateError`.
+   *
+   * O `src` é sempre um Blob URL, portanto same-origin: o analisador lê os
+   * dados. Apontar o `<audio>` direto para `/api/tts/speak` contaminaria o
+   * contexto e o espectro voltaria zerado.
+   */
+  getAudioElement(): HTMLAudioElement | null {
+    return this.audio;
   }
 }
 

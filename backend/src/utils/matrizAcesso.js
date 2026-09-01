@@ -81,7 +81,12 @@ const AREAS = {
     },
     // Espelha authorize('secretaria', 'diretor', 'admin') em routes/secretaria.js
     '/html/secretaria': { perfis: ['admin', 'diretor', 'secretaria'] },
-    '/html/direcao': { perfis: ['admin', 'diretor'] },
+    '/html/direcao': {
+        perfis: ['admin', 'diretor'],
+        excecoes: {
+            'ia-assistant.html': ['admin', 'diretor', 'professor', 'secretaria'],
+        },
+    },
 
     // ── Conversas ────────────────────────────────────────────────────────
     // Chave de ARQUIVO, não de diretório: `dentroDe()` casa por igualdade

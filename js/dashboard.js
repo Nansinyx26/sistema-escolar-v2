@@ -208,6 +208,7 @@ async function atualizarCards(user, perfil) {
 
     const cardSecretCodes = document.getElementById('cardSecretCodes');
     const cardCodigosEscolas = document.getElementById('cardCodigosEscolas');
+    const cardIaAssistant = document.getElementById('cardIaAssistant');
 
     if (user.perfil === 'admin') {
         // Admin vê tudo
@@ -224,6 +225,7 @@ async function atualizarCards(user, perfil) {
         if (cardNotificacoesResp) cardNotificacoesResp.style.display = 'flex';
         if (cardSecretCodes) cardSecretCodes.style.display = 'flex';
         if (cardCodigosEscolas) cardCodigosEscolas.style.display = 'flex';
+        if (cardIaAssistant) cardIaAssistant.style.display = 'flex';
     } else if (user.perfil === 'professor' && perfil) {
         // ... (existing teacher logic) ...
         const principal = perfil.salaPrincipal || '';
@@ -241,6 +243,7 @@ async function atualizarCards(user, perfil) {
         if (cardListaAlunos) cardListaAlunos.style.display = 'none';
         if (cardNotificacoesResp) cardNotificacoesResp.style.display = 'none';
         if (cardSecretCodes) cardSecretCodes.style.display = 'none';
+        if (cardIaAssistant) cardIaAssistant.style.display = 'flex';
 
         // Sempre mostra Meu Horário — especialista (prof=KEY) ou PEB1 (sala=TURMA)
         const profKey        = getProfessorKeyFromPerfil(perfil);
@@ -277,6 +280,7 @@ async function atualizarCards(user, perfil) {
         if (cardNotificacoesResp) cardNotificacoesResp.style.display = 'none';
         if (cardSecretCodes) cardSecretCodes.style.display = 'none';
         if (cardListaAlunos) cardListaAlunos.style.display = 'flex'; // Secretaria acessa alunos
+        if (cardIaAssistant) cardIaAssistant.style.display = 'flex';
 
     } else if (user.perfil === 'diretor') {
         const directorSummary = document.getElementById('directorDashboardSummary');
@@ -297,6 +301,7 @@ async function atualizarCards(user, perfil) {
         
         // Diretor não vê ferramentas
         if (cardFerramentas) cardFerramentas.style.display = 'none';
+        if (cardIaAssistant) cardIaAssistant.style.display = 'flex';
 
         // Carregar dados reais para o resumo do diretor
         await carregarResumoDiretor();
@@ -520,7 +525,14 @@ window.verPerfil = function () {
 };
 
 window.verRelatorios = function () {
-    window.location.href = 'secretaria/relatorios.html';
+    const user = auth.getCurrentUser();
+    if (user && user.perfil === 'diretor') {
+        window.location.href = 'direcao/bi-pedagogico.html';
+    } else if (user && user.perfil === 'secretaria') {
+        window.location.href = 'secretaria/relatorios.html';
+    } else {
+        window.location.href = 'direcao/bi-pedagogico.html';
+    }
 };
 
 window.abrirFerramentas = function () {

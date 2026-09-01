@@ -7,16 +7,26 @@
  *
  * Por que Canvas 2D e não WebGL/three.js: esta página é servida sem bundler e
  * a CSP autoriza scripts só por origem própria. `three.min.js` seria ~600kB
- * antes do primeiro pixel numa tela que já carrega o chat inteiro. Com 2200
- * pontos e sprites pré-renderizados, o 2D dá conta em 60fps.
+ * antes do primeiro pixel numa tela que já carrega o chat inteiro. Com 3200
+ * pontos, sprites e camadas de brilho pré-renderizados, o 2D dá conta em 60fps.
  *
  * ─── Pontos de ajuste visual ────────────────────────────────────────────────
  * PALETAS ....... cores do núcleo/corpo/halo e o âmbar do estado de erro
  * ESTADOS ....... amplitude, velocidade e brilho de cada estado
- * NIVEIS_QUALIDADE passo na nuvem e oitavas de ruído por nível
+ * NIVEIS_QUALIDADE passo na nuvem, oitavas de ruído e densidade (dpr) por nível
+ * _gerarCamadas . fundo, bloom, halo, núcleo e especular — toda a luz difusa
  * FOV / INCLINACAO enquadramento da esfera
  * RAIO_RELATIVO . tamanho da esfera; ANEIS: raio, inclinação e período de cada órbita
+ * RESPOSTA_* .... rapidez com que voz e estado alcançam o alvo, por SEGUNDO
+ * DURACAO_ENTRADA e DECAIMENTO_IMPULSO: a materialização e o acento da troca
  * ────────────────────────────────────────────────────────────────────────────
+ *
+ * A mesma esfera serve dois enquadramentos: a página cheia do assistente
+ * (padrão) e o orb do chatbot embutido no dashboard, que pede
+ * `{ compacto: true, escalaRaio: 1.4 }` — duas órbitas em vez de quatro e uma
+ * esfera maior dentro do quadrado, porque a 200px as quatro órbitas se
+ * empilham numa névoa. Nada disso muda o padrão: sem opções, o desenho é
+ * pixel a pixel o mesmo de antes.
  */
 
 import { criarRuido3D } from './ruido3d.js';
@@ -33,7 +43,7 @@ const PALETAS = {
         nucleo: [110, 231, 183],
         corpo: [16, 185, 129],
         halo: [13, 148, 136],
-        fundoInterno: 'rgba(16, 185, 129, 0.10)',
+        fundoInterno: 'rgba(16, 185, 129, 0.15)',
         fundoExterno: 'rgba(3, 8, 7, 0)',
     },
     // Erro NÃO para a água: só troca a paleta para âmbar. Uma esfera
@@ -42,7 +52,7 @@ const PALETAS = {
         nucleo: [255, 214, 158],
         corpo: [255, 180, 84],
         halo: [198, 125, 31],
-        fundoInterno: 'rgba(255, 180, 84, 0.10)',
+        fundoInterno: 'rgba(255, 180, 84, 0.15)',
         fundoExterno: 'rgba(8, 5, 2, 0)',
     },
 };
@@ -54,14 +64,14 @@ const PALETAS = {
  * `amp` é a amplitude de repouso; em `falando` ela ainda soma `AMP_VOZ * nível`.
  */
 const ESTADOS = {
-    ocioso: { amp: 0.02, onda: 0.01, tempo: 1.0, giro: 0.055, anel: 1.0, brilho: 0.84, cintila: 0 },
+    ocioso: { amp: 0.02, onda: 0.01, tempo: 1.0, giro: 0.055, anel: 1.0, brilho: 0.96, cintila: 0 },
     ouvindo: {
         amp: 0.03,
         onda: 0.022,
         tempo: 0.85,
         giro: 0.04,
         anel: 0.84,
-        brilho: 0.96,
+        brilho: 1.08,
         cintila: 0,
     },
     pensando: {
@@ -70,17 +80,17 @@ const ESTADOS = {
         tempo: 1.3,
         giro: 0.32,
         anel: 1.06,
-        brilho: 0.9,
+        brilho: 1.02,
         cintila: 1,
     },
-    falando: { amp: 0.03, onda: 0.03, tempo: 2.2, giro: 0.11, anel: 1.1, brilho: 1.0, cintila: 0 },
+    falando: { amp: 0.03, onda: 0.03, tempo: 2.2, giro: 0.11, anel: 1.1, brilho: 1.14, cintila: 0 },
     erro: {
         amp: 0.026,
         onda: 0.018,
         tempo: 0.9,
         giro: 0.045,
         anel: 0.96,
-        brilho: 0.92,
+        brilho: 1.04,
         cintila: 0,
     },
 };
@@ -88,23 +98,82 @@ const ESTADOS = {
 /**
  * Ganho global da nuvem de pontos.
  *
- * Com 2200 sprites sobre um disco de ~200px de raio, cada pixel recebe cerca
- * de 3 sprites sobrepostos. Em modo 'lighter' isso multiplica: sem este fator
- * a esfera saturava em branco e virava um prato chapado — o defeito ficou
- * evidente na primeira captura, e nenhuma métrica numérica o teria pego.
+ * Com 3200 sprites sobre um disco de ~200px de raio, cada pixel recebe várias
+ * camadas sobrepostas. Em modo 'lighter' isso multiplica: sem este fator a
+ * esfera satura em branco e vira um prato chapado — o defeito ficou evidente
+ * na primeira captura, e nenhuma métrica numérica o teria pego.
+ *
+ * Caiu de 0.75 para 0.68 quando a contagem subiu de 2200 para 3200 pontos: o
+ * que se mantém constante é a LUZ TOTAL da nuvem, não o ganho por ponto. Mais
+ * pontos menores no mesmo disco dão grão mais fino — que é a leitura de "HD" —
+ * em vez de um miolo estourado. O brilho a mais que o olho percebe veio das
+ * camadas de halo, bloom e núcleo, que são gradientes e por isso acendem a
+ * esfera sem apagar a textura da água.
  */
-const EXPOSICAO = 0.75;
+const EXPOSICAO = 0.68;
 
 /** Amplitude extra que a voz acrescenta no pico (0.03 + 0.13 ≈ 0.16). */
 const AMP_VOZ = 0.13;
 
-/** Fator de interpolação por frame. 0.15 no nível de voz, 0.08 nos parâmetros
- *  de estado — a voz precisa ser responsiva, a troca de estado não. */
-const SUAVIZACAO_VOZ = 0.15;
-const SUAVIZACAO_ESTADO = 0.08;
+/**
+ * Constantes de suavização, em unidades POR SEGUNDO — não por quadro.
+ *
+ * A forma antiga era `valor += (alvo - valor) * 0.15` a cada quadro, o que
+ * amarra a animação à taxa de atualização da tela: num monitor de 120Hz a
+ * esfera reagia ao dobro da velocidade de um de 60Hz, e num notebook que
+ * caísse para 30fps ela ficava pastosa. Não era percebido como bug porque
+ * cada máquina só vê a sua própria versão — mas é a mesma esfera reagindo
+ * com três personalidades diferentes.
+ *
+ * `1 - exp(-k * dt)` dá o mesmo decaimento exponencial com o tempo real como
+ * relógio. Os valores abaixo reproduzem a resposta antiga a 60fps:
+ * k = -60 * ln(1 - fator).
+ *
+ * A voz ganhou ataque e relaxamento SEPARADOS. Com um único fator, subir e
+ * descer no mesmo ritmo, a esfera chegava atrasada em cada consoante e
+ * escorria depois dela — o efeito de "gelatina" que faz a animação parecer
+ * solta da narração. Envelope de áudio se lê com ataque rápido e queda lenta:
+ * a esfera acompanha o ataque da sílaba e sustenta o brilho na cauda, que é
+ * como o ouvido também processa a fala.
+ */
+const RESPOSTA_VOZ_ATAQUE = 26;
+const RESPOSTA_VOZ_QUEDA = 8;
+const RESPOSTA_ESTADO = 5;
+
+/**
+ * Converte uma constante por segundo no fator daquele quadro.
+ * O `min(1, …)` protege contra um `dt` grande (aba que volta do background).
+ */
+function fatorSuave(k, dt) {
+    return 1 - Math.exp(-k * dt);
+}
+
+/**
+ * Entrada da esfera: ela materializa em vez de aparecer pronta.
+ *
+ * Importa pouco na página do assistente, onde a esfera nasce junto com o
+ * documento, e muito no orb do chatbot do dashboard, que monta e desmonta a
+ * cada resposta. Sem a rampa, cada narração começava com um estouro de luz no
+ * meio da janela do chat.
+ *
+ * 420ms com ease-out cúbico: dentro do teto de 300ms do Emil não caberia uma
+ * esfera inteira se formando, mas este não é um controle de uso repetido —
+ * é o estado "o assistente começou a falar", visto uma vez por resposta.
+ */
+const DURACAO_ENTRADA = 0.42;
+
+/**
+ * Acento na troca de estado: um impulso que decai em ~380ms.
+ *
+ * A interpolação de `ESTADOS` leva quase um segundo para assentar, então sem
+ * este acento a passagem de "pensando" para "falando" não tinha instante — a
+ * esfera derivava de um estado ao outro e a troca não era legível. O impulso
+ * é curto e pequeno de propósito: marca o momento, não chama atenção.
+ */
+const DECAIMENTO_IMPULSO = 6;
 
 /** Pontos da nuvem no nível de qualidade mais alto. */
-const TOTAL_PONTOS = 2200;
+const TOTAL_PONTOS = 3200;
 
 /**
  * Degraus de qualidade. A queda é automática e só desce: subir de volta faria
@@ -114,11 +183,20 @@ const TOTAL_PONTOS = 2200;
  * Fibonacci de 2 em 2 mantém a distribuição esférica. Declarar a contagem e
  * derivar o passo por divisão dava passo 1 para qualquer alvo acima da
  * metade — o degrau intermediário não reduzia nada.
+ *
+ * O `dpr` entrou junto porque densidade é metade da percepção de nitidez — e
+ * porque é o eixo mais CARO, já que o custo de preenchimento cresce com o
+ * quadrado dele. Fixo em 2 (como era) ele desperdiçava a tela 3x de quem tem
+ * máquina para isso; fixo em 3 travaria quem não tem. Como degrau, quem mede
+ * é o próprio cronômetro do quadro. É o PRIMEIRO a cair, antes de qualquer
+ * ponto ser descartado: perder densidade incomoda menos que perder a textura
+ * da água, que é a coisa que a esfera existe para mostrar.
  */
 const NIVEIS_QUALIDADE = [
-    { passo: 1, oitavas: 3 }, // 2200 pontos
-    { passo: 2, oitavas: 3 }, // 1100 pontos
-    { passo: 3, oitavas: 2 }, // ~733 pontos
+    { passo: 1, oitavas: 3, dpr: 3 }, // 3200 pontos, densidade máxima
+    { passo: 1, oitavas: 3, dpr: 2 }, // 3200 pontos em retina comum
+    { passo: 2, oitavas: 3, dpr: 2 }, // 1600 pontos
+    { passo: 3, oitavas: 2, dpr: 1.5 }, // ~1067 pontos
 ];
 
 /**
@@ -147,8 +225,25 @@ const INCLINACAO = 0.28;
  * "falando") tem de ficar abaixo de 0.5, senão a órbita é cortada pela borda
  * bem no estado em que ela está mais visível. 0.188 deixa folga para a
  * espessura do traço e para o halo largo desenhado sob ele.
+ *
+ * Quem monta a esfera pode pedir um raio maior (`escalaRaio`); o teto acima
+ * continua valendo e é recalculado em `_limitarRaio` a partir do conjunto de
+ * anéis realmente em uso — não de um número fixo que se desatualiza quando
+ * ANEIS muda.
  */
 const RAIO_RELATIVO = 0.188;
+
+/**
+ * Fração do lado que a órbita mais externa não pode ultrapassar.
+ *
+ * 0.476 e não 0.5: é exatamente onde o enquadramento padrão já estava
+ * (0.188 * 2.3 * 1.1 = 0.4756), então o teto não encolhe a esfera de quem
+ * não pede escala nenhuma. A folga até a borda é o traço do anel e o halo
+ * largo desenhado sob ele.
+ */
+const LIMITE_ORBITA = 0.476;
+/** Maior valor de `anel` em ESTADOS — o esticão do estado "falando". */
+const ESCALA_ANEL_MAX = 1.1;
 
 /** Anéis orbitais: raio relativo, achatamento, período em segundos, nós. */
 const ANEIS = [
@@ -157,6 +252,16 @@ const ANEIS = [
     { raio: 1.95, achatamento: 0.14, periodo: 44, giroNo: 78, nos: 2 },
     { raio: 2.3, achatamento: 0.42, periodo: -124, giroNo: 63, nos: 1 },
 ];
+
+/**
+ * Conjunto reduzido de órbitas, para molduras pequenas.
+ *
+ * Num orb de ~200px as quatro órbitas ficam a poucos pixels uma da outra e
+ * lêem como uma névoa cinza em volta da esfera, não como órbitas. Com duas,
+ * cada uma tem espaço para ser vista — e o raio da esfera pode crescer ~40%
+ * dentro do mesmo quadrado, que é o que faz a água aparecer nesse tamanho.
+ */
+const ANEIS_COMPACTOS = ANEIS.slice(0, 2);
 
 /** Rastro do nó que percorre o anel: quantas cópias e o quanto elas recuam. */
 const RASTRO_PASSOS = 7;
@@ -167,8 +272,22 @@ const ERROS_ATE_DESISTIR = 8;
 
 const CONSULTA_REDUZIR = '(prefers-reduced-motion: reduce)';
 
-/** Sprite de ponto: 32px basta, o maior ponto desenhado tem ~8px de device. */
-const TAM_SPRITE = 32;
+/**
+ * Sprite de ponto. 48px e não 32: com dpr 3 e a saia mais larga que cada ponto
+ * ganhou, o maior sprite desenhado chega a ~14px de device — e a 32px ele já
+ * subia borrado, o que transformava em mancha justamente o grão que deveria
+ * ficar mais visível nas telas densas.
+ */
+const TAM_SPRITE = 48;
+
+/**
+ * Lado das camadas de brilho pré-renderizadas (fundo, bloom, halo, núcleo).
+ *
+ * 256px basta: são gradientes radiais suaves, sem nenhum detalhe fino, e a
+ * ampliação até o lado do canvas fica por conta da interpolação bilinear do
+ * navegador — num gradiente ela é indistinguível do original.
+ */
+const TAM_CAMADA = 256;
 
 /**
  * Sprite radial pré-renderizado. Desenhar 2200 `arc()` por frame é inviável;
@@ -189,13 +308,52 @@ function criarSprite(rgb) {
     const meio = TAM_SPRITE / 2;
     const gradiente = g.createRadialGradient(meio, meio, 0, meio, meio, meio);
     const [r, v, a] = rgb;
+    // Núcleo quente e estreito + saia longa e fraca. O perfil antigo (uma queda
+    // só, de 0.28 a 0.62) dava um borrão de intensidade média: o ponto não
+    // tinha centro nítido nem brilho ao redor. Separar as duas coisas é o que
+    // faz cada partícula ler como uma LUZ — miolo definido, halo próprio — e é
+    // daí que vem a impressão de brilho sem estourar a exposição.
     gradiente.addColorStop(0, `rgba(${r}, ${v}, ${a}, 1)`);
-    gradiente.addColorStop(0.28, `rgba(${r}, ${v}, ${a}, 0.68)`);
-    gradiente.addColorStop(0.62, `rgba(${r}, ${v}, ${a}, 0.16)`);
+    gradiente.addColorStop(0.16, `rgba(${r}, ${v}, ${a}, 0.92)`);
+    gradiente.addColorStop(0.34, `rgba(${r}, ${v}, ${a}, 0.52)`);
+    gradiente.addColorStop(0.62, `rgba(${r}, ${v}, ${a}, 0.17)`);
+    gradiente.addColorStop(0.84, `rgba(${r}, ${v}, ${a}, 0.05)`);
     gradiente.addColorStop(1, `rgba(${r}, ${v}, ${a}, 0)`);
 
     g.fillStyle = gradiente;
     g.fillRect(0, 0, TAM_SPRITE, TAM_SPRITE);
+    return tela;
+}
+
+/**
+ * Camada de brilho pré-renderizada: um gradiente radial virado bitmap.
+ *
+ * Antes, fundo, halo e núcleo eram `createRadialGradient` + `fillRect` A CADA
+ * QUADRO, sobre quase todo o canvas. Criar o objeto de gradiente e avaliá-lo
+ * pixel a pixel é o item mais caro do desenho depois da nuvem de pontos — e
+ * era pago 60 vezes por segundo para pintar sempre a mesma coisa.
+ *
+ * Como bitmap, o mesmo pixel sai de um `drawImage` escalado, que é uma cópia
+ * interpolada. A folga que isso abriu foi gasta em MAIS luz: entraram uma
+ * camada de bloom larga e um brilho especular, que antes não caberiam no
+ * orçamento de 11ms.
+ *
+ * @param {Array<[number, string]>} paradas pares [posição 0..1, cor CSS]
+ * @returns {HTMLCanvasElement}
+ */
+function criarCamadaRadial(paradas) {
+    const tela = document.createElement('canvas');
+    tela.width = TAM_CAMADA;
+    tela.height = TAM_CAMADA;
+    const g = tela.getContext('2d');
+    if (!g) return tela;
+
+    const meio = TAM_CAMADA / 2;
+    const gradiente = g.createRadialGradient(meio, meio, 0, meio, meio, meio);
+    for (const [posicao, cor] of paradas) gradiente.addColorStop(posicao, cor);
+
+    g.fillStyle = gradiente;
+    g.fillRect(0, 0, TAM_CAMADA, TAM_CAMADA);
     return tela;
 }
 
@@ -249,6 +407,11 @@ export class AssistantSphere {
      * @param {object} [opcoes]
      * @param {{ nivel: (t: number, esperando: boolean) => number }} [opcoes.medidor]
      * @param {() => void} [opcoes.aoFalhar] chamado quando o render desiste de vez
+     * @param {number} [opcoes.escalaRaio=1] multiplica RAIO_RELATIVO; limitado
+     *   por `_limitarRaio` para a órbita externa nunca sair do quadro
+     * @param {boolean} [opcoes.compacto=false] usa só as duas órbitas internas,
+     *   o que libera um raio maior — para orbs pequenos (chat, FAB)
+     * @param {boolean} [opcoes.entrada=true] materializa em vez de aparecer pronta
      */
     constructor(canvas, opcoes = {}) {
         const ctx = canvas.getContext('2d', { alpha: true });
@@ -258,6 +421,15 @@ export class AssistantSphere {
         this.ctx = ctx;
         this.medidor = opcoes.medidor || null;
         this.aoFalhar = opcoes.aoFalhar || (() => {});
+
+        this.aneis = opcoes.compacto ? ANEIS_COMPACTOS : ANEIS;
+        this.raioRelativo = this._limitarRaio(opcoes.escalaRaio);
+
+        // `entrada` vai de 0 a 1 na montagem. Começar em 1 é o modo "já
+        // formada", para quem remonta a esfera sem que ela tenha saído de vista.
+        this.entrada = opcoes.entrada === false ? 1 : 0;
+        // Acento decrescente disparado a cada troca de estado.
+        this.impulso = 0;
 
         this.ruido = criarRuido3D();
 
@@ -285,6 +457,7 @@ export class AssistantSphere {
 
         this.paleta = PALETAS.normal;
         this.sprites = this._gerarSprites(this.paleta);
+        this.camadas = this._gerarCamadas(this.paleta);
 
         this.estado = 'ocioso';
         // Começa já nos valores de "ocioso" para não haver interpolação visível
@@ -363,10 +536,15 @@ export class AssistantSphere {
         this.estado = estado;
         this.alvo = ESTADOS[estado];
 
+        // O acento da troca. Fica em 0 sob movimento reduzido: é exatamente o
+        // tipo de pulso curto que a preferência pede para não existir.
+        if (!this.reduzido) this.impulso = 1;
+
         const paleta = estado === 'erro' ? PALETAS.erro : PALETAS.normal;
         if (paleta !== this.paleta) {
             this.paleta = paleta;
             this.sprites = this._gerarSprites(paleta);
+            this.camadas = this._gerarCamadas(paleta);
         }
         // Em movimento reduzido o desenho é congelado: sem isto a troca de
         // estado só apareceria no próximo tique lento.
@@ -386,11 +564,80 @@ export class AssistantSphere {
 
     // ── Interno ─────────────────────────────────────────────────────────────
 
+    /**
+     * Raio pedido, cortado no que a órbita mais externa em uso comporta.
+     *
+     * Deriva o teto de `this.aneis` em vez de repetir o 2.3 do comentário de
+     * RAIO_RELATIVO: assim mexer em ANEIS não deixa para trás um limite que
+     * ninguém lembra de atualizar, e o conjunto compacto ganha automaticamente
+     * a folga que as duas órbitas externas deixaram.
+     *
+     * @param {number} [escala=1]
+     * @returns {number} fração do lado do canvas
+     */
+    _limitarRaio(escala) {
+        const pedido = RAIO_RELATIVO * (escala > 0 ? escala : 1);
+        let maiorOrbita = 1;
+        for (const anel of this.aneis) maiorOrbita = Math.max(maiorOrbita, anel.raio);
+        const teto = LIMITE_ORBITA / (maiorOrbita * ESCALA_ANEL_MAX);
+        return Math.min(pedido, teto);
+    }
+
     _gerarSprites(paleta) {
         return {
             nucleo: criarSprite(paleta.nucleo),
             corpo: criarSprite(paleta.corpo),
             halo: criarSprite(paleta.halo),
+        };
+    }
+
+    /**
+     * As cinco camadas de luz difusa, na paleta ativa.
+     *
+     * As posições de `halo` já vêm CONVERTIDAS para a escala do bitmap: o
+     * gradiente original começava num raio interno de 0.55 do raio da esfera
+     * dentro de um disco de 2.15 — ou seja, em 0.256 da camada. Guardar a
+     * conversão aqui, e não no desenho, é o que permite ao quadro gastar um
+     * `drawImage` por camada e nada mais.
+     */
+    _gerarCamadas(paleta) {
+        return {
+            // Brilho difuso do fundo — o gradiente radial quase preto do mockup.
+            fundo: criarCamadaRadial([
+                [0, paleta.fundoInterno],
+                [1, paleta.fundoExterno],
+            ]),
+            // Bloom: a luz que "vaza" da esfera para o palco. É o brilho visto
+            // de fora, e por ser larguíssimo e fraco não compete com a nuvem —
+            // some se você procurar por ele, e faz falta se sair.
+            bloom: criarCamadaRadial([
+                [0, rgba(paleta.corpo, 0.1)],
+                [0.35, rgba(paleta.halo, 0.055)],
+                [0.7, rgba(paleta.halo, 0.018)],
+                [1, rgba(paleta.halo, 0)],
+            ]),
+            halo: criarCamadaRadial([
+                [0, rgba(paleta.corpo, 0.27)],
+                [0.256, rgba(paleta.corpo, 0.27)],
+                [0.568, rgba(paleta.halo, 0.13)],
+                [1, rgba(paleta.halo, 0)],
+            ]),
+            // Núcleo: o miolo aceso que atravessa a nuvem. Contido de
+            // propósito — a nuvem já soma luz, e um núcleo forte apaga em
+            // branco justamente a textura de água do centro.
+            nucleo: criarCamadaRadial([
+                [0, rgba(paleta.nucleo, 0.17)],
+                [0.5, rgba(paleta.corpo, 0.06)],
+                [1, rgba(paleta.corpo, 0)],
+            ]),
+            // Especular: o reflexo alto e deslocado que diz de onde vem a luz.
+            // Sem ele a nuvem é simétrica e lê como disco; com ele o olho fecha
+            // a forma como esfera. Fraco porque é pista de volume, não brilho.
+            especular: criarCamadaRadial([
+                [0, rgba(paleta.nucleo, 0.3)],
+                [0.4, rgba(paleta.nucleo, 0.09)],
+                [1, rgba(paleta.nucleo, 0)],
+            ]),
         };
     }
 
@@ -413,9 +660,11 @@ export class AssistantSphere {
     _medirCanvas() {
         const caixa = this.canvas.getBoundingClientRect();
         const lado = Math.max(1, Math.min(caixa.width, caixa.height));
-        // Teto de 2 no devicePixelRatio: acima disso o ganho visual some e o
-        // custo de preenchimento quadruplica em telas 3x.
-        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        // O teto do devicePixelRatio é o do degrau de qualidade ATIVO, e não
+        // uma constante: o custo de preenchimento cresce com o quadrado dele,
+        // então quem decide é o cronômetro do quadro. Ver NIVEIS_QUALIDADE.
+        const teto = NIVEIS_QUALIDADE[this.nivelQualidade].dpr;
+        const dpr = Math.min(teto, window.devicePixelRatio || 1);
         const pixels = Math.round(lado * dpr);
         if (pixels === this.canvas.width && dpr === this.dpr) return;
 
@@ -447,16 +696,29 @@ export class AssistantSphere {
                 // devagar. Redesenha a ~10fps porque nada mais muda.
                 if (this.decorrido - this.ultimoDesenhoReduzido < 0.1) return;
                 this.ultimoDesenhoReduzido = this.decorrido;
+                // Sem rampa e sem acento: quem pediu menos movimento recebe a
+                // esfera já formada, não uma que se monta na frente dele.
+                this.entrada = 1;
+                this.impulso = 0;
                 this._interpolarEstado(1);
                 this._desenhar(0.86 + 0.14 * Math.sin(this.decorrido * 0.06 * TAU));
                 return;
             }
 
-            this._interpolarEstado(SUAVIZACAO_ESTADO);
+            if (this.entrada < 1) {
+                this.entrada = Math.min(1, this.entrada + dt / DURACAO_ENTRADA);
+            }
+            // Decaimento exponencial do acento — nunca chega a zero exato, e o
+            // corte evita ficar somando um resíduo de 1e-9 para sempre.
+            this.impulso *= Math.exp(-DECAIMENTO_IMPULSO * dt);
+            if (this.impulso < 0.002) this.impulso = 0;
+
+            this._interpolarEstado(fatorSuave(RESPOSTA_ESTADO, dt));
 
             const esperandoVoz = this.estado === 'falando';
             const bruto = this.medidor ? this.medidor.nivel(this.decorrido, esperandoVoz) : 0;
-            this.nivelVoz += (bruto - this.nivelVoz) * SUAVIZACAO_VOZ;
+            const respostaVoz = bruto > this.nivelVoz ? RESPOSTA_VOZ_ATAQUE : RESPOSTA_VOZ_QUEDA;
+            this.nivelVoz += (bruto - this.nivelVoz) * fatorSuave(respostaVoz, dt);
 
             // O tempo do ruído anda mais rápido enquanto o assistente fala: é
             // o que separa "líquido agitado" de "líquido em repouso".
@@ -470,7 +732,12 @@ export class AssistantSphere {
             // engasgo alheio derrubava a qualidade de uma esfera que estava
             // perfeitamente dentro do orçamento (observado no Chromium).
             const antes = performance.now();
-            this._desenhar(this.atual.brilho * (1 + this.nivelVoz * 0.22));
+            // Ease-out cúbico na entrada: a esfera chega rápido ao brilho quase
+            // final e assenta o resto devagar. Com a rampa linear ela terminava
+            // de aparecer com um degrau visível.
+            const restante = 1 - this.entrada;
+            const rampa = 1 - restante * restante * restante;
+            this._desenhar(this.atual.brilho * (1 + this.nivelVoz * 0.22) * rampa, rampa);
             this._avaliarDesempenho(performance.now() - antes);
             this.erros = 0;
         } catch (e) {
@@ -506,6 +773,11 @@ export class AssistantSphere {
                 this.nivelQualidade += 1;
                 this.framesLentos = 0;
                 this.mediaFrame = MS_LIMITE * 0.6;
+                // O degrau também baixa o dpr, e quem aplica isso é a medição
+                // do canvas. Sem esta chamada o primeiro degrau (que só muda a
+                // densidade) não teria efeito nenhum, e a queda seguiria direto
+                // para o descarte de pontos.
+                this._medirCanvas();
             }
         } else {
             this.framesLentos = 0;
@@ -527,68 +799,92 @@ export class AssistantSphere {
 
     /**
      * @param {number} brilhoGlobal multiplicador de opacidade do frame
+     * @param {number} [rampa=1] progresso da entrada, já suavizado (0..1)
      */
-    _desenhar(brilhoGlobal) {
+    _desenhar(brilhoGlobal, rampa = 1) {
         const ctx = this.ctx;
         const lado = this.largura;
         if (!lado) return;
 
         const cx = lado / 2;
         const cy = lado / 2;
-        const raio = lado * RAIO_RELATIVO;
-        const paleta = this.paleta;
+        // A esfera entra de 0.88 do raio, não de zero: partir de um ponto é o
+        // erro clássico de `scale(0)` — o começo do movimento fica rápido
+        // demais para o olho e o fim, arrastado. O impulso da troca de estado
+        // soma aqui um empurrão de menos de 2%, que se sente sem se ver.
+        const escala = (0.88 + 0.12 * rampa) * (1 + this.impulso * 0.018);
+        const raio = lado * this.raioRelativo * escala;
 
         ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.clearRect(0, 0, lado, lado);
-
-        // Brilho difuso do fundo — o gradiente radial quase preto do mockup.
-        const fundo = ctx.createRadialGradient(cx, cy, 0, cx, cy, lado * 0.5);
-        fundo.addColorStop(0, paleta.fundoInterno);
-        fundo.addColorStop(1, paleta.fundoExterno);
-        ctx.fillStyle = fundo;
-        ctx.fillRect(0, 0, lado, lado);
+        ctx.globalAlpha = 1;
+        // 'copy' e não 'source-over' depois de um clearRect: o blit do fundo já
+        // apaga sozinho tudo que estiver fora dele, então o quadro começa com
+        // UMA passada sobre o canvas em vez de duas.
+        ctx.globalCompositeOperation = 'copy';
+        ctx.drawImage(this.camadas.fundo, 0, 0, lado, lado);
 
         // Daqui para baixo tudo soma luz: com 'lighter' a ordem de desenho
-        // deixa de importar, o que dispensa ordenar 2200 pontos por Z a cada
+        // deixa de importar, o que dispensa ordenar 3200 pontos por Z a cada
         // frame — o custo que inviabilizaria essa contagem em Canvas 2D.
         ctx.globalCompositeOperation = 'lighter';
 
+        this._desenharBloom(cx, cy, raio, brilhoGlobal);
         this._desenharHalo(cx, cy, raio, brilhoGlobal);
         this._desenharAneis(cx, cy, raio, brilhoGlobal);
         this._desenharPontos(cx, cy, raio, brilhoGlobal);
+        // O especular vem DEPOIS da nuvem: ele é o reflexo NA superfície, e
+        // sob os pontos ele só somaria uma mancha no fundo do palco.
+        this._desenharEspecular(cx, cy, raio, brilhoGlobal);
 
         ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = 'source-over';
     }
 
-    _desenharHalo(cx, cy, raio, brilho) {
+    /**
+     * Desenha uma camada radial centrada, com o raio e a opacidade pedidos.
+     *
+     * Só a caixa da camada é tocada, nunca o canvas inteiro: com 'lighter'
+     * cada pixel é lido e reescrito, e pintar as bordas transparentes era ~35%
+     * de preenchimento jogado fora todo quadro.
+     */
+    _blit(camada, cx, cy, raio, alfa) {
+        if (alfa <= 0.002) return;
         const ctx = this.ctx;
-        const paleta = this.paleta;
+        ctx.globalAlpha = alfa > 1 ? 1 : alfa;
+        ctx.drawImage(camada, cx - raio, cy - raio, raio * 2, raio * 2);
+    }
+
+    /**
+     * Bloom: o halo largo que faz a esfera acender o palco em volta dela.
+     *
+     * Respira mais com a voz que o halo (0.26 contra 0.18) porque é a camada
+     * mais externa — é ali que um ganho de raio é percebido como "a esfera
+     * cresceu de luz" em vez de "a esfera inchou".
+     */
+    _desenharBloom(cx, cy, raio, brilho) {
+        const pulso = 1 + this.nivelVoz * 0.26;
+        this._blit(this.camadas.bloom, cx, cy, raio * 3.05 * pulso, brilho * 0.95);
+    }
+
+    _desenharHalo(cx, cy, raio, brilho) {
         const pulso = 1 + this.nivelVoz * 0.18;
+        this._blit(this.camadas.halo, cx, cy, raio * 2.15 * pulso, brilho);
+        this._blit(this.camadas.nucleo, cx, cy, raio * 0.92, brilho);
+    }
 
-        const raioHalo = raio * 2.15 * pulso;
-        const halo = ctx.createRadialGradient(cx, cy, raio * 0.55, cx, cy, raioHalo);
-        halo.addColorStop(0, rgba(paleta.corpo, 0.18 * brilho));
-        halo.addColorStop(0.42, rgba(paleta.halo, 0.085 * brilho));
-        halo.addColorStop(1, rgba(paleta.halo, 0));
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = halo;
-        // Só a caixa do gradiente, não o canvas inteiro: com 'lighter' cada
-        // pixel é lido e reescrito, e pintar as bordas transparentes era ~35%
-        // de preenchimento jogado fora todo quadro.
-        ctx.fillRect(cx - raioHalo, cy - raioHalo, raioHalo * 2, raioHalo * 2);
-
-        // Núcleo: o "miolo" aceso que atravessa a nuvem de pontos. Fraco de
-        // propósito — em 0.30 ele somava com a nuvem (que já é aditiva) e
-        // estourava o centro da esfera em branco, apagando a textura de água.
-        const raioNucleo = raio * 0.92;
-        const nucleo = ctx.createRadialGradient(cx, cy, 0, cx, cy, raioNucleo);
-        nucleo.addColorStop(0, rgba(paleta.nucleo, 0.1 * brilho));
-        nucleo.addColorStop(0.5, rgba(paleta.corpo, 0.035 * brilho));
-        nucleo.addColorStop(1, rgba(paleta.corpo, 0));
-        ctx.fillStyle = nucleo;
-        ctx.fillRect(cx - raioNucleo, cy - raioNucleo, raioNucleo * 2, raioNucleo * 2);
+    /**
+     * Reflexo especular, alto e à esquerda — a mesma direção de luz do orb em
+     * CSS que a esfera substitui (`circle at 35% 30%`), para o fallback e o
+     * canvas não parecerem iluminados por sóis diferentes.
+     */
+    _desenharEspecular(cx, cy, raio, brilho) {
+        this._blit(
+            this.camadas.especular,
+            cx - raio * 0.3,
+            cy - raio * 0.34,
+            raio * 0.62,
+            brilho * 0.7
+        );
     }
 
     _desenharAneis(cx, cy, raio, brilho) {
@@ -599,7 +895,7 @@ export class AssistantSphere {
         // congelada, e as órbitas fazem parte dela. Com `decorrido` os anéis
         // continuavam girando mesmo com prefers-reduced-motion.
         const t = this.tempoAnel;
-        const alfa = (0.2 + this.nivelVoz * 0.16) * brilho;
+        const alfa = (0.28 + this.nivelVoz * 0.2) * brilho;
 
         // O brilho do anel vem de um traço largo e fraco sob o traço fino, e
         // NÃO de `shadowBlur`. Medido no Chromium: com shadowBlur ligado nestes
@@ -610,14 +906,14 @@ export class AssistantSphere {
         const tracoFino = Math.max(1, this.dpr * 0.9);
         const tracoHalo = this.dpr * 5;
 
-        for (let i = 0; i < ANEIS.length; i++) {
-            const anel = ANEIS[i];
+        for (let i = 0; i < this.aneis.length; i++) {
+            const anel = this.aneis[i];
             const rx = raio * anel.raio * escalaAnel;
             const ry = rx * anel.achatamento;
             const rotacao = (t / anel.periodo) * TAU + i * 0.7;
 
             ctx.lineWidth = tracoHalo;
-            ctx.globalAlpha = alfa * 0.22;
+            ctx.globalAlpha = alfa * 0.3;
             ctx.beginPath();
             ctx.ellipse(cx, cy, rx, ry, rotacao, 0, TAU);
             ctx.stroke();
@@ -654,7 +950,7 @@ export class AssistantSphere {
             const desbotar = 1 - p / RASTRO_PASSOS;
             const tamanho = this.dpr * (4.5 * desbotar + 1.2) * profundidade;
 
-            ctx.globalAlpha = Math.min(1, 0.75 * desbotar * desbotar * profundidade * brilho);
+            ctx.globalAlpha = Math.min(1, 0.9 * desbotar * desbotar * profundidade * brilho);
             ctx.drawImage(this.sprites.nucleo, x - tamanho, y - tamanho, tamanho * 2, tamanho * 2);
         }
     }
@@ -691,9 +987,19 @@ export class AssistantSphere {
         const t3 = t * 0.09;
 
         // Pontos pequenos e translúcidos. Em 4.2 e alfa cheio a soma aditiva
-        // dos ~3x de sobreposição estourava a esfera em branco e apagava a
-        // própria água que ela existe para mostrar.
-        const tamBase = this.dpr * (this.largura / 900) * 3.4;
+        // da sobreposição estourava a esfera em branco e apagava a própria
+        // água que ela existe para mostrar.
+        //
+        // Encolheu de 0.0201 para 0.0182 junto com a subida de 2200 para 3200
+        // pontos: a área coberta por partícula cai na mesma proporção em que a
+        // contagem sobe, então a nuvem fica mais FINA sem ficar mais densa. É
+        // essa troca — mais pontos, cada um menor — que aparece como resolução.
+        //
+        // O tamanho sai do RAIO, não do lado do canvas: assim ele continua
+        // correto quando a esfera ocupa outra fração do quadro. Com a fórmula
+        // antiga, um orb pequeno com esfera proporcionalmente grande recebia
+        // pontos de menos de 1px e a nuvem virava poeira.
+        const tamBase = this.dpr * raio * 0.0182;
 
         for (let i = 0; i < this.totalPontos; i += passo) {
             const bx = pontos[i * 3];

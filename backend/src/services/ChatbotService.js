@@ -13,8 +13,17 @@ const { PERSONA_PROMPT_PREFIX } = require('./assistantPersona');
 const offlineResponseService    = require('./offlineResponseService');
 const { escolaMatch }           = require('../middleware/filtrarPorEscola');
 const escapeRegex               = require('../utils/escapeRegex');
+const { RELEVANCIA }            = require('../utils/buscaAluno');
+const { nomeExibicao, sugerirAlunos } = require('./ia/sugestaoAlunos');
 
 const DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+
+/**
+ * Teto de botões de desambiguação ("qual destes alunos?"). Dez é o mesmo teto
+ * da lista de sugestões do campo de busca — acima disso a resposta vira uma
+ * lista de chamada, e quem perguntou refaz a pergunta com o nome completo.
+ */
+const MAX_OPCOES_ALUNO = 10;
 
 /**
  * Combina um filtro-base com o filtro de escola (tolerante a legados) usando
@@ -343,9 +352,10 @@ async function enforceRBAC({ perfil, userId, userEmail, escolaId }) {
                 { 'responsavelDados.email': userEmail },
             ],
         }, ef);
-        const alunosVinculados = await Aluno.find(alunoFilter)
-            .select('_id turma turmaId nome')
-            .lean();
+        const alunosVinculados = (await Aluno.find(alunoFilter)
+            .select('_id turma turmaId nome sobrenome')
+            .lean())
+            .map(a => ({ ...a, nome: nomeExibicao(a) }));
         const turmasAutorizadas = [...new Set(
             alunosVinculados.map(a => a.turma).filter(Boolean)
         )];
@@ -374,6 +384,22 @@ async function enforceRBAC({ perfil, userId, userEmail, escolaId }) {
  * Resolve the Aluno document that the query is about.
  * Layer 1, Rules 1-4: extract name, search DB with RBAC scope, disambiguate.
  *
+ * A BUSCA POR NOME MORA EM `services/ia/sugestaoAlunos`
+ * ----------------------------------------------------
+ * O que existia aqui montava `new RegExp(trecho, 'i')` — sem âncora e sem
+ * normalizar acento — e rodava palavra por palavra da mensagem. Com "quais as
+ * notas do joão", a primeira palavra que passava pelo filtro de stop-words era
+ * "as", e "as" casa "Cássia" e "Vasconcelos": o chat respondia sobre um aluno
+ * que ninguém pediu, ou oferecia botões com nomes sem relação com a pergunta.
+ * E o `normalizedTrecho` calculado logo acima da consulta nunca era usado nela,
+ * então "joao" não achava "João".
+ *
+ * Agora a resolução usa a MESMA busca do autocomplete do campo de texto: sem
+ * acento, sem caixa, começo do nome primeiro. `relevanciaMaxima: PALAVRA`
+ * recusa o casamento no meio da palavra ("ana" → "Mariana") — para desenhar uma
+ * lista de sugestões isso é aceitável, mas para decidir de QUEM é o boletim,
+ * não é.
+ *
  * @param {Object}      params
  * @param {string|null} params.alunoId   Pre-resolved ID (from button click)
  * @param {string}      params.message   User message
@@ -384,67 +410,80 @@ async function resolveAlunoContext({ alunoId, message, alunoFilter }) {
     // Rule 4: click resolution — always use ID, never re-search by name
     if (alunoId != null) {
         const aluno = await Aluno.findOne({ _id: alunoId, ...alunoFilter })
-            .select('_id nome turma turmaId')
+            .select('_id nome sobrenome turma turmaId')
             .lean();
         if (aluno) {
-            return { aluno, alunoId: String(aluno._id) };
+            // O CONTEXTO NÃO SE SOBREPÕE A UM NOME NOVO
+            // ------------------------------------------
+            // `alunoId` chega de duas origens: o botão que a pessoa acabou de
+            // clicar e o aluno de quem se falava no turno anterior. Usá-lo
+            // sempre fazia a segunda origem vencer — depois de perguntar sobre
+            // o João, "notas da Maria Souza" ainda respondia sobre o João, com
+            // o nome do João na resposta. Do lado de quem pergunta, isso é
+            // indistinguível de um aluno sorteado.
+            //
+            // Só um nome que resolve para UM único aluno troca o contexto: no
+            // clique de desambiguação a mensagem contém justamente o nome
+            // ambíguo (2+ alunos), então a escolha da pessoa é preservada.
+            const citado = await sugerirAlunos({
+                texto: message,
+                filtro: alunoFilter,
+                limite: 2,
+                minTermo: 2,
+                relevanciaMaxima: RELEVANCIA.PALAVRA,
+            });
+            if (citado.alunos.length === 1 && citado.alunos[0].id !== String(aluno._id)) {
+                const outro = citado.alunos[0];
+                return {
+                    aluno: { _id: outro.id, nome: outro.nome, turma: outro.turma },
+                    alunoId: outro.id,
+                };
+            }
+
+            // `nome` e `sobrenome` são campos separados desde a importação da
+            // SEDUC; a resposta precisa dizer o nome inteiro, como no cadastro.
+            return { aluno: { ...aluno, nome: nomeExibicao(aluno) }, alunoId: String(aluno._id) };
         }
         return { aluno: null, alunoId: null };
     }
 
-    // Rule 1: Extract name tokens (stop-words normalized for accent-insensitive matching)
-    const STOP_WORDS = new Set([
-        'nota','notas','falta','faltas','media','boletim','turma','aluno','alunos',
-        'frequencia','presenca','comunicado','horario',
-        'professor','como','qual','quais','esta','dos','das','del','que','para',
-        'por','com','sem','nao','sim','tem','seu','sua','meu','minha','filho',
-        'filha','sobre','ver','quero','preciso','saber','informar','desempenho','rendimento',
-    ]);
+    // Rules 1 e 2 — extrai o nome de dentro da frase e busca no banco.
+    // `minTermo: 2` porque uma letra solta no meio de uma pergunta ("e o A?")
+    // não identifica ninguém; no campo de busca, onde a intenção é explícita,
+    // uma letra já vale (ver ChatbotController.sugerirAlunos).
+    const { alunos } = await sugerirAlunos({
+        texto: message,
+        filtro: alunoFilter,
+        limite: MAX_OPCOES_ALUNO,
+        minTermo: 2,
+        relevanciaMaxima: RELEVANCIA.PALAVRA,
+    });
 
-    const allTokens = message
-        .split(/\s+/)
-        .map(t => t.replace(/[^A-Za-záéíóúâêîôûãõàèìòùçÁÉÍÓÚÂÊÎÔÛÃÕÀÈÌÒÙÇ]/g, ''))
-        .filter(t => t.length >= 2 && !STOP_WORDS.has(normalizeText(t)));
+    // Rule 3 — Disambiguation
+    if (alunos.length === 1) {
+        // 1 result → proceed directly, no buttons
+        const escolhido = alunos[0];
+        return {
+            aluno: { _id: escolhido.id, nome: escolhido.nome, turma: escolhido.turma },
+            alunoId: escolhido.id,
+        };
+    }
 
-    // Rule 2: Search DB progressively (longest match first)
-    for (let size = allTokens.length; size >= 1; size--) {
-        for (let start = 0; start <= allTokens.length - size; start++) {
-            const trecho = allTokens.slice(start, start + size).join(' ');
-            if (!trecho.trim()) continue;
-
-            // Normalize the search term for accent-insensitive regex
-            const normalizedTrecho = normalizeText(trecho);
-            // Build regex that matches accent-insensitively
-            // ESCAPADO por precaução: hoje `trecho` já vem filtrado a letras
-            // acima, mas o escape torna a query segura por si só, sem depender
-            // de um filtro distante continuar existindo.
-            const matches = await Aluno.find(
-                { nome: new RegExp(escapeRegex(trecho), 'i'), ...alunoFilter }
-            ).select('_id nome turma turmaId').lean();
-
-            // Rule 3 — Disambiguation
-            if (matches.length === 1) {
-                // 1 result → proceed directly, no buttons
-                return { aluno: matches[0], alunoId: String(matches[0]._id) };
-            }
-
-            if (matches.length > 1) {
-                // 2+ results → generate buttons { label: real_name, value: aluno_id }
-                const rawButtons = matches.map(a => ({
-                    label: `${a.nome} — Turma ${a.turma || '—'}`,
-                    value: String(a._id),
-                }));
-                // Validation: every button must map 1:1 to a query result
-                const validatedButtons = validateButtons(rawButtons, matches);
-                return {
-                    aluno: null,
-                    alunoId: null,
-                    ambiguous: true,
-                    ambiguousMessage: `Encontrei ${validatedButtons.length} alunos com esse nome. Qual deles você quer consultar?`,
-                    options: validatedButtons,
-                };
-            }
-        }
+    if (alunos.length > 1) {
+        // 2+ results → generate buttons { label: real_name, value: aluno_id }
+        const rawButtons = alunos.map(a => ({
+            label: `${a.nome} — Turma ${a.turma || '—'}`,
+            value: a.id,
+        }));
+        // Validation: every button must map 1:1 to a query result
+        const validatedButtons = validateButtons(rawButtons, alunos.map(a => ({ _id: a.id })));
+        return {
+            aluno: null,
+            alunoId: null,
+            ambiguous: true,
+            ambiguousMessage: `Encontrei ${validatedButtons.length} alunos com esse nome. Qual deles você quer consultar?`,
+            options: validatedButtons,
+        };
     }
 
     // 0 results → no buttons

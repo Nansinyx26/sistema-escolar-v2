@@ -2,6 +2,152 @@
  * Sidebar and Voice Command Logic 3.0
  */
 
+/**
+ * ─── Catálogo de vozes (window.Vozes) ───────────────────────────────────────
+ *
+ * Fica aqui, e não num arquivo novo, porque este é o módulo que já define
+ * `window.speak()` — sem ele não há narração nenhuma, então uma tela que tem
+ * voz tem necessariamente este arquivo, e ele carrega antes de
+ * `js/chatbot-ia.js` em todas as páginas que têm o chatbot.
+ *
+ * A lista existia copiada em cinco lugares, com rótulos diferentes em cada um:
+ * a mesma voz era "Brian — Profundo e Tranquilo" aqui, "Brian — Tranquilo" na
+ * gaveta e "Brian — grave e tranquila" na página do assistente. Acrescentar
+ * uma quinta voz significava lembrar de cinco arquivos, e esquecer um deixava
+ * a voz existindo em metade do sistema.
+ *
+ * Este objeto passa a ser a fonte para este arquivo e para o chatbot.
+ * `js/settings-drawer.js` e `html/direcao/ia-assistant.html` seguem com as
+ * opções escritas à mão de propósito: a gaveta é carregada em ~44 páginas,
+ * várias sem `sidebar-voice.js`, e ali um seletor vazio seria pior que um
+ * rótulo desalinhado. (Além disso `vozBrianPadrao.test.js` fixa a ordem no
+ * texto daqueles dois arquivos.)
+ *
+ * Os IDs do provedor NÃO moram aqui — eles vivem em
+ * `backend/src/services/TTSService.js`, que é quem fala com a ElevenLabs. O
+ * front manda só o nome ('brian'), e o backend resolve.
+ */
+window.Vozes = (function () {
+    'use strict';
+
+    /** Ordem importa: é a ordem em que aparecem, e a primeira é a padrão. */
+    var LISTA = [
+        { nome: 'brian', rotulo: 'Brian', descricao: 'Grave e tranquila' },
+        { nome: 'adam', rotulo: 'Adam', descricao: 'Firme e direta' },
+        { nome: 'eric', rotulo: 'Eric', descricao: 'Suave e natural' },
+        { nome: 'george', rotulo: 'George', descricao: 'Calorosa e pausada' },
+    ];
+
+    var PADRAO = 'brian';
+    var CHAVE = 'user_elevenlabs_voice';
+
+    function ler(chave, alternativa) {
+        try {
+            var v = localStorage.getItem(chave);
+            return v === null ? alternativa : v;
+        } catch (e) {
+            return alternativa;
+        }
+    }
+
+    function gravar(chave, valor) {
+        try {
+            localStorage.setItem(chave, String(valor));
+        } catch (e) {
+            /* armazenamento cheio ou bloqueado — a escolha vale só nesta aba */
+        }
+    }
+
+    /**
+     * Normaliza a voz salva.
+     *
+     * Instalações antigas gravaram 'male' e 'female' nesta chave, quando ela
+     * ainda guardava GÊNERO em vez de nome de voz. Mandar 'male' ao backend
+     * não estoura nada — ele cai no fallback — mas o seletor ficava sem
+     * nenhuma opção marcada, e a pessoa via um campo em branco descrevendo uma
+     * escolha que ela tinha feito.
+     */
+    function normalizar(valor) {
+        var v = String(valor || '').toLowerCase();
+        for (var i = 0; i < LISTA.length; i++) {
+            if (LISTA[i].nome === v) return v;
+        }
+        return PADRAO;
+    }
+
+    /** A voz em uso agora, sempre um nome válido. */
+    function atual() {
+        return normalizar(ler(CHAVE, PADRAO));
+    }
+
+    function porNome(nome) {
+        var alvo = normalizar(nome);
+        for (var i = 0; i < LISTA.length; i++) {
+            if (LISTA[i].nome === alvo) return LISTA[i];
+        }
+        return LISTA[0];
+    }
+
+    /**
+     * Registra a escolha e avisa o resto da página.
+     *
+     * Grava no navegador PRIMEIRO e no servidor depois, sem esperar: a próxima
+     * narração lê o localStorage, e fazer a troca de voz depender de uma
+     * ida à rede daria a impressão de que o clique não pegou.
+     *
+     * @param {string} nome
+     * @param {{ previa?: boolean }} [opcoes] `previa` narra uma frase curta na
+     *   voz nova — a única forma de escolher uma voz é ouvindo-a.
+     * @returns {string} o nome efetivamente aplicado (já normalizado)
+     */
+    function definir(nome, opcoes) {
+        var escolhida = normalizar(nome);
+        gravar(CHAVE, escolhida);
+        // O backend só tem vozes masculinas; esta chave legada é lida por telas
+        // antigas e continuaria em 'female' num usuário migrado.
+        gravar('user_voice_preference', 'male');
+
+        window.dispatchEvent(new CustomEvent('voiceChanged', { detail: { voice: escolhida } }));
+
+        if (typeof window.saveAccessibilityPreference === 'function') {
+            window.saveAccessibilityPreference({ elevenlabsVoice: escolhida });
+        }
+
+        if (opcoes && opcoes.previa && typeof window.speak === 'function') {
+            window.speak('Voz alterada com sucesso!');
+        }
+        return escolhida;
+    }
+
+    /** Preenche um `<select>` com as vozes e marca a que está em uso. */
+    function preencherSelect(select) {
+        if (!select) return;
+        select.innerHTML = LISTA.map(function (v) {
+            return (
+                '<option value="' +
+                v.nome +
+                '" data-elevenlabs-voice="1">' +
+                v.rotulo +
+                ' — ' +
+                v.descricao +
+                '</option>'
+            );
+        }).join('');
+        select.value = atual();
+    }
+
+    return {
+        LISTA: LISTA,
+        PADRAO: PADRAO,
+        CHAVE: CHAVE,
+        normalizar: normalizar,
+        atual: atual,
+        porNome: porNome,
+        definir: definir,
+        preencherSelect: preencherSelect,
+    };
+})();
+
 document.addEventListener('DOMContentLoaded', () => {
     document.body.classList.remove('high-contrast');
     initSidebar();
@@ -487,31 +633,30 @@ function initVoiceToggles() {
     // --- Seletor de voz ElevenLabs ---
     const voiceSelect = document.getElementById('voice-provider-select');
     if (voiceSelect) {
-        // Injeta as opções de voz se ainda não existirem
-        const hasVoiceOptions = voiceSelect.querySelector('option[data-elevenlabs-voice]');
-        if (!hasVoiceOptions) {
-            const voices = [
-                { id: 'brian', label: 'Brian — Profundo e Tranquilo' },
-                { id: 'adam', label: 'Adam — Firme e Dominante' },
-                { id: 'eric', label: 'Eric — Suave e Confiável' },
-                { id: 'george', label: 'George — Caloroso e Narrativo' },
-            ];
-            // Substitui o select pelo de vozes
-            voiceSelect.innerHTML = voices
-                .map((v) => `<option value="${v.id}" data-elevenlabs-voice="1">${v.label}</option>`)
-                .join('');
-        }
-
-        // Restaura a preferência salva
-        const saved = localStorage.getItem('user_elevenlabs_voice') || 'brian';
-        voiceSelect.value = saved;
+        // A lista vem do catálogo, não de um array local: era a quinta cópia
+        // das mesmas quatro vozes, e a única com o rótulo "Firme e Dominante"
+        // enquanto as outras telas diziam "Firme".
+        window.Vozes.preencherSelect(voiceSelect);
 
         voiceSelect.addEventListener('change', () => {
-            const chosen = voiceSelect.value;
-            localStorage.setItem('user_elevenlabs_voice', chosen);
-            window.dispatchEvent(new CustomEvent('voiceChanged', { detail: { voice: chosen } }));
-            // Preview: fala um texto rápido com a nova voz
-            if (window.speak) window.speak('Voz alterada com sucesso!');
+            // A gaveta de configurações (js/settings-drawer.js) grava a voz e
+            // DEPOIS dispara um `change` sintético neste select para mantê-lo
+            // em sincronia. Sem esta guarda, aquele eco reexecutava tudo: dois
+            // POST para o servidor e duas prévias, a segunda cortando a
+            // primeira no meio da frase. Se o valor já é o que está gravado,
+            // não houve escolha nova — só o eco.
+            if (voiceSelect.value === window.Vozes.atual()) return;
+
+            // `definir` grava, avisa a página, persiste no servidor e toca a
+            // prévia — os quatro passos que antes estavam soltos aqui, e dos
+            // quais a persistência simplesmente não existia.
+            window.Vozes.definir(voiceSelect.value, { previa: true });
+        });
+
+        // Trocar a voz na gaveta de configurações tem de refletir aqui.
+        window.addEventListener('voiceChanged', (e) => {
+            const voz = e.detail && e.detail.voice;
+            if (voz && voiceSelect.value !== voz) voiceSelect.value = voz;
         });
     }
 
@@ -546,9 +691,63 @@ function initVoiceToggles() {
     updateVoiceUI();
 }
 
+/**
+ * Grava as preferências de narração no servidor.
+ *
+ * Estava vazia — "mantido para compatibilidade" — com o comentário de que o
+ * sistema tinha sido travado numa voz só. Só que a escolha de voz voltou a
+ * existir, o campo `settings.elevenlabsVoice` está no modelo e a rota
+ * `POST /api/auth/settings/tts` continua de pé e coberta por teste. Com a
+ * função vazia, a voz escolhida vivia apenas no localStorage: quem escolhia
+ * Eric no computador da escola ouvia Brian no próprio celular, sem nenhuma
+ * pista do motivo.
+ *
+ * Falha em silêncio de propósito. A voz JÁ está gravada no navegador quando
+ * esta função roda, então a escolha vale nesta sessão de qualquer jeito — um
+ * alerta aqui interromperia quem só queria trocar de voz para relatar uma
+ * falha de sincronização que não o afeta agora.
+ *
+ * @param {{ elevenlabsVoice?: string, voicePreference?: string,
+ *           ttsProvider?: string, narrarAuto?: boolean, speed?: number,
+ *           narrationMode?: string }} prefs
+ */
 async function saveAccessibilityPreference(prefs = {}) {
-    // Mantido para compatibilidade, mas o sistema agora é travado no ElevenLabs Masculino no backend
+    const corpo = {};
+    if (prefs.elevenlabsVoice) {
+        corpo.elevenlabsVoice = prefs.elevenlabsVoice;
+        // O controller copia `voicePreference` para o campo legado `voiceGender`
+        // apenas quando ele é 'male'/'female'; mandar o NOME da voz aqui fazia
+        // o update inteiro voltar 500 e nenhuma preferência era gravada.
+        corpo.voicePreference = 'male';
+        corpo.ttsProvider = 'elevenlabs';
+    }
+    if (prefs.voicePreference) corpo.voicePreference = prefs.voicePreference;
+    if (prefs.ttsProvider) corpo.ttsProvider = prefs.ttsProvider;
+    if (prefs.narrarAuto !== undefined) corpo.narrarAuto = prefs.narrarAuto;
+    if (prefs.speed !== undefined) corpo.speed = prefs.speed;
+    if (prefs.narrationMode) corpo.narrationMode = prefs.narrationMode;
+    if (Object.keys(corpo).length === 0) return;
+
+    try {
+        const csrf = getCsrfToken();
+        const resposta = await fetch(`${window.API_BASE_URL || '/api'}/auth/settings/tts`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
+            },
+            credentials: 'include',
+            body: JSON.stringify(corpo),
+        });
+        if (!resposta.ok) {
+            console.warn(`[Voz] Preferência não gravada no servidor: HTTP ${resposta.status}`);
+        }
+    } catch (erro) {
+        console.warn('[Voz] Preferência não gravada no servidor:', erro.message);
+    }
 }
+
+window.saveAccessibilityPreference = saveAccessibilityPreference;
 
 function applyDisplayModeClass(mode) {
     document.body.classList.remove(
