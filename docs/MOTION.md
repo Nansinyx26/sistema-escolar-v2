@@ -164,6 +164,106 @@ Ao imprimir (boletim, ata) o movimento e os skeletons são removidos.
 
 ---
 
+## A esfera de voz (orb dos chatbots)
+
+Motor: [`js/ia/AssistantSphere.js`](../js/ia/AssistantSphere.js) ·
+Nível de voz: [`js/ia/NivelDeVoz.js`](../js/ia/NivelDeVoz.js)
+
+Uma nuvem de ~3200 pontos deslocada por ruído 3D, em Canvas 2D. É a **mesma esfera
+nos quatro perfis** — direção, professor, secretaria (via
+[`js/voice-orb.js`](../js/voice-orb.js)) e responsável (via
+`portal-responsavel/src/hooks/useEsferaDeVoz.ts`, que importa o mesmo módulo em
+tempo de execução em vez de copiá-lo).
+
+### Por que ela não é decoração
+
+Pela regra da frequência, um laço de partículas permanente seria movimento
+gratuito — e era o que o orb antigo fazia: cinco barras de equalizador tocando
+uma coreografia fixa de 0,8s, igual para toda narração, sem nenhuma relação com
+o que estava sendo dito.
+
+A esfera é alimentada pelo **espectro real** do áudio do ElevenLabs. Ela se move
+porque há voz ali; quando a voz para, ela assenta. O que ela comunica — "o
+assistente está falando agora, e ainda está" — não existe em outro lugar da tela.
+
+Daí as duas regras de uso:
+
+- **Só existe enquanto há o que mostrar.** Nos painéis o orb monta ao pedir a
+  resposta e desmonta depois dela. No portal, o `fab` (botão "ouvir", que fica
+  na tela parado) só sobe a esfera quando há narração; ocioso, ele é estático.
+- **Nada de pulso ambiente.** Não há respiração, brilho pulsante nem anel
+  girando para "chamar atenção". Todo movimento sai do estado ou do áudio.
+
+### Tempos
+
+| Momento | Valor | Por quê |
+|---------|-------|---------|
+| Entrada (materialização) | 420ms, ease-out cúbico | Acima dos 300ms do Emil de propósito: é uma vez por resposta, não um controle de uso repetido. Parte de 0,88 do raio — nunca de zero |
+| Saída | 220ms, opacidade + `scale(0.96)` | Metade da entrada. A atenção já foi para o texto da resposta |
+| Acento na troca de estado | ~380ms de decaimento | Sem ele, "pensando" → "falando" não tinha instante: a esfera derivava e a troca não era legível |
+| Resposta ao áudio | ataque 26/s, queda 8/s | Assimétrico. Simétrico, a esfera chegava atrasada em cada consoante e escorria depois dela |
+| Troca de estado | 5/s | Igual ao que era a 60fps, agora em tempo real (veja abaixo) |
+
+As constantes de suavização são **por segundo**, não por quadro. A forma antiga
+(`valor += (alvo - valor) * 0.15` a cada quadro) amarrava a animação à taxa de
+atualização da tela: em 0,25s ela percorria 49% do caminho a 30fps e 95% a
+144fps — a mesma esfera com três personalidades, e nenhum usuário vendo mais de
+uma. `1 - exp(-k * dt)` dá o mesmo decaimento com o relógio real.
+
+### Brilho e densidade
+
+A luz difusa (fundo, bloom, halo, núcleo e especular) é **pré-renderizada em
+bitmap** e blitada por quadro. Antes eram `createRadialGradient` + `fillRect`
+todo quadro, sobre quase todo o canvas — o item mais caro do desenho depois da
+nuvem. A folga que a troca abriu foi gasta em luz: entraram o bloom largo e o
+reflexo especular, que dão o brilho sem tocar na exposição da nuvem.
+
+Brilho da nuvem e brilho difuso são botões **separados**, e é importante que
+continuem sendo. A nuvem soma luz ('lighter'), então subir a exposição dela não
+acende a esfera: estoura o centro em branco e apaga a textura de água que ela
+existe para mostrar. Quando a contagem de pontos sobe, `EXPOSICAO` e o tamanho
+do ponto descem junto — o que se mantém constante é a luz total, e o que se
+ganha é grão.
+
+A densidade (`devicePixelRatio`) é o **primeiro degrau a cair** quando o quadro
+passa do orçamento de 11ms, antes de qualquer ponto ser descartado: perder
+nitidez incomoda menos que perder a água. Ver `NIVEIS_QUALIDADE`.
+
+### Movimento reduzido
+
+`prefers-reduced-motion` congela a geometria e redesenha a ~10fps (só o brilho
+respira devagar); entrada e acento não acontecem. Nos painéis a saída vira corte
+seco em vez de transição. Isso vive dentro do próprio `AssistantSphere.js` — não
+é uma regra de CSS por cima.
+
+---
+
+## A narração que acompanha o texto
+
+Fila: [`js/ia/NarradorStream.js`](../js/ia/NarradorStream.js) ·
+Corte em frases: [`js/ia/SegmentadorFala.js`](../js/ia/SegmentadorFala.js) ·
+Marca na tela: [`js/ia/DestaqueNarracao.js`](../js/ia/DestaqueNarracao.js)
+
+A narração é cortada em frases e sai **junto com o texto**: a voz começa depois
+da primeira frase, não depois da resposta inteira. Enquanto um trecho toca, o
+seguinte já está sendo sintetizado — sem isso a fala ganharia uma pausa audível
+a cada frase, que é pior que a espera única de antes porque se repete.
+
+**A frase sendo falada fica marcada na bolha, e a marca NÃO anima.** Ela troca a
+cada poucos segundos durante a narração inteira: é o caso clássico da regra da
+frequência — animar essa troca seria movimento de alta frequência competindo com
+o texto que a pessoa está lendo. A marca é legenda, não efeito.
+
+Ela também não usa `<span>`: a bolha é repintada a cada ~30ms enquanto a
+resposta chega, e o elemento seria desfeito a cada repintura. Quem pinta é a
+**CSS Custom Highlight API** (`::highlight(ia-narracao)`), que marca um `Range`
+sem tocar no DOM. Onde a API não existe, nada é pintado e a narração segue
+inteira — é enfeite útil, nunca requisito.
+
+Como não há movimento nenhum, não há o que degradar em `prefers-reduced-motion`.
+
+---
+
 ## Manutenção
 
 - Tokens de curva vivem em `css/variables.css` e `css/easings.css` — `motion.css` os

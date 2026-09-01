@@ -418,6 +418,55 @@
         }
     }
 
+    /**
+     * Grava a voz escolhida no servidor.
+     *
+     * Existe aqui, com o fetch próprio, porque esta gaveta é carregada em ~44
+     * páginas e 30 delas NÃO carregam `js/sidebar-voice.js` — onde mora
+     * `window.saveAccessibilityPreference`. Delegar a ele deixaria a escolha
+     * presa ao navegador na maioria das telas, que é exatamente o defeito que
+     * se está corrigindo. A gaveta já é deliberadamente sem dependências (tem
+     * os próprios `read`/`write`); isto segue o mesmo desenho.
+     *
+     * Se o helper global existir, ele é usado — assim há um caminho só nas
+     * páginas que têm os dois.
+     *
+     * Falha em silêncio: a voz já está gravada no navegador quando isto roda,
+     * então a escolha vale nesta sessão de qualquer forma.
+     */
+    function persistirVoz(voz) {
+        if (typeof window.saveAccessibilityPreference === 'function') {
+            window.saveAccessibilityPreference({ elevenlabsVoice: voz });
+            return;
+        }
+        if (typeof fetch !== 'function') return;
+
+        var csrf = (document.cookie.match(/csrf_token=([^;]+)/) || [])[1];
+        fetch((window.API_BASE_URL || '/api') + '/auth/settings/tts', {
+            method: 'POST',
+            headers: csrf
+                ? { 'Content-Type': 'application/json', 'X-CSRF-Token': decodeURIComponent(csrf) }
+                : { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            // `voicePreference` vai como 'male', e não como o nome da voz: o
+            // controller copia esse campo para o legado `voiceGender`, cujo
+            // enum é ['female','male'] — com o nome da voz ali, o update
+            // inteiro voltava 500 e NENHUMA preferência era gravada.
+            body: JSON.stringify({
+                elevenlabsVoice: voz,
+                voicePreference: 'male',
+                ttsProvider: 'elevenlabs',
+            }),
+        }).then(
+            function (r) {
+                if (!r.ok) console.warn('[Voz] Preferência não gravada no servidor: HTTP ' + r.status);
+            },
+            function (e) {
+                console.warn('[Voz] Preferência não gravada no servidor:', e && e.message);
+            }
+        );
+    }
+
     function bindToggle(id, storageKey, onToggle, defaultOn) {
         var el = document.getElementById(id);
         if (!el) return;
@@ -547,6 +596,9 @@
             var chosen = voiceSelect.value;
             write('user_elevenlabs_voice', chosen);
             write('user_voice_preference', 'male'); // backend só possui vozes masculinas
+            // Sem isto a escolha morria neste navegador: quem trocasse a voz no
+            // computador da escola voltava a ouvir Brian no próprio celular.
+            persistirVoz(chosen);
             var legacy = document.getElementById('voice-provider-select');
             if (legacy && legacy.value !== chosen) {
                 legacy.value = chosen;

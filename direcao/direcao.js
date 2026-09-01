@@ -459,6 +459,18 @@ class DirecaoDashboard {
         }
     }
 
+    exportarRelatorio() {
+        const turmaId = document.getElementById('filtroTurma')?.value || '';
+        const bimestre = document.getElementById('filtroBimestre')?.value || '';
+        const materiaId = document.getElementById('filtroMateria')?.value || '';
+        const params = new URLSearchParams();
+        if (turmaId) params.append('turmaId', turmaId);
+        if (bimestre) params.append('bimestre', bimestre);
+        if (materiaId) params.append('materiaId', materiaId);
+        const query = params.toString() ? `?${params.toString()}` : '';
+        window.open(`${this.baseUrl}/ia/relatorio-bi${query}`, '_blank');
+    }
+
     // ─── Profile & Avatar ──────────────────────────────────────────────────
     updateProfileUI() {
         const user = window.auth?.getCurrentUser();

@@ -83,6 +83,7 @@ const CAMINHOS = [
     '/html/secretaria/matriculas.html',
     '/html/direcao/moderacao.html',
     '/html/direcao/bi-pedagogico.html',
+    '/html/direcao/ia-assistant.html',
     '/direcao/auditoria.html',
     '/direcao/codigos-secretos.html',
     '/direcao/codigos-secretos.js',
@@ -169,6 +170,14 @@ describe('matriz de acesso — precedência da exceção por arquivo', () => {
         expect(matriz.perfisPermitidos('/html/secretaria/pagina-nova.html')).toEqual(
             matriz.AREAS['/html/secretaria'].perfis
         );
+    });
+
+    it('a exceção de ia-assistant.html permite professor e secretaria abrirem o assistente em /html/direcao', () => {
+        expect(matriz.podeAbrir('professor', '/html/direcao/ia-assistant.html')).toBe(true);
+        expect(matriz.podeAbrir('secretaria', '/html/direcao/ia-assistant.html')).toBe(true);
+        expect(matriz.podeAbrir('diretor', '/html/direcao/ia-assistant.html')).toBe(true);
+        expect(matriz.podeAbrir('admin', '/html/direcao/ia-assistant.html')).toBe(true);
+        expect(matriz.podeAbrir('responsavel', '/html/direcao/ia-assistant.html')).toBe(false);
     });
 
     it('página fora de qualquer área e fora das públicas exige sessão, sem exigir perfil', () => {

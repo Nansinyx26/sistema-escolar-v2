@@ -58,6 +58,10 @@
     <meta name="apple-mobile-web-app-title" content="Escola">
     <meta name="mobile-web-app-capable" content="yes">
     <link rel="stylesheet" href="../../css/system-global.css?v=1.0">
+    <!-- Orb de voz do chatbot. Sem estes dois arquivos o chatbot-ia.js
+         abaixo procura window.VoiceOrbManager, não acha, e a secretaria é
+         o único perfil que ouve a resposta sem ver nada acontecer. -->
+    <link rel="stylesheet" href="../../css/voice-orb.css?v=2.0">
     <!-- Rolagem e performance mobile — deve ser o ÚLTIMO stylesheet -->
     <link rel="stylesheet" href="../../css/mobile-scroll.css?v=1.0">
     <link rel="stylesheet" href="../../css/motion.css">
@@ -183,8 +187,9 @@ async function carregarComunicados() {
     } catch(e) { console.error(e); }
 }
 </script>
-<script src="../../js/sidebar-voice.js?v=4.0"></script>
-<script src="../../js/chatbot-ia.js?v=4.0"></script>
+<script src="../../js/sidebar-voice.js?v=5.0"></script>
+<script src="../../js/voice-orb.js?v=2.0"></script>
+<script src="../../js/chatbot-ia.js?v=5.0"></script>
 
 <script src="../../js/click-sound.js" defer></script>
     <script defer src="../../js/reactions.js"></script>

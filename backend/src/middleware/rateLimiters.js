@@ -232,11 +232,26 @@ const authPrefixLimiter = limiterPorIp({
 
 // ── Síntese de voz (TTS) — cota de API externa PAGA ──────────────────────────
 // Teto por conta (não por IP): o custo é por chamada e pertence ao projeto,
-// não à rede de origem. 60/hora cobre com folga a narração de uma sessão de uso
-// real; ajustável por RATE_LIMIT_TTS_USUARIO.
+// não à rede de origem. Ajustável por RATE_LIMIT_TTS_USUARIO.
+//
+// Subiu de 60 para 200/hora quando o copiloto passou a narrar a resposta EM
+// TRECHOS, acompanhando o texto conforme ele é escrito na tela (ver
+// js/ia/SegmentadorFala.js). Uma resposta que antes valia 1 requisição hoje
+// vale de 2 a 5 — o mesmo áudio, cortado em frases para começar a tocar sem
+// esperar a resposta inteira.
+//
+// O que este limitador protege é a cota paga, e o provedor cobra por
+// CARACTERE, não por requisição. O total de caracteres falados numa sessão não
+// mudou; só a contagem de chamadas. Quem continua segurando o volume real é o
+// MAX_CARACTERES_TTS de routes/tts.js, que trava o tamanho de cada corpo — e
+// os trechos do copiloto não passam de ~1800 caracteres (TETO_TRECHO).
+//
+// 200/hora dá ~50 respostas narradas por hora por conta, que continua bem
+// acima de qualquer uso humano e bem abaixo do que um script conseguiria
+// queimar antes de o teto fechar.
 const ttsUsuarioLimiter = limiterPorUsuario({
     windowMs: UMA_HORA,
-    maxProd: tetoEnv('RATE_LIMIT_TTS_USUARIO', 60),
+    maxProd: tetoEnv('RATE_LIMIT_TTS_USUARIO', 200),
     maxDev: 600,
     mensagem: {
         success: false,
@@ -244,9 +259,13 @@ const ttsUsuarioLimiter = limiterPorUsuario({
     },
 });
 
+// O teto por IP acompanha na mesma proporção do teto por conta: a escola
+// inteira costuma sair pelo mesmo endereço, e deixá-lo para trás faria a sala
+// dos professores esbarrar no limite de IP muito antes de qualquer conta
+// esbarrar no dela.
 const ttsIpLimiter = limiterPorIp({
     windowMs: UMA_HORA,
-    maxProd: tetoEnv('RATE_LIMIT_TTS_IP', 120),
+    maxProd: tetoEnv('RATE_LIMIT_TTS_IP', 400),
     maxDev: 1200,
     mensagem: {
         success: false,

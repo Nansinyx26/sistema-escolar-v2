@@ -387,8 +387,12 @@ function renderAIPedagogicalSummary(data) {
             if (window.VoiceOrbManager) {
                 window.VoiceOrbManager.setState('idle');
                 setTimeout(() => {
-                    if (localOrb) localOrb.style.display = 'none';
+                    // `destroy()` faz o orb sair em 220ms; esconder o palco
+                    // antes disso cortaria a saída no primeiro quadro.
                     window.VoiceOrbManager.destroy();
+                    setTimeout(() => {
+                        if (localOrb) localOrb.style.display = 'none';
+                    }, 240);
                 }, 2000);
             }
         };

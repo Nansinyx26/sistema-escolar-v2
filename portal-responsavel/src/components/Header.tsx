@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import schoolLogo from '../assets/logo-jaguari.png';
 import { getChatNaoLidas } from '../services/apiService';
 import styles from '../styles/portal.module.scss';
+import { type VozNome, VOZES, definirVoz, normalizarVoz, vozAtual } from '../constants/vozes';
 import type { GmailUser, Notification } from '../types';
 import { getPhotoUrl } from '../utils/photoUtils';
 import Icon from './ui/Icon';
@@ -48,14 +49,36 @@ function getInitials(name: string): string {
 }
 
 const VoiceSelector: React.FC = () => {
-  const [voice, setVoice] = useState(localStorage.getItem('user_voice_preference') || 'male');
+  /*
+   * Este menu oferecia "Voz Masculina" e "Voz Desativada" — um liga/desliga
+   * fantasiado de escolha de voz. As quatro vozes masculinas do sistema já
+   * existiam no backend e no painel do chatbot, mas não aqui, que é justamente
+   * o controle global do portal.
+   *
+   * Duas coisas diferentes moram neste menu, e agora em chaves diferentes:
+   *   - QUAL voz  → `user_elevenlabs_voice`, o que `/api/tts/speak` recebe
+   *   - narração ligada ou não → `user_voice_preference` ('male' | 'off')
+   * Antes as duas dividiam a segunda chave, então escolher uma voz e desligar
+   * a narração eram a mesma gaveta.
+   */
+  const [voice, setVoice] = useState<VozNome>(() => vozAtual());
+  const [narracaoDesligada, setNarracaoDesligada] = useState(
+    () => localStorage.getItem('user_voice_preference') === 'off'
+  );
   const [mode, setMode] = useState(localStorage.getItem('user_narration_mode') || 'texto_audio');
   const [isOpen, setIsOpen] = useState(false);
 
-  const voices = [
-    { id: 'male', label: 'Voz Masculina', icon: 'ti-man', color: 'text-violet-400' },
-    { id: 'off', label: 'Voz Desativada', icon: 'ti-volume-off', color: 'text-zinc-400' },
-  ];
+  // Trocar a voz no painel do chatbot tem de refletir aqui, e vice-versa.
+  useEffect(() => {
+    const aoTrocar = (e: Event) => {
+      const detalhe = (e as CustomEvent<{ voice?: string }>).detail;
+      if (!detalhe?.voice) return;
+      setVoice(normalizarVoz(detalhe.voice));
+      setNarracaoDesligada(false);
+    };
+    window.addEventListener('voiceChanged', aoTrocar);
+    return () => window.removeEventListener('voiceChanged', aoTrocar);
+  }, []);
 
   const narrationModes = [
     { id: 'texto_audio', label: 'Texto + Áudio', icon: 'ti-layers' },
@@ -79,11 +102,20 @@ const VoiceSelector: React.FC = () => {
     }
   };
 
-  const handleVoiceSelect = (v: string) => {
-    localStorage.setItem('user_voice_preference', v);
-    setVoice(v);
-    window.dispatchEvent(new CustomEvent('voicePreferenceChanged', { detail: v }));
-    saveSettings({ voicePreference: v });
+  /** Escolha de uma das vozes nomeadas. Religa a narração se estava desligada. */
+  const handleVoiceSelect = (nome: VozNome) => {
+    setVoice(nome);
+    setNarracaoDesligada(false);
+    // `definirVoz` grava as duas chaves, avisa a página e persiste no servidor.
+    void definirVoz(nome);
+  };
+
+  /** Desligar não apaga a voz escolhida — ela volta ao religar. */
+  const handleVoiceOff = () => {
+    localStorage.setItem('user_voice_preference', 'off');
+    setNarracaoDesligada(true);
+    window.dispatchEvent(new CustomEvent('voicePreferenceChanged', { detail: 'off' }));
+    saveSettings({ voicePreference: 'off' });
   };
 
   const handleModeSelect = (m: string) => {
@@ -108,10 +140,10 @@ const VoiceSelector: React.FC = () => {
         onClick={() => setIsOpen(!isOpen)}
         className={styles.notificationBell}
         title="Configurações de Voz e Leitura"
-        style={{ color: voice === 'off' ? '' : '#059669' }}
+        style={{ color: narracaoDesligada ? '' : '#059669' }}
       >
         <i
-          className={`ti ${voice === 'off' ? 'ti-volume-off' : 'ti-volume-2'}`}
+          className={`ti ${narracaoDesligada ? 'ti-volume-off' : 'ti-volume-2'}`}
           style={{ fontSize: '1.4rem' }}
         />
       </button>
@@ -151,31 +183,61 @@ const VoiceSelector: React.FC = () => {
             >
               Voz do Sistema
             </p>
-            {voices.map((v) => (
-              <button
-                type="button"
-                key={v.id}
-                onClick={() => handleVoiceSelect(v.id)}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '8px',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  textAlign: 'left',
-                  background: voice === v.id ? 'rgba(5, 150, 105, 0.1)' : 'transparent',
-                  color: voice === v.id ? '#059669' : '#a1a1aa',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                }}
-              >
-                <i className={`ti ${v.icon}`} style={{ fontSize: '1.1rem' }} />
-                {v.label}
-              </button>
-            ))}
+            {VOZES.map((v) => {
+              const ativa = !narracaoDesligada && voice === v.nome;
+              return (
+                <button
+                  type="button"
+                  key={v.nome}
+                  onClick={() => handleVoiceSelect(v.nome)}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                    textAlign: 'left',
+                    background: ativa ? 'rgba(5, 150, 105, 0.1)' : 'transparent',
+                    color: ativa ? '#059669' : '#a1a1aa',
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <i className="ti ti-man" style={{ fontSize: '1.1rem' }} />
+                  <span>
+                    {v.rotulo}
+                    {/* A descrição é o que torna a lista escolhível: quatro
+                        nomes próprios sozinhos não dizem como a voz soa. */}
+                    <span style={{ opacity: 0.6, fontWeight: 400 }}> · {v.descricao}</span>
+                  </span>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={handleVoiceOff}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                textAlign: 'left',
+                background: narracaoDesligada ? 'rgba(5, 150, 105, 0.1)' : 'transparent',
+                color: narracaoDesligada ? '#059669' : '#a1a1aa',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              <i className="ti ti-volume-off" style={{ fontSize: '1.1rem' }} />
+              Voz desativada
+            </button>
           </div>
 
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px' }}>

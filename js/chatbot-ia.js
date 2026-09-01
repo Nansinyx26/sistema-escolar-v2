@@ -134,10 +134,12 @@
             <div class="audio-settings-panel" id="settings-panel" style="display:none;">
                 <!-- Seleção de Provedor Removida conforme solicitado -->
                 <div class="setting-item">
-                    <label>Voz:</label>
-                    <select id="voice-select">
-                        <option value="male">Masculina (Standard)</option>
-                    </select>
+                    <label for="voice-select">Voz:</label>
+                    <!-- As opções são preenchidas por window.Vozes logo após a
+                         montagem. Ficavam escritas aqui como uma única opção
+                         morta, "Masculina (Standard)", que nem sequer era um
+                         nome de voz que o backend reconhecesse. -->
+                    <select id="voice-select"></select>
                 </div>
                 <div class="setting-item">
                     <label>Velocidade:</label>
@@ -151,7 +153,15 @@
 
 
             <form class="chatbot-input" id="chat-form">
-                <input type="text" id="chat-input-ia" placeholder="Pergunte algo..." required autocomplete="off">
+                <!-- O campo mora dentro de um contentor posicionado: a lista de
+                     sugestões de aluno é ancorada nele e sobe por cima do chat. -->
+                <div class="chatbot-input-field">
+                    <input type="text" id="chat-input-ia" placeholder="Pergunte algo..." required
+                           autocomplete="off" role="combobox" aria-expanded="false"
+                           aria-controls="chatbot-sugestoes" aria-autocomplete="list">
+                    <div class="chatbot-sugestoes" id="chatbot-sugestoes" role="listbox"
+                         aria-label="Alunos encontrados" hidden></div>
+                </div>
                 <button type="submit" id="chat-submit-btn" style="background: none; border: none; color: #60a5fa; cursor: pointer;"><i class="bi bi-send-fill"></i></button>
             </form>
 
@@ -389,8 +399,12 @@
             window.VoiceOrbManager.setState('idle');
             setTimeout(() => {
                 if (window.VoiceOrbManager && window.VoiceOrbManager.state === 'idle' && orbContainer) {
-                    orbContainer.style.display = 'none';
+                    // Ordem invertida de propósito: `destroy()` agora faz o orb
+                    // SAIR (220ms de opacidade). Esconder o palco antes cortava
+                    // essa saída no primeiro quadro — o orb sumia de um golpe e
+                    // a transição existia só no código.
                     window.VoiceOrbManager.destroy();
+                    setTimeout(() => { orbContainer.style.display = 'none'; }, 240);
                 }
             }, 3000);
         }
@@ -492,26 +506,308 @@
     };
 
 
-    // Settings listeners removidos ou simplificados
-    document.getElementById('voice-select').onchange = (e) => { 
-        const v = e.target.value;
-        audioSettings.voice = v; 
-        localStorage.setItem('user_voice_preference', v); 
-        if (window.saveAccessibilityPreference) window.saveAccessibilityPreference({ voicePreference: v });
-        window.dispatchEvent(new CustomEvent('voicePreferenceChanged', { detail: v }));
-    };
+    // --- Seletor de voz ---
+    //
+    // O que havia aqui gravava a escolha em `user_voice_preference`. Essa
+    // chave guarda GÊNERO ('male'), e não é a que `window.speak()` envia como
+    // voiceId — ele lê `user_elevenlabs_voice`. Ou seja: mesmo que o seletor
+    // tivesse mais de uma opção, trocar de voz não mudava voz nenhuma. O
+    // catálogo cuida das duas chaves e da gravação no servidor.
+    const voiceSelect = document.getElementById('voice-select');
+    if (voiceSelect && window.Vozes) {
+        window.Vozes.preencherSelect(voiceSelect);
+        audioSettings.voice = window.Vozes.atual();
+
+        voiceSelect.onchange = (e) => {
+            // Com prévia: escolher voz sem ouvi-la é escolher no escuro. São
+            // três palavras, e só toca quando a pessoa mexeu no seletor.
+            audioSettings.voice = window.Vozes.definir(e.target.value, { previa: true });
+        };
+    } else if (voiceSelect) {
+        // Página com o chatbot mas sem js/sidebar-voice.js: não há window.speak,
+        // então não há narração para configurar. Esconder é mais honesto que
+        // mostrar um seletor que não faz nada.
+        voiceSelect.closest('.setting-item')?.remove();
+    }
     document.getElementById('speed-range').oninput = (e) => {
         const s = e.target.value;
         audioSettings.speed = s;
         localStorage.setItem('user_voice_speed', s);
     };
 
-    // Listen for global voice changes from sidebar
-    window.addEventListener('voicePreferenceChanged', (e) => {
-        const v = e.detail;
+    // A voz pode ser trocada na gaveta de configurações ou na barra lateral,
+    // com o chat aberto ao lado. `voiceChanged` é o evento que essas duas telas
+    // disparam; o `voicePreferenceChanged` que era ouvido aqui carregava gênero,
+    // não nome de voz, e por isso zerava o seletor para um valor inexistente.
+    window.addEventListener('voiceChanged', (e) => {
+        const v = e.detail && e.detail.voice;
+        if (!v) return;
         audioSettings.voice = v;
-        const voiceSelect = document.getElementById('voice-select');
-        if (voiceSelect) voiceSelect.value = v;
+        const sel = document.getElementById('voice-select');
+        if (sel && sel.value !== v) sel.value = v;
+    });
+
+    // ─── AUTOCOMPLETE DE ALUNO ────────────────────────────────────────────
+    //
+    // Enquanto a pessoa digita, o campo sugere alunos REAIS do banco, no mesmo
+    // formato do autocomplete de um buscador: quem começa com o texto primeiro,
+    // depois quem apenas o contém, no máximo 10, sem repetição.
+    //
+    // A filtragem é feita pelo servidor (`GET /api/ia/chatbot/alunos`), e não
+    // aqui. Baixar a lista de alunos para filtrar no navegador não escala numa
+    // escola com milhares de matrículas — e entregaria ao cliente justamente a
+    // lista que o RBAC existe para recortar. O servidor devolve no máximo 10
+    // nomes, já dentro do que este usuário pode consultar.
+    //
+    // O que o servidor devolve em `termo` é o TRECHO que casou: numa frase como
+    // "notas do joão", `termo` é "joão". É esse pedaço que fica em negrito na
+    // lista e é ele — não a frase inteira — que é substituído pelo nome completo
+    // quando a pessoa escolhe um aluno.
+
+    const SUGESTOES = {
+        url: (window.API_BASE_URL || '/api') + '/ia/chatbot/alunos',
+        // 300 ms: tempo suficiente para uma pessoa digitar a próxima letra sem
+        // gerar uma requisição por tecla, e curto o bastante para a lista
+        // parecer instantânea.
+        atraso: 300,
+        minimo: 1,
+        maximo: 10,
+    };
+
+    const caixaSugestoes = document.getElementById('chatbot-sugestoes');
+
+    let sugestoes = [];
+    let sugestaoAtiva = -1;
+    let termoDestacado = '';
+    let temporizadorSugestoes = null;
+    let requisicaoSugestoes = null;
+    let sequenciaSugestoes = 0;
+    let textoConsultado = null;
+
+    const escaparHtml = (texto) => String(texto)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+
+    /**
+     * Versão sem acento e em minúsculas do texto, junto com o mapa de volta
+     * para as posições do texto ORIGINAL.
+     *
+     * O mapa é o que permite comparar "joao" com "João" e ainda assim destacar
+     * (e substituir) os caracteres certos no que a pessoa realmente digitou —
+     * remover acentos muda o tamanho da string, então índices calculados na
+     * versão normalizada não servem na original.
+     */
+    function mapearSemAcento(texto) {
+        let normalizado = '';
+        const posicoes = [];
+        for (let i = 0; i < texto.length; i++) {
+            const convertido = texto[i].normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+            for (let k = 0; k < convertido.length; k++) {
+                normalizado += convertido[k];
+                posicoes.push(i);
+            }
+        }
+        return { normalizado, posicoes };
+    }
+
+    /** Onde `termo` aparece em `texto`, ignorando acento e caixa. */
+    function localizarTrecho(texto, termo) {
+        if (!texto || !termo) return null;
+        const alvo = mapearSemAcento(texto);
+        const procurado = mapearSemAcento(termo).normalizado.trim();
+        if (!procurado) return null;
+        const inicio = alvo.normalizado.indexOf(procurado);
+        if (inicio < 0) return null;
+        return {
+            inicio: alvo.posicoes[inicio],
+            fim: alvo.posicoes[inicio + procurado.length - 1] + 1,
+        };
+    }
+
+    /** Nome do aluno com o trecho digitado em negrito. */
+    function destacarTrecho(nome, termo) {
+        const faixa = localizarTrecho(nome, termo);
+        if (!faixa) return escaparHtml(nome);
+        return escaparHtml(nome.slice(0, faixa.inicio))
+            + '<strong>' + escaparHtml(nome.slice(faixa.inicio, faixa.fim)) + '</strong>'
+            + escaparHtml(nome.slice(faixa.fim));
+    }
+
+    function fecharSugestoes() {
+        sugestoes = [];
+        sugestaoAtiva = -1;
+        caixaSugestoes.hidden = true;
+        caixaSugestoes.innerHTML = '';
+        input.setAttribute('aria-expanded', 'false');
+        input.removeAttribute('aria-activedescendant');
+    }
+
+    function marcarAtiva(indice) {
+        sugestaoAtiva = indice;
+        const itens = caixaSugestoes.querySelectorAll('.chatbot-sugestao');
+        itens.forEach((item, i) => {
+            const ativo = i === indice;
+            item.classList.toggle('ativa', ativo);
+            item.setAttribute('aria-selected', ativo ? 'true' : 'false');
+            if (ativo) item.scrollIntoView({ block: 'nearest' });
+        });
+        if (indice >= 0 && itens[indice]) {
+            input.setAttribute('aria-activedescendant', itens[indice].id);
+        } else {
+            input.removeAttribute('aria-activedescendant');
+        }
+    }
+
+    function renderizarSugestoes(lista, termo, vazioVisivel) {
+        sugestoes = lista;
+        termoDestacado = termo;
+        sugestaoAtiva = -1;
+
+        if (!lista.length) {
+            if (!vazioVisivel) return fecharSugestoes();
+            caixaSugestoes.innerHTML = '<div class="chatbot-sugestao-vazia">Nenhum aluno encontrado</div>';
+            caixaSugestoes.hidden = false;
+            input.setAttribute('aria-expanded', 'true');
+            input.removeAttribute('aria-activedescendant');
+            return;
+        }
+
+        caixaSugestoes.innerHTML = lista.map((aluno, i) => {
+            const turma = aluno.turma
+                ? `<span class="chatbot-sugestao-turma">Turma ${escaparHtml(aluno.turma)}</span>`
+                : '';
+            return `<div class="chatbot-sugestao" id="chatbot-sugestao-${i}" role="option" aria-selected="false" data-indice="${i}">
+                <i class="bi bi-person-circle" aria-hidden="true"></i>
+                <span class="chatbot-sugestao-nome">${destacarTrecho(aluno.nome, termo)}</span>
+                ${turma}
+            </div>`;
+        }).join('');
+        caixaSugestoes.hidden = false;
+        input.setAttribute('aria-expanded', 'true');
+    }
+
+    /** Escolher um aluno: o trecho digitado vira o nome completo e a lista fecha. */
+    function selecionarSugestao(indice) {
+        const aluno = sugestoes[indice];
+        if (!aluno) return;
+
+        const texto = input.value;
+        const faixa = localizarTrecho(texto, termoDestacado);
+        // Sem o trecho localizado (digitação com espaço duplo, por exemplo), o
+        // campo recebe o nome inteiro — nunca fica com o texto pela metade.
+        input.value = faixa
+            ? texto.slice(0, faixa.inicio) + aluno.nome + texto.slice(faixa.fim)
+            : aluno.nome;
+
+        textoConsultado = input.value.trim();
+        fecharSugestoes();
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+    }
+
+    async function consultarSugestoes(texto) {
+        // Uma resposta lenta de uma tecla antiga não pode sobrescrever a lista
+        // de uma tecla nova: a requisição anterior é abortada e, ainda assim, o
+        // número de sequência descarta qualquer resposta fora de ordem.
+        if (requisicaoSugestoes) requisicaoSugestoes.abort();
+        const controle = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        requisicaoSugestoes = controle;
+        const sequencia = ++sequenciaSugestoes;
+
+        try {
+            const res = await fetch(
+                `${SUGESTOES.url}?q=${encodeURIComponent(texto)}&limite=${SUGESTOES.maximo}`,
+                {
+                    headers: getHeaders(),
+                    credentials: 'include',
+                    signal: controle ? controle.signal : undefined,
+                }
+            );
+            if (sequencia !== sequenciaSugestoes) return;
+            if (!res.ok) return fecharSugestoes();
+
+            const dados = await res.json();
+            if (sequencia !== sequenciaSugestoes) return;
+
+            const lista = (dados?.data?.alunos || []).slice(0, SUGESTOES.maximo);
+            renderizarSugestoes(lista, dados?.data?.termo || texto, !!dados?.data?.buscavel);
+        } catch (err) {
+            if (err && err.name === 'AbortError') return;
+            fecharSugestoes();
+        }
+    }
+
+    function agendarSugestoes() {
+        clearTimeout(temporizadorSugestoes);
+        const texto = input.value.trim();
+
+        if (texto.length < SUGESTOES.minimo) {
+            textoConsultado = null;
+            return fecharSugestoes();
+        }
+        // Mesma consulta da última vez (a pessoa digitou e apagou uma letra, ou
+        // acabou de escolher um nome): a lista na tela já está correta.
+        if (texto === textoConsultado) return;
+
+        temporizadorSugestoes = setTimeout(() => {
+            textoConsultado = texto;
+            consultarSugestoes(texto);
+        }, SUGESTOES.atraso);
+    }
+
+    input.addEventListener('input', agendarSugestoes);
+
+    input.addEventListener('keydown', (e) => {
+        const aberta = !caixaSugestoes.hidden && sugestoes.length > 0;
+
+        if (e.key === 'Escape') {
+            clearTimeout(temporizadorSugestoes);
+            fecharSugestoes();
+            return;
+        }
+        if (!aberta) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            marcarAtiva((sugestaoAtiva + 1) % sugestoes.length);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            marcarAtiva((sugestaoAtiva - 1 + sugestoes.length) % sugestoes.length);
+        } else if ((e.key === 'Enter' || e.key === 'Tab') && sugestaoAtiva >= 0) {
+            // Só intercepta quando há um item ESCOLHIDO com as setas. Sem isso,
+            // quem digitou a pergunta inteira e apertou Enter teria a mensagem
+            // trocada por um nome que nunca selecionou.
+            e.preventDefault();
+            selecionarSugestao(sugestaoAtiva);
+        }
+    });
+
+    // `mousedown` com preventDefault: o clique escolhe o aluno sem tirar o foco
+    // do campo, então a lista não fecha por blur antes de o clique ser tratado.
+    caixaSugestoes.addEventListener('mousedown', (e) => {
+        const item = e.target.closest('.chatbot-sugestao');
+        if (!item) return;
+        e.preventDefault();
+        selecionarSugestao(Number(item.dataset.indice));
+    });
+
+    caixaSugestoes.addEventListener('mousemove', (e) => {
+        const item = e.target.closest('.chatbot-sugestao');
+        if (item) marcarAtiva(Number(item.dataset.indice));
+    });
+
+    input.addEventListener('blur', () => {
+        // Atraso curto: cobre o caso em que o foco sai por um caminho que não
+        // passa pelo mousedown acima (toque, leitor de tela).
+        setTimeout(fecharSugestoes, 120);
+    });
+
+    form.addEventListener('submit', () => {
+        clearTimeout(temporizadorSugestoes);
+        textoConsultado = null;
+        fecharSugestoes();
     });
 
     async function selectOption(label, value) {

@@ -1,5 +1,17 @@
 /* voice-orb.css — Pixel-Perfect Mockup Match & Recording Bar */
 
+/*
+ * Duas camadas de orb vivem aqui, e é de propósito:
+ *
+ *   1. O orb em CSS (.voice-orb-core + .orb-ring + .orb-bar) — o fallback.
+ *   2. A esfera em canvas (.voice-orb-canvas) — o que se vê normalmente.
+ *
+ * `js/voice-orb.js` põe `.esfera-ativa` no container quando a AssistantSphere
+ * sobe, e a tira se o laço de render desistir. O fallback NUNCA sai do
+ * documento: ele é o que aparece se o canvas, o `import()` dinâmico ou o
+ * render falharem, e trocar por uma tela vazia seria pior que o orb antigo.
+ */
+
 :root {
     --orb-size-chat: 280px;
     --orb-core-size: 140px;
@@ -27,6 +39,80 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
+}
+
+/* ── Camada da esfera em canvas ──────────────────────────────────────────── */
+
+/*
+ * Quadrado e centralizado no palco. A AssistantSphere mede o canvas com
+ * `getBoundingClientRect` e usa o MENOR lado, então dar-lhe o palco inteiro
+ * mantém a esfera com o maior raio possível sem esticar nada.
+ *
+ * `display: none` por padrão cobre os dois caminhos de uma vez: sem
+ * `.esfera-ativa` (ainda carregando, ou o render desistiu) não há canvas em
+ * cima do orb em CSS.
+ */
+.voice-orb-canvas {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    transform: translate(-50%, -50%);
+    /* O clique é do container (modo fab); o canvas não recebe ponteiro para
+       não roubar o alvo nem virar um retângulo clicável maior que o orb. */
+    pointer-events: none;
+}
+
+.voice-orb-container.esfera-ativa .voice-orb-canvas {
+    display: block;
+}
+
+/* Com a esfera no ar, o orb em CSS sai de cena inteiro — inclusive os anéis,
+   que a esfera desenha em perspectiva, e as barras, que a esfera substitui
+   pelo movimento da própria superfície. */
+.voice-orb-container.esfera-ativa .voice-orb-rings,
+.voice-orb-container.esfera-ativa .voice-orb-wrapper {
+    display: none;
+}
+
+/*
+ * Saída: 220ms contra os 420ms da entrada da esfera.
+ *
+ * Sair mais discreto que entrar é regra, não gosto — na entrada o orb precisa
+ * ser notado (é o sinal de que o assistente começou a responder); na saída a
+ * atenção já foi para o texto da resposta, e uma saída do mesmo peso da
+ * entrada puxaria o olho de volta para nada.
+ *
+ * O tempo tem de bater com MS_SAIDA em js/voice-orb.js: é o timer de lá que
+ * remove o elemento, e um descompasso deixaria o orb sumido mas ocupando
+ * espaço, ou removido antes de terminar de sumir.
+ */
+.voice-orb-container {
+    transition: opacity 0.22s cubic-bezier(0.4, 0, 1, 1);
+}
+
+.voice-orb-container.is-leaving {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/*
+ * O recuo é do PALCO, não do container.
+ *
+ * O container já carrega um `transform: scale()` fora daqui — 0.65 no FAB
+ * global, 0.45 dentro do BI. Escrever `transform` nele na saída substituiria
+ * essa escala: o orb pequeno saltaria para o tamanho cheio no instante em que
+ * começasse a desaparecer. O palco não tem escala própria, então é onde o
+ * recuo cabe sem disputar com ninguém.
+ */
+.voice-orb-stage {
+    transition: transform 0.22s cubic-bezier(0.4, 0, 1, 1);
+}
+
+.voice-orb-container.is-leaving .voice-orb-stage {
+    transform: scale(0.96);
 }
 
 /* Orbital Rings & Dots */
@@ -368,12 +454,40 @@
 }
 
 /* Acessibilidade: respeita usuários que desligam animações.
-   Mantém apenas os estados estáticos — nada gira nem pulsa. */
+   Mantém apenas os estados estáticos — nada gira nem pulsa.
+
+   O container entra na lista junto com os descendentes: é nele que mora a
+   transição de opacidade da saída, e `.voice-orb-container *` não alcança o
+   próprio elemento. A esfera em canvas tem o caminho dela em
+   AssistantSphere.js (geometria congelada, redesenho a ~10fps). */
 @media (prefers-reduced-motion: reduce) {
+    .voice-orb-container,
     .voice-orb-container *,
     .voice-orb-container *::before,
     .voice-orb-container *::after {
         animation: none !important;
         transition: none !important;
     }
+}
+
+/* ── Enquadramento dentro da janela do chat ──────────────────────────────── */
+
+/*
+ * O palco de 280px foi desenhado para o mockup em tela cheia. Dentro da
+ * janela do chatbot, que tem 400x620, ele mais a pill comem metade da altura
+ * útil e empurram a conversa para fora da vista — o orb passa a atrapalhar
+ * justamente a resposta que ele está narrando.
+ *
+ * 200px devolvem o histórico ao usuário e ainda dão à esfera compacta espaço
+ * de sobra: raio ~53px, órbita externa em ~86px dentro dos 100px de meio-lado.
+ */
+.voice-orb-container.chat .voice-orb-stage {
+    width: 200px;
+    height: 200px;
+}
+
+/* A pill é posicionada 30px ABAIXO do palco. Sem esta reserva ela vazava do
+   container e cobria o campo de digitação. */
+.voice-orb-container.chat {
+    padding-bottom: 34px;
 }

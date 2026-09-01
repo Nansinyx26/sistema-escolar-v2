@@ -154,3 +154,142 @@ describe('combinar', () => {
         expect(busca.combinar({ ativo: true }, null, undefined)).toEqual({ ativo: true });
     });
 });
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Autocomplete: o que aparece enquanto a pessoa digita
+// ═════════════════════════════════════════════════════════════════════════════
+
+describe('filtroDePrefixo', () => {
+    const doc = (nome, extras = {}) => ({
+        nome,
+        nomeNormalizado: nome.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(),
+        ...extras,
+    });
+
+    it('casa o começo do nome ignorando acento e caixa', () => {
+        const filtro = busca.filtroDePrefixo('joao');
+        expect(casa(filtro, doc('João Pedro'))).toBe(true);
+        expect(casa(filtro, doc('JOÃO'))).toBe(true);
+    });
+
+    it('não casa o texto no meio do nome — é isso que o distingue da busca livre', () => {
+        // "ana" no fim de "Mariana" é exatamente o casamento que fazia a lista
+        // de sugestões parecer aleatória.
+        expect(casa(busca.filtroDePrefixo('ana'), doc('Mariana Souza'))).toBe(false);
+        expect(casa(busca.filtroDePrefixo('ana'), doc('Ana Beatriz'))).toBe(true);
+    });
+
+    it('alcança cadastro legado, que não tem nomeNormalizado', () => {
+        expect(casa(busca.filtroDePrefixo('jo'), { nome: 'João Antigo' })).toBe(true);
+    });
+
+    it('devolve null sem texto', () => {
+        expect(busca.filtroDePrefixo('')).toBeNull();
+        expect(busca.filtroDePrefixo(null)).toBeNull();
+    });
+});
+
+describe('relevanciaDeNome', () => {
+    it('separa começo do nome, começo de palavra e meio de palavra', () => {
+        expect(busca.relevanciaDeNome('João Pedro', 'joa')).toBe(busca.RELEVANCIA.INICIO);
+        expect(busca.relevanciaDeNome('João Pedro', 'ped')).toBe(busca.RELEVANCIA.PALAVRA);
+        expect(busca.relevanciaDeNome('João Pedro', 'edr')).toBe(busca.RELEVANCIA.CONTEM);
+        expect(busca.relevanciaDeNome('João Pedro', 'maria')).toBe(busca.RELEVANCIA.NENHUMA);
+    });
+
+    it('ignora acento nos dois sentidos', () => {
+        expect(busca.relevanciaDeNome('João', 'joao')).toBe(busca.RELEVANCIA.INICIO);
+        expect(busca.relevanciaDeNome('Erica Lima', 'érica')).toBe(busca.RELEVANCIA.INICIO);
+        expect(busca.relevanciaDeNome('José', 'JOSE')).toBe(busca.RELEVANCIA.INICIO);
+    });
+
+    it('com vários termos, o texto inteiro como prefixo vale como início', () => {
+        expect(busca.relevanciaDeNome('João Pedro Silva', 'joao pe')).toBe(busca.RELEVANCIA.INICIO);
+    });
+
+    it('com vários termos fora de ordem, exige que todos apareçam', () => {
+        expect(busca.relevanciaDeNome('João da Silva', 'silva joao')).toBe(
+            busca.RELEVANCIA.PALAVRA
+        );
+        expect(busca.relevanciaDeNome('João da Silva', 'silva maria')).toBe(
+            busca.RELEVANCIA.NENHUMA
+        );
+    });
+});
+
+describe('ordenarSugestoes', () => {
+    // A turma inteira do exemplo da Issue.
+    const TURMA = [
+        'João',
+        'João Pedro',
+        'José',
+        'Julia',
+        'Juliana',
+        'Marcos',
+        'Maria',
+        'Mariana',
+    ].map((nome, i) => ({ id: `id${i}`, nome }));
+
+    const nomesPara = (texto) => busca.ordenarSugestoes(TURMA, texto).map((a) => a.nome);
+
+    it('reduz a lista a cada letra digitada', () => {
+        expect(nomesPara('J')).toEqual(['João', 'João Pedro', 'José', 'Julia', 'Juliana']);
+        expect(nomesPara('Jo')).toEqual(['João', 'João Pedro', 'José']);
+        expect(nomesPara('Joa')).toEqual(['João', 'João Pedro']);
+        expect(nomesPara('João')).toEqual(['João', 'João Pedro']);
+        expect(nomesPara('Jul')).toEqual(['Julia', 'Juliana']);
+        expect(nomesPara('Mar')).toEqual(['Marcos', 'Maria', 'Mariana']);
+    });
+
+    it('não devolve nada que não case com o texto', () => {
+        expect(nomesPara('xyz')).toEqual([]);
+        expect(nomesPara('Jo')).not.toContain('Marcos');
+    });
+
+    it('quem começa com o texto vem antes de quem apenas o contém', () => {
+        const lista = [
+            { id: 'a', nome: 'Mariana Souza' }, // contém "ana" no meio
+            { id: 'b', nome: 'Ana Beatriz' }, // começa com "ana"
+            { id: 'c', nome: 'Beatriz Anastácio' }, // começa uma palavra com "ana"
+        ];
+        expect(busca.ordenarSugestoes(lista, 'ana').map((a) => a.nome)).toEqual([
+            'Ana Beatriz',
+            'Beatriz Anastácio',
+            'Mariana Souza',
+        ]);
+    });
+
+    it('ordena alfabeticamente dentro do mesmo grau de relevância', () => {
+        const lista = [
+            { id: 'a', nome: 'Julia Zanetti' },
+            { id: 'b', nome: 'Juliana Alves' },
+            { id: 'c', nome: 'Juliana Abreu' },
+        ];
+        expect(busca.ordenarSugestoes(lista, 'jul').map((a) => a.nome)).toEqual([
+            'Julia Zanetti',
+            'Juliana Abreu',
+            'Juliana Alves',
+        ]);
+    });
+
+    it('não repete o mesmo aluno vindo das duas etapas de consulta', () => {
+        const repetido = { id: 'x1', nome: 'João Pedro' };
+        expect(busca.ordenarSugestoes([repetido, { ...repetido }], 'joao')).toHaveLength(1);
+    });
+
+    it('respeita o limite pedido', () => {
+        const muitos = Array.from({ length: 40 }, (_, i) => ({
+            id: `id${i}`,
+            nome: `Joana ${String(i).padStart(2, '0')}`,
+        }));
+        expect(busca.ordenarSugestoes(muitos, 'joana', { limite: 10 })).toHaveLength(10);
+    });
+
+    it('relevanciaMaxima recusa o casamento no meio da palavra', () => {
+        const lista = [{ id: 'a', nome: 'Mariana Souza' }];
+        expect(busca.ordenarSugestoes(lista, 'ana')).toHaveLength(1);
+        expect(
+            busca.ordenarSugestoes(lista, 'ana', { relevanciaMaxima: busca.RELEVANCIA.PALAVRA })
+        ).toHaveLength(0);
+    });
+});
