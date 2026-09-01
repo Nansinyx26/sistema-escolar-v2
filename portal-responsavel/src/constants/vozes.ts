@@ -70,12 +70,51 @@ export function rotuloDaVoz(nome: string | null | undefined): string {
 }
 
 /**
- * Grava a voz escolhida no navegador e no servidor.
+ * A frase da prévia. É a mesma dos painéis em HTML puro
+ * (`window.Vozes.definir(..., { previa: true })` em `js/sidebar-voice.js`),
+ * para que trocar de voz soe igual nos quatro perfis.
+ */
+const FRASE_PREVIA = 'Voz alterada com sucesso!';
+
+/**
+ * Toca uma frase curta na voz recém-escolhida.
+ *
+ * Escolher entre Brian, Adam, Eric e George por nome próprio é escolher no
+ * escuro: a descrição ao lado ajuda, mas nenhuma palavra descreve um timbre.
+ * Os três perfis em HTML puro já devolviam som ao trocar de voz; o portal do
+ * responsável era o único que trocava em silêncio.
+ *
+ * O `import()` é dinâmico porque `ttsService` importa `vozAtual` DESTE arquivo.
+ * Um import estático de volta fecharia um ciclo entre os dois módulos — e o
+ * lado do serviço instancia a classe no escopo do módulo, que é justamente o
+ * caso em que um ciclo deixa de ser inofensivo. Adiado até o clique, não há
+ * ciclo nenhum: quando isto roda, os dois módulos já terminaram de avaliar.
+ *
+ * Sem `await` no chamador: a prévia não segura a troca de voz, e uma falha de
+ * síntese não pode desfazer uma escolha que já está gravada.
+ */
+async function tocarPrevia(): Promise<void> {
+  try {
+    const { ttsService } = await import('../services/ttsService');
+    await ttsService.play(FRASE_PREVIA);
+  } catch {
+    // Sem áudio a escolha continua valendo; ela só não pôde ser ouvida agora.
+  }
+}
+
+/**
+ * Grava a voz escolhida no navegador e no servidor, e a toca.
  *
  * O localStorage vem primeiro e o servidor depois, sem esperar: a próxima
  * narração lê o navegador, e fazer a troca depender da rede daria a impressão
  * de que o clique não pegou. A ida ao servidor é o que faz a escolha
  * acompanhar a pessoa para outro aparelho.
+ *
+ * A prévia faz parte desta função, e não dos dois seletores que a chamam
+ * (o do cabeçalho e o do chatbot), pelo mesmo motivo pelo qual
+ * `window.Vozes.definir` a oferece: são as ÚNICAS chamadas que existem, todas
+ * partem de alguém escolhendo uma voz, e deixá-la a cargo de quem chama é como
+ * o portal ficou sem prévia enquanto os outros perfis tinham.
  *
  * Falha em silêncio de propósito — a voz já vale nesta sessão, e um alerta
  * aqui interromperia quem só queria trocar de voz.
@@ -93,6 +132,10 @@ export async function definirVoz(nome: string): Promise<VozNome> {
   }
 
   window.dispatchEvent(new CustomEvent('voiceChanged', { detail: { voice: escolhida } }));
+
+  // Depois de gravar e antes da ida ao servidor: a prévia lê a voz do
+  // localStorage, e não pode esperar a rede para começar a tocar.
+  void tocarPrevia();
 
   try {
     const csrfMatch = document.cookie.match(/csrf_token=([^;]+)/);

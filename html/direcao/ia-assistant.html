@@ -768,11 +768,17 @@
              o valor gravado não existia na lista. -->
         <div class="config-field">
           <label for="cfgVoice">Voz</label>
+          <!-- Os rótulos são os mesmos do catálogo em `js/sidebar-voice.js`
+               (window.Vozes) e de `portal-responsavel/src/constants/vozes.ts`.
+               A lista fica escrita à mão porque só ELA tem "Desativada", que
+               não é uma voz e por isso não mora no catálogo — mas a mesma voz
+               não pode mais ser "Brian — natural" aqui e "Brian — Suave" na
+               gaveta de configurações. -->
           <select id="cfgVoice">
-            <option value="brian">Brian — grave e tranquila (padrão)</option>
-            <option value="adam">Adam — firme</option>
-            <option value="eric">Eric — natural</option>
-            <option value="george">George — pausada</option>
+            <option value="brian">Brian — Grave e tranquila (padrão)</option>
+            <option value="adam">Adam — Firme e direta</option>
+            <option value="eric">Eric — Suave e natural</option>
+            <option value="george">George — Calorosa e pausada</option>
             <option value="off">Desativada</option>
           </select>
         </div>
