@@ -24,12 +24,33 @@
 
     const API = '/api/moderacao/aceite-termo';
 
+    /** A página com o Termo inteiro, para quem quiser ler antes de aceitar. */
+    const PAGINA_TERMO = '/html/termo-audio-imagem.html';
+
     /**
-     * Os controles que dependem do aceite. Os seletores acompanham o
-     * chat-direto-manager; um seletor que não casa com nada simplesmente não
-     * trava nada, que é o comportamento seguro aqui.
+     * Os controles que dependem do aceite.
+     *
+     * ESTES SELETORES PRECISAM CASAR COM O `chat-direto-manager` (Issue #189)
+     * ---------------------------------------------------------------------
+     * A versão anterior listava `[data-acao="gravar-audio"]`,
+     * `[data-acao="anexar"]`, `.chat-btn-audio` e `.chat-btn-anexo` — quatro
+     * seletores que não existem em lugar nenhum do compositor. O comentário
+     * dizia que "um seletor que não casa com nada simplesmente não trava nada,
+     * que é o comportamento seguro aqui", e isso é verdade para a segurança:
+     * a barreira é do servidor e continuou de pé. Só que o resultado prático
+     * era o pior dos dois mundos — a pessoa gravava o áudio inteiro, apertava
+     * enviar, e só então levava um 403 sem nenhum caminho para o aceite.
+     *
+     * O compositor monta os botões com id sufixado pelo id do contato
+     * (`btnMic_<id>`, `btnAttach_<id>`), então o casamento é por prefixo de id
+     * e pela classe `.chat-btn-mic`. Os quatro seletores antigos ficam na lista
+     * de propósito: não custam nada e cobrem o dia em que o compositor for
+     * reescrito com nomes semânticos.
      */
     const SELETORES_BLOQUEADOS = [
+        '.chat-btn-mic',
+        '[id^="btnMic_"]',
+        '[id^="btnAttach_"]',
         '[data-acao="gravar-audio"]',
         '[data-acao="anexar"]',
         '.chat-btn-audio',
@@ -37,6 +58,7 @@
     ];
 
     let aceito = null;
+    let observador = null;
 
     function controles() {
         return document.querySelectorAll(SELETORES_BLOQUEADOS.join(', '));
@@ -108,6 +130,13 @@
         aviso.textContent =
             'O chat não substitui os canais oficiais da escola para emergências ou denúncias formais.';
 
+        const leiaTudo = document.createElement('p');
+        leiaTudo.className = 'termo-modal__leia-tudo';
+        const linkTermo = document.createElement('a');
+        linkTermo.href = PAGINA_TERMO;
+        linkTermo.textContent = 'Ler o Termo completo';
+        leiaTudo.append(linkTermo);
+
         const acoes = document.createElement('div');
         acoes.className = 'termo-modal__acoes';
 
@@ -143,6 +172,8 @@
             try {
                 await registrarAceite();
                 aceito = true;
+                observador?.disconnect();
+                observador = null;
                 aplicarEstado();
                 fechar();
             } catch (e) {
@@ -153,7 +184,7 @@
         });
 
         acoes.append(agora_nao, aceitar);
-        caixa.append(titulo, texto, aviso, erro, acoes);
+        caixa.append(titulo, texto, aviso, leiaTudo, erro, acoes);
         fundo.appendChild(caixa);
         document.body.appendChild(fundo);
 
@@ -187,6 +218,23 @@
         );
     }
 
+    /**
+     * A janela de conversa é montada pelo `chat-direto-manager` no momento em
+     * que alguém abre um contato — muito depois do `DOMContentLoaded`. Um
+     * `aplicarEstado()` único no início não encontraria botão nenhum, e o
+     * indicador visual de bloqueio só apareceria em janelas que já existissem
+     * (ou seja: nunca). O observador reaplica o estado a cada janela nova.
+     *
+     * Só observa quando `aceito === false`: com o Termo aceito não há nada para
+     * marcar, e manter um observador ligado à toa custa a cada renderização de
+     * mensagem do chat.
+     */
+    function observarJanelasNovas() {
+        const alvo = document.getElementById('chatWindowsContainer') || document.body;
+        observador = new MutationObserver(aplicarEstado);
+        observador.observe(alvo, { childList: true, subtree: true });
+    }
+
     async function iniciar() {
         aceito = await consultarAceite();
 
@@ -195,6 +243,7 @@
 
         aplicarEstado();
         interceptarCliques();
+        if (aceito === false) observarJanelasNovas();
     }
 
     document.addEventListener('DOMContentLoaded', iniciar);
