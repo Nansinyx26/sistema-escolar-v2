@@ -251,7 +251,26 @@ function carregarConfig() {
     if (a) a.value = cfg.narrarAuto ? '1' : '0';
 }
 
+/**
+ * `user_voice_preference` guarda o LIGA/DESLIGA da narração — 'male' quando há
+ * voz, 'off' quando não há. Nunca o nome da voz.
+ *
+ * Esta página gravava `cfg.voice` ali ('eric', 'george'…), e mandava o mesmo
+ * valor ao servidor em `voicePreference`. Duas consequências, nenhuma delas
+ * visível aqui: o `voiceGender` legado do documento parava de ser atualizado
+ * (o controller só o copia quando recebe 'male'/'female'), e o portal do
+ * responsável — que lê esta chave para saber se a narração está ligada —
+ * passava a ver um valor que não é nenhum dos três que ele conhece.
+ *
+ * Quem guarda QUAL voz é `user_elevenlabs_voice`, e é ela que `window.speak()`
+ * envia como `voiceId`.
+ */
+function preferenciaDeNarracao(voz) {
+    return voz === 'off' ? 'off' : 'male';
+}
+
 function salvarConfig() {
+    const vozAnterior = cfg.voice;
     cfg.voice = normalizarVoz(document.getElementById('cfgVoice')?.value || cfg.voice);
     cfg.lang = document.getElementById('cfgLang')?.value || cfg.lang;
     cfg.provider = document.getElementById('cfgProvider')?.value || cfg.provider;
@@ -260,18 +279,31 @@ function salvarConfig() {
     localStorage.setItem('aichat_cfg_local', JSON.stringify(cfg));
     if (cfg.voice !== 'off') {
         localStorage.setItem('user_elevenlabs_voice', cfg.voice);
-        localStorage.setItem('user_voice_preference', cfg.voice);
-    } else {
-        localStorage.setItem('user_voice_preference', 'off');
     }
+    localStorage.setItem('user_voice_preference', preferenciaDeNarracao(cfg.voice));
     localStorage.setItem('user_tts_provider', cfg.provider);
     localStorage.setItem('user_narrar_auto', cfg.narrarAuto ? '1' : '0');
+
+    // As outras telas de voz (barra lateral, gaveta, chatbot) escutam este
+    // evento para refletir a troca sem recarregar. Esta era a única que trocava
+    // a voz em silêncio, e um chat aberto ao lado continuava marcando a antiga.
+    if (cfg.voice !== 'off') {
+        window.dispatchEvent(new CustomEvent('voiceChanged', { detail: { voice: cfg.voice } }));
+    }
 
     // O controller lê a preferência a cada resposta, então a mudança vale já
     // na próxima mensagem — sem recarregar a página.
     if (controladorAtivo) controladorAtivo.narrarAuto = cfg.narrarAuto && cfg.voice !== 'off';
 
     fecharConfig();
+
+    // Prévia: escolher uma voz sem ouvi-la é escolher no escuro. São quatro
+    // nomes próprios num `<select>` — a descrição ajuda, mas não substitui o
+    // som. Só toca quando a voz REALMENTE mudou, para que salvar o idioma ou a
+    // narração automática não vire uma frase falada a cada visita à gaveta.
+    if (cfg.voice !== 'off' && cfg.voice !== vozAnterior && typeof window.speak === 'function') {
+        window.speak('Voz alterada com sucesso!');
+    }
 
     // MongoDB é a fonte da verdade da preferência; o localStorage é só cache.
     const base = (window.API_BASE_URL || '/api').replace(/\/$/, '');
@@ -285,8 +317,10 @@ function salvarConfig() {
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
         body: JSON.stringify({
             ttsProvider: cfg.provider,
-            voicePreference: cfg.voice,
-            elevenlabsVoice: cfg.voice,
+            voicePreference: preferenciaDeNarracao(cfg.voice),
+            // Desligar a narração não apaga a voz escolhida: ela volta a valer
+            // ao religar. Mandar 'off' aqui gravaria 'off' como se fosse voz.
+            ...(cfg.voice === 'off' ? {} : { elevenlabsVoice: cfg.voice }),
             narrarAuto: cfg.narrarAuto,
             speed: Number(localStorage.getItem('user_voice_speed') || 1.0),
             narrationMode: localStorage.getItem('user_narration_mode') || 'texto_audio',
