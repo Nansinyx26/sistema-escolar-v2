@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { streamCopiloto } from '../services/apiService';
 import { useTTS } from '../hooks/useTTS';
+import { type VozNome, VOZES, definirVoz, normalizarVoz, vozAtual } from '../constants/vozes';
 import VoiceOrb from './VoiceOrb';
 import styles from '../styles/portal.module.scss';
 import Icon from './ui/Icon';
@@ -24,14 +25,6 @@ interface Message {
 type ChatbotIAProps = Record<string, never>;
 
 // Vozes ElevenLabs disponíveis (masculinas)
-const ELEVENLABS_VOICES = [
-  { id: 'adam',   label: 'Adam',   desc: 'Firme e dominante' },
-  { id: 'brian',  label: 'Brian',  desc: 'Profundo e tranquilo' },
-  { id: 'eric',   label: 'Eric',   desc: 'Suave e confiável' },
-  { id: 'george', label: 'George', desc: 'Caloroso e narrativo' },
-] as const;
-
-type VoiceId = typeof ELEVENLABS_VOICES[number]['id'];
 
 const ChatbotIA: React.FC<ChatbotIAProps> = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -46,17 +39,21 @@ const ChatbotIA: React.FC<ChatbotIAProps> = () => {
   const [conversaId, setConversaId] = useState<string | null>(null);
   const lastMessageRef = React.useRef<string>('');
 
-  // Voz ElevenLabs selecionada (padrão: adam) — provedor sempre ElevenLabs
-  const [selectedVoice, setSelectedVoice] = useState<VoiceId>(
-    () => (localStorage.getItem('user_elevenlabs_voice') as VoiceId) || 'adam'
-  );
+  // Voz do narrador. A lista e o padrão vêm de `constants/vozes` — este
+  // componente tinha a própria cópia das quatro vozes e caía em Adam quando
+  // ninguém havia escolhido, enquanto o resto do sistema parte de Brian.
+  const [selectedVoice, setSelectedVoice] = useState<VozNome>(() => vozAtual());
 
-  // Persiste a voz no localStorage sempre que mudar
+  // O menu de voz do cabeçalho escreve a mesma preferência; sem ouvir o evento
+  // o painel do chat continuava mostrando a voz antiga marcada.
   useEffect(() => {
-    localStorage.setItem('user_elevenlabs_voice', selectedVoice);
-    localStorage.setItem('user_tts_provider', 'elevenlabs');
-    localStorage.setItem('user_voice_preference', 'male');
-  }, [selectedVoice]);
+    const aoTrocar = (e: Event) => {
+      const detalhe = (e as CustomEvent<{ voice?: string }>).detail;
+      if (detalhe?.voice) setSelectedVoice(normalizarVoz(detalhe.voice));
+    };
+    window.addEventListener('voiceChanged', aoTrocar);
+    return () => window.removeEventListener('voiceChanged', aoTrocar);
+  }, []);
 
   const [autoPlay, setAutoPlay] = useState(
     () => localStorage.getItem('user_preferencia_narracao') !== 'texto'
@@ -240,11 +237,14 @@ const ChatbotIA: React.FC<ChatbotIAProps> = () => {
                   🎙️ Voz do Assistente
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                  {ELEVENLABS_VOICES.map(v => (
+                  {VOZES.map(v => (
                     <button
-                      key={v.id}
+                      key={v.nome}
                       type="button"
-                      onClick={() => setSelectedVoice(v.id)}
+                      // `definirVoz` grava as duas chaves do navegador, avisa o
+                      // cabeçalho e persiste no servidor — antes a escolha
+                      // ficava só neste navegador.
+                      onClick={() => { setSelectedVoice(v.nome); void definirVoz(v.nome); }}
                       style={{
                         padding: '8px 10px',
                         borderRadius: '8px',
@@ -252,18 +252,18 @@ const ChatbotIA: React.FC<ChatbotIAProps> = () => {
                         fontWeight: 600,
                         cursor: 'pointer',
                         transition: 'all 0.15s',
-                        border: selectedVoice === v.id
+                        border: selectedVoice === v.nome
                           ? '2px solid #10b981'
                           : '1px solid rgba(255,255,255,0.1)',
-                        background: selectedVoice === v.id
+                        background: selectedVoice === v.nome
                           ? 'rgba(16, 185, 129, 0.15)'
                           : 'rgba(255,255,255,0.04)',
-                        color: selectedVoice === v.id ? '#10b981' : '#cbd5e1',
+                        color: selectedVoice === v.nome ? '#10b981' : '#cbd5e1',
                         textAlign: 'left' as const,
                       }}
                     >
-                      <div>{v.label}</div>
-                      <div style={{ fontSize: '0.68rem', opacity: 0.6, fontWeight: 400 }}>{v.desc}</div>
+                      <div>{v.rotulo}</div>
+                      <div style={{ fontSize: '0.68rem', opacity: 0.6, fontWeight: 400 }}>{v.descricao}</div>
                     </button>
                   ))}
                 </div>

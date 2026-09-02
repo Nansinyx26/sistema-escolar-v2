@@ -15,9 +15,9 @@
  */
 
 const Aluno = require('../../../models/Aluno');
-const escapeRegex = require('../../../utils/escapeRegex');
 const { assertAcessoAoAluno } = require('../../../middleware/assertAcessoAoAluno');
 const { filtroDaEscola, ErroPermissao } = require('../PermissionGuard');
+const { nomeExibicao, sugerirAlunos } = require('../sugestaoAlunos');
 
 /** Teto de candidatos avaliados. Evita varrer a escola num termo muito curto. */
 const MAX_CANDIDATOS = 40;
@@ -42,27 +42,42 @@ module.exports = {
     mutates: false,
 
     async handler({ termo }, ctx) {
-        const busca = String(termo || '').trim();
-        if (busca.length < 2) {
+        const texto = String(termo || '').trim();
+        if (texto.length < 2) {
             throw new ErroPermissao('Preciso de pelo menos 2 caracteres para buscar um aluno. Peça o nome completo à pessoa.');
         }
 
-        // `escapeRegex` impede que um nome com metacaracteres (ou um termo
-        // hostil vindo do texto do usuário) vire uma regex custosa.
-        const padrao = new RegExp(escapeRegex(busca), 'i');
+        // A busca por nome é a MESMA do autocomplete do chat
+        // (`services/ia/sugestaoAlunos`): sem acento, sem caixa, quem começa
+        // com o texto primeiro. O que existia aqui era um `RegExp(termo, 'i')`
+        // sem âncora — "joao" não achava "João", e "ana" devolvia "Mariana" e
+        // "Luana" como se fossem o aluno pedido.
+        const { alunos: sugestoes } = await sugerirAlunos({
+            texto,
+            filtro: filtroDaEscola(ctx),
+            limite: MAX_CANDIDATOS,
+            minTermo: 2,
+        });
 
-        const candidatos = await Aluno.find({
-            ...filtroDaEscola(ctx),
-            $or: [{ nome: padrao }, { matricula: busca }]
-        })
-            .select('nome matricula turma turmaId ativo dataNascimento responsavel responsavelDados responsaveis email escolaId id')
-            .limit(MAX_CANDIDATOS)
-            .lean();
+        // Os documentos completos são recarregados porque é sobre eles que o
+        // guard decide (turma, escola, vínculo do responsável); um documento
+        // parcial faria o guard julgar por campos ausentes.
+        const ids = sugestoes.map(a => a.id);
+        const documentos = ids.length
+            ? await Aluno.find({ _id: { $in: ids } })
+                .select('nome sobrenome matricula turma turmaId ativo dataNascimento responsavel responsavelDados responsaveis email escolaId id')
+                .lean()
+            : [];
+        const porId = new Map(documentos.map(doc => [String(doc._id), doc]));
 
-        // Cada candidato é reavaliado individualmente pelo guard do sistema.
+        // Cada candidato é reavaliado individualmente pelo guard do sistema —
+        // agora na ordem de relevância, de modo que o corte em MAX_RESULTADOS
+        // preserve os nomes mais parecidos com o que foi pedido.
         const autorizados = [];
-        for (const aluno of candidatos) {
-            const acesso = await assertAcessoAoAluno(ctx.req, String(aluno._id), { aluno });
+        for (const sugestao of sugestoes) {
+            const aluno = porId.get(sugestao.id);
+            if (!aluno) continue;
+            const acesso = await assertAcessoAoAluno(ctx.req, sugestao.id, { aluno });
             if (acesso.ok) autorizados.push(aluno);
             if (autorizados.length >= MAX_RESULTADOS) break;
         }
@@ -77,11 +92,11 @@ module.exports = {
 
         return {
             total: autorizados.length,
-            truncado: candidatos.length >= MAX_CANDIDATOS,
+            truncado: sugestoes.length >= MAX_CANDIDATOS,
             alunos: autorizados.map(a => ({
                 // O id é o que as outras ferramentas usam nas consultas seguintes.
                 id: String(a._id),
-                nome: a.nome,
+                nome: nomeExibicao(a),
                 matricula: a.matricula,
                 turma: a.turma || a.turmaId,
                 ativo: a.ativo !== false

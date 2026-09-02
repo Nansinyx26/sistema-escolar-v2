@@ -32,7 +32,7 @@
     <link rel="stylesheet" href="../css/dashboard.css?v=2.1">
     <link rel="stylesheet" href="../css/splash-screen.css?v=1.0">
     <link rel="stylesheet" href="../css/reactions.css?v=1.0">
-    <link rel="stylesheet" href="../css/voice-orb.css?v=1.0">
+    <link rel="stylesheet" href="../css/voice-orb.css?v=2.0">
     <link rel="stylesheet" href="../css/responsive-global.css?v=1.2">
     <link rel="stylesheet" href="../css/sidebar.css?v=1.3">
     <link rel="stylesheet" href="../css/dashboard-premium.css?v=1.0">
@@ -159,7 +159,7 @@
                 <i class="bi bi-bar-chart-line"></i>
                 <span>BI Pedagógico</span>
             </a>
-            <a href="#" class="sidebar-item director-only" style="display: none;" onclick="if(window.verRelatorios) window.verRelatorios(); return false;">
+            <a href="direcao/bi-pedagogico.html" class="sidebar-item director-only" style="display: none;">
                 <i class="bi bi-graph-up"></i>
                 <span>Relatórios</span>
             </a>
@@ -244,6 +244,10 @@
             <a href="meus-dados.html" class="sidebar-item" data-page="dados">
                 <i class="bi bi-shield-check"></i>
                 <span>Privacidade LGPD</span>
+            </a>
+            <a href="termo-audio-imagem.html" class="sidebar-item" data-page="termo-audio-imagem">
+                <i class="bi bi-file-earmark-check"></i>
+                <span>Termo de Áudio e Imagem</span>
             </a>
             <a href="#" class="sidebar-item sidebar-item-danger" onclick="if(window.sair) window.sair(); return false;">
                 <i class="bi bi-box-arrow-right"></i>
@@ -441,6 +445,21 @@
                 <!-- Cards Grid - Simplified -->
                 <div class="dashboard-grid">
                     <!-- Cards de Navegação removidos daqui e movidos para a Sidebar -->
+
+                    <!-- Card Assistente IA (Professor/Diretor/Admin/Secretaria) -->
+                    <div class="dashboard-card" id="cardIaAssistant" style="display: none; border: 1px solid rgba(16,185,129,0.25);">
+                        <div class="card-icon" style="background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(13,148,136,0.15)); color: #10b981;">
+                            <i class="bi bi-stars"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Assistente da Escola (IA)</h3>
+                            <p class="card-description">Planejamento pedagógico, dúvidas e apoio ao docente com IA</p>
+                        </div>
+                        <button class="btn btn-outline btn-sm" data-href="direcao/ia-assistant.html" style="border-color: rgba(16,185,129,0.5); color: #10b981;">
+                            Abrir Assistente
+                            <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
 
                     <!-- Card Lista de Alunos (Diretor/Admin) - NOVO -->
                     <div class="dashboard-card" id="cardListaAlunos" style="display: none;">
@@ -755,9 +774,9 @@
          administrativas, que fica atrás do prefixo secreto ADMIN_PATH. -->
     <script defer src="../js/rotas.js?v=1"></script>
     <script defer src="../js/utils.js?v=3"></script>
-    <script src="../js/voice-orb.js?v=1.0"></script>
-    <script src="../js/sidebar-voice.js?v=4.1"></script>
-    <script defer src="../js/dashboard.js?v=3"></script>
+    <script src="../js/voice-orb.js?v=2.0"></script>
+    <script src="../js/sidebar-voice.js?v=5.0"></script>
+    <script defer src="../js/dashboard.js?v=4"></script>
     <script defer src="../js/professores-online.js?v=2.0"></script>
     <!-- Sons de enviar/receber mensagem e de aviso do mural. Precisa vir antes
          do chat e do realtime.js, que são quem os dispara. -->
@@ -781,7 +800,7 @@
     <!-- Mural da Comunidade -->
     <script defer src="../js/announcement-feed-react.js?v=3.1"></script>
     <script defer src="../js/mural-dashboard.js?v=1.0"></script>
-    <script src="../js/chatbot-ia.js?v=4.1"></script>
+    <script src="../js/chatbot-ia.js?v=5.0"></script>
     <script>
         // High Performance Background Movement (RAF Throttled)
         let ticking = false;

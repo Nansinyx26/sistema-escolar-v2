@@ -10,10 +10,17 @@
 // cai DENTRO de atributo, onde escapar aspas é obrigatório.
 // Local, para não depender da ordem de carregamento dos <script>.
 // Ver js/escape-html.js.
-const _ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' };
+const _ESC_MAP = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+    '`': '&#96;',
+};
 function escHtml(v) {
     if (v === null || v === undefined) return '';
-    return String(v).replace(/[&<>"'`]/g, c => _ESC_MAP[c]);
+    return String(v).replace(/[&<>"'`]/g, (c) => _ESC_MAP[c]);
 }
 
 // === MAPEAMENTO PROFESSOR → CHAVE DO HORÁRIO ===
@@ -25,21 +32,22 @@ function getProfessorKeyFromPerfil(perfil) {
     if (!perfil) return null;
     const nome = (perfil.nome || '').toUpperCase();
     const disc = (perfil.disciplina || '').toUpperCase();
-    const esp  = perfil.tipoEspecial;
+    const esp = perfil.tipoEspecial;
 
     // Nomes exatos dos professores especialistas
-    if (nome.includes('MARJORIE'))                         return 'MARJORIE';
-    if (nome.includes('MARCOS') && (esp || disc.includes('FÍS') || disc.includes('FIS'))) return 'MARCOS';
-    if (nome.includes('BIANCA'))                           return 'ARTES1ANO';
-    if (nome.includes('MIRIAM'))                           return 'MIRIAM';
-    if (nome.includes('SIRLENE'))                          return 'OFMAKER';
-    if (nome.includes('CHERLANE'))                         return 'OFSEBRAE';
-    if (nome.includes('LIMA') && esp)                      return 'LIMA';
+    if (nome.includes('MARJORIE')) return 'MARJORIE';
+    if (nome.includes('MARCOS') && (esp || disc.includes('FÍS') || disc.includes('FIS')))
+        return 'MARCOS';
+    if (nome.includes('BIANCA')) return 'ARTES1ANO';
+    if (nome.includes('MIRIAM')) return 'MIRIAM';
+    if (nome.includes('SIRLENE')) return 'OFMAKER';
+    if (nome.includes('CHERLANE')) return 'OFSEBRAE';
+    if (nome.includes('LIMA') && esp) return 'LIMA';
 
     // Raquel — diferencia pela disciplina
     if (nome.includes('RAQUEL') && disc.includes('LEITURA')) return 'OFLEITURA';
-    if (nome.includes('CASTELANELI'))                      return 'OFLEITURA';
-    if (nome.includes('PIPOCA'))                           return 'OFLEITURA';
+    if (nome.includes('CASTELANELI')) return 'OFLEITURA';
+    if (nome.includes('PIPOCA')) return 'OFLEITURA';
 
     // Marcelo — Inglês
     if (nome.includes('MARCELO') || disc.includes('INGL')) return 'INGLS';
@@ -54,6 +62,33 @@ function getProfessorKeyFromPerfil(perfil) {
     if ((disc.includes('SEBRAE') || disc.includes('EMOCIONAL')) && esp) return 'OFSEBRAE';
 
     return null; // PEB1 ou sem mapeamento
+}
+
+// ============================================
+// PERFIL ATIVO — A MESMA FONTE QUE ESCREVE O RÓTULO
+// ============================================
+// `atualizarHeader` já lê o perfil por `resolverPerfilAtivo` (js/auth.js), que
+// dá precedência ao cargo do VÍNCULO da escola ativa sobre o campo `perfil` do
+// documento. O resto desta tela continuava lendo `user.perfil` cru — e as duas
+// leituras discordam justamente em quem tem mais de um vínculo.
+//
+// O efeito era o defeito relatado: numa conta cujo documento diz `secretaria`
+// mas cujo vínculo da escola ativa é `diretor`, o cabeçalho escrevia
+// "Diretor(a)" e a barra lateral montava o menu da SECRETARIA logo abaixo —
+// incluindo o "Relatórios" que aponta para `/html/secretaria/relatorios.html`.
+// A pessoa via a tela de diretora e caía nos relatórios da secretaria.
+//
+// Uma leitura só, aqui, para toda decisão de navegação e de visibilidade.
+// `user.perfil` fica como último recurso: se `js/auth.js` não carregou, é
+// melhor decidir pelo documento do que não decidir nada.
+function perfilAtivoDoUsuario(user) {
+    if (!user) return null;
+    if (window.resolverPerfilAtivo) {
+        const escola = window.escolaAtivaId ? window.escolaAtivaId() : null;
+        const chave = window.resolverPerfilAtivo(user, escola).chave;
+        if (chave) return chave;
+    }
+    return user.perfil || null;
 }
 
 // === INICIALIZAÇÍO ===
@@ -90,14 +125,19 @@ async function carregarDados() {
             // Se não encontrar, busca por email
             if (!perfil && user.email) {
                 const todos = await db.getAll('professores');
-                perfil = todos.find(p => p.email === user.email);
+                perfil = todos.find((p) => p.email === user.email);
             }
 
-            console.log('📌 Dashboard - Professor encontrado:', perfil ? perfil.nome : 'NÃO ENCONTRADO');
+            console.log(
+                '📌 Dashboard - Professor encontrado:',
+                perfil ? perfil.nome : 'NÃO ENCONTRADO'
+            );
 
             // Se não encontrar perfil estendido, usa dados básicos do login
             if (!perfil) {
-                console.warn('⚠️ Perfil estendido de professor não encontrado. Usando dados do login.');
+                console.warn(
+                    '⚠️ Perfil estendido de professor não encontrado. Usando dados do login.'
+                );
                 perfil = { nome: user.nome };
             }
         } else if (user.perfil === 'diretor') {
@@ -106,12 +146,14 @@ async function carregarDados() {
             // Fallback por email
             if (!perfil && user.email) {
                 const todos = await db.getAll('diretores');
-                perfil = todos.find(d => d.email === user.email);
+                perfil = todos.find((d) => d.email === user.email);
             }
 
             // Se não encontrar perfil estendido, usa dados básicos do login
             if (!perfil) {
-                console.warn('⚠️ Perfil estendido de diretor não encontrado. Usando dados do login.');
+                console.warn(
+                    '⚠️ Perfil estendido de diretor não encontrado. Usando dados do login.'
+                );
                 perfil = { nome: user.nome };
             }
         } else if (user.perfil === 'secretaria') {
@@ -119,11 +161,13 @@ async function carregarDados() {
 
             if (!perfil && user.email) {
                 const todos = await db.getAll('secretarias');
-                perfil = todos.find(s => s.email === user.email);
+                perfil = todos.find((s) => s.email === user.email);
             }
 
             if (!perfil) {
-                console.warn('⚠️ Perfil estendido de secretaria não encontrado. Usando dados do login.');
+                console.warn(
+                    '⚠️ Perfil estendido de secretaria não encontrado. Usando dados do login.'
+                );
                 perfil = { nome: user.nome };
             }
         } else if (user.perfil === 'admin') {
@@ -136,10 +180,9 @@ async function carregarDados() {
         atualizarWelcome(user, perfil);
         atualizarCards(user, perfil);
         setupSecurityPanel(user);
-        
+
         // Inicializa Widgets da Fase 2
         inicializarWidgets(user, perfil);
-
     } catch (error) {
         console.error('Erro ao carregar dados:', error);
         showToast('Erro ao carregar dados', 'error');
@@ -148,7 +191,7 @@ async function carregarDados() {
 
 // === ATUALIZAR HEADER ===
 function atualizarHeader(user, perfil) {
-    const nomeExibir = (perfil && perfil.nome) ? perfil.nome : (user.nome || user.email);
+    const nomeExibir = perfil && perfil.nome ? perfil.nome : user.nome || user.email;
 
     // Role baseada no perfil — fonte única em js/auth.js.
     // A cadeia anterior terminava em `: 'Diretor'`, então responsável (e
@@ -178,8 +221,12 @@ function atualizarWelcome(user, perfil) {
     const welcomeTitle = document.getElementById('welcomeTitle');
     const welcomeMessage = document.getElementById('welcomeMessage');
 
-    const primeiroNome = (perfil && perfil.nome) ? perfil.nome.split(' ')[0] :
-        (user.nome ? user.nome.split(' ')[0] : 'Usuário');
+    const primeiroNome =
+        perfil && perfil.nome
+            ? perfil.nome.split(' ')[0]
+            : user.nome
+              ? user.nome.split(' ')[0]
+              : 'Usuário';
 
     welcomeTitle.textContent = `Olá, ${primeiroNome}! 👋`;
 
@@ -208,6 +255,7 @@ async function atualizarCards(user, perfil) {
 
     const cardSecretCodes = document.getElementById('cardSecretCodes');
     const cardCodigosEscolas = document.getElementById('cardCodigosEscolas');
+    const cardIaAssistant = document.getElementById('cardIaAssistant');
 
     if (user.perfil === 'admin') {
         // Admin vê tudo
@@ -224,6 +272,7 @@ async function atualizarCards(user, perfil) {
         if (cardNotificacoesResp) cardNotificacoesResp.style.display = 'flex';
         if (cardSecretCodes) cardSecretCodes.style.display = 'flex';
         if (cardCodigosEscolas) cardCodigosEscolas.style.display = 'flex';
+        if (cardIaAssistant) cardIaAssistant.style.display = 'flex';
     } else if (user.perfil === 'professor' && perfil) {
         // ... (existing teacher logic) ...
         const principal = perfil.salaPrincipal || '';
@@ -241,11 +290,12 @@ async function atualizarCards(user, perfil) {
         if (cardListaAlunos) cardListaAlunos.style.display = 'none';
         if (cardNotificacoesResp) cardNotificacoesResp.style.display = 'none';
         if (cardSecretCodes) cardSecretCodes.style.display = 'none';
+        if (cardIaAssistant) cardIaAssistant.style.display = 'flex';
 
         // Sempre mostra Meu Horário — especialista (prof=KEY) ou PEB1 (sala=TURMA)
-        const profKey        = getProfessorKeyFromPerfil(perfil);
+        const profKey = getProfessorKeyFromPerfil(perfil);
         const cardMeuHorario = document.getElementById('cardMeuHorario');
-        const btnMeuHorario  = document.getElementById('btnMeuHorario');
+        const btnMeuHorario = document.getElementById('btnMeuHorario');
         const sidebarHorario = document.getElementById('sidebar-horario');
 
         if (sidebarHorario) {
@@ -265,7 +315,6 @@ async function atualizarCards(user, perfil) {
             cardMeuHorario.style.display = 'flex';
             // ... (rest of card logic if still needed, but sidebar is priority)
         }
-
     } else if (user.perfil === 'secretaria') {
         // Secretaria vê lista de alunos mas não vê ferramentas admin, horários, gerencial
         if (cardGerencial) cardGerencial.style.display = 'none';
@@ -277,11 +326,11 @@ async function atualizarCards(user, perfil) {
         if (cardNotificacoesResp) cardNotificacoesResp.style.display = 'none';
         if (cardSecretCodes) cardSecretCodes.style.display = 'none';
         if (cardListaAlunos) cardListaAlunos.style.display = 'flex'; // Secretaria acessa alunos
-
+        if (cardIaAssistant) cardIaAssistant.style.display = 'flex';
     } else if (user.perfil === 'diretor') {
         const directorSummary = document.getElementById('directorDashboardSummary');
         const directorActivity = document.getElementById('directorActivityGrid');
-        
+
         // Exibe nova área de resumo
         if (directorSummary) directorSummary.style.display = 'grid';
         if (directorActivity) directorActivity.style.display = 'grid';
@@ -294,22 +343,27 @@ async function atualizarCards(user, perfil) {
         if (cardListaAlunos) cardListaAlunos.style.display = 'none';
         if (cardNotificacoesResp) cardNotificacoesResp.style.display = 'none';
         if (cardSecretCodes) cardSecretCodes.style.display = 'none';
-        
+
         // Diretor não vê ferramentas
         if (cardFerramentas) cardFerramentas.style.display = 'none';
+        if (cardIaAssistant) cardIaAssistant.style.display = 'flex';
 
         // Carregar dados reais para o resumo do diretor
         await carregarResumoDiretor();
     }
 
     // --- ATUALIZAR VISIBILIDADE DA SIDEBAR ---
-    atualizarVisibilidadeSidebar(user.perfil);
+    // Perfil ATIVO, não o campo cru: quem tem vínculo de direção nesta escola
+    // não pode receber o bloco da secretaria, que leva aos relatórios dela.
+    atualizarVisibilidadeSidebar(perfilAtivoDoUsuario(user));
 }
 
 // === CARREGA ESTATÍSTICAS DO DIRETOR ===
 async function carregarResumoDiretor() {
     try {
-        const response = await fetch(`${window.API_BASE_URL}/dashboard/summary`, { credentials: 'include' });
+        const response = await fetch(`${window.API_BASE_URL}/dashboard/summary`, {
+            credentials: 'include',
+        });
         const json = await response.json();
 
         if (json.success) {
@@ -321,9 +375,11 @@ async function carregarResumoDiretor() {
 
         // Carregar últimos avisos
         try {
-            const resNotices = await fetch(`${window.API_BASE_URL}/dashboard/summary/notices`, { credentials: 'include' });
+            const resNotices = await fetch(`${window.API_BASE_URL}/dashboard/summary/notices`, {
+                credentials: 'include',
+            });
             const jsonNotices = await resNotices.json();
-            
+
             if (jsonNotices.success) {
                 atualizarListaAvisosMini(jsonNotices.data.slice(0, 5));
             } else {
@@ -336,7 +392,6 @@ async function carregarResumoDiretor() {
 
         // Mock de atividades (pode ser expandido futuramente)
         atualizarGridAtividade();
-
     } catch (error) {
         console.warn('Erro ao carregar resumo do diretor:', error);
     }
@@ -349,48 +404,53 @@ function atualizarVisibilidadeSidebar(perfil) {
 
     const secretariaItems = document.querySelectorAll('.secretaria-only');
 
+    // `forEach` com corpo entre chaves, e não `(el) => (el.style... = 'none')`:
+    // a forma curta DEVOLVE o valor atribuído, e o Biome reprova callback de
+    // iterável que retorna algo (lint/suspicious/useIterableCallbackReturn).
+    const esconder = (itens) => {
+        itens.forEach((el) => {
+            el.style.display = 'none';
+        });
+    };
+    // `comBotoes` reproduz a diferença que já existia entre os ramos: o bloco
+    // do PRÓPRIO setor também aceita `.btn` como linha (`flex`), enquanto o
+    // bloco compartilhado olha só para `.sidebar-item`. Manter isso idêntico
+    // evita trocar a caixa de algum botão de graça nesta correção.
+    const mostrar = (itens, comBotoes) => {
+        itens.forEach((el) => {
+            const ehLinha =
+                el.classList.contains('sidebar-item') ||
+                (comBotoes && el.classList.contains('btn'));
+            el.style.display = ehLinha ? 'flex' : 'block';
+        });
+    };
+
     if (perfil === 'diretor' || perfil === 'admin') {
-        directorItems.forEach(el => {
-            if (el.classList.contains('sidebar-item') || el.classList.contains('btn')) {
-                el.style.display = 'flex';
-            } else {
-                el.style.display = 'block';
-            }
-        });
-        teacherItems.forEach(el => el.style.display = 'none');
-        secretariaItems.forEach(el => el.style.display = 'none');
-        sharedItems.forEach(el => {
-            if (el.classList.contains('sidebar-item')) el.style.display = 'flex';
-            else el.style.display = 'block';
-        });
+        mostrar(directorItems, true);
+        esconder(teacherItems);
+        esconder(secretariaItems);
+        mostrar(sharedItems, false);
     } else if (perfil === 'secretaria') {
-        directorItems.forEach(el => el.style.display = 'none');
-        teacherItems.forEach(el => el.style.display = 'none');
-        secretariaItems.forEach(el => {
-            if (el.classList.contains('sidebar-item') || el.classList.contains('btn')) {
-                el.style.display = 'flex';
-            } else {
-                el.style.display = 'block';
-            }
-        });
-        sharedItems.forEach(el => {
-            if (el.classList.contains('sidebar-item')) el.style.display = 'flex';
-            else el.style.display = 'block';
-        });
+        esconder(directorItems);
+        esconder(teacherItems);
+        mostrar(secretariaItems, true);
+        mostrar(sharedItems, false);
     } else if (perfil === 'professor') {
-        directorItems.forEach(el => el.style.display = 'none');
-        secretariaItems.forEach(el => el.style.display = 'none');
-        teacherItems.forEach(el => {
-            if (el.classList.contains('sidebar-item')) {
-                el.style.display = 'flex';
-            } else {
-                el.style.display = 'block';
-            }
-        });
-        sharedItems.forEach(el => {
-            if (el.classList.contains('sidebar-item')) el.style.display = 'flex';
-            else el.style.display = 'block';
-        });
+        esconder(directorItems);
+        esconder(secretariaItems);
+        mostrar(teacherItems, false);
+        mostrar(sharedItems, false);
+    } else {
+        // Perfil não resolvido: FECHA. Antes não havia este ramo — a função
+        // simplesmente não mexia em nada e a barra ficava como o HTML a
+        // entregou. Hoje isso é inofensivo porque todo item restrito nasce com
+        // `display: none` inline, mas é uma garantia que mora no HTML, não
+        // aqui: basta alguém tirar o estilo inline de um item para a barra de
+        // outro setor aparecer para quem não tem perfil nenhum.
+        esconder(directorItems);
+        esconder(teacherItems);
+        esconder(secretariaItems);
+        esconder(sharedItems);
     }
 }
 
@@ -414,11 +474,14 @@ function atualizarListaAvisosMini(notices) {
     if (!list) return;
 
     if (!notices || notices.length === 0) {
-        list.innerHTML = '<div class="activity-item-mini" style="justify-content: center; color: #94a3b8; padding: 1rem;"><i class="bi bi-check-circle" style="margin-right: 6px;"></i> Nenhum aviso recente</div>';
+        list.innerHTML =
+            '<div class="activity-item-mini" style="justify-content: center; color: #94a3b8; padding: 1rem;"><i class="bi bi-check-circle" style="margin-right: 6px;"></i> Nenhum aviso recente</div>';
         return;
     }
 
-    list.innerHTML = notices.map(n => `
+    list.innerHTML = notices
+        .map(
+            (n) => `
         <div class="activity-item-mini">
             <div class="activity-dot" style="background: #10b981;"></div>
             <div class="activity-text">
@@ -426,7 +489,9 @@ function atualizarListaAvisosMini(notices) {
                 <span class="activity-time">${new Date(n.dataCriacao).toLocaleDateString('pt-BR')}</span>
             </div>
         </div>
-    `).join('');
+    `
+        )
+        .join('');
 }
 
 function atualizarGridAtividade() {
@@ -437,10 +502,12 @@ function atualizarGridAtividade() {
     const activities = [
         { text: 'Novo professor cadastrado: Marcos Silva', time: 'Há 2 horas', color: '#3b82f6' },
         { text: 'Relatório mensal de frequência gerado', time: 'Há 5 horas', color: '#10b981' },
-        { text: 'Aviso enviado para a Turma 2º Ano A', time: 'Ontem às 18:30', color: '#f59e0b' }
+        { text: 'Aviso enviado para a Turma 2º Ano A', time: 'Ontem às 18:30', color: '#f59e0b' },
     ];
 
-    list.innerHTML = activities.map(a => `
+    list.innerHTML = activities
+        .map(
+            (a) => `
         <div class="activity-item-mini">
             <div class="activity-dot" style="background: ${a.color};"></div>
             <div class="activity-text">
@@ -448,10 +515,10 @@ function atualizarGridAtividade() {
                 <span class="activity-time">${escHtml(a.time)}</span>
             </div>
         </div>
-    `).join('');
+    `
+        )
+        .join('');
 }
-
-
 
 // === CONFIGURAR PAINEL DE SEGURANÇA ===
 async function setupSecurityPanel(user) {
@@ -472,7 +539,9 @@ async function setupSecurityPanel(user) {
 
         // Busca o código na API
         try {
-            const res = await fetch(`${window.API_BASE_URL}/security/status`, { credentials: 'include' });
+            const res = await fetch(`${window.API_BASE_URL}/security/status`, {
+                credentials: 'include',
+            });
             const json = await res.json();
             if (json.success && codeDisplay) {
                 codeDisplay.setAttribute('data-code', json.data.codigo);
@@ -519,8 +588,24 @@ window.verPerfil = function () {
     window.location.href = 'perfil.html';
 };
 
+// Relatórios de cada perfil. A tabela é explícita de propósito: a versão
+// anterior decidia por uma cadeia de `if`, e o ramo final — o que atende todo
+// perfil não listado — mandava para os relatórios da SECRETARIA. Bastava o
+// perfil não bater na comparação (conta multi-escola, `auth` ainda não
+// carregado) para uma diretora terminar na tela da secretaria.
+//
+// Agora só quem é secretaria chega lá; qualquer outro perfil, e também o caso
+// "não sei quem é", vai para o BI Pedagógico da direção — a tela de relatórios
+// que admin, diretor e professor podem abrir.
+const RELATORIOS_POR_PERFIL = {
+    secretaria: '/html/secretaria/relatorios.html',
+};
+const RELATORIOS_PADRAO = '/html/direcao/bi-pedagogico.html';
+
 window.verRelatorios = function () {
-    window.location.href = 'secretaria/relatorios.html';
+    const user = window.auth && window.auth.getCurrentUser ? window.auth.getCurrentUser() : null;
+    const perfil = perfilAtivoDoUsuario(user);
+    window.location.href = RELATORIOS_POR_PERFIL[perfil] || RELATORIOS_PADRAO;
 };
 
 window.abrirFerramentas = function () {
@@ -528,7 +613,10 @@ window.abrirFerramentas = function () {
 
     if (!user || user.perfil !== 'admin') {
         if (typeof showToast === 'function') {
-            showToast('Acesso negado. Apenas administradores podem acessar as ferramentas.', 'error');
+            showToast(
+                'Acesso negado. Apenas administradores podem acessar as ferramentas.',
+                'error'
+            );
         }
         return;
     }
@@ -570,14 +658,17 @@ async function inicializarWidgets(user, perfil) {
             if (user.perfil === 'responsavel') {
                 const res = await fetch(`${window.API_BASE_URL || '/api'}/ia/chatbot`, {
                     method: 'POST',
-                    headers: { 
+                    headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-Token': document.cookie.match(/csrf_token=([^;]+)/)?.[1] || ''
+                        'X-CSRF-Token': document.cookie.match(/csrf_token=([^;]+)/)?.[1] || '',
                     },
-                    body: JSON.stringify({ message: 'como está o desempenho?', perfil: 'responsavel' }),
-                    credentials: 'include'
+                    body: JSON.stringify({
+                        message: 'como está o desempenho?',
+                        perfil: 'responsavel',
+                    }),
+                    credentials: 'include',
                 });
-                const json = await res.ok ? await res.json() : null;
+                const json = (await res.ok) ? await res.json() : null;
                 if (json && json.success) {
                     iaContent.innerHTML = `
                         <div style="position: relative;">
@@ -598,7 +689,7 @@ async function inicializarWidgets(user, perfil) {
             }
         } catch (e) {
             console.warn('Erro ao carregar insights:', e);
-            iaContent.textContent = "Insights indisponíveis no momento.";
+            iaContent.textContent = 'Insights indisponíveis no momento.';
         }
     }
 
@@ -614,14 +705,19 @@ async function inicializarWidgets(user, perfil) {
                 const json = await apiFetch(`/gamificacao/aluno/${alunoId}`);
 
                 if (json.data && json.data.length > 0) {
-                    badgesGrid.innerHTML = json.data.map(b => `
+                    badgesGrid.innerHTML = json.data
+                        .map(
+                            (b) => `
                         <div class="badge-conquest" title="${escHtml(b.descricao)}">
                             <div class="badge-icon"><i class="bi ${escHtml(b.icone)}"></i></div>
                             <span style="font-size: 0.65rem; color: #94a3b8; font-weight: 600;">${escHtml(b.titulo)}</span>
                         </div>
-                    `).join('');
+                    `
+                        )
+                        .join('');
                 } else {
-                    badgesGrid.innerHTML = '<p style="font-size:0.75rem; color:#64748b;">Nenhuma insígnia ainda. Continue focado!</p>';
+                    badgesGrid.innerHTML =
+                        '<p style="font-size:0.75rem; color:#64748b;">Nenhuma insígnia ainda. Continue focado!</p>';
                 }
             }
         } catch (e) {

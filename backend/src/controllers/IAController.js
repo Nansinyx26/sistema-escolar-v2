@@ -9,6 +9,7 @@
  */
 
 const ChatbotService = require('../services/ChatbotService');
+const sugestaoAlunos = require('../services/ia/sugestaoAlunos');
 const AnalyticsService = require('../services/AnalyticsService');
 const ChatMensagem = require('../models/ChatMensagem');
 const Turma = require('../models/Turma');
@@ -84,6 +85,81 @@ class ChatbotController {
     } catch (error) {
       logger.error('Chatbot error:', error, { userId: req.user?.id });
       res.status(500).json({ success: false, error: 'Não foi possível processar sua pergunta. Tente novamente.' });
+    }
+  }
+
+  /**
+   * GET /api/ia/chatbot/alunos?q=<texto>&limite=<n>
+   *
+   * Autocomplete do campo de mensagem do chatbot: devolve os alunos cujo nome
+   * casa com o que está sendo digitado, já ordenados (começa com > começa uma
+   * palavra > contém, alfabético dentro de cada grupo).
+   *
+   * POR QUE FILTRAR NO SERVIDOR
+   * ---------------------------
+   * A alternativa — mandar a lista de alunos para o navegador e filtrar lá —
+   * quebra nas duas pontas: numa escola com milhares de matrículas o payload
+   * inviabiliza a digitação, e a lista completa na mão do cliente é exatamente
+   * o dado que o RBAC existe para não entregar. Aqui a consulta já sai recortada
+   * por escola/turma/vínculo (`enforceRBAC`), e volta no máximo `limite` nomes.
+   *
+   * Sem limiter de IA: é leitura no Mongo, não chamada de modelo. O teto de
+   * 20/min do `iaChatUsuarioLimiter` travaria o campo em meia dúzia de teclas —
+   * o debounce do front e o `globalLimiter` são a proteção certa para esta rota.
+   */
+  static async sugerirAlunos(req, res) {
+    try {
+      const perfil = (req.user?.perfil || '').toLowerCase();
+      if (!perfil) {
+        return res.status(403).json({ success: false, error: 'Perfil de usuário não autorizado.' });
+      }
+
+      const termo = String(req.query?.q || '').slice(0, 120).trim();
+      const limite = Math.min(
+        Math.max(parseInt(req.query?.limite, 10) || sugestaoAlunos.LIMITE_PADRAO, 1),
+        sugestaoAlunos.LIMITE_MAXIMO
+      );
+
+      if (!termo) {
+        return res.json({ success: true, data: { termo: '', buscavel: false, total: 0, alunos: [] } });
+      }
+
+      const { alunoFilter } = await ChatbotService.enforceRBAC({
+        perfil,
+        userId: req.user?.id || req.user?._id,
+        userEmail: req.user?.email,
+        escolaId: req.escolaId,
+      });
+
+      const { termo: termoUsado, alunos, buscavel } = await sugestaoAlunos.sugerirAlunos({
+        texto: termo,
+        filtro: alunoFilter,
+        limite,
+      });
+
+      return res.json({
+        success: true,
+        data: {
+          // O trecho que de fato casou ("joão" em "notas do joão"): é ele que o
+          // front marca em negrito e substitui quando a pessoa escolhe um nome.
+          termo: termoUsado,
+          // Falso quando nada do que foi digitado parece nome ("oi", "notas"):
+          // o campo fecha a lista em vez de dizer que não achou ninguém.
+          buscavel,
+          total: alunos.length,
+          // Só id, nome e turma. A matrícula ajuda a busca, mas não precisa
+          // trafegar para desenhar a lista — e o RA é dado de aluno.
+          alunos: alunos.map(a => ({
+            id: a.id,
+            nome: a.nome,
+            turma: a.turma,
+          })),
+        },
+      });
+    } catch (error) {
+      // Sem o termo no log: o que se digita neste campo é nome de aluno (PII).
+      logger.error('[Chatbot] falha ao sugerir alunos', { err: error, userId: req.user?.id });
+      return res.status(500).json({ success: false, error: 'Não foi possível buscar os alunos.' });
     }
   }
 

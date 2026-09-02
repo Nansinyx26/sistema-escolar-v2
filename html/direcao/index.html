@@ -49,6 +49,9 @@
     <link rel="stylesheet" href="../../css/announcement-feed-legacy.css?v=1.0">
     <link rel="stylesheet" href="../../css/sidebar.css?v=1.2">
     <link rel="stylesheet" href="../../css/chatbot-ia.css?v=1.0">
+    <!-- Faltava aqui: o painel de direção carregava js/voice-orb.js sem a
+         folha de estilo dele, então o orb montava sem palco nem posição. -->
+    <link rel="stylesheet" href="../../css/voice-orb.css?v=2.0">
     <link rel="stylesheet" href="../../css/professores-online.css?v=2.0">
     <link rel="stylesheet" href="../../css/chat-flutuante.css?v=2.0">
     <!-- React 18 + Framer Motion (Localized) -->
@@ -129,6 +132,10 @@
             <a href="/html/meus-dados.html" class="sidebar-item" data-page="dados">
                 <i class="bi bi-shield-check"></i>
                 <span>Meus Dados</span>
+            </a>
+            <a href="/html/termo-audio-imagem.html" class="sidebar-item" data-page="termo-audio-imagem">
+                <i class="bi bi-file-earmark-check"></i>
+                <span>Termo de Áudio e Imagem</span>
             </a>
             <a href="/html/planilha-faltas.html" class="sidebar-item" data-page="planilha-faltas">
                 <i class="bi bi-journal-check"></i>
@@ -371,8 +378,8 @@
     <script src="../../js/database.js"></script>
     <script src="../../js/auth.js"></script>
     <script src="../../js/utils.js"></script>
-    <script src="../../js/voice-orb.js?v=1.0"></script>
-    <script src="../../js/sidebar-voice.js?v=4.0"></script>
+    <script src="../../js/voice-orb.js?v=2.0"></script>
+    <script src="../../js/sidebar-voice.js?v=5.0"></script>
     <script src="../../direcao/direcao.js"></script>
     <!-- Sons de enviar/receber mensagem e de aviso do mural, usados tanto pelo
          chat quanto pelo realtime.js. Sem defer porque chat-direto-manager.js
@@ -391,7 +398,7 @@
     <script defer src="../../js/notifications.js"></script>
     <script src="../../js/vendor.js"></script>
     <script defer src="/js/reactions.js"></script>
-    <script src="../../js/chatbot-ia.js?v=4.0"></script>
+    <script src="../../js/chatbot-ia.js?v=5.0"></script>
 
 <script src="../../js/click-sound.js" defer></script>
     <script defer src="../../js/push-notifications.js"></script>

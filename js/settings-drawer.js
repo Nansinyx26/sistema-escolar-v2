@@ -253,11 +253,19 @@
         '<div class="sd-item">' +
         '<i class="bi bi-person-standing" aria-hidden="true"></i>' +
         '<label class="sd-item-label" for="sd-voice-name">Voz do Narrador</label>' +
-        '<select id="sd-voice-name" class="select-sm" style="width:160px;">' +
-        '<option value="brian">Brian — Tranquilo</option>' +
-        '<option value="adam">Adam — Firme</option>' +
-        '<option value="eric">Eric — Suave</option>' +
-        '<option value="george">George — Caloroso</option>' +
+        // Estas opções são o FALLBACK. Onde `js/sidebar-voice.js` está na
+        // página, `window.Vozes.preencherSelect()` as reescreve a partir do
+        // catálogo — a gaveta roda em ~44 telas e 30 delas não têm aquele
+        // arquivo, então o `<select>` precisa nascer preenchido de qualquer
+        // jeito. O texto aqui é o MESMO do catálogo de propósito: a mesma voz
+        // era "Brian — Tranquilo" aqui e "Brian — grave e tranquila" na página
+        // do assistente, e quem trocava de tela achava que eram vozes
+        // diferentes.
+        '<select id="sd-voice-name" class="select-sm" style="width:196px;">' +
+        '<option value="brian">Brian — Grave e tranquila</option>' +
+        '<option value="adam">Adam — Firme e direta</option>' +
+        '<option value="eric">Eric — Suave e natural</option>' +
+        '<option value="george">George — Calorosa e pausada</option>' +
         '</select></div>' +
         '<div class="sd-item">' +
         '<i class="bi bi-speedometer2" aria-hidden="true"></i>' +
@@ -351,7 +359,8 @@
         updateConnection();
         // Reflete a preferência de voz mais recente (pode ter mudado no seletor legado)
         var voiceSel = document.getElementById('sd-voice-name');
-        if (voiceSel) voiceSel.value = read('user_elevenlabs_voice', 'brian');
+        if (voiceSel && window.Vozes) window.Vozes.preencherSelect(voiceSel);
+        else if (voiceSel) voiceSel.value = read('user_elevenlabs_voice', 'brian');
         var first = drawer.querySelector('#sdClose');
         if (first) first.focus();
     }
@@ -416,6 +425,56 @@
         } catch (e) {
             /* storage cheio/bloqueado */
         }
+    }
+
+    /**
+     * Grava a voz escolhida no servidor.
+     *
+     * Existe aqui, com o fetch próprio, porque esta gaveta é carregada em ~44
+     * páginas e 30 delas NÃO carregam `js/sidebar-voice.js` — onde mora
+     * `window.saveAccessibilityPreference`. Delegar a ele deixaria a escolha
+     * presa ao navegador na maioria das telas, que é exatamente o defeito que
+     * se está corrigindo. A gaveta já é deliberadamente sem dependências (tem
+     * os próprios `read`/`write`); isto segue o mesmo desenho.
+     *
+     * Se o helper global existir, ele é usado — assim há um caminho só nas
+     * páginas que têm os dois.
+     *
+     * Falha em silêncio: a voz já está gravada no navegador quando isto roda,
+     * então a escolha vale nesta sessão de qualquer forma.
+     */
+    function persistirVoz(voz) {
+        if (typeof window.saveAccessibilityPreference === 'function') {
+            window.saveAccessibilityPreference({ elevenlabsVoice: voz });
+            return;
+        }
+        if (typeof fetch !== 'function') return;
+
+        var csrf = (document.cookie.match(/csrf_token=([^;]+)/) || [])[1];
+        fetch((window.API_BASE_URL || '/api') + '/auth/settings/tts', {
+            method: 'POST',
+            headers: csrf
+                ? { 'Content-Type': 'application/json', 'X-CSRF-Token': decodeURIComponent(csrf) }
+                : { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            // `voicePreference` vai como 'male', e não como o nome da voz: o
+            // controller copia esse campo para o legado `voiceGender`, cujo
+            // enum é ['female','male'] — com o nome da voz ali, o update
+            // inteiro voltava 500 e NENHUMA preferência era gravada.
+            body: JSON.stringify({
+                elevenlabsVoice: voz,
+                voicePreference: 'male',
+                ttsProvider: 'elevenlabs',
+            }),
+        }).then(
+            function (r) {
+                if (!r.ok)
+                    console.warn('[Voz] Preferência não gravada no servidor: HTTP ' + r.status);
+            },
+            function (e) {
+                console.warn('[Voz] Preferência não gravada no servidor:', e && e.message);
+            }
+        );
     }
 
     function bindToggle(id, storageKey, onToggle, defaultOn) {
@@ -542,19 +601,36 @@
         // como voiceId em window.speak(). Sincroniza com o seletor legado
         // (#voice-provider-select) quando presente na página.
         var voiceSelect = document.getElementById('sd-voice-name');
-        voiceSelect.value = read('user_elevenlabs_voice', 'brian');
+        if (window.Vozes) window.Vozes.preencherSelect(voiceSelect);
+        else voiceSelect.value = read('user_elevenlabs_voice', 'brian');
+
         voiceSelect.addEventListener('change', function () {
             var chosen = voiceSelect.value;
-            write('user_elevenlabs_voice', chosen);
-            write('user_voice_preference', 'male'); // backend só possui vozes masculinas
+
+            if (window.Vozes) {
+                // Caminho único onde o catálogo existe: ele grava as duas
+                // chaves, persiste no servidor, avisa a página pelo
+                // `voiceChanged` e toca a prévia. Duplicar isso aqui era como
+                // os rótulos divergiam.
+                window.Vozes.definir(chosen, { previa: true });
+            } else {
+                write('user_elevenlabs_voice', chosen);
+                write('user_voice_preference', 'male'); // backend só tem vozes masculinas
+                // Sem isto a escolha morria neste navegador: quem trocasse a voz
+                // no computador da escola voltava a ouvir Brian no celular.
+                persistirVoz(chosen);
+                window.dispatchEvent(
+                    new CustomEvent('voiceChanged', { detail: { voice: chosen } })
+                );
+                // Sem `sidebar-voice.js` não há `window.speak`, e portanto não há
+                // prévia a tocar nesta tela.
+            }
+
             var legacy = document.getElementById('voice-provider-select');
             if (legacy && legacy.value !== chosen) {
                 legacy.value = chosen;
                 legacy.dispatchEvent(new Event('change', { bubbles: true }));
             }
-            window.dispatchEvent(new CustomEvent('voiceChanged', { detail: { voice: chosen } }));
-            // Prévia com a nova voz
-            if (typeof window.speak === 'function') window.speak('Voz alterada com sucesso!');
         });
 
         var speedRange = document.getElementById('sd-voice-speed');

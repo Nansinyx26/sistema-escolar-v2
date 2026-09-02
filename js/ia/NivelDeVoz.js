@@ -73,9 +73,18 @@ export function criarMedidorDeVoz(opcoes = {}) {
      * a segunda chamada lança InvalidStateError e derruba a narração. O mapa
      * guarda a fonte já criada; é fraco para não segurar na memória os
      * `new Audio()` descartados a cada resposta.
+     *
+     * ATENÇÃO ao WeakMap aqui: a fonte referencia o elemento (`.mediaElement`),
+     * e um valor que aponta para a própria chave impede a coleta da entrada.
+     * Ou seja: sozinho, este mapa NÃO limpa nada. Quem limpa é o
+     * `_soltarFonte` chamado ao trocar de elemento — o que passou a importar
+     * quando a narração deixou de ser um `<audio>` por resposta e virou um por
+     * trecho falado.
      * @type {WeakMap<HTMLAudioElement, MediaElementAudioSourceNode>}
      */
     const fontesPorElemento = new WeakMap();
+    /** @type {MediaElementAudioSourceNode|null} fonte ligada ao analisador */
+    let fonteAtual = null;
 
     /** Índices do espectro correspondentes à faixa da voz, e seus pesos. */
     let faixaInicio = 1;
@@ -149,8 +158,28 @@ export function criarMedidorDeVoz(opcoes = {}) {
      *
      * @param {HTMLAudioElement|null|undefined} elemento
      */
+    /**
+     * Desliga do analisador a fonte do trecho anterior.
+     *
+     * Sem isto, cada trecho narrado somava mais uma entrada permanente no
+     * analisador — e como o nó segura o `<audio>`, nem o elemento nem o nó
+     * eram coletados. Com um áudio por RESPOSTA isso passava despercebido;
+     * com um por FRASE, uma conversa longa acumula dezenas.
+     */
+    function soltarFonte() {
+        if (!fonteAtual) return;
+        try {
+            fonteAtual.disconnect();
+        } catch {
+            // Nó já desconectado ou contexto encerrado.
+        }
+        if (elementoAtual) fontesPorElemento.delete(elementoAtual);
+        fonteAtual = null;
+    }
+
     function observar(elemento) {
         if (!elemento) return;
+        if (elemento !== elementoAtual) soltarFonte();
         elementoAtual = elemento;
         leiturasMudas = 0;
         pico = 0.12;
@@ -175,6 +204,7 @@ export function criarMedidorDeVoz(opcoes = {}) {
                 fontesPorElemento.set(elemento, fonte);
                 fonte.connect(analisador);
             }
+            fonteAtual = fonte;
             modo = 'real';
         } catch (e) {
             // Elemento já roteado por outro contexto, ou mídia com CORS.
@@ -188,6 +218,7 @@ export function criarMedidorDeVoz(opcoes = {}) {
 
     /** Encerra a medição do elemento atual (fim ou interrupção da narração). */
     function soltar() {
+        soltarFonte();
         elementoAtual = null;
         leiturasMudas = 0;
     }

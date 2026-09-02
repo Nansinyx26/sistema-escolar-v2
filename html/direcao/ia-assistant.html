@@ -6,7 +6,10 @@
     <script src="/js/guarda-acesso.js?v=1.0"></script>
 
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- interactive-widget=resizes-content: com o teclado virtual aberto, a
+         viewport de layout (e o 100dvh abaixo) encolhe junto, e a caixa de
+         texto continua acima do teclado em vez de ficar atrás dele. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
     <title>Assistente da Escola | Portal do Docente</title>
 
     <!-- Preload da fonte: sem ele o .woff2 só é descoberto depois do CSS. -->
@@ -57,7 +60,23 @@
       }
 
       /* ── Layout ─────────────────────────────────────────────────── */
-      .app { display: grid; grid-template-columns: 1fr minmax(420px, 34%); height: 100vh; }
+      /* A altura vem da viewport, e não de `100%` do body: css/mobile-scroll.css
+         é o último stylesheet da página e deixa `html, body { height: auto }`
+         de propósito (o comentário dele explica que `height: 100%` ali congela
+         o scroller). Contra um pai de altura automática, `height: 100%` num
+         filho não resolve e vira `auto` — o palco encolhia para a altura do
+         conteúdo. Por isso aqui é unidade de viewport.
+
+         100vh primeiro, como reserva para quem não conhece dvh; depois o
+         calc: `dvh` acompanha a barra de endereço do celular, e o
+         `env(safe-area-inset-bottom)` desconta a barra de gestos, para a caixa
+         de texto no rodapé não terminar atrás dela. Em telas sem entalhe o
+         env() é 0 e a conta devolve 100dvh limpo. */
+      .app {
+        display: grid; grid-template-columns: 1fr minmax(420px, 34%);
+        height: 100vh;
+        height: calc(100dvh - env(safe-area-inset-bottom, 0px));
+      }
 
       .stage {
         display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -175,7 +194,9 @@
 
       /* ── Painel de conversa ─────────────────────────────────────── */
       .chat-panel {
-        display: flex; flex-direction: column; height: 100vh;
+        /* Aqui `100%` resolve: o pai é a área do grid do .app, que tem altura
+           definida acima. */
+        display: flex; flex-direction: column; height: 100%;
         background: var(--surface); border-left: 1px solid var(--border);
       }
 
@@ -492,6 +513,31 @@
       }
       @keyframes piscar { 50% { opacity: 0; } }
 
+      /* ── Trecho sendo narrado ────────────────────────────────────────
+         Pintado por js/ia/DestaqueNarracao.js com a CSS Custom Highlight
+         API — um Range marcado, sem nenhum elemento novo no DOM. Tinha de
+         ser assim: a bolha é repintada a cada ~30ms enquanto a resposta
+         chega, e um <span> seria desfeito a cada repintura (além de picotar
+         a seleção de texto e a árvore de acessibilidade).
+
+         SEM TRANSIÇÃO, de propósito. A marca troca de frase a cada poucos
+         segundos durante a narração inteira: animar essa troca seria motion
+         de alta frequência competindo com o texto que está sendo lido —
+         exatamente o que o docs/MOTION.md manda não fazer. Ela é legenda,
+         não efeito. Por isso também nada muda em prefers-reduced-motion:
+         não há movimento nenhum a degradar.
+
+         Fundo fraco + texto acima do normal: em ::highlight só valem cor,
+         fundo, sublinhado e sombra de texto, e a marca precisa sobreviver
+         por cima de negrito, link e item de lista sem repintar nenhum deles.
+
+         Navegador sem a API (Safari < 17.2, Firefox antigo) simplesmente
+         não pinta nada — a narração continua inteira. */
+      ::highlight(ia-narracao) {
+        background-color: rgba(16, 185, 129, 0.16);
+        color: #f2fbf8;
+      }
+
       .ia-aviso { font-size: 13px; padding: 8px 11px; border-radius: 9px; margin-top: 8px; }
       .ia-aviso-erro { background: rgba(248, 113, 113, 0.12); color: var(--erro); border: 1px solid rgba(248, 113, 113, 0.3); }
       .ia-aviso-info { background: rgba(255, 255, 255, 0.05); color: var(--muted); border: 1px solid var(--border); }
@@ -515,6 +561,17 @@
         padding: 14px 16px; border-top: 1px solid var(--border); flex-shrink: 0;
       }
       .input-box {
+        /* Duas linhas de altura mínima. Com `rows="1"` a caixa nasce com uma
+           linha, e o texto de exemplo ("Pergunte alguma coisa, ou digite /
+           para os comandos") não cabe numa linha em NENHUMA largura que esta
+           página produz: o painel da conversa vai de 420px a ~490px no
+           desktop, e no celular ele é a tela toda, ainda mais estreita. A
+           segunda linha ficava cortada dentro da própria caixa.
+
+           Reservar as duas linhas desde o início também tira o pulo de layout
+           de quando o auto-crescimento do JS chega à segunda linha.
+           Conta: 2 x 21px de linha + 22px de recuo + 2px de borda. */
+        min-height: 66px;
         flex: 1; resize: none; max-height: 160px;
         padding: 11px 13px; border-radius: 11px;
         background: var(--surface2); border: 1px solid var(--border);
@@ -595,15 +652,66 @@
         .ring-3 { display: none; }
       }
 
-      @media (max-width: 640px) {
-        .app { grid-template-rows: 0 1fr; }
-        /* No celular a tela inteira é a conversa: o orb vira só o cabeçalho. */
-        .stage { display: none; }
+      /* Celular em pé, e qualquer tela baixa demais para o palco vertical —
+         telefone deitado, tablet deitado. A segunda condição existe porque a
+         regra de 1024px acima reserva `minmax(220px, 30vh)` ao palco: num
+         telefone deitado, com 390px de altura, isso come 56% da tela e deixa a
+         conversa numa fresta.
+
+         Aqui o palco não some mais, vira uma faixa de 83px. Escondê-lo tirava
+         do celular três coisas de uma vez: a esfera — que é o indicador de que
+         o assistente está ouvindo, pensando ou falando —, o botão de voltar ao
+         painel e o de preferências de voz. Os dois botões moram no palco e não
+         têm outro caminho na página, então no celular eles simplesmente não
+         existiam. */
+      @media (max-width: 640px), (max-width: 1024px) and (max-height: 520px) {
+        :root {
+          /* A esfera cai para o tamanho de um avatar. O raio da nuvem de
+             pontos e os anéis do canvas são frações do lado (RAIO_RELATIVO em
+             AssistantSphere.js), então tudo encolhe junto e nada vaza. */
+          --esfera-tam: 64px;
+          /* O orb em CSS é o fallback da esfera: mesmo tamanho, para a faixa
+             não mudar de altura se o canvas desistir no meio do uso. */
+          --orb-size: 64px;
+        }
+
+        .app { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+
+        .stage {
+          flex-direction: row; justify-content: flex-start;
+          gap: 12px; padding: 9px 12px;
+          /* O halo radial foi desenhado para um palco alto; numa faixa de 83px
+             ele vira uma listra esverdeada. Quem separa da conversa passa a ser
+             a borda de baixo. */
+          background: none;
+          border-bottom: 1px solid var(--border);
+        }
+        /* Sem isto a borda acima soma com a `border-top` que a regra de 1024px
+           dá ao painel, e o celular ganha uma linha dupla. */
+        .chat-panel { border-top: 0; }
+
+        /* Na faixa os botões entram no fluxo, na ordem do documento: voltar à
+           esquerda, preferências de voz empurradas para a direita pelo
+           `margin-left`. */
+        .stage-btn { position: static; width: 36px; height: 36px; }
+        .gear-btn { margin-left: auto; }
+
+        /* Os anéis chegam a 2,5x o orb e não cabem na faixa. As barras também
+           saem: a pílula de status já diz o que elas diziam, e no palco alto
+           elas só apareciam quando a esfera falhava. */
+        .ring, .bars { display: none; }
+
+        /* `min-width: 0` para a pílula poder encolher em vez de empurrar o
+           botão da direita para fora; o texto trunca no lugar dela. */
+        .status-pill { min-width: 0; padding: 6px 12px; }
+        .status-pill span {
+          overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+
         .messages { padding: 16px 13px; gap: 15px; }
         .ia-msg { max-width: 94%; }
         .input-wrap { padding: 11px 13px; }
-        /* Acompanha o recuo das mensagens; a faixa continua visível, porque
-           no celular esta coluna é a tela inteira. */
+        /* Acompanha o recuo das mensagens. */
         .ia-faixa-dev { padding: 8px 13px; }
       }
 
@@ -660,11 +768,17 @@
              o valor gravado não existia na lista. -->
         <div class="config-field">
           <label for="cfgVoice">Voz</label>
+          <!-- Os rótulos são os mesmos do catálogo em `js/sidebar-voice.js`
+               (window.Vozes) e de `portal-responsavel/src/constants/vozes.ts`.
+               A lista fica escrita à mão porque só ELA tem "Desativada", que
+               não é uma voz e por isso não mora no catálogo — mas a mesma voz
+               não pode mais ser "Brian — natural" aqui e "Brian — Suave" na
+               gaveta de configurações. -->
           <select id="cfgVoice">
-            <option value="brian">Brian — grave e tranquila (padrão)</option>
-            <option value="adam">Adam — firme</option>
-            <option value="eric">Eric — natural</option>
-            <option value="george">George — pausada</option>
+            <option value="brian">Brian — Grave e tranquila (padrão)</option>
+            <option value="adam">Adam — Firme e direta</option>
+            <option value="eric">Eric — Suave e natural</option>
+            <option value="george">George — Calorosa e pausada</option>
             <option value="off">Desativada</option>
           </select>
         </div>
@@ -725,10 +839,6 @@
           <i class="bi bi-arrow-left" aria-hidden="true"></i>
         </a>
 
-        <button type="button" class="stage-btn gear-btn" id="gearBtn" title="Preferências de voz" aria-label="Preferências de voz">
-          <i class="bi bi-gear" aria-hidden="true"></i>
-        </button>
-
         <!-- O clique (calar a narração / abrir o microfone) fica no wrap, e
              não no orb: quando a esfera em canvas assume, o orb some e o alvo
              de clique precisa continuar existindo. `role="button"` + tabindex
@@ -753,6 +863,22 @@
           <div class="status-dot"></div>
           <span id="statusText">Pronto para ajudar</span>
         </div>
+
+        <!-- Este botão fica por último no documento de propósito. No desktop
+             ele é `position: absolute` no canto, e a posição no DOM não muda
+             nada visualmente; no celular o palco vira uma faixa em linha, e é
+             a ordem do documento que coloca voltar → esfera → status →
+             preferências. Assim a faixa dispensa `order` de flex, e a ordem de
+             foco continua sendo a ordem visual em qualquer largura.
+
+             `bi-sliders`, e não `bi-gear`: js/settings-drawer.js injeta uma
+             engrenagem em `.header-actions`, ali do lado, para as Configurações
+             gerais. Dois glifos iguais a poucos pixels um do outro, abrindo
+             painéis diferentes, já eram ambíguos no desktop; na faixa do
+             celular os dois passariam a dividir a mesma borda direita. -->
+        <button type="button" class="stage-btn gear-btn" id="gearBtn" title="Preferências de voz" aria-label="Preferências de voz">
+          <i class="bi bi-sliders" aria-hidden="true"></i>
+        </button>
       </div>
 
       <!-- Conversa -->
@@ -829,7 +955,7 @@
     <script src="../../js/auth.js"></script>
     <script src="../../js/utils.js"></script>
     <script src="../../js/libs/purify.min.js"></script>
-    <script src="../../js/sidebar-voice.js?v=4.0"></script>
+    <script src="../../js/sidebar-voice.js?v=5.0"></script>
 
     <!-- Ícones antes do módulo: pagina-ia-assistant.js chama renderLucideIcons -->
     <script src="../../js/libs/lucide.min.js"></script>

@@ -264,8 +264,16 @@ exports.solicitarExclusao = async (req, res) => {
 exports.statusConsentimento = async (req, res) => {
     try {
         const usuario = await Usuario.findById(req.user.id)
-            .select('consentimentoAceiteEm consentimentoVersao emailVerificado twoFactorEnabled')
+            .select('consentimentoAceiteEm consentimentoVersao emailVerificado twoFactorEnabled lgpdHistory')
             .lean();
+
+        const TERMO_AUDIO_ID = 'TERMO_AUDIO_IMAGEM';
+        const TERMO_AUDIO_VERSAO = '1.0';
+        const termoAudio = Array.isArray(usuario?.lgpdHistory)
+            ? usuario.lgpdHistory
+                .filter(h => h.termoId === TERMO_AUDIO_ID && h.versao === TERMO_AUDIO_VERSAO)
+                .sort((a, b) => new Date(b.aceitoEm) - new Date(a.aceitoEm))[0]
+            : null;
 
         return res.json({
             success: true,
@@ -273,7 +281,12 @@ exports.statusConsentimento = async (req, res) => {
                 aceiteEm: usuario?.consentimentoAceiteEm || null,
                 versao: usuario?.consentimentoVersao || null,
                 emailVerificado: usuario?.emailVerificado || false,
-                twoFactorAtivo: usuario?.twoFactorEnabled || false
+                twoFactorAtivo: usuario?.twoFactorEnabled || false,
+                termoAudioImagem: termoAudio ? {
+                    aceito: true,
+                    aceitoEm: termoAudio.aceitoEm,
+                    versao: termoAudio.versao
+                } : null
             }
         });
     } catch (err) {

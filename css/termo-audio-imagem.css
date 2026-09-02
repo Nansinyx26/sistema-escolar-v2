@@ -97,3 +97,42 @@
     opacity: 0.55;
     cursor: help;
 }
+
+/**
+ * O caminho para o Termo inteiro dentro do modal. O modal resume; quem quiser
+ * ler as quatro cláusulas antes de aceitar precisa de uma porta, senão o
+ * "Li e aceito" é um aceite sobre um texto que a pessoa não viu.
+ */
+.termo-modal__leia-tudo {
+    margin: 0 0 0.85rem;
+    font-size: 0.85rem;
+}
+
+.termo-modal__leia-tudo a {
+    color: var(--accent-primary, #2563eb);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+/**
+ * Atalho para o Termo no rodapé da lista de contatos das telas de conversa.
+ * A `.conv-lista` é `flex: 1`, então este irmão fica colado no fim da coluna
+ * sem precisar de posicionamento.
+ */
+.conv-termo-link {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 1.1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary, #94a3b8);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: color var(--motion-fast) var(--motion-ease-out);
+}
+
+.conv-termo-link:hover,
+.conv-termo-link:focus-visible {
+    color: var(--text-primary, #e2e8f0);
+}

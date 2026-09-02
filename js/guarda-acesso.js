@@ -84,6 +84,9 @@
             },
             '/html/direcao': {
                 perfis: ['admin', 'diretor'],
+                excecoes: {
+                    'ia-assistant.html': ['admin', 'diretor', 'professor', 'secretaria'],
+                },
             },
             '/html/conversas.html': {
                 perfis: ['admin', 'diretor', 'secretaria', 'professor', 'responsavel'],

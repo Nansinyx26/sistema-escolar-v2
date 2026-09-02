@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Volume2, Square, Loader2 } from 'lucide-react';
+import { vozAtual } from '../constants/vozes';
 
 interface Props {
   text: string;
@@ -30,7 +31,11 @@ let globalAudio: HTMLAudioElement | null = null;
     try {
       setLoading(true);
       const cleanText = stripHtml(text);
-      const voiceName = localStorage.getItem('user_elevenlabs_voice') || 'adam';
+      // `vozAtual()` e não a leitura crua: o padrão aqui era 'adam' enquanto o
+      // resto do sistema parte de 'brian', e um valor legado ('male', gravado
+      // quando esta chave guardava gênero) chegava ao backend como voiceId
+      // desconhecido e caía no fallback.
+      const voiceName = vozAtual();
       
       const csrfMatch = document.cookie.match(/csrf_token=([^;]+)/);
       const csrf = csrfMatch ? decodeURIComponent(csrfMatch[1]) : '';
