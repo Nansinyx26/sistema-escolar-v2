@@ -826,6 +826,13 @@ async function carregarStatusTermoAudioImagem() {
         const json = await res.json();
         const aceito = Boolean(json?.data?.aceito);
 
+        // O consentimento LGPD geral é assinado na MESMA tela, junto do Termo
+        // (Issue #201), e é o que a conta precisa mostrar registrado: até
+        // então, `consentimentoAceiteEm` só era escrito no onboarding do
+        // responsável, e a conta de professor/diretor nunca dizia nada a
+        // respeito.
+        mostrarConsentimentoLgpd(json?.data?.consentimentoLgpd);
+
         if (aceito) {
             badge.style.background = 'rgba(16,185,129,0.15)';
             badge.style.color = '#10b981';
@@ -844,5 +851,30 @@ async function carregarStatusTermoAudioImagem() {
         badge.style.color = '#f59e0b';
         badge.style.borderColor = 'rgba(245,158,11,0.3)';
         badge.innerHTML = '<i class="bi bi-shield-exclamation"></i> Não verificado';
+        mostrarConsentimentoLgpd(null);
+    }
+}
+
+/** Linha do consentimento LGPD dentro da seção do Termo, na conta. */
+function mostrarConsentimentoLgpd(consentimento) {
+    const linha = document.getElementById('linhaConsentimentoLgpd');
+    if (!linha) return;
+
+    // `null` é "não deu para consultar", e não "não consentiu": afirmar
+    // pendência sem ter perguntado seria mentir sobre o estado da conta.
+    if (!consentimento) {
+        linha.innerHTML =
+            '<i class="bi bi-shield-exclamation" style="color:#f59e0b"></i> Consentimento LGPD: não verificado';
+        return;
+    }
+
+    if (consentimento.aceito) {
+        const quando = consentimento.aceitoEm
+            ? new Date(consentimento.aceitoEm).toLocaleDateString('pt-BR')
+            : '';
+        linha.innerHTML = `<i class="bi bi-check-circle-fill" style="color:#10b981"></i> Consentimento LGPD registrado${quando ? ` em ${quando}` : ''}`;
+    } else {
+        linha.innerHTML =
+            '<i class="bi bi-clock-history" style="color:#f59e0b"></i> Consentimento LGPD pendente — registre no Termo';
     }
 }

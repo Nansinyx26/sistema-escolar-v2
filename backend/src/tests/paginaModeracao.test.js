@@ -15,11 +15,13 @@ const PAGINA = path.join(RAIZ, 'html/direcao/moderacao.html');
 const PAINEL = path.join(RAIZ, 'js/moderacao/painel.js');
 const TERMO = path.join(RAIZ, 'js/termo-audio-imagem.js');
 const CHAT = path.join(RAIZ, 'js/chat-direto-manager.js');
+const PAGINA_TERMO = path.join(RAIZ, 'html/termo-audio-imagem.html');
 
 const html = fs.readFileSync(PAGINA, 'utf8');
 const painel = fs.readFileSync(PAINEL, 'utf8');
 const termo = fs.readFileSync(TERMO, 'utf8');
 const chat = fs.readFileSync(CHAT, 'utf8');
+const paginaTermo = fs.readFileSync(PAGINA_TERMO, 'utf8');
 
 describe('html/direcao/moderacao.html', () => {
     it('todo href/src local aponta para um arquivo que existe', () => {
@@ -176,5 +178,64 @@ describe('caminho até o aceite do Termo (Issue #189)', () => {
             const pagina = fs.readFileSync(path.join(RAIZ, rel), 'utf8');
             expect(pagina).toContain('termo-audio-imagem.html');
         }
+    });
+});
+
+/**
+ * html/termo-audio-imagem.html — o único lugar do sistema onde qualquer perfil
+ * assina um termo. Issue #201.
+ */
+describe('html/termo-audio-imagem.html — consentimento e retorno', () => {
+    it('pede o consentimento LGPD junto do aceite do Termo', () => {
+        // Sem este checkbox o POST registraria um consentimento que ninguém
+        // marcou — consentimento presumido não é consentimento.
+        expect(paginaTermo).toContain('id="checkConsentimentoLgpd"');
+        expect(paginaTermo).toContain('politica-privacidade.html');
+        expect(paginaTermo).toContain('13.709');
+    });
+
+    it('mostra o estado dos DOIS consentimentos', () => {
+        // Quem já tinha o Termo aceito antes da Issue #201 precisa ver que o
+        // consentimento LGPD ainda está pendente — e ter como registrá-lo.
+        expect(paginaTermo).toContain('id="statusDotLgpd"');
+        expect(paginaTermo).toContain('id="statusLgpdTitulo"');
+        expect(paginaTermo).toMatch(/termo\.aceito !== true \|\| lgpd\.aceito !== true/);
+    });
+
+    it('leva o registro para Meus Dados, e diz isso na tela', () => {
+        expect(paginaTermo).toContain('meus-dados.html');
+    });
+
+    it('devolve o Voltar ao painel do perfil, sem repetir a tabela de painéis', () => {
+        // O fallback era `perfil.html`, que não é a casa de perfil nenhum: o
+        // responsável caía numa tela do lado escolar em vez do portal dele.
+        // A tabela vem do guard (espelho de utils/painelPorPerfil.js) — uma
+        // terceira cópia dos caminhos divergiria na primeira mudança.
+        expect(paginaTermo).toContain('GuardaAcesso.painelDoPerfil');
+        expect(paginaTermo).not.toContain('href="perfil.html" class="btn-voltar"');
+    });
+
+    it('confere o referrer contra o mesmo veredito de acesso do guard', () => {
+        // Um responsável com o dashboard no referrer seria devolvido para uma
+        // página que o gate do servidor não deixa ele abrir.
+        expect(paginaTermo).toContain(
+            'guarda.permitido(guarda.vereditoDe(origem.pathname), perfil)'
+        );
+    });
+
+    it('carrega o guard de acesso, de onde a tabela de painéis vem', () => {
+        expect(paginaTermo).toContain('/js/guarda-acesso.js');
+    });
+
+    it('mostra o consentimento registrado também na conta (perfil.html)', () => {
+        // "Gravar no banco" só serve se a conta mostrar. A tela do perfil já
+        // tinha a seção do Termo; o consentimento LGPD entra na mesma seção,
+        // lido do mesmo endpoint.
+        const perfilHtml = fs.readFileSync(path.join(RAIZ, 'html/perfil.html'), 'utf8');
+        const perfilJs = fs.readFileSync(path.join(RAIZ, 'js/perfil.js'), 'utf8');
+
+        expect(perfilHtml).toContain('id="linhaConsentimentoLgpd"');
+        expect(perfilJs).toContain('mostrarConsentimentoLgpd');
+        expect(perfilJs).toContain('consentimentoLgpd');
     });
 });

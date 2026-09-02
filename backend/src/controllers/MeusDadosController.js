@@ -26,6 +26,15 @@ const ChatDireto = require('../models/ChatDireto');
 const IaConversa = require('../models/IaConversa');
 const { logAction } = require('../utils/auditHelper');
 
+// A identidade e a vigência dos dois consentimentos moram nos utils, e não
+// aqui: esta tela é LEITORA da mesma regra que a página do Termo escreve
+// (Issue #201). Enquanto a regra estava copiada, a cópia daqui procurava
+// `termoId: 'TERMO_AUDIO_IMAGEM'` e o que era gravado era `'termo_audio_imagem'`
+// — nenhum aceite casava, e "Meus Dados" dizia "Pendente" para quem tinha
+// assinado.
+const { TERMO_VERSAO, aceiteVigente } = require('../utils/termoAudioImagem');
+const { CONSENTIMENTO_VERSAO, consentimentoVigente } = require('../utils/consentimentoLgpd');
+
 // Teto do pacote de conversas. Uma exportação não pode virar um dump de
 // centenas de MB que trava o processo (memoryStorage do Render é pequeno).
 // Acima disso o titular é orientado a pedir o restante ao suporte.
@@ -157,6 +166,8 @@ exports.exportarMeusDados = async (req, res) => {
             .limit(100)
             .lean();
 
+        const consentimentoDoTitular = consentimentoVigente(usuario);
+
         // Monta o pacote de dados completo
         const pacoteDados = {
             exportadoEm: new Date().toISOString(),
@@ -175,9 +186,13 @@ exports.exportarMeusDados = async (req, res) => {
                 ultimoLogin: usuario.ultimoLogin,
                 emailVerificado: usuario.emailVerificado,
                 twoFactorAtivo: usuario.twoFactorEnabled || false,
+                // Mesma regra da tela de status: o consentimento pode estar no
+                // campo (contas antigas) ou no histórico imutável, e o pacote
+                // do titular não pode dizer "nunca consentiu" por olhar só um
+                // dos dois. Ver utils/consentimentoLgpd.js.
                 consentimento: {
-                    aceiteEm: usuario.consentimentoAceiteEm,
-                    versao: usuario.consentimentoVersao,
+                    aceiteEm: consentimentoDoTitular.aceitoEm,
+                    versao: consentimentoDoTitular.versao,
                 },
                 anonimizadoEm: usuario.anonimizadoEm,
                 foto: usuario.foto || '',
@@ -284,26 +299,22 @@ exports.statusConsentimento = async (req, res) => {
             )
             .lean();
 
-        const TERMO_AUDIO_ID = 'TERMO_AUDIO_IMAGEM';
-        const TERMO_AUDIO_VERSAO = '1.0';
-        const termoAudio = Array.isArray(usuario?.lgpdHistory)
-            ? usuario.lgpdHistory
-                  .filter((h) => h.termoId === TERMO_AUDIO_ID && h.versao === TERMO_AUDIO_VERSAO)
-                  .sort((a, b) => new Date(b.aceitoEm) - new Date(a.aceitoEm))[0]
-            : null;
+        const termoAudio = aceiteVigente(usuario?.lgpdHistory);
+        const consentimento = consentimentoVigente(usuario);
 
         return res.json({
             success: true,
             consentimento: {
-                aceiteEm: usuario?.consentimentoAceiteEm || null,
-                versao: usuario?.consentimentoVersao || null,
+                aceiteEm: consentimento.aceitoEm,
+                versao:
+                    consentimento.versao || (consentimento.aceito ? CONSENTIMENTO_VERSAO : null),
                 emailVerificado: usuario?.emailVerificado || false,
                 twoFactorAtivo: usuario?.twoFactorEnabled || false,
                 termoAudioImagem: termoAudio
                     ? {
                           aceito: true,
                           aceitoEm: termoAudio.aceitoEm,
-                          versao: termoAudio.versao,
+                          versao: termoAudio.versao || TERMO_VERSAO,
                       }
                     : null,
             },

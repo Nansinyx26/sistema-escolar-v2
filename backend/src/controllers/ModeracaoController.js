@@ -27,6 +27,15 @@ const logger = require('../utils/logger');
 // que é exatamente o dia em que a divergência custa caro.
 const { TERMO_ID, TERMO_VERSAO, aceiteVigente } = require('../utils/termoAudioImagem');
 
+// O consentimento LGPD geral segue a mesma disciplina do Termo: a regra mora
+// num util, porque agora tem dois leitores — este controller e o
+// `MeusDadosController`, que mostra o estado em "Meus Dados" (Issue #201).
+const {
+    CONSENTIMENTO_ID,
+    CONSENTIMENTO_VERSAO,
+    consentimentoVigente,
+} = require('../utils/consentimentoLgpd');
+
 /** Perfis que enxergam ocorrência CRÍTICA (§7.1) — coordenação fica de fora. */
 const PERFIS_CASOS_CRITICOS = new Set(['admin', 'diretor']);
 
@@ -482,13 +491,39 @@ exports.minhasContestacoes = async (req, res) => {
 };
 
 /**
+ * Monta o registro imutável de assinatura — o mesmo formato que
+ * `UserController.updateProfile` grava para o responsável, para que o
+ * `lgpdHistory` de um titular não tenha entradas de dois feitios.
+ */
+function registroDeAssinatura(req, termoId, versao) {
+    return {
+        termoId,
+        versao,
+        aceitoEm: new Date(),
+        ip: req.ip,
+        browser: req.headers['user-agent'],
+        os: req.headers['sec-ch-ua-platform'] || 'Desconhecido',
+        loginType: req.user?.loginGoogle ? 'Google' : 'Portal Local',
+    };
+}
+
+/**
  * GET /api/moderacao/aceite-termo
  * Cláusula 2 do Termo: áudio e imagem só liberam após aceite expresso.
+ *
+ * Devolve TAMBÉM o consentimento LGPD geral (Issue #201). Os dois são
+ * assinados no mesmo gesto, na mesma tela, e a tela precisa saber o estado dos
+ * dois para decidir o que ainda falta pedir — sem isso, quem já tinha o Termo
+ * aceito nunca mais veria o painel de aceite e ficaria sem caminho para
+ * registrar o consentimento.
  */
 exports.consultarAceite = async (req, res) => {
     try {
-        const usuario = await Usuario.findById(idDe(req)).select('lgpdHistory').lean();
+        const usuario = await Usuario.findById(idDe(req))
+            .select('lgpdHistory consentimentoAceiteEm consentimentoVersao')
+            .lean();
         const aceite = aceiteVigente(usuario?.lgpdHistory);
+        const consentimento = consentimentoVigente(usuario);
 
         res.json({
             success: true,
@@ -496,6 +531,11 @@ exports.consultarAceite = async (req, res) => {
                 aceito: Boolean(aceite),
                 versao: TERMO_VERSAO,
                 aceitoEm: aceite?.aceitoEm || null,
+                consentimentoLgpd: {
+                    aceito: consentimento.aceito,
+                    versao: consentimento.versao || CONSENTIMENTO_VERSAO,
+                    aceitoEm: consentimento.aceitoEm,
+                },
             },
         });
     } catch (erro) {
@@ -510,24 +550,89 @@ exports.consultarAceite = async (req, res) => {
  * Grava em `lgpdHistory`, que já é o histórico imutável de assinaturas do
  * usuário — inventar um campo novo para este termo deixaria dois lugares para
  * procurar a mesma coisa na hora de responder a um titular.
+ *
+ * REGISTRA OS DOIS CONSENTIMENTOS (Issue #201)
+ * --------------------------------------------
+ * A cláusula 2 desta tela é, ela própria, um consentimento de tratamento de
+ * dados pessoais: ela autoriza armazenar, transcrever e analisar áudio e
+ * imagem. Quem assina isso está consentindo com a política de privacidade — e
+ * até aqui esse consentimento não era gravado para ninguém além do responsável,
+ * porque o único código que escrevia `consentimentoAceiteEm` era o onboarding
+ * do portal. Professor, diretor, secretaria e admin apareciam para sempre como
+ * "Consentimento LGPD: Não registrado" em Meus Dados.
+ *
+ * IDEMPOTENTE POR CONSTRUÇÃO: só entra no `$push` o que ainda não está vigente.
+ * O `lgpdHistory` é histórico de assinaturas, não log de cliques — repetir a
+ * mesma assinatura porque a pessoa recarregou a página sujaria a resposta a um
+ * pedido de titular sem acrescentar informação nenhuma.
  */
 exports.registrarAceite = async (req, res) => {
     try {
-        const registro = {
-            termoId: TERMO_ID,
-            versao: TERMO_VERSAO,
-            aceitoEm: new Date(),
-            ip: req.ip,
-            browser: req.headers['user-agent'],
-            os: req.headers['sec-ch-ua-platform'] || 'Desconhecido',
-            loginType: 'Portal Local',
-        };
+        const usuarioId = idDe(req);
+        const usuario = await Usuario.findById(usuarioId)
+            .select('lgpdHistory consentimentoAceiteEm consentimentoVersao')
+            .lean();
 
-        await Usuario.updateOne({ _id: idDe(req) }, { $push: { lgpdHistory: registro } });
+        const termoJaAceito = aceiteVigente(usuario?.lgpdHistory);
+        const consentimentoAtual = consentimentoVigente(usuario);
+
+        const novosRegistros = [];
+        if (!termoJaAceito) {
+            novosRegistros.push(registroDeAssinatura(req, TERMO_ID, TERMO_VERSAO));
+        }
+        if (!consentimentoAtual.aceito) {
+            novosRegistros.push(registroDeAssinatura(req, CONSENTIMENTO_ID, CONSENTIMENTO_VERSAO));
+        }
+
+        const atualizacao = {};
+        if (novosRegistros.length > 0) {
+            atualizacao.$push = { lgpdHistory: { $each: novosRegistros } };
+        }
+        if (!consentimentoAtual.aceito) {
+            // O campo continua sendo a fonte que o portal do responsável e o
+            // `GET /api/auth/me` já leem (`authUser.consentimentoAceiteEm`).
+            // Gravar só no histórico deixaria a conta dizendo "não assinado"
+            // com a assinatura registrada ao lado.
+            atualizacao.$set = {
+                consentimentoAceiteEm: new Date(),
+                consentimentoVersao: CONSENTIMENTO_VERSAO,
+            };
+        }
+
+        if (Object.keys(atualizacao).length > 0) {
+            await Usuario.updateOne({ _id: usuarioId }, atualizacao);
+        }
+
+        if (!consentimentoAtual.aceito) {
+            // Consentimento é o registro que a escola precisa exibir se um
+            // titular ou a ANPD perguntar "quando, e com qual versão".
+            await logAction(req, 'LGPD_CONSENTIMENTO_ACEITE', 'Usuarios', {
+                recursoId: usuarioId,
+                descricao: `Consentimento LGPD ${CONSENTIMENTO_VERSAO} registrado no aceite do Termo de Áudio e Imagem.`,
+            });
+        }
+
+        const termo = termoJaAceito || novosRegistros.find((r) => r.termoId === TERMO_ID);
+        const consentimento = consentimentoAtual.aceito
+            ? consentimentoAtual
+            : {
+                  aceito: true,
+                  aceitoEm: atualizacao.$set.consentimentoAceiteEm,
+                  versao: CONSENTIMENTO_VERSAO,
+              };
 
         res.status(201).json({
             success: true,
-            data: { aceito: true, versao: TERMO_VERSAO, aceitoEm: registro.aceitoEm },
+            data: {
+                aceito: true,
+                versao: TERMO_VERSAO,
+                aceitoEm: termo?.aceitoEm || null,
+                consentimentoLgpd: {
+                    aceito: true,
+                    versao: consentimento.versao || CONSENTIMENTO_VERSAO,
+                    aceitoEm: consentimento.aceitoEm,
+                },
+            },
         });
     } catch (erro) {
         logger.error('[Moderacao] Falha ao registrar aceite do termo', { erro: erro.message });
@@ -537,4 +642,6 @@ exports.registrarAceite = async (req, res) => {
 
 exports.TERMO_ID = TERMO_ID;
 exports.TERMO_VERSAO = TERMO_VERSAO;
+exports.CONSENTIMENTO_ID = CONSENTIMENTO_ID;
+exports.CONSENTIMENTO_VERSAO = CONSENTIMENTO_VERSAO;
 exports.PERFIS_CASOS_CRITICOS = PERFIS_CASOS_CRITICOS;

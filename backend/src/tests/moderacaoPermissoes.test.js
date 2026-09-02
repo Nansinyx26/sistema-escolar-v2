@@ -418,3 +418,109 @@ describe('Aceite do Termo — cláusula 2', () => {
         expect(registro.aceitoEm).toBeTruthy();
     });
 });
+
+/**
+ * Consentimento LGPD geral — Issue #201.
+ *
+ * Antes desta issue, `consentimentoAceiteEm` só era escrito pelo onboarding do
+ * responsável. Professor, diretor, secretaria e admin não tinham NENHUM caminho
+ * para consentir, e "Meus Dados" dizia "Consentimento LGPD: Não registrado"
+ * para sempre — uma base legal de tratamento que não existia em lugar nenhum.
+ */
+describe('Consentimento LGPD no aceite do Termo (Issue #201)', () => {
+    const Usuario = require('../models/Usuario');
+    const { CONSENTIMENTO_ID, CONSENTIMENTO_VERSAO } = require('../utils/consentimentoLgpd');
+
+    it.each(['professor', 'diretor', 'secretaria', 'admin', 'responsavel'])(
+        'registra o consentimento para o perfil %s',
+        async (perfil) => {
+            const email = `consent_${perfil}@escola.test`;
+            const agent = await agentSimples(perfil, email);
+
+            const antes = await agent.get('/api/moderacao/aceite-termo');
+            expect(antes.body.data.consentimentoLgpd.aceito).toBe(false);
+
+            const aceite = await agent.post('/api/moderacao/aceite-termo').send({});
+            expect(aceite.status).toBe(201);
+            expect(aceite.body.data.consentimentoLgpd.aceito).toBe(true);
+
+            const usuario = await Usuario.findOne({ email }).lean();
+            expect(usuario.consentimentoAceiteEm).toBeTruthy();
+            expect(usuario.consentimentoVersao).toBe(CONSENTIMENTO_VERSAO);
+
+            const registro = usuario.lgpdHistory.find((r) => r.termoId === CONSENTIMENTO_ID);
+            expect(registro).toBeTruthy();
+            expect(registro.versao).toBe(CONSENTIMENTO_VERSAO);
+        }
+    );
+
+    it('aparece em Meus Dados junto do Termo de Áudio e Imagem', async () => {
+        // A regressão concreta: `statusConsentimento` procurava
+        // `termoId: 'TERMO_AUDIO_IMAGEM'` e o que era gravado é
+        // `'termo_audio_imagem'` — nenhum aceite casava, e a tela mostrava
+        // "Pendente" para quem tinha assinado.
+        const agent = await agentSimples('professor', 'consent_meusdados@escola.test');
+        await agent.post('/api/moderacao/aceite-termo').send({});
+
+        const status = await agent.get('/api/meus-dados/status-consentimento');
+        expect(status.status).toBe(200);
+        expect(status.body.consentimento.aceiteEm).toBeTruthy();
+        expect(status.body.consentimento.versao).toBe(CONSENTIMENTO_VERSAO);
+        expect(status.body.consentimento.termoAudioImagem).toMatchObject({
+            aceito: true,
+            versao: '1.0',
+        });
+    });
+
+    it('não duplica registro quando o aceite é reenviado', async () => {
+        // `lgpdHistory` é histórico de ASSINATURAS, não log de cliques: uma
+        // recarga de página não pode virar uma segunda assinatura no pacote
+        // que a escola entrega a um titular.
+        const email = 'consent_repetido@escola.test';
+        const agent = await agentSimples('professor', email);
+
+        await agent.post('/api/moderacao/aceite-termo').send({});
+        const primeiro = await Usuario.findOne({ email }).lean();
+
+        await agent.post('/api/moderacao/aceite-termo').send({});
+        const segundo = await Usuario.findOne({ email }).lean();
+
+        expect(segundo.lgpdHistory).toHaveLength(primeiro.lgpdHistory.length);
+        expect(segundo.consentimentoAceiteEm.getTime()).toBe(
+            primeiro.consentimentoAceiteEm.getTime()
+        );
+    });
+
+    it('respeita o consentimento que o responsável já assinou no portal', async () => {
+        // O portal grava `{ termoId: 'politica_privacidade', versao: '2.0' }`
+        // em `CompletarCadastro.tsx`. Se esta tela usasse outro par, o mesmo
+        // titular teria dois consentimentos "gerais" concorrentes.
+        const email = 'consent_portal@escola.test';
+        const agent = await agentSimples('responsavel', email);
+
+        const assinadoEm = new Date('2026-01-15T12:00:00Z');
+        await Usuario.updateOne(
+            { email },
+            {
+                $set: { consentimentoAceiteEm: assinadoEm, consentimentoVersao: '2.0' },
+                $push: {
+                    lgpdHistory: {
+                        termoId: CONSENTIMENTO_ID,
+                        versao: '2.0',
+                        aceitoEm: assinadoEm,
+                    },
+                },
+            }
+        );
+
+        const antes = await agent.get('/api/moderacao/aceite-termo');
+        expect(antes.body.data.consentimentoLgpd.aceito).toBe(true);
+        expect(antes.body.data.aceito).toBe(false);
+
+        await agent.post('/api/moderacao/aceite-termo').send({});
+
+        const usuario = await Usuario.findOne({ email }).lean();
+        expect(usuario.consentimentoAceiteEm.getTime()).toBe(assinadoEm.getTime());
+        expect(usuario.lgpdHistory.filter((r) => r.termoId === CONSENTIMENTO_ID)).toHaveLength(1);
+    });
+});
