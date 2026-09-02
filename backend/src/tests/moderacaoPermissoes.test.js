@@ -91,6 +91,54 @@ async function agentSimples(perfil, email) {
     return agent;
 }
 
+/**
+ * Sessão de um perfil com SEGUNDO FATOR obrigatório, sem depender de e-mail.
+ *
+ * `agentSimples` serve para quem entra com e-mail e senha. Para `diretor` e
+ * `secretaria` — os perfis de `PADRAO_PERFIS_OBRIGATORIO` em
+ * `utils/politica2FA.js` — o login PARA no desafio do segundo fator: devolve
+ * 200 com `requires2FA`, e nenhum cookie de sessão. Usar `agentSimples` com
+ * eles produz um agente sem sessão, e a primeira chamada autenticada volta 401
+ * com um corpo sem `data` — que é como isto apareceu no CI.
+ *
+ * O caminho é o mesmo de `agentDiretor`, sem o que é específico da direção (o
+ * documento `Diretor` e a escola no login): a conta nasce com
+ * `twoFactorFixedCode`, e o `/2fa/verify` recebe esse código. Conta sem vínculo
+ * de escola atravessa o login sem seletor — ver o bloco MULTI-ESCOLA em
+ * `UserController.login`: "sem vínculos → segue".
+ */
+async function agentCom2FA(perfil, email) {
+    await criarUsuario({
+        email,
+        perfil,
+        twoFactorFixedCode: await require('../utils/codigosBackup').hashSegredo(CODIGO_FIXO),
+    });
+
+    const agent = request.agent(app);
+    const login = await agent.post('/api/auth/login').send({ email, senha: SENHA_TESTE });
+    expect(login.status).toBe(200);
+    const verify = await agent.post('/api/auth/2fa/verify').send({ codigo: CODIGO_FIXO });
+    expect(verify.status).toBe(200);
+
+    return agent;
+}
+
+/**
+ * Sessão de QUALQUER perfil, escolhendo o caminho de login pela própria
+ * política do sistema.
+ *
+ * Derivar a escolha de `exigeSegundoFator` em vez de listar 'diretor' e
+ * 'secretaria' à mão é o que impede este teste de apodrecer no dia em que
+ * `PERFIS_2FA_OBRIGATORIO` mudar: o perfil que passar a exigir 2FA passa a ser
+ * autenticado pelo caminho certo sem ninguém lembrar de vir aqui.
+ */
+async function entrarComo(perfil, email) {
+    const { exigeSegundoFator } = require('../utils/politica2FA');
+    return exigeSegundoFator({ perfil, twoFactorEnabled: false })
+        ? agentCom2FA(perfil, email)
+        : agentSimples(perfil, email);
+}
+
 async function criarOcorrencia(escola, overrides = {}) {
     return ModeracaoOcorrencia.create({
         escolaId: String(escola._id),
@@ -435,9 +483,13 @@ describe('Consentimento LGPD no aceite do Termo (Issue #201)', () => {
         'registra o consentimento para o perfil %s',
         async (perfil) => {
             const email = `consent_${perfil}@escola.test`;
-            const agent = await agentSimples(perfil, email);
+            const agent = await entrarComo(perfil, email);
 
             const antes = await agent.get('/api/moderacao/aceite-termo');
+            // Conferido antes do corpo: sem isto, uma sessão que não se
+            // estabeleceu vira "Cannot read properties of undefined", que não
+            // diz o que aconteceu.
+            expect(antes.status).toBe(200);
             expect(antes.body.data.consentimentoLgpd.aceito).toBe(false);
 
             const aceite = await agent.post('/api/moderacao/aceite-termo').send({});
