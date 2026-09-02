@@ -573,7 +573,30 @@
             }
         });
 
+        /**
+         * O "Voltar" apontava fixo para perfil.html, que era o único lugar de
+         * onde dava para chegar aqui. Agora a página tem entrada no sidebar e
+         * no modal do chat (Issue #189), e mandar quem veio da conversa para o
+         * perfil é perder o contexto justamente de quem estava tentando enviar
+         * uma mídia. O href do HTML continua como fallback: ele é o destino
+         * quando não há referrer (link colado, aba nova) ou quando o referrer é
+         * de fora do sistema.
+         */
+        function ajustarVoltar() {
+            const btn = document.getElementById('btnVoltarNav');
+            if (!btn || !document.referrer) return;
+            try {
+                const origem = new URL(document.referrer);
+                if (origem.origin !== window.location.origin) return;
+                if (origem.pathname === window.location.pathname) return;
+                btn.href = origem.pathname + origem.search;
+            } catch {
+                // Referrer ilegível: fica o fallback do HTML.
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
+            ajustarVoltar();
             consultarStatus();
         });
     </script>

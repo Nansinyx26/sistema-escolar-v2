@@ -25,7 +25,7 @@
          janelas de conversa, e a regra mais específica só vence se for a última. -->
     <link rel="stylesheet" href="../../css/chat-flutuante.css?v=2.0">
     <!-- Cláusula 2 do Termo: áudio e imagem só liberam após o aceite. -->
-    <link rel="stylesheet" href="../../css/termo-audio-imagem.css?v=1.0">
+    <link rel="stylesheet" href="../../css/termo-audio-imagem.css?v=1.1">
 
     <style>
         /* ------------------------------------------------------------------
@@ -334,6 +334,15 @@
                 <li class="conv-skel"><div class="conv-skel-avatar skeleton"></div><div class="conv-skel-texto"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div></div></li>
                 <li class="conv-skel"><div class="conv-skel-avatar skeleton"></div><div class="conv-skel-texto"><div class="skeleton skeleton-line"></div><div class="skeleton skeleton-line"></div></div></li>
             </ul>
+
+            <!-- Atalho para o Termo de áudio e imagem (Issue #189). Ele mora
+                 aqui porque é aqui que a recusa acontece: esta tela não tem o
+                 sidebar do painel, então quem levou o 403 ao enviar mídia não
+                 tinha nenhum caminho para o aceite sem sair da conversa. -->
+            <a class="conv-termo-link" href="../termo-audio-imagem.html">
+                <i class="bi bi-file-earmark-check" aria-hidden="true"></i>
+                <span>Termo de Áudio e Imagem</span>
+            </a>
         </aside>
 
         <main class="conv-painel">
@@ -355,7 +364,7 @@
     <script defer src="../../js/som-notificacao.js?v=1.0"></script>
     <script defer src="../../js/chat-direto-manager.js?v=2.0"></script>
     <script defer src="../../js/conversas.js?v=1.0"></script>
-    <script defer src="../../js/termo-audio-imagem.js?v=1.0"></script>
+    <script defer src="../../js/termo-audio-imagem.js?v=1.1"></script>
     <script defer src="../../js/observability.js"></script>
     <script defer src="../../js/motion.js"></script>
 </body>
