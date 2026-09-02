@@ -1,8 +1,14 @@
 /**
- * vinculoTurmas.js — de que turmas um professor e um responsável fazem parte.
+ * vinculoTurmas.js — que vínculo REAL liga duas pessoas da escola.
  *
- * POR QUE ISTO EXISTE (Issue #68)
- * ------------------------------
+ * Duas perguntas, com dois recortes diferentes: de que TURMAS um professor e um
+ * responsável fazem parte, e a que ESCOLAS um responsável está ligado pelos
+ * filhos (`vinculoDoResponsavel`). A segunda nasceu com a política que fechou o
+ * chat do responsável na secretaria da escola do filho — perfil compatível
+ * continua não sendo vínculo, só que agora o recorte é a escola, não a sala.
+ *
+ * POR QUE O RECORTE POR TURMA EXISTE (Issue #68)
+ * ---------------------------------------------
  * A matriz do chat autorizava o PAR DE PERFIS `professor ↔ responsavel` e
  * conferia `escolaId`, mas não olhava vínculo nenhum. Numa escola de 20 turmas,
  * o professor do 1º ano conversava com o responsável de um aluno do 9º que ele
@@ -11,6 +17,12 @@
  * A autorização correta depende de os dois compartilharem uma turma, e isso
  * exige responder duas perguntas separadas: em que turmas o professor leciona,
  * e em que turmas estão os filhos daquele responsável.
+ *
+ * Esse par HOJE ESTÁ FECHADO — a família fala com a secretaria, e só (Issue
+ * #204, ver `docs/CHAT-PERMISSOES.md`). As três funções de turma continuam aqui,
+ * testadas, porque a pergunta que elas respondem não deixou de ser verdadeira:
+ * se a política for revista, é este recorte que volta a ser chamado, em vez de
+ * ser reescrito de memória.
  *
  * NORMALIZAÇÃO DE TURMA
  * ---------------------
@@ -132,11 +144,60 @@ async function turmasDosFilhos(email, escolaId) {
 }
 
 /**
+ * O vínculo de um responsável com a rede: quantos filhos ele tem cadastrados e
+ * em quais escolas.
+ *
+ * POR QUE DUAS INFORMAÇÕES, E NÃO SÓ AS ESCOLAS
+ * ---------------------------------------------
+ * "Nenhuma escola" é ambíguo, e a ambiguidade decide o veredito do chat:
+ *
+ *   • responsável SEM filho nenhum        → não tem com quem falar (nega);
+ *   • responsável com filho de cadastro   → tem vínculo, mas a escola é
+ *     antigo, sem `escolaId`                desconhecida (não dá para recortar
+ *                                           por escola, e recortar assim
+ *                                           bloquearia a rede pré-migração
+ *                                           inteira).
+ *
+ * Devolver só o `Set` de escolas colapsaria os dois casos no mesmo conjunto
+ * vazio. `filhos` é o que os separa.
+ *
+ * O vínculo responsável→aluno mora em três campos conforme a época do cadastro
+ * — mesma razão e mesmo `$or` de `turmasDosFilhos`.
+ *
+ * @param {string} email e-mail do responsável (da sessão, nunca do cliente)
+ * @returns {Promise<{filhos: number, escolas: Set<string>}>}
+ */
+async function vinculoDoResponsavel(email) {
+    const alvo = String(email || '').trim();
+    if (!alvo) return { filhos: 0, escolas: new Set() };
+
+    // Âncora e case-insensitive pelo mesmo motivo de `turmasDosFilhos`:
+    // `ana@x` não pode casar com `joana@x`, e o cadastro do aluno é digitado
+    // à mão, com caixa misturada.
+    const regexEmail = new RegExp(`^${escapeRegex(alvo)}$`, 'i');
+
+    const alunos = await Aluno.find({
+        $or: [
+            { responsavel: regexEmail },
+            { 'responsavelDados.email': regexEmail },
+            { 'responsaveis.email': regexEmail },
+        ],
+    })
+        .select('escolaId')
+        .lean();
+
+    const escolas = new Set();
+    for (const aluno of alunos) {
+        if (aluno.escolaId) escolas.add(String(aluno.escolaId));
+    }
+    return { filhos: alunos.length, escolas };
+}
+
+/**
  * Varre alunos e junta os e-mails de responsável que encontrar.
  *
- * Compartilhado pelas duas perguntas abaixo — o que muda entre elas é só o
- * filtro. Devolve em MINÚSCULAS porque é assim que o chamador compara com a
- * conta do responsável, e o cadastro tem grafias misturadas.
+ * Devolve em MINÚSCULAS porque é assim que o chamador compara com a conta do
+ * responsável, e o cadastro tem grafias misturadas.
  *
  * @param {object} filtro consulta do Mongoose já montada pelo chamador
  * @returns {Promise<Set<string>>}
@@ -165,43 +226,14 @@ async function coletarEmailsDeResponsaveis(filtro) {
 }
 
 /**
- * E-mails dos responsáveis dos alunos de um conjunto de turmas.
- *
- * É a pergunta inversa de `turmasDosFilhos`, e existe por causa do custo.
- * Montar a lista de contatos de um professor perguntando "esse responsável tem
- * filho na minha turma?" um por um seria uma consulta por pessoa — numa escola
- * com centenas de famílias, é a diferença entre uma consulta e centenas. Aqui a
- * varredura acontece uma vez só.
- *
- * Sem turma nenhuma devolve VAZIO, nunca "todos" — é a falha fechada que
- * protege o professor sem cadastro (ver Issue #68).
- *
- * @param {Set<string>|string[]} turmas turmas já expandidas nas duas grafias
- * @param {string} [escolaId]
- * @returns {Promise<Set<string>>}
- */
-async function emailsDeResponsaveisDasTurmas(turmas, escolaId) {
-    const lista = [...(turmas || [])];
-    if (!lista.length) return new Set();
-
-    const filtro = { $or: [{ turma: { $in: lista } }, { turmaId: { $in: lista } }] };
-    if (escolaId) filtro.escolaId = String(escolaId);
-
-    return coletarEmailsDeResponsaveis(filtro);
-}
-
-/**
  * E-mails de TODOS os responsáveis da escola.
  *
- * Existe como função SEPARADA, e não como "turmas vazias" em
- * `emailsDeResponsaveisDasTurmas`, de propósito. Aquela devolve conjunto vazio
- * quando não recebe turma — é a falha fechada que protege o professor sem
- * cadastro. Se ela passasse a significar "todas" no caso vazio, um professor
- * sem turma alcançaria a escola inteira, invertendo exatamente a proteção que
- * a Issue #68 criou. Duas perguntas diferentes, dois nomes diferentes.
+ * `escolaId` ausente devolve VAZIO, nunca "a rede inteira": sem tenant
+ * resolvido a resposta certa é não listar ninguém, e não atravessar escolas.
  *
- * Só faz sentido para diretor e secretaria, que falam com qualquer família por
- * definição do papel.
+ * Só faz sentido para a secretaria, que fala com qualquer família da escola
+ * dela por definição do papel — professor e direção não alcançam a família
+ * pelo chat (ver `MATRIZ_CONVERSA` no ChatDiretoController).
  *
  * @param {string} escolaId
  * @returns {Promise<Set<string>>} e-mails em minúsculas
@@ -209,41 +241,6 @@ async function emailsDeResponsaveisDasTurmas(turmas, escolaId) {
 async function emailsDeResponsaveisDaEscola(escolaId) {
     if (!escolaId) return new Set();
     return coletarEmailsDeResponsaveis({ escolaId: String(escolaId) });
-}
-
-/**
- * `Usuario._id` dos professores que lecionam em alguma das turmas dadas.
- *
- * Inversa de `turmasDoProfessor`, pelo mesmo motivo de custo. Precisa olhar os
- * três campos de turma do cadastro, porque um professor pode estar ligado à
- * turma por qualquer um deles.
- *
- * @param {Set<string>|string[]} turmas turmas já expandidas nas duas grafias
- * @param {string} [escolaId]
- * @returns {Promise<Set<string>>}
- */
-async function idsDeProfessoresDasTurmas(turmas, escolaId) {
-    const lista = [...(turmas || [])];
-    if (!lista.length) return new Set();
-
-    const filtro = {
-        $or: [
-            { salaPrincipal: { $in: lista } },
-            { salasAdicionais: { $in: lista } },
-            { turmas: { $in: lista } },
-        ],
-    };
-    // O vínculo de escola do professor mora em `vinculos[]`, não num campo
-    // `escolaId` solto — daí o caminho aninhado.
-    if (escolaId) filtro['vinculos.escolaId'] = String(escolaId);
-
-    const professores = await Professor.find(filtro).select('idUsuario').lean();
-
-    const ids = new Set();
-    for (const professor of professores) {
-        if (professor.idUsuario) ids.add(String(professor.idUsuario));
-    }
-    return ids;
 }
 
 /** true se os dois conjuntos têm ao menos uma turma em comum. */
@@ -258,9 +255,8 @@ function compartilhamTurma(turmasA, turmasB) {
 module.exports = {
     turmasDoProfessor,
     turmasDosFilhos,
-    emailsDeResponsaveisDasTurmas,
+    vinculoDoResponsavel,
     emailsDeResponsaveisDaEscola,
-    idsDeProfessoresDasTurmas,
     compartilhamTurma,
     variacoesDaTurma,
     expandirTurmas,

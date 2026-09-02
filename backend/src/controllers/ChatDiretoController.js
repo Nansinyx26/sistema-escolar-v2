@@ -5,21 +5,12 @@ const Usuario = require('../models/Usuario');
 const Professor = require('../models/Professor');
 const Diretor = require('../models/Diretor');
 const Secretaria = require('../models/Secretaria');
-const {
-    turmasDoProfessor,
-    turmasDosFilhos,
-    compartilhamTurma,
-    emailsDeResponsaveisDasTurmas,
-    emailsDeResponsaveisDaEscola,
-    idsDeProfessoresDasTurmas,
-} = require('../services/vinculoTurmas');
+const { vinculoDoResponsavel, emailsDeResponsaveisDaEscola } = require('../services/vinculoTurmas');
 const { formatarPresenca } = require('../utils/formatarPresenca');
 const escapeRegex = require('../utils/escapeRegex');
 const logger = require('../utils/logger');
 const NotificationService = require('../services/NotificationService');
 const { EXT_POR_MIME } = require('../middleware/uploadChat');
-
-const PERFIS_GESTAO = ['admin', 'diretor', 'secretaria'];
 
 /** Página de histórico: 30 mensagens por vez alimentam o lazy loading. */
 const PAGINA_HISTORICO = 30;
@@ -105,21 +96,44 @@ async function validarAudio(bruto, remetenteId) {
  *
  * A matriz é SIMÉTRICA: declarar A→B já autoriza B→A (ver `paresPermitidos`).
  *
- *   professor   ↔ professor, diretor, secretaria, responsavel
- *   diretor     ↔ diretor, secretaria, responsavel
- *   secretaria  ↔ secretaria, responsavel
- *   responsavel ↔ (apenas equipe escolar — nunca outro responsável)
+ *   professor   ↔ professor, diretor, secretaria
+ *   diretor     ↔ diretor, secretaria, professor
+ *   secretaria  ↔ secretaria, professor, diretor, responsavel
+ *   responsavel ↔ secretaria, e só
+ *
+ * A SECRETARIA É A PORTA ÚNICA DA FAMÍLIA (Issue #204)
+ * ----------------------------------------------------
+ * O responsável não alcança professor nem direção pelo chat. O canal da família
+ * com a escola é a SECRETARIA — e não qualquer uma: a da escola em que o filho
+ * dele está matriculado (ver `vinculoDeEscolaOk`).
+ *
+ * O motivo é institucional, não técnico. Combinar horário com o professor,
+ * questionar nota, pedir reunião com a direção: tudo isso passa a ter um
+ * registro único, na secretaria, em vez de virar conversa paralela que a escola
+ * não vê e não consegue responder por escrito depois. Professor e direção
+ * continuam conversando entre si e com a secretaria normalmente — o que fechou
+ * foi só a ponta que ligava a família diretamente a eles.
+ *
+ * Antes desta política, `professor ↔ responsavel` existia e era recortado por
+ * turma em comum (Issue #68). Esse recorte não some por ser errado; ele some
+ * porque o par que ele protegia deixou de existir. Se a política for revista, é
+ * ele que volta — `services/vinculoTurmas.js` ainda responde a pergunta.
  *
  * `admin` é tratado à parte: conversa com qualquer perfil e atravessa escolas,
- * porque é o papel de suporte da rede.
+ * porque é o papel de suporte da rede. Ele NÃO é um canal escolar — não aparece
+ * em lista nenhuma para quem nunca falou com ele (ver `listarContatos`), então
+ * a família não ganha por aqui a via para a escola que a matriz acabou de
+ * fechar.
  */
 const MATRIZ_CONVERSA = {
-    professor: ['professor', 'diretor', 'secretaria', 'responsavel'],
-    diretor: ['diretor', 'secretaria', 'responsavel', 'professor'],
-    secretaria: ['secretaria', 'responsavel', 'professor', 'diretor'],
-    // Responsável não inicia nem recebe conversa de outro responsável: a escola
-    // é sempre a intermediária entre duas famílias.
-    responsavel: ['professor', 'diretor', 'secretaria'],
+    professor: ['professor', 'diretor', 'secretaria'],
+    diretor: ['diretor', 'secretaria', 'professor'],
+    secretaria: ['secretaria', 'professor', 'diretor', 'responsavel'],
+    // Responsável não inicia nem recebe conversa de outro responsável (a escola
+    // é sempre a intermediária entre duas famílias), nem de professor ou
+    // direção. Sobra a secretaria — e mesmo ela ainda precisa passar por
+    // `vinculoDeEscolaOk`.
+    responsavel: ['secretaria'],
 };
 
 /** true se o par de perfis está na matriz, em qualquer direção. */
@@ -132,45 +146,120 @@ function paresPermitidos(perfilA, perfilB) {
 }
 
 /**
- * Confere o vínculo REAL entre um professor e um responsável (Issue #68).
+ * O texto da recusa de um par que a matriz não autoriza.
+ *
+ * Vale a pena distinguir os casos porque "não é permitido" sozinho vira um bug
+ * aos olhos de quem lê: o responsável que tentar falar com o professor precisa
+ * saber PARA ONDE ir, senão ele liga para a escola perguntando por que o chat
+ * quebrou. As frases dizem o caminho, e nenhuma delas revela quem existe do
+ * outro lado — o par de perfis já veio da sessão e do destinatário.
+ *
+ * Escrito nos dois sentidos: a autorização roda em quem envia, então o
+ * professor que tenta responder uma família também cai aqui.
+ */
+function recusaDePar(perfilRemetente, perfilDestino) {
+    if (perfilRemetente === 'responsavel' && perfilDestino === 'responsavel') {
+        return 'Responsáveis não conversam entre si. Fale com a secretaria da escola.';
+    }
+
+    const par = [perfilRemetente, perfilDestino];
+    const equipeFechada = par.includes('professor') || par.includes('diretor');
+    if (par.includes('responsavel') && equipeFechada) {
+        return perfilRemetente === 'responsavel'
+            ? 'Pelo chat, o contato da família é com a secretaria da escola — ela encaminha à professora ou à direção.'
+            : 'Professores e direção não conversam com responsáveis pelo chat. O contato com a família é feito pela secretaria.';
+    }
+
+    return 'Este tipo de conversa não é permitido.';
+}
+
+/**
+ * Escolas que uma conta de secretaria atende.
+ *
+ * O vínculo de escola da equipe mora em `vinculos[]`; `escolaId` é a escola
+ * principal e nem sempre está preenchido. Os dois entram, porque o cadastro
+ * real tem as duas formas conforme a época.
+ *
+ * Conjunto VAZIO significa "não dá para saber", e não "nenhuma": é o cadastro
+ * legado, anterior ao multi-escola. Quem decide o que fazer com isso é
+ * `vinculoDeEscolaOk` — aqui a função só relata o que existe.
+ *
+ * @param {string} usuarioId `Usuario._id` da secretaria
+ * @returns {Promise<Set<string>>}
+ */
+async function escolasDaSecretaria(usuarioId) {
+    const doc = await Secretaria.findOne({ idUsuario: String(usuarioId) })
+        .select('escolaId vinculos.escolaId')
+        .lean();
+
+    const escolas = new Set();
+    if (!doc) return escolas;
+    if (doc.escolaId) escolas.add(String(doc.escolaId));
+    for (const vinculo of doc.vinculos || []) {
+        if (vinculo?.escolaId) escolas.add(String(vinculo.escolaId));
+    }
+    return escolas;
+}
+
+/**
+ * Confere o vínculo REAL entre um responsável e uma secretaria.
  *
  * `paresPermitidos` autoriza a COMBINAÇÃO de perfis; esta função responde a
- * pergunta que faltava: essas duas pessoas específicas têm algo a ver uma com a
- * outra? Sem ela, o professor do 1º ano conversa com o responsável de um aluno
- * do 9º — os dois são "professor" e "responsável" da mesma escola, e a matriz
- * sozinha não vê diferença.
+ * pergunta que sobra: essa família tem alguma coisa a ver com essa escola?
+ * Sem ela, "responsável fala com a secretaria" significaria falar com a
+ * secretaria de QUALQUER escola da rede — inclusive com um cadastro de
+ * responsável sem nenhum filho matriculado em lugar nenhum.
  *
- * Só se aplica ao par professor↔responsável. Diretor e secretaria falam com
- * qualquer responsável da escola por definição do papel.
+ * DUAS BARREIRAS, NESTA ORDEM
+ * ---------------------------
+ *   1. o responsável precisa ter ao menos um filho cadastrado (falha FECHADA:
+ *      sem filho, não há canal escolar nenhum a abrir);
+ *   2. a escola desse filho precisa ser uma das que a secretaria atende.
+ *
+ * A segunda só é aplicada quando os DOIS lados declaram escola. Cadastro legado
+ * — aluno ou secretaria sem `escolaId`, de antes do multi-escola — não tem como
+ * ser recortado por escola, e recortar assim mesmo bloquearia a rede inteira
+ * enquanto a migração não roda. Nesse caso vale o recorte que já aconteceu
+ * antes, em `podeConversar`: o `escolaId` da sessão dos dois lados.
+ *
+ * Só se aplica ao par responsavel↔secretaria. Entre membros da equipe o vínculo
+ * é o cargo, e ele já foi conferido pela escola da sessão.
  *
  * @returns {Promise<{ok: boolean, status?: number, error?: string}>}
  */
-async function vinculoDeTurmaOk(remetente, perfilRemetente, destinatario, perfilDestino) {
-    const ehParProfessorResponsavel =
-        (perfilRemetente === 'professor' && perfilDestino === 'responsavel') ||
-        (perfilRemetente === 'responsavel' && perfilDestino === 'professor');
+async function vinculoDeEscolaOk(remetente, perfilRemetente, destinatario, perfilDestino) {
+    const ehParResponsavelSecretaria =
+        (perfilRemetente === 'responsavel' && perfilDestino === 'secretaria') ||
+        (perfilRemetente === 'secretaria' && perfilDestino === 'responsavel');
 
-    if (!ehParProfessorResponsavel) return { ok: true };
+    if (!ehParResponsavelSecretaria) return { ok: true };
 
-    const professor = perfilRemetente === 'professor' ? remetente : destinatario;
     const responsavel = perfilRemetente === 'responsavel' ? remetente : destinatario;
-    const escolaId = remetente.escolaId || destinatario.escolaId;
+    const secretaria = perfilRemetente === 'secretaria' ? remetente : destinatario;
 
-    const [turmasProf, turmasResp] = await Promise.all([
-        turmasDoProfessor(professor._id || professor.id),
-        turmasDosFilhos(responsavel.email, escolaId),
+    const [vinculo, escolasDaEquipe] = await Promise.all([
+        vinculoDoResponsavel(responsavel.email),
+        escolasDaSecretaria(secretaria._id || secretaria.id),
     ]);
 
-    if (compartilhamTurma(turmasProf, turmasResp)) return { ok: true };
-
     // Mensagem deliberadamente igual para os dois sentidos e sem detalhe: dizer
-    // "esse responsável não tem filho na sua turma" confirmaria a existência do
+    // "esse responsável não tem filho nesta escola" confirmaria a existência do
     // vínculo (ou a falta dele) para quem está sondando a lista de alunos.
-    return {
+    const negar = {
         ok: false,
         status: 403,
-        error: 'Professores e responsáveis só conversam quando compartilham uma turma.',
+        error: 'A secretaria só conversa com responsáveis de alunos da escola dela.',
     };
+
+    if (!vinculo.filhos) return negar;
+
+    const podeRecortarPorEscola = vinculo.escolas.size > 0 && escolasDaEquipe.size > 0;
+    if (!podeRecortarPorEscola) return { ok: true };
+
+    for (const escola of escolasDaEquipe) {
+        if (vinculo.escolas.has(escola)) return { ok: true };
+    }
+    return negar;
 }
 
 /**
@@ -183,11 +272,13 @@ async function vinculoDeTurmaOk(remetente, perfilRemetente, destinatario, perfil
  * TRÊS barreiras, nesta ordem — da mais barata para a mais cara:
  *   1. mesma escola (multi-tenant);
  *   2. par de perfis presente na MATRIZ_CONVERSA;
- *   3. para professor↔responsável, turma em comum de verdade (Issue #68).
+ *   3. para responsavel↔secretaria, filho matriculado na escola dela.
  *
- * A terceira nasceu porque as duas primeiras juntas ainda liberavam o professor
- * do 1º ano para o responsável de um aluno do 9º: os dois passam no perfil e na
- * escola sem terem nada a ver um com o outro.
+ * A terceira existe porque as duas primeiras juntas ainda liberariam a
+ * secretaria de uma escola para a família de outra: os dois passam no perfil, e
+ * o `escolaId` da sessão de um responsável é resolvido pela escola ATIVA da
+ * rede (`middleware/filtrarPorEscola.js`, ramo 3), não pela matrícula do filho
+ * — quem tem filho na escola A pode estar com a escola B na sessão.
  */
 async function podeConversar(remetente, destinatarioId) {
     const destinatario = await Usuario.findById(String(destinatarioId))
@@ -212,18 +303,19 @@ async function podeConversar(remetente, destinatarioId) {
     }
 
     if (!paresPermitidos(perfilRemetente, perfilDestino)) {
-        // Mensagem específica para o caso de longe mais comum, genérica para o resto.
-        const erro =
-            perfilRemetente === 'responsavel' && perfilDestino === 'responsavel'
-                ? 'Responsáveis não conversam entre si. Fale com a equipe escolar.'
-                : 'Este tipo de conversa não é permitido.';
-        return { ok: false, status: 403, error: erro };
+        return { ok: false, status: 403, error: recusaDePar(perfilRemetente, perfilDestino) };
     }
 
-    // Perfis compatíveis não bastam: professor↔responsável ainda precisa de
-    // turma em comum. Fica DEPOIS da matriz de propósito — é a checagem cara
-    // (duas consultas), e só faz sentido para um par que já passou no barato.
-    const vinculo = await vinculoDeTurmaOk(remetente, perfilRemetente, destinatario, perfilDestino);
+    // Perfis compatíveis não bastam: responsavel↔secretaria ainda precisa do
+    // filho matriculado na escola dela. Fica DEPOIS da matriz de propósito — é
+    // a checagem cara (duas consultas), e só faz sentido para um par que já
+    // passou no barato.
+    const vinculo = await vinculoDeEscolaOk(
+        remetente,
+        perfilRemetente,
+        destinatario,
+        perfilDestino
+    );
     if (!vinculo.ok) return vinculo;
 
     return { ok: true, destinatario };
@@ -1084,40 +1176,53 @@ exports.listarContatos = async (req, res) => {
                 ? Diretor.find(escopoDeCargo).select('idUsuario').lean()
                 : [],
             perfisAlcancaveis.includes('secretaria')
-                ? Secretaria.find(escopoDeCargo).select('idUsuario').lean()
+                ? // `escolaId` e `vinculos` vêm junto porque o responsável só
+                  // alcança a secretaria da escola do filho dele — ver o bloco
+                  // "Restrição do responsável" logo abaixo.
+                  Secretaria.find(escopoDeCargo)
+                      .select('idUsuario escolaId vinculos.escolaId')
+                      .lean()
                 : [],
         ]);
 
         // ── Restrição do responsável ──────────────────────────────────────
-        // Um responsável só alcança os professores dos filhos dele. Diretor e
-        // secretaria não têm recorte de turma e ficam de fora deste filtro.
-        let professoresPermitidos = null;
-        if (meuPerfil === 'responsavel' && perfisAlcancaveis.includes('professor')) {
-            const turmasDosMeusFilhos = await turmasDosFilhos(meuEmail, escolaId);
-            professoresPermitidos = await idsDeProfessoresDasTurmas(turmasDosMeusFilhos, escolaId);
+        // A matriz já reduziu a lista da família à secretaria; falta dizer QUAL
+        // secretaria. É o mesmo recorte de `vinculoDeEscolaOk`, escrito do
+        // outro lado: lá se pergunta "esta secretaria, pode?", aqui "quais?".
+        //
+        // Sem filho cadastrado, nenhuma — falha FECHADA, e é o `filtro`
+        // devolvendo `false` para todas. Filho de cadastro legado, sem
+        // `escolaId`, mantém a lista como está: o recorte por escola da sessão
+        // já aconteceu no `escopoDeCargo` acima.
+        let secretariaAlcancavel = () => true;
+        if (meuPerfil === 'responsavel') {
+            const { filhos, escolas } = await vinculoDoResponsavel(meuEmail);
+            if (!filhos) {
+                secretariaAlcancavel = () => false;
+            } else if (escolas.size) {
+                secretariaAlcancavel = (doc) =>
+                    [doc.escolaId, ...(doc.vinculos || []).map((v) => v?.escolaId)].some(
+                        (id) => id && escolas.has(String(id))
+                    );
+            }
         }
 
         const idsDaEquipe = new Set();
-        for (const doc of profs) {
-            const id = doc.idUsuario ? String(doc.idUsuario) : null;
-            if (!id) continue;
-            if (professoresPermitidos && !professoresPermitidos.has(id)) continue;
-            idsDaEquipe.add(id);
-        }
-        for (const doc of [...dirs, ...secs]) {
+        for (const doc of [...profs, ...dirs]) {
             if (doc.idUsuario) idsDaEquipe.add(String(doc.idUsuario));
+        }
+        for (const doc of secs) {
+            if (doc.idUsuario && secretariaAlcancavel(doc)) idsDaEquipe.add(String(doc.idUsuario));
         }
 
         // ── Responsáveis ──────────────────────────────────────────────────
         // O responsável não tem coleção de cargo: o que o liga à escola é o
-        // filho. Diretor e secretaria alcançam todas as famílias; o professor,
-        // só as das turmas dele — a mesma regra do envio (Issue #68).
+        // filho. Quem chega aqui é só a secretaria (e o admin) — professor e
+        // direção não alcançam a família pela matriz —, e ambos falam com todas
+        // as famílias da escola por definição do papel.
         let emailsDeResponsaveis = new Set();
         if (querResponsaveis) {
-            emailsDeResponsaveis =
-                meuPerfil === 'professor'
-                    ? await emailsDeResponsaveisDasTurmas(await turmasDoProfessor(meuId), escolaId)
-                    : await emailsDeResponsaveisDaEscola(escolaId);
+            emailsDeResponsaveis = await emailsDeResponsaveisDaEscola(escolaId);
         }
 
         const criterios = [];

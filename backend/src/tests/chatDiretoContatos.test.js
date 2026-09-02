@@ -116,25 +116,26 @@ async function contatos(sessao) {
 const idsDe = (lista) => lista.map((c) => c.id).sort();
 
 describe('quem cada perfil enxerga', () => {
-    it('professor vê a equipe e SÓ os responsáveis das turmas dele', async () => {
+    it('professor vê a equipe, e nenhuma família', async () => {
         const eu = await professorDe('prof.1a@escola.test', '1A');
         const colega = await professorDe('prof.9a@escola.test', '9A');
         const diretor = await conta('diretor@escola.test', 'diretor');
         const secretaria = await conta('secretaria@escola.test', 'secretaria');
+        // A mãe da turma DELE: era o contato que o recorte por turma liberava
+        // (Issue #68) e que a política atual fecha — o canal da família é a
+        // secretaria, não o docente.
         const maeDaMinhaTurma = await responsavelDe('mae.1a@escola.test', '1A');
         const maeDeOutra = await responsavelDe('mae.9a@escola.test', '9A');
 
         const lista = await contatos(eu);
 
-        expect(idsDe(lista)).toEqual(
-            [colega.id, diretor.id, secretaria.id, maeDaMinhaTurma.id].sort()
-        );
+        expect(idsDe(lista)).toEqual([colega.id, diretor.id, secretaria.id].sort());
+        expect(idsDe(lista)).not.toContain(maeDaMinhaTurma.id);
         expect(idsDe(lista)).not.toContain(maeDeOutra.id);
     });
 
-    it('responsável vê só os professores dos filhos, mais direção e secretaria', async () => {
-        const profDoFilho = await professorDe('prof.do.filho@escola.test', '3B');
-        const profDeOutra = await professorDe('prof.outra@escola.test', '7A');
+    it('responsável vê SÓ a secretaria', async () => {
+        const professor = await professorDe('prof.do.filho@escola.test', '3B');
         const diretor = await conta('diretor2@escola.test', 'diretor');
         const secretaria = await conta('secretaria2@escola.test', 'secretaria');
         const eu = await responsavelDe('mae@escola.test', '3B');
@@ -142,14 +143,60 @@ describe('quem cada perfil enxerga', () => {
 
         const lista = await contatos(eu);
 
-        expect(idsDe(lista)).toEqual([profDoFilho.id, diretor.id, secretaria.id].sort());
-        // Responsável não conversa com responsável, nem da mesma turma: a
-        // escola é sempre a intermediária entre duas famílias.
+        expect(idsDe(lista)).toEqual([secretaria.id]);
+        // Professor e direção não são alcançáveis pela família; outra família,
+        // tampouco — a escola é sempre a intermediária entre duas casas.
+        expect(idsDe(lista)).not.toContain(professor.id);
+        expect(idsDe(lista)).not.toContain(diretor.id);
         expect(idsDe(lista)).not.toContain(outraMae.id);
-        expect(idsDe(lista)).not.toContain(profDeOutra.id);
     });
 
-    it('diretor e secretaria não têm recorte de turma', async () => {
+    it('responsável SEM filho cadastrado não vê ninguém', async () => {
+        await conta('sec.orfa@escola.test', 'secretaria');
+        // Conta de responsável sem nenhum aluno vinculado ao e-mail dela: sem
+        // filho não há escola a que pertencer, e a falha é FECHADA.
+        const semFilho = await conta('mae.sem.filho@escola.test', 'responsavel');
+
+        expect(idsDe(await contatos(semFilho))).toEqual([]);
+    });
+
+    it('a secretaria é a da escola do FILHO, não a da sessão', async () => {
+        // O responsável não tem vínculo de equipe, então `filtrarPorEscola`
+        // resolve a sessão dele pelo ramo "escola ativa única" da rede — que
+        // não é, e não tem como ser, a matrícula do filho. A segunda unidade
+        // nasce INATIVA justamente para manter a sessão na primeira: é assim
+        // que uma escola nova entra na rede, e é o caso em que a escola da
+        // sessão diverge da escola do aluno.
+        const outra = await Escola.create({
+            nome: 'EE Vizinha Inativa',
+            tipo: 'EMEF',
+            bairro: 'Norte',
+            codigoSecreto: 'CONT-69-C',
+            ativo: false,
+        });
+        invalidarCacheEscolas();
+
+        // A secretaria é da escola da SESSÃO — passa pelo escopo de cargo e só
+        // é descartada pelo recorte por escola do filho.
+        const secretariaDaqui = await conta('sec.daqui@escola.test', 'secretaria');
+
+        const eu = await conta('mae.de.la@escola.test', 'responsavel');
+        await Aluno.create({
+            escolaId: String(outra._id),
+            nome: 'CRIANCA INVENTADA DA SILVA',
+            turma: '3B',
+            responsavel: 'mae.de.la@escola.test',
+            ativo: true,
+        });
+
+        expect(idsDe(await contatos(eu))).toEqual([]);
+
+        // Contraprova: com o filho matriculado AQUI, a mesma secretaria aparece.
+        const daqui = await responsavelDe('mae.daqui@escola.test', '3B');
+        expect(idsDe(await contatos(daqui))).toEqual([secretariaDaqui.id]);
+    });
+
+    it('diretor vê a equipe; secretaria vê a equipe e as famílias', async () => {
         const profA = await professorDe('prof.a@escola.test', '1A');
         const profB = await professorDe('prof.b@escola.test', '9A');
         const maeA = await responsavelDe('mae.a@escola.test', '1A');
@@ -157,9 +204,11 @@ describe('quem cada perfil enxerga', () => {
         const secretaria = await conta('sec3@escola.test', 'secretaria');
         const diretor = await conta('dir3@escola.test', 'diretor');
 
-        expect(idsDe(await contatos(diretor))).toEqual(
-            [profA.id, profB.id, maeA.id, maeB.id, secretaria.id].sort()
-        );
+        // A direção coordena a equipe; falar com a família passou a ser da
+        // secretaria, então nenhuma mãe aparece na lista do diretor.
+        expect(idsDe(await contatos(diretor))).toEqual([profA.id, profB.id, secretaria.id].sort());
+        // A secretaria não tem recorte de turma: alcança todas as famílias da
+        // escola dela.
         expect(idsDe(await contatos(secretaria))).toEqual(
             [profA.id, profB.id, maeA.id, maeB.id, diretor.id].sort()
         );
@@ -341,10 +390,13 @@ describe('e-mail do responsável com caixa diferente', () => {
         // `Usuario.email` não é normalizado no schema e o e-mail no cadastro do
         // aluno é digitado à mão. Comparar literal faria a família sumir da
         // lista enquanto o envio continuaria permitido.
-        const professor = await professorDe('prof.caixa@escola.test', '2A');
+        const secretaria = await conta('sec.caixa@escola.test', 'secretaria');
         const mae = await responsavelDe('mae.caixa@escola.test', '2A', 'Mae.Caixa@Escola.Test');
 
-        expect(idsDe(await contatos(professor))).toContain(mae.id);
+        expect(idsDe(await contatos(secretaria))).toContain(mae.id);
+        // E o caminho inverso, que é o que a família enxerga: a caixa do
+        // cadastro do aluno não pode esconder a secretaria dela.
+        expect(idsDe(await contatos(mae))).toContain(secretaria.id);
     });
 });
 
