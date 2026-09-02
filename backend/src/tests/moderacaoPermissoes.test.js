@@ -91,6 +91,54 @@ async function agentSimples(perfil, email) {
     return agent;
 }
 
+/**
+ * Sessão de um perfil com SEGUNDO FATOR obrigatório, sem depender de e-mail.
+ *
+ * `agentSimples` serve para quem entra com e-mail e senha. Para `diretor` e
+ * `secretaria` — os perfis de `PADRAO_PERFIS_OBRIGATORIO` em
+ * `utils/politica2FA.js` — o login PARA no desafio do segundo fator: devolve
+ * 200 com `requires2FA`, e nenhum cookie de sessão. Usar `agentSimples` com
+ * eles produz um agente sem sessão, e a primeira chamada autenticada volta 401
+ * com um corpo sem `data` — que é como isto apareceu no CI.
+ *
+ * O caminho é o mesmo de `agentDiretor`, sem o que é específico da direção (o
+ * documento `Diretor` e a escola no login): a conta nasce com
+ * `twoFactorFixedCode`, e o `/2fa/verify` recebe esse código. Conta sem vínculo
+ * de escola atravessa o login sem seletor — ver o bloco MULTI-ESCOLA em
+ * `UserController.login`: "sem vínculos → segue".
+ */
+async function agentCom2FA(perfil, email) {
+    await criarUsuario({
+        email,
+        perfil,
+        twoFactorFixedCode: await require('../utils/codigosBackup').hashSegredo(CODIGO_FIXO),
+    });
+
+    const agent = request.agent(app);
+    const login = await agent.post('/api/auth/login').send({ email, senha: SENHA_TESTE });
+    expect(login.status).toBe(200);
+    const verify = await agent.post('/api/auth/2fa/verify').send({ codigo: CODIGO_FIXO });
+    expect(verify.status).toBe(200);
+
+    return agent;
+}
+
+/**
+ * Sessão de QUALQUER perfil, escolhendo o caminho de login pela própria
+ * política do sistema.
+ *
+ * Derivar a escolha de `exigeSegundoFator` em vez de listar 'diretor' e
+ * 'secretaria' à mão é o que impede este teste de apodrecer no dia em que
+ * `PERFIS_2FA_OBRIGATORIO` mudar: o perfil que passar a exigir 2FA passa a ser
+ * autenticado pelo caminho certo sem ninguém lembrar de vir aqui.
+ */
+async function entrarComo(perfil, email) {
+    const { exigeSegundoFator } = require('../utils/politica2FA');
+    return exigeSegundoFator({ perfil, twoFactorEnabled: false })
+        ? agentCom2FA(perfil, email)
+        : agentSimples(perfil, email);
+}
+
 async function criarOcorrencia(escola, overrides = {}) {
     return ModeracaoOcorrencia.create({
         escolaId: String(escola._id),
@@ -416,5 +464,115 @@ describe('Aceite do Termo — cláusula 2', () => {
         expect(registro).toBeTruthy();
         expect(registro.versao).toBe('1.0');
         expect(registro.aceitoEm).toBeTruthy();
+    });
+});
+
+/**
+ * Consentimento LGPD geral — Issue #201.
+ *
+ * Antes desta issue, `consentimentoAceiteEm` só era escrito pelo onboarding do
+ * responsável. Professor, diretor, secretaria e admin não tinham NENHUM caminho
+ * para consentir, e "Meus Dados" dizia "Consentimento LGPD: Não registrado"
+ * para sempre — uma base legal de tratamento que não existia em lugar nenhum.
+ */
+describe('Consentimento LGPD no aceite do Termo (Issue #201)', () => {
+    const Usuario = require('../models/Usuario');
+    const { CONSENTIMENTO_ID, CONSENTIMENTO_VERSAO } = require('../utils/consentimentoLgpd');
+
+    it.each(['professor', 'diretor', 'secretaria', 'admin', 'responsavel'])(
+        'registra o consentimento para o perfil %s',
+        async (perfil) => {
+            const email = `consent_${perfil}@escola.test`;
+            const agent = await entrarComo(perfil, email);
+
+            const antes = await agent.get('/api/moderacao/aceite-termo');
+            // Conferido antes do corpo: sem isto, uma sessão que não se
+            // estabeleceu vira "Cannot read properties of undefined", que não
+            // diz o que aconteceu.
+            expect(antes.status).toBe(200);
+            expect(antes.body.data.consentimentoLgpd.aceito).toBe(false);
+
+            const aceite = await agent.post('/api/moderacao/aceite-termo').send({});
+            expect(aceite.status).toBe(201);
+            expect(aceite.body.data.consentimentoLgpd.aceito).toBe(true);
+
+            const usuario = await Usuario.findOne({ email }).lean();
+            expect(usuario.consentimentoAceiteEm).toBeTruthy();
+            expect(usuario.consentimentoVersao).toBe(CONSENTIMENTO_VERSAO);
+
+            const registro = usuario.lgpdHistory.find((r) => r.termoId === CONSENTIMENTO_ID);
+            expect(registro).toBeTruthy();
+            expect(registro.versao).toBe(CONSENTIMENTO_VERSAO);
+        }
+    );
+
+    it('aparece em Meus Dados junto do Termo de Áudio e Imagem', async () => {
+        // A regressão concreta: `statusConsentimento` procurava
+        // `termoId: 'TERMO_AUDIO_IMAGEM'` e o que era gravado é
+        // `'termo_audio_imagem'` — nenhum aceite casava, e a tela mostrava
+        // "Pendente" para quem tinha assinado.
+        const agent = await agentSimples('professor', 'consent_meusdados@escola.test');
+        await agent.post('/api/moderacao/aceite-termo').send({});
+
+        const status = await agent.get('/api/meus-dados/status-consentimento');
+        expect(status.status).toBe(200);
+        expect(status.body.consentimento.aceiteEm).toBeTruthy();
+        expect(status.body.consentimento.versao).toBe(CONSENTIMENTO_VERSAO);
+        expect(status.body.consentimento.termoAudioImagem).toMatchObject({
+            aceito: true,
+            versao: '1.0',
+        });
+    });
+
+    it('não duplica registro quando o aceite é reenviado', async () => {
+        // `lgpdHistory` é histórico de ASSINATURAS, não log de cliques: uma
+        // recarga de página não pode virar uma segunda assinatura no pacote
+        // que a escola entrega a um titular.
+        const email = 'consent_repetido@escola.test';
+        const agent = await agentSimples('professor', email);
+
+        await agent.post('/api/moderacao/aceite-termo').send({});
+        const primeiro = await Usuario.findOne({ email }).lean();
+
+        await agent.post('/api/moderacao/aceite-termo').send({});
+        const segundo = await Usuario.findOne({ email }).lean();
+
+        expect(segundo.lgpdHistory).toHaveLength(primeiro.lgpdHistory.length);
+        expect(segundo.consentimentoAceiteEm.getTime()).toBe(
+            primeiro.consentimentoAceiteEm.getTime()
+        );
+    });
+
+    it('respeita o consentimento que o responsável já assinou no portal', async () => {
+        // O portal grava `{ termoId: 'politica_privacidade', versao: '2.0' }`
+        // em `CompletarCadastro.tsx`. Se esta tela usasse outro par, o mesmo
+        // titular teria dois consentimentos "gerais" concorrentes.
+        const email = 'consent_portal@escola.test';
+        const agent = await agentSimples('responsavel', email);
+
+        const assinadoEm = new Date('2026-01-15T12:00:00Z');
+        await Usuario.updateOne(
+            { email },
+            {
+                $set: { consentimentoAceiteEm: assinadoEm, consentimentoVersao: '2.0' },
+                $push: {
+                    lgpdHistory: {
+                        termoId: CONSENTIMENTO_ID,
+                        versao: '2.0',
+                        aceitoEm: assinadoEm,
+                    },
+                },
+            }
+        );
+
+        const antes = await agent.get('/api/moderacao/aceite-termo');
+        expect(antes.body.data.consentimentoLgpd.aceito).toBe(true);
+        expect(antes.body.data.aceito).toBe(false);
+
+        await agent.post('/api/moderacao/aceite-termo').send({});
+
+        const usuario = await Usuario.findOne({ email }).lean();
+        expect(usuario.consentimentoAceiteEm.getTime()).toBe(assinadoEm.getTime());
+        expect(usuario.lgpdHistory.filter((r) => r.termoId === CONSENTIMENTO_ID)).toHaveLength(1);
     });
 });

@@ -134,6 +134,16 @@
         }
 
         /* Card de Status */
+        /* Dois consentimentos, duas linhas: o Termo de Áudio e Imagem e o
+           consentimento LGPD geral são assinados no mesmo gesto, mas têm
+           estados independentes (Issue #201) — quem assinou o Termo antes
+           desta tela existir tem só um dos dois. */
+        .status-lista {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
         .status-box {
             display: flex;
             align-items: center;
@@ -274,6 +284,15 @@
             color: #f1f5f9;
         }
 
+        .checkbox-wrap a {
+            color: #60a5fa;
+            text-decoration: underline;
+        }
+
+        .checkbox-wrap input:disabled {
+            cursor: default;
+        }
+
         .btn-aceitar {
             display: inline-flex;
             align-items: center;
@@ -361,7 +380,7 @@
 
     <!-- Header com navegação e badge -->
     <header class="header-termo">
-        <a href="perfil.html" class="btn-voltar" id="btnVoltarNav">
+        <a href="dashboard.html" class="btn-voltar" id="btnVoltarNav">
             <i class="bi bi-arrow-left"></i>
             <span>Voltar</span>
         </a>
@@ -381,15 +400,26 @@
             </p>
 
             <!-- Box de Status Dinâmico -->
-            <div class="status-box" id="boxStatusTermo">
-                <div class="status-info">
-                    <span class="status-dot dot-yellow" id="statusDot"></span>
-                    <div>
-                        <div class="status-title" id="statusTextoTitulo">Consultando autorização...</div>
-                        <div class="status-desc" id="statusTextoDesc">Verificando registro no sistema</div>
+            <div class="status-lista" id="boxStatusTermo">
+                <div class="status-box">
+                    <div class="status-info">
+                        <span class="status-dot dot-yellow" id="statusDot"></span>
+                        <div>
+                            <div class="status-title" id="statusTextoTitulo">Consultando autorização...</div>
+                            <div class="status-desc" id="statusTextoDesc">Verificando registro no sistema</div>
+                        </div>
+                    </div>
+                    <div id="statusAcoesTopo"></div>
+                </div>
+                <div class="status-box">
+                    <div class="status-info">
+                        <span class="status-dot dot-yellow" id="statusDotLgpd"></span>
+                        <div>
+                            <div class="status-title" id="statusLgpdTitulo">Consultando consentimento...</div>
+                            <div class="status-desc" id="statusLgpdDesc">Verificando registro no sistema</div>
+                        </div>
                     </div>
                 </div>
-                <div id="statusAcoesTopo"></div>
             </div>
         </section>
 
@@ -453,10 +483,20 @@
                 </span>
             </label>
 
+            <label class="checkbox-wrap" id="labelCheckboxLgpd">
+                <input type="checkbox" id="checkConsentimentoLgpd">
+                <span>
+                    Consinto com o tratamento dos meus dados pessoais pelo Sistema Escolar, nos termos da
+                    <a href="politica-privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>
+                    e da Lei nº 13.709/2018 (LGPD). O registro fica disponível em
+                    <a href="meus-dados.html">Meus Dados</a>.
+                </span>
+            </label>
+
             <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
                 <button class="btn-aceitar" id="btnConfirmarAceite" disabled>
                     <i class="bi bi-check2-circle"></i>
-                    <span>Autorizar e Liberar Áudio/Imagem</span>
+                    <span>Aceitar e Registrar Consentimento</span>
                 </button>
                 <a href="conversas.html" class="btn-chat-direto" id="btnIrChat" style="display: none;">
                     <i class="bi bi-chat-dots-fill"></i>
@@ -495,60 +535,147 @@
             }
         }
 
-        async function consultarStatus() {
-            const dot = document.getElementById('statusDot');
-            const titulo = document.getElementById('statusTextoTitulo');
-            const desc = document.getElementById('statusTextoDesc');
+        /**
+         * Pinta uma das duas linhas de status.
+         * `aceito === null` significa "não deu para consultar" — e aqui, como
+         * no `js/termo-audio-imagem.js` do chat, a falha é ABERTA: a tela não
+         * afirma que falta consentimento quando não conseguiu perguntar.
+         */
+        function pintarStatus(ids, aceito, aceitoEm, textos) {
+            const dot = document.getElementById(ids.dot);
+            const titulo = document.getElementById(ids.titulo);
+            const desc = document.getElementById(ids.desc);
+            if (!dot || !titulo || !desc) return;
+
+            if (aceito === null) {
+                dot.className = 'status-dot dot-yellow';
+                titulo.textContent = textos.indisponivelTitulo;
+                desc.textContent = textos.indisponivelDesc;
+                return;
+            }
+
+            dot.className = `status-dot ${aceito ? 'dot-green' : 'dot-yellow'}`;
+            titulo.textContent = aceito ? textos.aceitoTitulo : textos.pendenteTitulo;
+            desc.textContent = aceito
+                ? `${textos.aceitoDesc} (registrado em ${formatarData(aceitoEm)})`
+                : textos.pendenteDesc;
+        }
+
+        /** Marca e trava o checkbox do que já está assinado. */
+        function travarCheckbox(idCheck, idLabel, aceito) {
+            const check = document.getElementById(idCheck);
+            const label = document.getElementById(idLabel);
+            if (!check) return;
+            check.checked = Boolean(aceito);
+            check.disabled = Boolean(aceito);
+            if (label) label.style.opacity = aceito ? '0.7' : '1';
+        }
+
+        /**
+         * O botão só libera quando TUDO que ainda falta assinar está marcado.
+         * Um checkbox travado (já assinado) não conta como pendência — senão
+         * quem já tinha o Termo aceito não conseguiria registrar só o
+         * consentimento LGPD.
+         */
+        function atualizarBotaoAceite() {
+            const btn = document.getElementById('btnConfirmarAceite');
             const check = document.getElementById('checkAceito');
+            const checkLgpd = document.getElementById('checkConsentimentoLgpd');
+            const faltaTermo = !check.disabled && !check.checked;
+            const faltaLgpd = !checkLgpd.disabled && !checkLgpd.checked;
+            btn.disabled = faltaTermo || faltaLgpd;
+        }
+
+        /**
+         * Aplica o estado dos DOIS consentimentos (Issue #201).
+         *
+         * O Termo de Áudio e Imagem e o consentimento LGPD geral são assinados
+         * no mesmo gesto, mas o segundo é novo: existe gente com o Termo
+         * aceito e nenhum consentimento registrado. Por isso o painel de aceite
+         * aparece enquanto QUALQUER um dos dois estiver pendente — a versão
+         * anterior escondia o botão assim que o Termo estivesse aceito, o que
+         * deixaria essas contas sem caminho nenhum para consentir.
+         */
+        function aplicarEstado(termo, lgpd) {
+            pintarStatus(
+                { dot: 'statusDot', titulo: 'statusTextoTitulo', desc: 'statusTextoDesc' },
+                termo.aceito,
+                termo.aceitoEm,
+                {
+                    aceitoTitulo: 'Envio de Áudio e Imagem Liberado',
+                    aceitoDesc: 'Autorização ativa',
+                    pendenteTitulo: 'Autorização Pendente',
+                    pendenteDesc: 'Aceite os termos para habilitar o envio de mídias no chat',
+                    indisponivelTitulo: 'Não foi possível verificar status',
+                    indisponivelDesc: 'Você pode tentar registrar o aceite novamente abaixo.',
+                }
+            );
+
+            pintarStatus(
+                { dot: 'statusDotLgpd', titulo: 'statusLgpdTitulo', desc: 'statusLgpdDesc' },
+                lgpd.aceito,
+                lgpd.aceitoEm,
+                {
+                    aceitoTitulo: 'Consentimento LGPD Registrado',
+                    aceitoDesc: 'Tratamento de dados consentido',
+                    pendenteTitulo: 'Consentimento LGPD Pendente',
+                    pendenteDesc: 'Consinta com a Política de Privacidade para concluir',
+                    indisponivelTitulo: 'Não foi possível verificar o consentimento',
+                    indisponivelDesc: 'Você pode tentar registrar o consentimento abaixo.',
+                }
+            );
+
+            travarCheckbox('checkAceito', 'labelCheckbox', termo.aceito === true);
+            travarCheckbox('checkConsentimentoLgpd', 'labelCheckboxLgpd', lgpd.aceito === true);
+
             const btnAceitar = document.getElementById('btnConfirmarAceite');
             const btnChat = document.getElementById('btnIrChat');
-            const labelCheck = document.getElementById('labelCheckbox');
+            const pendente = termo.aceito !== true || lgpd.aceito !== true;
 
+            btnAceitar.style.display = pendente ? 'inline-flex' : 'none';
+            btnChat.style.display = termo.aceito === true ? 'inline-flex' : 'none';
+            atualizarBotaoAceite();
+        }
+
+        async function consultarStatus() {
             try {
-                const res = await fetch(API_ACEITE, { credentials: 'include' });
+                // Esta consulta é refeita LOGO DEPOIS do POST, na mesma URL, e
+                // duas camadas de cache atrapalham isso:
+                //
+                //   1. o cache HTTP do navegador (`cache: 'no-store'`); e
+                //   2. o cache de 2s do interceptor de `js/api-config.js`, que
+                //      guarda toda resposta GET da API por chave de URL e não
+                //      olha as opções do fetch.
+                //
+                // Sem o parâmetro variável, a resposta servida ao recarregar o
+                // status é a ANTERIOR ao aceite: a pessoa acabou de assinar e a
+                // tela continua dizendo "pendente" até ela recarregar a página.
+                const res = await fetch(`${API_ACEITE}?_=${Date.now()}`, {
+                    credentials: 'include',
+                    cache: 'no-store',
+                });
                 if (!res.ok) throw new Error('Falha ao consultar aceite.');
                 const json = await res.json();
-                const aceito = Boolean(json?.data?.aceito);
-                const aceitoEm = json?.data?.aceitoEm;
+                const consentimento = json?.data?.consentimentoLgpd || {};
 
-                if (aceito) {
-                    dot.className = 'status-dot dot-green';
-                    titulo.textContent = 'Envio de Áudio e Imagem Liberado';
-                    desc.textContent = `Autorização ativa (registrada em ${formatarData(aceitoEm)})`;
-                    
-                    check.checked = true;
-                    check.disabled = true;
-                    if (labelCheck) labelCheck.style.opacity = '0.7';
-
-                    btnAceitar.style.display = 'none';
-                    btnChat.style.display = 'inline-flex';
-                } else {
-                    dot.className = 'status-dot dot-yellow';
-                    titulo.textContent = 'Autorização Pendente';
-                    desc.textContent = 'Aceite os termos para habilitar o envio de mídias no chat';
-
-                    check.checked = false;
-                    check.disabled = false;
-                    btnAceitar.style.display = 'inline-flex';
-                    btnAceitar.disabled = true;
-                    btnChat.style.display = 'none';
-                }
+                aplicarEstado(
+                    { aceito: Boolean(json?.data?.aceito), aceitoEm: json?.data?.aceitoEm },
+                    { aceito: Boolean(consentimento.aceito), aceitoEm: consentimento.aceitoEm }
+                );
             } catch (err) {
-                dot.className = 'status-dot dot-yellow';
-                titulo.textContent = 'Não foi possível verificar status';
-                desc.textContent = 'Você pode tentar registrar o aceite novamente abaixo.';
+                aplicarEstado({ aceito: null }, { aceito: null });
             }
         }
 
-        document.getElementById('checkAceito').addEventListener('change', (e) => {
-            const btn = document.getElementById('btnConfirmarAceite');
-            btn.disabled = !e.target.checked;
-        });
+        document.getElementById('checkAceito').addEventListener('change', atualizarBotaoAceite);
+        document
+            .getElementById('checkConsentimentoLgpd')
+            .addEventListener('change', atualizarBotaoAceite);
 
         document.getElementById('btnConfirmarAceite').addEventListener('click', async () => {
             const btn = document.getElementById('btnConfirmarAceite');
             btn.disabled = true;
-            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> <span>Registrando autorização...</span>';
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> <span>Registrando consentimento...</span>';
 
             try {
                 const res = await fetch(API_ACEITE, {
@@ -561,38 +688,133 @@
                 });
 
                 if (!res.ok) throw new Error('Não foi possível registrar o aceite.');
-                const json = await res.json();
+                await res.json();
 
-                showToast('Termo aceito com sucesso! Envio de áudio e imagem liberado.', 'success');
+                showToast('Termo aceito e consentimento LGPD registrado na sua conta.', 'success');
                 await consultarStatus();
 
             } catch (err) {
                 showToast(err.message || 'Erro ao registrar autorização.', 'error');
-                btn.disabled = false;
-                btn.innerHTML = '<i class="bi bi-check2-circle"></i> <span>Autorizar e Liberar Áudio/Imagem</span>';
+                btn.innerHTML = '<i class="bi bi-check2-circle"></i> <span>Aceitar e Registrar Consentimento</span>';
+                atualizarBotaoAceite();
             }
         });
 
         /**
-         * O "Voltar" apontava fixo para perfil.html, que era o único lugar de
-         * onde dava para chegar aqui. Agora a página tem entrada no sidebar e
-         * no modal do chat (Issue #189), e mandar quem veio da conversa para o
-         * perfil é perder o contexto justamente de quem estava tentando enviar
-         * uma mídia. O href do HTML continua como fallback: ele é o destino
-         * quando não há referrer (link colado, aba nova) ou quando o referrer é
-         * de fora do sistema.
+         * PARA ONDE O "VOLTAR" LEVA (Issues #189 e #201)
+         * ---------------------------------------------
+         * O href do HTML já foi `perfil.html`, que era o único lugar de onde
+         * dava para chegar aqui. A página ganhou entrada no sidebar e no modal
+         * do chat (#189), e o referrer passou a valer mais que um destino fixo:
+         * mandar quem veio da conversa para outro lugar é perder o contexto de
+         * quem estava justamente tentando enviar uma mídia.
+         *
+         * Só que o fallback continuava sendo `perfil.html` — que não é a casa
+         * de perfil nenhum. Um responsável que abrisse esta página sem referrer
+         * (link colado, aba nova, volta do cache do Service Worker) caía numa
+         * tela do lado escolar do sistema, e não no portal dele.
+         *
+         * Agora o fallback é o PAINEL DE QUEM ESTÁ OLHANDO: dashboard para
+         * professor, diretor e admin; o painel da secretaria para a secretaria;
+         * o portal (painel do aluno) para o responsável. A tabela é a do
+         * `js/guarda-acesso.js`, que já é o espelho de
+         * `backend/src/utils/painelPorPerfil.js` — repetir os caminhos aqui
+         * criaria uma terceira cópia da mesma regra.
+         *
+         * E o referrer, quando existe, passa a ser CONFERIDO contra o mesmo
+         * veredito de acesso do guard: um responsável que chegue com o
+         * dashboard no referrer (histórico, link herdado) seria devolvido para
+         * uma página que o gate do servidor não deixa ele abrir — ou seja, para
+         * um redirecionamento. Nesse caso vale o painel dele.
          */
-        function ajustarVoltar() {
-            const btn = document.getElementById('btnVoltarNav');
-            if (!btn || !document.referrer) return;
+        /**
+         * Perfil de quem está usando a tela.
+         *
+         * O `sessionStorage` é o caminho rápido, mas NÃO dá para depender só
+         * dele: o portal do responsável é um app React que autentica por cookie
+         * e nunca grava `currentUser` (mesma constatação de `js/conversas.js`).
+         * Quem vem de lá chegaria aqui sem perfil nenhum — e é justamente o
+         * responsável que este ajuste existe para atender. Sem cache, pergunta
+         * ao servidor.
+         *
+         * Isto é NAVEGAÇÃO, não autorização: o valor só escolhe um href. Quem
+         * garante que ninguém abre o painel alheio é o gate do servidor
+         * (middleware/protegerPaginas.js).
+         */
+        async function meuPerfil() {
+            try {
+                const cache = JSON.parse(sessionStorage.getItem('currentUser') || 'null');
+                if (cache && cache.perfil) return String(cache.perfil).toLowerCase();
+            } catch {
+                // Storage desligado ou conteúdo corrompido: segue para a rede.
+            }
+
+            try {
+                const base = window.API_BASE_URL || '/api';
+                const res = await fetch(`${base}/auth/me`, {
+                    credentials: 'include',
+                    headers: { Accept: 'application/json' },
+                });
+                if (!res.ok) return '';
+                const corpo = await res.json();
+                return String(corpo?.user?.perfil || '').toLowerCase();
+            } catch {
+                return '';
+            }
+        }
+
+        function painelDoPerfil(perfil) {
+            if (window.GuardaAcesso && window.GuardaAcesso.painelDoPerfil) {
+                return window.GuardaAcesso.painelDoPerfil(perfil);
+            }
+            // Sem o guard carregado não há tabela: o dashboard é o destino da
+            // maioria, e o gate do servidor redireciona ao painel certo quem
+            // não pode abri-lo (`redirecionarAoPainel`).
+            return '/html/dashboard.html';
+        }
+
+        /**
+         * A página anterior, quando ela é interna E abrível por este perfil.
+         *
+         * Sem perfil resolvido o referrer interno vale como está: era o
+         * comportamento da Issue #189, e o gate do servidor continua sendo
+         * quem barra de fato — recusar aqui só trocaria um destino bom por um
+         * palpite.
+         */
+        function referrerUtilizavel(perfil) {
+            if (!document.referrer) return null;
             try {
                 const origem = new URL(document.referrer);
-                if (origem.origin !== window.location.origin) return;
-                if (origem.pathname === window.location.pathname) return;
-                btn.href = origem.pathname + origem.search;
+                if (origem.origin !== window.location.origin) return null;
+                if (origem.pathname === window.location.pathname) return null;
+
+                const guarda = window.GuardaAcesso;
+                if (perfil && guarda && guarda.vereditoDe && guarda.permitido) {
+                    if (!guarda.permitido(guarda.vereditoDe(origem.pathname), perfil)) return null;
+                }
+
+                return origem.pathname + origem.search;
             } catch {
-                // Referrer ilegível: fica o fallback do HTML.
+                return null;
             }
+        }
+
+        async function ajustarVoltar() {
+            const btn = document.getElementById('btnVoltarNav');
+            if (!btn) return;
+
+            const perfil = await meuPerfil();
+            const anterior = referrerUtilizavel(perfil);
+            if (anterior) {
+                btn.href = anterior;
+                return;
+            }
+
+            // Sem perfil E sem página anterior utilizável, fica o fallback do
+            // HTML. Chutar um destino seria pior: o link continua clicável e
+            // levaria a pessoa para a tela errada — mesma decisão de
+            // `js/conversas.js`.
+            if (perfil) btn.href = painelDoPerfil(perfil);
         }
 
         document.addEventListener('DOMContentLoaded', () => {
