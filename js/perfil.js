@@ -64,7 +64,6 @@ async function carregarPerfil() {
                 // Garante campos mínimos se não existirem
                 if (!perfilAtual.biografia) perfilAtual.biografia = 'Administrador do sistema.';
                 if (!perfilAtual.nome) perfilAtual.nome = user.nome || 'Administrador';
-
             } catch (e) {
                 console.error('Erro ao buscar admin:', e);
                 perfilAtual = user;
@@ -78,12 +77,14 @@ async function carregarPerfil() {
             console.log(`📊 Total de ${collection} carregados:`, todos.length);
 
             // Tenta encontrar por diversos campos de vínculo
-            perfilAtual = todos.find(p => {
+            perfilAtual = todos.find((p) => {
                 const userId = String(user.id || user._id);
-                return String(p.idUsuario) === userId ||
+                return (
+                    String(p.idUsuario) === userId ||
                     String(p.userId) === userId ||
                     String(p.usuarioId) === userId ||
-                    (p.email && String(p.email).toLowerCase() === String(user.email).toLowerCase());
+                    (p.email && String(p.email).toLowerCase() === String(user.email).toLowerCase())
+                );
             });
 
             if (!perfilAtual) {
@@ -94,7 +95,7 @@ async function carregarPerfil() {
                     nome: user.nome || 'Usuário',
                     email: user.email,
                     ativo: true,
-                    isNew: true // Marcador para usarmos db.add depois
+                    isNew: true, // Marcador para usarmos db.add depois
                 };
                 showToast('Configurando seu perfil pela primeira vez...', 'info');
             } else {
@@ -104,7 +105,6 @@ async function carregarPerfil() {
 
         // Preenche formulário
         preencherFormulario(user, perfilAtual);
-
     } catch (error) {
         console.error('Erro ao carregar perfil:', error);
         showToast('Erro ao carregar perfil', 'error');
@@ -117,11 +117,11 @@ function preencherFormulario(user, perfil) {
     const photoPreview = document.getElementById('photoPreview');
     const removeFotoBtn = document.getElementById('removeFotoBtn');
     const fotoUrl = window.getPhotoUrl(perfil.foto, user.fotoGoogle);
-    
+
     if (photoPreview) {
         photoPreview.innerHTML = `<img src="${fotoUrl}" alt="Foto" class="user-avatar avatar-xxl">`;
         if (perfil.foto || (user.fotoGoogle && fotoUrl === user.fotoGoogle)) {
-             removeFotoBtn.classList.remove('hidden');
+            removeFotoBtn.classList.remove('hidden');
         }
     }
 
@@ -158,7 +158,7 @@ function preencherFormulario(user, perfil) {
         const materiasDisplay = document.getElementById('materiasDisplay');
         materiasDisplay.innerHTML = '';
         if (perfil.materias && perfil.materias.length > 0) {
-            perfil.materias.forEach(materia => {
+            perfil.materias.forEach((materia) => {
                 const badge = document.createElement('span');
                 badge.className = 'badge badge-primary';
                 badge.textContent = materia;
@@ -171,7 +171,7 @@ function preencherFormulario(user, perfil) {
             document.getElementById('salasAdicionaisDisplay').classList.remove('hidden');
             const salasDisplay = document.getElementById('salasDisplay');
             salasDisplay.innerHTML = '';
-            perfil.salasAdicionais.forEach(sala => {
+            perfil.salasAdicionais.forEach((sala) => {
                 const badge = document.createElement('span');
                 badge.className = 'badge badge-secondary';
                 badge.textContent = sala;
@@ -194,9 +194,12 @@ function preencherFormulario(user, perfil) {
 
 // === TROCAR DE ESCOLA (professor / diretor / secretaria) ===
 function apiBaseUrl() {
-    return window.API_BASE_URL || (window.location.hostname === 'localhost'
-        ? `http://${window.location.hostname}:3001/api`
-        : 'https://sistema-escolar-bfty.onrender.com/api');
+    return (
+        window.API_BASE_URL ||
+        (window.location.hostname === 'localhost'
+            ? `http://${window.location.hostname}:3001/api`
+            : 'https://sistema-escolar-bfty.onrender.com/api')
+    );
 }
 
 function initTrocarEscola(user) {
@@ -213,16 +216,20 @@ function initTrocarEscola(user) {
     // Carrega a escola ativa atual
     const nomeEl = document.getElementById('escolaAtivaPerfil');
     fetch(`${apiBaseUrl()}/escolas/minhas`, { credentials: 'include' })
-        .then(r => r.ok ? r.json() : null)
-        .then(json => {
+        .then((r) => (r.ok ? r.json() : null))
+        .then((json) => {
             if (json && json.success && Array.isArray(json.data) && json.data.length) {
-                const ativa = json.data.find(e => String(e._id) === String(json.escolaAtivaId)) || json.data[0];
+                const ativa =
+                    json.data.find((e) => String(e._id) === String(json.escolaAtivaId)) ||
+                    json.data[0];
                 if (nomeEl) nomeEl.value = ativa ? ativa.nome : 'Não definida';
             } else if (nomeEl) {
                 nomeEl.value = perfilAtual?.escola || 'Não definida';
             }
         })
-        .catch(() => { if (nomeEl) nomeEl.value = perfilAtual?.escola || 'Não definida'; });
+        .catch(() => {
+            if (nomeEl) nomeEl.value = perfilAtual?.escola || 'Não definida';
+        });
 
     const btn = document.getElementById('btnMudarEscola');
     if (btn && !btn.dataset.bound) {
@@ -239,16 +246,19 @@ async function mudarEscola() {
         showToast('Digite o código secreto da nova escola.', 'warning');
         return;
     }
-    if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+    if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = '0.6';
+    }
     try {
         const res = await fetch(`${apiBaseUrl()}/escolas/mudar`, {
             method: 'POST',
             credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-Token': document.cookie.match(/csrf_token=([^;]+)/)?.[1] || ''
+                'X-CSRF-Token': document.cookie.match(/csrf_token=([^;]+)/)?.[1] || '',
             },
-            body: JSON.stringify({ codigoEscola: codigo })
+            body: JSON.stringify({ codigoEscola: codigo }),
         });
         const json = await res.json();
         if (res.ok && json.success) {
@@ -256,14 +266,19 @@ async function mudarEscola() {
             const nomeEl = document.getElementById('escolaAtivaPerfil');
             if (nomeEl && json.escolaNome) nomeEl.value = json.escolaNome;
             if (input) input.value = '';
-            setTimeout(() => { window.location.href = json.redirect_to || 'dashboard.html'; }, 900);
+            setTimeout(() => {
+                window.location.href = json.redirect_to || 'dashboard.html';
+            }, 900);
         } else {
             showToast(json.error || 'Não foi possível trocar de escola.', 'error');
         }
     } catch (e) {
         showToast('Falha de conexão ao trocar de escola.', 'error');
     } finally {
-        if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+        if (btn) {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+        }
     }
 }
 
@@ -314,15 +329,19 @@ function setupPhotoUpload() {
             }
 
             // Enviar diretamente ao backend
-            const baseUrl = window.API_BASE_URL || (window.location.hostname === 'localhost' ? `http://${window.location.hostname}:3001/api` : 'https://sistema-escolar-bfty.onrender.com/api');
+            const baseUrl =
+                window.API_BASE_URL ||
+                (window.location.hostname === 'localhost'
+                    ? `http://${window.location.hostname}:3001/api`
+                    : 'https://sistema-escolar-bfty.onrender.com/api');
             const res = await fetch(`${baseUrl}/usuarios/foto`, {
                 method: 'PUT',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-Token': document.cookie.match(/csrf_token=([^;]+)/)?.[1] || ''
+                    'X-CSRF-Token': document.cookie.match(/csrf_token=([^;]+)/)?.[1] || '',
                 },
                 body: JSON.stringify({ foto: croppedBase64 }),
-                credentials: 'include'
+                credentials: 'include',
             });
 
             const data = await res.json();
@@ -352,7 +371,9 @@ function setupPhotoUpload() {
             } else {
                 showToast(data.error || 'Erro ao enviar foto', 'error');
                 // Reverter preview
-                const fotoUrl = window.getPhotoUrl ? window.getPhotoUrl(perfilAtual?.foto, auth.getCurrentUser()?.fotoGoogle) : '';
+                const fotoUrl = window.getPhotoUrl
+                    ? window.getPhotoUrl(perfilAtual?.foto, auth.getCurrentUser()?.fotoGoogle)
+                    : '';
                 if (fotoUrl) {
                     photoPreview.innerHTML = `<img src="${fotoUrl}" alt="Foto" class="user-avatar avatar-xxl">`;
                 } else {
@@ -373,13 +394,17 @@ function setupPhotoUpload() {
 
         try {
             removeFotoBtn.disabled = true;
-            const baseUrl = window.API_BASE_URL || (window.location.hostname === 'localhost' ? `http://${window.location.hostname}:3001/api` : 'https://sistema-escolar-bfty.onrender.com/api');
+            const baseUrl =
+                window.API_BASE_URL ||
+                (window.location.hostname === 'localhost'
+                    ? `http://${window.location.hostname}:3001/api`
+                    : 'https://sistema-escolar-bfty.onrender.com/api');
             const res = await fetch(`${baseUrl}/usuarios/foto`, {
                 method: 'DELETE',
-                headers: { 
-                    'X-CSRF-Token': document.cookie.match(/csrf_token=([^;]+)/)?.[1] || ''
+                headers: {
+                    'X-CSRF-Token': document.cookie.match(/csrf_token=([^;]+)/)?.[1] || '',
                 },
-                credentials: 'include'
+                credentials: 'include',
             });
 
             const data = await res.json();
@@ -490,7 +515,7 @@ function setupForm() {
             telefone: telefoneRaw,
             idade: parseInt(document.getElementById('idade')?.value) || 0,
             biografia: getVal('biografia'),
-            atualizadoEm: new Date().toISOString()
+            atualizadoEm: new Date().toISOString(),
         };
 
         // Escolas/Disciplinas apenas se for professor
@@ -503,7 +528,7 @@ function setupForm() {
 
         // A foto agora é enviada imediatamente no listener do input (setado no setupPhotoUpload)
         // Não precisamos mais fazer upload durante o submit do formulário principal.
-        
+
         // Mantemos apenas a referência da foto atual que já foi sincronizada
         const user = auth.getCurrentUser();
         dadosAtualizados.foto = user.foto || perfilAtual.foto || '';
@@ -531,18 +556,21 @@ function setupForm() {
 
             // Atualiza também na collection 'usuarios' para sincronizar CPF, telefone e FOTO
             const sessionUser = auth.getCurrentUser();
-            const usuarioAtualizado = await db.getById('usuarios', sessionUser._id || sessionUser.id);
+            const usuarioAtualizado = await db.getById(
+                'usuarios',
+                sessionUser._id || sessionUser.id
+            );
             if (usuarioAtualizado) {
                 usuarioAtualizado.cpf = cpfRaw;
                 usuarioAtualizado.telefone = telefoneRaw;
                 usuarioAtualizado.nome = nome;
                 usuarioAtualizado.foto = dadosAtualizados.foto; // SINCRONIZA FOTO
                 await db.update('usuarios', usuarioAtualizado);
-                
+
                 // Atualiza a sessão e a interface global
                 const finalUser = { ...auth.getCurrentUser(), ...usuarioAtualizado };
                 auth.updateSession(finalUser);
-                
+
                 if (window.updateAllAvatars) {
                     window.updateAllAvatars(finalUser);
                 }
@@ -550,7 +578,12 @@ function setupForm() {
             }
 
             if (tipoPerfilAtual === 'admin') {
-                const finalAdmin = { ...auth.getCurrentUser(), ...dadosAtualizados, cpf: cpfRaw, telefone: telefoneRaw };
+                const finalAdmin = {
+                    ...auth.getCurrentUser(),
+                    ...dadosAtualizados,
+                    cpf: cpfRaw,
+                    telefone: telefoneRaw,
+                };
                 auth.updateSession(finalAdmin);
                 if (window.updateAllAvatars) {
                     window.updateAllAvatars(finalAdmin);
@@ -564,7 +597,6 @@ function setupForm() {
             // Aguarda e redireciona
             await sleep(1500);
             window.location.href = 'dashboard.html';
-
         } catch (error) {
             console.error('❌ Erro crítico ao salvar perfil:', error);
             showToast('Erro ao salvar: ' + (error.message || 'Erro desconhecido'), 'error');
@@ -577,7 +609,11 @@ function setupForm() {
 function voltarDashboard() {
     if (typeof window.smartBack === 'function') {
         window.smartBack('dashboard.html');
-    } else if (window.history.length > 1 && document.referrer && !document.referrer.includes('perfil.html')) {
+    } else if (
+        window.history.length > 1 &&
+        document.referrer &&
+        !document.referrer.includes('perfil.html')
+    ) {
         window.history.back();
     } else {
         window.location.href = 'dashboard.html';
@@ -660,7 +696,7 @@ function setupAvaliacao() {
     const stars = document.querySelectorAll('input[name="estrelas"]');
     const labels = document.querySelectorAll('#ratingStars label');
     const ratingContainer = document.getElementById('ratingStars');
-    
+
     let selectedIndex = -1; // -1 means no rating selected yet
 
     function updateStarColors(limitIndex) {
@@ -723,8 +759,10 @@ function setupAvaliacao() {
             showToast('Por favor, deixe um comentário', 'warning');
             return;
         }
-        if (window.FiltroPalavroesUI
-            && !window.FiltroPalavroesUI.validarAntesDeEnviar(texto, { campo: campoAvaliacao })) {
+        if (
+            window.FiltroPalavroesUI &&
+            !window.FiltroPalavroesUI.validarAntesDeEnviar(texto, { campo: campoAvaliacao })
+        ) {
             return;
         }
 
@@ -733,16 +771,22 @@ function setupAvaliacao() {
         btnEnviar.disabled = true;
 
         try {
-            const ratingValue = starSelecionada ? parseInt(starSelecionada.value) : (selectedIndex + 1);
-            const baseUrl = window.API_BASE_URL || (window.location.hostname === 'localhost' ? `http://${window.location.hostname}:3001/api` : 'https://sistema-escolar-bfty.onrender.com/api');
+            const ratingValue = starSelecionada
+                ? parseInt(starSelecionada.value)
+                : selectedIndex + 1;
+            const baseUrl =
+                window.API_BASE_URL ||
+                (window.location.hostname === 'localhost'
+                    ? `http://${window.location.hostname}:3001/api`
+                    : 'https://sistema-escolar-bfty.onrender.com/api');
             const res = await fetch(`${baseUrl}/avaliacoes`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     estrelas: ratingValue,
-                    texto: texto
+                    texto: texto,
                 }),
-                credentials: 'include'
+                credentials: 'include',
             });
 
             const data = await res.json();
@@ -750,7 +794,9 @@ function setupAvaliacao() {
                 showToast('Avaliação enviada! Obrigado pelo feedback.', 'success');
                 document.getElementById('avaliacaoTexto').value = '';
                 // Limpar estrelas
-                stars.forEach(s => s.checked = false);
+                stars.forEach((s) => {
+                    s.checked = false;
+                });
                 selectedIndex = -1;
                 updateStarColors(-1);
             } else {
@@ -773,7 +819,9 @@ async function carregarStatusTermoAudioImagem() {
     if (!badge) return;
 
     try {
-        const res = await fetch(`${apiBaseUrl()}/moderacao/aceite-termo`, { credentials: 'include' });
+        const res = await fetch(`${apiBaseUrl()}/moderacao/aceite-termo`, {
+            credentials: 'include',
+        });
         if (!res.ok) throw new Error();
         const json = await res.json();
         const aceito = Boolean(json?.data?.aceito);
