@@ -161,9 +161,14 @@
         els.lista.setAttribute('aria-busy', 'false');
 
         if (!contatos.length) {
+            // A secretaria, e não a direção: pelo chat ela é o canal da
+            // família com a escola (MATRIZ_CONVERSA no ChatDiretoController),
+            // e é também quem resolve cadastro faltando para os outros
+            // perfis. Mandar para a direção daria à família um endereço que o
+            // próprio chat recusa.
             mostrarAviso(
                 'bi-people',
-                'Nenhum contato disponível ainda. A direção da escola pode ajudar.'
+                'Nenhum contato disponível ainda. Fale com a secretaria da escola.'
             );
             return;
         }
