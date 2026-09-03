@@ -37,6 +37,8 @@ const { obterPrinter } = require('./RelatorioController');
 const { avaliarTurmas, avaliarAluno } = require('../services/conformidade/monitorEvasao');
 const { montarFicha } = require('../services/conformidade/fichaConselhoTutelar');
 const { montarLote } = require('../services/conformidade/educacenso');
+const { gerarArquivo } = require('../services/conformidade/leiauteEducacenso');
+const { situacaoAtual } = require('../utils/soberaniaDados');
 const { montarPainel } = require('../services/conformidade/dadosAbertos');
 const {
     podeAnonimizar,
@@ -222,6 +224,31 @@ exports.exportarEducacenso = async (req, res) => {
                 `Lote do Censo Escolar ${lote.cabecalho.anoCenso} gerado com ` +
                 `${lote.resumo.totalAlunos} matrícula(s) e ${lote.resumo.alunosComPendencia} pendência(s).`,
         });
+
+        // Arquivo de migração do INEP (`|`-delimitado). Recusa lote com
+        // pendência: arquivo com aluno incompleto é declaração errada, e este é
+        // o último momento em que ainda dá tempo de corrigir o cadastro.
+        if (req.query.formato === 'txt') {
+            try {
+                const arquivo = gerarArquivo(lote, {
+                    permitirPendencias: req.query.permitirPendencias === 'true',
+                });
+                res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+                res.setHeader(
+                    'Content-Disposition',
+                    `attachment; filename=educacenso-${lote.cabecalho.anoCenso}.txt`
+                );
+                return res.send(arquivo.conteudo);
+            } catch (erro) {
+                if (erro.codigo !== 'EDUCACENSO_LOTE_INCOMPLETO') throw erro;
+                return res.status(409).json({
+                    success: false,
+                    error: erro.message,
+                    pendenciasEscola: erro.pendenciasEscola,
+                    pendencias: erro.pendencias,
+                });
+            }
+        }
 
         if (req.query.formato === 'arquivo') {
             res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -440,4 +467,12 @@ exports.confirmarConsentimento = async (req, res) => {
         logger.error(`[Conformidade.confirmarConsentimento] ${error.message}`);
         res.status(500).json({ success: false, error: 'Falha ao confirmar o consentimento.' });
     }
+};
+
+// GET /api/conformidade/soberania
+exports.soberaniaDeDados = async (_req, res) => {
+    // Sem dado de aluno na resposta: é diagnóstico de infraestrutura, e existe
+    // para que a rede consiga responder "onde ficam os dados?" com data e por
+    // escrito, em vez de depender da memória de quem criou o cluster.
+    res.json({ success: true, data: situacaoAtual() });
 };
