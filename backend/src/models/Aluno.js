@@ -110,6 +110,15 @@ const AlunoSchema = new mongoose.Schema(
         cpfAluno: String,
         nacionalidade: String,
         etnia: String,
+        // ─── Censo Escolar (INEP) ────────────────────────────────────────────
+        // `codigoInep` é a identificação nacional do estudante. Quem já estudou
+        // em outra rede chega com ele; sem gravá-lo, o Censo trata a mesma
+        // criança como duas matrículas e a rede perde o histórico dela.
+        codigoInep: { type: String, trim: true },
+        // O Censo exige sexo declarado (domínio 1/2). Fica em texto livre porque
+        // é o que o cadastro e a importação de planilha já produzem — a tradução
+        // para o código do INEP mora em services/conformidade/educacenso.js.
+        sexo: String,
         religiao: String,
         responsavelDados: mongoose.Schema.Types.Mixed,
         responsaveis: { type: [ResponsavelSchema], default: undefined },
