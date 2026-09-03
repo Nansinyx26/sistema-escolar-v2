@@ -58,4 +58,9 @@ router.post(
 router.get('/educacenso', gestao, ConformidadeController.exportarEducacenso);
 router.get('/dados-abertos', gestao, ConformidadeController.dadosAbertos);
 
+// Diagnóstico de soberania de dados (Portaria SGD/MGI 5.950/2023). É informação
+// de infraestrutura, não de aluno — mas diz em qual país estão os dados da
+// rede, então fica com a gestão, como o resto deste arquivo.
+router.get('/soberania', gestao, ConformidadeController.soberaniaDeDados);
+
 module.exports = router;

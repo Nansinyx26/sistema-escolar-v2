@@ -113,6 +113,24 @@ const startServer = async () => {
                 logger.warn(`⚠️  ${avisoPolitica2FA}`);
             }
 
+            // 5a-. Onde os dados estao hospedados? O boot registra.
+            //
+            // A regiao do cluster e escolha de contrato, nao de codigo — mas a
+            // pergunta chega numa auditoria com data, e a resposta nao pode
+            // depender de alguem lembrar onde criou o cluster ha dois anos.
+            // Sem declaracao o log sai em nivel de alerta: o sistema sobe e
+            // funciona, e a pendencia de conformidade fica visivel.
+            const soberania = require('./utils/soberaniaDados').situacaoAtual();
+            if (soberania.conforme) {
+                logger.info(`[Boot] ${soberania.mensagem}`, { action: 'boot.soberaniaDados' });
+            } else {
+                logger.alert('CONFORMIDADE_SOBERANIA_DADOS', soberania.mensagem, {
+                    action: 'boot.soberaniaDados',
+                    situacao: soberania.situacao,
+                });
+                logger.warn(`⚠️  ${soberania.mensagem}`);
+            }
+
             // 5a. Verifica o canal de e-mail e DIZ o resultado no log.
             //
             // O 2FA de diretor e secretaria depende inteiramente deste canal.
