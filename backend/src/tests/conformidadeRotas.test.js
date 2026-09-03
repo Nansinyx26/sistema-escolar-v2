@@ -335,3 +335,136 @@ describe('GET /api/conformidade/dados-abertos', () => {
         expect(res.body.data.metadados.anonimizacao.limiar).toBe(5);
     });
 });
+
+describe('POST /api/conformidade/alunos/:alunoId/anonimizar', () => {
+    it('exige confirmação explícita — a operação é irreversível', async () => {
+        const aluno = await criarAluno(escolaA, {
+            nome: 'Nina',
+            turma: '1A',
+            situacao: 'transferido',
+        });
+        const { cookies } = await sessao('secretaria', escolaA);
+
+        const res = await request(app)
+            .post(`/api/conformidade/alunos/${aluno._id}/anonimizar`)
+            .set('Cookie', cookies)
+            .send({});
+
+        expect(res.status).toBe(400);
+        expect((await Aluno.findById(aluno._id).lean()).nome).toBe('Nina');
+    });
+
+    it('recusa (409) anonimizar aluno ainda ativo', async () => {
+        const aluno = await criarAluno(escolaA, { nome: 'Otavio', turma: '1A' });
+        const { cookies } = await sessao('secretaria', escolaA);
+
+        const res = await request(app)
+            .post(`/api/conformidade/alunos/${aluno._id}/anonimizar`)
+            .set('Cookie', cookies)
+            .send({ confirmar: true });
+
+        expect(res.status).toBe(409);
+    });
+
+    it('apaga o identificador, preserva a vida escolar e registra em AuditLog', async () => {
+        const aluno = await criarAluno(escolaA, {
+            nome: 'Paula',
+            sobrenome: 'Lima',
+            cpfAluno: '12345678901',
+            endereco: 'Rua A, 10',
+            turma: '1A',
+            situacao: 'transferido',
+            notas: [{ materia: 'Matemática', valor: 8 }],
+        });
+        const { cookies } = await sessao('secretaria', escolaA);
+
+        const res = await request(app)
+            .post(`/api/conformidade/alunos/${aluno._id}/anonimizar`)
+            .set('Cookie', cookies)
+            .send({ confirmar: true });
+
+        expect(res.status).toBe(200);
+
+        const depois = await Aluno.findById(aluno._id).lean();
+        expect(depois.nome).toMatch(/^Aluno anonimizado/);
+        expect(depois.cpfAluno).toBeUndefined();
+        expect(depois.endereco).toBeUndefined();
+        expect(depois.turma).toBe('1A');
+        expect(depois.notas).toHaveLength(1);
+        expect(depois.anonimizadoEm).toBeTruthy();
+
+        // O log guarda QUAIS campos saíram, nunca o que havia neles: gravar o
+        // valor anterior manteria nome, CPF e endereço da criança num documento
+        // imutável e com retenção de um ano.
+        const log = await AuditLog.findOne({ acao: 'ANONIMIZAR_ALUNO' }).lean();
+        expect(log).toBeTruthy();
+        expect(JSON.stringify(log)).not.toContain('12345678901');
+        expect(JSON.stringify(log)).not.toContain('Paula');
+    });
+
+    it('professor não anonimiza cadastro de ninguém', async () => {
+        const aluno = await criarAluno(escolaA, {
+            nome: 'Rafa',
+            turma: '1A',
+            situacao: 'transferido',
+        });
+        const { cookies } = await sessao('professor', escolaA, { salaPrincipal: '1A' });
+
+        const res = await request(app)
+            .post(`/api/conformidade/alunos/${aluno._id}/anonimizar`)
+            .set('Cookie', cookies)
+            .send({ confirmar: true });
+
+        expect(res.status).toBe(403);
+    });
+});
+
+describe('GET /api/conformidade/soberania', () => {
+    it('diz a situação sem devolver nenhum dado de aluno nem credencial', async () => {
+        const { cookies } = await sessao('secretaria', escolaA);
+        const res = await request(app).get('/api/conformidade/soberania').set('Cookie', cookies);
+
+        expect(res.status).toBe(200);
+        expect(res.body.data).toHaveProperty('situacao');
+        expect(res.body.data).toHaveProperty('conforme');
+        expect(JSON.stringify(res.body)).not.toMatch(/mongodb(\+srv)?:\/\//);
+    });
+});
+
+describe('GET /api/conformidade/educacenso?formato=txt', () => {
+    it('recusa (409) gerar o arquivo enquanto houver cadastro incompleto', async () => {
+        // É o último momento em que ainda dá tempo de corrigir antes do prazo.
+        await criarAluno(escolaA, { nome: 'Sem dados', turma: '1A' });
+        const { cookies } = await sessao('secretaria', escolaA);
+
+        const res = await request(app)
+            .get('/api/conformidade/educacenso?formato=txt')
+            .set('Cookie', cookies);
+
+        expect(res.status).toBe(409);
+        expect(res.body.pendencias[0].faltando).toContain('Sexo');
+    });
+
+    it('gera o arquivo delimitado quando o cadastro está completo', async () => {
+        await criarAluno(escolaA, {
+            nome: 'Tais',
+            sobrenome: 'Moura',
+            matricula: '2026020',
+            turma: '1A',
+            nascimento: new Date('2016-02-11T00:00:00Z'),
+            sexo: 'Feminino',
+            etnia: 'Branca',
+            nacionalidade: 'Brasileira',
+        });
+        const { cookies } = await sessao('secretaria', escolaA);
+
+        const res = await request(app)
+            .get('/api/conformidade/educacenso?formato=txt')
+            .set('Cookie', cookies);
+
+        expect(res.status).toBe(200);
+        expect(res.headers['content-type']).toContain('text/plain');
+        expect(res.text.split('\n')[0]).toContain('00|35000001|');
+        expect(res.text).toContain('11/02/2016');
+    });
+});

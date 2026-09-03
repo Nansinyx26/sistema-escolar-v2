@@ -19,7 +19,7 @@
 // linha, e o CI roda essa verificação. O script lê a lista daqui de baixo —
 // não mantém cópia — então acrescentar um asset já o coloca sob a regra.
 // Detalhes em docs/QUALITY.md, seção "Service worker: o bump do VERSION".
-const VERSION = 'v12';
+const VERSION = 'v13';
 const STATIC_CACHE = `escola-static-${VERSION}`;
 const PAGES_CACHE = `escola-pages-${VERSION}`;
 const CURRENT_CACHES = [STATIC_CACHE, PAGES_CACHE];
