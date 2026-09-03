@@ -195,6 +195,43 @@ const PAGINAS_PUBLICAS = Object.freeze([
 ]);
 
 /**
+ * Diretórios que guardam PÁGINA, e não asset.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ * POR QUE ESTA LISTA EXISTE
+ * ─────────────────────────────────────────────────────────────────────────
+ * O gate do servidor decidia por lista de áreas conhecidas: caminho que não
+ * casasse com nenhuma entrada de `AREAS` saía por `next()` e ia direto para o
+ * `express.static`. Como `AREAS` cobre quatro diretórios e dois arquivos, TODA
+ * página fora deles era entregue a quem não tem sessão — 18 arquivos, entre
+ * eles `perfil.html`, `meus-dados.html`, `cadastro-aluno.html` e os dois
+ * utilitários de desenvolvimento em `/html/utils`.
+ *
+ * Não era vazamento de dado — as páginas são cascas e o conteúdo vem de rotas
+ * com `authJWT` — mas era vazamento de ESTRUTURA (endpoints chamados, nomes de
+ * campo, regra de negócio no JS) e, pior, uma armadilha de manutenção: página
+ * nova nascia pública no servidor, exatamente o contrário do que este arquivo
+ * promete algumas linhas acima.
+ *
+ * Com a lista, o gate passa a fechar por omissão DENTRO destes prefixos: o que
+ * não estiver em `PAGINAS_PUBLICAS` nem em área conhecida cai no
+ * `PADRAO_DESCONHECIDO`, que exige sessão.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ * POR QUE PREFIXOS, E NÃO "TUDO QUE NÃO É PÚBLICO"
+ * ─────────────────────────────────────────────────────────────────────────
+ * O gate roda ANTES do `express.static` e vale para toda requisição — inclusive
+ * `/api`, que se defende sozinho com `authJWT`, e os diretórios de asset, de que
+ * a PRÓPRIA tela de login depende para renderizar. Fechar por omissão sem
+ * recorte derrubaria a API inteira e deixaria o login sem CSS.
+ *
+ * Estes quatro são os diretórios de `staticDirectories` (ver app.js) que servem
+ * página. Os outros cinco — `css`, `js`, `img`, `favicon` e
+ * `portal-responsavel/dist` — são asset e ficam de fora de propósito.
+ */
+const PREFIXOS_DE_PAGINA = Object.freeze(['/html', '/detalhes', '/direcao', '/graficos']);
+
+/**
  * Veredito de uma página que a matriz não conhece.
  *
  * `perfis: null` significa "qualquer perfil autenticado serve" — e não "todos
@@ -227,6 +264,18 @@ function normalizarCaminho(caminho) {
 /*  '/html/administrativo' NÃO pode casar com o prefixo '/html/admin'.       */
 function dentroDe(caminho, prefixo) {
     return caminho === prefixo || caminho.startsWith(`${prefixo}/`);
+}
+
+/**
+ * O caminho aponta para uma PÁGINA (e portanto está sujeito ao fechamento por
+ * omissão), ou para asset/API (que seguem seu próprio caminho)?
+ *
+ * @param {string} caminho Caminho normalizável.
+ * @returns {boolean}
+ */
+function ehCaminhoDePagina(caminho) {
+    const alvo = normalizarCaminho(caminho);
+    return PREFIXOS_DE_PAGINA.some((prefixo) => dentroDe(alvo, prefixo));
 }
 
 /** Último segmento do caminho, em caixa baixa. */
@@ -411,8 +460,10 @@ module.exports = {
     AREAS,
     PAGINAS_PUBLICAS,
     PAGINAS_SEM_SESSAO,
+    PREFIXOS_DE_PAGINA,
     normalizarCaminho,
     regraDe,
+    ehCaminhoDePagina,
     perfisPermitidos,
     vereditoDe,
     podeAbrir,
