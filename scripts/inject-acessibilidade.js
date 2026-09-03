@@ -22,7 +22,16 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
-const PULAR_DIRETORIOS = ['node_modules', 'portal-responsavel', '.git', 'coverage', 'dist'];
+// `.claude` guarda TEMPLATE de skill, não página do sistema: injetar
+// acessibilidade lá mexeria em material de ferramenta, não em tela de usuário.
+const PULAR_DIRETORIOS = [
+    'node_modules',
+    'portal-responsavel',
+    '.git',
+    '.claude',
+    'coverage',
+    'dist',
+];
 const PULAR_ARQUIVOS = ['offline.html'];
 
 const CSS = 'css/acessibilidade.css';
