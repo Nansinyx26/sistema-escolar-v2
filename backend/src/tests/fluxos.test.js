@@ -161,6 +161,39 @@ describe('Navegação e tratamento de erros', () => {
         expect(res.text).not.toContain('ESCOLA JAGUARI');
     });
 
+    // Contraparte do teste acima depois da Issue #213. Dentro dos prefixos de
+    // página o gate fecha por omissão, então o ANÔNIMO vai para o login mesmo
+    // quando o arquivo não existe — de propósito: "não existe" e "existe e você
+    // não pode ver" precisam responder igual, ou a diferença enumera o sistema.
+    //
+    // Para quem TEM sessão o 404 amigável continua sendo a resposta, e é isso
+    // que este teste fixa. Sem ele, alguém poderia "consertar" o gate fazendo-o
+    // checar o disco — o que devolveria o 404 ao anônimo e reabriria o oráculo.
+    it('erro 404 amigável continua valendo sob /html para quem tem sessão', async () => {
+        const { assinarTokenSessao } = require('../utils/sessionToken');
+        const usuario = await criarUsuario({
+            email: 'sessao_404@escola.test',
+            perfil: 'professor',
+            nome: 'Sessao Para 404',
+        });
+
+        const res = await request(app)
+            .get('/html/pagina-que-nao-existe.html')
+            .set('Cookie', [`escola_jwt=${assinarTokenSessao(usuario)}`]);
+
+        expect(res.status).toBe(404);
+        expect(res.text).toContain('Página não encontrada');
+    });
+
+    it('anônimo não distingue página inexistente de página restrita sob /html', async () => {
+        const inexistente = await request(app).get('/html/pagina-que-nao-existe.html');
+        const restrita = await request(app).get('/html/perfil.html');
+
+        expect(inexistente.status).toBe(restrita.status);
+        expect(inexistente.headers.location).toBe(restrita.headers.location);
+        expect(inexistente.headers.location).toMatch(/\/html\/login\.html/);
+    });
+
     it('todos os destinos publicos de getRedirectPath existem e retornam 200', async () => {
         const destinos = [
             '/html/escolher-perfil.html',
