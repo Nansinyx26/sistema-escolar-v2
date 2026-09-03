@@ -680,3 +680,31 @@ export async function subscribePush(subscription: any): Promise<void> {
 export async function getChatNaoLidas(): Promise<{ total: number }> {
   return apiFetch<{ total: number }>('/chat-direto/nao-lidas');
 }
+
+// ─── Canal de denúncia (ECA Digital) ─────────────────────────────────────────
+
+export type CategoriaDenuncia =
+  | 'bullying'
+  | 'ciberbullying'
+  | 'assedio'
+  | 'discriminacao'
+  | 'violencia'
+  | 'automutilacao'
+  | 'outro';
+
+/**
+ * Registra uma denúncia no canal aberto — sem mensagem vinculada.
+ *
+ * A rota é a mesma que denuncia mensagem de chat (`/moderacao/denunciar`): o
+ * servidor distingue os dois casos pelo corpo. Para quem denuncia existe um
+ * botão só, e é assim que tem que ser.
+ */
+export async function enviarDenuncia(payload: {
+  categoria: CategoriaDenuncia;
+  relato: string;
+}): Promise<{ protocolo: string; mensagem: string }> {
+  return apiFetch<{ protocolo: string; mensagem: string }>('/moderacao/denunciar', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
