@@ -28,6 +28,7 @@
  */
 
 const Escola = require('../models/Escola');
+const Usuario = require('../models/Usuario');
 const Aluno = require('../models/Aluno');
 const logger = require('../utils/logger');
 const { logAction } = require('../utils/auditHelper');
@@ -43,6 +44,17 @@ const {
     CAMPOS_PRESERVADOS,
 } = require('../services/conformidade/anonimizacaoAluno');
 const { DIAS_LETIVOS_PADRAO } = require('../services/conformidade/frequenciaLdb');
+const {
+    VALIDADE_MS,
+    METODOS,
+    gerarCodigo,
+    situacaoDoCodigo,
+    registroDeConsentimento,
+    emailDoCodigo,
+} = require('../services/conformidade/validacaoConsentimento');
+const { hashSegredo, conferirSegredo } = require('../utils/codigosBackup');
+const { enviarEmail } = require('../services/EnvioEmail');
+const { CONSENTIMENTO_ID, CONSENTIMENTO_VERSAO } = require('../utils/consentimentoLgpd');
 
 /** Dias letivos previstos: query > padrão da LDB. Sempre inteiro positivo. */
 function diasLetivosDaRequisicao(req) {
@@ -304,5 +316,128 @@ exports.anonimizarAluno = async (req, res) => {
     } catch (error) {
         logger.error(`[Conformidade.anonimizarAluno] ${error.message}`);
         res.status(500).json({ success: false, error: 'Falha ao anonimizar o cadastro.' });
+    }
+};
+
+// POST /api/conformidade/consentimento/codigo
+exports.solicitarCodigoConsentimento = async (req, res) => {
+    try {
+        const usuarioId = req.user?.id || req.user?._id;
+        const usuario = await Usuario.findById(usuarioId).select('nome email').lean();
+        if (!usuario?.email) {
+            return res.status(400).json({
+                success: false,
+                error: 'Não há e-mail cadastrado nesta conta para enviar o código.',
+            });
+        }
+
+        const codigo = gerarCodigo();
+        await Usuario.updateOne(
+            { _id: usuarioId },
+            {
+                $set: {
+                    consentimentoPendingToken: await hashSegredo(codigo),
+                    consentimentoPendingExpiry: new Date(Date.now() + VALIDADE_MS),
+                    consentimentoPendingTentativas: 0,
+                },
+            }
+        );
+
+        const { assunto, html } = emailDoCodigo(codigo, usuario.nome);
+        await enviarEmail(usuario.email, assunto, html);
+
+        // A resposta NÃO devolve o código nem o e-mail completo. Devolver o
+        // e-mail inteiro aqui entregaria o endereço do responsável a quem
+        // estivesse com a sessão aberta no aparelho dele.
+        res.json({
+            success: true,
+            data: { enviado: true, validadeMinutos: Math.round(VALIDADE_MS / 60000) },
+        });
+    } catch (error) {
+        logger.error(`[Conformidade.solicitarCodigoConsentimento] ${error.message}`);
+        res.status(500).json({ success: false, error: 'Falha ao enviar o código.' });
+    }
+};
+
+// POST /api/conformidade/consentimento/confirmar
+exports.confirmarConsentimento = async (req, res) => {
+    try {
+        const usuarioId = req.user?.id || req.user?._id;
+        const usuario = await Usuario.findById(usuarioId)
+            .select(
+                '+consentimentoPendingToken +consentimentoPendingExpiry ' +
+                    '+consentimentoPendingTentativas'
+            )
+            .lean();
+
+        const situacao = situacaoDoCodigo(
+            {
+                expiraEm: usuario?.consentimentoPendingExpiry,
+                tentativas: usuario?.consentimentoPendingTentativas,
+            },
+            new Date()
+        );
+        if (!situacao.valido) {
+            return res.status(400).json({ success: false, error: situacao.motivo });
+        }
+
+        const confere = await conferirSegredo(
+            String(req.body?.codigo || ''),
+            usuario.consentimentoPendingToken
+        );
+        if (!confere) {
+            // Conta a tentativa ANTES de responder: sem isso, o limite de
+            // tentativas é decorativo e os 10^6 códigos caem por força bruta.
+            await Usuario.updateOne(
+                { _id: usuarioId },
+                { $inc: { consentimentoPendingTentativas: 1 } }
+            );
+            return res.status(401).json({ success: false, error: 'Código inválido.' });
+        }
+
+        const registro = registroDeConsentimento({
+            termoId: CONSENTIMENTO_ID,
+            versao: CONSENTIMENTO_VERSAO,
+            metodoValidacao: METODOS.EMAIL,
+            req,
+        });
+
+        await Usuario.updateOne(
+            { _id: usuarioId },
+            {
+                $push: { lgpdHistory: registro },
+                $set: {
+                    // Mesma dupla escrita do aceite do Termo: o campo é o que o
+                    // portal e o `/api/auth/me` leem; o histórico é a prova.
+                    consentimentoAceiteEm: registro.aceitoEm,
+                    consentimentoVersao: CONSENTIMENTO_VERSAO,
+                },
+                $unset: {
+                    consentimentoPendingToken: '',
+                    consentimentoPendingExpiry: '',
+                    consentimentoPendingTentativas: '',
+                },
+            }
+        );
+
+        await logAction(req, 'LGPD_CONSENTIMENTO_VALIDADO', 'Usuarios', {
+            recursoId: String(usuarioId),
+            descricao:
+                `Consentimento ${CONSENTIMENTO_VERSAO} confirmado com validação ` +
+                `${METODOS.EMAIL} (LGPD, art. 14, §1º).`,
+        });
+
+        res.json({
+            success: true,
+            data: {
+                termoId: registro.termoId,
+                versao: registro.versao,
+                aceitoEm: registro.aceitoEm,
+                metodoValidacao: registro.metodoValidacao,
+            },
+        });
+    } catch (error) {
+        logger.error(`[Conformidade.confirmarConsentimento] ${error.message}`);
+        res.status(500).json({ success: false, error: 'Falha ao confirmar o consentimento.' });
     }
 };

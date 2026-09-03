@@ -19,6 +19,7 @@
 const express = require('express');
 const router = express.Router();
 const authorize = require('../middleware/authorize');
+const { codeIpLimiter, codeContaLimiter } = require('../middleware/rateLimiters');
 const ConformidadeController = require('../controllers/ConformidadeController');
 
 const gestao = authorize(['diretor', 'secretaria', 'admin']);
@@ -36,6 +37,23 @@ router.get('/frequencia/:alunoId', pedagogico, ConformidadeController.frequencia
 // Anonimização é irreversível e apaga dado pessoal de criança: fica com a
 // gestão da unidade, nunca com o professor.
 router.post('/alunos/:alunoId/anonimizar', gestao, ConformidadeController.anonimizarAluno);
+
+// Consentimento com validação forte (LGPD, art. 14, §1º). SEM `authorize`:
+// quem consente é o titular — responsável, professor, qualquer perfil. Os
+// limitadores são os mesmos do 2FA por e-mail: o endpoint dispara envio de
+// mensagem e confere código de 6 dígitos, os dois alvos clássicos de abuso.
+router.post(
+    '/consentimento/codigo',
+    codeIpLimiter,
+    codeContaLimiter,
+    ConformidadeController.solicitarCodigoConsentimento
+);
+router.post(
+    '/consentimento/confirmar',
+    codeIpLimiter,
+    codeContaLimiter,
+    ConformidadeController.confirmarConsentimento
+);
 
 router.get('/educacenso', gestao, ConformidadeController.exportarEducacenso);
 router.get('/dados-abertos', gestao, ConformidadeController.dadosAbertos);
