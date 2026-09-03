@@ -17,11 +17,13 @@
 
 ## 1. Objetivo da funcionalidade
 
-1.1. O chat do Sistema Escolar permite a comunicação direta entre a equipe escolar (direção, coordenação, secretaria e professores) e os responsáveis legais e alunos, com o objetivo de tratar de assuntos pedagógicos, administrativos e de acompanhamento escolar — como faltas, notas, ocorrências, avisos e agendamentos.
+1.1. O chat do Sistema Escolar permite a comunicação direta entre os membros da equipe escolar (direção, coordenação, secretaria e professores), com o objetivo de tratar de assuntos pedagógicos, administrativos e de acompanhamento escolar — como faltas, notas, ocorrências, avisos e agendamentos.
+
+1.1.1. Para o **responsável legal**, o chat é o canal com a **secretaria da escola em que o filho está matriculado**. Assuntos de professores e da direção — combinar um horário, questionar uma nota, pedir uma reunião — passam por ela, que encaminha e registra. O chat **não** abre conversa direta da família com professor ou direção.
 
 1.2. Além de mensagens de texto, o chat permite o envio de **mensagens de áudio** (gravadas pelo próprio dispositivo) e de **imagens e arquivos** (fotos, documentos digitalizados e anexos), para facilitar situações em que escrever seria mais demorado ou insuficiente — por exemplo, o envio de um atestado, de uma justificativa de falta ou de um recado gravado.
 
-1.3. O chat **não substitui** os canais oficiais da escola para situações de emergência, denúncias formais ou comunicações que exijam registro em ata ou protocolo. Para essas situações, procure diretamente a secretaria ou a direção.
+1.3. O chat **não substitui** os canais oficiais da escola para situações de emergência, denúncias formais ou comunicações que exijam registro em ata ou protocolo. Para essas situações, procure a escola presencialmente — a secretaria, ou a direção quando o assunto exigir.
 
 ---
 
