@@ -193,6 +193,15 @@ const AlunoSchema = new mongoose.Schema(
 
         foto: String, // Pode ser DataURL ou ID do GridFS
 
+        // ─── Anonimização (LGPD, art. 12 e 18, VI) ──────────────────────────────
+        // Marca de que o cadastro passou pelo direito ao esquecimento: os
+        // identificadores foram removidos e sobrou a vida escolar. É irreversível
+        // e por isso precisa ficar registrado no próprio documento — sem esta
+        // marca, uma segunda anonimização gravaria "anonimizado do anonimizado" e
+        // a secretaria não teria como saber por que o aluno perdeu o nome.
+        anonimizadoEm: { type: Date, default: null },
+        anonimizadoPor: { type: String, default: null },
+
         // Campos de controle
         ativo: { type: Boolean, default: true },
         codigoSecreto: { type: String, unique: true, sparse: true },

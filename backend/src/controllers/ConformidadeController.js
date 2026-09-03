@@ -37,6 +37,11 @@ const { avaliarTurmas, avaliarAluno } = require('../services/conformidade/monito
 const { montarFicha } = require('../services/conformidade/fichaConselhoTutelar');
 const { montarLote } = require('../services/conformidade/educacenso');
 const { montarPainel } = require('../services/conformidade/dadosAbertos');
+const {
+    podeAnonimizar,
+    planoDeAnonimizacao,
+    CAMPOS_PRESERVADOS,
+} = require('../services/conformidade/anonimizacaoAluno');
 const { DIAS_LETIVOS_PADRAO } = require('../services/conformidade/frequenciaLdb');
 
 /** Dias letivos previstos: query > padrão da LDB. Sempre inteiro positivo. */
@@ -243,5 +248,61 @@ exports.dadosAbertos = async (req, res) => {
             success: false,
             error: 'Falha ao montar o painel de dados abertos.',
         });
+    }
+};
+
+// POST /api/conformidade/alunos/:alunoId/anonimizar
+exports.anonimizarAluno = async (req, res) => {
+    try {
+        // Confirmação explícita, e não um `?confirmar=1` na URL: a operação é
+        // IRREVERSÍVEL e não pode acontecer por um link clicado sem querer ou
+        // por um GET repetido pelo navegador.
+        if (req.body?.confirmar !== true) {
+            return res.status(400).json({
+                success: false,
+                error:
+                    'A anonimização é irreversível. Envie { "confirmar": true } para prosseguir, ' +
+                    'e só depois de emitir e arquivar o histórico escolar do aluno.',
+            });
+        }
+
+        const filtroEscola = escolaMatch(req.escolaId);
+        const aluno = await Aluno.findOne({
+            ...filtroEscola,
+            _id: String(req.params.alunoId),
+        }).lean();
+
+        const permissao = podeAnonimizar(aluno);
+        if (!permissao.permitido) {
+            return res.status(aluno ? 409 : 404).json({ success: false, error: permissao.motivo });
+        }
+
+        const plano = planoDeAnonimizacao(aluno, { executadoPor: req.user?.nome || null });
+        await Aluno.updateOne({ _id: aluno._id }, { $set: plano.$set, $unset: plano.$unset });
+
+        // O log registra QUAIS campos saíram, jamais o QUE havia neles. Gravar
+        // `valorAnterior` aqui guardaria nome, CPF e endereço da criança num
+        // documento imutável e com retenção de um ano — a anonimização teria
+        // apenas mudado o dado de lugar.
+        await logAction(req, 'ANONIMIZAR_ALUNO', 'Conformidade', {
+            recursoId: String(aluno._id),
+            descricao:
+                `Cadastro anonimizado (LGPD, art. 18, VI) — ${plano.camposRemovidos.length} ` +
+                `campo(s) identificador(es) removido(s); vida escolar preservada. ` +
+                `Situação registrada: ${aluno.situacao || 'não informada'}.`,
+        });
+
+        res.json({
+            success: true,
+            data: {
+                alunoId: String(aluno._id),
+                pseudonimo: plano.pseudonimo,
+                camposRemovidos: plano.camposRemovidos,
+                camposPreservados: CAMPOS_PRESERVADOS,
+            },
+        });
+    } catch (error) {
+        logger.error(`[Conformidade.anonimizarAluno] ${error.message}`);
+        res.status(500).json({ success: false, error: 'Falha ao anonimizar o cadastro.' });
     }
 };

@@ -33,6 +33,10 @@ router.get(
 );
 router.get('/frequencia/:alunoId', pedagogico, ConformidadeController.frequenciaDoAluno);
 
+// Anonimização é irreversível e apaga dado pessoal de criança: fica com a
+// gestão da unidade, nunca com o professor.
+router.post('/alunos/:alunoId/anonimizar', gestao, ConformidadeController.anonimizarAluno);
+
 router.get('/educacenso', gestao, ConformidadeController.exportarEducacenso);
 router.get('/dados-abertos', gestao, ConformidadeController.dadosAbertos);
 
