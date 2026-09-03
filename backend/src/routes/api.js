@@ -254,6 +254,10 @@ router.use('/comentarios', authJWT, filtrarPorEscola, require('./comentarios'));
 // que o controller usa para isolar a fila. Sem ele, a moderação vira global.
 router.use('/moderacao', authJWT, filtrarPorEscola, require('./moderacao'));
 router.use('/relatorios', authJWT, horizontalFilter, filtrarPorEscola, require('./relatorios'));
+// Deveres legais (LDB, Censo Escolar/INEP e LAI). `horizontalFilter` vem antes
+// de `filtrarPorEscola` porque o recorte do professor é por TURMA e o da
+// exportação é por ESCOLA — as duas barreiras se somam, não se substituem.
+router.use('/conformidade', authJWT, horizontalFilter, filtrarPorEscola, require('./conformidade'));
 router.use('/audio', require('./audio'));
 router.use('/tts', authJWT, require('./tts'));
 router.use('/ia', authJWT, horizontalFilter, filtrarPorEscola, require('./ia'));
