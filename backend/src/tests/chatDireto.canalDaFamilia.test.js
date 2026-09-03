@@ -132,8 +132,8 @@ const enviar = (sessao, paraId) =>
         .post('/api/chat-direto/enviar')
         .send({ destinatarioId: paraId, mensagem: 'Bom dia, tudo bem?' });
 
-describe('professor e direção estão fechados para a família', () => {
-    it.each(['professor', 'diretor'])(
+describe('professor, direção e suporte estão fechados para a família', () => {
+    it.each(['professor', 'diretor', 'admin'])(
         'BARRA responsável → %s, e não grava nada',
         async (perfil) => {
             const equipe = await conta(`${perfil}.fechado@escola.test`, perfil);
@@ -146,7 +146,7 @@ describe('professor e direção estão fechados para a família', () => {
         }
     );
 
-    it.each(['professor', 'diretor'])('BARRA também %s → responsável', async (perfil) => {
+    it.each(['professor', 'diretor', 'admin'])('BARRA também %s → responsável', async (perfil) => {
         const equipe = await conta(`${perfil}.fechado2@escola.test`, perfil);
         const mae = await responsavelDe(`mae.de.${perfil}@escola.test`);
 
@@ -194,6 +194,10 @@ describe('a equipe escolar continua conversando entre si', () => {
         ['professor', 'secretaria'],
         ['diretor', 'secretaria'],
         ['professor', 'professor'],
+        // O suporte segue alcançável por quem trabalha na escola — o que a
+        // política fechou foi a ponta da família, não o canal de suporte.
+        ['admin', 'professor'],
+        ['admin', 'secretaria'],
     ])('%s ↔ %s', async (perfilA, perfilB) => {
         const a = await conta(`${perfilA}.eq1.${perfilB}@escola.test`, perfilA);
         const b = await conta(`${perfilB}.eq2.${perfilA}@escola.test`, perfilB);
@@ -283,6 +287,108 @@ describe('a secretaria é a da escola do filho', () => {
 
         expect((await enviar(mae, secretaria.id)).status).toBe(403);
         expect(await ChatDireto.countDocuments()).toBe(1);
+    });
+});
+
+/**
+ * A CONVERSA ANTERIOR TAMBÉM SOME.
+ *
+ * Fechar só o envio deixaria a política pela metade: as conversas com professor,
+ * direção e suporte EXISTEM no banco, e um GET no histórico as devolveria
+ * inteiras para os dois lados. Aqui as mensagens são gravadas direto no modelo,
+ * sem passar pelo envio, justamente porque o envio já não as aceitaria — é o
+ * histórico legado que estes casos representam.
+ */
+describe('o histórico de um par fechado deixa de ser alcançável', () => {
+    /** Grava uma conversa antiga entre dois usuários, sem passar pela API. */
+    const conversaAntiga = (de, para) =>
+        ChatDireto.create({
+            remetenteId: de.id,
+            destinatarioId: para.id,
+            escolaId: String(escola._id),
+            mensagem: 'combinamos a reunião de quinta',
+        });
+
+    it.each(['professor', 'diretor', 'admin'])(
+        'responsável não lê o histórico com %s',
+        async (perfil) => {
+            const equipe = await conta(`${perfil}.hist@escola.test`, perfil);
+            const mae = await responsavelDe(`mae.hist.${perfil}@escola.test`);
+            await conversaAntiga(equipe, mae);
+
+            const res = await mae.agent.get(`/api/chat-direto/historico/${equipe.id}`);
+
+            expect(res.status).toBe(403);
+            expect(res.body.data).toBeUndefined();
+        }
+    );
+
+    it('e o outro lado também não — a regra é do par', async () => {
+        const professor = await conta('prof.hist2@escola.test', 'professor');
+        const mae = await responsavelDe('mae.hist2@escola.test');
+        await conversaAntiga(mae, professor);
+
+        expect((await professor.agent.get(`/api/chat-direto/historico/${mae.id}`)).status).toBe(
+            403
+        );
+    });
+
+    it('a conversa com a secretaria continua legível', async () => {
+        const secretaria = await conta('sec.hist@escola.test', 'secretaria');
+        const mae = await responsavelDe('mae.hist.sec@escola.test');
+        await conversaAntiga(secretaria, mae);
+
+        const res = await mae.agent.get(`/api/chat-direto/historico/${secretaria.id}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.data).toHaveLength(1);
+    });
+
+    it('reagir a uma mensagem do fio fechado é recusado', async () => {
+        // `editarMensagem` se resolve sozinho pela janela de 15 minutos; reagir
+        // não tem prazo, e sem barreira seria a última forma de a família ainda
+        // alcançar o professor.
+        const professor = await conta('prof.reacao@escola.test', 'professor');
+        const mae = await responsavelDe('mae.reacao@escola.test');
+        const msg = await conversaAntiga(professor, mae);
+
+        const res = await mae.agent
+            .post('/api/chat-direto/reagir')
+            .send({ mensagemId: String(msg._id), emoji: '👍' });
+
+        expect(res.status).toBe(403);
+        expect((await ChatDireto.findById(msg._id)).reacoes).toHaveLength(0);
+    });
+
+    it('o selo de não lidas não conta o que a família não pode abrir', async () => {
+        const professor = await conta('prof.selo@escola.test', 'professor');
+        const admin = await conta('admin.selo@escola.test', 'admin');
+        const secretaria = await conta('sec.selo@escola.test', 'secretaria');
+        const mae = await responsavelDe('mae.selo@escola.test');
+
+        await conversaAntiga(professor, mae);
+        await conversaAntiga(admin, mae);
+        await conversaAntiga(secretaria, mae);
+
+        const res = await mae.agent.get('/api/chat-direto/nao-lidas');
+
+        // Só a da secretaria. Sem o filtro o selo mostraria 3 e levaria a uma
+        // tela sem contato nenhum para abrir — um número que nunca zera.
+        expect(res.status).toBe(200);
+        expect(res.body.data.total).toBe(1);
+    });
+
+    it('o selo da equipe não muda: o professor continua contando o suporte', async () => {
+        const professor = await conta('prof.selo2@escola.test', 'professor');
+        const admin = await conta('admin.selo2@escola.test', 'admin');
+        const colega = await conta('prof.selo3@escola.test', 'professor');
+
+        await conversaAntiga(admin, professor);
+        await conversaAntiga(colega, professor);
+
+        const res = await professor.agent.get('/api/chat-direto/nao-lidas');
+
+        expect(res.body.data.total).toBe(2);
     });
 });
 

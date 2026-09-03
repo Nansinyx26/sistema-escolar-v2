@@ -120,10 +120,10 @@ async function validarAudio(bruto, remetenteId) {
  * ele que volta — `services/vinculoTurmas.js` ainda responde a pergunta.
  *
  * `admin` é tratado à parte: conversa com qualquer perfil e atravessa escolas,
- * porque é o papel de suporte da rede. Ele NÃO é um canal escolar — não aparece
- * em lista nenhuma para quem nunca falou com ele (ver `listarContatos`), então
- * a família não ganha por aqui a via para a escola que a matriz acabou de
- * fechar.
+ * porque é o papel de suporte da rede. A ÚNICA exceção é o responsável — o
+ * suporte também não fala com a família. Uma porta só significa uma porta: se o
+ * admin continuasse alcançável, a família teria dois canais e o segundo seria
+ * justamente o que ninguém da escola vê.
  */
 const MATRIZ_CONVERSA = {
     professor: ['professor', 'diretor', 'secretaria'],
@@ -138,10 +138,18 @@ const MATRIZ_CONVERSA = {
 
 /** true se o par de perfis está na matriz, em qualquer direção. */
 function paresPermitidos(perfilA, perfilB) {
-    if (perfilA === 'admin' || perfilB === 'admin') return true;
+    const envolveResponsavel = perfilA === 'responsavel' || perfilB === 'responsavel';
+
+    // O atalho do admin vem DEPOIS da guarda de propósito: "suporte fala com
+    // todo mundo" vale para a equipe, não para a família. Sem isto o suporte da
+    // rede seria a segunda porta que esta matriz existe para não ter.
+    if (!envolveResponsavel && (perfilA === 'admin' || perfilB === 'admin')) return true;
+
     const deA = MATRIZ_CONVERSA[perfilA];
     const deB = MATRIZ_CONVERSA[perfilB];
-    if (!deA || !deB) return false; // perfil desconhecido nunca conversa
+    // Perfil que não está na matriz nunca conversa — e `admin` é um deles, que
+    // é o que faz o par admin↔responsavel cair aqui como negado.
+    if (!deA || !deB) return false;
     return deA.includes(perfilB) && deB.includes(perfilA);
 }
 
@@ -162,12 +170,10 @@ function recusaDePar(perfilRemetente, perfilDestino) {
         return 'Responsáveis não conversam entre si. Fale com a secretaria da escola.';
     }
 
-    const par = [perfilRemetente, perfilDestino];
-    const equipeFechada = par.includes('professor') || par.includes('diretor');
-    if (par.includes('responsavel') && equipeFechada) {
+    if (perfilRemetente === 'responsavel' || perfilDestino === 'responsavel') {
         return perfilRemetente === 'responsavel'
-            ? 'Pelo chat, o contato da família é com a secretaria da escola — ela encaminha à professora ou à direção.'
-            : 'Professores e direção não conversam com responsáveis pelo chat. O contato com a família é feito pela secretaria.';
+            ? 'Pelo chat, o contato da família é com a secretaria da escola — ela encaminha à professora, à direção ou ao suporte.'
+            : 'Responsáveis conversam apenas com a secretaria da escola. Fale com ela para chegar à família.';
     }
 
     return 'Este tipo de conversa não é permitido.';
@@ -462,6 +468,28 @@ exports.getHistorico = async (req, res) => {
         const { outroUsuarioId } = req.params;
         const { before, search, filter, data } = req.query;
         const meuId = String(req.user.id || req.user._id || '');
+
+        // LER É CONVERSAR — a mesma autorização do envio, e não uma mais frouxa.
+        //
+        // Participar da conversa já não basta. Antes desta política a família
+        // trocava mensagem com professor e direção, e essas conversas EXISTEM no
+        // banco: sem esta barreira, fechar o envio só impediria a mensagem nova
+        // enquanto todo o histórico continuava a um GET de distância, aberto
+        // pelos dois lados. O canal ficaria fechado no papel e legível na
+        // prática.
+        //
+        // Vale nos DOIS sentidos, porque a regra é do par: o professor também
+        // não reabre a conversa antiga com a família. A conversa não é apagada —
+        // ela deixa de ser alcançável por quem não pode mais conversar. Quem
+        // precisa do próprio registro continua com a exportação de dados
+        // pessoais (`MeusDadosController`, LGPD).
+        const permissao = await podeConversar(
+            { ...req.user, escolaId: req.escolaId },
+            outroUsuarioId
+        );
+        if (!permissao.ok) {
+            return res.status(permissao.status).json({ success: false, error: permissao.error });
+        }
 
         // `$and` em vez de sobrescrever `$or`: antes o filtro de busca
         // substituía a cláusula da conversa e o `$or` original se perdia — com
@@ -821,6 +849,16 @@ exports.reagirMensagem = async (req, res) => {
                 .json({ success: false, error: 'Você não participa desta conversa.' });
         }
 
+        // Participar não basta: reagir é interagir, e um fio que a matriz fechou
+        // não aceita interação nova. Diferente de `editarMensagem`, aqui não há
+        // janela de tempo que resolva sozinha — sem esta checagem a reação seria
+        // a única forma de a família ainda alcançar o professor.
+        const outroLado = String(msg.remetenteId) === meuId ? msg.destinatarioId : msg.remetenteId;
+        const permissao = await podeConversar({ ...req.user, escolaId: req.escolaId }, outroLado);
+        if (!permissao.ok) {
+            return res.status(permissao.status).json({ success: false, error: permissao.error });
+        }
+
         // Remove reação anterior do mesmo usuário se existir
         msg.reacoes = msg.reacoes.filter((r) => String(r.usuarioId) !== meuId);
 
@@ -1146,10 +1184,15 @@ exports.listarContatos = async (req, res) => {
         // parte, porque é o papel de suporte da rede. Sem este ramo,
         // `MATRIZ_CONVERSA['admin']` é `undefined`, `perfisAlcancaveis` nasce
         // vazio e a lista do próprio admin voltava sempre vazia.
-        const perfisAlcancaveis =
+        //
+        // O `.filter` vale para os DOIS ramos, e não só para o de baixo: é ele
+        // que tira 'responsavel' da lista do admin. O suporte da rede também
+        // não fala com a família.
+        const perfisAlcancaveis = (
             meuPerfil === 'admin'
                 ? [...Object.keys(MATRIZ_CONVERSA)]
-                : (MATRIZ_CONVERSA[meuPerfil] || []).filter((p) => paresPermitidos(meuPerfil, p));
+                : MATRIZ_CONVERSA[meuPerfil] || []
+        ).filter((p) => paresPermitidos(meuPerfil, p));
         if (!perfisAlcancaveis.length) return res.json({ success: true, data: [] });
 
         // O outro lado do mesmo buraco, e o que fazia a mensagem do admin
@@ -1158,7 +1201,12 @@ exports.listarContatos = async (req, res) => {
         // lista de TODO MUNDO. O envio dele passava (`podeConversar` libera), a
         // mensagem era gravada e emitida pelo socket — mas o destinatário não
         // tinha por onde reabrir a conversa, e sumia no recarregar da página.
-        perfisAlcancaveis.push('admin');
+        //
+        // Menos para o responsável: para ele o admin não é alcançável, então
+        // acrescentá-lo aqui devolveria pelo histórico a porta que a matriz
+        // fechou — inclusive as conversas com o suporte que já existiam.
+        const alcancoOAdmin = paresPermitidos(meuPerfil, 'admin');
+        if (alcancoOAdmin) perfisAlcancaveis.push('admin');
 
         const querResponsaveis = perfisAlcancaveis.includes('responsavel');
 
@@ -1254,7 +1302,7 @@ exports.listarContatos = async (req, res) => {
         // atravessa escolas, então nem o tenant delimitaria essa lista, e ela
         // entregaria o time de suporte a toda família da rede. Quem nunca falou
         // com o admin não precisa saber que a conta existe.
-        const jaConversei = await idsComQuemJaConversei(meuId);
+        const jaConversei = alcancoOAdmin ? await idsComQuemJaConversei(meuId) : [];
         if (jaConversei.length) criterios.push({ perfil: 'admin', _id: { $in: jaConversei } });
 
         if (!criterios.length) return res.json({ success: true, data: [] });
@@ -1351,7 +1399,42 @@ exports.contarNaoLidas = async (req, res) => {
         const meuId = String(req.user?.id || req.user?._id || '');
         if (!meuId) return res.json({ success: true, data: { total: 0 } });
 
-        const total = await ChatDireto.countDocuments({ destinatarioId: meuId, lida: false });
+        const meuPerfil = String(req.user?.perfil || '').toLowerCase();
+
+        // O selo não pode contar o que a pessoa não pode abrir.
+        //
+        // Um `countDocuments` cru somava as conversas que a matriz fechou: o
+        // responsável via "3 mensagens" no menu, clicava, e a tela não tinha
+        // contato nenhum para mostrar — o número virava um erro sem explicação.
+        // Pior no dia da mudança, quando toda família com histórico de professor
+        // ganharia um selo que nunca zera.
+        //
+        // Agrupa por remetente e descarta os perfis inalcançáveis. O recorte é
+        // por PERFIL, não pelo vínculo fino de `podeConversar`: são poucos
+        // remetentes distintos, mas cada um custaria de uma a três consultas
+        // num endpoint que a barra de menu chama a cada minuto. O que sobra é o
+        // caso estreito da secretaria de outra escola — um número a mais num
+        // selo, não uma conversa a mais.
+        const porRemetente = await ChatDireto.aggregate([
+            { $match: { destinatarioId: meuId, lida: false } },
+            { $group: { _id: '$remetenteId', total: { $sum: 1 } } },
+        ]);
+        if (!porRemetente.length) return res.json({ success: true, data: { total: 0 } });
+
+        const ids = porRemetente
+            .map((linha) => String(linha._id))
+            .filter((id) => mongoose.Types.ObjectId.isValid(id));
+        const remetentes = await Usuario.find({ _id: { $in: ids } })
+            .select('perfil')
+            .lean();
+        const perfilPorId = new Map(remetentes.map((u) => [String(u._id), u.perfil]));
+
+        const total = porRemetente.reduce((soma, linha) => {
+            const perfil = String(perfilPorId.get(String(linha._id)) || '').toLowerCase();
+            // Remetente que não existe mais no banco não conta: sem perfil não
+            // há como afirmar que a conversa é alcançável, e a falha é FECHADA.
+            return perfil && paresPermitidos(meuPerfil, perfil) ? soma + linha.total : soma;
+        }, 0);
 
         res.json({ success: true, data: { total } });
     } catch (error) {

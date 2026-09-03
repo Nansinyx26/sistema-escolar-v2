@@ -313,7 +313,15 @@ router.post(
     }),
     ChatDiretoController.enviarMensagem
 );
-router.get('/chat-direto/historico/:outroUsuarioId', authJWT, ChatDiretoController.getHistorico);
+// `filtrarPorEscola` é obrigatório desde que ler passou a exigir a mesma
+// autorização de enviar: `podeConversar` compara o `escolaId` da sessão, e sem
+// ele a barreira de tenant do histórico ficaria mais frouxa que a do envio.
+router.get(
+    '/chat-direto/historico/:outroUsuarioId',
+    authJWT,
+    filtrarPorEscola,
+    ChatDiretoController.getHistorico
+);
 router.patch('/chat-direto/lida/:mensagemId', authJWT, ChatDiretoController.marcarComoLida);
 router.patch(
     '/chat-direto/lidas/:outroUsuarioId',
@@ -331,7 +339,8 @@ router.put(
     ChatDiretoController.editarMensagem
 );
 router.delete('/chat-direto/mensagem/:mensagemId', authJWT, ChatDiretoController.apagarMensagem);
-router.post('/chat-direto/reagir', authJWT, ChatDiretoController.reagirMensagem);
+// Reagir é interagir: mesma exigência de escola resolvida do histórico.
+router.post('/chat-direto/reagir', authJWT, filtrarPorEscola, ChatDiretoController.reagirMensagem);
 // Encaminhar cria N mensagens × M destinatários numa requisição só — é o
 // caminho mais barato para gerar volume, então entra no mesmo orçamento.
 router.post(
@@ -352,7 +361,8 @@ router.get(
 router.get('/chat-direto/contatos', authJWT, filtrarPorEscola, ChatDiretoController.listarContatos);
 // Total de nao lidas para o selo do menu. Sem `filtrarPorEscola`: a contagem e
 // por destinatario, e o id da sessao ja e o recorte — nenhuma outra escola
-// consegue enderecar mensagem para mim.
+// consegue enderecar mensagem para mim. O que o handler descarta aqui e outra
+// coisa: remetente de perfil que a matriz nao alcanca mais.
 router.get('/chat-direto/nao-lidas', authJWT, ChatDiretoController.contarNaoLidas);
 
 // Anexos/áudios do chat: bucket próprio de mimetypes (Word, Excel, ZIP, vídeo,

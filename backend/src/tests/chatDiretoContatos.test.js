@@ -239,28 +239,51 @@ describe('quem cada perfil enxerga', () => {
  * parecia nunca ter chegado.
  */
 describe('admin', () => {
-    it('enxerga a escola inteira', async () => {
+    it('enxerga a EQUIPE inteira — e nenhuma família', async () => {
         const prof = await professorDe('adm.prof@escola.test', '1A');
         const dir = await conta('adm.dir@escola.test', 'diretor');
         const sec = await conta('adm.sec@escola.test', 'secretaria');
         const mae = await responsavelDe('adm.mae@escola.test', '1A');
         const admin = await conta('admin@escola.test', 'admin');
 
-        expect(idsDe(await contatos(admin))).toEqual([prof.id, dir.id, sec.id, mae.id].sort());
+        // O suporte da rede atravessa escolas e perfis, MENOS o responsável: a
+        // família tem uma porta só, e um canal de suporte alcançável seria a
+        // segunda.
+        expect(idsDe(await contatos(admin))).toEqual([prof.id, dir.id, sec.id].sort());
+        expect(idsDe(await contatos(admin))).not.toContain(mae.id);
     });
 
     it('aparece na lista de quem já recebeu mensagem dele', async () => {
         const admin = await conta('admin2@escola.test', 'admin');
-        const mae = await responsavelDe('mae.suporte@escola.test', '2B');
+        const sec = await conta('sec.suporte@escola.test', 'secretaria');
 
         const envio = await admin.agent
             .post('/api/chat-direto/enviar')
-            .send({ destinatarioId: mae.id, mensagem: 'oi' });
+            .send({ destinatarioId: sec.id, mensagem: 'oi' });
         expect(envio.status).toBe(200);
 
-        const lista = await contatos(mae);
+        const lista = await contatos(sec);
         expect(idsDe(lista)).toContain(admin.id);
         expect(lista.find((c) => c.id === admin.id).naoLidas).toBe(1);
+    });
+
+    it('NÃO aparece para a família, nem com conversa antiga no banco', async () => {
+        // A conversa é gravada direto no banco: é o histórico que já existia
+        // quando a política mudou, e que o `idsComQuemJaConversei` devolveria.
+        // Sem a guarda, o suporte reapareceria na lista da família pela porta
+        // que o próprio envio agora recusa.
+        const admin = await conta('admin5@escola.test', 'admin');
+        await conta('sec.familia@escola.test', 'secretaria');
+        const mae = await responsavelDe('mae.suporte@escola.test', '2B');
+
+        await ChatDireto.create({
+            remetenteId: admin.id,
+            destinatarioId: mae.id,
+            escolaId: String(escola._id),
+            mensagem: 'conversa antiga com o suporte',
+        });
+
+        expect(idsDe(await contatos(mae))).not.toContain(admin.id);
     });
 
     it('aparece também para quem escreveu para ele primeiro', async () => {
