@@ -1,6 +1,16 @@
 const AtribuicaoProfessor = require('../models/AtribuicaoProfessor');
 const mongoose = require('mongoose');
 
+/** Filtro de tenant. `{}` quando não há escola resolvida (base pré-multi-escola). */
+function escopo(req, extra = {}) {
+    return req?.escolaId ? { ...extra, escolaId: String(req.escolaId) } : extra;
+}
+
+/** Valor de escolaId a gravar em documentos novos. */
+function escolaAtual(req) {
+    return req?.escolaId ? String(req.escolaId) : undefined;
+}
+
 class TeacherAssignmentController {
     // Listar todas as atribuições
     async index(req, res) {
@@ -9,15 +19,24 @@ class TeacherAssignmentController {
 
             // Mecanismo de auto-correção: garante que todo Professor ativo tenha um registro na coleção de atribuições
             const Professor = require('../models/Professor');
-            const professoresAtivos = await Professor.find({ ativo: { $ne: false } }).lean();
-            const atribuicoesExistentes = await AtribuicaoProfessor.find().lean();
-            
-            const nomesExistentes = new Set(atribuicoesExistentes.map(a => (a.nome || '').trim().toLowerCase()));
+            const professoresAtivos = await Professor.find(
+                req.escolaId
+                    ? { ativo: { $ne: false }, 'vinculos.escolaId': String(req.escolaId) }
+                    : { ativo: { $ne: false } }
+            ).lean();
+            const atribuicoesExistentes = await AtribuicaoProfessor.find(escopo(req)).lean();
+
+            const nomesExistentes = new Set(
+                atribuicoesExistentes.map((a) => (a.nome || '').trim().toLowerCase())
+            );
 
             for (const p of professoresAtivos) {
                 if (p.nome && !nomesExistentes.has(p.nome.trim().toLowerCase())) {
-                    console.log(`🔧 [AUTO-HEAL] Criando atribuição inicial para o professor: ${p.nome}`);
+                    console.log(
+                        `🔧 [AUTO-HEAL] Criando atribuição inicial para o professor: ${p.nome}`
+                    );
                     await AtribuicaoProfessor.create({
+                        escolaId: escolaAtual(req),
                         nome: p.nome.trim(),
                         classe: p.disciplina || 'Geral',
                         pontuacao: 0,
@@ -27,7 +46,7 @@ class TeacherAssignmentController {
                         estudoL: 3,
                         estudoEsc: 2,
                         cargaHoraria: '40h',
-                        observacoes: ''
+                        observacoes: '',
                     });
                 }
             }
@@ -54,16 +73,23 @@ class TeacherAssignmentController {
 
             // Filtrar IDs válidos para a query de delete
             const idsValidos = atribuicoes
-                .map(a => a._id || a.id)
-                .filter(id => id && mongoose.Types.ObjectId.isValid(id));
+                .map((a) => a._id || a.id)
+                .filter((id) => id && mongoose.Types.ObjectId.isValid(id));
 
             console.log('IDs válidos para manter:', idsValidos);
 
             // Deletar quem não está na lista (sincronização total)
             // Somente deletamos se a lista enviada for válida
-            const deleteResult = await AtribuicaoProfessor.deleteMany({
-                _id: { $nin: idsValidos.map(id => new mongoose.Types.ObjectId(id)) }
-            });
+            // O `escolaId` no filtro NÃO é detalhe. Sem ele, "sincronizar as
+            // atribuições" significava apagar as atribuições de TODAS as
+            // escolas da rede que não estivessem na lista enviada por esta
+            // tela — e a tela só carrega as da escola atual. Uma unidade
+            // salvando a própria grade de atribuições zerava as das outras.
+            const deleteResult = await AtribuicaoProfessor.deleteMany(
+                escopo(req, {
+                    _id: { $nin: idsValidos.map((id) => new mongoose.Types.ObjectId(id)) },
+                })
+            );
             console.log(`🗑️ Itens removidos do banco: ${deleteResult.deletedCount}`);
 
             // Processar cada item (Update ou Create)
@@ -77,15 +103,15 @@ class TeacherAssignmentController {
                     // Update
                     await AtribuicaoProfessor.findByIdAndUpdate(id, dados, {
                         new: true,
-                        runValidators: true
+                        runValidators: true,
                     });
                 } else {
                     // Create
-                    await AtribuicaoProfessor.create(dados);
+                    await AtribuicaoProfessor.create({ ...dados, escolaId: escolaAtual(req) });
                 }
             }
 
-            const listaFinal = await AtribuicaoProfessor.find().sort({ nome: 1 });
+            const listaFinal = await AtribuicaoProfessor.find(escopo(req)).sort({ nome: 1 });
             console.log(`✅ Sincronização finalizada com sucesso. Total: ${listaFinal.length}`);
 
             return res.status(200).json({ success: true, data: listaFinal });
@@ -95,7 +121,7 @@ class TeacherAssignmentController {
             return res.status(500).json({
                 success: false,
                 error: 'Erro interno no servidor de atribuições',
-                message: error.message
+                message: error.message,
             });
         }
     }
@@ -109,7 +135,9 @@ class TeacherAssignmentController {
                 return res.status(400).json({ success: false, error: 'ID inválido' });
             }
             await AtribuicaoProfessor.findByIdAndDelete(id);
-            return res.status(200).json({ success: true, message: 'Atribuição removida com sucesso' });
+            return res
+                .status(200)
+                .json({ success: true, message: 'Atribuição removida com sucesso' });
         } catch (error) {
             console.error('❌ Erro ao deletar:', error);
             return res.status(500).json({ success: false, error: 'Erro ao deletar atribuição' });
