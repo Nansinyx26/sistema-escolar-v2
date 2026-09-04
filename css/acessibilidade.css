@@ -1,0 +1,322 @@
+/* ==========================================================================
+   acessibilidade.css — recursos exigidos pela LBI (Lei 13.146/2015) e pelo
+   eMAG/WCAG 2.1 AA, aplicados a todas as páginas.
+
+   POR QUE ESTE ARQUIVO É BLUNT DE PROPÓSITO
+   -----------------------------------------
+   O sistema tem 66 páginas e dezenas de folhas de estilo, muitas com
+   glassmorphism (fundo translúcido + blur). Vidro é bonito e é péssimo para
+   contraste: o texto fica sobre um fundo que muda conforme o que está atrás.
+   Um modo de alto contraste que respeitasse a especificidade de cada folha
+   precisaria de uma regra por componente — e nasceria desatualizado.
+
+   Por isso o alto contraste usa seletores amplos e `!important` sob o escopo
+   `[data-contraste="alto"]`. Fora desse escopo, NADA aqui muda a aparência do
+   sistema. É a troca certa: o modo só existe para quem precisa dele, e para
+   essa pessoa "legível" vale mais que "elegante".
+
+   O que este arquivo NÃO substitui: a auditoria com leitor de tela real. Ele
+   entrega contraste, foco visível, alvo de toque e redimensionamento; a
+   semântica de cada página continua sendo responsabilidade da página.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Pular para o conteúdo (WCAG 2.4.1)
+   Quem navega por teclado ou leitor de tela repete o cabeçalho inteiro em
+   cada página antes de chegar ao que interessa. O link fica invisível até
+   receber foco — e aí precisa ser MUITO visível.
+   -------------------------------------------------------------------------- */
+.skip-link {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    z-index: 10000;
+    padding: 12px 20px;
+    background: #10b981;
+    color: #04140d;
+    font-weight: 700;
+    text-decoration: none;
+    border-radius: 0 0 8px 0;
+}
+
+.skip-link:focus {
+    left: 0;
+    outline: 3px solid #04140d;
+    outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   2. Foco sempre visível (WCAG 2.4.7)
+   `:focus-visible` mostra o anel só para quem navega por teclado — o clique
+   de mouse não ganha contorno, então não há motivo estético para removê-lo.
+   -------------------------------------------------------------------------- */
+:focus-visible {
+    outline: 3px solid #10b981 !important;
+    outline-offset: 2px !important;
+    border-radius: 4px;
+}
+
+/* --------------------------------------------------------------------------
+   3. Escala de texto (WCAG 1.4.4)
+   `zoom` no body escala layouts em px, que é como a maior parte deste CSS foi
+   escrita; `font-size` na raiz cobre o que usa rem. Os dois juntos porque
+   nenhum dos dois sozinho cobre o sistema inteiro.
+   -------------------------------------------------------------------------- */
+html[data-escala-texto='115'] body { zoom: 1.15; }
+html[data-escala-texto='130'] body { zoom: 1.3; }
+html[data-escala-texto='115'] { font-size: 115%; }
+html[data-escala-texto='130'] { font-size: 130%; }
+
+/* --------------------------------------------------------------------------
+   4. Sublinhar links (WCAG 1.4.1)
+   Link identificado só pela cor é invisível para quem não distingue cores.
+   -------------------------------------------------------------------------- */
+html[data-links-sublinhados='1'] a {
+    text-decoration: underline !important;
+    text-underline-offset: 3px;
+}
+
+/* --------------------------------------------------------------------------
+   5. Alto contraste
+   -------------------------------------------------------------------------- */
+html[data-contraste='alto'] body,
+html[data-contraste='alto'] .dashboard-page,
+html[data-contraste='alto'] main {
+    background: #000 !important;
+    color: #fff !important;
+}
+
+html[data-contraste='alto'] * {
+    /* Mata o vidro: `backdrop-filter` sobre fundo variável é o que quebra o
+       contraste, e ele não é declarado num lugar só. */
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+}
+
+html[data-contraste='alto'] header,
+html[data-contraste='alto'] section,
+html[data-contraste='alto'] article,
+html[data-contraste='alto'] aside,
+html[data-contraste='alto'] nav,
+html[data-contraste='alto'] .card,
+html[data-contraste='alto'] .cadastro-card,
+html[data-contraste='alto'] .dashboard-header,
+html[data-contraste='alto'] .modal,
+html[data-contraste='alto'] .denuncia-caixa {
+    background: #000 !important;
+    color: #fff !important;
+    border: 1px solid #fff !important;
+}
+
+html[data-contraste='alto'] h1,
+html[data-contraste='alto'] h2,
+html[data-contraste='alto'] h3,
+html[data-contraste='alto'] h4,
+html[data-contraste='alto'] p,
+html[data-contraste='alto'] span,
+html[data-contraste='alto'] label,
+html[data-contraste='alto'] li,
+html[data-contraste='alto'] td,
+html[data-contraste='alto'] th {
+    color: #fff !important;
+}
+
+html[data-contraste='alto'] a {
+    /* Amarelo sobre preto: 19.5:1, bem acima do 4.5:1 exigido no AA. */
+    color: #ffd400 !important;
+    text-decoration: underline !important;
+}
+
+html[data-contraste='alto'] button,
+html[data-contraste='alto'] .btn,
+html[data-contraste='alto'] input,
+html[data-contraste='alto'] select,
+html[data-contraste='alto'] textarea {
+    background: #000 !important;
+    color: #fff !important;
+    border: 2px solid #fff !important;
+}
+
+html[data-contraste='alto'] .btn:hover,
+html[data-contraste='alto'] button:hover {
+    background: #ffd400 !important;
+    color: #000 !important;
+}
+
+/* Imagem decorativa perde a graça no alto contraste e atrapalha a leitura;
+   imagem informativa (foto do aluno) permanece. */
+html[data-contraste='alto'] [aria-hidden='true'] img {
+    opacity: 0.4;
+}
+
+/* --------------------------------------------------------------------------
+   6. Menos animação
+   Vale tanto para quem pediu no sistema operacional (`prefers-reduced-motion`)
+   quanto para quem marcou a opção aqui — nem todo mundo sabe configurar o SO.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+html[data-animacao='reduzida'] *,
+html[data-animacao='reduzida'] *::before,
+html[data-animacao='reduzida'] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+}
+
+/* --------------------------------------------------------------------------
+   7. Painel de acessibilidade
+   -------------------------------------------------------------------------- */
+.acessibilidade-botao {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 9998;
+    /* 48px é o alvo de toque mínimo recomendado (WCAG 2.5.5) — abaixo disso,
+       quem tem tremor ou usa o polegar erra o botão. */
+    min-width: 48px;
+    min-height: 48px;
+    border-radius: 50%;
+    border: 2px solid #10b981;
+    background: #04140d;
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.acessibilidade-painel {
+    position: fixed;
+    right: 16px;
+    bottom: 76px;
+    z-index: 9999;
+    width: min(300px, calc(100vw - 32px));
+    padding: 16px;
+    border: 2px solid #10b981;
+    border-radius: 12px;
+    background: #04140d;
+    color: #fff;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+.acessibilidade-painel h2 {
+    margin: 0 0 12px;
+    font-size: 16px;
+    color: #fff;
+}
+
+.acessibilidade-grupo {
+    margin-bottom: 14px;
+}
+
+.acessibilidade-grupo > span {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    opacity: 0.85;
+}
+
+.acessibilidade-painel button {
+    min-height: 44px;
+    padding: 8px 12px;
+    margin-right: 6px;
+    border: 2px solid #10b981;
+    border-radius: 8px;
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.acessibilidade-painel button[aria-pressed='true'] {
+    background: #10b981;
+    color: #04140d;
+    font-weight: 700;
+}
+
+/* --------------------------------------------------------------------------
+   8. Canal de denúncia (ECA Digital)
+   -------------------------------------------------------------------------- */
+.denuncia-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.72);
+}
+
+.denuncia-caixa {
+    width: min(520px, 100%);
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 24px;
+    border-radius: 16px;
+    background: #0f172a;
+    color: #e2e8f0;
+    border: 1px solid #10b981;
+}
+
+.denuncia-titulo {
+    margin: 0 0 8px;
+    font-size: 20px;
+    color: #fff;
+}
+
+.denuncia-ajuda {
+    margin: 0 0 16px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #cbd5e1;
+}
+
+.denuncia-form label {
+    display: block;
+    margin: 12px 0 4px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.denuncia-form select,
+.denuncia-form textarea {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #334155;
+    background: #1e293b;
+    color: #f8fafc;
+    font: inherit;
+}
+
+.denuncia-aviso {
+    min-height: 20px;
+    margin: 12px 0 0;
+    font-size: 14px;
+    color: #10b981;
+}
+
+.denuncia-acoes {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 16px;
+}
+
+.denuncia-acoes button {
+    min-height: 44px;
+}

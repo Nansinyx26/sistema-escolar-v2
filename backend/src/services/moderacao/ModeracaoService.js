@@ -122,6 +122,7 @@ async function registrarOcorrencia({
     decisao,
     contexto = {},
     gridfsId = null,
+    extras = {},
 }) {
     try {
         const temBinario = Boolean(gridfsId);
@@ -146,6 +147,10 @@ async function registrarOcorrencia({
             // que um humano decidir. Só o que vai para a fila nasce 'pendente'.
             statusAtual: decisao.fila ? 'pendente' : 'mantida',
             expiraEm: ModeracaoOcorrencia.prazoDeRetencao(temBinario),
+            // Campos que só a denúncia aberta usa (categoria e relato). Vêm por
+            // `extras` para não obrigar os cinco chamadores restantes a passar
+            // `undefined` em dois parâmetros que não lhes dizem respeito.
+            ...extras,
         });
     } catch (erro) {
         logger.error('[Moderacao] Falha ao registrar ocorrência', {
@@ -180,6 +185,62 @@ async function registrarDenuncia({ mensagemId, motivo, contexto = {} }) {
         conteudoHash: hashDoTexto(motivo),
         decisao,
         contexto: { ...contexto, mensagemId },
+    });
+
+    return { ...decisao, ocorrencia, modo: modo() };
+}
+
+/**
+ * Categorias que a escola precisa tratar como grave desde a entrada.
+ *
+ * Não é gravidade do conteúdo — é gravidade do RISCO. Violência, assédio e
+ * automutilação envolvem integridade física de criança: esperar a fila normal
+ * (24h de prazo) pode ser tarde. As demais entram como moderadas, seguindo a
+ * mesma regra da denúncia de mensagem — quem denuncia não classifica gravidade.
+ */
+const CATEGORIAS_GRAVES = ['violencia', 'assedio', 'automutilacao'];
+
+/**
+ * Canal aberto de denúncia (ECA Digital) — denúncia SEM mensagem vinculada.
+ *
+ * POR QUE NÃO DAVA PARA REUSAR `registrarDenuncia`
+ * ------------------------------------------------
+ * Aquela função denuncia UMA mensagem do chat: existe `mensagemId`, existe
+ * conteúdo moderável, e a fila sabe o que revisar. O que o ECA exige é outra
+ * coisa: um canal onde criança ou responsável relate bullying, assédio ou
+ * discriminação que aconteceu — inclusive fora do sistema, no pátio da escola.
+ * Não há mensagem para apontar, e exigir uma fecharia o canal justamente para o
+ * caso mais comum.
+ *
+ * NADA É BLOQUEADO POR ESTA CHAMADA
+ * ---------------------------------
+ * A denúncia não remove mensagem, não suspende conta e não notifica o
+ * denunciado. Ela cria um item de fila para a equipe da escola apurar. Fazer
+ * diferente transformaria o botão numa arma contra desafeto (R7 da spec).
+ *
+ * @param {object} entrada
+ * @param {string} entrada.categoria uma das do enum `categoriaDenuncia`.
+ * @param {string} entrada.relato    o que a pessoa escreveu (limitado a 2000).
+ * @param {object} entrada.contexto  `{ escolaId, remetenteId, remetentePerfil }`.
+ */
+async function registrarDenunciaAberta({ categoria, relato, contexto = {} }) {
+    const grave = CATEGORIAS_GRAVES.includes(categoria);
+    const decisao = {
+        severidade: grave ? 'grave' : 'moderada',
+        decisao: 'em_revisao',
+        entrega: true,
+        fila: true,
+        prioridade: grave ? 'alta' : 'normal',
+        escalonar: grave,
+    };
+
+    const ocorrencia = await registrarOcorrencia({
+        tipoConteudo: 'texto',
+        camada: 'denuncia',
+        conteudoHash: hashDoTexto(relato),
+        decisao,
+        contexto,
+        extras: { categoriaDenuncia: categoria, relato },
     });
 
     return { ...decisao, ocorrencia, modo: modo() };
@@ -251,6 +312,8 @@ module.exports = {
     analisarTexto,
     registrarOcorrencia,
     registrarDenuncia,
+    registrarDenunciaAberta,
+    CATEGORIAS_GRAVES,
     expirarPendencias,
     hashDoTexto,
     hashDoBinario,
