@@ -1,6 +1,7 @@
 const fetch = globalThis.fetch || (function() { try { return require('node-fetch'); } catch { return null; } })();
 const logger = require('../utils/logger');
 const TTSService = require('./TTSService');
+const { removerEmojis } = require('../utils/semEmoji');
 
 /**
  * voiceService: Faz a ponte entre IA (Gemini) e Voz (ElevenLabs).
@@ -69,7 +70,14 @@ class VoiceService {
 
                 const data = await response.json();
                 const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-                return text.replace(/[*_~`#]/g, '').trim();
+                // Este `return` é o gargalo de TODA chamada não-streaming ao
+                // Gemini no sistema (chatbot, plano de aula, insights, PEI), e
+                // é por isso que a limpeza mora aqui e não em cada chamador:
+                // um caminho novo nasce limpo sem ninguém lembrar de limpá-lo.
+                // O emoji sai por decisão de produto (ver `utils/semEmoji.js`),
+                // e vale também para o texto que segue para a narração — o TTS
+                // lia o emoji como uma pausa estranha.
+                return removerEmojis(text.replace(/[*_~`#]/g, '')).trim();
             } catch (error) {
                 lastError = error;
                 logger.warn(`[VoiceService] Gemini error no modelo ${mod}: ${error.message}`);

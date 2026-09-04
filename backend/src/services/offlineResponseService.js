@@ -58,10 +58,10 @@ function render(template, ctx) {
 const TEMPLATES = {
     // ── Chatbot ────────────────────────────────────────────────────────────
     chatbot_saudacao: [
-        'Olá! 😊 Sou o assistente da escola. Posso ajudar com notas, faltas, horários, professores e comunicados. O que deseja saber?',
+        'Olá! Sou o assistente da escola. Posso ajudar com notas, faltas, horários, professores e comunicados. O que deseja saber?',
         'Oi! Que bom te ver por aqui. Posso consultar notas, faltas, horários, professores e comunicados. Como posso ajudar?',
         'Olá! Estou à disposição para ajudar com notas, faltas, horários, professores e comunicados. Por onde começamos?',
-        'Oi, tudo bem? 😊 Sou o assistente da escola e posso te ajudar com notas, faltas, horários, professores e comunicados.',
+        'Oi, tudo bem? Sou o assistente da escola e posso te ajudar com notas, faltas, horários, professores e comunicados.',
     ],
     chatbot_indefinida: [
         'Não encontrei uma resposta exata para isso, mas posso ajudar com informações relacionadas. Tente reformular ou escolha um dos temas abaixo:',

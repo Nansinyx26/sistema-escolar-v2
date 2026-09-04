@@ -163,9 +163,9 @@ function isConversationalIntent(intent) {
  */
 function getConversationalFallback(intent) {
     const fallbacks = {
-        SAUDACAO:      'Olá! 😊 Sou o assistente da escola. Posso ajudar com notas, faltas, horários, professores e comunicados. O que deseja saber?',
+        SAUDACAO:      'Olá! Sou o assistente da escola. Posso ajudar com notas, faltas, horários, professores e comunicados. O que deseja saber?',
         AGRADECIMENTO: 'Por nada! Fico feliz em ajudar. Se precisar de mais alguma coisa, é só perguntar.',
-        DESPEDIDA:     'Até mais! Se precisar, estarei por aqui. 👋',
+        DESPEDIDA:     'Até mais! Se precisar, estarei por aqui.',
         SOBRE_SISTEMA: 'Sou o assistente virtual da escola! Posso ajudar com: notas, faltas, horários, professores e comunicados. Tente por exemplo: "Notas do João Silva" ou "Comunicados".',
         ELOGIO:        'Muito obrigado! Fico feliz que esteja gostando. Se precisar de algo mais, estou à disposição!',
         RECLAMACAO:    'Peço desculpas pelo inconveniente. Posso tentar ajudar de outra forma. Tente me perguntar sobre notas, faltas, horários, professores ou comunicados.',
@@ -280,7 +280,7 @@ REGRAS:
 - Assunto fora do escopo escolar: recuse com leveza e volte para o que você faz.
 - Reclamação: peça desculpas em uma frase e ofereça um caminho concreto.
 - NUNCA invente nome de aluno, nota, data ou horário. Você não consultou o banco agora.
-- Emojis: no máximo 1. Nunca mencione "Gemini", "Google" ou "IA". Você é "o assistente da escola".
+- NUNCA use emojis. Nunca mencione "Gemini", "Google" ou "IA". Você é "o assistente da escola".
 
 HISTÓRICO RECENTE:
 ${historicoTexto}

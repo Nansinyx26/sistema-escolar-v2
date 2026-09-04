@@ -28,6 +28,7 @@ const ConversationStore = require('../services/ia/ConversationStore');
 const ConfirmationStore = require('../services/ia/ConfirmationStore');
 const ExportadorConversa = require('../services/ia/ExportadorConversa');
 const { comandosPara } = require('../services/ia/comandos');
+const { criarFiltroEmoji } = require('../utils/semEmoji');
 const logger = require('../utils/logger');
 
 /**
@@ -193,6 +194,32 @@ async function chat(req, res) {
     let respostaCompleta = '';
     const ferramentasUsadas = [];
 
+    // O filtro fica ANTES do acumulador e do `enviar`, então a tela e o banco
+    // recebem o mesmo texto já limpo — não existe versão "com emoji" em
+    // lugar nenhum. É um filtro com estado porque o provedor pode cortar um
+    // emoji no meio: ver `utils/semEmoji.js`.
+    //
+    // Um filtro por TURNO, não por rodada de ferramenta: as rodadas escrevem
+    // no mesmo texto final, e reiniciá-lo entre elas perderia a cauda retida
+    // na virada.
+    const filtroEmoji = criarFiltroEmoji();
+
+    /** Acumula e streama um pedaço de texto já sem emojis. */
+    const emitirTexto = (bruto) => {
+        const limpo = filtroEmoji.escrever(bruto);
+        if (!limpo) return;
+        respostaCompleta += limpo;
+        enviar(res, { tipo: 'delta', texto: limpo });
+    };
+
+    /** Libera a cauda que o filtro reteve. Idempotente. */
+    const drenarTexto = () => {
+        const resto = filtroEmoji.finalizar();
+        if (!resto) return;
+        respostaCompleta += resto;
+        if (!res.writableEnded) enviar(res, { tipo: 'delta', texto: resto });
+    };
+
     try {
         // ── Laço de ferramentas ──────────────────────────────────────────────
         // O modelo pode precisar consultar dados antes de saber o que responder.
@@ -208,8 +235,7 @@ async function chat(req, res) {
                 if (res.writableEnded) break;
 
                 if (evento.tipo === 'texto') {
-                    respostaCompleta += evento.texto;
-                    enviar(res, { tipo: 'delta', texto: evento.texto });
+                    emitirTexto(evento.texto);
                 } else if (evento.tipo === 'ferramenta') {
                     chamadasPendentes.push(...evento.chamadas);
                 } else if (evento.tipo === 'fim') {
@@ -271,6 +297,10 @@ async function chat(req, res) {
             });
         }
 
+        // A cauda retida pelo filtro tem de sair ANTES do 'fim': o front trata
+        // esse evento como "acabou" e um delta depois dele não seria pintado.
+        drenarTexto();
+
         if (!res.writableEnded) {
             enviar(res, { tipo: 'fim', motivo: motivoFinal });
         }
@@ -283,6 +313,11 @@ async function chat(req, res) {
             enviar(res, { tipo: 'erro', mensagem: 'Algo deu errado ao gerar a resposta. Tente novamente.' });
         }
     } finally {
+        // Caminho de erro ou de abort: o `drenarTexto` do fim do try não rodou,
+        // e sem isto o último trecho retido não chegaria ao banco. É
+        // idempotente, então repetir depois do caminho normal não duplica nada.
+        drenarTexto();
+
         // Persiste o turno ANTES de fechar o stream, para que o front receba o
         // título gerado. Uma resposta parcial (o usuário parou no meio) também
         // é gravada: ela existiu na tela e faz parte do fio da conversa.
