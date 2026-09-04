@@ -48,7 +48,21 @@ function listarHtml(dir) {
     return encontrados;
 }
 
-function prefixoAte(arquivo) {
+/**
+ * Prefixo dos assets, seguindo a convenção que a PÁGINA já usa.
+ *
+ * A maioria das páginas referencia asset por caminho relativo (`../css/...`).
+ * `404.html` e `500.html` não podem: o Express as devolve para QUALQUER URL não
+ * resolvida, e o `../` é resolvido pelo navegador contra a URL da REQUISIÇÃO,
+ * não contra o arquivo em disco — em `/a/b/c/nao-existe` o navegador pediria
+ * `/a/b/css/...` e a página de erro apareceria sem estilo, justamente quando a
+ * pessoa já está numa situação ruim (Issue #116, com teste próprio).
+ *
+ * A regra: página que não tem NENHUM asset relativo é página que precisa ser
+ * independente de profundidade — nela o caminho sai a partir da raiz.
+ */
+function prefixoAte(arquivo, conteudo) {
+    if (!/(?:href|src)="\.\.\//.test(conteudo)) return '/';
     const relativo = path.relative(path.dirname(arquivo), ROOT).replace(/\\/g, '/');
     return relativo ? `${relativo}/` : '';
 }
@@ -60,7 +74,7 @@ for (const arquivo of listarHtml(ROOT)) {
 
     let conteudo = fs.readFileSync(arquivo, 'utf-8');
     const original = conteudo;
-    const prefixo = prefixoAte(arquivo);
+    const prefixo = prefixoAte(arquivo, conteudo);
 
     if (!conteudo.includes(CSS) && conteudo.includes('</head>')) {
         conteudo = conteudo.replace(
