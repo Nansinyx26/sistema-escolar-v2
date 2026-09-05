@@ -190,16 +190,23 @@ exports.serveFile = async (req, res) => {
 };
 
 /**
- * `metadata.type` marca os arquivos que pertencem a um CONTEXTO PRIVADO —
- * hoje o anexo do chat direto ('chat_anexo') e o áudio de comentário
- * ('voice_message'). Nenhum deles pode sair pela rota pública.
+ * ALLOWLIST do que sai do bucket SEM sessão.
  *
- * A regra é uma ALLOWLIST vazia de propósito: o único upload que alimenta a
- * rota pública é o avatar de /api/upload/photo, que grava metadata SEM `type`.
- * Assim, qualquer `type` novo criado no futuro nasce privado por padrão em vez
- * de vazar até alguém lembrar de bloqueá-lo aqui.
+ * `metadata.type` é a etiqueta que cada caminho de upload carimba no GridFS, e
+ * aqui ela é a única credencial que existe: o arquivo só é servido pela rota
+ * pública se declarar um tipo E esse tipo estiver nesta lista. Arquivo sem
+ * `type` não passa.
+ *
+ * Até a Issue #216 a lista era um `Set` vazio e a comparação era `meta.type &&
+ * !TIPOS_PUBLICOS.has(meta.type)` — ou seja, barrava os tipos privados
+ * conhecidos e liberava TODO arquivo sem `type`. Aberto por omissão: qualquer
+ * caminho de upload novo que esquecesse de carimbar o tipo nascia público, sem
+ * nada acusar. É a mesma forma de falha que a #213 fechou no gate de páginas.
+ *
+ * Acrescentar um valor aqui é decidir que aquele tipo pode ser lido por
+ * qualquer pessoa da internet, sem login. Hoje só o avatar se enquadra.
  */
-const TIPOS_PUBLICOS = new Set();
+const TIPOS_PUBLICOS = new Set(['avatar']);
 
 /**
  * Serve APENAS imagens (rota pública /api/files/:id, usada por <img> de avatar).
@@ -230,7 +237,13 @@ exports.servePublicImage = async (req, res) => {
         // privada a quem não estava logado, e ainda com `Cache-Control: public`.
         // A autorização por participante existe, mas mora no `serveFile` — esta
         // rota não passa por ela.
-        if (meta.type && !TIPOS_PUBLICOS.has(meta.type)) {
+        //
+        // Fechado por omissão: sem `type`, ou com `type` fora da allowlist, o
+        // arquivo exige sessão. Os avatares gravados antes deste código foram
+        // carimbados pela migração `carimbar-avatares-publicos`; um arquivo que
+        // ela não alcançou não é avatar de ninguém — nenhuma tela aponta para
+        // ele — e continuar exigindo sessão é o comportamento correto.
+        if (!TIPOS_PUBLICOS.has(meta.type)) {
             return res.status(403).json({ success: false, error: 'Este arquivo requer autenticação.' });
         }
 

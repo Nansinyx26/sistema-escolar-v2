@@ -96,6 +96,13 @@ router.post(
                 contentType: 'image/webp',
                 // Metadata é o que permite ao FileController decidir quem pode baixar
                 metadata: {
+                    // `type` é a credencial da rota pública: o `/api/files/:id`
+                    // só serve sem sessão o que está na allowlist do
+                    // FileController, e 'avatar' é o único valor lá. Antes da
+                    // Issue #216 este upload não carimbava tipo nenhum e passava
+                    // por ser a AUSÊNCIA de `type` que liberava — o que também
+                    // liberava qualquer upload futuro que esquecesse de marcar.
+                    type: 'avatar',
                     usuarioId: String(req.user?.id || req.user?._id || ''),
                     escolaId: req.escolaId ? String(req.escolaId) : undefined,
                     alunoId: req.body?.alunoId ? String(req.body.alunoId) : undefined,

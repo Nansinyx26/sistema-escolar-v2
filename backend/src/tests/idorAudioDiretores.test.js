@@ -274,10 +274,10 @@ describe('GET /api/files/:id — rota pública não vaza arquivo de contexto pri
         expect(corpoDe(res)).not.toContain('ANEXO-DE-COMENTARIO');
     });
 
-    it('CONTINUA entregando o avatar público (upload de foto grava metadata sem `type`)', async () => {
+    it("CONTINUA entregando o avatar público (metadata.type = 'avatar')", async () => {
         const avatarId = await gravarArquivo({
             contentType: 'image/webp',
-            metadata: { usuarioId: 'dono-do-avatar', escolaId: String(escolaA._id) },
+            metadata: { type: 'avatar', usuarioId: 'dono-do-avatar', escolaId: String(escolaA._id) },
             conteudo: 'BYTES-DO-AVATAR'
         });
 
@@ -288,6 +288,37 @@ describe('GET /api/files/:id — rota pública não vaza arquivo de contexto pri
         // preenche `res.text` para tipos textuais) — as respostas 403 dos casos
         // acima são JSON e por isso aparecem em `res.text`.
         expect(corpoDe(res)).toContain('BYTES-DO-AVATAR');
+    });
+
+    it('NÃO entrega imagem SEM `metadata.type` — a rota é fechada por omissão', async () => {
+        // Este teste guardava o inverso até a Issue #216: a regra antiga era
+        // `meta.type && !TIPOS_PUBLICOS.has(meta.type)`, que barrava os tipos
+        // privados conhecidos e liberava tudo que não declarasse tipo nenhum.
+        // O risco não era o avatar de então, era o upload seguinte — qualquer
+        // caminho novo que esquecesse de carimbar `type` nascia público.
+        const semTipoId = await gravarArquivo({
+            contentType: 'image/jpeg',
+            metadata: { usuarioId: 'alguem', escolaId: String(escolaA._id) },
+            conteudo: 'IMAGEM-SEM-TIPO'
+        });
+
+        const res = await request(app).get(`/api/files/${semTipoId}`);
+
+        expect(res.status).toBe(403);
+        expect(corpoDe(res)).not.toContain('IMAGEM-SEM-TIPO');
+    });
+
+    it('NÃO entrega imagem com `type` desconhecido (allowlist, não denylist)', async () => {
+        const tipoNovoId = await gravarArquivo({
+            contentType: 'image/png',
+            metadata: { type: 'anexo_de_um_recurso_futuro', usuarioId: 'alguem' },
+            conteudo: 'TIPO-QUE-NINGUEM-LIBEROU'
+        });
+
+        const res = await request(app).get(`/api/files/${tipoNovoId}`);
+
+        expect(res.status).toBe(403);
+        expect(corpoDe(res)).not.toContain('TIPO-QUE-NINGUEM-LIBEROU');
     });
 
     it('a rota legada /api/public/photo/:id aplica a mesma regra', async () => {
