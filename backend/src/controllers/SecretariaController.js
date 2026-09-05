@@ -1015,6 +1015,102 @@ exports.criarEventoCalendario = async (req, res) => {
     }
 };
 
+/**
+ * POST /api/secretaria/justificativas
+ *
+ * A ROTA QUE FALTAVA
+ * ------------------
+ * O modelo existia, a tela de análise existia, o fluxo de aprovar/rejeitar
+ * existia — e não havia nenhum caminho para CRIAR uma justificativa. Nem aqui,
+ * nem no portal do responsável, apesar de o schema já prever
+ * `origemEnvio: 'portal_responsavel'`. A coleção `justificativas_faltas` está
+ * com 0 documentos em produção porque nunca houve como gravar o primeiro.
+ *
+ * O efeito ia além da tela vazia: o bloco que marca `Falta.justificada = true`
+ * vive dentro de `analisarJustificativa`, que só roda sobre um documento
+ * existente. Sem criação, nenhuma falta do sistema jamais foi justificada — e é
+ * essa distinção que a planilha de faltas exibe e que a contagem de presença
+ * usa.
+ */
+exports.criarJustificativa = async (req, res) => {
+    try {
+        const {
+            alunoId,
+            dataInicio,
+            dataFim,
+            motivo,
+            categoria,
+            observacoes,
+            origemEnvio,
+            documentoAnexo,
+        } = req.body || {};
+
+        if (!alunoId || !dataInicio || !motivo) {
+            return res.status(400).json({
+                success: false,
+                error: 'Informe o aluno, a data de início e o motivo da ausência.',
+            });
+        }
+
+        // O aluno precisa ser DESTA escola. Sem o escopo, uma secretaria
+        // justificaria faltas de aluno de outra unidade da rede — e a aprovação
+        // seguinte alteraria a frequência de lá.
+        const aluno = await Aluno.findOne(escopo(req, { _id: String(alunoId) }))
+            .select('nome sobrenome')
+            .lean();
+        if (!aluno) {
+            return res
+                .status(404)
+                .json({ success: false, error: 'Aluno não encontrado nesta escola.' });
+        }
+
+        const inicio = new Date(dataInicio);
+        const fim = dataFim ? new Date(dataFim) : inicio;
+
+        if (Number.isNaN(inicio.getTime()) || Number.isNaN(fim.getTime())) {
+            return res.status(400).json({ success: false, error: 'Datas inválidas.' });
+        }
+        if (fim < inicio) {
+            return res.status(400).json({
+                success: false,
+                error: 'A data final não pode ser anterior à data inicial.',
+            });
+        }
+
+        const justificativa = await JustificativaFalta.create({
+            alunoId: String(alunoId),
+            alunoNome: [aluno.nome, aluno.sobrenome].filter(Boolean).join(' '),
+            escolaId: escolaAtual(req),
+            dataInicio: inicio,
+            dataFim: fim,
+            motivo: String(motivo).trim(),
+            categoria: categoria || 'outro',
+            observacoes: observacoes ? String(observacoes).trim() : undefined,
+            documentoAnexo: documentoAnexo || undefined,
+            enviadoPor: req.user._id || req.user.id,
+            enviadoPorNome: req.user.nome,
+            // `presencial` quando a secretaria digita com o atestado na mão;
+            // `secretaria` é o padrão do schema para o registro administrativo.
+            // O valor vindo do cliente é conferido contra o enum em vez de
+            // confiado: um `origemEnvio` livre falsificaria a procedência do
+            // documento no histórico.
+            origemEnvio: ['portal_responsavel', 'secretaria', 'presencial'].includes(origemEnvio)
+                ? origemEnvio
+                : 'secretaria',
+            status: 'pendente',
+        });
+
+        await audit(req, 'CREATE_JUSTIFICATION', 'Justificativas', justificativa._id, {
+            descricao: `Justificativa registrada para ${justificativa.alunoNome} (${inicio.toLocaleDateString('pt-BR')} a ${fim.toLocaleDateString('pt-BR')})`,
+        });
+
+        res.status(201).json({ success: true, data: justificativa });
+    } catch (error) {
+        logger.error(`[Secretaria.criarJustificativa] ${error.message}`);
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
 // GET /api/secretaria/justificativas
 exports.listarJustificativas = async (req, res) => {
     try {
@@ -1372,7 +1468,7 @@ exports.relatorioMatriculas = async (req, res) => {
         };
         porStatus.forEach(({ _id, total }) => {
             resumo.total += total;
-            if (Object.prototype.hasOwnProperty.call(resumo, _id)) resumo[_id] = total;
+            if (Object.hasOwn(resumo, _id)) resumo[_id] = total;
         });
 
         res.json({
