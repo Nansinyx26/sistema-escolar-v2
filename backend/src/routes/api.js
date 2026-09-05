@@ -219,7 +219,11 @@ router.use('/security', authJWT, filtrarPorEscola, require('./security'));
 router.use('/audit', authJWT, filtrarPorEscola, require('./audit'));
 router.use('/usuarios', authJWT, filtrarPorEscola, require('./usuarios'));
 router.use('/meus-dados', authJWT, require('./meus-dados'));
-router.use('/atribuicoes', authJWT, require('./atribuicoes'));
+// `filtrarPorEscola` acrescentado junto com o `escolaId` no schema: sem ele
+// `req.escolaId` é undefined, o filtro do `deleteMany` sai vazio e a
+// sincronização volta a apagar as atribuições das outras escolas. O campo no
+// modelo sozinho não isola nada.
+router.use('/atribuicoes', authJWT, filtrarPorEscola, require('./atribuicoes'));
 router.use('/alunos', authJWT, horizontalFilter, filtrarPorEscola, require('./alunos'));
 router.use('/professores', authJWT, horizontalFilter, filtrarPorEscola, require('./professores'));
 // `filtrarPorEscola` é o que resolve req.escolaId — sem ele o escopo de escola
