@@ -97,6 +97,11 @@ router.get('/frequencia/consolidada', auth, SecretariaController.frequenciaConso
 router.get('/calendario', auth, SecretariaController.listarCalendario);
 router.post('/calendario', auth, SecretariaController.criarEventoCalendario);
 router.get('/justificativas', auth, SecretariaController.listarJustificativas);
+// A criação FALTAVA: sem ela a coleção nunca recebia documento, a tela de
+// análise ficava permanentemente vazia e nenhuma falta era marcada como
+// justificada — o `justificada = true` só existe dentro do fluxo de análise,
+// que precisa de um registro para agir sobre.
+router.post('/justificativas', auth, SecretariaController.criarJustificativa);
 router.put('/justificativas/:id', auth, SecretariaController.analisarJustificativa);
 
 // ─── T6: Comunicados & Relatórios ───────────────────────────────────────────
