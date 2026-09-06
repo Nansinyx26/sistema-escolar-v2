@@ -78,9 +78,33 @@
         }
     }
 
+    /**
+     * O aceite é SEMPRE do usuário autenticado — a resposta vem do
+     * `Usuario.lgpdHistory` da conta que o cookie do JWT identifica, e nada
+     * aqui guarda esse resultado entre sessões.
+     *
+     * As duas defesas contra cache nesta chamada existem porque a URL é a mesma
+     * para todas as contas do sistema:
+     *
+     *   1. `cache: 'no-store'` — sem isso, a resposta do diretor que aceitou o
+     *      Termo ficava no cache do navegador e era servida ao professor que
+     *      entrasse na mesma máquina depois. Para ele o modal simplesmente não
+     *      aparecia, como se o aceite do diretor valesse pela conta inteira.
+     *   2. o parâmetro variável — o interceptor de `js/api-config.js` guarda
+     *      toda resposta GET da API por chave de URL por 2s e não olha as
+     *      opções do fetch, então o `no-store` sozinho não o alcança.
+     *
+     * O servidor agora manda `Cache-Control: no-store` em `/api` (ver
+     * `backend/src/app.js`), o que fecha o mesmo buraco para qualquer proxy no
+     * caminho. Estas duas linhas cobrem o cache que já está gravado no
+     * navegador de quem usa o sistema hoje.
+     */
     async function consultarAceite() {
         try {
-            const resposta = await fetch(API, { credentials: 'include' });
+            const resposta = await fetch(`${API}?_=${Date.now()}`, {
+                credentials: 'include',
+                cache: 'no-store',
+            });
             if (!resposta.ok) return null;
             const corpo = await resposta.json();
             return Boolean(corpo?.data?.aceito);
