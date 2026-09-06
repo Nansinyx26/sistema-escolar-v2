@@ -44,7 +44,7 @@ function provedorEmPedacos(pedacos) {
         async *stream() {
             for (const p of pedacos) yield { tipo: 'texto', texto: p };
             yield { tipo: 'fim', motivo: 'completo' };
-        }
+        },
     };
 }
 
@@ -61,29 +61,33 @@ async function cookieDe(perfil) {
 }
 
 function eventosSSE(texto) {
-    return texto.split('\n').filter(l => l.startsWith('data:'))
-        .map(l => JSON.parse(l.slice(5).trim()));
+    return texto
+        .split('\n')
+        .filter((l) => l.startsWith('data:'))
+        .map((l) => JSON.parse(l.slice(5).trim()));
 }
 
 /** Junta os deltas na ordem — o texto que a pessoa efetivamente leu. */
 function textoNaTela(res) {
     return eventosSSE(res.text)
-        .filter(e => e.tipo === 'delta')
-        .map(e => e.texto)
+        .filter((e) => e.tipo === 'delta')
+        .map((e) => e.texto)
         .join('');
 }
 
 /** Última mensagem do assistente gravada na conversa do turno. */
 async function respostaGravada(res) {
-    const evento = eventosSSE(res.text).find(e => e.tipo === 'conversa');
+    const evento = eventosSSE(res.text).find((e) => e.tipo === 'conversa');
     const conversa = await IaConversa.findById(evento.id).lean();
-    const doAssistente = conversa.mensagens.filter(m => m.papel === 'assistente');
+    const doAssistente = conversa.mensagens.filter((m) => m.papel === 'assistente');
     return doAssistente[doAssistente.length - 1].texto;
 }
 
 // ── Ciclo de vida ────────────────────────────────────────────────────────────
 
-beforeAll(async () => { await conectarBanco(); });
+beforeAll(async () => {
+    await conectarBanco();
+});
 
 beforeEach(async () => {
     // Mesma razão de `iaMemoria.test.js`: duas escolas ativas fazem
@@ -98,7 +102,9 @@ afterEach(async () => {
     invalidarCacheEscolas();
 });
 
-afterAll(async () => { await desconectarBanco(); });
+afterAll(async () => {
+    await desconectarBanco();
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -107,8 +113,10 @@ describe('POST /api/ia/chat — resposta sem emoji', () => {
         global.__provedorIA = provedorEmPedacos(['Olá! 😊 ', 'A média é 7,5.']);
         const { cookie } = await cookieDe('diretor');
 
-        const res = await request(app).post('/api/ia/chat')
-            .set('Cookie', cookie).send({ mensagem: 'qual a média?' });
+        const res = await request(app)
+            .post('/api/ia/chat')
+            .set('Cookie', cookie)
+            .send({ mensagem: 'qual a média?' });
 
         expect(res.status).toBe(200);
         expect(textoNaTela(res)).toBe('Olá! A média é 7,5.');
@@ -125,8 +133,10 @@ describe('POST /api/ia/chat — resposta sem emoji', () => {
         ]);
         const { cookie } = await cookieDe('diretor');
 
-        const res = await request(app).post('/api/ia/chat')
-            .set('Cookie', cookie).send({ mensagem: 'quem leciona?' });
+        const res = await request(app)
+            .post('/api/ia/chat')
+            .set('Cookie', cookie)
+            .send({ mensagem: 'quem leciona?' });
 
         const tela = textoNaTela(res);
         expect(tela).not.toMatch(TEM_EMOJI);
@@ -140,8 +150,10 @@ describe('POST /api/ia/chat — resposta sem emoji', () => {
         global.__provedorIA = provedorEmPedacos(['A turma tem ', '25']);
         const { cookie } = await cookieDe('diretor');
 
-        const res = await request(app).post('/api/ia/chat')
-            .set('Cookie', cookie).send({ mensagem: 'quantos alunos?' });
+        const res = await request(app)
+            .post('/api/ia/chat')
+            .set('Cookie', cookie)
+            .send({ mensagem: 'quantos alunos?' });
 
         expect(textoNaTela(res)).toBe('A turma tem 25');
         expect(await respostaGravada(res)).toBe('A turma tem 25');
@@ -153,10 +165,12 @@ describe('POST /api/ia/chat — resposta sem emoji', () => {
         global.__provedorIA = provedorEmPedacos(['Resposta final 9']);
         const { cookie } = await cookieDe('diretor');
 
-        const res = await request(app).post('/api/ia/chat')
-            .set('Cookie', cookie).send({ mensagem: 'e a nota?' });
+        const res = await request(app)
+            .post('/api/ia/chat')
+            .set('Cookie', cookie)
+            .send({ mensagem: 'e a nota?' });
 
-        const tipos = eventosSSE(res.text).map(e => e.tipo);
+        const tipos = eventosSSE(res.text).map((e) => e.tipo);
         expect(tipos.lastIndexOf('delta')).toBeLessThan(tipos.indexOf('fim'));
     });
 
@@ -164,8 +178,10 @@ describe('POST /api/ia/chat — resposta sem emoji', () => {
         global.__provedorIA = provedorEmPedacos(['Frequência de 92% no 3º ano — ok.']);
         const { cookie } = await cookieDe('professor');
 
-        const res = await request(app).post('/api/ia/chat')
-            .set('Cookie', cookie).send({ mensagem: 'como está a frequência?' });
+        const res = await request(app)
+            .post('/api/ia/chat')
+            .set('Cookie', cookie)
+            .send({ mensagem: 'como está a frequência?' });
 
         expect(textoNaTela(res)).toBe('Frequência de 92% no 3º ano — ok.');
     });

@@ -154,9 +154,14 @@ describe('os textos fixos do assistente não têm emoji', () => {
     it('nenhuma resposta pronta do chatbot traz emoji', () => {
         const { getConversationalFallback } = require('../services/ChatbotService');
         const intencoes = [
-            'SAUDACAO', 'AGRADECIMENTO', 'DESPEDIDA',
-            'SOBRE_SISTEMA', 'ELOGIO', 'RECLAMACAO',
-            'FORA_CONTEXTO', 'INDEFINIDA',
+            'SAUDACAO',
+            'AGRADECIMENTO',
+            'DESPEDIDA',
+            'SOBRE_SISTEMA',
+            'ELOGIO',
+            'RECLAMACAO',
+            'FORA_CONTEXTO',
+            'INDEFINIDA',
         ];
         for (const intencao of intencoes) {
             expect(getConversationalFallback(intencao)).not.toMatch(TEM_EMOJI);

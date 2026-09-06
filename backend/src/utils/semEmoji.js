@@ -80,9 +80,7 @@ function removerEmojis(texto) {
 
     // Emoji entre duas palavras deixa UM espaço (era separador); emoji no fim
     // da frase, ou colado numa palavra, não deixa nada.
-    return texto.replace(RE_EMOJI, (_todo, antes, depois) =>
-        (antes && depois ? ' ' : '')
-    );
+    return texto.replace(RE_EMOJI, (_todo, antes, depois) => (antes && depois ? ' ' : ''));
 }
 
 /**
