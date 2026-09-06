@@ -18,7 +18,13 @@ async function findFileDoc(fileId) {
     const bucket = new GridFSBucket(mongoose.connection.db, { bucketName: 'uploads' });
     let query;
     if (mongoose.Types.ObjectId.isValid(cleanId)) {
-        query = { $or: [{ _id: new mongoose.Types.ObjectId(cleanId) }, { filename: cleanId }, { filename: fileId }] };
+        query = {
+            $or: [
+                { _id: new mongoose.Types.ObjectId(cleanId) },
+                { filename: cleanId },
+                { filename: fileId },
+            ],
+        };
     } else {
         query = { filename: cleanId };
     }
@@ -33,7 +39,8 @@ function streamFile(res, fileDoc, cacheControl = 'private, max-age=3600') {
     res.set('Cache-Control', cacheControl);
     const stream = getFileStream(String(fileDoc._id));
     stream.on('error', () => {
-        if (!res.headersSent) res.status(404).json({ success: false, error: 'Arquivo não encontrado' });
+        if (!res.headersSent)
+            res.status(404).json({ success: false, error: 'Arquivo não encontrado' });
         else res.end();
     });
     stream.pipe(res);
@@ -83,7 +90,7 @@ async function autorizarArquivo(req, fileDoc) {
             String(meta.destinatarioId || ''),
             // Encaminhamento acrescenta o novo destinatário aqui — sem isso ele
             // recebe a mensagem e tropeça num 403 no próprio anexo.
-            ...(Array.isArray(meta.compartilhadoCom) ? meta.compartilhadoCom.map(String) : [])
+            ...(Array.isArray(meta.compartilhadoCom) ? meta.compartilhadoCom.map(String) : []),
         ];
         if (participantes.includes(meuId)) return { ok: true };
         return { ok: false, status: 403, error: 'Este anexo pertence a outra conversa.' };
@@ -137,7 +144,7 @@ function checarQuarentena(fileDoc) {
             ok: false,
             status: 403,
             codigo: 'ANEXO_BLOQUEADO',
-            error: 'Este anexo não segue as regras de uso do chat.'
+            error: 'Este anexo não segue as regras de uso do chat.',
         };
     }
 
@@ -147,7 +154,7 @@ function checarQuarentena(fileDoc) {
         ok: false,
         status: 409,
         codigo: 'ANEXO_EM_ANALISE',
-        error: 'Este anexo está em análise e será liberado em breve.'
+        error: 'Este anexo está em análise e será liberado em breve.',
     };
 }
 
@@ -164,7 +171,8 @@ exports.checarQuarentena = checarQuarentena;
 exports.serveFile = async (req, res) => {
     try {
         const fileDoc = await findFileDoc(req.params.id);
-        if (!fileDoc) return res.status(404).json({ success: false, error: 'Arquivo não encontrado' });
+        if (!fileDoc)
+            return res.status(404).json({ success: false, error: 'Arquivo não encontrado' });
 
         const permissao = await autorizarArquivo(req, fileDoc);
         if (!permissao.ok) {
@@ -178,7 +186,7 @@ exports.serveFile = async (req, res) => {
             return res.status(quarentena.status).json({
                 success: false,
                 codigo: quarentena.codigo,
-                error: quarentena.error
+                error: quarentena.error,
             });
         }
 
@@ -216,11 +224,14 @@ const TIPOS_PUBLICOS = new Set(['avatar']);
 exports.servePublicImage = async (req, res) => {
     try {
         const fileDoc = await findFileDoc(req.params.id);
-        if (!fileDoc) return res.status(404).json({ success: false, error: 'Arquivo não encontrado' });
+        if (!fileDoc)
+            return res.status(404).json({ success: false, error: 'Arquivo não encontrado' });
 
         const contentType = fileDoc.contentType || '';
         if (!contentType.startsWith('image/')) {
-            return res.status(403).json({ success: false, error: 'Este arquivo requer autenticação.' });
+            return res
+                .status(403)
+                .json({ success: false, error: 'Este arquivo requer autenticação.' });
         }
 
         const meta = fileDoc.metadata || {};
@@ -228,7 +239,9 @@ exports.servePublicImage = async (req, res) => {
         // Documentos de aluno enviados como imagem (foto do RG, por exemplo)
         // NUNCA saem pela rota pública, mesmo sendo image/*.
         if (meta.alunoId) {
-            return res.status(403).json({ success: false, error: 'Este arquivo requer autenticação.' });
+            return res
+                .status(403)
+                .json({ success: false, error: 'Este arquivo requer autenticação.' });
         }
 
         // O filtro de contentType acima só barra o que NÃO é imagem — e a foto
@@ -244,7 +257,9 @@ exports.servePublicImage = async (req, res) => {
         // ela não alcançou não é avatar de ninguém — nenhuma tela aponta para
         // ele — e continuar exigindo sessão é o comportamento correto.
         if (!TIPOS_PUBLICOS.has(meta.type)) {
-            return res.status(403).json({ success: false, error: 'Este arquivo requer autenticação.' });
+            return res
+                .status(403)
+                .json({ success: false, error: 'Este arquivo requer autenticação.' });
         }
 
         streamFile(res, fileDoc, 'public, max-age=3600');

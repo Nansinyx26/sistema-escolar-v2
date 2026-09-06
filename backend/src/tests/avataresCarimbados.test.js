@@ -56,8 +56,13 @@ beforeEach(async () => {
 
 /** Grava um arquivo no bucket 'uploads' e devolve o ObjectId. */
 async function gravarArquivo({ contentType = 'image/webp', metadata, conteudo = 'bytes' } = {}) {
-    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'uploads' });
-    const stream = bucket.openUploadStream(`arq_${Date.now()}_${Math.random()}`, { contentType, metadata });
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+        bucketName: 'uploads',
+    });
+    const stream = bucket.openUploadStream(`arq_${Date.now()}_${Math.random()}`, {
+        contentType,
+        metadata,
+    });
     stream.end(Buffer.from(conteudo));
     await new Promise((resolve, reject) => {
         stream.on('finish', resolve);
@@ -71,7 +76,7 @@ async function metadataDe(fileId) {
     const doc = await mongoose.connection.db
         .collection('uploads.files')
         .findOne({ _id: new mongoose.Types.ObjectId(String(fileId)) });
-    return (doc && doc.metadata) || {};
+    return doc?.metadata || {};
 }
 
 describe("migração: carimbar metadata.type='avatar' nos avatares existentes", () => {
