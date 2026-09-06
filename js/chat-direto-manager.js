@@ -26,7 +26,22 @@
 
     const API = () => (window.API_BASE_URL || '/api').replace(/\/$/, '');
     const PREF_SOM = 'chatSomAtivo'; // preferência persistida do som
-    const PREF_AVISO_LGPD = 'chatAvisoLgpdVisto'; // ciência do aviso de armazenamento
+    /**
+     * Ciência do aviso de armazenamento — UMA CHAVE POR CONTA.
+     *
+     * A chave era `chatAvisoLgpdVisto`, sem sufixo nenhum. Numa secretaria com
+     * um computador só, o diretor clicava em "Entendi" e o aviso desaparecia
+     * para o professor, a secretaria e todo mundo que entrasse depois naquela
+     * máquina: a ciência de uma pessoa passava a valer pelas outras. É a mesma
+     * falha de fundo do aceite do Termo — estado de consentimento guardado por
+     * dispositivo, não por titular.
+     *
+     * Com o id da conta no nome, cada login tem a própria chave e o aviso volta
+     * a aparecer para quem ainda não o viu. As chaves antigas (sem sufixo) ficam
+     * órfãs no navegador e são inofensivas: ninguém mais as lê.
+     */
+    const PREF_AVISO_LGPD = 'chatAvisoLgpdVisto';
+    const chaveAvisoLgpd = (usuarioId) => `${PREF_AVISO_LGPD}:${usuarioId}`;
     const MAX_UPLOAD_MB = 10; // espelha LIMITE_ARQUIVO do backend
     const MAX_AUDIO_MB = 5; // espelha LIMITE_AUDIO do backend
     const IMG_MAX_LADO = 1600; // px — teto para compressão de imagem
@@ -2296,18 +2311,27 @@
         }
 
         /**
-         * Aviso LGPD, uma única vez por dispositivo.
+         * Aviso LGPD, uma única vez POR CONTA — ver `chaveAvisoLgpd`.
          *
          * As conversas ficam gravadas no servidor e podem citar alunos pelo nome —
          * quem escreve precisa saber disso ANTES de escrever, não depois. Some
-         * sozinho e não bloqueia a conversa; a ciência fica registrada localmente.
+         * sozinho e não bloqueia a conversa; a ciência fica registrada localmente,
+         * na chave da conta que está logada agora.
+         *
+         * Sem id de usuário não há a quem atribuir a ciência: nesse caso o aviso
+         * é exibido e o clique em "Entendi" não grava nada. Mostrar de novo
+         * incomoda; deixar de mostrar apaga o aviso para uma pessoa que talvez
+         * nunca o tenha visto, e entre os dois erros só um tem custo legal.
          */
         avisarSobreArmazenamento() {
-            try {
-                if (localStorage.getItem(PREF_AVISO_LGPD) === '1') return;
-            } catch (e) {
-                return;
-            } // sem storage, não insiste a cada abertura
+            const usuarioId = this.getMeuId();
+            if (usuarioId) {
+                try {
+                    if (localStorage.getItem(chaveAvisoLgpd(usuarioId)) === '1') return;
+                } catch (e) {
+                    return;
+                } // sem storage, não insiste a cada abertura
+            }
             if (document.getElementById('chatAvisoLgpd')) return;
 
             const aviso = document.createElement('div');
@@ -2324,10 +2348,12 @@
         <button type="button" class="chat-aviso-lgpd-ok">Entendi</button>`;
 
             aviso.querySelector('.chat-aviso-lgpd-ok').addEventListener('click', () => {
-                try {
-                    localStorage.setItem(PREF_AVISO_LGPD, '1');
-                } catch (e) {
-                    /* storage off */
+                if (usuarioId) {
+                    try {
+                        localStorage.setItem(chaveAvisoLgpd(usuarioId), '1');
+                    } catch (e) {
+                        /* storage off */
+                    }
                 }
                 aviso.remove();
             });
