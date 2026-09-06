@@ -6,6 +6,24 @@ module.exports = {
     globalTeardown: './src/tests/globalTeardown.js',
     testTimeout: 30000,
     verbose: true,
+
+    // `sanitize-html` 2.17.7 (correção do GHSA-g8qq-57p8-ggw5) passou a depender
+    // de `htmlparser2@12`, que é ESM puro — assim como toda a sua árvore
+    // (`domhandler`, `domutils`, `dom-serializer`, `domelementtype`, `entities`).
+    // Em produção isso não é problema: o Node resolve `require()` de ESM
+    // nativamente. O Jest 29 mantém o próprio registro CommonJS e não resolve —
+    // quebrava com "Cannot use import statement outside a module" em TODA suíte
+    // que carrega `src/utils/sanitize.js`.
+    //
+    // A exceção abaixo tira esses seis pacotes do `transformIgnorePatterns` para
+    // que o babel-jest os converta em CommonJS (ver o override correspondente em
+    // `babel.config.js`). Nenhum arquivo do backend passa a ser transformado.
+    // O segundo padrão é o default do Jest, repetido aqui porque a opção
+    // substitui a lista inteira em vez de acrescentar.
+    transformIgnorePatterns: [
+        '/node_modules/(?!(htmlparser2|domhandler|domutils|dom-serializer|domelementtype|entities)/)',
+        '\\.pnp\\.[^\\\\]+$',
+    ],
     coverageDirectory: './coverage',
 
     // O que entra na medição.
