@@ -15,7 +15,13 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
 const app = require('../app');
-const { conectarBanco, limparBanco, desconectarBanco, criarUsuario, SENHA_TESTE } = require('./helpers');
+const {
+    conectarBanco,
+    limparBanco,
+    desconectarBanco,
+    criarUsuario,
+    SENHA_TESTE,
+} = require('./helpers');
 
 const Escola = require('../models/Escola');
 const Diretor = require('../models/Diretor');
@@ -23,8 +29,12 @@ const Professor = require('../models/Professor');
 
 let escolaA, escolaB;
 
-beforeAll(async () => { await conectarBanco(); });
-afterAll(async () => { await desconectarBanco(); });
+beforeAll(async () => {
+    await conectarBanco();
+});
+afterAll(async () => {
+    await desconectarBanco();
+});
 
 /**
  * `limparBanco()` NÃO alcança o GridFS: ela percorre
@@ -38,7 +48,7 @@ async function limparGridFS() {
     const db = mongoose.connection.db;
     await Promise.all([
         db.collection('uploads.files').deleteMany({}),
-        db.collection('uploads.chunks').deleteMany({})
+        db.collection('uploads.chunks').deleteMany({}),
     ]);
 }
 
@@ -46,10 +56,18 @@ beforeEach(async () => {
     await limparBanco();
     await limparGridFS();
     escolaA = await Escola.create({
-        nome: 'CIEP Escola A', tipo: 'CIEP', bairro: 'A', codigoSecreto: 'COD-A-1', ativo: true
+        nome: 'CIEP Escola A',
+        tipo: 'CIEP',
+        bairro: 'A',
+        codigoSecreto: 'COD-A-1',
+        ativo: true,
     });
     escolaB = await Escola.create({
-        nome: 'EMEF Escola B', tipo: 'EMEF', bairro: 'B', codigoSecreto: 'COD-B-2', ativo: true
+        nome: 'EMEF Escola B',
+        tipo: 'EMEF',
+        bairro: 'B',
+        codigoSecreto: 'COD-B-2',
+        ativo: true,
     });
 });
 
@@ -59,8 +77,13 @@ beforeEach(async () => {
 
 /** Grava um arquivo no bucket 'uploads' e devolve o ObjectId. */
 async function gravarArquivo({ contentType, metadata, conteudo = 'conteudo-de-teste' }) {
-    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'uploads' });
-    const stream = bucket.openUploadStream(`arq_${Date.now()}_${Math.random()}`, { contentType, metadata });
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
+        bucketName: 'uploads',
+    });
+    const stream = bucket.openUploadStream(`arq_${Date.now()}_${Math.random()}`, {
+        contentType,
+        metadata,
+    });
     stream.end(Buffer.from(conteudo));
     await new Promise((resolve, reject) => {
         stream.on('finish', resolve);
@@ -107,11 +130,16 @@ async function agentResponsavel(email, escola) {
 async function agentProfessor(email, escola) {
     const user = await criarUsuario({ email, perfil: 'professor', escolaId: String(escola._id) });
     await Professor.create({
-        idUsuario: String(user._id), nome: user.nome, email, salaPrincipal: '1A',
-        vinculos: [{ escolaId: String(escola._id), cargo: 'professor' }], ativo: true
+        idUsuario: String(user._id),
+        nome: user.nome,
+        email,
+        salaPrincipal: '1A',
+        vinculos: [{ escolaId: String(escola._id), cargo: 'professor' }],
+        ativo: true,
     });
     const agent = request.agent(app);
-    const login = await agent.post('/api/auth/login')
+    const login = await agent
+        .post('/api/auth/login')
         .send({ email, senha: SENHA_TESTE, escolaId: String(escola._id) });
     expect(login.status).toBe(200);
     return agent;
@@ -125,9 +153,11 @@ async function agentProfessor(email, escola) {
 async function agentDiretor(email, escola, extraDiretor = {}) {
     const CODIGO_FIXO = '424242';
     const user = await criarUsuario({
-        email, perfil: 'diretor', escolaId: String(escola._id),
+        email,
+        perfil: 'diretor',
+        escolaId: String(escola._id),
         // O campo guarda HASH scrypt (utils/codigosBackup); texto puro e recusado.
-        twoFactorFixedCode: await require('../utils/codigosBackup').hashSegredo(CODIGO_FIXO)
+        twoFactorFixedCode: await require('../utils/codigosBackup').hashSegredo(CODIGO_FIXO),
     });
     const diretor = await Diretor.create({
         idUsuario: String(user._id),
@@ -136,11 +166,12 @@ async function agentDiretor(email, escola, extraDiretor = {}) {
         telefone: '(19) 90000-0000',
         vinculos: [{ escolaId: String(escola._id), cargo: 'diretor' }],
         ativo: true,
-        ...extraDiretor
+        ...extraDiretor,
     });
 
     const agent = request.agent(app);
-    const login = await agent.post('/api/auth/login')
+    const login = await agent
+        .post('/api/auth/login')
         .send({ email, senha: SENHA_TESTE, escolaId: String(escola._id) });
     expect(login.status).toBe(200);
     expect(login.body.requires2FA).toBe(true);
@@ -159,7 +190,7 @@ describe('GET /api/audio/:id — não é porta dos fundos do bucket "uploads"', 
         const alunoDocId = await gravarArquivo({
             contentType: 'application/pdf',
             metadata: { alunoId: 'aluno-qualquer', escolaId: String(escolaA._id) },
-            conteudo: 'RG-DA-CRIANCA'
+            conteudo: 'RG-DA-CRIANCA',
         });
 
         const agent = await agentResponsavel('curioso@escola.test', escolaA);
@@ -174,7 +205,7 @@ describe('GET /api/audio/:id — não é porta dos fundos do bucket "uploads"', 
         const fotoId = await gravarArquivo({
             contentType: 'image/webp',
             metadata: { usuarioId: 'outro-usuario-id', escolaId: String(escolaA._id) },
-            conteudo: 'BYTES-DA-FOTO'
+            conteudo: 'BYTES-DA-FOTO',
         });
 
         const agent = await agentResponsavel('curioso2@escola.test', escolaA);
@@ -194,7 +225,7 @@ describe('GET /api/audio/:id — não é porta dos fundos do bucket "uploads"', 
         const audioOutraEscola = await gravarArquivo({
             contentType: 'audio/webm',
             metadata: { usuarioId: 'alguem', escolaId: String(escolaB._id), type: 'voice_message' },
-            conteudo: 'AUDIO-ESCOLA-B'
+            conteudo: 'AUDIO-ESCOLA-B',
         });
 
         const agent = await agentProfessor('intruso@escola.test', escolaA);
@@ -207,8 +238,12 @@ describe('GET /api/audio/:id — não é porta dos fundos do bucket "uploads"', 
     it('ENTREGA mensagem de voz da própria escola (o recurso segue funcionando)', async () => {
         const audioId = await gravarArquivo({
             contentType: 'audio/webm',
-            metadata: { usuarioId: 'outro-membro', escolaId: String(escolaA._id), type: 'voice_message' },
-            conteudo: 'AUDIO-LEGITIMO'
+            metadata: {
+                usuarioId: 'outro-membro',
+                escolaId: String(escolaA._id),
+                type: 'voice_message',
+            },
+            conteudo: 'AUDIO-LEGITIMO',
         });
 
         const agent = await agentResponsavel('ouvinte@escola.test', escolaA);
@@ -221,7 +256,7 @@ describe('GET /api/audio/:id — não é porta dos fundos do bucket "uploads"', 
     it('não deixa resposta autenticada em cache compartilhado', async () => {
         const audioId = await gravarArquivo({
             contentType: 'audio/webm',
-            metadata: { usuarioId: 'x', escolaId: String(escolaA._id), type: 'voice_message' }
+            metadata: { usuarioId: 'x', escolaId: String(escolaA._id), type: 'voice_message' },
         });
 
         const agent = await agentResponsavel('cache@escola.test', escolaA);
@@ -249,9 +284,9 @@ describe('GET /api/files/:id — rota pública não vaza arquivo de contexto pri
                 type: 'chat_anexo',
                 usuarioId: 'remetente-id',
                 destinatarioId: 'destinatario-id',
-                escolaId: String(escolaA._id)
+                escolaId: String(escolaA._id),
             },
-            conteudo: 'FOTO-PRIVADA-DA-CONVERSA'
+            conteudo: 'FOTO-PRIVADA-DA-CONVERSA',
         });
 
         // Sem agent: requisição anônima, exatamente como um <img> de fora.
@@ -264,8 +299,12 @@ describe('GET /api/files/:id — rota pública não vaza arquivo de contexto pri
     it('NÃO entrega áudio/imagem de comentário (voice_message) sem autenticação', async () => {
         const vozId = await gravarArquivo({
             contentType: 'image/png',
-            metadata: { type: 'voice_message', usuarioId: 'autor-id', escolaId: String(escolaA._id) },
-            conteudo: 'ANEXO-DE-COMENTARIO'
+            metadata: {
+                type: 'voice_message',
+                usuarioId: 'autor-id',
+                escolaId: String(escolaA._id),
+            },
+            conteudo: 'ANEXO-DE-COMENTARIO',
         });
 
         const res = await request(app).get(`/api/files/${vozId}`);
@@ -274,11 +313,15 @@ describe('GET /api/files/:id — rota pública não vaza arquivo de contexto pri
         expect(corpoDe(res)).not.toContain('ANEXO-DE-COMENTARIO');
     });
 
-    it('CONTINUA entregando o avatar público (upload de foto grava metadata sem `type`)', async () => {
+    it("CONTINUA entregando o avatar público (metadata.type = 'avatar')", async () => {
         const avatarId = await gravarArquivo({
             contentType: 'image/webp',
-            metadata: { usuarioId: 'dono-do-avatar', escolaId: String(escolaA._id) },
-            conteudo: 'BYTES-DO-AVATAR'
+            metadata: {
+                type: 'avatar',
+                usuarioId: 'dono-do-avatar',
+                escolaId: String(escolaA._id),
+            },
+            conteudo: 'BYTES-DO-AVATAR',
         });
 
         const res = await request(app).get(`/api/files/${avatarId}`);
@@ -290,11 +333,42 @@ describe('GET /api/files/:id — rota pública não vaza arquivo de contexto pri
         expect(corpoDe(res)).toContain('BYTES-DO-AVATAR');
     });
 
+    it('NÃO entrega imagem SEM `metadata.type` — a rota é fechada por omissão', async () => {
+        // Este teste guardava o inverso até a Issue #216: a regra antiga era
+        // `meta.type && !TIPOS_PUBLICOS.has(meta.type)`, que barrava os tipos
+        // privados conhecidos e liberava tudo que não declarasse tipo nenhum.
+        // O risco não era o avatar de então, era o upload seguinte — qualquer
+        // caminho novo que esquecesse de carimbar `type` nascia público.
+        const semTipoId = await gravarArquivo({
+            contentType: 'image/jpeg',
+            metadata: { usuarioId: 'alguem', escolaId: String(escolaA._id) },
+            conteudo: 'IMAGEM-SEM-TIPO',
+        });
+
+        const res = await request(app).get(`/api/files/${semTipoId}`);
+
+        expect(res.status).toBe(403);
+        expect(corpoDe(res)).not.toContain('IMAGEM-SEM-TIPO');
+    });
+
+    it('NÃO entrega imagem com `type` desconhecido (allowlist, não denylist)', async () => {
+        const tipoNovoId = await gravarArquivo({
+            contentType: 'image/png',
+            metadata: { type: 'anexo_de_um_recurso_futuro', usuarioId: 'alguem' },
+            conteudo: 'TIPO-QUE-NINGUEM-LIBEROU',
+        });
+
+        const res = await request(app).get(`/api/files/${tipoNovoId}`);
+
+        expect(res.status).toBe(403);
+        expect(corpoDe(res)).not.toContain('TIPO-QUE-NINGUEM-LIBEROU');
+    });
+
     it('a rota legada /api/public/photo/:id aplica a mesma regra', async () => {
         const anexoId = await gravarArquivo({
             contentType: 'image/jpeg',
             metadata: { type: 'chat_anexo', usuarioId: 'a', destinatarioId: 'b' },
-            conteudo: 'FOTO-PRIVADA-LEGADA'
+            conteudo: 'FOTO-PRIVADA-LEGADA',
         });
 
         const res = await request(app).get(`/api/public/photo/${anexoId}`);
@@ -326,8 +400,8 @@ describe('PUT /api/diretores/:id — mass assignment e escalada de escola', () =
             nome: 'Nome Novo',
             vinculos: [
                 { escolaId: String(escolaA._id), cargo: 'diretor' },
-                { escolaId: String(escolaB._id), cargo: 'diretor' }
-            ]
+                { escolaId: String(escolaB._id), cargo: 'diretor' },
+            ],
         });
 
         expect(res.status).toBe(200);
@@ -342,7 +416,7 @@ describe('PUT /api/diretores/:id — mass assignment e escalada de escola', () =
         const { agent, diretor } = await agentDiretor('cadeia@escola.test', escolaA);
 
         await agent.put(`/api/diretores/${diretor._id}`).send({
-            vinculos: [{ escolaId: String(escolaB._id), cargo: 'diretor' }]
+            vinculos: [{ escolaId: String(escolaB._id), cargo: 'diretor' }],
         });
 
         const troca = await agent.post(`/api/escolas/trocar/${escolaB._id}`);
@@ -356,7 +430,7 @@ describe('PUT /api/diretores/:id — mass assignment e escalada de escola', () =
             ativo: false,
             role: 'superadmin',
             permissoes: ['tudo'],
-            email: 'outro@escola.test'
+            email: 'outro@escola.test',
         });
 
         const depois = await Diretor.findById(diretor._id).lean();
@@ -369,8 +443,12 @@ describe('PUT /api/diretores/:id — mass assignment e escalada de escola', () =
     it('PERMITE ao diretor editar os próprios campos descritivos', async () => {
         const { agent, diretor } = await agentDiretor('proprio@escola.test', escolaA);
 
-        const res = await agent.put(`/api/diretores/${diretor._id}`)
-            .send({ nome: 'Diretora Ana', telefone: '(19) 98888-7777', biografia: 'Bio nova', idade: 44 });
+        const res = await agent.put(`/api/diretores/${diretor._id}`).send({
+            nome: 'Diretora Ana',
+            telefone: '(19) 98888-7777',
+            biografia: 'Bio nova',
+            idade: 44,
+        });
 
         expect(res.status).toBe(200);
         const depois = await Diretor.findById(diretor._id).lean();
@@ -394,13 +472,15 @@ describe('GET /api/diretores — escopo por escola e whitelist de filtros', () =
         const res = await agent.get('/api/diretores');
 
         expect(res.status).toBe(200);
-        const emails = res.body.data.map(d => d.email);
+        const emails = res.body.data.map((d) => d.email);
         expect(emails).toContain('minha.escola@escola.test');
         expect(emails).not.toContain('outra.escola@escola.test');
     });
 
     it('ignora parâmetro de query fora da whitelist', async () => {
-        const { agent } = await agentDiretor('filtro@escola.test', escolaA, { biografia: 'segredo' });
+        const { agent } = await agentDiretor('filtro@escola.test', escolaA, {
+            biografia: 'segredo',
+        });
 
         // `biografia` não é filtro aceito: o parâmetro é descartado e a
         // listagem responde normalmente, em vez de virar consulta arbitrária.
