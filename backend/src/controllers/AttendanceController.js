@@ -15,12 +15,10 @@ exports.list = async (req, res) => {
             const allowed = req.allowedTurmas || [];
             if (turma) {
                 if (!allowed.includes(turma)) {
-                    return res
-                        .status(403)
-                        .json({
-                            success: false,
-                            error: 'Acesso negado. Você não tem permissão para visualizar faltas desta turma.',
-                        });
+                    return res.status(403).json({
+                        success: false,
+                        error: 'Acesso negado. Você não tem permissão para visualizar faltas desta turma.',
+                    });
                 }
             } else {
                 query.turma = { $in: allowed };
@@ -42,12 +40,10 @@ exports.create = async (req, res) => {
         if (req.user && req.user.perfil === 'professor') {
             const allowed = req.allowedTurmas || [];
             if (!turma || !allowed.includes(turma)) {
-                return res
-                    .status(403)
-                    .json({
-                        success: false,
-                        error: 'Acesso negado. Você não tem permissão para registrar faltas para esta turma.',
-                    });
+                return res.status(403).json({
+                    success: false,
+                    error: 'Acesso negado. Você não tem permissão para registrar faltas para esta turma.',
+                });
             }
         }
         // -------------------------------------------------------------------------
@@ -70,12 +66,10 @@ exports.get = async (req, res) => {
         if (req.user && req.user.perfil === 'professor') {
             const allowed = req.allowedTurmas || [];
             if (!allowed.includes(doc.turma)) {
-                return res
-                    .status(403)
-                    .json({
-                        success: false,
-                        error: 'Acesso negado. Você não tem permissão para acessar este registro.',
-                    });
+                return res.status(403).json({
+                    success: false,
+                    error: 'Acesso negado. Você não tem permissão para acessar este registro.',
+                });
             }
         }
         // -------------------------------------------------------------------------
@@ -96,20 +90,16 @@ exports.update = async (req, res) => {
         if (req.user && req.user.perfil === 'professor') {
             const allowed = req.allowedTurmas || [];
             if (!allowed.includes(doc.turma)) {
-                return res
-                    .status(403)
-                    .json({
-                        success: false,
-                        error: 'Acesso negado. Você não tem permissão para modificar este registro.',
-                    });
+                return res.status(403).json({
+                    success: false,
+                    error: 'Acesso negado. Você não tem permissão para modificar este registro.',
+                });
             }
             if (req.body.turma && !allowed.includes(req.body.turma)) {
-                return res
-                    .status(403)
-                    .json({
-                        success: false,
-                        error: 'Acesso negado. Você não pode mover registros para esta turma.',
-                    });
+                return res.status(403).json({
+                    success: false,
+                    error: 'Acesso negado. Você não pode mover registros para esta turma.',
+                });
             }
         }
         // -------------------------------------------------------------------------
@@ -131,12 +121,10 @@ exports.delete = async (req, res) => {
         if (req.user && req.user.perfil === 'professor') {
             const allowed = req.allowedTurmas || [];
             if (!allowed.includes(doc.turma)) {
-                return res
-                    .status(403)
-                    .json({
-                        success: false,
-                        error: 'Acesso negado. Você não tem permissão para deletar este registro.',
-                    });
+                return res.status(403).json({
+                    success: false,
+                    error: 'Acesso negado. Você não tem permissão para deletar este registro.',
+                });
             }
         }
         // -------------------------------------------------------------------------
@@ -162,12 +150,10 @@ exports.sync = async (req, res) => {
         if (req.user && req.user.perfil === 'professor') {
             const allowed = req.allowedTurmas || [];
             if (!allowed.includes(turma)) {
-                return res
-                    .status(403)
-                    .json({
-                        success: false,
-                        error: `Acesso negado. Você não tem permissão para sincronizar frequências para a turma ${turma}.`,
-                    });
+                return res.status(403).json({
+                    success: false,
+                    error: `Acesso negado. Você não tem permissão para sincronizar frequências para a turma ${turma}.`,
+                });
             }
         }
         // -------------------------------------------------------------------------
