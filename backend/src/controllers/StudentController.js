@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Aluno = require('../models/Aluno');
 const ImageProcessor = require('../utils/imageProcessor');
 const { saveToGridFS, deleteFile } = require('../utils/gridfs');
@@ -49,6 +50,44 @@ const studentWhitelist = [
     'documentos',
     'lgpdConsentimento',
 ];
+
+/**
+ * Converte a foto do aluno (base64) para WebP e grava no GridFS COM o metadata
+ * que autoriza o download.
+ *
+ * `alunoId` é o campo que importa: com ele, `FileController.autorizarArquivo`
+ * aplica `assertAcessoAoAluno` — professor só da própria turma, responsável só
+ * do próprio filho, gestão da escola. Sem ele (como era até a Issue #228) a
+ * decisão caía na regra de legado, que libera qualquer `image/*` a qualquer
+ * autenticado da rede.
+ *
+ * `type: 'aluno_foto'` é o segundo cadeado, na rota pública: a allowlist de
+ * `TIPOS_PUBLICOS` (Issue #216) só contém 'avatar', então foto de criança nunca
+ * sai por `/api/files/:id`, com ou sem o `alunoId`.
+ *
+ * Devolve `gridfs:<id>`, ou `null` quando a conversão falha — o chamador
+ * mantém o valor anterior nesse caso, que é o comportamento que já existia.
+ */
+async function guardarFotoDoAluno(fotoBase64, { alunoId, escolaId, prefixo }) {
+    try {
+        const base64Data = fotoBase64.includes('base64,')
+            ? fotoBase64.split('base64,')[1]
+            : fotoBase64;
+        const buffer = Buffer.from(base64Data, 'base64');
+        const sharp = require('sharp');
+        const webpBuffer = await sharp(buffer).webp({ quality: 80 }).toBuffer();
+        const filename = `${prefixo}_${Date.now()}.webp`;
+
+        const metadata = { type: 'aluno_foto', alunoId: String(alunoId) };
+        if (escolaId) metadata.escolaId = String(escolaId);
+
+        const fileId = await saveToGridFS(webpBuffer, filename, 'image/webp', metadata);
+        return `gridfs:${fileId}`;
+    } catch (imgError) {
+        console.warn('Falha ao processar imagem do aluno para GridFS:', imgError);
+        return null;
+    }
+}
 
 exports.list = async (req, res) => {
     try {
@@ -196,21 +235,22 @@ exports.create = async (req, res) => {
         }
         // -------------------------------------------------------------------------
 
+        // O metadata da foto precisa do id do aluno, e o id só existiria depois
+        // do `save()`. Gerar o ObjectId aqui inverte a ordem sem truque: o
+        // documento nasce com o mesmo id que a foto declara como dono.
+        const alunoId = new mongoose.Types.ObjectId();
+        filteredBody._id = alunoId;
+
         // Conversão automática de imagem para WebP e salvamento no GridFS
         if (filteredBody.foto && ImageProcessor.isBase64Image(filteredBody.foto)) {
-            try {
-                const base64Data = filteredBody.foto.includes('base64,')
-                    ? filteredBody.foto.split('base64,')[1]
-                    : filteredBody.foto;
-                const buffer = Buffer.from(base64Data, 'base64');
-                const sharp = require('sharp');
-                const webpBuffer = await sharp(buffer).webp({ quality: 80 }).toBuffer();
-                const filename = `aluno_${Date.now()}.webp`;
-                const fileId = await saveToGridFS(webpBuffer, filename, 'image/webp');
-                filteredBody.foto = `gridfs:${fileId}`;
-            } catch (imgError) {
-                console.warn('Falha ao processar imagem para GridFS:', imgError);
-            }
+            const referencia = await guardarFotoDoAluno(filteredBody.foto, {
+                alunoId,
+                escolaId: filteredBody.escolaId,
+                prefixo: 'aluno',
+            });
+            // `null` = conversão falhou. Manter o base64 original preserva o
+            // comportamento anterior: a foto vai para o documento, não some.
+            if (referencia) filteredBody.foto = referencia;
         }
 
         const student = new Aluno(filteredBody);
@@ -245,45 +285,10 @@ exports.update = async (req, res) => {
     try {
         console.log(`[Student Update] Updating ID: ${req.params.id}`);
 
-        // Conversão automática de imagem para WebP e salvamento no GridFS
-        if (req.body.foto && ImageProcessor.isBase64Image(req.body.foto)) {
-            try {
-                const base64Data = req.body.foto.includes('base64,')
-                    ? req.body.foto.split('base64,')[1]
-                    : req.body.foto;
-                const buffer = Buffer.from(base64Data, 'base64');
-
-                const sharp = require('sharp');
-                const webpBuffer = await sharp(buffer).webp({ quality: 80 }).toBuffer();
-
-                const filename = `aluno_upd_${Date.now()}.webp`;
-                const fileId = await saveToGridFS(webpBuffer, filename, 'image/webp');
-
-                // Tenta deletar a foto antiga do GridFS se existir
-                const oldStudent = await Aluno.findOne({ _id: req.params.id }).select('foto');
-                if (oldStudent && oldStudent.foto && oldStudent.foto.startsWith('gridfs:')) {
-                    const oldId = oldStudent.foto.split(':')[1];
-                    try {
-                        await deleteFile(oldId);
-                    } catch (e) {
-                        // Não bloqueia a troca de foto, mas cada falha aqui deixa
-                        // um arquivo órfão ocupando espaço no GridFS para sempre.
-                        logger.warn(
-                            'Não foi possível remover a foto antiga do GridFS (arquivo órfão)',
-                            {
-                                err: e,
-                                gridfsId: oldId,
-                                action: 'aluno.trocarFoto',
-                            }
-                        );
-                    }
-                }
-
-                req.body.foto = `gridfs:${fileId}`;
-            } catch (imgError) {
-                console.warn('Falha ao processar imagem do aluno no update:', imgError);
-            }
-        }
+        // A foto NÃO é processada aqui. Ver o bloco depois de
+        // `assertAcessoAoAluno`: gravar bytes no bucket e apagar a foto antiga
+        // antes de saber se quem pediu pode editar este aluno era escrita sem
+        // autorização.
 
         delete req.body._id;
         delete req.body.id;
@@ -323,6 +328,46 @@ exports.update = async (req, res) => {
         // escolaId. O nome do campo NÃO está na whitelist geral de propósito.
         if (req.body.escolaId && ['admin', 'diretor', 'secretaria'].includes(req.user?.perfil)) {
             filteredBody.escolaId = String(req.body.escolaId);
+        }
+
+        // ── Foto: só agora, com o aluno já autorizado ────────────────────────
+        //
+        // Este bloco vinha ANTES da checagem acima. Quem não podia editar o
+        // aluno já tinha gravado a imagem nova no bucket e APAGADO a antiga
+        // quando o 403 chegava — perda de dado por requisição negada.
+        //
+        // Aqui também nasce o metadata: `alunoId` é o que faz o download da
+        // foto passar por `assertAcessoAoAluno` em vez da regra de legado.
+        if (filteredBody.foto && ImageProcessor.isBase64Image(filteredBody.foto)) {
+            const referencia = await guardarFotoDoAluno(filteredBody.foto, {
+                alunoId: existingStudent._id,
+                escolaId: filteredBody.escolaId || existingStudent.escolaId,
+                prefixo: 'aluno_upd',
+            });
+
+            if (referencia) {
+                filteredBody.foto = referencia;
+
+                // Foto antiga só sai do bucket depois que a nova entrou.
+                const fotoAntiga = String(existingStudent.foto || '');
+                if (fotoAntiga.startsWith('gridfs:')) {
+                    const oldId = fotoAntiga.slice('gridfs:'.length);
+                    try {
+                        await deleteFile(oldId);
+                    } catch (e) {
+                        // Não bloqueia a troca de foto, mas cada falha aqui deixa
+                        // um arquivo órfão ocupando espaço no GridFS para sempre.
+                        logger.warn(
+                            'Não foi possível remover a foto antiga do GridFS (arquivo órfão)',
+                            {
+                                err: e,
+                                gridfsId: oldId,
+                                action: 'aluno.trocarFoto',
+                            }
+                        );
+                    }
+                }
+            }
         }
 
         const student = await Aluno.findOneAndUpdate(
