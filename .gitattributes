@@ -1,0 +1,46 @@
+# Quebra de linha: LF, sempre, em qualquer máquina.
+#
+# POR QUE ESTE ARQUIVO EXISTE (Issue #235)
+# ----------------------------------------
+# Sem ele, o que chega ao disco depende do `core.autocrlf` de cada pessoa. O
+# índice deste repositório é 100% LF, mas num checkout Windows com
+# `core.autocrlf=true` — o padrão do Git for Windows — 950 arquivos chegam com
+# CRLF. Duas superfícies já foram mordidas por isso:
+#
+#   1. Issue #27: o `cspHashes.js` calculava o SHA-256 sobre os bytes em disco
+#      (com `\r\n`), o navegador normaliza para `\n` antes de hashear, os hashes
+#      não batiam e a CSP bloqueava todo script inline. Quebrava só na máquina de
+#      desenvolvimento. Foi tratada normalizando no próprio script
+#      (`cspHashes.js:112`) — o sintoma, não a causa.
+#
+#   2. O gate de lint: o `biome.json` exige `"lineEnding": "lf"` e o passo do CI
+#      linta o ARQUIVO INTEIRO que o PR tocou. Um arquivo que chegue com CRLF
+#      reprova o PR com um diff de `␍` sem relação com o que a pessoa mudou.
+#
+# `text=auto` deixa o Git decidir o que é texto; `eol=lf` fixa a quebra do que
+# ele classificou assim. Arquivo com byte NUL continua sendo tratado como
+# binário e não é tocado — é o caso de `portal-responsavel/tsconfig-eval.json`
+# (UTF-16LE) e `detalhes/detalhes.css`.
+* text=auto eol=lf
+
+# Binários declarados explicitamente. A detecção automática já acerta em todos
+# eles hoje, mas declarar é o que impede um arquivo novo — um PNG que comece com
+# bytes ASCII, por exemplo — de ser normalizado e corrompido em silêncio.
+# Marcar um binário como texto é pior do que não marcar nada.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.svg text eol=lf
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.otf binary
+*.pdf binary
+*.mp3 binary
+*.mp4 binary
+*.webm binary
+*.zip binary
