@@ -56,9 +56,23 @@ function corpoDaPagina() {
     return corpo.replace(/<script[\s\S]*?<\/script>/g, '');
 }
 
-/** O script inline da página, que é onde a decisão mora. */
+/**
+ * O script inline da página, que é onde a decisão mora.
+ *
+ * `\r?\n` e `\s*` NÃO são preciosismo. A versão anterior casava só `\n` e exigia
+ * exatamente quatro espaços antes do fechamento — o que quebrava em qualquer
+ * checkout Windows, onde o `core.autocrlf` padrão do Git grava `\r\n`. O CI roda
+ * em Linux com LF e passava, então a suíte ficava vermelha só na máquina de quem
+ * desenvolve, com uma mensagem que não menciona fim de linha em lugar nenhum.
+ *
+ * É a mesma armadilha da Issue #27, que fez os hashes da CSP pararem de bater em
+ * checkout Windows e derrubaram TODO script inline do sistema.
+ *
+ * O `<script>` casado é o SEM atributos: os com `src` são arquivos externos, e
+ * `<script>` puro é a marca do bloco inline.
+ */
 function scriptDaPagina() {
-    const inline = html.match(/<script>\n([\s\S]*?)\n {4}<\/script>/);
+    const inline = html.match(/<script>\r?\n([\s\S]*?)\r?\n\s*<\/script>/);
     if (!inline) throw new Error('script inline da página do Termo não encontrado');
     return inline[1];
 }
