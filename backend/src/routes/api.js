@@ -78,7 +78,18 @@ router.put('/config/:id', authJWT, authorize('admin'), ConfigController.update);
 // Rotas públicas servem SOMENTE imagens; documentos (PDF etc.) exigem authJWT.
 router.get('/files/:id', FileController.servePublicImage); // Rota pública principal (usada pelo getPhotoUrl)
 router.get('/public/photo/:id', FileController.servePublicImage); // Rota pública legada
-router.get('/upload/photo/:id', authJWT, filtrarPorEscola, FileController.serveFile);
+// `horizontalFilter` não é decoração: desde a Issue #228 a foto do aluno carrega
+// `metadata.alunoId`, e por isso o download passa por `assertAcessoAoAluno` — que
+// decide a turma do professor lendo `req.allowedTurmas`. É este middleware que
+// preenche esse campo. Sem ele, a lista fica vazia e TODO professor toma 403 na
+// foto dos próprios alunos. Mesma composição já usada em `/upload/documento/:id`.
+router.get(
+    '/upload/photo/:id',
+    authJWT,
+    horizontalFilter,
+    filtrarPorEscola,
+    FileController.serveFile
+);
 router.post(
     '/upload/photo',
     authJWT,
@@ -226,11 +237,7 @@ router.use('/security', authJWT, filtrarPorEscola, require('./security'));
 router.use('/audit', authJWT, filtrarPorEscola, require('./audit'));
 router.use('/usuarios', authJWT, filtrarPorEscola, require('./usuarios'));
 router.use('/meus-dados', authJWT, require('./meus-dados'));
-// `filtrarPorEscola` acrescentado junto com o `escolaId` no schema: sem ele
-// `req.escolaId` é undefined, o filtro do `deleteMany` sai vazio e a
-// sincronização volta a apagar as atribuições das outras escolas. O campo no
-// modelo sozinho não isola nada.
-router.use('/atribuicoes', authJWT, filtrarPorEscola, require('./atribuicoes'));
+router.use('/atribuicoes', authJWT, require('./atribuicoes'));
 router.use('/alunos', authJWT, horizontalFilter, filtrarPorEscola, require('./alunos'));
 router.use('/professores', authJWT, horizontalFilter, filtrarPorEscola, require('./professores'));
 // `filtrarPorEscola` é o que resolve req.escolaId — sem ele o escopo de escola
