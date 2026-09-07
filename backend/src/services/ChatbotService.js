@@ -1,5 +1,3 @@
-'use strict';
-
 const Aluno = require('../models/Aluno');
 const Nota = require('../models/Nota');
 const Falta = require('../models/Falta');
@@ -330,11 +328,11 @@ function getConversationalFallback(intent) {
 // Mantida como base comum; a lista final é ajustada por perfil em
 // getConversationalSuggestions().
 const CONVERSATIONAL_SUGGESTIONS = [
-    { label: '📝 Notas e desempenho', alunoId: null },
-    { label: '📅 Faltas e frequência', alunoId: null },
-    { label: '📢 Comunicados recentes', alunoId: null },
-    { label: '🕐 Grade horária', alunoId: null },
-    { label: '👨‍🏫 Professores da turma', alunoId: null },
+    { label: 'Notas e desempenho', alunoId: null },
+    { label: 'Faltas e frequência', alunoId: null },
+    { label: 'Comunicados recentes', alunoId: null },
+    { label: 'Grade horária', alunoId: null },
+    { label: 'Professores da turma', alunoId: null },
 ];
 
 /**
@@ -354,7 +352,7 @@ function getConversationalSuggestions(perfil) {
     }
 
     if (perfilAdmin) {
-        return [...base, { label: '🏫 Resumo da escola', alunoId: null }];
+        return [...base, { label: 'Resumo da escola', alunoId: null }];
     }
 
     return base;

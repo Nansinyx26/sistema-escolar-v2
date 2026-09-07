@@ -5,13 +5,13 @@
  * Features: Auth CSRF, Contexto conversacional, Avatar real, TTS, RGB Visualizer.
  */
 
-(function() {
+(function () {
     'use strict';
 
     const CONFIG = {
         apiBase: (window.API_BASE_URL || '/api') + '/ia/chatbot',
         ttsBase: (window.API_BASE_URL || '/api') + '/tts',
-        stylesUrl: '/css/chatbot-ia.css'
+        stylesUrl: '/css/chatbot-ia.css',
     };
 
     let isOpen = false;
@@ -21,11 +21,11 @@
     localStorage.setItem('user_tts_provider', 'elevenlabs');
     localStorage.setItem('user_voice_preference', 'male');
 
-    let audioSettings = { 
-        voice: 'male', 
-        speed: parseFloat(localStorage.getItem('user_voice_speed') || '1.0'), 
-        provider: 'elevenlabs', 
-        autoPlay: localStorage.getItem('user_preferencia_narracao') !== 'texto'
+    const audioSettings = {
+        voice: 'male',
+        speed: parseFloat(localStorage.getItem('user_voice_speed') || '1.0'),
+        provider: 'elevenlabs',
+        autoPlay: localStorage.getItem('user_preferencia_narracao') !== 'texto',
     };
 
     const connectedAudioElements = new WeakSet();
@@ -35,7 +35,7 @@
     let analyser = null;
     let dataArray = null;
     let playingMsgIndex = null;
-    let animationId = null;
+    const animationId = null;
 
     // --- HELPERS ---
     const getCsrfToken = () => {
@@ -45,7 +45,9 @@
 
     const getHeaders = () => {
         const headers = { 'Content-Type': 'application/json' };
-        const csrfToken = getCsrfToken() || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        const csrfToken =
+            getCsrfToken() ||
+            document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         if (csrfToken) {
             headers['X-CSRF-Token'] = csrfToken;
         }
@@ -58,7 +60,9 @@
         }
         try {
             return JSON.parse(sessionStorage.getItem('currentUser') || '{}');
-        } catch { return {}; }
+        } catch {
+            return {};
+        }
     };
 
     const getUserPhoto = (user) => {
@@ -190,11 +194,19 @@
             const user = getCurrentUser();
             const nome = user?.nome ? user.nome.split(' ')[0] : '';
             const perfil = getRoleName(user?.perfil);
-            
+
             if (nome) {
-                addMessage(`Olá, **${nome}**! Você está na conta **${perfil}**. Posso consultar informações do sistema escolar para você. Escolha um tema ou pergunte direto:`, true, getInitialSuggestions());
+                addMessage(
+                    `Olá, **${nome}**! Você está na conta **${perfil}**. Posso consultar informações do sistema escolar para você. Escolha um tema ou pergunte direto:`,
+                    true,
+                    getInitialSuggestions()
+                );
             } else {
-                addMessage("Olá! Sou o Assistente Escolar IA. Escolha um tema ou pergunte direto:", true, getInitialSuggestions());
+                addMessage(
+                    'Olá! Sou o Assistente Escolar IA. Escolha um tema ou pergunte direto:',
+                    true,
+                    getInitialSuggestions()
+                );
             }
         }
     }
@@ -210,7 +222,11 @@
         messages = [];
         contextAlunoId = null;
         body.innerHTML = '';
-        addMessage("Conversa limpa. Escolha um tema ou pergunte direto:", true, getInitialSuggestions());
+        addMessage(
+            'Conversa limpa. Escolha um tema ou pergunte direto:',
+            true,
+            getInitialSuggestions()
+        );
     }
 
     // Chips de sugestão iniciais, adequados ao perfil logado
@@ -223,29 +239,32 @@
         // como pergunta, e o backend resolve/oferece a escolha do filho.
         if (perfil === 'responsavel') {
             return [
-                { label: '📝 Notas do meu filho', value: '' },
-                { label: '📅 Faltas do meu filho', value: '' },
-                { label: '📊 Resumo do desempenho', value: '' },
-                { label: '📢 Comunicados recentes', value: '' },
-                { label: '🕐 Grade horária', value: '' },
+                { label: 'Notas do meu filho', value: '' },
+                { label: 'Faltas do meu filho', value: '' },
+                { label: 'Resumo do desempenho', value: '' },
+                { label: 'Comunicados recentes', value: '' },
+                { label: 'Grade horária', value: '' },
             ];
         }
 
         const base = [
-            { label: '📝 Notas e desempenho', value: '' },
-            { label: '📅 Faltas e frequência', value: '' },
-            { label: '📢 Comunicados recentes', value: '' },
-            { label: '🕐 Grade horária', value: '' },
-            { label: '👨‍🏫 Professores da turma', value: '' },
+            { label: 'Notas e desempenho', value: '' },
+            { label: 'Faltas e frequência', value: '' },
+            { label: 'Comunicados recentes', value: '' },
+            { label: 'Grade horária', value: '' },
+            { label: 'Professores da turma', value: '' },
         ];
         if (['diretor', 'admin', 'coordenador', 'secretaria'].includes(perfil)) {
-            base.push({ label: '🏫 Resumo da escola', value: '' });
+            base.push({ label: 'Resumo da escola', value: '' });
         }
         return base;
     }
 
     // Prevent clicks from propagating (safe to register immediately — no function calls)
-    win.addEventListener('click', (e) => { e.stopPropagation(); e.stopImmediatePropagation(); });
+    win.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+    });
     win.addEventListener('mousedown', (e) => e.stopPropagation());
     win.addEventListener('pointerdown', (e) => e.stopPropagation());
     fab.addEventListener('mousedown', (e) => e.stopPropagation());
@@ -264,19 +283,19 @@
 
         const user = getCurrentUser();
         let avatarHtml = '';
-        
+
         if (isAi) {
             avatarHtml = '<div class="chat-avatar-bot"><i class="bi bi-robot"></i></div>';
         } else {
             const foto = getUserPhoto(user);
             const initials = getInitials(user?.nome);
-            avatarHtml = foto 
+            avatarHtml = foto
                 ? `<img src="${foto}" class="chat-avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"><div class="chat-avatar-initials" style="display:none">${initials}</div>`
                 : `<div class="chat-avatar-initials">${initials}</div>`;
         }
 
         const formattedText = formatBold(text);
-        
+
         let html = `
             <div class="msg-content-wrapper">
                 ${isAi ? avatarHtml : ''}
@@ -313,13 +332,13 @@
                 html += `</div>`;
             }
         }
-        
+
         html += `
                 </div>
                 ${!isAi ? avatarHtml : ''}
             </div>
         `;
-        
+
         div.innerHTML = html;
         body.appendChild(div);
         body.scrollTop = body.scrollHeight;
@@ -357,15 +376,15 @@
     async function playAudio(index) {
         stopAudio();
         initAudioContext();
-        
+
         const msg = messages[index];
         const icon = document.getElementById(`play-icon-${index}`);
-        if(icon) icon.className = 'bi bi-arrow-repeat bi-spin'; 
+        if (icon) icon.className = 'bi bi-arrow-repeat bi-spin';
 
         try {
             // Usa window.speak (que agora aponta para /api/tts/speak e usa ElevenLabs)
             const audio = await window.speak(msg.text.replace(/\*\*/g, ''));
-            
+
             if (!audio) {
                 if (icon) icon.className = 'bi bi-volume-up-fill';
                 return;
@@ -373,7 +392,7 @@
 
             currentAudio = audio;
             playingMsgIndex = index;
-            if(icon) icon.className = 'bi bi-pause-fill';
+            if (icon) icon.className = 'bi bi-pause-fill';
 
             if (window.VoiceOrbManager && orbContainer) {
                 orbContainer.style.display = 'block';
@@ -393,25 +412,34 @@
     function cleanupAudio(index) {
         if (animationId) cancelAnimationFrame(animationId);
         const icon = document.getElementById(`play-icon-${index}`);
-        if(icon) icon.className = 'bi bi-volume-up-fill';
+        if (icon) icon.className = 'bi bi-volume-up-fill';
         playingMsgIndex = null;
         if (window.VoiceOrbManager) {
             window.VoiceOrbManager.setState('idle');
             setTimeout(() => {
-                if (window.VoiceOrbManager && window.VoiceOrbManager.state === 'idle' && orbContainer) {
+                if (
+                    window.VoiceOrbManager &&
+                    window.VoiceOrbManager.state === 'idle' &&
+                    orbContainer
+                ) {
                     // Ordem invertida de propósito: `destroy()` agora faz o orb
                     // SAIR (220ms de opacidade). Esconder o palco antes cortava
                     // essa saída no primeiro quadro — o orb sumia de um golpe e
                     // a transição existia só no código.
                     window.VoiceOrbManager.destroy();
-                    setTimeout(() => { orbContainer.style.display = 'none'; }, 240);
+                    setTimeout(() => {
+                        orbContainer.style.display = 'none';
+                    }, 240);
                 }
             }, 3000);
         }
     }
 
     function stopAudio() {
-        if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio = null;
+        }
     }
 
     // --- SPEECH RECOGNITION REMOVIDO POR SEGURANÇA ---
@@ -420,9 +448,21 @@
     }
 
     // --- EVENT LISTENERS ---
-    fab.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); openChat(); });
-    document.getElementById('close-chatbot')?.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); closeChat(); });
-    document.getElementById('chatbot-clear').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); clearChat(); });
+    fab.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openChat();
+    });
+    document.getElementById('close-chatbot')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closeChat();
+    });
+    document.getElementById('chatbot-clear').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        clearChat();
+    });
 
     document.getElementById('show-settings').addEventListener('click', (e) => {
         e.stopPropagation();
@@ -445,12 +485,23 @@
         if (!escolaSelecionada) {
             try {
                 const salva = JSON.parse(localStorage.getItem('escolaSelecionada'));
-                if (salva) { escolaSelecionada = salva.id; escolaNome = salva.nome; }
-            } catch(e) {}
+                if (salva) {
+                    escolaSelecionada = salva.id;
+                    escolaNome = salva.nome;
+                }
+            } catch (e) {}
         }
         let turmaSelecionada = null;
-        try { turmaSelecionada = sessionStorage.getItem('turmaAtiva') || sessionStorage.getItem('turmaSelecionada'); } catch(e){}
-        const userContext = { escolaId: escolaSelecionada, escolaNome: escolaNome, turmaId: turmaSelecionada, perfil: user?.perfil || null };
+        try {
+            turmaSelecionada =
+                sessionStorage.getItem('turmaAtiva') || sessionStorage.getItem('turmaSelecionada');
+        } catch (e) {}
+        const userContext = {
+            escolaId: escolaSelecionada,
+            escolaNome: escolaNome,
+            turmaId: turmaSelecionada,
+            perfil: user?.perfil || null,
+        };
 
         addMessage(text, false);
         input.value = '';
@@ -469,11 +520,15 @@
             const res = await fetch(CONFIG.apiBase, {
                 method: 'POST',
                 headers: getHeaders(),
-                body: JSON.stringify({ message: text, alunoId: contextAlunoId, userContext: userContext }),
-                credentials: 'include'
+                body: JSON.stringify({
+                    message: text,
+                    alunoId: contextAlunoId,
+                    userContext: userContext,
+                }),
+                credentials: 'include',
             });
-            
-            let responseText = "";
+
+            let responseText = '';
             let responseOptions = null;
             if (res.ok) {
                 const data = await res.json();
@@ -490,21 +545,24 @@
                 statusEl.textContent = 'Conectado';
                 if (window.VoiceOrbManager) window.VoiceOrbManager.setState('idle');
             } else {
-                addMessage("Não consegui processar sua pergunta.", true, null);
+                addMessage('Não consegui processar sua pergunta.', true, null);
                 statusEl.textContent = 'Conectado';
                 if (window.VoiceOrbManager) window.VoiceOrbManager.setState('error');
             }
         } catch (err) {
             removeTypingIndicator();
             if (window.VoiceOrbManager) window.VoiceOrbManager.setState('error');
-            addMessage("Ocorreu um erro de conexão. Verifique sua internet e tente novamente.", true, null);
+            addMessage(
+                'Ocorreu um erro de conexão. Verifique sua internet e tente novamente.',
+                true,
+                null
+            );
         } finally {
             input.disabled = false;
             document.getElementById('chat-submit-btn').disabled = false;
             input.focus();
         }
     };
-
 
     // --- Seletor de voz ---
     //
@@ -584,11 +642,12 @@
     let sequenciaSugestoes = 0;
     let textoConsultado = null;
 
-    const escaparHtml = (texto) => String(texto)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+    const escaparHtml = (texto) =>
+        String(texto)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
 
     /**
      * Versão sem acento e em minúsculas do texto, junto com o mapa de volta
@@ -630,9 +689,13 @@
     function destacarTrecho(nome, termo) {
         const faixa = localizarTrecho(nome, termo);
         if (!faixa) return escaparHtml(nome);
-        return escaparHtml(nome.slice(0, faixa.inicio))
-            + '<strong>' + escaparHtml(nome.slice(faixa.inicio, faixa.fim)) + '</strong>'
-            + escaparHtml(nome.slice(faixa.fim));
+        return (
+            escaparHtml(nome.slice(0, faixa.inicio)) +
+            '<strong>' +
+            escaparHtml(nome.slice(faixa.inicio, faixa.fim)) +
+            '</strong>' +
+            escaparHtml(nome.slice(faixa.fim))
+        );
     }
 
     function fecharSugestoes() {
@@ -667,23 +730,26 @@
 
         if (!lista.length) {
             if (!vazioVisivel) return fecharSugestoes();
-            caixaSugestoes.innerHTML = '<div class="chatbot-sugestao-vazia">Nenhum aluno encontrado</div>';
+            caixaSugestoes.innerHTML =
+                '<div class="chatbot-sugestao-vazia">Nenhum aluno encontrado</div>';
             caixaSugestoes.hidden = false;
             input.setAttribute('aria-expanded', 'true');
             input.removeAttribute('aria-activedescendant');
             return;
         }
 
-        caixaSugestoes.innerHTML = lista.map((aluno, i) => {
-            const turma = aluno.turma
-                ? `<span class="chatbot-sugestao-turma">Turma ${escaparHtml(aluno.turma)}</span>`
-                : '';
-            return `<div class="chatbot-sugestao" id="chatbot-sugestao-${i}" role="option" aria-selected="false" data-indice="${i}">
+        caixaSugestoes.innerHTML = lista
+            .map((aluno, i) => {
+                const turma = aluno.turma
+                    ? `<span class="chatbot-sugestao-turma">Turma ${escaparHtml(aluno.turma)}</span>`
+                    : '';
+                return `<div class="chatbot-sugestao" id="chatbot-sugestao-${i}" role="option" aria-selected="false" data-indice="${i}">
                 <i class="bi bi-person-circle" aria-hidden="true"></i>
                 <span class="chatbot-sugestao-nome">${destacarTrecho(aluno.nome, termo)}</span>
                 ${turma}
             </div>`;
-        }).join('');
+            })
+            .join('');
         caixaSugestoes.hidden = false;
         input.setAttribute('aria-expanded', 'true');
     }
@@ -816,7 +882,7 @@
         if (!isChipDeTema) contextAlunoId = value;
         const lastUserMsg = isChipDeTema
             ? label
-            : (messages.filter(m => !m.isAi).slice(-1)[0]?.text || label);
+            : messages.filter((m) => !m.isAi).slice(-1)[0]?.text || label;
 
         const user = getCurrentUser();
         let escolaSelecionada = user?.escolaId || null;
@@ -824,12 +890,23 @@
         if (!escolaSelecionada) {
             try {
                 const salva = JSON.parse(localStorage.getItem('escolaSelecionada'));
-                if (salva) { escolaSelecionada = salva.id; escolaNome = salva.nome; }
-            } catch(e) {}
+                if (salva) {
+                    escolaSelecionada = salva.id;
+                    escolaNome = salva.nome;
+                }
+            } catch (e) {}
         }
         let turmaSelecionada = null;
-        try { turmaSelecionada = sessionStorage.getItem('turmaAtiva') || sessionStorage.getItem('turmaSelecionada'); } catch(e){}
-        const userContext = { escolaId: escolaSelecionada, escolaNome: escolaNome, turmaId: turmaSelecionada, perfil: user?.perfil || null };
+        try {
+            turmaSelecionada =
+                sessionStorage.getItem('turmaAtiva') || sessionStorage.getItem('turmaSelecionada');
+        } catch (e) {}
+        const userContext = {
+            escolaId: escolaSelecionada,
+            escolaNome: escolaNome,
+            turmaId: turmaSelecionada,
+            perfil: user?.perfil || null,
+        };
 
         addMessage(label, false, null);
         input.disabled = true;
@@ -840,8 +917,12 @@
             const res = await fetch(CONFIG.apiBase, {
                 method: 'POST',
                 headers: getHeaders(),
-                body: JSON.stringify({ message: lastUserMsg, alunoId: isChipDeTema ? (contextAlunoId || null) : value, userContext: userContext }),
-                credentials: 'include'
+                body: JSON.stringify({
+                    message: lastUserMsg,
+                    alunoId: isChipDeTema ? contextAlunoId || null : value,
+                    userContext: userContext,
+                }),
+                credentials: 'include',
             });
             let responseText = '';
             let responseOptions = null;
@@ -852,7 +933,11 @@
                 responseOptions = data.data?.options || null;
             }
             removeTypingIndicator();
-            addMessage(responseText || 'Não consegui processar sua pergunta.', true, responseOptions);
+            addMessage(
+                responseText || 'Não consegui processar sua pergunta.',
+                true,
+                responseOptions
+            );
             statusEl.textContent = 'Conectado';
         } catch {
             removeTypingIndicator();
@@ -864,5 +949,12 @@
         }
     }
 
-    window.chatbotIA = { playAudio, stopAudio, openChat, closeChat, selectOption, isOpen: () => isOpen };
+    window.chatbotIA = {
+        playAudio,
+        stopAudio,
+        openChat,
+        closeChat,
+        selectOption,
+        isOpen: () => isOpen,
+    };
 })();
