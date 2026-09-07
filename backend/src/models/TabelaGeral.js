@@ -22,61 +22,69 @@ const HORARIO_LABELS = [
     '10h20–11h10',
     '11h10–12h',
     '13h–13h50',
-    '13h50–14h40'
+    '13h50–14h40',
 ];
 
 const DIAS_VALIDOS = ['SEGUNDA', 'TERÇA', 'QUARTA', 'QUINTA', 'SEXTA'];
 
-const TabelaGeralSchema = new mongoose.Schema({
-    turmaId: {
-        type: String,
-        required: true,
-        trim: true
-        // Ex: '1A', '2B', '3C', '4A', '5D'
+const TabelaGeralSchema = new mongoose.Schema(
+    {
+        // Multi-escola: discriminador de tenant (_id de Escola). Sem ele este
+        // documento pertence a todo mundo e a ninguém — as consultas escopadas
+        // por escola simplesmente não o encontram, e com `strict: true` o valor
+        // que o controller tenta gravar é descartado em silêncio.
+        escolaId: { type: String, index: true },
+        turmaId: {
+            type: String,
+            required: true,
+            trim: true,
+            // Ex: '1A', '2B', '3C', '4A', '5D'
+        },
+        turmaNome: {
+            type: String,
+            required: true,
+            trim: true,
+            // Ex: '1ºA', '2ºB'
+        },
+        dia: {
+            type: String,
+            required: true,
+            enum: DIAS_VALIDOS,
+        },
+        aulaIdx: {
+            type: Number,
+            required: true,
+            min: 0,
+            max: 6,
+            // 0=1ª aula ... 6=7ª aula
+        },
+        horarioLabel: {
+            type: String,
+            required: true,
+            // Ex: '7h30–8h20'
+        },
+        abrev: {
+            type: String,
+            default: '',
+            // 'EF', 'I', 'A', 'MK', 'OL', 'DSE', 'Lima', 'PEF', 'PAR', ''
+        },
+        professorKey: {
+            type: String,
+            default: '',
+            // 'MARJORIE', 'MARCOS', 'INGLS', 'ARTES1ANO', 'MIRIAM',
+            // 'OFMAKER', 'OFLEITURA', 'OFSEBRAE', 'LIMA', ''
+        },
+        updatedAt: {
+            type: Date,
+            default: Date.now,
+        },
     },
-    turmaNome: {
-        type: String,
-        required: true,
-        trim: true
-        // Ex: '1ºA', '2ºB'
-    },
-    dia: {
-        type: String,
-        required: true,
-        enum: DIAS_VALIDOS
-    },
-    aulaIdx: {
-        type: Number,
-        required: true,
-        min: 0,
-        max: 6
-        // 0=1ª aula ... 6=7ª aula
-    },
-    horarioLabel: {
-        type: String,
-        required: true
-        // Ex: '7h30–8h20'
-    },
-    abrev: {
-        type: String,
-        default: ''
-        // 'EF', 'I', 'A', 'MK', 'OL', 'DSE', 'Lima', 'PEF', 'PAR', ''
-    },
-    professorKey: {
-        type: String,
-        default: ''
-        // 'MARJORIE', 'MARCOS', 'INGLS', 'ARTES1ANO', 'MIRIAM',
-        // 'OFMAKER', 'OFLEITURA', 'OFSEBRAE', 'LIMA', ''
-    },
-    updatedAt: {
-        type: Date,
-        default: Date.now
+    {
+        collection: 'tabela_geral',
+        toJSON: { virtuals: true },
+        toObject: { virtuals: true },
     }
-}, {
-    collection: 'tabela_geral',
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true }
-});
+);
 
 // ── Índice único: uma célula por combinação turma+dia+aula ──────────────────
 TabelaGeralSchema.index({ turmaId: 1, dia: 1, aulaIdx: 1 }, { unique: true });
@@ -86,28 +94,28 @@ TabelaGeralSchema.index({ professorKey: 1, dia: 1, aulaIdx: 1 });
 
 // ── Helpers estáticos ───────────────────────────────────────────────────────
 TabelaGeralSchema.statics.HORARIO_LABELS = HORARIO_LABELS;
-TabelaGeralSchema.statics.DIAS_VALIDOS   = DIAS_VALIDOS;
+TabelaGeralSchema.statics.DIAS_VALIDOS = DIAS_VALIDOS;
 
 /**
  * Mapeia abreviação + turmaId para a chave do professor.
  * Regra: a mesma que o frontend usa em getCorPelaAbrev / getColorClass.
  */
-TabelaGeralSchema.statics.getProfessorKey = function (abrev, turmaId) {
+TabelaGeralSchema.statics.getProfessorKey = (abrev, turmaId) => {
     if (!abrev) return '';
     const u = abrev.toUpperCase();
 
     if (u === 'EF') {
         if (/^[123]/.test(turmaId)) return 'MARJORIE';
-        if (/^[45]/.test(turmaId))  return 'MARCOS';
+        if (/^[45]/.test(turmaId)) return 'MARCOS';
         return 'MARJORIE';
     }
-    if (u === 'I')   return 'INGLS';
+    if (u === 'I') return 'INGLS';
     if (u === 'A') {
         if (/^1/.test(turmaId)) return 'ARTES1ANO';
         return 'MIRIAN';
     }
-    if (u === 'MK')  return 'OFMAKER';
-    if (u === 'OL')  return 'OFLEITURA';
+    if (u === 'MK') return 'OFMAKER';
+    if (u === 'OL') return 'OFLEITURA';
     if (u === 'DSE') return 'OFSEBRAE';
     if (u === 'Lima' || u === 'LIMA') return 'LIMA';
 
@@ -122,17 +130,17 @@ TabelaGeralSchema.statics.getProfessorKey = function (abrev, turmaId) {
  * Mapa inverso: professorKey → nome legível para exibição no modal de conflito.
  */
 TabelaGeralSchema.statics.PROFESSOR_NOME = {
-    MARJORIE:   'Marjorie (Ed. Física)',
-    MARCOS:     'Marcos (Ed. Física)',
-    INGLS:      'Marcelo (Inglês)',
-    ARTES1ANO:  'Bianca (Artes 1º Ano)',
-    MIRIAN:     'Mirian (Artes)',
-    OFMAKER:    'Sirlene (Of. Maker)',
-    OFLEITURA:  'Raquel Castelaneli (Of. Leitura)',
-    OFSEBRAE:   'Cherlane (Of. Sebrae/DSE)',
-    LIMA:       'Lima (PROERD)',
-    EF_PARES:   'Reunião de Pares – Ed. Física',
-    ARTES_PARES:'Reunião de Pares – Artes'
+    MARJORIE: 'Marjorie (Ed. Física)',
+    MARCOS: 'Marcos (Ed. Física)',
+    INGLS: 'Marcelo (Inglês)',
+    ARTES1ANO: 'Bianca (Artes 1º Ano)',
+    MIRIAN: 'Mirian (Artes)',
+    OFMAKER: 'Sirlene (Of. Maker)',
+    OFLEITURA: 'Raquel Castelaneli (Of. Leitura)',
+    OFSEBRAE: 'Cherlane (Of. Sebrae/DSE)',
+    LIMA: 'Lima (PROERD)',
+    EF_PARES: 'Reunião de Pares – Ed. Física',
+    ARTES_PARES: 'Reunião de Pares – Artes',
 };
 
 module.exports = mongoose.model('TabelaGeral', TabelaGeralSchema);

@@ -28,7 +28,9 @@ async function assertAcessoAThread(req, { comunicadoId, notificacaoId }) {
 
         const comunicado = await Comunicado.findOne(
             escopoEscola(req, { _id: String(comunicadoId), ativo: true })
-        ).lean().catch(() => null);
+        )
+            .lean()
+            .catch(() => null);
 
         // 404 (e não 403) quando o comunicado é de outra escola: distinguir os
         // dois casos confirmaria a existência do id no outro tenant.
@@ -43,7 +45,9 @@ async function assertAcessoAThread(req, { comunicadoId, notificacaoId }) {
 
     if (notificacaoId) {
         const Notificacao = require('../models/Notificacao');
-        const notificacao = await Notificacao.findOne(buildNotifQuery(notificacaoId)).lean().catch(() => null);
+        const notificacao = await Notificacao.findOne(buildNotifQuery(notificacaoId))
+            .lean()
+            .catch(() => null);
         if (!notificacao) {
             return { ok: false, status: 404, error: 'Notificação não encontrada.' };
         }
@@ -52,8 +56,12 @@ async function assertAcessoAThread(req, { comunicadoId, notificacaoId }) {
         // comunicado (o campo é Mixed e cada emissor grava num formato). O que
         // dá para impor com segurança aqui é a fronteira de tenant, que é
         // justamente o que faltava. Admin é global por definição.
-        if (perfil !== 'admin' && req.escolaId && notificacao.escolaId
-            && String(notificacao.escolaId) !== String(req.escolaId)) {
+        if (
+            perfil !== 'admin' &&
+            req.escolaId &&
+            notificacao.escolaId &&
+            String(notificacao.escolaId) !== String(req.escolaId)
+        ) {
             return { ok: false, status: 404, error: 'Notificação não encontrada.' };
         }
         return { ok: true };
@@ -74,9 +82,14 @@ exports.add = async (req, res) => {
     try {
         const { comunicadoId, notificacaoId, texto, audioUrl, parentId } = req.body;
         const usuarioId = req.user.id || req.user._id;
- 
+
         if ((!comunicadoId && !notificacaoId) || (!texto && !audioUrl)) {
-            return res.status(400).json({ success: false, error: 'ID (comunicado ou notificação) e conteúdo (texto ou áudio) são obrigatórios.' });
+            return res
+                .status(400)
+                .json({
+                    success: false,
+                    error: 'ID (comunicado ou notificação) e conteúdo (texto ou áudio) são obrigatórios.',
+                });
         }
 
         // Só comenta quem enxerga a mensagem. Sem isto, qualquer autenticado
@@ -90,8 +103,12 @@ exports.add = async (req, res) => {
         if (!usuario) {
             return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
         }
- 
+
         const novoComentario = new Comentario({
+            // O schema não tinha `escolaId` e `strict: true` DESCARTAVA o campo em
+            // silêncio — por isso os comentários de produção estão todos sem
+            // tenant, mesmo com a rota já montada atrás de `filtrarPorEscola`.
+            escolaId: req.escolaId ? String(req.escolaId) : undefined,
             comunicadoId: comunicadoId || null,
             notificacaoId: notificacaoId || null,
             usuarioId,
@@ -100,15 +117,17 @@ exports.add = async (req, res) => {
             usuarioPerfil: usuario.perfil,
             texto,
             audioUrl,
-            parentId: parentId || null
+            parentId: parentId || null,
         });
- 
+
         await novoComentario.save();
- 
+
         // Incrementa contagem no comunicado se existir
         let comunicado = null;
         if (comunicadoId) {
-            comunicado = await Comunicado.findByIdAndUpdate(comunicadoId, { $inc: { comentariosCount: 1 } });
+            comunicado = await Comunicado.findByIdAndUpdate(comunicadoId, {
+                $inc: { comentariosCount: 1 },
+            });
         }
 
         // Incrementa contagem na notificação se existir
@@ -118,18 +137,18 @@ exports.add = async (req, res) => {
             const filter = mongoose.Types.ObjectId.isValid(notificacaoId)
                 ? { $or: [{ _id: notificacaoId }, { id: notificacaoId }] }
                 : { id: notificacaoId };
-            await Notificacao.findOneAndUpdate(
-                filter,
-                { $inc: { comentariosCount: 1 } }
-            );
+            await Notificacao.findOneAndUpdate(filter, { $inc: { comentariosCount: 1 } });
         }
- 
+
         // --- NOTIFICAÇÕES ---
         try {
             if (parentId) {
                 // Notificar autor do comentário original
                 const originalComment = await Comentario.findById(parentId).lean();
-                if (originalComment && originalComment.usuarioId.toString() !== usuarioId.toString()) {
+                if (
+                    originalComment &&
+                    originalComment.usuarioId.toString() !== usuarioId.toString()
+                ) {
                     await NotificationService.notify({
                         tipo: 'informativo',
                         categoria: 'chat',
@@ -137,7 +156,7 @@ exports.add = async (req, res) => {
                         mensagem: `${usuario.nome} respondeu seu comentário.`,
                         destinatarios: `usuario:${originalComment.usuarioId}`,
                         criadoPor: usuarioId,
-                        link: '/dashboard'
+                        link: '/dashboard',
                     });
                 }
             } else if (comunicado) {
@@ -149,22 +168,22 @@ exports.add = async (req, res) => {
                     mensagem: `${usuario.nome} comentou na publicação "${comunicado.titulo}".`,
                     destinatarios: 'diretor',
                     criadoPor: usuarioId,
-                    link: '/dashboard'
+                    link: '/dashboard',
                 });
             }
         } catch (notifErr) {
             logger.error(`Erro ao processar notificações de post: ${notifErr.message}`);
         }
- 
+
         // Emitir evento em tempo real — apenas na sala da mensagem.
         // O emit global mandava o comentário para todos os sockets da rede,
         // inclusive de outras escolas.
         emitirParaMensagem(comunicadoId || notificacaoId, 'comentario:new', {
             comunicadoId: comunicadoId || null,
             notificacaoId: notificacaoId || null,
-            comentario: novoComentario
+            comentario: novoComentario,
         });
- 
+
         res.status(201).json({ success: true, data: novoComentario });
     } catch (error) {
         logger.error(`Error adding comentario: ${error.message}`);
@@ -217,21 +236,21 @@ exports.getByComunicado = async (req, res) => {
         }
         // Também tenta como string pura caso o campo tenha sido salvo como string
         queries.push({ comunicadoId: comunicadoId.toString(), ativo: true });
-        
+
         let comentarios = await Comentario.find({ $or: queries })
             .populate('usuarioId', 'nome foto fotoGoogle perfil')
             .sort({ dataCriacao: 1 })
             .lean();
-        
+
         // Deduplica caso a mesma entrada apareça em múltiplas queries
         const seen = new Set();
-        comentarios = comentarios.filter(c => {
+        comentarios = comentarios.filter((c) => {
             const id = c._id.toString();
             if (seen.has(id)) return false;
             seen.add(id);
             return true;
         });
-            
+
         comentarios = formatComments(comentarios);
         res.json({ success: true, data: comentarios });
     } catch (error) {
@@ -253,7 +272,7 @@ exports.getByNotificacao = async (req, res) => {
             .populate('usuarioId', 'nome foto fotoGoogle perfil')
             .sort({ dataCriacao: 1 })
             .lean();
-            
+
         comentarios = formatComments(comentarios);
         res.json({ success: true, data: comentarios });
     } catch (error) {
@@ -262,9 +281,9 @@ exports.getByNotificacao = async (req, res) => {
 };
 
 const formatComments = (comments) => {
-    return comments.map(c => {
-        const user = (c.usuarioId && typeof c.usuarioId === 'object') ? c.usuarioId : null;
-        
+    return comments.map((c) => {
+        const user = c.usuarioId && typeof c.usuarioId === 'object' ? c.usuarioId : null;
+
         let photo = c.usuarioFoto || '';
         if (user) {
             photo = user.foto || user.fotoGoogle || photo;
@@ -272,9 +291,9 @@ const formatComments = (comments) => {
 
         return {
             ...c,
-            usuarioNome: user ? user.nome : (c.usuarioNome || 'Usuário'),
+            usuarioNome: user ? user.nome : c.usuarioNome || 'Usuário',
             usuarioFoto: photo,
-            usuarioPerfil: user ? user.perfil : (c.usuarioPerfil || 'Visitante')
+            usuarioPerfil: user ? user.perfil : c.usuarioPerfil || 'Visitante',
         };
     });
 };
@@ -300,7 +319,9 @@ exports.delete = async (req, res) => {
 
         // Decrementa contagem no comunicado se aplicável
         if (comentario.comunicadoId) {
-            await Comunicado.findByIdAndUpdate(comentario.comunicadoId, { $inc: { comentariosCount: -1 } });
+            await Comunicado.findByIdAndUpdate(comentario.comunicadoId, {
+                $inc: { comentariosCount: -1 },
+            });
         }
 
         // Decrementa contagem na notificação se aplicável
@@ -310,10 +331,7 @@ exports.delete = async (req, res) => {
             const filter = mongoose.Types.ObjectId.isValid(comentario.notificacaoId)
                 ? { $or: [{ _id: comentario.notificacaoId }, { id: comentario.notificacaoId }] }
                 : { id: comentario.notificacaoId };
-            await Notificacao.findOneAndUpdate(
-                filter,
-                { $inc: { comentariosCount: -1 } }
-            );
+            await Notificacao.findOneAndUpdate(filter, { $inc: { comentariosCount: -1 } });
         }
 
         emitirParaMensagem(
@@ -322,7 +340,7 @@ exports.delete = async (req, res) => {
             {
                 id: comentario._id,
                 comunicadoId: comentario.comunicadoId,
-                notificacaoId: comentario.notificacaoId
+                notificacaoId: comentario.notificacaoId,
             }
         );
 

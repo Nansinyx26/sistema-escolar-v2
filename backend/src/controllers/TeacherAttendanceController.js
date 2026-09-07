@@ -5,7 +5,16 @@ const Professor = require('../models/Professor');
 
 exports.create = async (req, res) => {
     try {
-        const { data, nomeProfessor, professorId, disciplina, escola, classe, quantidadeAulas, observacao } = req.body;
+        const {
+            data,
+            nomeProfessor,
+            professorId,
+            disciplina,
+            escola,
+            classe,
+            quantidadeAulas,
+            observacao,
+        } = req.body;
 
         // Validation
         if (!disciplina || !escola || !classe || !quantidadeAulas) {
@@ -19,7 +28,12 @@ exports.create = async (req, res) => {
         if (req.user && req.user.perfil === 'professor') {
             const prof = await Professor.findOne({ email: req.user.email }).lean();
             if (!prof) {
-                return res.status(403).json({ success: false, error: 'Perfil de professor não encontrado para o usuário logado.' });
+                return res
+                    .status(403)
+                    .json({
+                        success: false,
+                        error: 'Perfil de professor não encontrado para o usuário logado.',
+                    });
             }
 
             // Força os dados reais do professor autenticado
@@ -29,15 +43,17 @@ exports.create = async (req, res) => {
             // Valida se a turma (classe) pertence às turmas permitidas do professor
             const allowed = req.allowedTurmas || [];
             if (!allowed.includes(classe)) {
-                return res.status(403).json({ 
-                    success: false, 
-                    error: `Acesso negado. Você não tem permissão para registrar aulas para a turma ${classe}.` 
+                return res.status(403).json({
+                    success: false,
+                    error: `Acesso negado. Você não tem permissão para registrar aulas para a turma ${classe}.`,
                 });
             }
         }
-        
+
         if (!finalProfName) {
-            return res.status(400).json({ success: false, error: 'Nome do professor é obrigatório.' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'Nome do professor é obrigatório.' });
         }
         // -------------------------------------------------------------------------
 
@@ -45,21 +61,23 @@ exports.create = async (req, res) => {
         const config = await Config.findOne();
         if (config && config.exigirChamadaAntesDeAula) {
             const dataAula = data ? new Date(data) : new Date();
-            const start = new Date(dataAula); start.setHours(0, 0, 0, 0);
-            const end = new Date(dataAula); end.setHours(23, 59, 59, 999);
+            const start = new Date(dataAula);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(dataAula);
+            end.setHours(23, 59, 59, 999);
 
             // Verifica se existe algum registro de frequência para esta turma e matéria no dia
             const temChamada = await Falta.findOne({
                 turma: classe,
                 materia: disciplina,
-                data: { $gte: start, $lte: end }
+                data: { $gte: start, $lte: end },
             });
 
             if (!temChamada) {
                 return res.status(403).json({
                     success: false,
                     code: 'CHAMADA_PENDENTE',
-                    error: `A frequência dos alunos para a turma ${classe} (${disciplina}) ainda não foi lançada hoje. Realize a chamada antes de registrar a aula.`
+                    error: `A frequência dos alunos para a turma ${classe} (${disciplina}) ainda não foi lançada hoje. Realize a chamada antes de registrar a aula.`,
                 });
             }
         }
@@ -69,10 +87,14 @@ exports.create = async (req, res) => {
             nomeProfessor: finalProfName,
             professorId: finalProfId,
             disciplina,
+            // `escola` é o NOME digitado; `escolaId` é o vínculo real com o
+            // tenant. Os dois convivem: o texto continua saindo no relatório, o
+            // id é o que isola a consulta.
             escola,
+            escolaId: req.escolaId ? String(req.escolaId) : undefined,
             classe,
             quantidadeAulas,
-            observacao
+            observacao,
         });
 
         res.json({ success: true, data: attendance, message: 'Frequência lançada com sucesso!' });
@@ -98,7 +120,7 @@ exports.list = async (req, res) => {
                 // Restringe a busca apenas às aulas do próprio professor
                 filter.professorId = prof._id.toString();
             } else {
-                filter.professorId = "ACESSO_NEGADO";
+                filter.professorId = 'ACESSO_NEGADO';
             }
         }
         // -------------------------------------------------------------------------
@@ -118,30 +140,37 @@ exports.listPendencias = async (req, res) => {
         if (req.user && req.user.perfil === 'professor') {
             const prof = await Professor.findOne({ email: req.user.email }).lean();
             if (!prof) {
-                return res.status(403).json({ success: false, error: 'Perfil de professor não encontrado.' });
+                return res
+                    .status(403)
+                    .json({ success: false, error: 'Perfil de professor não encontrado.' });
             }
             professorName = prof.nome;
         }
 
-        if (!professorName) return res.status(400).json({ success: false, error: 'Nome do professor é obrigatório' });
+        if (!professorName)
+            return res
+                .status(400)
+                .json({ success: false, error: 'Nome do professor é obrigatório' });
 
         // 1. Busca todas as aulas registradas pelo professor
         const DATA_IMPLANTACAO = new Date('2025-01-01');
         const filter = {
             nomeProfessor: professorName,
-            createdAt: { $gte: DATA_IMPLANTACAO }
+            createdAt: { $gte: DATA_IMPLANTACAO },
         };
         const aulas = await FrequenciaProfessor.find(filter);
 
         const pendencias = [];
 
         for (const aula of aulas) {
-            const start = new Date(aula.data); start.setHours(0, 0, 0, 0);
-            const end = new Date(aula.data); end.setHours(23, 59, 59, 999);
+            const start = new Date(aula.data);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(aula.data);
+            end.setHours(23, 59, 59, 999);
 
             const count = await Falta.countDocuments({
                 turma: aula.classe,
-                data: { $gte: start, $lte: end }
+                data: { $gte: start, $lte: end },
             });
 
             if (count === 0) {
@@ -149,7 +178,7 @@ exports.listPendencias = async (req, res) => {
                     data: aula.data,
                     turma: aula.classe,
                     disciplina: aula.disciplina,
-                    mensagem: 'Aula registrada sem frequência de alunos lançada.'
+                    mensagem: 'Aula registrada sem frequência de alunos lançada.',
                 });
             }
         }
@@ -158,9 +187,8 @@ exports.listPendencias = async (req, res) => {
             success: true,
             totalAulas: aulas.length,
             totalPendencias: pendencias.length,
-            pendencias
+            pendencias,
         });
-
     } catch (error) {
         console.error('Erro ao listar pendências:', error);
         return res.status(500).json({ success: false, error: 'Erro ao verificar pendências.' });

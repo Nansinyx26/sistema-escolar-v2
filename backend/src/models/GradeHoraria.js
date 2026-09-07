@@ -1,62 +1,70 @@
 const mongoose = require('mongoose');
 
-const GradeHorariaSchema = new mongoose.Schema({
-    professorId: {
-        type: String, // Alterado para String pois Professor uses String _id
-        ref: 'Professor',
-        required: true
+const GradeHorariaSchema = new mongoose.Schema(
+    {
+        // Multi-escola: discriminador de tenant (_id de Escola). Sem ele este
+        // documento pertence a todo mundo e a ninguém — as consultas escopadas
+        // por escola simplesmente não o encontram, e com `strict: true` o valor
+        // que o controller tenta gravar é descartado em silêncio.
+        escolaId: { type: String, index: true },
+        professorId: {
+            type: String, // Alterado para String pois Professor uses String _id
+            ref: 'Professor',
+            required: true,
+        },
+        turmaId: {
+            type: String, // Alterado de ObjectId para String para compatibilidade com Model Turma
+            ref: 'Turma',
+            required: true,
+        },
+        disciplina: {
+            type: String,
+            required: true, // Ex: "Matemática", "Programação Web", etc.
+        },
+        diaSemana: {
+            type: Number,
+            required: true,
+            min: 0,
+            max: 6,
+            // 0: Domingo, 1: Segunda, ..., 6: Sábado (Padrão JS .getDay())
+        },
+        horaInicio: {
+            type: String,
+            required: true,
+            match: /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, // Validação HH:mm
+        },
+        horaFim: {
+            type: String,
+            required: true,
+            match: /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/,
+        },
+        aulasSeguidas: {
+            type: Number,
+            default: 1,
+        },
+        ativo: {
+            type: Boolean,
+            default: true,
+        },
+        criadoEm: {
+            type: Date,
+            default: Date.now,
+        },
     },
-    turmaId: {
-        type: String, // Alterado de ObjectId para String para compatibilidade com Model Turma
-        ref: 'Turma',
-        required: true
-    },
-    disciplina: {
-        type: String,
-        required: true // Ex: "Matemática", "Programação Web", etc.
-    },
-    diaSemana: {
-        type: Number,
-        required: true,
-        min: 0,
-        max: 6
-        // 0: Domingo, 1: Segunda, ..., 6: Sábado (Padrão JS .getDay())
-    },
-    horaInicio: {
-        type: String,
-        required: true,
-        match: /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/ // Validação HH:mm
-    },
-    horaFim: {
-        type: String,
-        required: true,
-        match: /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/
-    },
-    aulasSeguidas: {
-        type: Number,
-        default: 1
-    },
-    ativo: {
-        type: Boolean,
-        default: true
-    },
-    criadoEm: {
-        type: Date,
-        default: Date.now
+    {
+        toJSON: { virtuals: true },
+        toObject: { virtuals: true },
+        id: false,
+        collection: 'gradehorarias',
     }
-}, {
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
-    id: false,
-    collection: 'gradehorarias'
-});
+);
 
 // Virtual Population para Professor
 GradeHorariaSchema.virtual('professorDetails', {
     ref: 'Professor',
     localField: 'professorId',
     foreignField: '_id',
-    justOne: true
+    justOne: true,
 });
 
 // Virtual Population para Turma
@@ -64,7 +72,7 @@ GradeHorariaSchema.virtual('turmaDetails', {
     ref: 'Turma',
     localField: 'turmaId',
     foreignField: '_id',
-    justOne: true
+    justOne: true,
 });
 
 // Índice para otimizar busca rápida por dia e horário
