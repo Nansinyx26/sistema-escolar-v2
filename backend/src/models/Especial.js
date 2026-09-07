@@ -1,21 +1,32 @@
 const mongoose = require('mongoose');
 
-const NotaEspecialSchema = new mongoose.Schema({
-    alunoId: mongoose.Schema.Types.Mixed,
-    valor: Number,
-    bimestre: Number
-}, { _id: false });
+const NotaEspecialSchema = new mongoose.Schema(
+    {
+        alunoId: mongoose.Schema.Types.Mixed,
+        valor: Number,
+        bimestre: Number,
+    },
+    { _id: false }
+);
 
-const EspecialSchema = new mongoose.Schema({
-    nome: String, // "Inglês", "Artes", "Educação Física", "SEBRAE", "Oficina de Leitura", "Of. Maker", "Desenvolvimento", "Socioemocional"
-    turma: String, // "1A" (turma alvo)
-    professor: { type: mongoose.Schema.Types.Mixed, ref: 'Professor' },
-    notas: [NotaEspecialSchema],
-    categoria: { type: String, enum: ['PEB2', 'Oficina'], required: true }
-}, {
-    timestamps: true,
-    strict: true,
-    collection: 'especiais'
-});
+const EspecialSchema = new mongoose.Schema(
+    {
+        // Multi-escola: discriminador de tenant (_id de Escola). Sem ele este
+        // documento pertence a todo mundo e a ninguém — as consultas escopadas
+        // por escola simplesmente não o encontram, e com `strict: true` o valor
+        // que o controller tenta gravar é descartado em silêncio.
+        escolaId: { type: String, index: true },
+        nome: String, // "Inglês", "Artes", "Educação Física", "SEBRAE", "Oficina de Leitura", "Of. Maker", "Desenvolvimento", "Socioemocional"
+        turma: String, // "1A" (turma alvo)
+        professor: { type: mongoose.Schema.Types.Mixed, ref: 'Professor' },
+        notas: [NotaEspecialSchema],
+        categoria: { type: String, enum: ['PEB2', 'Oficina'], required: true },
+    },
+    {
+        timestamps: true,
+        strict: true,
+        collection: 'especiais',
+    }
+);
 
 module.exports = mongoose.model('Especial', EspecialSchema);

@@ -257,8 +257,11 @@ router.use(
 router.use('/faltas-funcionarios', authJWT, filtrarPorEscola, require('./faltas-funcionarios'));
 router.use('/notas', authJWT, horizontalFilter, filtrarPorEscola, require('./notas'));
 router.use('/dashboard', require('./dashboard'));
-router.use('/tabela-geral', authJWT, require('./tabela-geral'));
-router.use('/grade-horaria', authJWT, require('./grade-horaria'));
+// `filtrarPorEscola` acrescentado junto com o `escolaId` no schema: sem ele
+// `req.escolaId` é undefined, o carimbo do controller grava `undefined` e o
+// documento continua nascendo órfão — o campo no modelo sozinho não isola nada.
+router.use('/tabela-geral', authJWT, filtrarPorEscola, require('./tabela-geral'));
+router.use('/grade-horaria', authJWT, filtrarPorEscola, require('./grade-horaria'));
 router.use('/avaliacoes', require('./avaliacoes'));
 router.use('/reviews', authJWT, require('./reviews'));
 router.use('/reactions', authJWT, require('./reactions'));
@@ -279,7 +282,7 @@ router.use('/conformidade', authJWT, horizontalFilter, filtrarPorEscola, require
 router.use('/audio', require('./audio'));
 router.use('/tts', authJWT, require('./tts'));
 router.use('/ia', authJWT, horizontalFilter, filtrarPorEscola, require('./ia'));
-router.use('/chatbot', authJWT, require('./chatbot'));
+router.use('/chatbot', authJWT, filtrarPorEscola, require('./chatbot'));
 router.use('/secretaria', authJWT, require('./secretaria'));
 
 // --- 5. Gamificação ---
