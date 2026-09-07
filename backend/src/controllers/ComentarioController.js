@@ -84,12 +84,10 @@ exports.add = async (req, res) => {
         const usuarioId = req.user.id || req.user._id;
 
         if ((!comunicadoId && !notificacaoId) || (!texto && !audioUrl)) {
-            return res
-                .status(400)
-                .json({
-                    success: false,
-                    error: 'ID (comunicado ou notificação) e conteúdo (texto ou áudio) são obrigatórios.',
-                });
+            return res.status(400).json({
+                success: false,
+                error: 'ID (comunicado ou notificação) e conteúdo (texto ou áudio) são obrigatórios.',
+            });
         }
 
         // Só comenta quem enxerga a mensagem. Sem isto, qualquer autenticado

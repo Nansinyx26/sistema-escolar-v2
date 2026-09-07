@@ -28,12 +28,10 @@ exports.create = async (req, res) => {
         if (req.user && req.user.perfil === 'professor') {
             const prof = await Professor.findOne({ email: req.user.email }).lean();
             if (!prof) {
-                return res
-                    .status(403)
-                    .json({
-                        success: false,
-                        error: 'Perfil de professor não encontrado para o usuário logado.',
-                    });
+                return res.status(403).json({
+                    success: false,
+                    error: 'Perfil de professor não encontrado para o usuário logado.',
+                });
             }
 
             // Força os dados reais do professor autenticado

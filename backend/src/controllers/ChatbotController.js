@@ -59,11 +59,9 @@ exports.chatbot = async (req, res) => {
         });
     } catch (error) {
         logger.error(`[Chatbot] Erro: ${error.message}`);
-        return res
-            .status(500)
-            .json({
-                success: false,
-                error: 'Não foi possível processar sua pergunta. Tente novamente.',
-            });
+        return res.status(500).json({
+            success: false,
+            error: 'Não foi possível processar sua pergunta. Tente novamente.',
+        });
     }
 };
