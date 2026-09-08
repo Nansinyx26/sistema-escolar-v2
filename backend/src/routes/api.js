@@ -78,7 +78,18 @@ router.put('/config/:id', authJWT, authorize('admin'), ConfigController.update);
 // Rotas públicas servem SOMENTE imagens; documentos (PDF etc.) exigem authJWT.
 router.get('/files/:id', FileController.servePublicImage); // Rota pública principal (usada pelo getPhotoUrl)
 router.get('/public/photo/:id', FileController.servePublicImage); // Rota pública legada
-router.get('/upload/photo/:id', authJWT, filtrarPorEscola, FileController.serveFile);
+// `horizontalFilter` não é decoração: desde a Issue #228 a foto do aluno carrega
+// `metadata.alunoId`, e por isso o download passa por `assertAcessoAoAluno` — que
+// decide a turma do professor lendo `req.allowedTurmas`. É este middleware que
+// preenche esse campo. Sem ele, a lista fica vazia e TODO professor toma 403 na
+// foto dos próprios alunos. Mesma composição já usada em `/upload/documento/:id`.
+router.get(
+    '/upload/photo/:id',
+    authJWT,
+    horizontalFilter,
+    filtrarPorEscola,
+    FileController.serveFile
+);
 router.post(
     '/upload/photo',
     authJWT,
@@ -96,6 +107,13 @@ router.post(
                 contentType: 'image/webp',
                 // Metadata é o que permite ao FileController decidir quem pode baixar
                 metadata: {
+                    // `type` é a credencial da rota pública: o `/api/files/:id`
+                    // só serve sem sessão o que está na allowlist do
+                    // FileController, e 'avatar' é o único valor lá. Antes da
+                    // Issue #216 este upload não carimbava tipo nenhum e passava
+                    // por ser a AUSÊNCIA de `type` que liberava — o que também
+                    // liberava qualquer upload futuro que esquecesse de marcar.
+                    type: 'avatar',
                     usuarioId: String(req.user?.id || req.user?._id || ''),
                     escolaId: req.escolaId ? String(req.escolaId) : undefined,
                     alunoId: req.body?.alunoId ? String(req.body.alunoId) : undefined,
@@ -239,8 +257,11 @@ router.use(
 router.use('/faltas-funcionarios', authJWT, filtrarPorEscola, require('./faltas-funcionarios'));
 router.use('/notas', authJWT, horizontalFilter, filtrarPorEscola, require('./notas'));
 router.use('/dashboard', require('./dashboard'));
-router.use('/tabela-geral', authJWT, require('./tabela-geral'));
-router.use('/grade-horaria', authJWT, require('./grade-horaria'));
+// `filtrarPorEscola` acrescentado junto com o `escolaId` no schema: sem ele
+// `req.escolaId` é undefined, o carimbo do controller grava `undefined` e o
+// documento continua nascendo órfão — o campo no modelo sozinho não isola nada.
+router.use('/tabela-geral', authJWT, filtrarPorEscola, require('./tabela-geral'));
+router.use('/grade-horaria', authJWT, filtrarPorEscola, require('./grade-horaria'));
 router.use('/avaliacoes', require('./avaliacoes'));
 router.use('/reviews', authJWT, require('./reviews'));
 router.use('/reactions', authJWT, require('./reactions'));
@@ -254,10 +275,14 @@ router.use('/comentarios', authJWT, filtrarPorEscola, require('./comentarios'));
 // que o controller usa para isolar a fila. Sem ele, a moderação vira global.
 router.use('/moderacao', authJWT, filtrarPorEscola, require('./moderacao'));
 router.use('/relatorios', authJWT, horizontalFilter, filtrarPorEscola, require('./relatorios'));
+// Deveres legais (LDB, Censo Escolar/INEP e LAI). `horizontalFilter` vem antes
+// de `filtrarPorEscola` porque o recorte do professor é por TURMA e o da
+// exportação é por ESCOLA — as duas barreiras se somam, não se substituem.
+router.use('/conformidade', authJWT, horizontalFilter, filtrarPorEscola, require('./conformidade'));
 router.use('/audio', require('./audio'));
 router.use('/tts', authJWT, require('./tts'));
 router.use('/ia', authJWT, horizontalFilter, filtrarPorEscola, require('./ia'));
-router.use('/chatbot', authJWT, require('./chatbot'));
+router.use('/chatbot', authJWT, filtrarPorEscola, require('./chatbot'));
 router.use('/secretaria', authJWT, require('./secretaria'));
 
 // --- 5. Gamificação ---

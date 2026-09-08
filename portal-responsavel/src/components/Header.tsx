@@ -7,11 +7,12 @@
 import type React from 'react';
 import { useEffect, useState } from 'react';
 import schoolLogo from '../assets/logo-jaguari.png';
+import { definirVoz, normalizarVoz, VOZES, type VozNome, vozAtual } from '../constants/vozes';
 import { getChatNaoLidas } from '../services/apiService';
 import styles from '../styles/portal.module.scss';
-import { type VozNome, VOZES, definirVoz, normalizarVoz, vozAtual } from '../constants/vozes';
 import type { GmailUser, Notification } from '../types';
 import { getPhotoUrl } from '../utils/photoUtils';
+import CanalDenuncia from './CanalDenuncia';
 import Icon from './ui/Icon';
 
 interface TtsSettingsResponse {
@@ -410,6 +411,10 @@ const Header: React.FC<HeaderProps> = ({
             <ThemeToggle />
 
             <ConversasButton />
+
+            {/* Canal de denúncia (ECA Digital): fica no cabeçalho para estar
+                alcançável de qualquer aba do portal. */}
+            <CanalDenuncia />
 
             {/* Botão Ver Tour Guiado */}
             <button

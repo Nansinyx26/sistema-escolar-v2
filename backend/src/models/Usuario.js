@@ -128,6 +128,14 @@ const UsuarioSchema = new mongoose.Schema(
         },
         twoFactorBackupGeradoEm: { type: Date, select: false },
 
+        // ─── Confirmação do consentimento LGPD (art. 14, §1º) ───────────────
+        // Código de uso único que prova que quem consentiu é quem tem a caixa
+        // de e-mail cadastrada. Guardado como HASH, como o de 2FA — um dump do
+        // banco não pode virar um molho de códigos válidos.
+        consentimentoPendingToken: { type: String, select: false },
+        consentimentoPendingExpiry: { type: Date, select: false },
+        consentimentoPendingTentativas: { type: Number, default: 0, select: false },
+
         // ============================================
         // LGPD: Anonimização e Consentimento (Roadmap #13)
         // ============================================
@@ -203,6 +211,14 @@ const UsuarioSchema = new mongoose.Schema(
                 browser: String,
                 os: String,
                 loginType: String, // 'Google', 'Portal Local'
+                // COMO se provou que foi o titular (ou o responsável legal) que
+                // assinou: 'SESSAO_AUTENTICADA', 'EMAIL_VERIFICADO',
+                // 'SMS_VERIFICADO' ou 'GOV_BR_AUTH'. Sem este campo, dois
+                // registros idênticos podem ter forças probatórias muito
+                // diferentes e ninguém consegue distinguir depois — é a
+                // pergunta que a ANPD faz quando há reclamação sobre dado de
+                // criança (LGPD, art. 14, §1º).
+                metodoValidacao: String,
             },
         ],
 

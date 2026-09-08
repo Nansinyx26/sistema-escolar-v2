@@ -135,12 +135,32 @@ test('o coletor de erros de frontend carrega antes do motion', async ({ page }) 
     expect(ordem.observability).toBeLessThan(ordem.motion);
 });
 
+// O caminho saiu de `/html/...` para a raiz por causa da Issue #213: o gate de
+// páginas passou a fechar por omissão DENTRO de `/html`, `/detalhes`,
+// `/direcao` e `/graficos`, então um caminho inexistente sob um desses prefixos
+// leva o anônimo ao login antes de chegar ao 404.
+//
+// Isso é de propósito, e é o mesmo raciocínio que já fazia o gate responder 404
+// em vez de 403 nas áreas restritas: se "não existe" respondesse diferente de
+// "existe e você não pode ver", a resposta viraria um oráculo de quais páginas
+// o sistema tem. Uniformizar em redirecionamento fecha esse canal.
+//
+// A raiz não é prefixo de página, então continua exercitando exatamente o que
+// este teste sempre guardou: o catch-all devolve o 404 amigável, sem stack.
 test('página inexistente devolve 404 e não vaza stack', async ({ page }) => {
-    const resposta = await page.goto('/html/pagina-que-nao-existe.html');
+    const resposta = await page.goto('/qualquer-coisa-invalida.html');
 
     expect(resposta?.status()).toBe(404);
 
     const corpo = await page.content();
     expect(corpo).not.toMatch(/at\s+\w+\s+\(.*:\d+:\d+\)/); // stack trace
     expect(corpo).not.toContain('node_modules');
+});
+
+test('caminho inexistente sob /html não revela que a página não existe', async ({ page }) => {
+    // Mesma resposta que uma página que EXISTE e é restrita — é essa igualdade
+    // que impede enumerar o sistema pela diferença entre 404 e redirecionamento.
+    await page.goto('/html/pagina-que-nao-existe.html');
+
+    await expect(page).toHaveURL(/\/html\/login\.html$/);
 });

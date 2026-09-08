@@ -54,6 +54,31 @@ const ModeracaoOcorrenciaSchema = new mongoose.Schema(
         categorias: { type: mongoose.Schema.Types.Mixed, default: {} },
         termosDetectados: { type: [String], default: [] },
 
+        // ─── Canal de denúncia (ECA Digital) ────────────────────────────────
+        // `categoriaDenuncia` é o que separa bullying de discriminação e de
+        // violência — a triagem da escola muda conforme a categoria, e sem ela
+        // toda denúncia chega na fila com o mesmo peso.
+        categoriaDenuncia: {
+            type: String,
+            enum: [
+                'bullying',
+                'ciberbullying',
+                'assedio',
+                'discriminacao',
+                'violencia',
+                'automutilacao',
+                'outro',
+            ],
+            default: undefined,
+        },
+        // A ÚNICA exceção à regra de não guardar conteúdo (§6.1) — e ela é
+        // deliberada. O que o §6.1 proíbe é arquivar o material OFENSIVO: texto
+        // agressivo, áudio, imagem. O relato é o oposto disso: é o que a própria
+        // pessoa escreveu PARA a escola, pedindo providência. Sem ele a denúncia
+        // chega como "alguém denunciou alguma coisa" e o canal do ECA vira
+        // fachada. Fica limitado em tamanho e só é lido pela moderação da escola.
+        relato: { type: String, maxlength: 2000, default: undefined },
+
         provedor: { type: String },
         provedorLatenciaMs: { type: Number },
         provedorVersao: { type: String },

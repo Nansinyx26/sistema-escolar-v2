@@ -161,9 +161,41 @@ describe('Navegação e tratamento de erros', () => {
         expect(res.text).not.toContain('ESCOLA JAGUARI');
     });
 
+    // Contraparte do teste acima depois da Issue #213. Dentro dos prefixos de
+    // página o gate fecha por omissão, então o ANÔNIMO vai para o login mesmo
+    // quando o arquivo não existe — de propósito: "não existe" e "existe e você
+    // não pode ver" precisam responder igual, ou a diferença enumera o sistema.
+    //
+    // Para quem TEM sessão o 404 amigável continua sendo a resposta, e é isso
+    // que este teste fixa. Sem ele, alguém poderia "consertar" o gate fazendo-o
+    // checar o disco — o que devolveria o 404 ao anônimo e reabriria o oráculo.
+    it('erro 404 amigável continua valendo sob /html para quem tem sessão', async () => {
+        const { assinarTokenSessao } = require('../utils/sessionToken');
+        const usuario = await criarUsuario({
+            email: 'sessao_404@escola.test',
+            perfil: 'professor',
+            nome: 'Sessao Para 404',
+        });
+
+        const res = await request(app)
+            .get('/html/pagina-que-nao-existe.html')
+            .set('Cookie', [`escola_jwt=${assinarTokenSessao(usuario)}`]);
+
+        expect(res.status).toBe(404);
+        expect(res.text).toContain('Página não encontrada');
+    });
+
+    it('anônimo não distingue página inexistente de página restrita sob /html', async () => {
+        const inexistente = await request(app).get('/html/pagina-que-nao-existe.html');
+        const restrita = await request(app).get('/html/perfil.html');
+
+        expect(inexistente.status).toBe(restrita.status);
+        expect(inexistente.headers.location).toBe(restrita.headers.location);
+        expect(inexistente.headers.location).toMatch(/\/html\/login\.html/);
+    });
+
     it('todos os destinos publicos de getRedirectPath existem e retornam 200', async () => {
         const destinos = [
-            '/html/mudar-senha.html',
             '/html/escolher-perfil.html',
             '/html/login.html',
             '/portal-responsavel/dist/index.html',
@@ -172,6 +204,46 @@ describe('Navegação e tratamento de erros', () => {
             const res = await request(app).get(destino);
             expect(`${destino}:${res.status}`).toBe(`${destino}:200`);
         }
+    });
+
+    // `mudar-senha.html` saiu da lista acima pelo mesmo motivo que o dashboard,
+    // e o par de testes abaixo é o mesmo par: o gate de páginas passou a fechar
+    // por omissão (Issue #213), e esta tela nunca foi pública de fato — o
+    // `getRedirectPath` só manda para lá DEPOIS do login, quando
+    // `user.deveMudarSenha` é verdadeiro e a sessão já existe.
+    //
+    // Antes, o 200 anônimo não significava "a tela funciona": significava que o
+    // servidor entregava o HTML de uma tela que não teria sessão para trocar
+    // senha nenhuma. O que o teste original garantia continua garantido, nas
+    // mesmas duas partes: o caminho EXISTE (não cai no catch-all que devolve a
+    // landing) e ele ABRE para quem o getRedirectPath manda para lá.
+    it('mudar-senha existe e nao cai no catch-all da landing', async () => {
+        const res = await request(app).get('/html/mudar-senha.html');
+
+        expect(res.status).toBe(302);
+        expect(res.headers.location).toMatch(/\/html\/login\.html/);
+        expect(res.text).not.toContain('ESCOLA JAGUARI');
+    });
+
+    it('mudar-senha abre para quem o getRedirectPath manda para la', async () => {
+        const { assinarTokenSessao } = require('../utils/sessionToken');
+        const { getRedirectPath } = require('../controllers/UserController');
+        const usuario = await criarUsuario({
+            email: 'troca_senha@escola.test',
+            perfil: 'professor',
+            nome: 'Precisa Trocar Senha',
+            deveMudarSenha: true,
+        });
+
+        // A precondição do destino, conferida aqui para o teste não passar por
+        // acidente caso a regra do getRedirectPath mude.
+        expect(getRedirectPath(usuario)).toBe('/html/mudar-senha.html');
+
+        const res = await request(app)
+            .get('/html/mudar-senha.html')
+            .set('Cookie', [`escola_jwt=${assinarTokenSessao(usuario)}`]);
+
+        expect(res.status).toBe(200);
     });
 
     // O dashboard saiu da lista acima pelo mesmo motivo que o painel da

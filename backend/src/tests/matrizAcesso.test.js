@@ -195,6 +195,58 @@ describe('matriz de acesso — precedência da exceção por arquivo', () => {
     });
 });
 
+describe('matriz de acesso — o recorte que separa página de asset (Issue #213)', () => {
+    // O gate fecha por omissão, mas roda antes do express.static e vê TODA
+    // requisição. É este recorte que impede o fechamento de alcançar /api e os
+    // assets de que a própria tela de login depende.
+    it.each([
+        '/html/perfil.html',
+        '/html/utils/limpar-dados.html',
+        '/detalhes/alunos.html',
+        '/detalhes/alunos.js',
+        '/graficos/index.html',
+        '/direcao/codigos-secretos.html',
+    ])('%s é caminho de página', (caminho) => {
+        expect(matriz.ehCaminhoDePagina(caminho)).toBe(true);
+    });
+
+    it.each([
+        '/api/alunos',
+        '/api/auth/turmas-publicas',
+        '/css/main-compiled.css',
+        '/js/guarda-acesso.js',
+        '/img/logo.png',
+        '/favicon/favicon-32x32.png',
+        '/portal-responsavel/dist/index.html',
+        '/manifest.json',
+        '/sw.js',
+        '/',
+    ])('%s NÃO é caminho de página', (caminho) => {
+        expect(matriz.ehCaminhoDePagina(caminho)).toBe(false);
+    });
+
+    it('casa por segmento completo — /htmlx não é /html', () => {
+        expect(matriz.ehCaminhoDePagina('/htmlx/algo.html')).toBe(false);
+        expect(matriz.ehCaminhoDePagina('/detalhesx/algo.html')).toBe(false);
+    });
+
+    it('os prefixos de página não incluem nenhum diretório de asset', () => {
+        // `staticDirectories` em app.js mistura os dois; se alguém mover um
+        // diretório de asset para cá, a tela de login abre sem estilo.
+        for (const asset of ['/css', '/js', '/img', '/favicon', '/portal-responsavel/dist']) {
+            expect(matriz.PREFIXOS_DE_PAGINA).not.toContain(asset);
+        }
+    });
+
+    it('página desconhecida dentro de um prefixo cai no padrão fechado', () => {
+        // A dupla que o gate consulta: é página, e a matriz manda exigir sessão.
+        const caminho = '/detalhes/relatorio-novo.html';
+        expect(matriz.ehCaminhoDePagina(caminho)).toBe(true);
+        expect(matriz.vereditoDe(caminho).exigeSessao).toBe(true);
+        expect(matriz.podeAbrir(null, caminho)).toBe(false);
+    });
+});
+
 describe('matriz de acesso — o prefixo secreto não vaza', () => {
     const SEGREDO = 'f3a91c7d5e';
 

@@ -297,6 +297,39 @@ const {
     authPrefixLimiter,
 } = require('./middleware/rateLimiters');
 
+// ============================================
+// RESPOSTA DE API NÃO ENTRA EM CACHE COMPARTILHADO
+// ============================================
+// Toda resposta de `/api` é específica da conta que fez a chamada — o estado do
+// aceite do Termo, o consentimento LGPD, o que "Meus Dados" mostra. Nenhuma
+// delas trazia `Cache-Control`, e sem cabeçalho de frescor o navegador (e
+// qualquer proxy no caminho até o Render) fica livre para aplicar cache
+// heurístico e reaproveitar a resposta pela URL — que é igual para todo mundo.
+//
+// O sintoma disso é o defeito relatado: na mesma máquina, o diretor aceita o
+// Termo, sai, e o professor que entra em seguida recebe o `aceito: true` que
+// era do diretor — a tela de aceite não aparece para quem nunca assinou nada.
+// O aceite SEMPRE esteve gravado por usuário no banco (`Usuario.lgpdHistory`,
+// ver `utils/termoAudioImagem.js`); o que estava compartilhado era a RESPOSTA.
+//
+// `no-store` e não `no-cache`: `no-cache` ainda autoriza guardar a cópia e só
+// exige revalidar antes de servir — e cópia guardada de resposta autenticada é
+// exatamente o que não pode existir aqui. `Vary: Cookie` é o cinto de segurança
+// para quem ignorar o `no-store`: a identidade viaja no cookie HttpOnly do JWT,
+// então respostas de sessões diferentes deixam de colidir na mesma chave.
+//
+// É um PADRÃO, não uma trava: quem precisa de cache define o próprio
+// `Cache-Control` depois — o `streamFile` do FileController usa
+// `private, max-age=3600` e `/api/auth/matriz-acesso` usa `public, max-age=300`
+// — e `res.set` sobrescreve o valor posto aqui.
+app.use('/api', (req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    // `vary` e não `set`: o CORS acrescenta `Origin` a este mesmo cabeçalho
+    // logo adiante, e um `set` ali apagaria o `Cookie` posto aqui.
+    res.vary('Cookie');
+    next();
+});
+
 // Aplicar o globalLimiter APENAS em rotas /api
 app.use('/api', globalLimiter);
 

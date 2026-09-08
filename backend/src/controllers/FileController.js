@@ -18,7 +18,13 @@ async function findFileDoc(fileId) {
     const bucket = new GridFSBucket(mongoose.connection.db, { bucketName: 'uploads' });
     let query;
     if (mongoose.Types.ObjectId.isValid(cleanId)) {
-        query = { $or: [{ _id: new mongoose.Types.ObjectId(cleanId) }, { filename: cleanId }, { filename: fileId }] };
+        query = {
+            $or: [
+                { _id: new mongoose.Types.ObjectId(cleanId) },
+                { filename: cleanId },
+                { filename: fileId },
+            ],
+        };
     } else {
         query = { filename: cleanId };
     }
@@ -33,7 +39,8 @@ function streamFile(res, fileDoc, cacheControl = 'private, max-age=3600') {
     res.set('Cache-Control', cacheControl);
     const stream = getFileStream(String(fileDoc._id));
     stream.on('error', () => {
-        if (!res.headersSent) res.status(404).json({ success: false, error: 'Arquivo não encontrado' });
+        if (!res.headersSent)
+            res.status(404).json({ success: false, error: 'Arquivo não encontrado' });
         else res.end();
     });
     stream.pipe(res);
@@ -83,7 +90,7 @@ async function autorizarArquivo(req, fileDoc) {
             String(meta.destinatarioId || ''),
             // Encaminhamento acrescenta o novo destinatário aqui — sem isso ele
             // recebe a mensagem e tropeça num 403 no próprio anexo.
-            ...(Array.isArray(meta.compartilhadoCom) ? meta.compartilhadoCom.map(String) : [])
+            ...(Array.isArray(meta.compartilhadoCom) ? meta.compartilhadoCom.map(String) : []),
         ];
         if (participantes.includes(meuId)) return { ok: true };
         return { ok: false, status: 403, error: 'Este anexo pertence a outra conversa.' };
@@ -137,7 +144,7 @@ function checarQuarentena(fileDoc) {
             ok: false,
             status: 403,
             codigo: 'ANEXO_BLOQUEADO',
-            error: 'Este anexo não segue as regras de uso do chat.'
+            error: 'Este anexo não segue as regras de uso do chat.',
         };
     }
 
@@ -147,7 +154,7 @@ function checarQuarentena(fileDoc) {
         ok: false,
         status: 409,
         codigo: 'ANEXO_EM_ANALISE',
-        error: 'Este anexo está em análise e será liberado em breve.'
+        error: 'Este anexo está em análise e será liberado em breve.',
     };
 }
 
@@ -164,7 +171,8 @@ exports.checarQuarentena = checarQuarentena;
 exports.serveFile = async (req, res) => {
     try {
         const fileDoc = await findFileDoc(req.params.id);
-        if (!fileDoc) return res.status(404).json({ success: false, error: 'Arquivo não encontrado' });
+        if (!fileDoc)
+            return res.status(404).json({ success: false, error: 'Arquivo não encontrado' });
 
         const permissao = await autorizarArquivo(req, fileDoc);
         if (!permissao.ok) {
@@ -178,7 +186,7 @@ exports.serveFile = async (req, res) => {
             return res.status(quarentena.status).json({
                 success: false,
                 codigo: quarentena.codigo,
-                error: quarentena.error
+                error: quarentena.error,
             });
         }
 
@@ -190,16 +198,23 @@ exports.serveFile = async (req, res) => {
 };
 
 /**
- * `metadata.type` marca os arquivos que pertencem a um CONTEXTO PRIVADO —
- * hoje o anexo do chat direto ('chat_anexo') e o áudio de comentário
- * ('voice_message'). Nenhum deles pode sair pela rota pública.
+ * ALLOWLIST do que sai do bucket SEM sessão.
  *
- * A regra é uma ALLOWLIST vazia de propósito: o único upload que alimenta a
- * rota pública é o avatar de /api/upload/photo, que grava metadata SEM `type`.
- * Assim, qualquer `type` novo criado no futuro nasce privado por padrão em vez
- * de vazar até alguém lembrar de bloqueá-lo aqui.
+ * `metadata.type` é a etiqueta que cada caminho de upload carimba no GridFS, e
+ * aqui ela é a única credencial que existe: o arquivo só é servido pela rota
+ * pública se declarar um tipo E esse tipo estiver nesta lista. Arquivo sem
+ * `type` não passa.
+ *
+ * Até a Issue #216 a lista era um `Set` vazio e a comparação era `meta.type &&
+ * !TIPOS_PUBLICOS.has(meta.type)` — ou seja, barrava os tipos privados
+ * conhecidos e liberava TODO arquivo sem `type`. Aberto por omissão: qualquer
+ * caminho de upload novo que esquecesse de carimbar o tipo nascia público, sem
+ * nada acusar. É a mesma forma de falha que a #213 fechou no gate de páginas.
+ *
+ * Acrescentar um valor aqui é decidir que aquele tipo pode ser lido por
+ * qualquer pessoa da internet, sem login. Hoje só o avatar se enquadra.
  */
-const TIPOS_PUBLICOS = new Set();
+const TIPOS_PUBLICOS = new Set(['avatar']);
 
 /**
  * Serve APENAS imagens (rota pública /api/files/:id, usada por <img> de avatar).
@@ -209,11 +224,14 @@ const TIPOS_PUBLICOS = new Set();
 exports.servePublicImage = async (req, res) => {
     try {
         const fileDoc = await findFileDoc(req.params.id);
-        if (!fileDoc) return res.status(404).json({ success: false, error: 'Arquivo não encontrado' });
+        if (!fileDoc)
+            return res.status(404).json({ success: false, error: 'Arquivo não encontrado' });
 
         const contentType = fileDoc.contentType || '';
         if (!contentType.startsWith('image/')) {
-            return res.status(403).json({ success: false, error: 'Este arquivo requer autenticação.' });
+            return res
+                .status(403)
+                .json({ success: false, error: 'Este arquivo requer autenticação.' });
         }
 
         const meta = fileDoc.metadata || {};
@@ -221,7 +239,9 @@ exports.servePublicImage = async (req, res) => {
         // Documentos de aluno enviados como imagem (foto do RG, por exemplo)
         // NUNCA saem pela rota pública, mesmo sendo image/*.
         if (meta.alunoId) {
-            return res.status(403).json({ success: false, error: 'Este arquivo requer autenticação.' });
+            return res
+                .status(403)
+                .json({ success: false, error: 'Este arquivo requer autenticação.' });
         }
 
         // O filtro de contentType acima só barra o que NÃO é imagem — e a foto
@@ -230,8 +250,16 @@ exports.servePublicImage = async (req, res) => {
         // privada a quem não estava logado, e ainda com `Cache-Control: public`.
         // A autorização por participante existe, mas mora no `serveFile` — esta
         // rota não passa por ela.
-        if (meta.type && !TIPOS_PUBLICOS.has(meta.type)) {
-            return res.status(403).json({ success: false, error: 'Este arquivo requer autenticação.' });
+        //
+        // Fechado por omissão: sem `type`, ou com `type` fora da allowlist, o
+        // arquivo exige sessão. Os avatares gravados antes deste código foram
+        // carimbados pela migração `carimbar-avatares-publicos`; um arquivo que
+        // ela não alcançou não é avatar de ninguém — nenhuma tela aponta para
+        // ele — e continuar exigindo sessão é o comportamento correto.
+        if (!TIPOS_PUBLICOS.has(meta.type)) {
+            return res
+                .status(403)
+                .json({ success: false, error: 'Este arquivo requer autenticação.' });
         }
 
         streamFile(res, fileDoc, 'public, max-age=3600');

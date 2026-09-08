@@ -28,6 +28,7 @@ const ConversationStore = require('../services/ia/ConversationStore');
 const ConfirmationStore = require('../services/ia/ConfirmationStore');
 const ExportadorConversa = require('../services/ia/ExportadorConversa');
 const { comandosPara } = require('../services/ia/comandos');
+const { criarFiltroEmoji } = require('../utils/semEmoji');
 const logger = require('../utils/logger');
 
 /**
@@ -56,8 +57,8 @@ function abrirSSE(res) {
     res.status(200).set({
         'Content-Type': 'text/event-stream; charset=utf-8',
         'Cache-Control': 'no-cache, no-transform',
-        'Connection': 'keep-alive',
-        'X-Accel-Buffering': 'no'
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
     });
     res.flushHeaders?.();
 }
@@ -84,12 +85,14 @@ function criarResumidor(provider) {
             'são eles que dão sentido a referências futuras como "e sobre aquele aluno?".',
             'Descarte saudações e formalidades. Escreva em terceira pessoa, sem comentar que é um resumo.',
             '',
-            texto
+            texto,
         ].join('\n');
 
         let resumo = '';
         for await (const evento of provider.stream(
-            [{ papel: 'usuario', texto: instrucao }], null, undefined
+            [{ papel: 'usuario', texto: instrucao }],
+            null,
+            undefined
         )) {
             if (evento.tipo === 'texto') resumo += evento.texto;
         }
@@ -104,12 +107,14 @@ async function chat(req, res) {
     const mensagem = typeof req.body?.mensagem === 'string' ? req.body.mensagem.trim() : '';
 
     if (!mensagem) {
-        return res.status(400).json({ success: false, error: 'Envie uma mensagem para o assistente.' });
+        return res
+            .status(400)
+            .json({ success: false, error: 'Envie uma mensagem para o assistente.' });
     }
     if (mensagem.length > MAX_CHARS_MENSAGEM) {
         return res.status(400).json({
             success: false,
-            error: `Mensagem muito longa (máximo de ${MAX_CHARS_MENSAGEM} caracteres).`
+            error: `Mensagem muito longa (máximo de ${MAX_CHARS_MENSAGEM} caracteres).`,
         });
     }
 
@@ -118,7 +123,7 @@ async function chat(req, res) {
         // 503 e não 500: é indisponibilidade de configuração, não defeito.
         return res.status(503).json({
             success: false,
-            error: 'O assistente ainda não foi configurado neste servidor. Procure a administração do sistema.'
+            error: 'O assistente ainda não foi configurado neste servidor. Procure a administração do sistema.',
         });
     }
 
@@ -135,7 +140,9 @@ async function chat(req, res) {
         // `incluirMutates`: a Fase 4 liga as ferramentas de escrita. Elas não
         // executam ao serem chamadas — devolvem um preview + token, e só o
         // endpoint de confirmação efetiva.
-        ferramentas = ToolRegistry.declaracoesPara(contexto.usuario.perfil, { incluirMutates: true });
+        ferramentas = ToolRegistry.declaracoesPara(contexto.usuario.perfil, {
+            incluirMutates: true,
+        });
         ctxFerramenta = ToolRegistry.construirContextoFerramenta(req);
         contexto.temFerramentas = Array.isArray(ferramentas) && ferramentas.length > 0;
 
@@ -146,7 +153,9 @@ async function chat(req, res) {
         conversa = await ConversationStore.abrir(ctxFerramenta, req.body?.conversaId);
     } catch (e) {
         logger.error('[IA] Falha ao montar o contexto do usuário', { err: e, action: 'ia.chat' });
-        return res.status(500).json({ success: false, error: 'Não foi possível iniciar a conversa agora.' });
+        return res
+            .status(500)
+            .json({ success: false, error: 'Não foi possível iniciar a conversa agora.' });
     }
 
     // ── A partir daqui a resposta é um stream: erros viram evento, não status ──
@@ -176,22 +185,48 @@ async function chat(req, res) {
             escola: contexto.escola?.nome || null,
             turmas: contexto.turmas,
             modulos: contexto.modulos,
-            ferramentas: (ferramentas || []).map(f => f.name)
+            ferramentas: (ferramentas || []).map((f) => f.name),
         },
         // O front usa isto para continuar a MESMA conversa na próxima mensagem
         // e para atualizar a sidebar sem recarregar a lista inteira.
-        conversa: { id: String(conversa._id), titulo: conversa.titulo }
+        conversa: { id: String(conversa._id), titulo: conversa.titulo },
     });
 
     const mensagens = [
         { papel: 'sistema', texto: montarSystemPrompt(contexto) },
         ...ConversationStore.historicoParaModelo(conversa),
-        { papel: 'usuario', texto: mensagem }
+        { papel: 'usuario', texto: mensagem },
     ];
 
     // Acumuladores do turno: alimentam a persistência ao final.
     let respostaCompleta = '';
     const ferramentasUsadas = [];
+
+    // O filtro fica ANTES do acumulador e do `enviar`, então a tela e o banco
+    // recebem o mesmo texto já limpo — não existe versão "com emoji" em
+    // lugar nenhum. É um filtro com estado porque o provedor pode cortar um
+    // emoji no meio: ver `utils/semEmoji.js`.
+    //
+    // Um filtro por TURNO, não por rodada de ferramenta: as rodadas escrevem
+    // no mesmo texto final, e reiniciá-lo entre elas perderia a cauda retida
+    // na virada.
+    const filtroEmoji = criarFiltroEmoji();
+
+    /** Acumula e streama um pedaço de texto já sem emojis. */
+    const emitirTexto = (bruto) => {
+        const limpo = filtroEmoji.escrever(bruto);
+        if (!limpo) return;
+        respostaCompleta += limpo;
+        enviar(res, { tipo: 'delta', texto: limpo });
+    };
+
+    /** Libera a cauda que o filtro reteve. Idempotente. */
+    const drenarTexto = () => {
+        const resto = filtroEmoji.finalizar();
+        if (!resto) return;
+        respostaCompleta += resto;
+        if (!res.writableEnded) enviar(res, { tipo: 'delta', texto: resto });
+    };
 
     try {
         // ── Laço de ferramentas ──────────────────────────────────────────────
@@ -204,12 +239,15 @@ async function chat(req, res) {
         while (rodada < MAX_RODADAS_FERRAMENTA) {
             const chamadasPendentes = [];
 
-            for await (const evento of provider.stream(mensagens, ferramentas, controlador.signal)) {
+            for await (const evento of provider.stream(
+                mensagens,
+                ferramentas,
+                controlador.signal
+            )) {
                 if (res.writableEnded) break;
 
                 if (evento.tipo === 'texto') {
-                    respostaCompleta += evento.texto;
-                    enviar(res, { tipo: 'delta', texto: evento.texto });
+                    emitirTexto(evento.texto);
                 } else if (evento.tipo === 'ferramenta') {
                     chamadasPendentes.push(...evento.chamadas);
                 } else if (evento.tipo === 'fim') {
@@ -233,7 +271,9 @@ async function chat(req, res) {
                 ferramentasUsadas.push(chamada.nome);
 
                 const resultado = await ToolRegistry.executar(
-                    chamada.nome, chamada.argumentos, ctxFerramenta
+                    chamada.nome,
+                    chamada.argumentos,
+                    ctxFerramenta
                 );
 
                 // Ação de escrita: nada foi gravado ainda. O front recebe o
@@ -246,7 +286,7 @@ async function chat(req, res) {
                         acao: resultado.dados.acao,
                         resumo: resultado.dados.resumo,
                         dados: resultado.dados.dados,
-                        expiraEm: resultado.dados.expiraEm
+                        expiraEm: resultado.dados.expiraEm,
                     });
                 }
 
@@ -258,7 +298,7 @@ async function chat(req, res) {
                     // acabaria persistido no histórico da conversa.
                     resultado: resultado.dados?.requerConfirmacao
                         ? { ok: true, dados: { ...resultado.dados, confirmToken: undefined } }
-                        : resultado
+                        : resultado,
                 });
             }
 
@@ -267,9 +307,14 @@ async function chat(req, res) {
 
         if (rodada >= MAX_RODADAS_FERRAMENTA) {
             logger.warn('[IA] Teto de rodadas de ferramenta atingido.', {
-                action: 'ia.chat', perfil: contexto.usuario.perfil
+                action: 'ia.chat',
+                perfil: contexto.usuario.perfil,
             });
         }
+
+        // A cauda retida pelo filtro tem de sair ANTES do 'fim': o front trata
+        // esse evento como "acabou" e um delta depois dele não seria pintado.
+        drenarTexto();
 
         if (!res.writableEnded) {
             enviar(res, { tipo: 'fim', motivo: motivoFinal });
@@ -280,9 +325,17 @@ async function chat(req, res) {
             enviar(res, { tipo: 'erro', mensagem: e.message });
         } else {
             logger.error('[IA] Erro inesperado durante o streaming', { err: e, action: 'ia.chat' });
-            enviar(res, { tipo: 'erro', mensagem: 'Algo deu errado ao gerar a resposta. Tente novamente.' });
+            enviar(res, {
+                tipo: 'erro',
+                mensagem: 'Algo deu errado ao gerar a resposta. Tente novamente.',
+            });
         }
     } finally {
+        // Caminho de erro ou de abort: o `drenarTexto` do fim do try não rodou,
+        // e sem isto o último trecho retido não chegaria ao banco. É
+        // idempotente, então repetir depois do caminho normal não duplica nada.
+        drenarTexto();
+
         // Persiste o turno ANTES de fechar o stream, para que o front receba o
         // título gerado. Uma resposta parcial (o usuário parou no meio) também
         // é gravada: ela existiu na tela e faz parte do fio da conversa.
@@ -290,18 +343,23 @@ async function chat(req, res) {
             try {
                 await ConversationStore.registrarTurno(
                     conversa,
-                    { pergunta: mensagem, resposta: respostaCompleta, ferramentas: ferramentasUsadas },
+                    {
+                        pergunta: mensagem,
+                        resposta: respostaCompleta,
+                        ferramentas: ferramentasUsadas,
+                    },
                     criarResumidor(provider)
                 );
                 enviar(res, {
                     tipo: 'conversa',
                     id: String(conversa._id),
-                    titulo: conversa.titulo
+                    titulo: conversa.titulo,
                 });
             } catch (e) {
                 // Falha ao gravar não invalida a resposta que a pessoa já leu.
                 logger.error('[IA] Não foi possível gravar a conversa', {
-                    err: e, action: 'ia.conversa'
+                    err: e,
+                    action: 'ia.conversa',
                 });
             }
         }
@@ -345,8 +403,8 @@ async function confirmar(req, res) {
             data: {
                 acao: consumo.acao.ferramenta,
                 resumo: consumo.acao.resumo,
-                ...resultado.dados
-            }
+                ...resultado.dados,
+            },
         });
     } catch (e) {
         logger.error('[IA] Falha no endpoint de confirmação', { err: e, action: 'ia.confirmar' });
@@ -388,7 +446,9 @@ async function listarConversas(req, res) {
         return res.json({ success: true, data: conversas });
     } catch (e) {
         logger.error('[IA] Falha ao listar conversas', { err: e, action: 'ia.conversa' });
-        return res.status(500).json({ success: false, error: 'Não foi possível carregar suas conversas.' });
+        return res
+            .status(500)
+            .json({ success: false, error: 'Não foi possível carregar suas conversas.' });
     }
 }
 
@@ -408,7 +468,9 @@ async function obterConversa(req, res) {
         return res.json({ success: true, data: conversa });
     } catch (e) {
         logger.error('[IA] Falha ao carregar conversa', { err: e, action: 'ia.conversa' });
-        return res.status(500).json({ success: false, error: 'Não foi possível abrir esta conversa.' });
+        return res
+            .status(500)
+            .json({ success: false, error: 'Não foi possível abrir esta conversa.' });
     }
 }
 
@@ -442,7 +504,9 @@ async function exportarConversa(req, res) {
 
         const formato = String(req.body?.formato || req.query?.formato || 'txt').toLowerCase();
         const { buffer, mime, nome } = await ExportadorConversa.exportar(
-            conversa, formato, req.user?.nome
+            conversa,
+            formato,
+            req.user?.nome
         );
 
         res.setHeader('Content-Type', mime);
@@ -458,7 +522,9 @@ async function exportarConversa(req, res) {
             return res.status(503).json({ success: false, error: e.message });
         }
         logger.error('[IA] Falha ao exportar conversa', { err: e, action: 'ia.exportar' });
-        return res.status(500).json({ success: false, error: 'Não foi possível exportar esta conversa.' });
+        return res
+            .status(500)
+            .json({ success: false, error: 'Não foi possível exportar esta conversa.' });
     }
 }
 
@@ -476,7 +542,9 @@ async function removerConversa(req, res) {
         return res.json({ success: true });
     } catch (e) {
         logger.error('[IA] Falha ao remover conversa', { err: e, action: 'ia.conversa' });
-        return res.status(500).json({ success: false, error: 'Não foi possível apagar esta conversa.' });
+        return res
+            .status(500)
+            .json({ success: false, error: 'Não foi possível apagar esta conversa.' });
     }
 }
 
@@ -489,5 +557,5 @@ module.exports = {
     removerConversa,
     listarComandos,
     exportarConversa,
-    MAX_CHARS_MENSAGEM
+    MAX_CHARS_MENSAGEM,
 };

@@ -1,19 +1,17 @@
-'use strict';
-
-const Aluno        = require('../models/Aluno');
-const Nota         = require('../models/Nota');
-const Falta        = require('../models/Falta');
-const Professor    = require('../models/Professor');
-const Comunicado   = require('../models/Comunicado');
+const Aluno = require('../models/Aluno');
+const Nota = require('../models/Nota');
+const Falta = require('../models/Falta');
+const Professor = require('../models/Professor');
+const Comunicado = require('../models/Comunicado');
 const GradeHoraria = require('../models/GradeHoraria');
 const ChatMensagem = require('../models/ChatMensagem');
 const voiceService = require('../services/voiceService');
-const logger       = require('../utils/logger');
+const logger = require('../utils/logger');
 const { PERSONA_PROMPT_PREFIX } = require('./assistantPersona');
-const offlineResponseService    = require('./offlineResponseService');
-const { escolaMatch }           = require('../middleware/filtrarPorEscola');
-const escapeRegex               = require('../utils/escapeRegex');
-const { RELEVANCIA }            = require('../utils/buscaAluno');
+const offlineResponseService = require('./offlineResponseService');
+const { escolaMatch } = require('../middleware/filtrarPorEscola');
+const escapeRegex = require('../utils/escapeRegex');
+const { RELEVANCIA } = require('../utils/buscaAluno');
 const { nomeExibicao, sugerirAlunos } = require('./ia/sugestaoAlunos');
 
 const DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -48,7 +46,11 @@ function comEscola(base, ef) {
  */
 function normalizeText(text) {
     if (!text) return '';
-    return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    return text
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
 }
 
 /**
@@ -61,8 +63,8 @@ function normalizeText(text) {
  */
 function validateButtons(buttons, matches) {
     if (!buttons || !matches) return [];
-    const validIds = new Set(matches.map(m => String(m._id)));
-    return buttons.filter(b => b.value && validIds.has(String(b.value)));
+    const validIds = new Set(matches.map((m) => String(m._id)));
+    return buttons.filter((b) => b.value && validIds.has(String(b.value)));
 }
 
 /**
@@ -79,24 +81,154 @@ function validateButtons(buttons, matches) {
 //   - termo longo       → prefixo de palavra (\b...), casa flexões
 //     (ex.: 'falt' casa falta/faltou/faltando), peso 1
 const DATA_INTENTS = [
-    { intent: 'NOTAS',        keywords: ['nota', 'media', 'boletim', 'tirou', 'rendimento', 'desempenho', 'prova', 'avaliac', 'aproveitamento', 'quanto tirou', 'foi bem', 'foi mal'] },
-    { intent: 'FALTAS',       keywords: ['falt', 'presenc', 'frequenc', 'veio', 'presente', 'ausen', 'assiduidade', 'compareceu'] },
-    { intent: 'COMUNICADOS',  keywords: ['comunicado', 'aviso', 'reuniao', 'mural', 'recado', 'anuncio', 'informe', 'noticia', 'novidade', 'evento'] },
+    {
+        intent: 'NOTAS',
+        keywords: [
+            'nota',
+            'media',
+            'boletim',
+            'tirou',
+            'rendimento',
+            'desempenho',
+            'prova',
+            'avaliac',
+            'aproveitamento',
+            'quanto tirou',
+            'foi bem',
+            'foi mal',
+        ],
+    },
+    {
+        intent: 'FALTAS',
+        keywords: [
+            'falt',
+            'presenc',
+            'frequenc',
+            'veio',
+            'presente',
+            'ausen',
+            'assiduidade',
+            'compareceu',
+        ],
+    },
+    {
+        intent: 'COMUNICADOS',
+        keywords: [
+            'comunicado',
+            'aviso',
+            'reuniao',
+            'mural',
+            'recado',
+            'anuncio',
+            'informe',
+            'noticia',
+            'novidade',
+            'evento',
+        ],
+    },
     // HORARIO e PROFESSORES vêm antes de TURMA_GERAL: em empate
     // ("horário da turma", "professores da turma"), o termo específico vence
-    { intent: 'HORARIO',      keywords: ['horario', 'grade', 'cronograma', 'aula', 'que aula', 'proxima aula', 'que horas'] },
-    { intent: 'PROFESSORES',  keywords: ['professor', 'leciona', 'ensina', 'docente', 'quem da aula', 'quem ensina'] },
-    { intent: 'TURMA_GERAL',  keywords: ['turma', 'alunos', 'sala', 'quantos alunos', 'lista de alunos', 'matriculado'] },
-    { intent: 'RESUMO_GERAL', keywords: ['como esta', 'como vai', 'como anda', 'resumo', 'situacao', 'panorama', 'visao geral'] },
+    {
+        intent: 'HORARIO',
+        keywords: [
+            'horario',
+            'grade',
+            'cronograma',
+            'aula',
+            'que aula',
+            'proxima aula',
+            'que horas',
+        ],
+    },
+    {
+        intent: 'PROFESSORES',
+        keywords: ['professor', 'leciona', 'ensina', 'docente', 'quem da aula', 'quem ensina'],
+    },
+    {
+        intent: 'TURMA_GERAL',
+        keywords: ['turma', 'alunos', 'sala', 'quantos alunos', 'lista de alunos', 'matriculado'],
+    },
+    {
+        intent: 'RESUMO_GERAL',
+        keywords: [
+            'como esta',
+            'como vai',
+            'como anda',
+            'resumo',
+            'situacao',
+            'panorama',
+            'visao geral',
+        ],
+    },
 ];
 
 const CONVERSATIONAL_INTENTS = [
-    { intent: 'SAUDACAO',      keywords: ['ola', 'oi', 'bom dia', 'boa tarde', 'boa noite', 'e ai', 'eai', 'hey', 'hello', 'tudo bem', 'salve'] },
-    { intent: 'AGRADECIMENTO', keywords: ['obrigad', 'valeu', 'agradec', 'thanks', 'brigad', 'vlw'] },
-    { intent: 'DESPEDIDA',     keywords: ['tchau', 'ate mais', 'ate logo', 'ate amanha', 'adeus', 'bye', 'flw', 'falou'] },
-    { intent: 'SOBRE_SISTEMA', keywords: ['o que voce faz', 'como funciona', 'me ajuda', 'ajuda', 'help', 'o que pode', 'quais funcoes', 'quem e voce', 'o que sabe'] },
-    { intent: 'ELOGIO',        keywords: ['parabens', 'muito bom', 'excelente', 'adorei', 'amei', 'incrivel', 'top', 'maravilhoso', 'otimo trabalho'] },
-    { intent: 'RECLAMACAO',    keywords: ['reclamac', 'nao funciona', 'problema', 'erro', 'bug', 'ruim', 'pessimo', 'horrivel', 'nao gostei'] },
+    {
+        intent: 'SAUDACAO',
+        keywords: [
+            'ola',
+            'oi',
+            'bom dia',
+            'boa tarde',
+            'boa noite',
+            'e ai',
+            'eai',
+            'hey',
+            'hello',
+            'tudo bem',
+            'salve',
+        ],
+    },
+    {
+        intent: 'AGRADECIMENTO',
+        keywords: ['obrigad', 'valeu', 'agradec', 'thanks', 'brigad', 'vlw'],
+    },
+    {
+        intent: 'DESPEDIDA',
+        keywords: ['tchau', 'ate mais', 'ate logo', 'ate amanha', 'adeus', 'bye', 'flw', 'falou'],
+    },
+    {
+        intent: 'SOBRE_SISTEMA',
+        keywords: [
+            'o que voce faz',
+            'como funciona',
+            'me ajuda',
+            'ajuda',
+            'help',
+            'o que pode',
+            'quais funcoes',
+            'quem e voce',
+            'o que sabe',
+        ],
+    },
+    {
+        intent: 'ELOGIO',
+        keywords: [
+            'parabens',
+            'muito bom',
+            'excelente',
+            'adorei',
+            'amei',
+            'incrivel',
+            'top',
+            'maravilhoso',
+            'otimo trabalho',
+        ],
+    },
+    {
+        intent: 'RECLAMACAO',
+        keywords: [
+            'reclamac',
+            'nao funciona',
+            'problema',
+            'erro',
+            'bug',
+            'ruim',
+            'pessimo',
+            'horrivel',
+            'nao gostei',
+        ],
+    },
 ];
 
 /**
@@ -126,7 +258,10 @@ function classifyIntent(message) {
     let melhorScore = 0;
     for (const { intent, keywords } of DATA_INTENTS) {
         const s = scoreIntent(normalized, keywords);
-        if (s > melhorScore) { melhor = intent; melhorScore = s; }
+        if (s > melhorScore) {
+            melhor = intent;
+            melhorScore = s;
+        }
     }
     if (melhor) return melhor;
 
@@ -135,7 +270,10 @@ function classifyIntent(message) {
     melhorScore = 0;
     for (const { intent, keywords } of CONVERSATIONAL_INTENTS) {
         const s = scoreIntent(normalized, keywords);
-        if (s > melhorScore) { melhor = intent; melhorScore = s; }
+        if (s > melhorScore) {
+            melhor = intent;
+            melhorScore = s;
+        }
     }
     if (melhor) return melhor;
 
@@ -149,9 +287,14 @@ function classifyIntent(message) {
  */
 function isConversationalIntent(intent) {
     const NO_DATA_INTENTS = [
-        'SAUDACAO', 'AGRADECIMENTO', 'DESPEDIDA',
-        'SOBRE_SISTEMA', 'ELOGIO', 'RECLAMACAO',
-        'FORA_CONTEXTO', 'INDEFINIDA',
+        'SAUDACAO',
+        'AGRADECIMENTO',
+        'DESPEDIDA',
+        'SOBRE_SISTEMA',
+        'ELOGIO',
+        'RECLAMACAO',
+        'FORA_CONTEXTO',
+        'INDEFINIDA',
     ];
     return NO_DATA_INTENTS.includes(intent);
 }
@@ -163,14 +306,20 @@ function isConversationalIntent(intent) {
  */
 function getConversationalFallback(intent) {
     const fallbacks = {
-        SAUDACAO:      'Olá! 😊 Sou o assistente da escola. Posso ajudar com notas, faltas, horários, professores e comunicados. O que deseja saber?',
-        AGRADECIMENTO: 'Por nada! Fico feliz em ajudar. Se precisar de mais alguma coisa, é só perguntar.',
-        DESPEDIDA:     'Até mais! Se precisar, estarei por aqui. 👋',
-        SOBRE_SISTEMA: 'Sou o assistente virtual da escola! Posso ajudar com: notas, faltas, horários, professores e comunicados. Tente por exemplo: "Notas do João Silva" ou "Comunicados".',
-        ELOGIO:        'Muito obrigado! Fico feliz que esteja gostando. Se precisar de algo mais, estou à disposição!',
-        RECLAMACAO:    'Peço desculpas pelo inconveniente. Posso tentar ajudar de outra forma. Tente me perguntar sobre notas, faltas, horários, professores ou comunicados.',
-        FORA_CONTEXTO: 'Não encontrei uma resposta exata para essa pergunta, mas posso ajudar com informações relacionadas. Você pode tentar perguntar de outra forma ou escolher um dos temas abaixo:',
-        INDEFINIDA:    'Não encontrei uma resposta exata para essa pergunta, mas posso ajudar com informações relacionadas. Você pode tentar perguntar de outra forma ou escolher um dos temas abaixo:',
+        SAUDACAO:
+            'Olá! Sou o assistente da escola. Posso ajudar com notas, faltas, horários, professores e comunicados. O que deseja saber?',
+        AGRADECIMENTO:
+            'Por nada! Fico feliz em ajudar. Se precisar de mais alguma coisa, é só perguntar.',
+        DESPEDIDA: 'Até mais! Se precisar, estarei por aqui.',
+        SOBRE_SISTEMA:
+            'Sou o assistente virtual da escola! Posso ajudar com: notas, faltas, horários, professores e comunicados. Tente por exemplo: "Notas do João Silva" ou "Comunicados".',
+        ELOGIO: 'Muito obrigado! Fico feliz que esteja gostando. Se precisar de algo mais, estou à disposição!',
+        RECLAMACAO:
+            'Peço desculpas pelo inconveniente. Posso tentar ajudar de outra forma. Tente me perguntar sobre notas, faltas, horários, professores ou comunicados.',
+        FORA_CONTEXTO:
+            'Não encontrei uma resposta exata para essa pergunta, mas posso ajudar com informações relacionadas. Você pode tentar perguntar de outra forma ou escolher um dos temas abaixo:',
+        INDEFINIDA:
+            'Não encontrei uma resposta exata para essa pergunta, mas posso ajudar com informações relacionadas. Você pode tentar perguntar de outra forma ou escolher um dos temas abaixo:',
     };
     return fallbacks[intent] || fallbacks.INDEFINIDA;
 }
@@ -179,11 +328,11 @@ function getConversationalFallback(intent) {
 // Mantida como base comum; a lista final é ajustada por perfil em
 // getConversationalSuggestions().
 const CONVERSATIONAL_SUGGESTIONS = [
-    { label: '📝 Notas e desempenho', alunoId: null },
-    { label: '📅 Faltas e frequência', alunoId: null },
-    { label: '📢 Comunicados recentes', alunoId: null },
-    { label: '🕐 Grade horária', alunoId: null },
-    { label: '👨‍🏫 Professores da turma', alunoId: null },
+    { label: 'Notas e desempenho', alunoId: null },
+    { label: 'Faltas e frequência', alunoId: null },
+    { label: 'Comunicados recentes', alunoId: null },
+    { label: 'Grade horária', alunoId: null },
+    { label: 'Professores da turma', alunoId: null },
 ];
 
 /**
@@ -194,21 +343,16 @@ const CONVERSATIONAL_SUGGESTIONS = [
  * @returns {Array<{ label: string, alunoId: null }>}
  */
 function getConversationalSuggestions(perfil) {
-    const base = CONVERSATIONAL_SUGGESTIONS.map(s => ({ ...s }));
+    const base = CONVERSATIONAL_SUGGESTIONS.map((s) => ({ ...s }));
     const perfilAdmin = ['diretor', 'admin', 'coordenador', 'secretaria'].includes(perfil);
 
     if (perfil === 'responsavel') {
         // Responsável só enxerga dados do próprio filho — remove itens de turma/escola.
-        return base.filter(s =>
-            !s.label.includes('Professores da turma')
-        );
+        return base.filter((s) => !s.label.includes('Professores da turma'));
     }
 
     if (perfilAdmin) {
-        return [
-            ...base,
-            { label: '🏫 Resumo da escola', alunoId: null },
-        ];
+        return [...base, { label: 'Resumo da escola', alunoId: null }];
     }
 
     return base;
@@ -251,11 +395,17 @@ function capacidadesPorPerfil(perfil) {
 }
 
 function buildConversationalPrompt({ perfil, nomeUsuario, message, historico }) {
-    const historicoTexto = (historico && historico.length > 0)
-        ? historico.slice(0, 3).reverse()
-            .map(h => `[Usuário]: ${h.pergunta}\n[Você]: ${(h.resposta || '').substring(0, 200)}`)
-            .join('\n')
-        : '(primeira mensagem da conversa)';
+    const historicoTexto =
+        historico && historico.length > 0
+            ? historico
+                  .slice(0, 3)
+                  .reverse()
+                  .map(
+                      (h) =>
+                          `[Usuário]: ${h.pergunta}\n[Você]: ${(h.resposta || '').substring(0, 200)}`
+                  )
+                  .join('\n')
+            : '(primeira mensagem da conversa)';
 
     return `${PERSONA_PROMPT_PREFIX}
 
@@ -280,7 +430,7 @@ REGRAS:
 - Assunto fora do escopo escolar: recuse com leveza e volte para o que você faz.
 - Reclamação: peça desculpas em uma frase e ofereça um caminho concreto.
 - NUNCA invente nome de aluno, nota, data ou horário. Você não consultou o banco agora.
-- Emojis: no máximo 1. Nunca mencione "Gemini", "Google" ou "IA". Você é "o assistente da escola".
+- NUNCA use emojis. Nunca mencione "Gemini", "Google" ou "IA". Você é "o assistente da escola".
 
 HISTÓRICO RECENTE:
 ${historicoTexto}
@@ -297,16 +447,26 @@ Responda em português do Brasil:`;
  * @returns {number|null}
  */
 function detectBimestre(message) {
-    const regex = /(\d+|primeiro|segundo|terceiro|quarto|um|dois|tr[eê]s|quatro)[°º]?\s*bim(estre)?/i;
+    const regex =
+        /(\d+|primeiro|segundo|terceiro|quarto|um|dois|tr[eê]s|quatro)[°º]?\s*bim(estre)?/i;
     const match = message.match(regex);
     if (!match) return null;
 
     const token = match[1].toLowerCase();
     const bimestreMap = {
-        '1': 1, 'um': 1, 'primeiro': 1,
-        '2': 2, 'dois': 2, 'segundo': 2,
-        '3': 3, 'três': 3, 'tres': 3, 'terceiro': 3,
-        '4': 4, 'quatro': 4, 'quarto': 4,
+        1: 1,
+        um: 1,
+        primeiro: 1,
+        2: 2,
+        dois: 2,
+        segundo: 2,
+        3: 3,
+        três: 3,
+        tres: 3,
+        terceiro: 3,
+        4: 4,
+        quatro: 4,
+        quarto: 4,
     };
 
     return bimestreMap[token] || null;
@@ -318,8 +478,17 @@ function detectBimestre(message) {
  * @returns {string|null}
  */
 const MATERIAS_CONHECIDAS = [
-    'matemática', 'português', 'história', 'geografia', 'ciências',
-    'física', 'química', 'biologia', 'inglês', 'artes', 'educação física',
+    'matemática',
+    'português',
+    'história',
+    'geografia',
+    'ciências',
+    'física',
+    'química',
+    'biologia',
+    'inglês',
+    'artes',
+    'educação física',
 ];
 
 function detectMateria(message) {
@@ -346,19 +515,18 @@ async function enforceRBAC({ perfil, userId, userEmail, escolaId }) {
     const ef = escolaMatch(escolaId);
 
     if (perfil === 'responsavel') {
-        const alunoFilter = comEscola({
-            $or: [
-                { responsavel: userEmail },
-                { 'responsavelDados.email': userEmail },
-            ],
-        }, ef);
-        const alunosVinculados = (await Aluno.find(alunoFilter)
-            .select('_id turma turmaId nome sobrenome')
-            .lean())
-            .map(a => ({ ...a, nome: nomeExibicao(a) }));
-        const turmasAutorizadas = [...new Set(
-            alunosVinculados.map(a => a.turma).filter(Boolean)
-        )];
+        const alunoFilter = comEscola(
+            {
+                $or: [{ responsavel: userEmail }, { 'responsavelDados.email': userEmail }],
+            },
+            ef
+        );
+        const alunosVinculados = (
+            await Aluno.find(alunoFilter).select('_id turma turmaId nome sobrenome').lean()
+        ).map((a) => ({ ...a, nome: nomeExibicao(a) }));
+        const turmasAutorizadas = [
+            ...new Set(alunosVinculados.map((a) => a.turma).filter(Boolean)),
+        ];
         return { alunoFilter, turmasAutorizadas, professorDoc: null, alunosVinculados };
     }
 
@@ -471,12 +639,15 @@ async function resolveAlunoContext({ alunoId, message, alunoFilter }) {
 
     if (alunos.length > 1) {
         // 2+ results → generate buttons { label: real_name, value: aluno_id }
-        const rawButtons = alunos.map(a => ({
+        const rawButtons = alunos.map((a) => ({
             label: `${a.nome} — Turma ${a.turma || '—'}`,
             value: a.id,
         }));
         // Validation: every button must map 1:1 to a query result
-        const validatedButtons = validateButtons(rawButtons, alunos.map(a => ({ _id: a.id })));
+        const validatedButtons = validateButtons(
+            rawButtons,
+            alunos.map((a) => ({ _id: a.id }))
+        );
         return {
             aluno: null,
             alunoId: null,
@@ -504,7 +675,7 @@ async function fetchNotas({ alunoContexto, bimestre, materia }) {
     // ESCAPADO: `materia` sai do texto livre da mensagem do usuário e ia direto
     // para o RegExp — uma pergunta com metacaracteres catastróficos travava o
     // event loop do servidor inteiro (ReDoS).
-    if (materia)  query.materiaId = new RegExp(escapeRegex(String(materia)), 'i');
+    if (materia) query.materiaId = new RegExp(escapeRegex(String(materia)), 'i');
 
     const notas = await Nota.find(query).lean();
     if (!notas.length) {
@@ -525,9 +696,16 @@ async function fetchFaltas({ alunoContexto }) {
     const faltas = await Falta.find({ aluno: String(alunoContexto) }).lean();
     const total = faltas.length;
     if (total === 0) {
-        return { faltas: [], total: 0, presentes: 0, frequencia: null, alertaCritico: false, alertaObservacao: false };
+        return {
+            faltas: [],
+            total: 0,
+            presentes: 0,
+            frequencia: null,
+            alertaCritico: false,
+            alertaObservacao: false,
+        };
     }
-    const presentes = faltas.filter(f => f.presente).length;
+    const presentes = faltas.filter((f) => f.presente).length;
     const frequencia = (presentes / total) * 100;
     const alertaCritico = frequencia < 75;
     const alertaObservacao = frequencia >= 75 && frequencia < 85;
@@ -552,10 +730,7 @@ async function fetchComunicados({ perfil, turmaAluno, escolaId }) {
     // admin, diretor, coordenador, secretaria: sem filtro de destinatários
 
     const query = comEscola(base, escolaMatch(escolaId));
-    const comunicados = await Comunicado.find(query)
-        .sort({ dataCriacao: -1 })
-        .limit(5)
-        .lean();
+    const comunicados = await Comunicado.find(query).sort({ dataCriacao: -1 }).limit(5).lean();
 
     return comunicados;
 }
@@ -567,9 +742,7 @@ async function fetchComunicados({ perfil, turmaAluno, escolaId }) {
  */
 async function fetchGradeHoraria({ turmaId }) {
     if (!turmaId) return [];
-    const grade = await GradeHoraria.find({ turmaId })
-        .sort({ diaSemana: 1, horaInicio: 1 })
-        .lean();
+    const grade = await GradeHoraria.find({ turmaId }).sort({ diaSemana: 1, horaInicio: 1 }).lean();
     return grade;
 }
 
@@ -585,14 +758,9 @@ async function fetchProfessores({ turma, escolaId }) {
     // escopo, "professores da turma 3A" misturava docentes de outras escolas.
     // Professor guarda o vínculo em vinculos.escolaId (não em escolaId de topo).
     const base = {
-        $or: [
-            { salaPrincipal: turma },
-            { salasAdicionais: turma },
-        ],
+        $or: [{ salaPrincipal: turma }, { salasAdicionais: turma }],
     };
-    const query = escolaId
-        ? { $and: [base, { 'vinculos.escolaId': String(escolaId) }] }
-        : base;
+    const query = escolaId ? { $and: [base, { 'vinculos.escolaId': String(escolaId) }] } : base;
     const professores = await Professor.find(query).select('nome materias disciplina').lean();
     return professores;
 }
@@ -603,7 +771,9 @@ async function fetchProfessores({ turma, escolaId }) {
  * @returns {Promise<Object>}
  */
 async function fetchTurmaGeral({ alunoFilter }) {
-    const alunos = await Aluno.find(alunoFilter || {}).select('nome turma').lean();
+    const alunos = await Aluno.find(alunoFilter || {})
+        .select('nome turma')
+        .lean();
     const porTurma = Object.values(
         alunos.reduce((acc, aluno) => {
             const turma = aluno.turma || 'Sem turma';
@@ -634,9 +804,7 @@ async function fetchResumoGeral({ escolaId } = {}) {
     ]);
 
     const mediaEscola = notaAgg.length > 0 ? notaAgg[0].media : null;
-    const frequenciaGlobal = totalAulas > 0
-        ? ((totalAulas - totalFaltas) / totalAulas) * 100
-        : 100;
+    const frequenciaGlobal = totalAulas > 0 ? ((totalAulas - totalFaltas) / totalAulas) * 100 : 100;
 
     return { mediaEscola, frequenciaGlobal, totalComunicadosAtivos };
 }
@@ -706,7 +874,6 @@ function formatarResposta({ intencao, dados, aluno, perfil }) {
     const perfilAdmin = ['diretor', 'admin', 'coordenador', 'secretaria'].includes(perfil);
 
     switch (intencao) {
-
         case 'NOTAS': {
             if (!nomeAluno) {
                 if (perfilAdmin) {
@@ -719,13 +886,14 @@ function formatarResposta({ intencao, dados, aluno, perfil }) {
                 const mat = dados.materia ? ` de ${dados.materia}` : '';
                 return `Não encontrei notas${mat}${filtro} para ${nomeAluno}.`;
             }
-            const linhas = dados.notas.map(n => {
+            const linhas = dados.notas.map((n) => {
                 const mat = n.materiaId || n.materia || 'Matéria';
                 const val = n.nota !== undefined ? n.nota : '—';
                 const bim = n.bimestre ? ` (${n.bimestre}º bim.)` : '';
                 return `• ${mat}${bim}: ${val}`;
             });
-            const mediaTexto = dados.media !== null ? `\nMédia geral: ${Number(dados.media).toFixed(1)}` : '';
+            const mediaTexto =
+                dados.media !== null ? `\nMédia geral: ${Number(dados.media).toFixed(1)}` : '';
             const filtroTexto = dados.bimestre ? ` — ${dados.bimestre}º bimestre` : '';
             return `Notas de ${nomeAluno}${filtroTexto}:\n${linhas.join('\n')}${mediaTexto}`;
         }
@@ -740,10 +908,12 @@ function formatarResposta({ intencao, dados, aluno, perfil }) {
             if (dados.total === 0) {
                 return `Não há registros de frequência para ${nomeAluno}.`;
             }
-            const freq = dados.frequencia !== null ? `${Number(dados.frequencia).toFixed(1)}%` : '—';
+            const freq =
+                dados.frequencia !== null ? `${Number(dados.frequencia).toFixed(1)}%` : '—';
             let alerta = '';
             if (dados.alertaCritico) {
-                alerta = '\nAtencao: Frequencia critica (abaixo de 75%). Risco de reprovacao por falta.';
+                alerta =
+                    '\nAtencao: Frequencia critica (abaixo de 75%). Risco de reprovacao por falta.';
             } else if (dados.alertaObservacao) {
                 alerta = '\nAviso: Frequencia em observacao (entre 75% e 85%).';
             }
@@ -756,7 +926,9 @@ function formatarResposta({ intencao, dados, aluno, perfil }) {
             }
             const linhas = dados.map((c, i) => {
                 const urgente = c.prioridade === 'Urgente' ? ' [URGENTE]' : '';
-                const data = c.dataCriacao ? new Date(c.dataCriacao).toLocaleDateString('pt-BR') : '';
+                const data = c.dataCriacao
+                    ? new Date(c.dataCriacao).toLocaleDateString('pt-BR')
+                    : '';
                 return `${i + 1}. ${c.titulo}${urgente}${data ? ` (${data})` : ''}\n   ${c.conteudo ? c.conteudo.substring(0, 120) : ''}`;
             });
             return `Comunicados recentes:\n${linhas.join('\n')}`;
@@ -772,10 +944,14 @@ function formatarResposta({ intencao, dados, aluno, perfil }) {
             const porDia = dados.reduce((acc, h) => {
                 const dia = DIAS_SEMANA[h.diaSemana] || `Dia ${h.diaSemana}`;
                 if (!acc[dia]) acc[dia] = [];
-                acc[dia].push(`  ${h.horaInicio}–${h.horaFim}: ${h.disciplina || h.materia || '—'}`);
+                acc[dia].push(
+                    `  ${h.horaInicio}–${h.horaFim}: ${h.disciplina || h.materia || '—'}`
+                );
                 return acc;
             }, {});
-            const linhas = Object.entries(porDia).map(([dia, aulas]) => `${dia}:\n${aulas.join('\n')}`);
+            const linhas = Object.entries(porDia).map(
+                ([dia, aulas]) => `${dia}:\n${aulas.join('\n')}`
+            );
             return `Grade horária${nomeAluno ? ` — ${aluno.turma || nomeAluno}` : ''}:\n${linhas.join('\n')}`;
         }
 
@@ -786,10 +962,11 @@ function formatarResposta({ intencao, dados, aluno, perfil }) {
                 }
                 return 'Não foram encontrados professores vinculados a esta turma.';
             }
-            const linhas = dados.map(p => {
-                const mats = (p.materias && p.materias.length > 0)
-                    ? p.materias.join(', ')
-                    : (p.disciplina || '—');
+            const linhas = dados.map((p) => {
+                const mats =
+                    p.materias && p.materias.length > 0
+                        ? p.materias.join(', ')
+                        : p.disciplina || '—';
                 const sala = p.salaPrincipal ? ` [${p.salaPrincipal}]` : '';
                 return `• ${p.nome}${sala} — ${mats}`;
             });
@@ -803,7 +980,7 @@ function formatarResposta({ intencao, dados, aluno, perfil }) {
             }
             const linhas = dados.porTurma
                 .sort((a, b) => a.turma.localeCompare(b.turma))
-                .map(t => `• Turma ${t.turma}: ${t.total} aluno(s)`);
+                .map((t) => `• Turma ${t.turma}: ${t.total} aluno(s)`);
             return `Resumo por turma:\n${linhas.join('\n')}\nTotal geral: ${dados.alunos.length} aluno(s)`;
         }
 
@@ -812,23 +989,37 @@ function formatarResposta({ intencao, dados, aluno, perfil }) {
             if (dados.resumoAluno) {
                 const linhas = [`Resumo de ${nomeAluno || 'aluno'}:`];
                 if (dados.totalNotas > 0) {
-                    linhas.push(`• Média geral: ${Number(dados.media).toFixed(1)} (${dados.totalNotas} nota(s) lançada(s))`);
-                    if (dados.melhorMateria) linhas.push(`• Melhor matéria: ${dados.melhorMateria.materia} (${dados.melhorMateria.media.toFixed(1)})`);
-                    if (dados.piorMateria) linhas.push(`• Precisa de atenção: ${dados.piorMateria.materia} (${dados.piorMateria.media.toFixed(1)})`);
+                    linhas.push(
+                        `• Média geral: ${Number(dados.media).toFixed(1)} (${dados.totalNotas} nota(s) lançada(s))`
+                    );
+                    if (dados.melhorMateria)
+                        linhas.push(
+                            `• Melhor matéria: ${dados.melhorMateria.materia} (${dados.melhorMateria.media.toFixed(1)})`
+                        );
+                    if (dados.piorMateria)
+                        linhas.push(
+                            `• Precisa de atenção: ${dados.piorMateria.materia} (${dados.piorMateria.media.toFixed(1)})`
+                        );
                 } else {
                     linhas.push('• Ainda não há notas lançadas.');
                 }
                 if (dados.totalRegistros > 0) {
-                    linhas.push(`• Frequência: ${Number(dados.frequencia).toFixed(1)}% (${dados.faltas} falta(s))`);
-                    if (dados.alertaCritico) linhas.push('• Atenção: frequência CRÍTICA (abaixo de 75%) — risco de reprovação por falta.');
-                    else if (dados.alertaObservacao) linhas.push('• Aviso: frequência em observação (75%–85%).');
+                    linhas.push(
+                        `• Frequência: ${Number(dados.frequencia).toFixed(1)}% (${dados.faltas} falta(s))`
+                    );
+                    if (dados.alertaCritico)
+                        linhas.push(
+                            '• Atenção: frequência CRÍTICA (abaixo de 75%) — risco de reprovação por falta.'
+                        );
+                    else if (dados.alertaObservacao)
+                        linhas.push('• Aviso: frequência em observação (75%–85%).');
                 } else {
                     linhas.push('• Ainda não há registros de frequência.');
                 }
                 return linhas.join('\n');
             }
             const media = dados.mediaEscola !== null ? Number(dados.mediaEscola).toFixed(1) : '—';
-            const freq  = `${Number(dados.frequenciaGlobal).toFixed(1)}%`;
+            const freq = `${Number(dados.frequenciaGlobal).toFixed(1)}%`;
             return `Resumo da escola:\n• Media geral de notas: ${media}\n• Frequencia global: ${freq}\n• Comunicados ativos: ${dados.totalComunicadosAtivos}`;
         }
 
@@ -852,11 +1043,14 @@ function formatarResposta({ intencao, dados, aluno, perfil }) {
  * @returns {string} Formatted prompt
  */
 function buildPrompt({ perfil, intencao, message, dados, historico }) {
-    const historicoTexto = (historico && historico.length > 0)
-        ? historico.slice().reverse()
-            .map(h => `[Usuário]: ${h.pergunta}\n[Assistente]: ${h.resposta}`)
-            .join('\n')
-        : '(sem histórico)';
+    const historicoTexto =
+        historico && historico.length > 0
+            ? historico
+                  .slice()
+                  .reverse()
+                  .map((h) => `[Usuário]: ${h.pergunta}\n[Assistente]: ${h.resposta}`)
+                  .join('\n')
+            : '(sem histórico)';
 
     const dadosSerialized = JSON.stringify(dados, null, 2);
 
@@ -913,7 +1107,15 @@ Responda em português do Brasil:`;
 // sombreava o objeto global process do Node dentro desta função, fazendo
 // process.env.GEMINI_KEY ler undefined.GEMINI_KEY (TypeError) — a
 // humanização via Gemini nunca era acionada pela pipeline de dados.
-async function processMessage({ message, alunoId, perfil, userId, nomeUsuario, userEmail, escolaId }) {
+async function processMessage({
+    message,
+    alunoId,
+    perfil,
+    userId,
+    nomeUsuario,
+    userEmail,
+    escolaId,
+}) {
     // 1. Normalise message
     const normalizedMessage = message.toLowerCase();
 
@@ -925,13 +1127,19 @@ async function processMessage({ message, alunoId, perfil, userId, nomeUsuario, u
     // go straight to Gemini with a dedicated conversational prompt, or fall
     // back to a fixed dictionary response if Gemini is unavailable.
     if (isConversationalIntent(intencao)) {
-        const googleApiKey = process.env.GEMINI_KEY
-            || process.env.GEMINI_API_KEY
-            || process.env.GOOGLE_TTS_API_KEY
-            || process.env.GOOGLE_API_KEY;
+        const googleApiKey =
+            process.env.GEMINI_KEY ||
+            process.env.GEMINI_API_KEY ||
+            process.env.GOOGLE_TTS_API_KEY ||
+            process.env.GOOGLE_API_KEY;
         // Sugestões de temas também na saudação e no "o que você faz" —
         // antes só apareciam quando o bot NÃO entendia a mensagem
-        const showSuggestions = ['INDEFINIDA', 'FORA_CONTEXTO', 'SAUDACAO', 'SOBRE_SISTEMA'].includes(intencao);
+        const showSuggestions = [
+            'INDEFINIDA',
+            'FORA_CONTEXTO',
+            'SAUDACAO',
+            'SOBRE_SISTEMA',
+        ].includes(intencao);
         const suggestions = getConversationalSuggestions(perfil);
 
         // Resposta offline com variação de template (persona compartilhada).
@@ -955,14 +1163,23 @@ async function processMessage({ message, alunoId, perfil, userId, nomeUsuario, u
         }
         // Histórico dá continuidade ("e as faltas?" após falar de um aluno)
         const historicoConversa = await fetchHistorico(userId);
-        const conversationalPrompt = buildConversationalPrompt({ perfil, nomeUsuario, message, historico: historicoConversa });
+        const conversationalPrompt = buildConversationalPrompt({
+            perfil,
+            nomeUsuario,
+            message,
+            historico: historicoConversa,
+        });
         let response;
         try {
             // Conversa social: respostas bem curtas — teto agressivo de tokens
-            response = await voiceService.generateInsightText(conversationalPrompt, { maxOutputTokens: 300 });
+            response = await voiceService.generateInsightText(conversationalPrompt, {
+                maxOutputTokens: 300,
+            });
             response = (response || '').replace(/[*_~`#]/g, '').trim();
         } catch (err) {
-            logger.warn(`[ChatbotService] Gemini error (conversational): ${err.message} — usando fallback.`);
+            logger.warn(
+                `[ChatbotService] Gemini error (conversational): ${err.message} — usando fallback.`
+            );
             response = offlineResponse();
         }
         return {
@@ -974,24 +1191,40 @@ async function processMessage({ message, alunoId, perfil, userId, nomeUsuario, u
 
     // ─── DATA INTENT PIPELINE ──────────────────────────────────────────────
     // 3. Enforce RBAC
-    const { alunoFilter, turmasAutorizadas, professorDoc, alunosVinculados } =
-        await enforceRBAC({ perfil, userId, userEmail, escolaId });
+    const { alunoFilter, turmasAutorizadas, professorDoc, alunosVinculados } = await enforceRBAC({
+        perfil,
+        userId,
+        userEmail,
+        escolaId,
+    });
 
     // 4. Resolve aluno context
-    let { aluno, alunoId: resolvedAlunoId, ambiguous, ambiguousMessage, options: alunoOptions } =
-        await resolveAlunoContext({ alunoId, message, alunoFilter });
+    let {
+        aluno,
+        alunoId: resolvedAlunoId,
+        ambiguous,
+        ambiguousMessage,
+        options: alunoOptions,
+    } = await resolveAlunoContext({ alunoId, message, alunoFilter });
 
     // 4a. Múltiplos alunos com mesmo nome — retorna botões de opção
     // Golden Rule: buttons come ONLY from Layer 1 DB query — skip Gemini entirely
     if (ambiguous) {
-        logger.warn(`[ChatbotService] Ambiguous: ${ambiguousMessage} | options: ${JSON.stringify(alunoOptions)}`);
+        logger.warn(
+            `[ChatbotService] Ambiguous: ${ambiguousMessage} | options: ${JSON.stringify(alunoOptions)}`
+        );
         return { response: ambiguousMessage, alunoId: null, options: alunoOptions };
     }
 
     // 4b. Responsável com UM único filho e sem nome citado ("notas do meu
     // filho?", "e as faltas?") → resolve automaticamente para esse filho.
     // Vale para todas as intenções sobre o aluno (NOTAS/FALTAS/RESUMO/HORARIO).
-    if (!resolvedAlunoId && perfil === 'responsavel' && alunosVinculados && alunosVinculados.length === 1) {
+    if (
+        !resolvedAlunoId &&
+        perfil === 'responsavel' &&
+        alunosVinculados &&
+        alunosVinculados.length === 1
+    ) {
         aluno = alunosVinculados[0];
         resolvedAlunoId = String(alunosVinculados[0]._id);
     }
@@ -1006,13 +1239,14 @@ async function processMessage({ message, alunoId, perfil, userId, nomeUsuario, u
         !resolvedAlunoId &&
         (intencao === 'NOTAS' || intencao === 'FALTAS' || intencao === 'RESUMO_GERAL')
     ) {
-        const childButtons = alunosVinculados.map(a => ({
+        const childButtons = alunosVinculados.map((a) => ({
             label: `${a.nome} — Turma ${a.turma || '—'}`,
             value: String(a._id),
         }));
         const validatedChildButtons = validateButtons(childButtons, alunosVinculados);
         return {
-            response: 'Encontrei mais de um aluno vinculado à sua conta. Sobre qual deles você gostaria de saber?',
+            response:
+                'Encontrei mais de um aluno vinculado à sua conta. Sobre qual deles você gostaria de saber?',
             alunoId: null,
             options: validatedChildButtons,
         };
@@ -1027,11 +1261,7 @@ async function processMessage({ message, alunoId, perfil, userId, nomeUsuario, u
     }
 
     // 5c. professor attempting to access an unauthorised turma
-    if (
-        perfil === 'professor' &&
-        turmasAutorizadas !== null &&
-        turmasAutorizadas.length === 0
-    ) {
+    if (perfil === 'professor' && turmasAutorizadas !== null && turmasAutorizadas.length === 0) {
         return {
             response: 'Você não tem permissão para acessar dados desta turma.',
             alunoId: null,
@@ -1055,7 +1285,14 @@ async function processMessage({ message, alunoId, perfil, userId, nomeUsuario, u
         case 'FALTAS':
             dados = resolvedAlunoId
                 ? await fetchFaltas({ alunoContexto: resolvedAlunoId })
-                : { faltas: [], total: 0, presentes: 0, frequencia: null, alertaCritico: false, alertaObservacao: false };
+                : {
+                      faltas: [],
+                      total: 0,
+                      presentes: 0,
+                      frequencia: null,
+                      alertaCritico: false,
+                      alertaObservacao: false,
+                  };
             break;
 
         case 'COMUNICADOS':
@@ -1067,7 +1304,7 @@ async function processMessage({ message, alunoId, perfil, userId, nomeUsuario, u
             break;
 
         case 'HORARIO': {
-            let turmaId = aluno ? (aluno.turmaId || aluno.turma) : null;
+            let turmaId = aluno ? aluno.turmaId || aluno.turma : null;
             if (!turmaId && turmasAutorizadas && turmasAutorizadas.length > 0) {
                 turmaId = turmasAutorizadas[0];
             }
@@ -1085,7 +1322,9 @@ async function processMessage({ message, alunoId, perfil, userId, nomeUsuario, u
             // o corpo docente de todas as escolas da rede).
             if (!turma && turmasAutorizadas === null) {
                 const q = escolaId ? { 'vinculos.escolaId': String(escolaId) } : {};
-                dados = await Professor.find(q).select('nome materias disciplina salaPrincipal').lean();
+                dados = await Professor.find(q)
+                    .select('nome materias disciplina salaPrincipal')
+                    .lean();
             } else {
                 dados = await fetchProfessores({ turma, escolaId });
             }
@@ -1100,7 +1339,12 @@ async function processMessage({ message, alunoId, perfil, userId, nomeUsuario, u
             // "Como está o João?" → resumo do aluno, não da escola
             let idResumo = resolvedAlunoId;
             // Responsável sem nome citado mas com 1 filho → usa o filho
-            if (!idResumo && perfil === 'responsavel' && alunosVinculados && alunosVinculados.length === 1) {
+            if (
+                !idResumo &&
+                perfil === 'responsavel' &&
+                alunosVinculados &&
+                alunosVinculados.length === 1
+            ) {
                 idResumo = String(alunosVinculados[0]._id);
             }
             dados = idResumo
@@ -1120,10 +1364,11 @@ async function processMessage({ message, alunoId, perfil, userId, nomeUsuario, u
     // Aceita os mesmos nomes de variável do voiceService — antes só
     // GOOGLE_TTS_API_KEY era checada aqui, e ambientes com GEMINI_KEY
     // nunca passavam respostas de dados pelo Gemini.
-    const geminiApiKey = process.env.GEMINI_KEY
-        || process.env.GEMINI_API_KEY
-        || process.env.GOOGLE_TTS_API_KEY
-        || process.env.GOOGLE_API_KEY;
+    const geminiApiKey =
+        process.env.GEMINI_KEY ||
+        process.env.GEMINI_API_KEY ||
+        process.env.GOOGLE_TTS_API_KEY ||
+        process.env.GOOGLE_API_KEY;
     if (!geminiApiKey) {
         // No API key → Layer 2 fallback only
         return { response: respostaDireta, alunoId: resolvedAlunoId };
@@ -1140,7 +1385,9 @@ async function processMessage({ message, alunoId, perfil, userId, nomeUsuario, u
         response = (response || '').replace(/[*_~`#]/g, '').trim();
     } catch (err) {
         if (err.quotaExceeded) {
-            logger.warn('[ChatbotService] Quota Gemini excedida — usando resposta direta do banco.');
+            logger.warn(
+                '[ChatbotService] Quota Gemini excedida — usando resposta direta do banco.'
+            );
         } else {
             logger.warn(`[ChatbotService] Gemini error: ${err.message} — usando resposta direta.`);
         }

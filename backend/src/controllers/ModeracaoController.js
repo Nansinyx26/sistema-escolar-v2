@@ -284,17 +284,89 @@ exports.metricas = async (req, res) => {
 };
 
 /**
+ * Canal aberto: valida a entrada e registra. Fica em função separada para que a
+ * rota continue legível — e para que a validação do canal do ECA não se
+ * misture com a da denúncia de mensagem, que tem regras diferentes.
+ */
+async function denunciaAberta(req, res, { categoria, relato }) {
+    if (!CATEGORIAS_DENUNCIA.includes(categoria)) {
+        return res.status(400).json({
+            success: false,
+            error: `Escolha o tipo da denúncia: ${CATEGORIAS_DENUNCIA.join(', ')}.`,
+        });
+    }
+
+    const texto = String(relato || '').trim();
+    if (texto.length < 10) {
+        // Dez caracteres não filtram trote — filtram o clique acidental. Recusar
+        // relato vazio evita a fila cheia de item sem nada para apurar, que é o
+        // que faz a equipe parar de abrir a fila.
+        return res.status(400).json({
+            success: false,
+            error: 'Conte o que aconteceu para a escola poder apurar (mínimo 10 caracteres).',
+        });
+    }
+
+    const veredito = await ModeracaoService.registrarDenunciaAberta({
+        categoria,
+        relato: texto.slice(0, 2000),
+        contexto: {
+            escolaId: req.escolaId,
+            remetenteId: idDe(req),
+            remetentePerfil: perfilDe(req),
+        },
+    });
+
+    if (!veredito.ocorrencia) {
+        return res
+            .status(500)
+            .json({ success: false, error: 'Não foi possível registrar a denúncia.' });
+    }
+
+    // O protocolo é o que a pessoa leva embora: sem ele, denunciar é falar com
+    // o vazio, e ela não tem como cobrar retorno depois. Vai dentro de `data`
+    // como todo o resto da API — os dois clientes (o portal em React e o
+    // `js/canal-denuncia.js`) desembrulham esse envelope automaticamente.
+    return res.status(201).json({
+        success: true,
+        data: {
+            protocolo: String(veredito.ocorrencia._id),
+            mensagem: 'Denúncia registrada. A equipe da escola vai apurar.',
+        },
+    });
+}
+
+/** Categorias aceitas pelo canal aberto — espelha o enum de ModeracaoOcorrencia. */
+const CATEGORIAS_DENUNCIA = [
+    'bullying',
+    'ciberbullying',
+    'assedio',
+    'discriminacao',
+    'violencia',
+    'automutilacao',
+    'outro',
+];
+
+/**
  * POST /api/moderacao/denunciar
- * Body: { mensagemId, motivo }
+ *
+ * DOIS CANAIS NA MESMA ROTA — e o motivo é o botão, não o backend
+ * ---------------------------------------------------------------
+ * Body `{ mensagemId, motivo }`  → denúncia de UMA mensagem do chat.
+ * Body `{ categoria, relato }`   → canal aberto do ECA Digital: bullying,
+ *                                  assédio ou discriminação que aconteceu,
+ *                                  inclusive fora do sistema.
+ *
+ * Para quem denuncia existe UM botão "Denunciar", e obrigá-lo a saber em qual
+ * das duas rotas o caso dele se encaixa é exatamente o tipo de fricção que faz
+ * uma criança desistir de relatar. A distinção é do servidor.
  */
 exports.denunciar = async (req, res) => {
     try {
-        const { mensagemId, motivo } = req.body || {};
+        const { mensagemId, motivo, categoria, relato } = req.body || {};
 
         if (!mensagemId) {
-            return res
-                .status(400)
-                .json({ success: false, error: 'Informe a mensagem denunciada.' });
+            return denunciaAberta(req, res, { categoria, relato });
         }
 
         const veredito = await ModeracaoService.registrarDenuncia({

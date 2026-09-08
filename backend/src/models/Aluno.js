@@ -110,6 +110,15 @@ const AlunoSchema = new mongoose.Schema(
         cpfAluno: String,
         nacionalidade: String,
         etnia: String,
+        // ─── Censo Escolar (INEP) ────────────────────────────────────────────
+        // `codigoInep` é a identificação nacional do estudante. Quem já estudou
+        // em outra rede chega com ele; sem gravá-lo, o Censo trata a mesma
+        // criança como duas matrículas e a rede perde o histórico dela.
+        codigoInep: { type: String, trim: true },
+        // O Censo exige sexo declarado (domínio 1/2). Fica em texto livre porque
+        // é o que o cadastro e a importação de planilha já produzem — a tradução
+        // para o código do INEP mora em services/conformidade/educacenso.js.
+        sexo: String,
         religiao: String,
         responsavelDados: mongoose.Schema.Types.Mixed,
         responsaveis: { type: [ResponsavelSchema], default: undefined },
@@ -183,6 +192,15 @@ const AlunoSchema = new mongoose.Schema(
         importacaoId: { type: String, default: null },
 
         foto: String, // Pode ser DataURL ou ID do GridFS
+
+        // ─── Anonimização (LGPD, art. 12 e 18, VI) ──────────────────────────────
+        // Marca de que o cadastro passou pelo direito ao esquecimento: os
+        // identificadores foram removidos e sobrou a vida escolar. É irreversível
+        // e por isso precisa ficar registrado no próprio documento — sem esta
+        // marca, uma segunda anonimização gravaria "anonimizado do anonimizado" e
+        // a secretaria não teria como saber por que o aluno perdeu o nome.
+        anonimizadoEm: { type: Date, default: null },
+        anonimizadoPor: { type: String, default: null },
 
         // Campos de controle
         ativo: { type: Boolean, default: true },

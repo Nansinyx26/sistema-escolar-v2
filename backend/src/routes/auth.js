@@ -17,7 +17,9 @@ router.post('/register-responsavel', UserController.registerResponsavel);
 router.post('/register-docente', UserController.registerDocente);
 router.post('/register-diretor', UserController.registerDiretor);
 router.post('/register-secretaria', UserController.registerSecretaria);
-router.get('/turmas-publicas', ClassController.list);
+// Só os NOMES das turmas: a rota é anônima e alimenta um <select> de cadastro.
+// `list` devolvia o professor populado junto — ver ClassController.listPublicNames.
+router.get('/turmas-publicas', ClassController.listPublicNames);
 router.post('/forgot-password', UserController.forgotPassword);
 router.post('/verify-recovery-code', UserController.verifyRecoveryCode);
 router.post('/reset-password', UserController.resetPassword);

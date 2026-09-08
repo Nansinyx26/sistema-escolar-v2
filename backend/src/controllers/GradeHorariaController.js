@@ -11,7 +11,15 @@ module.exports = {
     // 1. Criar novo item de grade
     create: async (req, res) => {
         try {
-            const { professorId, turmaId, disciplina, diaSemana, horaInicio, horaFim, aulasSeguidas } = req.body;
+            const {
+                professorId,
+                turmaId,
+                disciplina,
+                diaSemana,
+                horaInicio,
+                horaFim,
+                aulasSeguidas,
+            } = req.body;
 
             // Validação simples de sobreposição poderia ser adicionada aqui
 
@@ -22,13 +30,20 @@ module.exports = {
                 diaSemana,
                 horaInicio,
                 horaFim,
-                aulasSeguidas
+                aulasSeguidas,
+                // A grade é POR ESCOLA. Sem o carimbo, a mesma turma "1A" de duas
+                // unidades disputa as mesmas linhas de horário, e o
+                // `verifyTimetable` valida a chamada de um professor contra a
+                // grade da outra escola.
+                escolaId: req.escolaId ? String(req.escolaId) : undefined,
             });
 
             return res.status(201).json({ success: true, data: novaGrade });
         } catch (error) {
             console.error('Erro ao criar grade:', error);
-            return res.status(500).json({ success: false, error: 'Erro ao criar grade horária: ' + error.message });
+            return res
+                .status(500)
+                .json({ success: false, error: 'Erro ao criar grade horária: ' + error.message });
         }
     },
 
@@ -46,9 +61,9 @@ module.exports = {
                 .populate('turmaDetails', 'nome ano turno')
                 .lean();
 
-            const normalizedGrade = grade.map(g => ({
+            const normalizedGrade = grade.map((g) => ({
                 ...g,
-                id: g.id || g._id
+                id: g.id || g._id,
             }));
 
             return res.json({ success: true, data: normalizedGrade });
@@ -69,7 +84,7 @@ module.exports = {
             // Timezone Setup
             const agora = new Date();
             const timeZone = 'America/Sao_Paulo';
-            const strDate = agora.toLocaleString("en-US", { timeZone });
+            const strDate = agora.toLocaleString('en-US', { timeZone });
             const agoraLocal = new Date(strDate);
 
             const diaSemanaAtual = agoraLocal.getDay();
@@ -77,14 +92,16 @@ module.exports = {
             const minutos = agoraLocal.getMinutes();
             const minutosAtuais = horas * 60 + minutos;
 
-            console.log(`[Validar] Prof: ${professorId}, TurmaAlvo: ${turmaId}, Dia: ${diaSemanaAtual}, Hora: ${horas}:${minutos}`);
+            console.log(
+                `[Validar] Prof: ${professorId}, TurmaAlvo: ${turmaId}, Dia: ${diaSemanaAtual}, Hora: ${horas}:${minutos}`
+            );
 
             // 1. Busca TODAS as grades deste professor para HOJE e para a TURMA específica
             // Assim permitimos que ele lance retroativamente no mesmo dia
             const query = {
                 professorId,
                 diaSemana: diaSemanaAtual,
-                ativo: { $ne: false }
+                ativo: { $ne: false },
             };
 
             // Se a turmaId foi enviada, filtramos por ela também
@@ -95,13 +112,13 @@ module.exports = {
             const gradesTurmaHoje = await GradeHoraria.find(query);
 
             if (gradesTurmaHoje.length > 0) {
-                // Existe grade para esta turma hoje! 
+                // Existe grade para esta turma hoje!
                 // Agora verificamos se ALGUMA delas bate com o horário atual (com tolerância)
 
-                const aulaNoHorario = gradesTurmaHoje.find(g => {
+                const aulaNoHorario = gradesTurmaHoje.find((g) => {
                     const inicio = timeToMinutes(g.horaInicio);
                     const fim = timeToMinutes(g.horaFim);
-                    return minutosAtuais >= (inicio - 15) && minutosAtuais < (fim + 15);
+                    return minutosAtuais >= inicio - 15 && minutosAtuais < fim + 15;
                 });
 
                 // Se houver aula no horário, é permissão total/standard
@@ -112,30 +129,35 @@ module.exports = {
                     success: true,
                     permitido: true,
                     tipo: aulaNoHorario ? 'horario_exato' : 'retroativo_hoje',
-                    mensagem: aulaNoHorario ? 'Horário confirmado na grade.' : 'Grade identificada para hoje (lançamento retroativo).',
+                    mensagem: aulaNoHorario
+                        ? 'Horário confirmado na grade.'
+                        : 'Grade identificada para hoje (lançamento retroativo).',
                     detalhes: {
                         disciplina: aulaReferencia.disciplina,
                         turma: String(aulaReferencia.turmaId),
                         horaInicio: aulaReferencia.horaInicio,
                         horaFim: aulaReferencia.horaFim,
-                        aulasSeguidas: aulaReferencia.aulasSeguidas || 1
-                    }
+                        aulasSeguidas: aulaReferencia.aulasSeguidas || 1,
+                    },
                 });
             } else {
-                console.log(`[Validar] Nenhuma grade para Prof ${professorId} na Turma ${turmaId} no Dia ${diaSemanaAtual}`);
+                console.log(
+                    `[Validar] Nenhuma grade para Prof ${professorId} na Turma ${turmaId} no Dia ${diaSemanaAtual}`
+                );
                 return res.json({
                     success: true,
                     permitido: false,
                     mensagem: 'Você não possui aula agendada com esta turma para hoje.',
                     horarioAtual: `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`,
-                    diaSemana: diaSemanaAtual
+                    diaSemana: diaSemanaAtual,
                 });
             }
-
         } catch (error) {
             console.error('Erro na validação de permissão:', error);
             // Retorna detalhes do erro para o front (ajuda no debug)
-            return res.status(500).json({ success: false, error: 'Erro interno: ' + error.message });
+            return res
+                .status(500)
+                .json({ success: false, error: 'Erro interno: ' + error.message });
         }
     },
 
@@ -148,5 +170,5 @@ module.exports = {
         } catch (error) {
             return res.status(500).json({ success: false, error: 'Erro ao deletar' });
         }
-    }
+    },
 };

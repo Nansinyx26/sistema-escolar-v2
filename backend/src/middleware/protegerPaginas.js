@@ -73,6 +73,8 @@ const logger = require('../utils/logger');
 const {
     AREAS,
     PAGINAS_SEM_SESSAO,
+    ehCaminhoDePagina,
+    vereditoDe,
     perfisPermitidos: perfisDaMatriz,
 } = require('../utils/matrizAcesso');
 
@@ -241,6 +243,11 @@ async function autorizar(req, res, next, { config, forma }, pagina404) {
 
     // A precedência da exceção por arquivo sobre a área é decidida na matriz,
     // em um lugar só — o navegador aplica exatamente a mesma.
+    //
+    // `null` significa "qualquer perfil autenticado serve", e não "nenhum": é o
+    // veredito do PADRAO_DESCONHECIDO, por onde passa toda página fechada por
+    // omissão (ver PREFIXOS_DE_PAGINA). Negar por perfil aqui bloquearia todo
+    // mundo numa página que só precisa de sessão. Mesma semântica de `podeAbrir`.
     const perfisPermitidos = perfisDaMatriz(forma);
 
     if (!extrairToken(req)) {
@@ -281,7 +288,7 @@ async function autorizar(req, res, next, { config, forma }, pagina404) {
     const usuario = await sessaoDoRequest(req);
     if (!usuario) return res.redirect(302, '/html/login.html');
 
-    if (!perfisPermitidos.includes(usuario.perfil)) {
+    if (perfisPermitidos !== null && !perfisPermitidos.includes(usuario.perfil)) {
         logger.warn('Acesso negado a área restrita', {
             arquivo,
             perfil: usuario.perfil,
@@ -391,11 +398,36 @@ function protegerAreasRestritas(frontendRootPath) {
         }
 
         const area = areaDe(formas);
-        if (!area) return next();
+        if (area) {
+            // Cookies só são parseados quando a requisição é de área restrita: o
+            // cookieParser global é registrado depois dos estáticos.
+            return parseCookies(req, res, () => autorizar(req, res, next, area, pagina404));
+        }
 
-        // Cookies só são parseados quando a requisição é de área restrita: o
-        // cookieParser global é registrado depois dos estáticos.
-        return parseCookies(req, res, () => autorizar(req, res, next, area, pagina404));
+        // ============================================
+        // FORA DE ÁREA CONHECIDA: FECHA POR OMISSÃO
+        // ============================================
+        // Aqui ficava um `return next()` seco, e era ele que entregava 18
+        // páginas internas a quem não tem sessão — o gate só conhecia as quatro
+        // áreas de diretório, então tudo o mais escapava para o express.static.
+        //
+        // O recorte por `ehCaminhoDePagina` não é conservadorismo: este
+        // middleware roda antes do express.static e vê TODA requisição. Sem ele,
+        // `/api` (que se defende com authJWT) e os diretórios de asset de que a
+        // própria tela de login depende cairiam no mesmo fechamento.
+        //
+        // Dentro dos prefixos de página, quem decide é a matriz — a mesma que o
+        // navegador consulta. Público e tela de login seguem; o resto pede
+        // sessão, inclusive uma página nova que ninguém cadastrou.
+        const formaDePagina = formas.find((f) => ehCaminhoDePagina(f.comparacao));
+        if (!formaDePagina) return next();
+
+        const veredito = vereditoDe(formaDePagina.comparacao);
+        if (veredito.publica || veredito.semSessao) return next();
+
+        return parseCookies(req, res, () =>
+            autorizar(req, res, next, { config: {}, forma: formaDePagina.comparacao }, pagina404)
+        );
     };
 }
 

@@ -33,6 +33,16 @@ Para direção visual (paleta, tipografia, layout) use a skill **`frontend-desig
 React Bits, 21st.dev) estão configurados **apenas no `portal-responsavel/`** —
 ver [`docs/UI-TOOLING.md`](docs/UI-TOOLING.md).
 
+## Conformidade legal
+
+Deveres de LGPD, ECA, Marco Civil, LDB, INEP e LAI estão mapeados — com o
+arquivo de cada um e o que ainda falta — em
+[`docs/CONFORMIDADE-LEGAL.md`](docs/CONFORMIDADE-LEGAL.md). Os motores ficam em
+`backend/src/services/conformidade/`. Antes de mexer em frequência, exportação
+de dados de aluno ou publicação de indicadores, leia esse documento: os limites
+(75% de presença, 15 faltas para o Conselho Tutelar, k=5 na anonimização) são
+regra de lei, não escolha de produto.
+
 ## Observabilidade
 
 Hub em `backend/src/observability/`. Ver [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md).

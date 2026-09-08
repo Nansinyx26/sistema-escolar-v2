@@ -7,7 +7,7 @@ exports.getMyNotifications = async (req, res) => {
             .sort({ createdAt: -1 })
             .limit(50)
             .lean();
-        
+
         const unreadCount = await RealtimeNotification.countDocuments({ receiverId, read: false });
 
         res.json({ success: true, data: notifications, unreadCount });
@@ -59,15 +59,36 @@ exports.markAllAsRead = async (req, res) => {
 };
 
 // Helper: cria e emite notificação realtime
-exports.createAndEmit = async ({ receiverId, receiverType, title, message, type, icon }) => {
+exports.createAndEmit = async ({
+    receiverId,
+    receiverType,
+    title,
+    message,
+    type,
+    icon,
+    escolaId,
+}) => {
     try {
         const notification = await RealtimeNotification.create({
-            receiverId, receiverType, title, message, type: type || 'system', icon: icon || ''
+            receiverId,
+            receiverType,
+            title,
+            message,
+            type: type || 'system',
+            icon: icon || '',
+            // Quem chama sabe de que escola é a notificação; só faltava o
+            // parâmetro atravessar até o create.
+            escolaId: escolaId ? String(escolaId) : undefined,
         });
 
         if (global.io) {
-            const unreadCount = await RealtimeNotification.countDocuments({ receiverId, read: false });
-            global.io.to(`user:${receiverId}`).emit('notification:new', { notification, unreadCount });
+            const unreadCount = await RealtimeNotification.countDocuments({
+                receiverId,
+                read: false,
+            });
+            global.io
+                .to(`user:${receiverId}`)
+                .emit('notification:new', { notification, unreadCount });
         }
 
         return notification;
@@ -87,7 +108,7 @@ exports.subscribe = async (req, res) => {
 
         const Usuario = require('../models/Usuario');
         await Usuario.findByIdAndUpdate(usuarioId, {
-            $addToSet: { pushSubscriptions: subscription }
+            $addToSet: { pushSubscriptions: subscription },
         });
 
         res.status(201).json({ success: true, message: 'Inscrição de push salva com sucesso.' });
