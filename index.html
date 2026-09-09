@@ -42,7 +42,7 @@
     <link rel="stylesheet" href="./css/motion.css">
     <script src="js/scroll-lock.js?v=1.0"></script>
     <!-- Acessibilidade (LBI/eMAG) — ver docs/CONFORMIDADE-LEGAL.md -->
-    <link rel="stylesheet" href="css/acessibilidade.css">
+    <link rel="stylesheet" href="css/acessibilidade.css?v=2.0">
 </head>
 
   <body>
@@ -246,10 +246,26 @@
       </div>
       <div class="hero">
         <div class="hero-left">
-          <div class="hero-badge">
-            <span class="badge-pulse"></span>
-            <span id="heroBadgeNome">Rede municipal de Americana</span>
-            &nbsp;·&nbsp; <span id="heroBadgeSufixo">SP</span>
+          <div class="hero-badges-group">
+            <div class="hero-badge">
+              <span class="badge-pulse"></span>
+              <span id="heroBadgeNome">Rede municipal de Americana</span>
+              &nbsp;·&nbsp; <span id="heroBadgeSufixo">SP</span>
+            </div>
+            <button
+              type="button"
+              class="hero-badge-ai"
+              id="btnSeloIA"
+              onclick="
+                document.getElementById('modalSeloIA').classList.add('open');
+                window.ScrollLock && window.ScrollLock.lock('modal-selo-ia');
+              "
+              title="Clique para saber mais sobre o Selo de IA do Sistema Escolar"
+            >
+              <span class="badge-ai-sparkle"><i class="bi bi-stars"></i></span>
+              <span>Selo IA Ativa</span>
+              <span class="badge-ai-sub">· Auxílio Docente &amp; Áudio</span>
+            </button>
           </div>
           <h1 class="hero-h1">
             A rotina da escola,<br />
@@ -401,7 +417,84 @@
               </div>
             </div>
           </div>
+          <!-- Modal Selo de IA -->
+          <div class="pa-modal-overlay" id="modalSeloIA" role="dialog" aria-modal="true" aria-labelledby="modalSeloIATitle" onclick="if (event.target === this) { this.classList.remove('open'); window.ScrollLock && window.ScrollLock.unlock('modal-selo-ia'); }">
+            <div class="pa-modal-card">
+              <button
+                class="pa-modal-close"
+                onclick="
+                  document
+                    .getElementById('modalSeloIA')
+                    .classList.remove('open');
+                  window.ScrollLock && window.ScrollLock.unlock('modal-selo-ia');
+                "
+                aria-label="Fechar modal do Selo de IA"
+              >
+                &times;
+              </button>
+              <div class="pa-modal-header">
+                <i class="bi bi-stars pa-modal-icon" style="color: #c084fc;"></i>
+                <h2 id="modalSeloIATitle">Selo IA Ativa &amp; Tecnologia Assistiva</h2>
+                <p>Uso ético de Inteligência Artificial e Áudio para a comunidade escolar.</p>
+              </div>
+              <div class="pa-modal-options">
+                <div class="pa-option" style="cursor: default;">
+                  <div
+                    class="pa-option-icon"
+                    style="background: rgba(160, 101, 255, 0.15); color: #c084fc"
+                  >
+                    <i class="bi bi-robot"></i>
+                  </div>
+                  <div class="pa-option-text">
+                    <span class="pa-option-title">Auxílio ao Professor</span>
+                    <span class="pa-option-desc">
+                      Apoio inteligente na formulação de planos de aula, atividades pedagógicas e organização de conteúdos, sempre com supervisão e validação humana docente.
+                    </span>
+                  </div>
+                </div>
+
+                <div class="pa-option" style="cursor: default;">
+                  <div
+                    class="pa-option-icon"
+                    style="background: rgba(33, 255, 204, 0.15); color: #21ffcc"
+                  >
+                    <i class="bi bi-volume-up-fill"></i>
+                  </div>
+                  <div class="pa-option-text">
+                    <span class="pa-option-title">Recursos de Áudio para Usuários</span>
+                    <span class="pa-option-desc">
+                      Síntese de voz e reprodução de avisos por áudio para garantir acessibilidade universal e inclusão de alunos, pais e responsáveis.
+                    </span>
+                  </div>
+                </div>
+
+                <div class="pa-option" style="cursor: default;">
+                  <div
+                    class="pa-option-icon"
+                    style="background: rgba(59, 130, 246, 0.15); color: #3b82f6"
+                  >
+                    <i class="bi bi-shield-check"></i>
+                  </div>
+                  <div class="pa-option-text">
+                    <span class="pa-option-title">Conformidade e Sigilo LGPD</span>
+                    <span class="pa-option-desc">
+                      Nenhum dado pessoal sensível de alunos é compartilhado para treino de modelos públicos. Toda interação respeita os direitos dos titulares e a legislação educacional.
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div class="pa-modal-footer">
+                <a href="html/politica-privacidade.html#ia-privacidade">
+                  <i class="bi bi-file-earmark-text"></i> Ler diretrizes completas na Política de Privacidade &rarr;
+                </a>
+              </div>
+            </div>
+          </div>
+
           <div class="hero-trust">
+            <span class="hero-trust-item hero-trust-ai"
+              ><i class="bi bi-stars"></i> Selo IA &amp; Áudio</span
+            >
             <span class="hero-trust-item"
               ><i class="bi bi-shield-check"></i> LGPD</span
             >
@@ -420,6 +513,9 @@
     <!-- MARQUEE -->
     <div class="marquee-wrap">
       <div class="marquee-inner">
+        <span class="marquee-item"
+          ><span class="mdot"></span>Selo IA: Auxílio Docente &amp; Síntese de Áudio</span
+        >
         <span class="marquee-item"
           ><span class="mdot"></span>Gestão de Turmas</span
         >
@@ -442,6 +538,9 @@
           ><span class="mdot"></span>Conformidade LGPD</span
         >
 
+        <span class="marquee-item"
+          ><span class="mdot"></span>Selo IA: Auxílio Docente &amp; Síntese de Áudio</span
+        >
         <span class="marquee-item"
           ><span class="mdot"></span>Gestão de Turmas</span
         >
@@ -548,6 +647,16 @@
               Comunicados, alertas de falta e avisos institucionais chegam em
               tempo real para todos os perfis.
             </p>
+          </div>
+          <div class="feat-card feat-card-ai">
+            <div class="fi fi-ai"><i class="bi bi-stars"></i></div>
+            <div class="ft">Inteligência Artificial &amp; Áudio</div>
+            <p class="fd">
+              Auxílio inteligente ao professor no planejamento pedagógico e síntese de voz para leitura acessível de comunicados e conteúdos.
+            </p>
+            <div class="feat-ai-badge">
+              <i class="bi bi-shield-check"></i> Selo IA Responsável
+            </div>
           </div>
           <div class="feat-card">
             <div class="fi fi-s"><i class="bi bi-shield-lock"></i></div>
@@ -1203,6 +1312,6 @@
     <script src="./js/libs/lucide-init.js"></script>
     <script defer src="./js/observability.js"></script>
     <script defer src="./js/motion.js"></script>
-    <script defer src="js/acessibilidade.js"></script>
+    <script defer src="js/acessibilidade.js?v=2.0"></script>
 </body>
 </html>

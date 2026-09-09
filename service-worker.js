@@ -19,7 +19,7 @@
 // linha, e o CI roda essa verificação. O script lê a lista daqui de baixo —
 // não mantém cópia — então acrescentar um asset já o coloca sob a regra.
 // Detalhes em docs/QUALITY.md, seção "Service worker: o bump do VERSION".
-const VERSION = 'v13';
+const VERSION = 'v14';
 const STATIC_CACHE = `escola-static-${VERSION}`;
 const PAGES_CACHE = `escola-pages-${VERSION}`;
 const CURRENT_CACHES = [STATIC_CACHE, PAGES_CACHE];
@@ -79,8 +79,8 @@ async function precache() {
         STATIC_ASSETS.map(async (url) => {
             try {
                 const res = await fetch(new Request(url, { cache: 'reload' }));
-                if (res && res.ok) await cache.put(url, res);
-            } catch (err) {
+                if (res?.ok) await cache.put(url, res);
+            } catch (_err) {
                 // Recurso indisponível não impede a instalação do SW.
             }
         })
@@ -101,7 +101,7 @@ self.addEventListener('activate', (event) => {
             if (self.registration.navigationPreload) {
                 try {
                     await self.registration.navigationPreload.enable();
-                } catch (e) {
+                } catch (_e) {
                     /* noop */
                 }
             }
@@ -159,7 +159,7 @@ async function handleNavigation(event) {
             cache.put(event.request, network.clone());
         }
         return network;
-    } catch (err) {
+    } catch (_err) {
         const cached = await caches.match(event.request, { ignoreSearch: true });
         if (cached) return cached;
         const offline = await caches.match(OFFLINE_URL);
@@ -219,7 +219,7 @@ self.addEventListener('push', (event) => {
     if (event.data) {
         try {
             data = event.data.json();
-        } catch (e) {
+        } catch (_e) {
             data.body = event.data.text();
         }
     }
@@ -230,10 +230,10 @@ self.addEventListener('push', (event) => {
         badge: '/img/icons/icon-96.png',
         vibrate: [100, 50, 100],
         // Reabre a mesma notificação em vez de empilhar duplicatas do mesmo aviso
-        tag: data.data && data.data.id ? String(data.data.id) : undefined,
+        tag: data.data?.id ? String(data.data.id) : undefined,
         renotify: true,
         data: {
-            url: (data.data && data.data.url) || data.url || '/',
+            url: data.data?.url || data.url || '/',
         },
     };
 

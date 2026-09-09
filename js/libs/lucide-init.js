@@ -116,8 +116,10 @@
     'heart-pulse-fill': 'heart-pulse', 'hand-index': 'hand',
     'globe': 'globe', 'geo-alt-fill': 'map-pin', 'folder2-open': 'folder-open',
     'folder-fill': 'folder', 'flask': 'flask-conical', 'chat-dots': 'message-circle',
-    'card-text': 'file-text', 'calculator-fill': 'calculator',
-    'bullseye': 'target', 'broom': 'brush', 'collection-fill': 'layers'
+    'bullseye': 'target', 'broom': 'brush', 'collection-fill': 'layers',
+    'universal-access': 'accessibility', 'universal-access-circle': 'accessibility',
+    'person-wheelchair': 'accessibility', 'circle-half': 'contrast',
+    'zoom-in': 'zoom-in', 'zoom-out': 'zoom-out'
   };
 
   function upgradeBootstrapIcons(root) {
