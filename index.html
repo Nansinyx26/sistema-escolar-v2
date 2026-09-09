@@ -487,6 +487,17 @@
                 <a href="html/politica-privacidade.html#ia-privacidade">
                   <i class="bi bi-file-earmark-text"></i> Ler diretrizes completas na Política de Privacidade &rarr;
                 </a>
+                <button
+                  type="button"
+                  class="pa-modal-btn-fechar"
+                  onclick="
+                    document.getElementById('modalSeloIA').classList.remove('open');
+                    window.ScrollLock && window.ScrollLock.unlock('modal-selo-ia');
+                  "
+                  aria-label="Fechar modal do Selo de IA"
+                >
+                  Entendi e Fechar
+                </button>
               </div>
             </div>
           </div>
