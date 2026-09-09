@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const SecretariaController = require('../controllers/SecretariaController');
 const TurmaAlunosController = require('../controllers/SecretariaTurmaAlunosController');
+const SecretariaAutorizacoesController = require('../controllers/SecretariaAutorizacoesController');
 const authorize = require('../middleware/authorize');
 const filtrarPorEscola = require('../middleware/filtrarPorEscola');
 const { uploadImportacao, tratarErroUpload } = require('../middleware/uploadImportacao');
@@ -71,6 +72,14 @@ router.post(
     '/turmas/:turmaId/alunos/importar/:importacaoId/desfazer',
     auth,
     TurmaAlunosController.desfazerImportacao
+);
+
+// ─── T3c: Autorizações dos Alunos ───────────────────────────────────────────
+router.get('/autorizacoes', auth, SecretariaAutorizacoesController.listarAutorizacoes);
+router.get(
+    '/autorizacoes/aluno/:id',
+    auth,
+    SecretariaAutorizacoesController.detalhesAutorizacoesAluno
 );
 
 // ─── T4: Documentos ─────────────────────────────────────────────────────────

@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <!-- Trava de acesso por perfil. SEM defer e antes de tudo: a decisao
+         precisa acontecer antes do primeiro pixel. Ver js/guarda-acesso.js. -->
+    <script src="/js/guarda-acesso.js?v=1.0"></script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Autorizações dos Alunos - Secretaria</title>
+    <link rel="icon" type="image/png" href="../../favicon/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/variables.css?v=2.0">
+    <link rel="stylesheet" href="../../css/base.css?v=2.0">
+    <link rel="stylesheet" href="../../css/components-new.css?v=2.0">
+    <link rel="stylesheet" href="../../css/dashboard.css?v=2.1">
+    <link rel="stylesheet" href="../../css/responsive-global.css?v=1.2">
+    <link rel="stylesheet" href="../../css/dashboard-premium.css?v=1.0">
+    <link rel="preload" href="../../js/libs/fonts/bootstrap-icons.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="../../js/libs/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../../css/tailwind-built.css">
+    <style>
+        .sec-page { max-width: 1280px; margin: 0 auto; padding: 2rem 1.5rem; }
+        .sec-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
+        .sec-header h1 { font-size: 1.6rem; font-weight: 800; color: #fff; margin: 0 0 0.35rem; display: flex; align-items: center; gap: 0.75rem; letter-spacing: -0.02em; }
+        .sec-sub { color: #94a3b8; font-size: 0.88rem; display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+
+        /* KPI Cards Grid */
+        .sec-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1.1rem; margin-bottom: 1.8rem; }
+        .sec-kpi-card {
+            position: relative;
+            background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent 70px), rgba(24, 24, 27, 0.6);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px; padding: 1.25rem 1.4rem; backdrop-filter: blur(12px);
+            display: flex; align-items: center; gap: 1rem; overflow: hidden;
+            transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.15s ease;
+        }
+        .sec-kpi-card::before {
+            content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3.5px;
+            background: var(--kpi-accent, #10b981); opacity: 0.85;
+        }
+        .sec-kpi-card:hover { border-color: rgba(255, 255, 255, 0.18); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+        .sec-kpi-icon {
+            width: 48px; height: 48px; border-radius: 12px; display: flex;
+            align-items: center; justify-content: center; font-size: 1.35rem; flex-shrink: 0;
+        }
+        .sec-kpi-val { font-size: 1.8rem; font-weight: 800; color: #fff; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+        .sec-kpi-label { font-size: 0.78rem; color: #94a3b8; margin-top: 4px; font-weight: 500; }
+
+        /* Toolbar & Filtros */
+        .sec-card { background: rgba(24, 24, 27, 0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; backdrop-filter: blur(12px); }
+        .sec-toolbar { display: flex; flex-direction: column; gap: 1rem; }
+        .sec-filters-row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; justify-content: space-between; }
+        .sec-search-group { position: relative; flex: 1; min-width: 260px; }
+        .sec-search-group i { position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); color: #64748b; font-size: 0.95rem; pointer-events: none; }
+        .sec-search-group input { padding-left: 2.3rem; }
+
+        .sec-input, .sec-select {
+            width: 100%; padding: 0.6rem 0.85rem; background: rgba(15,23,42,0.85);
+            border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; color: #fff;
+            font-size: 0.85rem; font-family: inherit; transition: border-color 0.2s, outline 0.2s;
+        }
+        .sec-input:focus-visible, .sec-select:focus-visible { outline: 2px solid #10b981; outline-offset: 1px; border-color: #10b981; }
+
+        .sec-filter-pills { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; }
+        .sec-pill {
+            padding: 0.35rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600;
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #94a3b8;
+            cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 0.35rem;
+        }
+        .sec-pill:hover { background: rgba(255,255,255,0.09); color: #fff; }
+        .sec-pill.active { background: rgba(16,185,129,0.2); border-color: #10b981; color: #34d399; }
+
+        .sec-btn { padding: 0.55rem 1.1rem; border-radius: 10px; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 0.45rem; font-family: inherit; transition: all 0.2s ease; }
+        .sec-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .sec-btn-primary { background: #10b981; color: #fff; }
+        .sec-btn-primary:hover:not(:disabled) { background: #059669; }
+        .sec-btn-outline { background: transparent; color: #10b981; border: 1px solid rgba(16,185,129,0.35); }
+        .sec-btn-outline:hover:not(:disabled) { background: rgba(16,185,129,0.1); }
+        .sec-btn-ghost { background: rgba(148,163,184,0.1); color: #cbd5e1; }
+        .sec-btn-ghost:hover:not(:disabled) { background: rgba(148,163,184,0.18); color: #fff; }
+        .sec-btn-sm { padding: 0.38rem 0.75rem; font-size: 0.78rem; border-radius: 8px; }
+
+        /* Tabela */
+        .sec-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+        .sec-table th { padding: 0.75rem 0.85rem; text-align: left; color: #94a3b8; font-weight: 600; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid rgba(255,255,255,0.08); white-space: nowrap; user-select: none; }
+        .sec-table th.sortable { cursor: pointer; }
+        .sec-table th.sortable:hover { color: #fff; }
+        .sec-table td { padding: 0.75rem 0.85rem; color: #cbd5e1; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+        .sec-table tbody tr { transition: background 0.15s ease; cursor: pointer; }
+        .sec-table tbody tr:hover { background: rgba(255,255,255,0.035); }
+        .table-scroll { overflow-x: auto; min-height: 240px; }
+
+        .chip { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.25rem 0.65rem; border-radius: 20px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
+        .chip-verde { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+        .chip-vermelho { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+        .chip-amarelo { background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+        .chip-azul { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+        .chip-cinza { background: rgba(148,163,184,0.15); color: #cbd5e1; border: 1px solid rgba(148,163,184,0.25); }
+
+        /* Paginação */
+        .sec-pagination { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 1.25rem; font-size: 0.82rem; color: #94a3b8; }
+        .sec-page-numbers { display: flex; gap: 0.35rem; align-items: center; }
+        .sec-page-btn { min-width: 32px; height: 32px; padding: 0 0.5rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); color: #cbd5e1; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.8rem; font-weight: 600; }
+        .sec-page-btn:hover:not(:disabled) { background: rgba(255,255,255,0.09); color: #fff; }
+        .sec-page-btn.active { background: #10b981; border-color: #10b981; color: #fff; }
+        .sec-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* Skeleton Loading */
+        .skeleton { background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 37%, rgba(255,255,255,0.04) 63%); background-size: 400% 100%; animation: skeletonPulse 1.4s ease infinite; border-radius: 6px; }
+        @keyframes skeletonPulse { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+
+        /* Painel Lateral / Drawer de Detalhes */
+        .drawer-backdrop { position: fixed; inset: 0; background: rgba(2,6,23,0.7); backdrop-filter: blur(4px); z-index: 950; opacity: 0; pointer-events: none; transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+        .drawer-backdrop.active { opacity: 1; pointer-events: auto; }
+        .drawer {
+            position: fixed; top: 0; right: 0; bottom: 0; width: 100%; max-width: 520px;
+            background: #111318; border-left: 1px solid rgba(255,255,255,0.1);
+            z-index: 960; display: flex; flex-direction: column;
+            transform: translateX(100%); transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: -10px 0 40px rgba(0,0,0,0.6);
+        }
+        .drawer.active { transform: translateX(0); }
+        .drawer-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; background: rgba(24, 24, 27, 0.5); }
+        .drawer-body { padding: 1.5rem; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 1rem; }
+        .drawer-footer { padding: 1rem 1.5rem; border-top: 1px solid rgba(255,255,255,0.08); background: rgba(24, 24, 27, 0.5); display: flex; justify-content: flex-end; }
+
+        .auth-item-card {
+            background: rgba(24, 24, 27, 0.7); border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 12px; padding: 1rem 1.15rem; display: flex; flex-direction: column; gap: 0.5rem;
+            transition: border-color 0.2s ease;
+        }
+        .auth-item-card:hover { border-color: rgba(255,255,255,0.15); }
+        .auth-item-header { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+        .auth-item-title { font-size: 0.9rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 0.45rem; }
+        .auth-item-desc { font-size: 0.78rem; color: #94a3b8; line-height: 1.45; margin: 0; background: rgba(0,0,0,0.2); padding: 0.5rem 0.65rem; border-radius: 8px; border-left: 3px solid rgba(16,185,129,0.5); }
+        .auth-item-meta { font-size: 0.72rem; color: #64748b; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.2rem; }
+
+        @media (max-width: 768px) {
+            .sec-page { padding: 1rem 0.85rem; }
+            .sec-kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+            .sec-filters-row { flex-direction: column; align-items: stretch; }
+            .drawer { max-width: 100%; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .sec-kpi-card, .drawer, .drawer-backdrop, .skeleton { transition: none !important; animation: none !important; }
+        }
+    </style>
+</head>
+<body class="dashboard-page">
+    <div class="sec-page">
+        <!-- Top Nav & Header -->
+        <div style="margin-bottom: 1.25rem;">
+            <a href="painel.html" class="sec-btn sec-btn-ghost sec-btn-sm" style="margin-bottom: 0.75rem; text-decoration: none;">
+                <i class="bi bi-arrow-left"></i> Painel da Secretaria
+            </a>
+            <div class="sec-header">
+                <div>
+                    <h1><i class="bi bi-shield-check" style="color: #10b981;"></i> Autorizações dos Alunos</h1>
+                    <div class="sec-sub">
+                        <span>Acompanhamento em tempo real das respostas fornecidas pelos responsáveis.</span>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.6rem;">
+                    <span id="tagUltimaSincronizacao" class="chip chip-cinza">
+                        <i class="bi bi-clock"></i> Sincronizando...
+                    </span>
+                    <button type="button" id="btnRecarregar" class="sec-btn sec-btn-outline sec-btn-sm" title="Consultar banco de dados agora">
+                        <i class="bi bi-arrow-repeat" id="iconeRecarregar"></i> Atualizar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Indicadores (KPIs) -->
+        <div class="sec-kpi-grid" id="kpiGrid">
+            <div class="sec-kpi-card" style="--kpi-accent: #3b82f6;">
+                <div class="sec-kpi-icon" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6;">
+                    <i class="bi bi-people-fill"></i>
+                </div>
+                <div>
+                    <div class="sec-kpi-val" id="kpiTotalAlunos">...</div>
+                    <div class="sec-kpi-label">Total de Alunos</div>
+                </div>
+            </div>
+            <div class="sec-kpi-card" style="--kpi-accent: #10b981;">
+                <div class="sec-kpi-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+                <div>
+                    <div class="sec-kpi-val" id="kpiTotalAceitas">...</div>
+                    <div class="sec-kpi-label">Autorizações Aceitas</div>
+                </div>
+            </div>
+            <div class="sec-kpi-card" style="--kpi-accent: #ef4444;">
+                <div class="sec-kpi-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">
+                    <i class="bi bi-x-circle-fill"></i>
+                </div>
+                <div>
+                    <div class="sec-kpi-val" id="kpiTotalNaoAceitas">...</div>
+                    <div class="sec-kpi-label">Não Aceitas (Recusas)</div>
+                </div>
+            </div>
+            <div class="sec-kpi-card" style="--kpi-accent: #8b5cf6;">
+                <div class="sec-kpi-icon" style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6;">
+                    <i class="bi bi-pie-chart-fill"></i>
+                </div>
+                <div>
+                    <div class="sec-kpi-val" id="kpiTaxaAceitacao">...</div>
+                    <div class="sec-kpi-label">Taxa de Aceitação</div>
+                </div>
+            </div>
+            <div class="sec-kpi-card" style="--kpi-accent: #f59e0b;">
+                <div class="sec-kpi-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                    <i class="bi bi-clock-history"></i>
+                </div>
+                <div>
+                    <div class="sec-kpi-val" id="kpiTotalPendentes">...</div>
+                    <div class="sec-kpi-label">Com Pendências</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toolbar: Busca e Filtros -->
+        <div class="sec-card">
+            <div class="sec-toolbar">
+                <div class="sec-filters-row">
+                    <div class="sec-search-group">
+                        <i class="bi bi-search"></i>
+                        <input type="search" id="inputBusca" class="sec-input" placeholder="Pesquisar por nome do aluno ou responsável..." autocomplete="off">
+                    </div>
+                    <div style="min-width: 180px;">
+                        <select id="selectTurma" class="sec-select" aria-label="Filtrar por turma">
+                            <option value="">Todas as Turmas</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="sec-filters-row">
+                    <div class="sec-filter-pills" id="pillsStatus" role="radiogroup" aria-label="Filtro por status">
+                        <button type="button" class="sec-pill active" data-status="">Todos</button>
+                        <button type="button" class="sec-pill" data-status="todas_aceitas"><i class="bi bi-check2-all text-emerald-400"></i> Todas Aceitas</button>
+                        <button type="button" class="sec-pill" data-status="com_recusas"><i class="bi bi-x-circle text-rose-400"></i> Com Recusas</button>
+                        <button type="button" class="sec-pill" data-status="pendente"><i class="bi bi-hourglass-split text-amber-400"></i> Pendentes</button>
+                        <button type="button" class="sec-pill" data-status="parcial"><i class="bi bi-dash-circle text-blue-400"></i> Parcial</button>
+                    </div>
+                    <div style="font-size: 0.8rem; color: #94a3b8;">
+                        Exibindo <strong id="contadorAlunos" style="color: #fff;">0</strong> alunos
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabela Principal -->
+        <div class="sec-card" style="padding: 0; overflow: hidden;">
+            <div class="table-scroll">
+                <table class="sec-table" id="tabelaAutorizacoes" aria-label="Lista de alunos e autorizações">
+                    <thead>
+                        <tr>
+                            <th scope="col" class="sortable" data-sort="nome">Aluno <i class="bi bi-arrow-down-up" style="opacity: 0.4;"></i></th>
+                            <th scope="col" class="sortable" data-sort="turma">Turma <i class="bi bi-arrow-down-up" style="opacity: 0.4;"></i></th>
+                            <th scope="col" class="sortable" data-sort="responsavel">Responsável <i class="bi bi-arrow-down-up" style="opacity: 0.4;"></i></th>
+                            <th scope="col" class="sortable" data-sort="aceitas" style="text-align: center;">Aceitas <i class="bi bi-arrow-down-up" style="opacity: 0.4;"></i></th>
+                            <th scope="col" class="sortable" data-sort="naoAceitas" style="text-align: center;">Não Aceitas <i class="bi bi-arrow-down-up" style="opacity: 0.4;"></i></th>
+                            <th scope="col" class="sortable" data-sort="statusGeral">Status Geral <i class="bi bi-arrow-down-up" style="opacity: 0.4;"></i></th>
+                            <th scope="col" class="sortable" data-sort="ultimaAtualizacao">Última Atualização <i class="bi bi-arrow-down-up" style="opacity: 0.4;"></i></th>
+                            <th scope="col" style="text-align: right;">Detalhes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="corpoTabela">
+                        <!-- Skeletons renderizados inicialmente via JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginação -->
+            <div style="padding: 1rem 1.25rem; border-top: 1px solid rgba(255,255,255,0.06);">
+                <div class="sec-pagination">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span>Linhas por página:</span>
+                        <select id="selectPorPagina" class="sec-select" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.8rem;">
+                            <option value="10">10</option>
+                            <option value="25" selected>25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                        <span id="infoPaginacao" style="margin-left: 0.5rem;">0 de 0</span>
+                    </div>
+                    <div class="sec-page-numbers" id="paginacaoBotoes">
+                        <!-- Botoes de paginação -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Drawer Lateral de Detalhes -->
+    <div class="drawer-backdrop" id="drawerBackdrop" aria-hidden="true"></div>
+    <aside class="drawer" id="drawerDetalhes" role="dialog" aria-labelledby="drawerTituloAluno" aria-modal="true" aria-hidden="true">
+        <div class="drawer-header">
+            <div>
+                <span class="chip chip-azul" style="margin-bottom: 0.35rem;">Ficha de Autorizações</span>
+                <h2 id="drawerTituloAluno" style="font-size: 1.15rem; font-weight: 700; color: #fff; margin: 0;">Nome do Aluno</h2>
+                <div id="drawerSubAluno" style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.2rem;">Turma: - | RA: -</div>
+            </div>
+            <button type="button" id="btnFecharDrawer" class="sec-btn sec-btn-ghost sec-btn-sm" aria-label="Fechar detalhes" style="padding: 0.4rem 0.6rem;">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <div class="drawer-body" id="drawerConteudo">
+            <!-- Dados do Responsável -->
+            <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 0.85rem 1rem;">
+                <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.03em;">Responsável Cadastrado</div>
+                <div id="drawerNomeResp" style="font-weight: 600; color: #fff; font-size: 0.9rem; margin-top: 0.2rem;">-</div>
+                <div id="drawerContatoResp" style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.2rem;">-</div>
+            </div>
+
+            <!-- Resumo das Autorizações -->
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;" id="drawerBadgesResumo">
+                <!-- Badges rápidos -->
+            </div>
+
+            <h3 style="font-size: 0.88rem; font-weight: 700; color: #fff; margin: 0.5rem 0 0.2rem; display: flex; align-items: center; gap: 0.4rem;">
+                <i class="bi bi-list-check text-emerald-400"></i> Termos de Autorização Escolar
+            </h3>
+
+            <!-- Lista dos 7 itens -->
+            <div id="drawerListaItens" style="display: flex; flex-direction: column; gap: 0.85rem;">
+                <!-- Itens dinâmicos -->
+            </div>
+        </div>
+
+        <div class="drawer-footer">
+            <button type="button" class="sec-btn sec-btn-ghost" id="btnFecharDrawerRodape">Fechar</button>
+        </div>
+    </aside>
+
+    <div class="toast-area" id="areaToast" role="status" aria-live="polite" aria-atomic="false"></div>
+
+    <script src="../../js/api-config.js"></script>
+    <script src="../../js/csrf-helper.js"></script>
+    <script defer src="../../js/auth.js?v=3"></script>
+    <script src="../../js/autorizacoes-alunos.js?v=1.0" defer></script>
+    <script defer src="../../js/observability.js"></script>
+    <script defer src="../../js/motion.js"></script>
+    <script defer src="../../js/acessibilidade.js"></script>
+</body>
+</html>
