@@ -64,7 +64,7 @@ function destinatariosDoAluno(aluno, alunoId) {
     const acrescentar = (valor) => {
         if (valor === undefined || valor === null || valor === '') return;
         lista.push(String(valor));
-        if (!isNaN(Number(valor))) lista.push(Number(valor));
+        if (!Number.isNaN(Number(valor))) lista.push(Number(valor));
     };
 
     acrescentar(alunoId);
@@ -111,7 +111,7 @@ async function carregarNotificacaoDoAluno(id, alunoId) {
  * O campo `responsavel` no modelo Aluno armazena o nome ou e-mail do responsável.
  * Também aceita busca por matrícula passada como query param.
  */
-async function findAlunoByResponsavel(email, matricula) {
+async function _findAlunoByResponsavel(email, matricula) {
     const query = matricula
         ? { matricula: String(matricula) }
         : { responsavel: emailRegexExato(email) };
@@ -289,7 +289,7 @@ exports.buscarAluno = async (req, res) => {
             success: true,
             data: {
                 id: aluno._id,
-                nome: `${aluno.nome}${aluno.sobrenome ? ' ' + aluno.sobrenome : ''}`,
+                nome: `${aluno.nome}${aluno.sobrenome ? ` ${aluno.sobrenome}` : ''}`,
                 turma: aluno.turma || aluno.turmaId || 'N/D',
                 matricula: aluno.matricula || 'N/D',
                 jaVinculado: vinculado,
@@ -596,7 +596,7 @@ exports.getFrequencia = async (req, res) => {
             if (todayUTC < startUTC) return 0;
 
             let count = 0;
-            let temp = new Date(startUTC);
+            const temp = new Date(startUTC);
             while (temp.getTime() <= todayUTC) {
                 const day = temp.getUTCDay();
                 if (day !== 0 && day !== 6) {
@@ -748,7 +748,9 @@ exports.getNotificacoes = async (req, res) => {
             .select('nome')
             .lean();
         const userMap = {};
-        usuarios.forEach((u) => (userMap[String(u._id)] = u.nome));
+        usuarios.forEach((u) => {
+            userMap[String(u._id)] = u.nome;
+        });
 
         const formatted = notificacoes.map((n) => {
             const nId = n.id || String(n._id);
@@ -1044,7 +1046,7 @@ exports.uploadDocumentos = async (req, res) => {
         }
 
         const novosArquivos = arquivos.map((a) => ({
-            id: a.id || require('crypto').randomBytes(8).toString('hex'),
+            id: a.id || require('node:crypto').randomBytes(8).toString('hex'),
             nome: a.nome,
             tipo: a.tipo,
             gridfsId: a.gridfsId,
@@ -1082,12 +1084,10 @@ exports.updateDocumentoStatus = async (req, res) => {
     try {
         const perfil = req.user?.perfil;
         if (!['admin', 'diretor', 'secretaria'].includes(perfil)) {
-            return res
-                .status(403)
-                .json({
-                    success: false,
-                    error: 'Apenas secretaria/admin pode conferir documentos.',
-                });
+            return res.status(403).json({
+                success: false,
+                error: 'Apenas secretaria/admin pode conferir documentos.',
+            });
         }
 
         const { alunoId } = req.params;
