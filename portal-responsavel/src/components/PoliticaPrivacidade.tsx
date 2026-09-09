@@ -18,7 +18,7 @@ import { useEffect } from 'react';
 import styles from '../styles/portal.module.scss';
 import Icon from './ui/Icon';
 
-const ULTIMA_ATUALIZACAO = '08 de maio de 2026';
+const ULTIMA_ATUALIZACAO = '09 de setembro de 2026';
 const EMAIL_DPO = 'dpo@escola.edu.br';
 
 interface PoliticaPrivacidadeProps {
@@ -61,6 +61,53 @@ export default function PoliticaPrivacidade({ onBack, onOpenConsents }: Politica
           alunos e responsáveis. Ela vale para tudo o que você acessa por este portal — notas,
           frequência, ficha do aluno, comunicados e notificações.
         </p>
+
+        {/* ALERTA DE USO DE IA E ÁUDIO */}
+        <div className={styles.policyAiAlert}>
+          <div className={styles.policyAiAlertHeader}>
+            <Icon name="robot" size={22} aria-hidden="true" />
+            <h3 className={styles.policyAiAlertTitle}>
+              Transparência: Uso de Inteligência Artificial e Recursos de Áudio
+            </h3>
+            <span className={styles.policyAiAlertBadge}>
+              <Icon name="shield-check" size={14} aria-hidden="true" /> Selo IA Ética
+            </span>
+          </div>
+          <p>
+            Informamos que o <strong>Sistema Escolar</strong> integra ferramentas de{' '}
+            <strong>Inteligência Artificial (IA)</strong> e <strong>recursos de áudio</strong> com
+            propósitos estritamente assistivos, inclusivos e educacionais:
+          </p>
+          <div className={styles.policyAiAlertGrid}>
+            <div className={styles.policyAiAlertItem}>
+              <div className={styles.policyAiAlertItemTitle}>
+                <Icon name="robot" size={18} aria-hidden="true" /> Auxílio ao Professor
+              </div>
+              <p className={styles.policyAiAlertItemDesc}>
+                A IA atua como suporte no planejamento pedagógico e organização de rotinas. Toda
+                avaliação acadêmica, atribuição de notas e validação de conteúdos é de
+                responsabilidade e julgamento 100% humano do docente.
+              </p>
+            </div>
+            <div className={styles.policyAiAlertItem}>
+              <div className={styles.policyAiAlertItemTitle}>
+                <Icon name="volume" size={18} aria-hidden="true" /> Recursos de Áudio para Usuários
+              </div>
+              <p className={styles.policyAiAlertItemDesc}>
+                Recursos de voz e áudio (text-to-speech) disponíveis no portal para facilitar o
+                acesso a comunicados, promover acessibilidade a pessoas com deficiência e conferir
+                maior praticidade a pais e responsáveis.
+              </p>
+            </div>
+          </div>
+          <div className={styles.policyAiAlertFooter}>
+            <Icon name="shield-lock" size={16} aria-hidden="true" />
+            <span>
+              <strong>Garantia de Privacidade (LGPD):</strong> Nenhum dado sensível de alunos ou
+              famílias é transmitido para alimentar modelos públicos de terceiros.
+            </span>
+          </div>
+        </div>
 
         <section className={styles.policySection}>
           <h2>
@@ -182,6 +229,32 @@ export default function PoliticaPrivacidade({ onBack, onOpenConsents }: Politica
               {EMAIL_DPO}
             </a>
           </p>
+        </section>
+
+        <section className={styles.policySection}>
+          <h2>
+            <Icon name="robot" aria-hidden="true" /> 8. Uso ético de inteligência artificial e áudio
+          </h2>
+          <p>Em conformidade com a governança de dados e os princípios da LGPD:</p>
+          <ul>
+            <li>
+              <strong>Supervisão humana obrigatória:</strong> a IA atua apenas como suporte
+              consultivo aos educadores, sem nunca substituir o julgamento do professor.
+            </li>
+            <li>
+              <strong>Vedação a decisões automatizadas prejudiciais:</strong> nenhuma punição,
+              reprovação ou restrição de acesso a alunos é tomada exclusivamente por algoritmos de
+              IA.
+            </li>
+            <li>
+              <strong>Acessibilidade e áudio sob controle:</strong> recursos de síntese vocal podem
+              ser ativados, pausados ou silenciados pelo usuário a qualquer momento.
+            </li>
+            <li>
+              <strong>Isolamento e sigilo:</strong> dados processados não treinam modelos externos
+              abertos, preservando a intimidade e a privacidade da comunidade escolar.
+            </li>
+          </ul>
         </section>
       </article>
 
