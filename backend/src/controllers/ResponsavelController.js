@@ -102,7 +102,7 @@ async function carregarNotificacaoDoAluno(id, alunoId) {
     return Notificacao.findOne({
         ...buildNotifQuery(id),
         paraResponsavel: true,
-        destinatarios: { $in: destinatariosDoAluno(aluno, alunoId) }
+        destinatarios: { $in: destinatariosDoAluno(aluno, alunoId) },
     });
 }
 
@@ -133,10 +133,10 @@ async function verifyOwnership(alunoId, email) {
                 $or: [
                     { responsavel: emailRegex },
                     { 'responsavelDados.email': emailRegex },
-                    { 'responsaveis.email': emailRegex }
-                ]
-            }
-        ]
+                    { 'responsaveis.email': emailRegex },
+                ],
+            },
+        ],
     }).lean();
     return !!aluno;
 }
@@ -155,31 +155,44 @@ exports.getAlunos = async (req, res) => {
             $or: [
                 { responsavel: emailRegex },
                 { 'responsavelDados.email': emailRegex },
-                { 'responsaveis.email': emailRegex }
-            ]
+                { 'responsaveis.email': emailRegex },
+            ],
         };
         const alunos = await Aluno.find(query).lean();
 
         // Resolve o nome da escola de cada aluno (multi-escola).
         // Legados sem escolaId caem no rótulo padrão "Escola Jaguari".
-        const escolaIds = [...new Set(alunos.map(a => a.escolaId).filter(Boolean).map(String))];
+        const escolaIds = [
+            ...new Set(
+                alunos
+                    .map((a) => a.escolaId)
+                    .filter(Boolean)
+                    .map(String)
+            ),
+        ];
         const escolaNomePorId = {};
         if (escolaIds.length) {
             try {
                 const Escola = require('../models/Escola');
-                const escolas = await Escola.find({ _id: { $in: escolaIds } }).select('nome').lean();
-                escolas.forEach(e => { escolaNomePorId[String(e._id)] = e.nome; });
+                const escolas = await Escola.find({ _id: { $in: escolaIds } })
+                    .select('nome')
+                    .lean();
+                escolas.forEach((e) => {
+                    escolaNomePorId[String(e._id)] = e.nome;
+                });
             } catch (e) {
                 // Segue com fallback (nome da escola em branco), mas registra:
                 // o responsável veria a tela sem saber que ela está incompleta.
                 logger.warn('Falha ao resolver nomes das escolas (portal do responsável)', {
-                    err: e, escolaIds: escolaIds.length, action: 'responsavel.listarAlunos',
+                    err: e,
+                    escolaIds: escolaIds.length,
+                    action: 'responsavel.listarAlunos',
                 });
             }
         }
 
         // Retorna todos os dados para o frontend usar (dados pessoais, médicos, etc)
-        const safeAlunos = alunos.map(aluno => {
+        const safeAlunos = alunos.map((aluno) => {
             const safe = {
                 ...aluno,
                 id: aluno._id,
@@ -212,9 +225,15 @@ exports.getAlunos = async (req, res) => {
                 observacoes: aluno.observacoes || '',
                 documentos: aluno.documentos || [],
                 lgpdConsentimento: aluno.lgpdConsentimento || null,
-                escolaNome: (aluno.escolaId && escolaNomePorId[String(aluno.escolaId)]) || 'Escola Jaguari'
+                escolaNome:
+                    (aluno.escolaId && escolaNomePorId[String(aluno.escolaId)]) || 'Escola Jaguari',
             };
-            if (safe.foto && safe.foto.length > 20 && !safe.foto.startsWith('data:') && !safe.foto.startsWith('/api')) {
+            if (
+                safe.foto &&
+                safe.foto.length > 20 &&
+                !safe.foto.startsWith('data:') &&
+                !safe.foto.startsWith('/api')
+            ) {
                 safe.foto = `/api/upload/photo/${safe.foto}`;
             }
             return safe;
@@ -240,7 +259,7 @@ exports.buscarAluno = async (req, res) => {
         if (!/^[A-Z0-9]{4,16}$/.test(sanitizedCode)) {
             return res.status(400).json({
                 success: false,
-                error: 'Código secreto inválido. Use o código fornecido pela escola.'
+                error: 'Código secreto inválido. Use o código fornecido pela escola.',
             });
         }
 
@@ -248,16 +267,18 @@ exports.buscarAluno = async (req, res) => {
         console.log(`🔍 [LINK-STUDENT] Consulta de aluno por código secreto.`);
 
         // Busca aluno pelo código secreto (deve ser único conforme o model)
-        const aluno = await Aluno.findOne({ 
+        const aluno = await Aluno.findOne({
             codigoSecreto: sanitizedCode,
-            ativo: { $ne: false } 
-        }).select('nome sobrenome turma turmaId matricula responsavel').lean();
+            ativo: { $ne: false },
+        })
+            .select('nome sobrenome turma turmaId matricula responsavel')
+            .lean();
 
         if (!aluno) {
             console.warn(`❌ [LINK-STUDENT] Código inválido ou aluno inativo: ${sanitizedCode}`);
             return res.status(404).json({
                 success: false,
-                error: 'Estudante não encontrado com este código secreto. Verifique se o código está correto ou se o aluno está ativo.'
+                error: 'Estudante não encontrado com este código secreto. Verifique se o código está correto ou se o aluno está ativo.',
             });
         }
 
@@ -271,8 +292,8 @@ exports.buscarAluno = async (req, res) => {
                 nome: `${aluno.nome}${aluno.sobrenome ? ' ' + aluno.sobrenome : ''}`,
                 turma: aluno.turma || aluno.turmaId || 'N/D',
                 matricula: aluno.matricula || 'N/D',
-                jaVinculado: vinculado
-            }
+                jaVinculado: vinculado,
+            },
         });
     } catch (err) {
         console.error(`❌ [LINK-STUDENT] Erro na busca por código:`, err.message);
@@ -293,7 +314,9 @@ exports.vincularAluno = async (req, res) => {
         }
 
         if (!codigoSecreto) {
-            return res.status(400).json({ success: false, error: 'O código secreto é obrigatório.' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'O código secreto é obrigatório.' });
         }
 
         const sanitizedCode = codigoSecreto.trim().toUpperCase();
@@ -301,7 +324,7 @@ exports.vincularAluno = async (req, res) => {
         if (!/^[A-Z0-9]{4,16}$/.test(sanitizedCode)) {
             return res.status(400).json({
                 success: false,
-                error: 'Código secreto inválido. Use o código fornecido pela escola.'
+                error: 'Código secreto inválido. Use o código fornecido pela escola.',
             });
         }
 
@@ -309,20 +332,22 @@ exports.vincularAluno = async (req, res) => {
         // O rate limit por IP (app.js) é a primeira camada; esta impede que a
         // mesma conta varra códigos trocando de IP.
         const Usuario = require('../models/Usuario');
-        const conta = await Usuario.findById(usuarioId).select('+vinculoAttempts +vinculoLockUntil');
+        const conta = await Usuario.findById(usuarioId).select(
+            '+vinculoAttempts +vinculoLockUntil'
+        );
         const agora = new Date();
         if (conta?.vinculoLockUntil && conta.vinculoLockUntil > agora) {
             const minutos = Math.ceil((conta.vinculoLockUntil - agora) / 60000);
             return res.status(429).json({
                 success: false,
-                error: `Muitas tentativas de vínculo. Tente novamente em ${minutos} minuto(s) ou procure a secretaria.`
+                error: `Muitas tentativas de vínculo. Tente novamente em ${minutos} minuto(s) ou procure a secretaria.`,
             });
         }
 
         // Buscar aluno pelo código secreto
         const aluno = await Aluno.findOne({
             codigoSecreto: sanitizedCode,
-            ativo: { $ne: false }
+            ativo: { $ne: false },
         });
 
         if (!aluno) {
@@ -336,13 +361,13 @@ exports.vincularAluno = async (req, res) => {
 
             const { logAction } = require('../utils/auditHelper');
             await logAction(req, 'LINK_STUDENT_FAILED', 'Alunos', {
-                descricao: `Tentativa de vínculo com código inválido por ${email} (${tentativas}/${MAX_TENTATIVAS_VINCULO}).`
+                descricao: `Tentativa de vínculo com código inválido por ${email} (${tentativas}/${MAX_TENTATIVAS_VINCULO}).`,
             });
 
             console.warn(`❌ [LINK-STUDENT] Código inválido informado por ${email}.`);
             return res.status(404).json({
                 success: false,
-                error: 'Código secreto inválido ou aluno inativo. Por favor, confirme o código com a secretaria.'
+                error: 'Código secreto inválido ou aluno inativo. Por favor, confirme o código com a secretaria.',
             });
         }
 
@@ -356,11 +381,11 @@ exports.vincularAluno = async (req, res) => {
             const { logAction } = require('../utils/auditHelper');
             await logAction(req, 'LINK_STUDENT_BLOCKED', 'Alunos', {
                 recursoId: aluno._id,
-                descricao: `Tentativa de vínculo por ${targetEmail} em aluno já vinculado a outro responsável.`
+                descricao: `Tentativa de vínculo por ${targetEmail} em aluno já vinculado a outro responsável.`,
             });
             return res.status(409).json({
                 success: false,
-                error: 'Este aluno já possui um responsável vinculado. Procure a secretaria da escola para transferir o vínculo.'
+                error: 'Este aluno já possui um responsável vinculado. Procure a secretaria da escola para transferir o vínculo.',
             });
         }
 
@@ -373,25 +398,22 @@ exports.vincularAluno = async (req, res) => {
         if (aluno.escolaId && !conta?.escolaId) {
             updateConta.escolaId = aluno.escolaId;
         }
-        await Usuario.updateOne(
-            { _id: usuarioId },
-            { $set: updateConta }
-        );
+        await Usuario.updateOne({ _id: usuarioId }, { $set: updateConta });
         aluno.responsavel = targetEmail;
-        
+
         // Atualiza responsavelDados se necessário
         if (!aluno.responsavelDados) {
             aluno.responsavelDados = {};
         }
         aluno.responsavelDados.email = targetEmail;
-        
+
         await Aluno.updateOne(
             { _id: aluno._id },
-            { 
-                $set: { 
+            {
+                $set: {
                     responsavel: targetEmail,
-                    responsavelDados: aluno.responsavelDados
-                } 
+                    responsavelDados: aluno.responsavelDados,
+                },
             }
         );
 
@@ -401,7 +423,7 @@ exports.vincularAluno = async (req, res) => {
         await logAction(req, 'LINK_STUDENT_VIA_CODE', 'Alunos', {
             recursoId: aluno._id,
             valorNovo: { email: targetEmail },
-            descricao: `Vínculo realizado: Responsável ${targetEmail} vinculou o aluno ${aluno.nome} via código secreto.`
+            descricao: `Vínculo realizado: Responsável ${targetEmail} vinculou o aluno ${aluno.nome} via código secreto.`,
         });
 
         console.log(`✅ [LINK-STUDENT] Sucesso: Aluno ${aluno.nome} vinculado a ${targetEmail}`);
@@ -413,8 +435,8 @@ exports.vincularAluno = async (req, res) => {
                 id: aluno._id,
                 nome: aluno.nome,
                 matricula: aluno.matricula,
-                turma: aluno.turma || aluno.turmaId
-            }
+                turma: aluno.turma || aluno.turmaId,
+            },
         });
     } catch (e) {
         console.error(`❌ [LINK-STUDENT] Erro no vínculo:`, e.message);
@@ -430,7 +452,9 @@ exports.getNotas = async (req, res) => {
 
         const isOwner = await verifyOwnership(alunoId, email);
         if (!isOwner) {
-            return res.status(403).json({ success: false, error: 'Acesso negado. Aluno não vinculado à sua conta.' });
+            return res
+                .status(403)
+                .json({ success: false, error: 'Acesso negado. Aluno não vinculado à sua conta.' });
         }
 
         const aluno = await Aluno.findOne({ $or: [{ _id: alunoId }, { id: alunoId }] }).lean();
@@ -443,8 +467,8 @@ exports.getNotas = async (req, res) => {
                 { alunoId: String(aluno._id) },
                 { alunoId: aluno._id },
                 { alunoId: aluno.id },
-                { matriculaId: aluno.matricula }
-            ]
+                { matriculaId: aluno.matricula },
+            ],
         })
             .sort({ materiaId: 1, bimestre: 1 })
             .lean();
@@ -514,7 +538,9 @@ exports.getFrequencia = async (req, res) => {
 
         const isOwner = await verifyOwnership(alunoId, email);
         if (!isOwner) {
-            return res.status(403).json({ success: false, error: 'Acesso negado. Aluno não vinculado à sua conta.' });
+            return res
+                .status(403)
+                .json({ success: false, error: 'Acesso negado. Aluno não vinculado à sua conta.' });
         }
 
         const aluno = await Aluno.findOne({ $or: [{ _id: alunoId }, { id: alunoId }] }).lean();
@@ -531,22 +557,25 @@ exports.getFrequencia = async (req, res) => {
                 { alunoId: String(aluno._id) },
                 { alunoId: aluno._id },
                 { alunoId: aluno.id },
-                { matriculaId: aluno.matricula }
-            ]
+                { matriculaId: aluno.matricula },
+            ],
         };
         const faltas = await Falta.find(queryFaltas).lean();
 
         // 1. Filtrar ausências efetivas (presente === false ou ausente no sistema legacy sem o campo 'presente')
-        const faltasEfetivas = faltas.filter((f) => f.presente === false || f.presente === undefined);
+        const faltasEfetivas = faltas.filter(
+            (f) => f.presente === false || f.presente === undefined
+        );
         let ausencia = faltasEfetivas.filter((f) => !f.justificada).length;
         const atraso = faltasEfetivas.filter((f) => f.justificada).length;
 
         // Se o professor lançou faltas manualmente no boletim/cadastro do aluno (faltasBimestre),
         // isso deve ser considerado (geralmente como o total de ausências do aluno).
         if (aluno.faltasBimestre) {
-            const values = aluno.faltasBimestre instanceof Map
-                ? Array.from(aluno.faltasBimestre.values())
-                : Object.values(aluno.faltasBimestre || {});
+            const values =
+                aluno.faltasBimestre instanceof Map
+                    ? Array.from(aluno.faltasBimestre.values())
+                    : Object.values(aluno.faltasBimestre || {});
 
             const manualAbsences = values.reduce((sum, val) => sum + (Number(val) || 0), 0);
             if (manualAbsences > ausencia) {
@@ -557,7 +586,11 @@ exports.getFrequencia = async (req, res) => {
         // 2. Calcular dias letivos decorridos em 2026 até a data de referência
         const getElapsedSchoolDays = (dateObj) => {
             // Normaliza tudo em UTC para evitar distorções de fuso horário local
-            const todayUTC = Date.UTC(dateObj.getUTCFullYear(), dateObj.getUTCMonth(), dateObj.getUTCDate());
+            const todayUTC = Date.UTC(
+                dateObj.getUTCFullYear(),
+                dateObj.getUTCMonth(),
+                dateObj.getUTCDate()
+            );
             const startUTC = Date.UTC(2026, 1, 9); // 09/02/2026 (fevereiro é 1)
 
             if (todayUTC < startUTC) return 0;
@@ -566,7 +599,8 @@ exports.getFrequencia = async (req, res) => {
             let temp = new Date(startUTC);
             while (temp.getTime() <= todayUTC) {
                 const day = temp.getUTCDay();
-                if (day !== 0 && day !== 6) { // Ignora Sábado e Domingo
+                if (day !== 0 && day !== 6) {
+                    // Ignora Sábado e Domingo
                     count++;
                 }
                 temp.setUTCDate(temp.getUTCDate() + 1);
@@ -576,12 +610,12 @@ exports.getFrequencia = async (req, res) => {
             const holidays = [
                 Date.UTC(2026, 1, 16), // Carnaval Segunda-feira
                 Date.UTC(2026, 1, 17), // Carnaval Terça-feira
-                Date.UTC(2026, 3, 3),  // Sexta-feira Santa
+                Date.UTC(2026, 3, 3), // Sexta-feira Santa
                 Date.UTC(2026, 3, 21), // Tiradentes
-                Date.UTC(2026, 4, 1)   // Dia do Trabalho
+                Date.UTC(2026, 4, 1), // Dia do Trabalho
             ];
 
-            holidays.forEach(hTime => {
+            holidays.forEach((hTime) => {
                 if (hTime >= startUTC && hTime <= todayUTC) {
                     const hDate = new Date(hTime);
                     const day = hDate.getUTCDay();
@@ -599,7 +633,7 @@ exports.getFrequencia = async (req, res) => {
         // 3. Determinar a quantidade total de aulas/dias letivos a serem considerados
         const turmasBusca = [aluno.turma, aluno.turmaId].filter(Boolean);
         const aulasProfessor = await FrequenciaProfessor.find({
-            classe: { $in: turmasBusca }
+            classe: { $in: turmasBusca },
         }).lean();
 
         let totalAulas = 0;
@@ -608,7 +642,7 @@ exports.getFrequencia = async (req, res) => {
         } else {
             // Caso não tenha registros em FrequenciaProfessor, tenta pegar dias distintos de chamadas da turma
             const totalDiasDistintos = await Falta.distinct('data', {
-                turma: { $in: turmasBusca }
+                turma: { $in: turmasBusca },
             });
             totalAulas = totalDiasDistintos.length;
         }
@@ -642,9 +676,7 @@ exports.getFrequencia = async (req, res) => {
         let presenca = totalAulas - ausencia - atraso;
         if (presenca < 0) presenca = 0;
 
-        const percentual = totalAulas > 0
-            ? Math.round((presenca / totalAulas) * 100)
-            : 100;
+        const percentual = totalAulas > 0 ? Math.round((presenca / totalAulas) * 100) : 100;
 
         res.json({
             success: true,
@@ -664,12 +696,14 @@ exports.getNotificacoes = async (req, res) => {
         // Proteção IDOR: Garante que o responsável logado seja dono deste aluno
         const isOwner = await verifyOwnership(alunoId, email);
         if (!isOwner) {
-            return res.status(403).json({ success: false, error: 'Acesso negado. Aluno não vinculado à sua conta.' });
+            return res
+                .status(403)
+                .json({ success: false, error: 'Acesso negado. Aluno não vinculado à sua conta.' });
         }
 
         const Notificacao = require('../models/Notificacao');
         const aluno = await Aluno.findOne({
-            $or: [{ _id: alunoId }, { id: alunoId }]
+            $or: [{ _id: alunoId }, { id: alunoId }],
         }).lean();
 
         if (!aluno) {
@@ -690,29 +724,40 @@ exports.getNotificacoes = async (req, res) => {
         const notificacoes = await Notificacao.find({
             paraResponsavel: true,
             destinatarios: { $in: destinatariosList },
-            ocultadoPor: { $nin: ocultadosList }
-        }).sort({ dataCriacao: -1 }).lean();
+            ocultadoPor: { $nin: ocultadosList },
+        })
+            .sort({ dataCriacao: -1 })
+            .lean();
 
         const iconMap = {
-            'info': '📢',
-            'aviso': '⚠️',
-            'evento': '🎉',
-            'financeiro': '💰',
-            'academico': '📚',
-            'saude': '🏥',
-            'falta': '📋'
+            info: '📢',
+            aviso: '⚠️',
+            evento: '🎉',
+            financeiro: '💰',
+            academico: '📚',
+            saude: '🏥',
+            falta: '📋',
         };
 
         // Agrupar IDs de remetentes exclusivos para busca otimizada
-        const remetenteIds = [...new Set(notificacoes.map(n => n.criadoPor).filter(id => id && id.length > 10))];
-        const usuarios = await require('../models/Usuario').find({ _id: { $in: remetenteIds } }).select('nome').lean();
+        const remetenteIds = [
+            ...new Set(notificacoes.map((n) => n.criadoPor).filter((id) => id && id.length > 10)),
+        ];
+        const usuarios = await require('../models/Usuario')
+            .find({ _id: { $in: remetenteIds } })
+            .select('nome')
+            .lean();
         const userMap = {};
-        usuarios.forEach(u => userMap[String(u._id)] = u.nome);
+        usuarios.forEach((u) => (userMap[String(u._id)] = u.nome));
 
-        const formatted = notificacoes.map(n => {
+        const formatted = notificacoes.map((n) => {
             const nId = n.id || String(n._id);
-            const isRead = n.lido ? (n.lido.includes(String(alunoId)) || (aluno.id && n.lido.includes(String(aluno.id))) || (aluno._id && n.lido.includes(String(aluno._id)))) : false;
-            
+            const isRead = n.lido
+                ? n.lido.includes(String(alunoId)) ||
+                  (aluno.id && n.lido.includes(String(aluno.id))) ||
+                  (aluno._id && n.lido.includes(String(aluno._id)))
+                : false;
+
             return {
                 id: nId,
                 tipo: n.tipo,
@@ -724,8 +769,9 @@ exports.getNotificacoes = async (req, res) => {
                 dataCriacao: n.dataCriacao,
                 lido: isRead,
                 destinatarios: n.destinatarios,
-                criadoPor: userMap[String(n.criadoPor)] || n.criadoByNome || n.criadoPor || 'Direção',
-                icon: iconMap[n.tipo] || '🔔'
+                criadoPor:
+                    userMap[String(n.criadoPor)] || n.criadoByNome || n.criadoPor || 'Direção',
+                icon: iconMap[n.tipo] || '🔔',
             };
         });
 
@@ -748,7 +794,9 @@ exports.marcarComoLida = async (req, res) => {
 
         const isOwner = await verifyOwnership(alunoId, email);
         if (!isOwner) {
-            return res.status(403).json({ success: false, error: 'Acesso negado. Aluno não vinculado à sua conta.' });
+            return res
+                .status(403)
+                .json({ success: false, error: 'Acesso negado. Aluno não vinculado à sua conta.' });
         }
 
         // Escopo: só notificação endereçada a ESTE aluno. Sem isto, `:id` era
@@ -786,7 +834,9 @@ exports.ocultarNotificacao = async (req, res) => {
 
         const isOwner = await verifyOwnership(alunoId, email);
         if (!isOwner) {
-            return res.status(403).json({ success: false, error: 'Acesso negado. Aluno não vinculado à sua conta.' });
+            return res
+                .status(403)
+                .json({ success: false, error: 'Acesso negado. Aluno não vinculado à sua conta.' });
         }
 
         // Mesmo escopo do marcar-como-lida: `ocultadoPor` é o array que a
@@ -822,12 +872,22 @@ exports.updateAlunoDados = async (req, res) => {
         const isOwner = await verifyOwnership(alunoId, email);
         if (!isOwner) return res.status(403).json({ success: false, error: 'Acesso negado.' });
 
-        const allowed = ['responsaveis', 'guardaLegal', 'pessoasAutorizadasRetirada', 'autorizacoesEscolares', 'responsavelDados'];
+        const allowed = [
+            'responsaveis',
+            'guardaLegal',
+            'pessoasAutorizadasRetirada',
+            'autorizacoesEscolares',
+            'responsavelDados',
+        ];
         const update = {};
-        allowed.forEach(k => { if (req.body[k] !== undefined) update[k] = req.body[k]; });
+        allowed.forEach((k) => {
+            if (req.body[k] !== undefined) update[k] = req.body[k];
+        });
 
         if (update.responsaveis && update.responsaveis.length > 2) {
-            return res.status(400).json({ success: false, error: 'Máximo de 2 responsáveis por aluno.' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'Máximo de 2 responsáveis por aluno.' });
         }
 
         // ============================================
@@ -846,27 +906,38 @@ exports.updateAlunoDados = async (req, res) => {
         // rotas de /api/alunos.
         if (update.responsaveis !== undefined || update.responsavelDados !== undefined) {
             const atual = await Aluno.findOne({ $or: [{ _id: alunoId }, { id: alunoId }] })
-                .select('responsaveis responsavelDados').lean();
+                .select('responsaveis responsavelDados')
+                .lean();
 
             const emailsDe = (doc) => {
                 const lista = Array.isArray(doc?.responsaveis) ? doc.responsaveis : [];
-                const emails = lista.map(r => String(r?.email || '').toLowerCase()).filter(Boolean);
+                const emails = lista
+                    .map((r) => String(r?.email || '').toLowerCase())
+                    .filter(Boolean);
                 const principal = String(doc?.responsavelDados?.email || '').toLowerCase();
                 if (principal) emails.push(principal);
                 return emails;
             };
 
             const antes = new Set(emailsDe(atual));
-            const depois = new Set(emailsDe({
-                responsaveis: update.responsaveis !== undefined ? update.responsaveis : atual?.responsaveis,
-                responsavelDados: update.responsavelDados !== undefined ? update.responsavelDados : atual?.responsavelDados
-            }));
+            const depois = new Set(
+                emailsDe({
+                    responsaveis:
+                        update.responsaveis !== undefined
+                            ? update.responsaveis
+                            : atual?.responsaveis,
+                    responsavelDados:
+                        update.responsavelDados !== undefined
+                            ? update.responsavelDados
+                            : atual?.responsavelDados,
+                })
+            );
 
-            const removidos = [...antes].filter(e => !depois.has(e));
+            const removidos = [...antes].filter((e) => !depois.has(e));
             if (removidos.length > 0) {
                 return res.status(403).json({
                     success: false,
-                    error: 'Não é possível remover um responsável já cadastrado. Solicite a alteração à secretaria da escola.'
+                    error: 'Não é possível remover um responsável já cadastrado. Solicite a alteração à secretaria da escola.',
                 });
             }
         }
@@ -876,6 +947,79 @@ exports.updateAlunoDados = async (req, res) => {
             { $set: update },
             { new: true }
         ).lean();
+
+        // Sincroniza autorizações escolares com o modelo Autorizacao
+        if (update.autorizacoesEscolares && aluno?.escolaId) {
+            try {
+                const Autorizacao = require('../models/Autorizacao');
+                const authData = update.autorizacoesEscolares;
+                const respNome =
+                    req.user?.nome ||
+                    aluno.responsavelDados?.nome ||
+                    aluno.responsaveis?.[0]?.nome ||
+                    '';
+                const respEmail = req.user?.email || email;
+                const respId = req.user?.id || req.user?._id;
+                const agora = new Date();
+
+                const syncPromessas = Autorizacao.TIPOS_AUTORIZACAO.map(async (tipo) => {
+                    const valor = authData[tipo];
+                    if (valor === undefined) return;
+
+                    let detalhes;
+                    if (
+                        tipo === 'conducaoEscolar' &&
+                        (authData.motoristaNome || authData.motoristaTelefone)
+                    ) {
+                        detalhes = {
+                            motoristaNome: authData.motoristaNome || '',
+                            motoristaTelefone: authData.motoristaTelefone || '',
+                        };
+                    } else if (
+                        tipo === 'antitermico' &&
+                        (authData.medicamentoNome || authData.medicamentoDose)
+                    ) {
+                        detalhes = {
+                            medicamentoNome: authData.medicamentoNome || '',
+                            medicamentoDose: authData.medicamentoDose || '',
+                        };
+                    }
+
+                    const meta = Autorizacao.METADADOS_AUTORIZACOES[tipo] || {};
+
+                    await Autorizacao.findOneAndUpdate(
+                        {
+                            escolaId: aluno.escolaId,
+                            alunoId: aluno._id,
+                            tipoAutorizacao: tipo,
+                        },
+                        {
+                            $set: {
+                                escolaId: aluno.escolaId,
+                                alunoId: aluno._id,
+                                responsavelId: respId,
+                                responsavelNome: respNome,
+                                responsavelEmail: respEmail,
+                                tipoAutorizacao: tipo,
+                                titulo: meta.titulo,
+                                descricao: meta.descricao,
+                                aceita: valor === true ? true : valor === false ? false : null,
+                                detalhes,
+                                dataResposta: agora,
+                                atualizadoEm: agora,
+                            },
+                        },
+                        { upsert: true, new: true }
+                    );
+                });
+
+                await Promise.all(syncPromessas);
+            } catch (syncErr) {
+                logger.error('Erro ao sincronizar Autorizacao no updateAlunoDados', {
+                    error: syncErr.message,
+                });
+            }
+        }
 
         if (!aluno) return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
         res.json({ success: true, data: aluno });
@@ -899,28 +1043,35 @@ exports.uploadDocumentos = async (req, res) => {
             return res.status(400).json({ success: false, error: 'Nenhum arquivo informado.' });
         }
 
-        const novosArquivos = arquivos.map(a => ({
+        const novosArquivos = arquivos.map((a) => ({
             id: a.id || require('crypto').randomBytes(8).toString('hex'),
             nome: a.nome,
             tipo: a.tipo,
             gridfsId: a.gridfsId,
-            enviadoEm: new Date()
+            enviadoEm: new Date(),
         }));
 
         const aluno = await Aluno.findOne({ $or: [{ _id: alunoId }, { id: alunoId }] });
         if (!aluno) return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
 
-        const docsAtuais = aluno.documentos?.arquivos || (Array.isArray(aluno.documentos) ? aluno.documentos : []);
+        const docsAtuais =
+            aluno.documentos?.arquivos || (Array.isArray(aluno.documentos) ? aluno.documentos : []);
         const todosArquivos = [...docsAtuais, ...novosArquivos];
 
         aluno.documentos = {
             arquivos: todosArquivos,
-            ultimoEnvio: new Date()
+            ultimoEnvio: new Date(),
         };
         aluno.fichaDocumentoStatus = 'enviado';
         await aluno.save();
 
-        res.json({ success: true, data: { documentos: aluno.documentos, fichaDocumentoStatus: aluno.fichaDocumentoStatus } });
+        res.json({
+            success: true,
+            data: {
+                documentos: aluno.documentos,
+                fichaDocumentoStatus: aluno.fichaDocumentoStatus,
+            },
+        });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
@@ -931,7 +1082,12 @@ exports.updateDocumentoStatus = async (req, res) => {
     try {
         const perfil = req.user?.perfil;
         if (!['admin', 'diretor', 'secretaria'].includes(perfil)) {
-            return res.status(403).json({ success: false, error: 'Apenas secretaria/admin pode conferir documentos.' });
+            return res
+                .status(403)
+                .json({
+                    success: false,
+                    error: 'Apenas secretaria/admin pode conferir documentos.',
+                });
         }
 
         const { alunoId } = req.params;
