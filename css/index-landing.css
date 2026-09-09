@@ -365,6 +365,75 @@ nav.scrolled {
   }
 }
 
+.hero-badges-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.75rem;
+}
+
+.hero-badges-group .hero-badge {
+  margin-bottom: 0;
+}
+
+.hero-badge-ai {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: linear-gradient(135deg, rgba(160, 101, 255, 0.16) 0%, rgba(33, 255, 204, 0.12) 100%);
+  border: 1px solid rgba(160, 101, 255, 0.38);
+  border-radius: 100px;
+  padding: 0.4rem 0.95rem;
+  color: var(--text);
+  font-family: var(--m);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  box-shadow: 0 4px 20px rgba(160, 101, 255, 0.16), inset 0 0 12px rgba(33, 255, 204, 0.08);
+  cursor: pointer;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  animation: fadeUp 0.6s 0.1s var(--ease-out) both;
+  user-select: none;
+  text-decoration: none;
+}
+
+.hero-badge-ai:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(160, 101, 255, 0.35), inset 0 0 16px rgba(33, 255, 204, 0.15);
+  border-color: rgba(33, 255, 204, 0.6);
+}
+
+.badge-ai-sparkle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #c084fc;
+  font-size: 0.85rem;
+  animation: aiSparkle 3s ease-in-out infinite;
+}
+
+@keyframes aiSparkle {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    color: #c084fc;
+    filter: drop-shadow(0 0 4px rgba(160, 101, 255, 0.6));
+  }
+  50% {
+    transform: scale(1.15) rotate(12deg);
+    color: var(--rgb-g);
+    filter: drop-shadow(0 0 6px rgba(33, 255, 204, 0.8));
+  }
+}
+
+.badge-ai-sub {
+  color: var(--text3);
+  font-size: 0.68rem;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
 .school-switcher {
   position: fixed;
   left: 1rem;
@@ -699,6 +768,11 @@ nav.scrolled {
   color: var(--rgb-g);
   font-size: 0.85rem;
   filter: drop-shadow(0 0 5px rgba(33, 255, 204, 0.45));
+}
+
+.hero-trust-item.hero-trust-ai i {
+  color: #c084fc;
+  filter: drop-shadow(0 0 6px rgba(160, 101, 255, 0.6));
 }
 
 /* HERO RIGHT — UI MOCKUP */
@@ -1235,6 +1309,12 @@ nav.scrolled {
   color: #00e5ff;
 }
 
+.fi-ai {
+  background: linear-gradient(135deg, rgba(160, 101, 255, 0.18) 0%, rgba(33, 255, 204, 0.14) 100%);
+  border: 1px solid rgba(160, 101, 255, 0.45);
+  color: #c084fc;
+}
+
 .feat-card:hover .fi-t {
   box-shadow: 0 0 20px rgba(74, 140, 255, 0.5);
 }
@@ -1257,6 +1337,32 @@ nav.scrolled {
 
 .feat-card:hover .fi-s {
   box-shadow: 0 0 20px rgba(0, 229, 255, 0.55);
+}
+
+.feat-card:hover .fi-ai {
+  box-shadow: 0 0 24px rgba(160, 101, 255, 0.65), 0 0 12px rgba(33, 255, 204, 0.4);
+}
+
+.feat-card-ai {
+  background: linear-gradient(180deg, rgba(160, 101, 255, 0.05) 0%, var(--ink) 100%);
+}
+
+.feat-ai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 1.25rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-family: var(--m);
+  background: rgba(160, 101, 255, 0.1);
+  color: #d8b4fe;
+  border: 1px solid rgba(160, 101, 255, 0.28);
+}
+
+.feat-ai-badge i {
+  color: var(--rgb-g);
 }
 
 .ft {
@@ -2666,8 +2772,9 @@ footer {
 /* Badge de funcionalidade "sistema" com ciano neon fixo (#00e5ff) */
 :root[data-theme="light"] .fi-s { background: rgba(2, 132, 199, 0.12); color: #0369a1; }
 
-/* Gatilho flutuante de configurações (system-global.css não é revestido aqui) */
-:root[data-theme="light"] .settings-trigger--floating {
+/* Gatilho flutuante de configurações e acessibilidade */
+:root[data-theme="light"] .settings-trigger--floating,
+:root[data-theme="light"] .acessibilidade-botao--floating {
   background: #ffffff;
   color: #475569;
   box-shadow: 0 6px 20px rgba(15, 23, 42, 0.12);

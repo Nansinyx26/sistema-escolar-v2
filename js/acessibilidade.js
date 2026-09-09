@@ -82,10 +82,10 @@
         aplicar();
     }
 
-    function botao(texto, rotuloAria, pressionado, aoClicar) {
+    function botao(html, rotuloAria, pressionado, aoClicar) {
         var b = document.createElement('button');
         b.type = 'button';
-        b.textContent = texto;
+        b.innerHTML = html;
         b.setAttribute('aria-label', rotuloAria);
         b.setAttribute('aria-pressed', pressionado ? 'true' : 'false');
         b.addEventListener('click', function () {
@@ -132,7 +132,9 @@
         var abre = document.createElement('button');
         abre.type = 'button';
         abre.className = 'acessibilidade-botao';
-        abre.textContent = '♿'; // ♿
+        abre.id = 'btn-acessibilidade';
+        abre.innerHTML = '<i class="bi bi-universal-access" aria-hidden="true"></i>';
+        abre.title = 'Acessibilidade';
         abre.setAttribute('aria-label', 'Opções de acessibilidade');
         abre.setAttribute('aria-expanded', 'false');
         abre.setAttribute('aria-controls', 'painel-acessibilidade');
@@ -144,14 +146,30 @@
         painel.setAttribute('aria-label', 'Opções de acessibilidade');
         painel.hidden = true;
 
+        var topo = document.createElement('div');
+        topo.className = 'acessibilidade-painel-header';
+
         var titulo = document.createElement('h2');
-        titulo.textContent = 'Acessibilidade';
-        painel.appendChild(titulo);
+        titulo.innerHTML = '<i class="bi bi-universal-access" aria-hidden="true"></i> Acessibilidade';
+        topo.appendChild(titulo);
+
+        var fechar = document.createElement('button');
+        fechar.type = 'button';
+        fechar.className = 'acessibilidade-fechar';
+        fechar.setAttribute('aria-label', 'Fechar painel de acessibilidade');
+        fechar.innerHTML = '<i class="bi bi-x" aria-hidden="true"></i>';
+        fechar.addEventListener('click', function () {
+            painel.hidden = true;
+            abre.setAttribute('aria-expanded', 'false');
+            abre.focus();
+        });
+        topo.appendChild(fechar);
+        painel.appendChild(topo);
 
         painel.appendChild(
             grupo('Contraste', [
                 botao(
-                    'Alto contraste',
+                    '<i class="bi bi-circle-half" aria-hidden="true"></i> Alto contraste',
                     'Ativar alto contraste',
                     prefs.contraste === 'alto',
                     function (ligado) {
@@ -163,11 +181,11 @@
 
         var menor = document.createElement('button');
         menor.type = 'button';
-        menor.textContent = 'A-';
+        menor.innerHTML = '<i class="bi bi-zoom-out" aria-hidden="true"></i> A-';
         menor.setAttribute('aria-label', 'Diminuir o tamanho do texto');
         var maior = document.createElement('button');
         maior.type = 'button';
-        maior.textContent = 'A+';
+        maior.innerHTML = '<i class="bi bi-zoom-in" aria-hidden="true"></i> A+';
         maior.setAttribute('aria-label', 'Aumentar o tamanho do texto');
 
         function mudarEscala(passo) {
@@ -186,7 +204,7 @@
         painel.appendChild(
             grupo('Links', [
                 botao(
-                    'Sublinhar links',
+                    '<i class="bi bi-type-underline" aria-hidden="true"></i> Sublinhar links',
                     'Sublinhar todos os links',
                     !!prefs.sublinhar,
                     function (ligado) {
@@ -199,7 +217,7 @@
         painel.appendChild(
             grupo('Movimento', [
                 botao(
-                    'Reduzir animações',
+                    '<i class="bi bi-pause-circle" aria-hidden="true"></i> Reduzir animações',
                     'Reduzir animações da interface',
                     prefs.animacao === undefined ? prefereMenosMovimento() : !!prefs.animacao,
                     function (ligado) {
@@ -211,7 +229,8 @@
 
         var limpar = document.createElement('button');
         limpar.type = 'button';
-        limpar.textContent = 'Restaurar padrão';
+        limpar.className = 'acessibilidade-btn-restaurar';
+        limpar.innerHTML = '<i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> Restaurar padrão';
         limpar.addEventListener('click', function () {
             prefs = {};
             gravar(prefs);
@@ -222,11 +241,15 @@
         });
         painel.appendChild(limpar);
 
-        abre.addEventListener('click', function () {
+        abre.addEventListener('click', function (e) {
+            e.stopPropagation();
             var abrindo = painel.hidden;
             painel.hidden = !abrindo;
             abre.setAttribute('aria-expanded', abrindo ? 'true' : 'false');
             if (abrindo) {
+                if (typeof window.renderLucideIcons === 'function') {
+                    window.renderLucideIcons();
+                }
                 var primeiro = painel.querySelector('button');
                 if (primeiro) primeiro.focus();
             }
@@ -240,8 +263,46 @@
             }
         });
 
+        document.addEventListener('click', function (e) {
+            if (!painel.hidden && !painel.contains(e.target) && e.target !== abre && !abre.contains(e.target)) {
+                painel.hidden = true;
+                abre.setAttribute('aria-expanded', 'false');
+            }
+        });
+
         document.body.appendChild(painel);
-        document.body.appendChild(abre);
+
+        // Posiciona no slot de ações do cabeçalho, ao lado da engrenagem (settings-trigger), ou flutuante
+        function posicionarBotao() {
+            var slot = document.querySelector(
+                '.header-actions, .header-right, .topbar-actions, .nav-actions, .dashboard-header-actions, .page-header-actions'
+            );
+            if (slot) {
+                var btnSettings = slot.querySelector('#btn-open-settings, .settings-trigger');
+                if (btnSettings) {
+                    slot.insertBefore(abre, btnSettings);
+                } else {
+                    slot.appendChild(abre);
+                }
+                abre.classList.remove('acessibilidade-botao--floating');
+            } else {
+                abre.classList.add('acessibilidade-botao--floating');
+                if (!document.body.contains(abre)) {
+                    document.body.appendChild(abre);
+                }
+            }
+        }
+
+        posicionarBotao();
+
+        // Assegura posicionamento correto mesmo se settings-drawer inicializar após este script
+        window.addEventListener('load', posicionarBotao);
+        setTimeout(posicionarBotao, 100);
+        setTimeout(posicionarBotao, 500);
+
+        if (typeof window.renderLucideIcons === 'function') {
+            window.renderLucideIcons();
+        }
     }
 
     function montar() {

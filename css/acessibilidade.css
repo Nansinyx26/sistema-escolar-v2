@@ -180,70 +180,291 @@ html[data-animacao='reduzida'] *::after {
    7. Painel de acessibilidade
    -------------------------------------------------------------------------- */
 .acessibilidade-botao {
-    position: fixed;
-    right: 16px;
-    bottom: 16px;
-    z-index: 9998;
-    /* 48px é o alvo de toque mínimo recomendado (WCAG 2.5.5) — abaixo disso,
-       quem tem tremor ou usa o polegar erra o botão. */
-    min-width: 48px;
-    min-height: 48px;
-    border-radius: 50%;
-    border: 2px solid #10b981;
-    background: #04140d;
-    color: #fff;
-    font-size: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    color: #a1a1aa;
+    font-size: 1.15rem;
     cursor: pointer;
+    touch-action: manipulation;
+    position: relative;
+    transition: background-color 200ms, color 200ms, border-color 200ms, transform 200ms;
+}
+
+/* Área de toque mínima estendida (WCAG 2.5.5) sem poluir o layout visual */
+.acessibilidade-botao::after {
+    content: "";
+    position: absolute;
+    inset: -4px;
+    border-radius: inherit;
+}
+
+.acessibilidade-botao:hover {
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: #10b981;
+}
+
+.acessibilidade-botao:hover i,
+.acessibilidade-botao:hover svg {
+    transform: scale(1.1);
+    transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.acessibilidade-botao:active {
+    transform: scale(0.94);
+}
+
+.acessibilidade-botao[aria-expanded='true'] {
+    background: rgba(16, 185, 129, 0.18);
+    border-color: #10b981;
+    color: #10b981;
+}
+
+/* Fallback flutuante para páginas cujo cabeçalho não tem slot de ações */
+.acessibilidade-botao--floating {
+    position: fixed;
+    top: calc(0.9rem + env(safe-area-inset-top));
+    right: calc(0.9rem + 46px);
+    z-index: 1080;
+    background: #0a0a0c;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+}
+
+body:not(:has(.settings-trigger--floating)) .acessibilidade-botao--floating {
+    right: 0.9rem;
+}
+
+@media (max-width: 640px) {
+    .acessibilidade-botao--floating {
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
+        min-height: 42px;
+        right: calc(0.9rem + 48px);
+    }
 }
 
 .acessibilidade-painel {
     position: fixed;
     right: 16px;
-    bottom: 76px;
+    top: calc(3.75rem + env(safe-area-inset-top));
+    bottom: auto;
     z-index: 9999;
-    width: min(300px, calc(100vw - 32px));
-    padding: 16px;
-    border: 2px solid #10b981;
-    border-radius: 12px;
-    background: #04140d;
-    color: #fff;
-    font-size: 15px;
+    width: min(320px, calc(100vw - 32px));
+    max-height: calc(100dvh - 4.5rem);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+    padding: 16px 18px;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    border-radius: 14px;
+    background: #0a0a0c;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    color: #f4f4f5;
+    font-size: 14px;
     line-height: 1.5;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    animation: painelAcessibilidadeEntrada 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes painelAcessibilidadeEntrada {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.acessibilidade-painel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .acessibilidade-painel h2 {
-    margin: 0 0 12px;
-    font-size: 16px;
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
     color: #fff;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.acessibilidade-fechar {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #a1a1aa;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 150ms, color 150ms;
+}
+
+.acessibilidade-fechar:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #ef4444;
 }
 
 .acessibilidade-grupo {
-    margin-bottom: 14px;
+    margin-bottom: 12px;
 }
 
 .acessibilidade-grupo > span {
     display: block;
     margin-bottom: 6px;
-    font-size: 13px;
-    opacity: 0.85;
+    font-size: 12px;
+    font-weight: 500;
+    color: #a1a1aa;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
 
 .acessibilidade-painel button {
-    min-height: 44px;
-    padding: 8px 12px;
+    min-height: 38px;
+    padding: 6px 12px;
     margin-right: 6px;
-    border: 2px solid #10b981;
+    margin-bottom: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 8px;
-    background: transparent;
-    color: #fff;
+    background: rgba(255, 255, 255, 0.05);
+    color: #e4e4e7;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 150ms ease;
+}
+
+.acessibilidade-painel button:hover {
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: #10b981;
 }
 
 .acessibilidade-painel button[aria-pressed='true'] {
     background: #10b981;
+    border-color: #10b981;
     color: #04140d;
     font-weight: 700;
+}
+
+.acessibilidade-btn-restaurar {
+    width: 100%;
+    margin-top: 6px;
+    justify-content: center;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    color: #a1a1aa !important;
+}
+
+.acessibilidade-btn-restaurar:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #fff !important;
+}
+
+/* Modo claro */
+:root[data-theme="light"] .acessibilidade-botao {
+    background: rgba(15, 23, 42, 0.04);
+    border-color: rgba(15, 23, 42, 0.10);
+    color: #475569;
+}
+
+:root[data-theme="light"] .acessibilidade-botao:hover {
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: #059669;
+}
+
+:root[data-theme="light"] .acessibilidade-botao--floating {
+    background: #ffffff;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.12);
+}
+
+:root[data-theme="light"] .acessibilidade-painel {
+    background: #ffffff;
+    border-color: rgba(15, 23, 42, 0.12);
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.15);
+    color: #0f172a;
+    scrollbar-color: rgba(15, 23, 42, 0.15) transparent;
+}
+
+:root[data-theme="light"] .acessibilidade-painel-header {
+    border-bottom-color: rgba(15, 23, 42, 0.08);
+}
+
+:root[data-theme="light"] .acessibilidade-painel h2 {
+    color: #0f172a;
+}
+
+:root[data-theme="light"] .acessibilidade-grupo > span {
+    color: #64748b;
+}
+
+:root[data-theme="light"] .acessibilidade-painel button {
+    border-color: rgba(15, 23, 42, 0.12);
+    background: rgba(15, 23, 42, 0.04);
+    color: #334155;
+}
+
+:root[data-theme="light"] .acessibilidade-painel button:hover {
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: #059669;
+}
+
+:root[data-theme="light"] .acessibilidade-painel button[aria-pressed='true'] {
+    background: #10b981;
+    border-color: #10b981;
+    color: #ffffff;
+}
+
+:root[data-theme="light"] .acessibilidade-fechar {
+    border-color: rgba(15, 23, 42, 0.08);
+    background: rgba(15, 23, 42, 0.04);
+    color: #64748b;
+}
+
+:root[data-theme="light"] .acessibilidade-fechar:hover {
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(239, 68, 68, 0.25);
+    color: #dc2626;
+}
+
+:root[data-theme="light"] .acessibilidade-btn-restaurar {
+    border-color: rgba(15, 23, 42, 0.08) !important;
+    background: rgba(15, 23, 42, 0.03) !important;
+    color: #64748b !important;
+}
+
+:root[data-theme="light"] .acessibilidade-btn-restaurar:hover {
+    background: rgba(15, 23, 42, 0.08) !important;
+    color: #0f172a !important;
 }
 
 /* --------------------------------------------------------------------------
