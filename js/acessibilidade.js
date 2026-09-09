@@ -150,7 +150,8 @@
         topo.className = 'acessibilidade-painel-header';
 
         var titulo = document.createElement('h2');
-        titulo.innerHTML = '<i class="bi bi-universal-access" aria-hidden="true"></i> Acessibilidade';
+        titulo.innerHTML =
+            '<i class="bi bi-universal-access" aria-hidden="true"></i> Acessibilidade';
         topo.appendChild(titulo);
 
         var fechar = document.createElement('button');
@@ -230,7 +231,8 @@
         var limpar = document.createElement('button');
         limpar.type = 'button';
         limpar.className = 'acessibilidade-btn-restaurar';
-        limpar.innerHTML = '<i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> Restaurar padrão';
+        limpar.innerHTML =
+            '<i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> Restaurar padrão';
         limpar.addEventListener('click', function () {
             prefs = {};
             gravar(prefs);
@@ -264,7 +266,12 @@
         });
 
         document.addEventListener('click', function (e) {
-            if (!painel.hidden && !painel.contains(e.target) && e.target !== abre && !abre.contains(e.target)) {
+            if (
+                !painel.hidden &&
+                !painel.contains(e.target) &&
+                e.target !== abre &&
+                !abre.contains(e.target)
+            ) {
                 painel.hidden = true;
                 abre.setAttribute('aria-expanded', 'false');
             }
