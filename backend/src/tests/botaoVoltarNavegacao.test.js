@@ -52,10 +52,14 @@ describe('js/botao-voltar.js - Navegação Inteligente e Histórico', () => {
         window.location = {
             pathname: '/detalhes/alunos.html',
             search: '',
-            href: '/detalhes/alunos.html'
+            href: '/detalhes/alunos.html',
         };
 
-        NavegacaoVoltar.setStack(['/html/dashboard.html', '/detalhes/turmas.html', '/detalhes/alunos.html']);
+        NavegacaoVoltar.setStack([
+            '/html/dashboard.html',
+            '/detalhes/turmas.html',
+            '/detalhes/alunos.html',
+        ]);
 
         expect(NavegacaoVoltar.obterUrlVoltar()).toBe('/detalhes/turmas.html');
         const destino = NavegacaoVoltar.voltar();
@@ -89,7 +93,7 @@ describe('js/botao-voltar.js - Navegação Inteligente e Histórico', () => {
         window.location = {
             pathname: '/detalhes/autorizacoes-pais.html',
             search: '',
-            href: ''
+            href: '',
         };
 
         NavegacaoVoltar.setStack(['/html/direcao/index.html', '/detalhes/autorizacoes-pais.html']);
