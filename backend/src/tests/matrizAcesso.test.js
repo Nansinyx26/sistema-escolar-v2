@@ -408,7 +408,6 @@ describe('guarda-acesso — o que o usuário vê', () => {
         );
 
         const fonte = fs.readFileSync(ARQUIVO_GUARD, 'utf8');
-        // biome-ignore lint/security/noGlobalEval: é assim que o navegador carrega o arquivo.
         new Function(fonte).call(window);
 
         return {

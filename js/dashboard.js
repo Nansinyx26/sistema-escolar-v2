@@ -398,7 +398,9 @@ async function carregarResumoDiretor() {
 }
 
 function atualizarVisibilidadeSidebar(perfil) {
-    const perfilNorm = String(perfil || '').trim().toLowerCase();
+    const perfilNorm = String(perfil || '')
+        .trim()
+        .toLowerCase();
     const directorItems = document.querySelectorAll('.director-only');
     const teacherItems = document.querySelectorAll('.teacher-only');
     const sharedItems = document.querySelectorAll('.director-teacher-shared');
