@@ -24,6 +24,7 @@
     <link rel="stylesheet" href="../../css/dashboard.css" />
     <link rel="stylesheet" href="../../css/responsive-global.css?v=1.2" />
     <link rel="stylesheet" href="../../css/glass-premium.css" />
+    <link rel="stylesheet" href="../../css/botao-voltar.css" />
     <link rel="stylesheet" href="../../css/bi-pedagogico.css?v=2.0" />
     <link rel="stylesheet" href="../../css/dashboard-premium.css" />
     <link rel="stylesheet" href="../../css/voice-orb.css?v=2.0" />
@@ -96,7 +97,7 @@
                         </a>
                     </li>
                     <li>
-                        <a href="../dashboard.html" class="nav-item" id="bi-btn-back-dashboard">
+                        <a href="../dashboard.html" class="nav-item" id="bi-btn-back-dashboard" data-voltar>
                             <i class="bi bi-arrow-left-circle"></i> Voltar ao Painel
                         </a>
                     </li>
@@ -158,6 +159,10 @@
 
         <main class="bi-content">
             <header class="header-flex-container">
+                <button type="button" class="btn-voltar-global" aria-label="Voltar para a página anterior">
+                    <i class="bi bi-arrow-left"></i>
+                    <span>Voltar</span>
+                </button>
                 <div class="header-title-wrapper">
                     <h1>Inteligência Pedagógica</h1>
                     <p>Visão global de desempenho e tendências da instituição.</p>
@@ -268,6 +273,7 @@
     <script src="../../js/libs/sweetalert2.min.js"></script>
 
     <!-- App Logic -->
+    <script defer src="../../js/botao-voltar.js"></script>
     <script src="../../js/api-config.js"></script>
     <script src="../../js/auth.js"></script>
     <script src="../../js/utils.js"></script>

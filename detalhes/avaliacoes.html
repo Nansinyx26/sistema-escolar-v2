@@ -31,6 +31,7 @@
     <link rel="stylesheet" href="../css/variables.css">
     <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../../css/components.css">
+    <link rel="stylesheet" href="../../css/botao-voltar.css">
     <link rel="stylesheet" href="../../detalhes/detalhes.css">
     <link rel="stylesheet" href="../../detalhes/avaliacoes.css">
     <link rel="stylesheet" href="../../css/watermark.css">
@@ -80,15 +81,12 @@
         <!-- Navbar -->
         <nav class="navbar">
             <div class="navbar-content">
-                <div class="navbar-brand">
+                <div class="navbar-brand" style="display: flex; align-items: center; gap: 1rem;">
+                    <a href="javascript:void(0)" class="btn-voltar-global" id="btnVoltarNav" aria-label="Voltar"><i class="bi bi-arrow-left"></i> Voltar</a>
                     <span class="logo"><i class="bi bi-star-fill" style="color: #00dc82;"></i></span>
                     <span>Sistema Escolar</span>
                 </div>
                 <div class="navbar-nav">
-                    <!-- Botão Voltar Padronizado -->
-                    <a href="javascript:void(0)" class="btn btn-ghost" data-voltar id="btnVoltarTopo">
-                        <i class="bi bi-arrow-left"></i> Voltar
-                    </a>
                 </div>
             </div>
         </nav>
@@ -445,7 +443,7 @@
     <script defer src="../../js/database.js"></script>
     <script defer src="../../js/auth.js"></script>
     <script defer src="../../js/utils.js"></script>
-    <script defer src="../../js/voltar.js"></script>
+    <script defer src="../../js/botao-voltar.js"></script>
     <script defer src="../../detalhes/avaliacoes.js"></script>
     <script defer src="../../js/watermark.js"></script>
     <script defer src="../../js/parallax.js"></script>

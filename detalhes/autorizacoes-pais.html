@@ -26,6 +26,7 @@
 
     <!-- CSS Base & Específico -->
     <link rel="stylesheet" href="../css/variables.css">
+    <link rel="stylesheet" href="../css/botao-voltar.css">
     <link rel="stylesheet" href="autorizacoes-pais.css">
     <link rel="stylesheet" href="../css/motion.css">
 </head>
@@ -108,9 +109,12 @@
         <div class="ap-main-wrapper">
             <!-- Header Superior -->
             <header class="ap-top-header">
-                <div class="ap-search-global">
-                    <i class="bi bi-search"></i>
-                    <input type="text" id="globalSearchInput" placeholder="Buscar no sistema...">
+                <div class="ap-header-left" style="display: flex; align-items: center; gap: 1.25rem;">
+                    <a href="javascript:void(0)" class="btn-voltar-global" id="btnVoltarNav" aria-label="Voltar"><i class="bi bi-arrow-left"></i> Voltar</a>
+                    <div class="ap-search-global">
+                        <i class="bi bi-search"></i>
+                        <input type="text" id="globalSearchInput" placeholder="Buscar no sistema...">
+                    </div>
                 </div>
 
                 <div class="ap-user-actions">
@@ -331,6 +335,7 @@
     </div>
 
     <!-- Script de Inicialização e Comunicação com MongoDB Atlas -->
+    <script defer src="../js/botao-voltar.js"></script>
     <script type="module" src="autorizacoes-pais.js"></script>
 </body>
 </html>

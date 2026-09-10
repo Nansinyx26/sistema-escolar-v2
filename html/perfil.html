@@ -24,6 +24,7 @@
     <link rel="stylesheet" href="../css/components-new.css">
     <link rel="stylesheet" href="../css/dashboard.css">
     <link rel="stylesheet" href="../css/cadastro.css">
+    <link rel="stylesheet" href="../css/botao-voltar.css">
 
     <!-- Bootstrap Icons -->
     <!-- Preload da fonte: sem ele o .woff2 só é descoberto depois do CSS. -->
@@ -78,7 +79,7 @@
         <header class="dashboard-header">
             <div class="header-content">
                 <div class="header-left">
-                    <button type="button" class="btn btn-secondary btn-sm" id="btn-voltar-dashboard">
+                    <button type="button" class="btn-voltar-global" id="btn-voltar-dashboard" aria-label="Voltar para a página anterior">
                         <i class="bi bi-arrow-left"></i>
                         <span>Voltar</span>
                     </button>
@@ -383,6 +384,7 @@
     <div id="toastContainer" class="toast-container"></div>
 
     <!-- Scripts -->
+    <script defer src="../js/botao-voltar.js"></script>
     <script src="../js/api-config.js"></script>
     <script defer src="../js/database.js?v=2"></script>
     <script defer src="../js/auth.js?v=2"></script>

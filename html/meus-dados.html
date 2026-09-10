@@ -13,6 +13,7 @@
     <!-- Preload da fonte: sem ele o .woff2 só é descoberto depois do CSS. -->
     <link rel="preload" href="../js/libs/fonts/bootstrap-icons.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="../js/libs/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../css/botao-voltar.css">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         :root {
@@ -166,9 +167,10 @@
 
 
 <header class="header">
-    <a href="dashboard.html" onclick="if(window.smartBack){window.smartBack('dashboard.html');return false;} return true;" class="header-back" id="btnVoltar">
-        <i class="bi bi-arrow-left"></i> Dashboard
-    </a>
+    <button type="button" class="btn-voltar-global header-back" id="btnVoltar" aria-label="Voltar para a página anterior">
+        <i class="bi bi-arrow-left"></i>
+        <span>Voltar</span>
+    </button>
     <span class="header-title">Portal de Privacidade</span>
     <span class="header-badge"><i class="bi bi-shield-check"></i> LGPD</span>
 </header>
@@ -322,6 +324,7 @@
 <!-- Toasts -->
 <div class="toast-container" id="toastContainer"></div>
 
+<script defer src="../js/botao-voltar.js"></script>
 <script src="../js/api-config.js" defer></script>
 <script src="../js/meus-dados.js"></script>
     <script src="../js/vendor.js"></script>

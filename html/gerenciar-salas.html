@@ -23,6 +23,7 @@
     <link rel="stylesheet" href="../css/base.css">
     <link rel="stylesheet" href="../css/components-new.css">
     <link rel="stylesheet" href="../css/dashboard.css">
+    <link rel="stylesheet" href="../css/botao-voltar.css">
     <link rel="stylesheet" href="../css/gerenciar-salas.css">
 
     <!-- Bootstrap Icons -->
@@ -78,7 +79,7 @@
         <header class="dashboard-header">
             <div class="header-content">
                 <div class="header-left">
-                    <button class="btn btn-secondary btn-sm" data-href="dashboard.html">
+                    <button type="button" class="btn-voltar-global" aria-label="Voltar para a página anterior">
                         <i class="bi bi-arrow-left"></i>
                         <span>Voltar</span>
                     </button>
@@ -196,6 +197,7 @@
     <div id="toastContainer" class="toast-container"></div>
 
     <!-- Scripts -->
+    <script defer src="../js/botao-voltar.js"></script>
     <script src="../js/api-config.js"></script>
     <script defer src="../js/database.js"></script>
     <script defer src="../js/auth.js"></script>
