@@ -469,6 +469,9 @@ try {
  * caso contrário redireciona para a URL de fallback ou página anterior armazenada.
  */
 window.smartBack = function (fallbackUrl = 'dashboard.html') {
+    if (typeof window.NavegacaoVoltar !== 'undefined' && typeof window.NavegacaoVoltar.voltar === 'function') {
+        return window.NavegacaoVoltar.voltar(fallbackUrl);
+    }
     const referrer = document.referrer;
     const host = window.location.host || window.location.hostname;
     let prevUrl = null;

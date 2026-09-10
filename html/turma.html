@@ -25,6 +25,7 @@
     <link rel="stylesheet" href="../css/variables.css">
     <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../css/components.css">
+    <link rel="stylesheet" href="../css/botao-voltar.css">
     <link rel="stylesheet" href="../css/turma.css">
     <link rel="stylesheet" href="../css/watermark.css">
 
@@ -101,8 +102,8 @@
                 <!-- Header da Turma -->
                 <div class="turma-header">
                     <div class="turma-info">
-                        <button class="btn btn-ghost" id="btnVoltar">
-                            <i class="bi bi-arrow-left"></i> Voltar
+                        <button class="btn-voltar-global" id="btnVoltar" aria-label="Voltar para a página anterior">
+                            <i class="bi bi-arrow-left"></i> <span>Voltar</span>
                         </button>
                         <div class="turma-icon" id="turmaIcone">...</div>
                         <div class="turma-details">
@@ -220,6 +221,7 @@
     <div id="toast-container" class="toast-container"></div>
 
     <!-- Scripts -->
+    <script defer src="../js/botao-voltar.js"></script>
     <script src="../js/api-config.js"></script>
     <script src="../js/csrf-helper.js"></script>
     <script src="../js/database.js"></script>

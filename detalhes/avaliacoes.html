@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR" data-theme="dark">
 
 <head>
@@ -30,6 +30,7 @@
     <link rel="stylesheet" href="../css/variables.css">
     <link rel="stylesheet" href="../css/main.css">
     <link rel="stylesheet" href="../../css/components.css">
+    <link rel="stylesheet" href="../../css/botao-voltar.css">
     <link rel="stylesheet" href="../../detalhes/detalhes.css">
     <link rel="stylesheet" href="../../css/watermark.css">
     <link rel="stylesheet" href="../../css/parallax-glass.css">
@@ -81,12 +82,12 @@
         <!-- Navbar -->
         <nav class="navbar">
             <div class="navbar-content">
-                <div class="navbar-brand">
+                <div class="navbar-brand" style="display: flex; align-items: center; gap: 1rem;">
+                    <a href="javascript:void(0)" class="btn-voltar-global" id="btnVoltarNav" aria-label="Voltar"><i class="bi bi-arrow-left"></i> Voltar</a>
                     <span class="logo"><i class="bi bi-mortarboard-fill"></i></span>
                     <span>Sistema Escolar</span>
                 </div>
                 <div class="navbar-nav">
-                    <a href="../html/selecionar.html" class="btn btn-ghost"><i class="bi bi-arrow-left"></i> Voltar</a>
                 </div>
             </div>
         </nav>
@@ -163,6 +164,7 @@
     </div>
 
     <!-- Scripts -->
+    <script defer src="../../js/botao-voltar.js"></script>
     <script defer src="../../js/database.js"></script>
     <script defer src="../../js/auth.js"></script>
     <script defer src="../../js/utils.js"></script>

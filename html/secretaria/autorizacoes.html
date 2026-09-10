@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="../../css/dashboard.css?v=2.1">
     <link rel="stylesheet" href="../../css/responsive-global.css?v=1.2">
     <link rel="stylesheet" href="../../css/dashboard-premium.css?v=1.0">
+    <link rel="stylesheet" href="../../css/botao-voltar.css">
     <link rel="preload" href="../../js/libs/fonts/bootstrap-icons.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="../../js/libs/bootstrap-icons.min.css">
     <link rel="stylesheet" href="../../css/tailwind-built.css">
@@ -153,9 +154,10 @@
     <div class="sec-page">
         <!-- Top Nav & Header -->
         <div style="margin-bottom: 1.25rem;">
-            <a href="painel.html" class="sec-btn sec-btn-ghost sec-btn-sm" style="margin-bottom: 0.75rem; text-decoration: none;">
-                <i class="bi bi-arrow-left"></i> Painel da Secretaria
-            </a>
+            <button type="button" class="btn-voltar-global" aria-label="Voltar para a página anterior" style="margin-bottom: 0.75rem;">
+                <i class="bi bi-arrow-left"></i>
+                <span>Voltar</span>
+            </button>
             <div class="sec-header">
                 <div>
                     <h1><i class="bi bi-shield-check" style="color: #10b981;"></i> Autorizações dos Alunos</h1>
@@ -340,6 +342,7 @@
 
     <div class="toast-area" id="areaToast" role="status" aria-live="polite" aria-atomic="false"></div>
 
+    <script defer src="../../js/botao-voltar.js"></script>
     <script src="../../js/api-config.js"></script>
     <script src="../../js/csrf-helper.js"></script>
     <script defer src="../../js/auth.js?v=3"></script>

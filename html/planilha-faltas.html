@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="../css/variables.css">
     <link rel="stylesheet" href="../css/base.css">
     <link rel="stylesheet" href="../css/components-new.css">
+    <link rel="stylesheet" href="../css/botao-voltar.css">
     <link rel="stylesheet" href="../css/dashboard.css">
     <link rel="stylesheet" href="../css/planilha-faltas.css?v=1.0">
 
@@ -71,7 +72,8 @@
     <div class="dashboard-page">
         <header class="dashboard-header">
             <div class="header-content">
-                <div class="header-left">
+                <div class="header-left" style="display: flex; align-items: center; gap: 1rem;">
+                    <a href="javascript:void(0)" class="btn-voltar-global" id="btnVoltarNav" aria-label="Voltar"><i class="bi bi-arrow-left"></i> Voltar</a>
                     <div class="header-logo">
                         <i class="bi bi-mortarboard-fill"></i>
                         <span>Sistema Escolar</span>
@@ -93,7 +95,7 @@
                         <button class="btn btn-outline" id="btnImprimir" type="button">
                             <i class="bi bi-printer"></i> Imprimir
                         </button>
-                        <button class="btn btn-outline" id="btnVoltar" type="button">
+                        <button class="btn-voltar-global" id="btnVoltar" type="button">
                             <i class="bi bi-arrow-left"></i> Voltar
                         </button>
                     </div>
@@ -208,6 +210,7 @@
 
     <div id="toastContainer" class="toast-container"></div>
 
+    <script defer src="../js/botao-voltar.js"></script>
     <script src="../js/api-config.js"></script>
     <script src="../js/escape-html.js"></script>
     <script defer src="../js/database.js"></script>

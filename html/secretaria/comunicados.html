@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="../../css/dashboard.css?v=2.1">
     <link rel="stylesheet" href="../../css/responsive-global.css?v=1.2">
     <link rel="stylesheet" href="../../css/dashboard-premium.css?v=1.0">
+    <link rel="stylesheet" href="../../css/botao-voltar.css">
     <!-- Preload da fonte: sem ele o .woff2 só é descoberto depois do CSS. -->
     <link rel="preload" href="../../js/libs/fonts/bootstrap-icons.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="../../js/libs/bootstrap-icons.min.css">
@@ -97,8 +98,11 @@
     <main class="dashboard-main">
         <div class="sec-page">
             <div class="sec-header">
+                <button type="button" class="btn-voltar-global" aria-label="Voltar para a página anterior">
+                    <i class="bi bi-arrow-left"></i>
+                    <span>Voltar</span>
+                </button>
                 <h1><i class="bi bi-megaphone" style="color:#10b981;"></i> Comunicados</h1>
-                <a href="painel.html" class="sec-btn sec-btn-outline"><i class="bi bi-arrow-left"></i> Voltar</a>
             </div>
 
             <!-- Novo Comunicado -->
@@ -133,7 +137,8 @@
     </main>
 </div>
 
-<script src="../../js/api-config.js"></script>
+    <script defer src="../../js/botao-voltar.js"></script>
+    <script src="../../js/api-config.js"></script>
     <script src="../../js/csrf-helper.js"></script>
 <script defer src="../../js/database.js?v=3"></script>
 <script defer src="../../js/auth.js?v=3"></script>

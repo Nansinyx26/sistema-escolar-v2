@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="../../css/dashboard.css?v=2.1">
     <link rel="stylesheet" href="../../css/responsive-global.css?v=1.2">
     <link rel="stylesheet" href="../../css/dashboard-premium.css?v=1.0">
+    <link rel="stylesheet" href="../../css/botao-voltar.css">
     <!-- Preload da fonte: sem ele o .woff2 só é descoberto depois do CSS. -->
     <link rel="preload" href="../../js/libs/fonts/bootstrap-icons.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="../../js/libs/bootstrap-icons.min.css">
@@ -173,6 +174,10 @@
         <div class="sec-page">
 
             <div class="sec-header">
+                <button type="button" class="btn-voltar-global" aria-label="Voltar para a página anterior">
+                    <i class="bi bi-arrow-left"></i>
+                    <span>Voltar</span>
+                </button>
                 <div>
                     <h1><i class="bi bi-people-fill" style="color:#10b981;"></i> <span id="tituloTurma">Alunos da turma</span></h1>
                     <div class="sec-sub" id="subtituloTurma"></div>
@@ -184,9 +189,6 @@
                     <button type="button" class="sec-btn sec-btn-outline" id="btnAbrirImportar">
                         <i class="bi bi-upload"></i> Importar lista
                     </button>
-                    <a href="painel.html" class="sec-btn sec-btn-ghost" style="text-decoration:none;">
-                        <i class="bi bi-arrow-left"></i> Voltar
-                    </a>
                 </div>
             </div>
 
@@ -424,7 +426,8 @@
 
 <div class="toast-area" id="areaToast" role="status" aria-live="polite" aria-atomic="false"></div>
 
-<script src="../../js/api-config.js"></script>
+    <script defer src="../../js/botao-voltar.js"></script>
+    <script src="../../js/api-config.js"></script>
 <script src="../../js/csrf-helper.js"></script>
 <script defer src="../../js/auth.js?v=3"></script>
 <script src="../../js/secretaria-turma-alunos.js?v=1.0" defer></script>
