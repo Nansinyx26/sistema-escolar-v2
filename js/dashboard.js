@@ -398,11 +398,14 @@ async function carregarResumoDiretor() {
 }
 
 function atualizarVisibilidadeSidebar(perfil) {
+    const perfilNorm = String(perfil || '')
+        .trim()
+        .toLowerCase();
     const directorItems = document.querySelectorAll('.director-only');
     const teacherItems = document.querySelectorAll('.teacher-only');
     const sharedItems = document.querySelectorAll('.director-teacher-shared');
-
     const secretariaItems = document.querySelectorAll('.secretaria-only');
+    const dirSecItems = document.querySelectorAll('.director-secretaria-shared');
 
     // `forEach` com corpo entre chaves, e não `(el) => (el.style... = 'none')`:
     // a forma curta DEVOLVE o valor atribuído, e o Biome reprova callback de
@@ -425,32 +428,31 @@ function atualizarVisibilidadeSidebar(perfil) {
         });
     };
 
-    if (perfil === 'diretor' || perfil === 'admin') {
+    if (perfilNorm === 'diretor' || perfilNorm === 'admin') {
         mostrar(directorItems, true);
         esconder(teacherItems);
         esconder(secretariaItems);
         mostrar(sharedItems, false);
-    } else if (perfil === 'secretaria') {
+        mostrar(dirSecItems, false);
+    } else if (perfilNorm === 'secretaria') {
         esconder(directorItems);
         esconder(teacherItems);
         mostrar(secretariaItems, true);
         mostrar(sharedItems, false);
-    } else if (perfil === 'professor') {
+        mostrar(dirSecItems, false);
+    } else if (perfilNorm === 'professor') {
         esconder(directorItems);
         esconder(secretariaItems);
+        esconder(dirSecItems);
         mostrar(teacherItems, false);
         mostrar(sharedItems, false);
     } else {
-        // Perfil não resolvido: FECHA. Antes não havia este ramo — a função
-        // simplesmente não mexia em nada e a barra ficava como o HTML a
-        // entregou. Hoje isso é inofensivo porque todo item restrito nasce com
-        // `display: none` inline, mas é uma garantia que mora no HTML, não
-        // aqui: basta alguém tirar o estilo inline de um item para a barra de
-        // outro setor aparecer para quem não tem perfil nenhum.
+        // Perfil não resolvido: FECHA.
         esconder(directorItems);
         esconder(teacherItems);
         esconder(secretariaItems);
         esconder(sharedItems);
+        esconder(dirSecItems);
     }
 }
 

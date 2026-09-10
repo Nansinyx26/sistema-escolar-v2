@@ -102,6 +102,12 @@
                     'codigos-secretos.js': ['admin', 'diretor', 'secretaria'],
                 },
             },
+            '/detalhes/autorizacoes-pais.html': {
+                perfis: ['admin', 'diretor', 'secretaria'],
+            },
+            '/detalhes/avaliacoes.html': {
+                perfis: ['admin', 'diretor', 'secretaria', 'professor'],
+            },
         },
         publicas: [
             '/',
