@@ -481,7 +481,7 @@ try {
         sessionStorage.setItem('prev_page_url', lastUrl);
     }
     sessionStorage.setItem('current_page_url', currentUrl);
-} catch (e) {
+} catch (_e) {
     // sessionStorage pode não estar disponível em contextos restritos
 }
 
@@ -502,7 +502,7 @@ window.smartBack = function (fallbackUrl = 'dashboard.html') {
 
     try {
         prevUrl = sessionStorage.getItem('prev_page_url');
-    } catch (e) {}
+    } catch (_e) {}
 
     const currentClean = window.location.href.split('?')[0].split('#')[0];
     const referrerClean = referrer ? referrer.split('?')[0].split('#')[0] : '';

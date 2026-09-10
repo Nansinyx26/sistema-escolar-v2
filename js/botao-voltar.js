@@ -48,7 +48,7 @@
                 if (!raw) return [];
                 var parsed = JSON.parse(raw);
                 return Array.isArray(parsed) ? parsed : [];
-            } catch (e) {
+            } catch (_e) {
                 return [];
             }
         }
@@ -61,7 +61,7 @@
             try {
                 if (typeof sessionStorage === 'undefined') return;
                 sessionStorage.setItem(STORAGE_STACK_KEY, JSON.stringify(stack));
-            } catch (e) {
+            } catch (_e) {
                 // Storage inacessível ou cota excedida
             }
         }
@@ -78,7 +78,7 @@
             if (typeof url !== 'string') {
                 try {
                     url = (url.pathname || '') + (url.search || '');
-                } catch (e) {
+                } catch (_e) {
                     url = '/';
                 }
             }
@@ -89,7 +89,7 @@
                 if (parser) {
                     return (parser.pathname || '/') + (parser.search || '');
                 }
-            } catch (e) {}
+            } catch (_e) {}
 
             var clean = url.split('#')[0];
             if (clean.includes('://')) {
@@ -152,7 +152,7 @@
                     var lRole = localStorage.getItem('user_role');
                     if (lRole) return String(lRole).toLowerCase();
                 }
-            } catch (e) {}
+            } catch (_e) {}
             return null;
         }
 
@@ -174,7 +174,7 @@
                         return lastDash;
                     }
                 }
-            } catch (e) {}
+            } catch (_e) {}
 
             // 2. Tentar pelo perfil do usuário
             var role = getUserRole();
@@ -199,7 +199,7 @@
                     if (typeof sessionStorage !== 'undefined') {
                         sessionStorage.setItem(STORAGE_LAST_DASHBOARD_KEY, current);
                     }
-                } catch (e) {}
+                } catch (_e) {}
                 setStack([current]);
                 return;
             }

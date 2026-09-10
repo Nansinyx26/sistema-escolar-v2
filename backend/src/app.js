@@ -595,6 +595,11 @@ observability.middleware.mountHealth(app);
 // O front não fala com o Sentry direto por causa da CSP; ver middleware.js.
 observability.middleware.mountFrontendCollector(app);
 
+// Redirecionamentos amigáveis de rotas de páginas
+app.get(['/avaliacoes', '/detalhes/avaliacoes'], (req, res) => {
+    res.redirect('/detalhes/avaliacoes.html');
+});
+
 // 404 global: rota desconhecida NÃO mascara mais como landing page.
 // API → JSON; navegação → página de erro amigável (dark theme) com
 // retorno seguro ao painel do perfil logado.

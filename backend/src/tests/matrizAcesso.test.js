@@ -90,6 +90,8 @@ const CAMINHOS = [
     '/direcao/horario-jaguari.html',
     '/html/pagina-que-nao-existe.html',
     '/detalhes/alunos.html',
+    '/detalhes/autorizacoes-pais.html',
+    '/detalhes/avaliacoes.html',
 ];
 
 describe('matriz de acesso — paridade entre servidor e navegador', () => {
@@ -406,7 +408,6 @@ describe('guarda-acesso — o que o usuário vê', () => {
         );
 
         const fonte = fs.readFileSync(ARQUIVO_GUARD, 'utf8');
-        // biome-ignore lint/security/noGlobalEval: é assim que o navegador carrega o arquivo.
         new Function(fonte).call(window);
 
         return {
