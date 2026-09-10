@@ -90,6 +90,8 @@ const CAMINHOS = [
     '/direcao/horario-jaguari.html',
     '/html/pagina-que-nao-existe.html',
     '/detalhes/alunos.html',
+    '/detalhes/autorizacoes-pais.html',
+    '/detalhes/avaliacoes.html',
 ];
 
 describe('matriz de acesso — paridade entre servidor e navegador', () => {

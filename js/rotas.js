@@ -50,6 +50,8 @@
         login: '/html/login.html',
         perfil: '/html/perfil.html',
         meusDados: '/html/meus-dados.html',
+        autorizacoesPais: '/detalhes/autorizacoes-pais.html',
+        avaliacoes: '/detalhes/avaliacoes.html',
         secretaria: {
             painel: '/html/secretaria/painel.html',
             relatorios: '/html/secretaria/relatorios.html',

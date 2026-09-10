@@ -269,6 +269,7 @@ router.use('/dashboard', require('./dashboard'));
 router.use('/tabela-geral', authJWT, filtrarPorEscola, require('./tabela-geral'));
 router.use('/grade-horaria', authJWT, filtrarPorEscola, require('./grade-horaria'));
 router.use('/avaliacoes', require('./avaliacoes'));
+router.use('/avaliacoes-escolares', authJWT, horizontalFilter, filtrarPorEscola, require('./avaliacoesEscolares'));
 router.use('/reviews', authJWT, require('./reviews'));
 router.use('/reactions', authJWT, require('./reactions'));
 router.use('/notifications/realtime', authJWT, require('./realtime-notifications'));
