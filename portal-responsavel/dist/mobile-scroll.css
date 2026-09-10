@@ -40,6 +40,15 @@ body {
     touch-action: pan-y pinch-zoom;
 }
 
+/* ANDROID (Chrome / MIUI Browser): sem isto, passar do topo dispara o
+   "puxar para atualizar". No meio de uma rolagem rápida ele engata sozinho,
+   a página congela e aparece o spinner — é o que mais parece travamento em
+   aparelhos Xiaomi. `contain` mata o pull-to-refresh e mantém a rolagem
+   normal (diferente de `none`, que também remove o efeito de fim de lista). */
+html {
+    overscroll-behavior-y: contain;
+}
+
 /* Rolagem suave só onde não há gesto de toque (mouse/trackpad). */
 @media (pointer: fine) {
     html {
@@ -274,6 +283,41 @@ html.scroll-locked body {
         -webkit-backdrop-filter: none !important;
     }
 
+    /* O seletor universal acima NÃO basta sozinho: parallax-glass.css
+       declara o blur com !important em seletores de CLASSE, e entre duas
+       declarações !important vence a de maior especificidade — .navbar
+       (0,1,0) ganha de * (0,0,0). Por isso os mesmos seletores precisam
+       ser repetidos aqui com a especificidade equivalente; como esta folha
+       carrega por último, o empate é decidido a favor dela.
+       (parallax-glass.css "reduzia" para blur(12–24px) no mobile, o que
+       num Redmi a DPR 3 ainda custa caro em cada quadro de rolagem.) */
+    .login-card,
+    .glass-card,
+    .glass-card-md,
+    .modal-content,
+    .toast,
+    .sidebar,
+    .app-sidebar,
+    .header,
+    .app-header,
+    .navbar,
+    .top-nav {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
+    /* Marca d'água NanDev: um cubo 3D em rotação com partículas orbitando,
+       varredura holográfica e linhas animadas — ~12 animações infinitas
+       rodando em TODA página, sem parar, inclusive durante a rolagem.
+       Em aparelhos Xiaomi de linha básica isso concorre direto com o
+       scroll. A marca continua visível, só deixa de animar.
+       (watermark.css só as desligava em prefers-reduced-motion.) */
+    .nandev-watermark *,
+    .nandev-watermark *::before,
+    .nandev-watermark *::after {
+        animation: none !important;
+    }
+
     /* Animações decorativas em loop: paradas. Elas repintam mesmo fora
        da tela e disputam GPU com o scroll. */
     .orb,
@@ -367,6 +411,51 @@ html.scroll-locked body {
     .cards-grid > *,
     .premium-kpis > * {
         min-width: 0;
+    }
+}
+
+/* =========================================================
+   7.6 ANDROID / XIAOMI (MIUI · HyperOS)
+   Aparelhos Xiaomi de linha média (Redmi Note, POCO) juntam
+   tela de 120Hz com GPU modesta (Adreno 610/Mali-G52): o
+   orçamento por quadro cai para ~8ms, então qualquer pintura
+   extra durante a rolagem vira engasgo visível.
+   ========================================================= */
+@media (max-width: 900px) {
+    /* Só transform e opacity são compostos na GPU. Animar largura, altura,
+       top/left ou box-shadow força recálculo de layout/pintura a cada
+       quadro — em 120Hz isso não fecha o orçamento. */
+    .card,
+    .dashboard-card,
+    .feed-item,
+    .sidebar-item,
+    .btn,
+    .modal-content,
+    .settings-drawer,
+    .sidebar {
+        transition-property: transform, opacity;
+    }
+
+    /* Sombras com raio grande são caras de rasterizar em telas de alta
+       densidade (Xiaomi costuma usar DPR 2.75–3): a área borrada cresce
+       com o quadrado do raio em pixels físicos. */
+    .modal-content,
+    .settings-drawer,
+    .sidebar,
+    #notif-panel {
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+    }
+
+    /* Barra de gestos do MIUI/HyperOS: sem isto, o rodapé da página e os
+       botões de ação de modais ficam embaixo da "pílula" de navegação. */
+    body {
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    .modal-footer,
+    .settings-drawer,
+    #notif-panel {
+        padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
     }
 }
 

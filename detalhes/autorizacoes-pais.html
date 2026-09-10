@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <!-- Trava de acesso por perfil antes de renderizar -->
+    <script src="/js/guarda-acesso.js?v=1.0"></script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Sistema Escolar - Autorizações dos Pais e Documentos Assinados">
+    <title>Autorizações dos Pais - Sistema Escolar</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="../../favicon/favicon.png">
+    <link rel="apple-touch-icon" href="../../favicon/favicon.png">
+
+    <!-- Google Fonts Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="../js/libs/bootstrap-icons.min.css">
+
+    <!-- Theme Controller (Dark/Black Mint e Light) -->
+    <script src="../js/theme.js"></script>
+
+    <!-- CSS Base & Específico -->
+    <link rel="stylesheet" href="../css/variables.css">
+    <link rel="stylesheet" href="autorizacoes-pais.css">
+    <link rel="stylesheet" href="../css/motion.css">
+</head>
+<body class="ap-body">
+    <div class="ap-app-layout">
+        <!-- Sidebar Esquerda -->
+        <aside class="ap-sidebar">
+            <div class="ap-sidebar-brand">
+                <div class="ap-brand-icon">
+                    <i class="bi bi-mortarboard-fill"></i>
+                </div>
+                <div class="ap-brand-text" id="sidebarBrandText">Black Mint</div>
+            </div>
+
+            <ul class="ap-sidebar-menu">
+                <li class="ap-menu-item">
+                    <a href="../html/dashboard.html">
+                        <i class="bi bi-house-door"></i>
+                        <span>Início</span>
+                    </a>
+                </li>
+                <li class="ap-menu-item">
+                    <a href="alunos.html">
+                        <i class="bi bi-people"></i>
+                        <span>Alunos</span>
+                    </a>
+                </li>
+                <li class="ap-menu-item">
+                    <a href="turmas.html">
+                        <i class="bi bi-collection"></i>
+                        <span>Turmas</span>
+                    </a>
+                </li>
+                <li class="ap-menu-item">
+                    <a href="../html/lista-professores.html">
+                        <i class="bi bi-person-badge"></i>
+                        <span>Professores</span>
+                    </a>
+                </li>
+                <li class="ap-menu-item">
+                    <a href="../html/direcao/direcao-notificacoes.html">
+                        <i class="bi bi-megaphone"></i>
+                        <span>Comunicados</span>
+                    </a>
+                </li>
+                <li class="ap-menu-item">
+                    <a href="../html/secretaria/documentos.html">
+                        <i class="bi bi-folder2-open"></i>
+                        <span>Documentos</span>
+                    </a>
+                </li>
+                <!-- Item Ativo no Menu -->
+                <li class="ap-menu-item active">
+                    <a href="autorizacoes-pais.html">
+                        <i class="bi bi-file-earmark-check"></i>
+                        <span>Autorizações dos Pais</span>
+                    </a>
+                </li>
+                <li class="ap-menu-item">
+                    <a href="../html/direcao/bi-pedagogico.html">
+                        <i class="bi bi-graph-up"></i>
+                        <span>Relatórios</span>
+                    </a>
+                </li>
+                <li class="ap-menu-item">
+                    <a href="../html/configuracoes.html">
+                        <i class="bi bi-gear"></i>
+                        <span>Configurações</span>
+                    </a>
+                </li>
+            </ul>
+
+            <div class="ap-sidebar-footer">
+                <i class="bi bi-mortarboard-fill"></i>
+                <span>Juntos por uma educação melhor!</span>
+            </div>
+        </aside>
+
+        <!-- Área Principal -->
+        <div class="ap-main-wrapper">
+            <!-- Header Superior -->
+            <header class="ap-top-header">
+                <div class="ap-search-global">
+                    <i class="bi bi-search"></i>
+                    <input type="text" id="globalSearchInput" placeholder="Buscar no sistema...">
+                </div>
+
+                <div class="ap-user-actions">
+                    <!-- Alternador de Tema: Branco / Black Mint -->
+                    <button type="button" class="ap-btn-theme-toggle" id="btnToggleTheme" title="Alternar entre Tema Branco e Black Mint">
+                        <i class="bi bi-moon-stars" id="themeToggleIcon"></i>
+                    </button>
+
+                    <!-- Notificações -->
+                    <div class="ap-notifications-bell" title="Notificações">
+                        <i class="bi bi-bell"></i>
+                        <span class="ap-notifications-badge">3</span>
+                    </div>
+
+                    <!-- Perfil do Usuário -->
+                    <div class="ap-user-profile" id="userProfileTrigger">
+                        <div class="ap-user-avatar" id="headerUserAvatar">MS</div>
+                        <div class="ap-user-meta">
+                            <span class="ap-user-name" id="headerUserName">Mariana Souza</span>
+                            <span class="ap-user-role" id="headerUserRole">Diretora</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Conteúdo da Página -->
+            <main class="ap-page-content">
+                <!-- Título e Descrição da Visão -->
+                <div class="ap-view-header">
+                    <div class="ap-header-icon-box">
+                        <i class="bi bi-file-earmark-text"></i>
+                    </div>
+                    <div class="ap-header-titles">
+                        <h1>Autorizações dos Pais</h1>
+                        <p>Visualize todas as autorizações e documentos enviados pelos responsáveis.</p>
+                    </div>
+                </div>
+
+                <!-- Barra de Filtros -->
+                <section class="ap-filter-bar" aria-label="Filtros de estudantes">
+                    <div class="ap-filter-search">
+                        <i class="bi bi-search"></i>
+                        <input type="text" id="filtroTexto" placeholder="Nome do aluno ou RA..." autocomplete="off">
+                    </div>
+
+                    <div class="ap-filter-select-group">
+                        <select id="filtroTurma" class="ap-filter-select" aria-label="Filtrar por Turma">
+                            <option value="">Turma: Todas</option>
+                        </select>
+
+                        <select id="filtroSerie" class="ap-filter-select" aria-label="Filtrar por Série">
+                            <option value="">Série: Todas</option>
+                            <option value="1º ano">1º ano</option>
+                            <option value="2º ano">2º ano</option>
+                            <option value="3º ano">3º ano</option>
+                            <option value="4º ano">4º ano</option>
+                            <option value="5º ano">5º ano</option>
+                        </select>
+
+                        <select id="filtroPeriodo" class="ap-filter-select" aria-label="Filtrar por Período">
+                            <option value="">Período: Todos</option>
+                            <option value="Manhã">Manhã</option>
+                            <option value="Tarde">Tarde</option>
+                            <option value="Integral">Integral</option>
+                        </select>
+
+                        <select id="filtroStatus" class="ap-filter-select" aria-label="Filtrar por Status">
+                            <option value="">Status: Todos</option>
+                            <option value="todas_aceitas">Todas aceitas</option>
+                            <option value="pendente">Com pendências</option>
+                            <option value="nao_aceita">Não aceitas</option>
+                        </select>
+
+                        <button type="button" class="ap-btn-clear-filters" id="btnLimparFiltros">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                            <span>Limpar filtros</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Layout Master-Detail (2 Colunas) -->
+                <div class="ap-master-detail-grid">
+                    <!-- Coluna Esquerda: Master List de Alunos -->
+                    <div class="ap-master-col">
+                        <div class="ap-master-header">
+                            <h2 class="ap-master-title" id="masterTitleCount">Alunos (0)</h2>
+                            <div class="ap-pagination-compact" id="masterPagination">
+                                <button type="button" class="ap-page-btn" id="btnPrevPage" disabled>&lt;</button>
+                                <span id="masterPageNumbers" style="display:flex;gap:4px;"></span>
+                                <button type="button" class="ap-page-btn" id="btnNextPage">&gt;</button>
+                            </div>
+                        </div>
+
+                        <!-- Lista com scroll de estudantes -->
+                        <div class="ap-students-list" id="studentsListContainer">
+                            <!-- Skeleton loader inicial -->
+                            <div class="ap-skeleton" style="height: 64px; margin-bottom: 8px;"></div>
+                            <div class="ap-skeleton" style="height: 64px; margin-bottom: 8px;"></div>
+                            <div class="ap-skeleton" style="height: 64px; margin-bottom: 8px;"></div>
+                            <div class="ap-skeleton" style="height: 64px; margin-bottom: 8px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Coluna Direita: Detalhes do Aluno Selecionado -->
+                    <div class="ap-detail-col">
+                        <!-- Card do Estudante Selecionado -->
+                        <div class="ap-student-detail-card" id="studentDetailCard">
+                            <div class="ap-detail-profile-left">
+                                <div class="ap-detail-avatar-large" id="detailAvatar">
+                                    <i class="bi bi-person-fill"></i>
+                                </div>
+                                <div class="ap-detail-profile-info">
+                                    <h2 id="detailStudentName">Carregando estudante...</h2>
+                                    <div class="ap-detail-profile-meta" id="detailStudentMeta">
+                                        RA: --- | Turma: --- | Série: --- | Período: ---
+                                    </div>
+                                    <div class="ap-detail-profile-resp" id="detailStudentResp">
+                                        Responsável: ---
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="detailStudentStatusBadge">
+                                <span class="ap-status-badge success">
+                                    <i class="bi bi-check-circle-fill"></i> Todas aceitas
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Abas de Navegação -->
+                        <div class="ap-tabs-nav" role="tablist">
+                            <button type="button" class="ap-tab-btn active" id="tabBtnAutorizacoes" role="tab" aria-selected="true">
+                                <i class="bi bi-file-earmark-check"></i>
+                                <span>Autorizações</span>
+                            </button>
+                            <button type="button" class="ap-tab-btn" id="tabBtnDocumentos" role="tab" aria-selected="false">
+                                <i class="bi bi-folder2-open"></i>
+                                <span>Documentos</span>
+                            </button>
+                        </div>
+
+                        <!-- Seção 1: Tabela de Autorizações -->
+                        <section class="ap-section-card" id="sectionAutorizacoes">
+                            <div class="ap-section-header">
+                                <h3>Autorizações enviadas pelo responsável</h3>
+                            </div>
+                            <div class="ap-table-container">
+                                <table class="ap-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Autorização</th>
+                                            <th>Descrição</th>
+                                            <th>Status</th>
+                                            <th>Data de resposta</th>
+                                            <th>Responsável</th>
+                                            <th>Observações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tableAutorizacoesBody">
+                                        <!-- Renderizado dinamicamente -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+
+                        <!-- Seção 2: Tabela de Documentos Assinados -->
+                        <section class="ap-section-card" id="sectionDocumentos">
+                            <div class="ap-section-header">
+                                <h3>Documentos enviados pelo responsável</h3>
+                            </div>
+                            <div class="ap-table-container">
+                                <table class="ap-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Nome do documento</th>
+                                            <th>Tipo</th>
+                                            <th>Data de envio</th>
+                                            <th style="text-align: right;">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tableDocumentosBody">
+                                        <!-- Renderizado dinamicamente -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="ap-table-footer" id="docsTableFooter">
+                                <div class="ap-pagination-compact" id="docsPagination">
+                                    <button type="button" class="ap-page-btn" id="btnDocsPrevPage" disabled>&lt;</button>
+                                    <span id="docsPageNumbers" style="display:flex;gap:4px;"></span>
+                                    <button type="button" class="ap-page-btn" id="btnDocsNextPage">&gt;</button>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modal de Preview Inline de Documentos -->
+    <div class="ap-modal-backdrop" id="modalPreviewDocumento">
+        <div class="ap-modal-box">
+            <div class="ap-modal-header">
+                <h3 id="modalPreviewTitle">
+                    <i class="bi bi-file-earmark-pdf"></i>
+                    <span>Pré-visualização do Documento</span>
+                </h3>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <a href="#" id="modalDownloadBtn" class="ap-btn-action download" target="_blank" download>
+                        <i class="bi bi-download"></i> Baixar Arquivo
+                    </a>
+                    <button type="button" class="ap-modal-close-btn" id="modalPreviewCloseBtn">&times;</button>
+                </div>
+            </div>
+            <div class="ap-modal-body" id="modalPreviewBody">
+                <!-- iFrame ou imagem inseridos via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Script de Inicialização e Comunicação com MongoDB Atlas -->
+    <script type="module" src="autorizacoes-pais.js"></script>
+</body>
+</html>

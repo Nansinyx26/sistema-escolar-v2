@@ -55,6 +55,7 @@ backend/coverage/
 *.patch
 *.diff
 %TEMP%/
+*.tsbuildinfo
 
 # ATENÇÃO — portal-responsavel/dist/ NÃO entra aqui.
 #
