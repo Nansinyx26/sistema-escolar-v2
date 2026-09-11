@@ -140,7 +140,7 @@ class RegistrationService {
                 ativo: true,
                 ultimoLogin: now,
                 lastLogin: now,
-                consentimentoAceiteEm: now,
+                // Sem consentimentoAceiteEm: criar a conta não é consentir (Issue #236).
             });
 
             // Vincular aluno ao responsável
@@ -303,7 +303,7 @@ class RegistrationService {
                 escolaId: escolaIdFinal || undefined,
                 ultimoLogin: now,
                 lastLogin: now,
-                consentimentoAceiteEm: now,
+                // Sem consentimentoAceiteEm: criar a conta não é consentir (Issue #236).
             });
 
             // Criar registro de professor

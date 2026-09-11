@@ -142,6 +142,22 @@ const UsuarioSchema = new mongoose.Schema(
         anonimizadoEm: { type: Date, default: null }, // Data da anonimização LGPD
         consentimentoAceiteEm: { type: Date }, // Quando aceitou a política de privacidade
         consentimentoVersao: { type: String }, // Versão da política aceita
+        // Carimbo de cadastro que a migração da Issue #236 tirou de
+        // `consentimentoAceiteEm`: o valor original, quando e por quê. É rastro
+        // de auditoria da correção, não dado de tela — `select: false` o deixa
+        // fora de toda query que não o peça pelo nome.
+        consentimentoInvalidado: {
+            type: new mongoose.Schema(
+                {
+                    consentimentoAceiteEm: Date,
+                    consentimentoVersao: String,
+                    invalidadoEm: Date,
+                    motivo: String,
+                },
+                { _id: false }
+            ),
+            select: false,
+        },
 
         // Onboarding e Perfil Completo
         profileCompleted: { type: Boolean, default: false },
