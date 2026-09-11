@@ -88,6 +88,7 @@
     <script src="../../js/scroll-lock.js?v=1.0"></script>
     <!-- Acessibilidade (LBI/eMAG) — ver docs/CONFORMIDADE-LEGAL.md -->
     <link rel="stylesheet" href="../../css/acessibilidade.css">
+    <link rel="stylesheet" href="/css/botao-voltar.css">
 </head>
 
 <body>
@@ -117,8 +118,9 @@
         <header class="dashboard-header">
             <div class="header-content">
                 <div class="header-left">
-                    <button class="btn btn-secondary btn-sm" onclick="window.location.href='../dashboard.html'">
-                        <i class="bi bi-arrow-left"></i> Voltar
+                    <button type="button" class="btn-voltar-global" data-fallback="/html/dashboard.html" aria-label="Voltar para a página anterior">
+                        <i class="bi bi-arrow-left"></i>
+                        <span>Voltar</span>
                     </button>
                     <div class="header-logo">
                         <i class="bi bi-people-fill"></i>
@@ -784,6 +786,7 @@
     <script defer src="../../js/observability.js"></script>
     <script defer src="../../js/motion.js"></script>
     <script defer src="../../js/acessibilidade.js"></script>
+    <script defer src="/js/botao-voltar.js"></script>
 </body>
 
 </html>

@@ -28,7 +28,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function setupEventListeners() {
-    document.getElementById('btnVoltar')?.addEventListener('click', () => window.location.href = '/html/direcao/index.html');
     document.getElementById('btnNovaNotificacao')?.addEventListener('click', () => {
         document.getElementById('cardPostar')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         setTimeout(() => document.getElementById('tituloNotif')?.focus(), 400);

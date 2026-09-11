@@ -136,6 +136,7 @@
     <script src="../js/scroll-lock.js?v=1.0"></script>
     <!-- Acessibilidade (LBI/eMAG) — ver docs/CONFORMIDADE-LEGAL.md -->
     <link rel="stylesheet" href="../css/acessibilidade.css">
+    <link rel="stylesheet" href="/css/botao-voltar.css">
 </head>
 <body>
     <!-- Splash Screen (PWA) -->
@@ -167,9 +168,10 @@
                 <h1 style="margin: 0; font-size: 1.5rem;">Logs de Auditoria</h1>
                 <p style="color: #94a3b8; font-size: 0.85rem; margin: 0.2rem 0 0 0;">Rastreamento avançado de ações administrativas</p>
             </div>
-            <a href="../html/direcao/index.html" class="audit-input" style="text-decoration: none; display: flex; align-items: center; gap: 0.5rem;">
-                <i class="bi bi-arrow-left"></i> Voltar
-            </a>
+            <button type="button" class="btn-voltar-global" data-fallback="/html/direcao/index.html" aria-label="Voltar para a página anterior">
+                <i class="bi bi-arrow-left"></i>
+                <span>Voltar</span>
+            </button>
         </header>
 
         <section class="audit-filters">
@@ -287,5 +289,6 @@
     <script defer src="../js/observability.js"></script>
     <script defer src="../js/motion.js"></script>
     <script defer src="../js/acessibilidade.js"></script>
+    <script defer src="/js/botao-voltar.js"></script>
 </body>
 </html>

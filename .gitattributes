@@ -19,8 +19,11 @@
 #
 # `text=auto` deixa o Git decidir o que é texto; `eol=lf` fixa a quebra do que
 # ele classificou assim. Arquivo com byte NUL continua sendo tratado como
-# binário e não é tocado — é o caso de `portal-responsavel/tsconfig-eval.json`
-# (UTF-16LE) e `detalhes/detalhes.css`.
+# binário e não é tocado — o que é o comportamento seguro, mas esconde o arquivo
+# do lint e do diff. Se `git ls-files --eol` mostrar `-text` num `.json`, `.css`
+# ou `.html` escrito à mão, o problema é o arquivo, não esta regra: foi o caso de
+# `portal-responsavel/tsconfig-eval.json` (UTF-16LE, gravado pelo PowerShell) e de
+# `detalhes/detalhes.css` (um resto de quebra de linha UTF-16), corrigidos na #245.
 * text=auto eol=lf
 
 # Binários declarados explicitamente. A detecção automática já acerta em todos
