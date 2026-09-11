@@ -23,6 +23,9 @@ const state = {
     abaAtiva: 'autorizacoes',
 };
 
+// Regras de exibição (detalhes/autorizacoes-pais-dados.js), carregado antes deste módulo.
+const D = window.AutorizacoesPaisDados;
+
 // ==========================================================================
 // 1. INICIALIZAÇÃO E CONTROLE DE ACESSO
 // ==========================================================================
@@ -67,7 +70,7 @@ function verificarAcesso() {
                     .slice(0, 2)
                     .join('')
                     .toUpperCase();
-                elAvatar.textContent = initials || 'MS';
+                elAvatar.textContent = initials || '—';
             }
         }
     } catch (e) {
@@ -149,157 +152,128 @@ async function carregarTurmas() {
     }
 }
 
+/**
+ * Lista de alunos com o resumo REAL das autorizações (Issue #270).
+ *
+ * O resumo vem de `/api/secretaria/autorizacoes`, que cruza a coleção
+ * Autorizacao com o cadastro do aluno e devolve resposta ausente como
+ * pendente. `/api/alunos` só complementa série, período e foto; se falhar,
+ * a tela segue sem esses campos, mostrando "—". Nada aqui é inventado.
+ */
 async function carregarAlunosAtlas() {
     const listContainer = document.getElementById('studentsListContainer');
     try {
-        const res = await fetch('/api/alunos', { credentials: 'include' });
+        const res = await fetch('/api/secretaria/autorizacoes', { credentials: 'include' });
         if (!res.ok) {
             throw new Error(`Erro na API (${res.status})`);
         }
         const json = await res.json();
-        const alunosRaw = json.data || (Array.isArray(json) ? json : []);
+        const resumos = Array.isArray(json.alunos) ? json.alunos : [];
+        const cadastro = await carregarCadastroAlunos();
 
-        // Normalizar dados dos alunos para a interface
-        state.alunos = alunosRaw.map((a, idx) => {
-            const id = a._id || a.id || String(idx + 1);
-            const nomeCompleto = `${a.nome || ''} ${a.sobrenome || ''}`.trim() || 'Estudante Sem Nome';
-            const ra = a.matricula || a.ra || a.codigo || `20240${String(idx + 1).padStart(2, '0')}`;
-            const turmaNome = a.turma || a.turmaId || a.sala || '5ºA';
+        state.alunos = resumos.map((r) => montarAluno(r, cadastro.get(String(r.id)) || {}));
 
-            // Derivar Série e Período se não constarem explicitamente
-            let serie = a.serie || a.nivel || '5º ano';
-            if (!a.serie && turmaNome) {
-                const match = turmaNome.match(/(\d+)/);
-                if (match) serie = `${match[1]}º ano`;
-            }
-
-            let periodo = a.periodo || a.turno || (idx % 2 === 0 ? 'Manhã' : 'Tarde');
-            if (turmaNome.toLowerCase().includes('manh')) periodo = 'Manhã';
-            if (turmaNome.toLowerCase().includes('tard')) periodo = 'Tarde';
-
-            // Informações do Responsável
-            let respNome = a.responsavel || (a.responsaveis && a.responsaveis[0]?.nome) || 'Mariana Souza Silva';
-            let respParentesco = (a.responsaveis && a.responsaveis[0]?.tipo) || 'Mãe';
-            if (respParentesco && !respNome.includes('(')) {
-                respNome = `${respNome} (${respParentesco})`;
-            }
-
-            // Mapear status das autorizações
-            const autorizacoes = mapearAutorizacoesAluno(a, respNome);
-
-            // Calcular status consolidado
-            const naoAceitasCount = autorizacoes.filter((item) => item.status === 'nao_aceita').length;
-            let statusGeral = 'todas_aceitas';
-            let statusTexto = 'Todas aceitas';
-            let statusBadgeTipo = 'success';
-
-            if (naoAceitasCount === 1) {
-                statusGeral = 'pendente';
-                statusTexto = '1 não aceita';
-                statusBadgeTipo = 'warning';
-            } else if (naoAceitasCount >= 2) {
-                statusGeral = 'nao_aceita';
-                statusTexto = `${naoAceitasCount} não aceitas`;
-                statusBadgeTipo = 'danger';
-            }
-
-            return {
-                id,
-                nome: nomeCompleto,
-                ra,
-                turma: turmaNome,
-                serie,
-                periodo,
-                responsavel: respNome,
-                foto: a.foto || a.fotoUrl || null,
-                statusGeral,
-                statusTexto,
-                statusBadgeTipo,
-                autorizacoes,
-            };
-        });
-
-        // Aplicar filtros iniciais
         aplicarFiltros();
 
-        // Selecionar o primeiro aluno automaticamente se houver
         if (state.alunosFiltrados.length > 0) {
             selecionarAluno(state.alunosFiltrados[0].id);
         }
     } catch (err) {
-        console.error('Erro ao carregar alunos do Atlas:', err);
+        console.error('Erro ao carregar as autorizações dos alunos:', err);
         if (listContainer) {
             listContainer.innerHTML = `
                 <div class="ap-empty-state">
                     <i class="bi bi-exclamation-triangle"></i>
-                    <p>Não foi possível carregar os alunos do banco de dados.</p>
-                    <button class="ap-btn-action preview" onclick="window.location.reload()">Tentar novamente</button>
+                    <p>Não foi possível carregar as autorizações dos alunos.</p>
+                    <button type="button" class="ap-btn-action preview" id="btnTentarNovamente">Tentar novamente</button>
                 </div>
             `;
+            document
+                .getElementById('btnTentarNovamente')
+                ?.addEventListener('click', () => window.location.reload());
         }
     }
 }
 
-/**
- * Mapeia as 5 categorias de autorizações conforme o mockup
- */
-function mapearAutorizacoesAluno(aluno, responsavelFormatado) {
-    const aut = aluno.autorizacoesEscolares || {};
-    const respLimpo = responsavelFormatado.replace(/\s*\(.*?\)/, '');
+/** Série, período e foto do cadastro, por id. Falha aqui não derruba a tela. */
+async function carregarCadastroAlunos() {
+    const mapa = new Map();
+    try {
+        const res = await fetch('/api/alunos', { credentials: 'include' });
+        if (!res.ok) return mapa;
+        const json = await res.json();
+        const lista = json.data || (Array.isArray(json) ? json : []);
+        lista.forEach((a) => {
+            if (a._id) mapa.set(String(a._id), a);
+            if (a.id) mapa.set(String(a.id), a);
+        });
+    } catch (err) {
+        console.warn('Cadastro complementar dos alunos indisponível:', err);
+    }
+    return mapa;
+}
 
-    return [
-        {
-            titulo: 'Uso de imagem',
-            descricao: 'Autorização para uso de imagem do aluno em materiais institucionais.',
-            status: aut.lgpdImagem === false ? 'nao_aceita' : 'aceita',
-            statusLabel: aut.lgpdImagem === false ? 'Não aceita' : 'Aceita',
-            statusTipo: aut.lgpdImagem === false ? 'danger' : 'success',
-            dataResposta: '12/05/2025',
-            responsavel: respLimpo,
-            observacoes: aut.lgpdImagem === false ? 'Não autoriza redes sociais.' : '-',
-        },
-        {
-            titulo: 'Saída da escola',
-            descricao: 'Autoriza a saída do aluno em atividades externas.',
-            status: aut.atividadesExtraclasse === false ? 'nao_aceita' : 'aceita',
-            statusLabel: aut.atividadesExtraclasse === false ? 'Não aceita' : 'Aceita',
-            statusTipo: aut.atividadesExtraclasse === false ? 'danger' : 'success',
-            dataResposta: '10/05/2025',
-            responsavel: respLimpo,
-            observacoes: 'Sem observações',
-        },
-        {
-            titulo: 'Atividades esportivas',
-            descricao: 'Participação em atividades esportivas e recreativas.',
-            status: aut.atividadesFisicas === false ? 'nao_aceita' : 'aceita',
-            statusLabel: aut.atividadesFisicas === false ? 'Não aceita' : 'Aceita',
-            statusTipo: aut.atividadesFisicas === false ? 'danger' : 'success',
-            dataResposta: '08/05/2025',
-            responsavel: respLimpo,
-            observacoes: '-',
-        },
-        {
-            titulo: 'Alergias e saúde',
-            descricao: 'Informações sobre alergias e condições de saúde.',
-            // Se for aluno de teste ou tiver antitermico false, marca não aceita
-            status: aut.antitermico === false ? 'nao_aceita' : (aluno.nome?.includes('Sophia') ? 'nao_aceita' : 'aceita'),
-            statusLabel: (aut.antitermico === false || aluno.nome?.includes('Sophia')) ? 'Não aceita' : 'Aceita',
-            statusTipo: (aut.antitermico === false || aluno.nome?.includes('Sophia')) ? 'danger' : 'success',
-            dataResposta: '05/05/2025',
-            responsavel: respLimpo,
-            observacoes: (aut.antitermico === false || aluno.nome?.includes('Sophia')) ? 'Pai não autorizou o uso de medicação na escola.' : '-',
-        },
-        {
-            titulo: 'Uso de transporte',
-            descricao: 'Autorização para uso de transporte escolar.',
-            status: aut.conducaoEscolar === false ? 'nao_aceita' : 'aceita',
-            statusLabel: aut.conducaoEscolar === false ? 'Não aceita' : 'Aceita',
-            statusTipo: aut.conducaoEscolar === false ? 'danger' : 'success',
-            dataResposta: '03/05/2025',
-            responsavel: respLimpo,
-            observacoes: '-',
-        },
-    ];
+/**
+ * Aluno como a lista exibe. Só dado real: o que falta vira "—".
+ * Série sai do cadastro ou do número da turma ("5ºA" vira "5º ano"); período
+ * sai do cadastro ou do nome da turma. Nada é sorteado nem preenchido de exemplo.
+ */
+function montarAluno(resumo, cadastro) {
+    const turma = D.ouAusente(resumo.turma === 'Sem Turma' ? '' : resumo.turma);
+
+    let serie = cadastro.serie || '';
+    if (!serie && turma !== D.AUSENTE) {
+        const numero = turma.match(/(\d+)/);
+        if (numero) serie = `${numero[1]}º ano`;
+    }
+
+    let periodo = cadastro.periodo || cadastro.turno || '';
+    if (!periodo) {
+        const t = turma.toLowerCase();
+        if (t.includes('manh')) periodo = 'Manhã';
+        else if (t.includes('tard')) periodo = 'Tarde';
+        else if (t.includes('integr')) periodo = 'Integral';
+    }
+
+    const status = D.resumoDoAluno(resumo);
+
+    return {
+        id: String(resumo.id),
+        nome: D.ouAusente(resumo.nome),
+        ra: D.ouAusente(resumo.matricula),
+        turma,
+        serie: D.ouAusente(serie),
+        periodo: D.ouAusente(periodo),
+        responsavel: D.ouAusente(resumo.responsavel === 'Não informado' ? '' : resumo.responsavel),
+        foto: cadastro.foto || cadastro.fotoUrl || null,
+        statusGeral: status.grupo,
+        statusTexto: status.texto,
+        statusBadgeTipo: status.tipo,
+        statusIcone: status.icone,
+    };
+}
+
+/** Linha de espera enquanto a tabela carrega. */
+function linhaDeCarregamento(colunas) {
+    return `
+        <tr>
+            <td colspan="${colunas}" style="text-align: center; padding: 2rem;">
+                <div class="ap-skeleton" style="height: 24px; width: 60%; margin: 0 auto 8px;"></div>
+                <div class="ap-skeleton" style="height: 24px; width: 40%; margin: 0 auto;"></div>
+            </td>
+        </tr>
+    `;
+}
+
+/** Linha única com uma mensagem (tabela vazia ou erro). */
+function linhaDeMensagem(colunas, texto) {
+    return `
+        <tr>
+            <td colspan="${colunas}" style="text-align: center; color: var(--ap-text-muted); padding: 2rem;">
+                ${D.esc(texto)}
+            </td>
+        </tr>
+    `;
 }
 
 // ==========================================================================
@@ -510,25 +484,21 @@ function renderizarListaAlunos() {
         card.className = `ap-student-card ${isSelected ? 'selected' : ''}`;
         card.setAttribute('data-id', aluno.id);
 
-        let iconStatus = 'bi-check-circle-fill';
-        if (aluno.statusBadgeTipo === 'warning') iconStatus = 'bi-exclamation-circle-fill';
-        if (aluno.statusBadgeTipo === 'danger') iconStatus = 'bi-x-circle-fill';
-
         card.innerHTML = `
             <div class="ap-student-card-left">
                 <div class="ap-student-avatar">
-                    ${aluno.foto ? `<img src="${aluno.foto}" alt="${aluno.nome}">` : aluno.nome.charAt(0)}
+                    ${aluno.foto ? `<img src="${D.esc(aluno.foto)}" alt="${D.esc(aluno.nome)}">` : D.esc(aluno.nome.charAt(0))}
                 </div>
                 <div class="ap-student-info">
-                    <div class="ap-student-name" title="${aluno.nome}">${aluno.nome}</div>
+                    <div class="ap-student-name" title="${D.esc(aluno.nome)}">${D.esc(aluno.nome)}</div>
                     <div class="ap-student-meta">
-                        RA: ${aluno.ra} &nbsp;•&nbsp; Turma: ${aluno.turma} &nbsp;•&nbsp; ${aluno.serie} &nbsp;•&nbsp; ${aluno.periodo}
+                        RA: ${D.esc(aluno.ra)} &nbsp;•&nbsp; Turma: ${D.esc(aluno.turma)} &nbsp;•&nbsp; ${D.esc(aluno.serie)} &nbsp;•&nbsp; ${D.esc(aluno.periodo)}
                     </div>
                 </div>
             </div>
             <div class="ap-student-card-right">
                 <span class="ap-status-badge ${aluno.statusBadgeTipo}">
-                    <i class="bi ${iconStatus}"></i> ${aluno.statusTexto}
+                    <i class="bi ${aluno.statusIcone}"></i> ${D.esc(aluno.statusTexto)}
                 </span>
                 <i class="bi bi-chevron-right ap-chevron"></i>
             </div>
@@ -587,11 +557,7 @@ async function selecionarAluno(alunoId) {
 
     // Atualizar classe selecionada nos cards
     document.querySelectorAll('.ap-student-card').forEach((el) => {
-        if (el.getAttribute('data-id') === alunoId) {
-            el.classList.add('selected');
-        } else {
-            el.classList.remove('selected');
-        }
+        el.classList.toggle('selected', el.getAttribute('data-id') === alunoId);
     });
 
     // Atualizar Card de Perfil do Estudante
@@ -606,11 +572,11 @@ async function selecionarAluno(alunoId) {
         elMeta.textContent = `RA: ${aluno.ra}  |  Turma: ${aluno.turma}  |  Série: ${aluno.serie}  |  Período: ${aluno.periodo}`;
     }
     if (elResp) {
-        elResp.innerHTML = `Responsável: <strong>${aluno.responsavel}</strong>`;
+        elResp.innerHTML = `Responsável: <strong>${D.esc(aluno.responsavel)}</strong>`;
     }
     if (elAvatar) {
         if (aluno.foto) {
-            elAvatar.innerHTML = `<img src="${aluno.foto}" alt="${aluno.nome}">`;
+            elAvatar.innerHTML = `<img src="${D.esc(aluno.foto)}" alt="${D.esc(aluno.nome)}">`;
         } else {
             elAvatar.textContent = aluno.nome
                 .split(' ')
@@ -621,44 +587,74 @@ async function selecionarAluno(alunoId) {
         }
     }
     if (elBadge) {
-        let iconStatus = 'bi-check-circle-fill';
-        if (aluno.statusBadgeTipo === 'warning') iconStatus = 'bi-exclamation-circle-fill';
-        if (aluno.statusBadgeTipo === 'danger') iconStatus = 'bi-x-circle-fill';
-
         elBadge.innerHTML = `
             <span class="ap-status-badge ${aluno.statusBadgeTipo}">
-                <i class="bi ${iconStatus}"></i> ${aluno.statusTexto}
+                <i class="bi ${aluno.statusIcone}"></i> ${D.esc(aluno.statusTexto)}
             </span>
         `;
     }
 
-    // Renderizar Tabela de Autorizações
-    renderizarTabelaAutorizacoes(aluno.autorizacoes);
-
-    // Carregar Documentos Reais do MongoDB Atlas via GridFS
-    await carregarDocumentosAluno(aluno.id);
+    // As duas tabelas vêm do banco: autorizações respondidas e documentos enviados.
+    await Promise.all([carregarAutorizacoesAluno(aluno), carregarDocumentosAluno(aluno.id)]);
 }
 
-function renderizarTabelaAutorizacoes(autorizacoes) {
+/**
+ * As sete autorizações do aluno, como o responsável respondeu (Issue #270).
+ * Sem resposta é "Sem resposta", sem data — nunca "Aceita".
+ */
+async function carregarAutorizacoesAluno(aluno) {
     const tbody = document.getElementById('tableAutorizacoesBody');
     if (!tbody) return;
 
-    tbody.innerHTML = '';
-    autorizacoes.forEach((item) => {
-        const tr = document.createElement('tr');
-        const icon = item.status === 'aceita' ? 'bi-check-circle-fill' : 'bi-x-circle-fill';
+    tbody.innerHTML = linhaDeCarregamento(6);
 
+    try {
+        const res = await fetch(`/api/secretaria/autorizacoes/aluno/${encodeURIComponent(aluno.id)}`, {
+            credentials: 'include',
+        });
+        if (!res.ok) {
+            throw new Error(`Erro na API (${res.status})`);
+        }
+        const json = await res.json();
+
+        // O usuário pode ter trocado de aluno enquanto a resposta chegava.
+        if (state.alunoSelecionado?.id !== aluno.id) return;
+
+        const nomeResp = json.responsavel?.nome === 'Não informado' ? '' : json.responsavel?.nome;
+        const linhas = (Array.isArray(json.autorizacoes) ? json.autorizacoes : []).map((item) =>
+            D.linhaDaAutorizacao(item, nomeResp)
+        );
+        renderizarTabelaAutorizacoes(linhas);
+    } catch (err) {
+        console.error('Erro ao carregar as autorizações do aluno:', err);
+        if (state.alunoSelecionado?.id !== aluno.id) return;
+        tbody.innerHTML = linhaDeMensagem(6, 'Não foi possível carregar as autorizações deste aluno.');
+    }
+}
+
+function renderizarTabelaAutorizacoes(linhas) {
+    const tbody = document.getElementById('tableAutorizacoesBody');
+    if (!tbody) return;
+
+    if (linhas.length === 0) {
+        tbody.innerHTML = linhaDeMensagem(6, 'Nenhuma autorização registrada para este aluno.');
+        return;
+    }
+
+    tbody.innerHTML = '';
+    linhas.forEach((item) => {
+        const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td style="font-weight: 600; color: var(--ap-text-title);">${item.titulo}</td>
-            <td style="color: var(--ap-text-muted);">${item.descricao}</td>
+            <td style="font-weight: 600; color: var(--ap-text-title);">${D.esc(item.titulo)}</td>
+            <td style="color: var(--ap-text-muted);">${D.esc(item.descricao)}</td>
             <td>
                 <span class="ap-status-badge ${item.statusTipo}">
-                    <i class="bi ${icon}"></i> ${item.statusLabel}
+                    <i class="bi ${item.icone}"></i> ${D.esc(item.statusLabel)}
                 </span>
             </td>
-            <td>${item.dataResposta}</td>
-            <td>${item.responsavel}</td>
-            <td style="color: var(--ap-text-muted); font-size: 0.8rem;">${item.observacoes}</td>
+            <td>${D.esc(item.dataResposta)}</td>
+            <td>${D.esc(item.responsavel)}</td>
+            <td style="color: var(--ap-text-muted); font-size: 0.8rem;">${D.esc(item.observacoes)}</td>
         `;
         tbody.appendChild(tr);
     });
@@ -671,90 +667,29 @@ async function carregarDocumentosAluno(alunoId) {
     const tbody = document.getElementById('tableDocumentosBody');
     if (!tbody) return;
 
-    tbody.innerHTML = `
-        <tr>
-            <td colspan="4" style="text-align: center; padding: 2rem;">
-                <div class="ap-skeleton" style="height: 24px; width: 60%; margin: 0 auto 8px;"></div>
-                <div class="ap-skeleton" style="height: 24px; width: 40%; margin: 0 auto;"></div>
-            </td>
-        </tr>
-    `;
+    tbody.innerHTML = linhaDeCarregamento(4);
 
     try {
         const res = await fetch(`/api/documentos-responsaveis?alunoId=${encodeURIComponent(alunoId)}`, {
             credentials: 'include',
         });
-
-        let docs = [];
-        if (res.ok) {
-            const json = await res.json();
-            docs = json.data || (Array.isArray(json) ? json : []);
+        if (!res.ok) {
+            throw new Error(`Erro na API (${res.status})`);
         }
+        const json = await res.json();
 
-        // Se o estudante não tiver documentos gravados no Atlas ainda,
-        // compor a lista representativa baseada no aluno para manter fidelidade com o design
-        if (!docs || docs.length === 0) {
-            docs = [
-                {
-                    _id: `doc-1-${alunoId}`,
-                    nomeDocumento: 'Autorização de uso de imagem assinada',
-                    tipoDocumento: 'Autorização de Imagem',
-                    extensao: 'PDF',
-                    dataEnvio: '12/05/2025',
-                    urlPreview: `/api/documentos-responsaveis/mock-preview`,
-                    urlDownload: `/api/documentos-responsaveis/mock-download`,
-                },
-                {
-                    _id: `doc-2-${alunoId}`,
-                    nomeDocumento: 'Termo de responsabilidade',
-                    tipoDocumento: 'Termo de Responsabilidade',
-                    extensao: 'PDF',
-                    dataEnvio: '10/05/2025',
-                    urlPreview: `/api/documentos-responsaveis/mock-preview`,
-                    urlDownload: `/api/documentos-responsaveis/mock-download`,
-                },
-                {
-                    _id: `doc-3-${alunoId}`,
-                    nomeDocumento: 'Comprovante de residência',
-                    tipoDocumento: 'Comprovante',
-                    extensao: 'JPG',
-                    dataEnvio: '08/05/2025',
-                    urlPreview: `/api/documentos-responsaveis/mock-preview`,
-                    urlDownload: `/api/documentos-responsaveis/mock-download`,
-                },
-                {
-                    _id: `doc-4-${alunoId}`,
-                    nomeDocumento: 'Declaração de saúde',
-                    tipoDocumento: 'Declaração',
-                    extensao: 'PDF',
-                    dataEnvio: '05/05/2025',
-                    urlPreview: `/api/documentos-responsaveis/mock-preview`,
-                    urlDownload: `/api/documentos-responsaveis/mock-download`,
-                },
-                {
-                    _id: `doc-5-${alunoId}`,
-                    nomeDocumento: 'Autorização de transporte',
-                    tipoDocumento: 'Transporte',
-                    extensao: 'PNG',
-                    dataEnvio: '03/05/2025',
-                    urlPreview: `/api/documentos-responsaveis/mock-preview`,
-                    urlDownload: `/api/documentos-responsaveis/mock-download`,
-                },
-            ];
-        }
+        if (state.alunoSelecionado?.id !== alunoId) return;
 
-        state.documentosAluno = docs;
+        // Só o que o responsável enviou. Sem envio, a tabela fica vazia (Issue #270).
+        state.documentosAluno = D.normalizarDocumentos(json.data || (Array.isArray(json) ? json : []));
         state.docsPaginaAtual = 1;
         renderizarTabelaDocumentos();
     } catch (err) {
         console.error('Erro ao carregar documentos do aluno:', err);
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="4" style="text-align: center; color: var(--ap-text-muted); padding: 1.5rem;">
-                    Nenhum documento anexado ainda.
-                </td>
-            </tr>
-        `;
+        if (state.alunoSelecionado?.id !== alunoId) return;
+        state.documentosAluno = [];
+        tbody.innerHTML = linhaDeMensagem(4, 'Não foi possível carregar os documentos deste aluno.');
+        renderizarPaginacaoDocumentos(0, 0);
     }
 }
 
@@ -763,13 +698,7 @@ function renderizarTabelaDocumentos() {
     if (!tbody) return;
 
     if (state.documentosAluno.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="4" style="text-align: center; color: var(--ap-text-muted); padding: 2rem;">
-                    Nenhum documento assinado enviado pelo responsável.
-                </td>
-            </tr>
-        `;
+        tbody.innerHTML = linhaDeMensagem(4, 'Nenhum documento enviado pelo responsável.');
         renderizarPaginacaoDocumentos(0, 0);
         return;
     }
@@ -783,52 +712,32 @@ function renderizarTabelaDocumentos() {
     tbody.innerHTML = '';
     docsPagina.forEach((doc) => {
         const tr = document.createElement('tr');
-
-        // Determinar extensão/formato
-        let ext = (doc.extensao || (doc.arquivo?.mimeType?.split('/')[1]) || 'PDF').toUpperCase();
-        if (ext === 'JPEG') ext = 'JPG';
-
-        let extClass = 'pdf';
-        if (ext === 'JPG') extClass = 'jpg';
-        if (ext === 'PNG') extClass = 'png';
-
-        const dataFormatada = doc.dataEnvio
-            ? (typeof doc.dataEnvio === 'string' && doc.dataEnvio.includes('/')
-                ? doc.dataEnvio
-                : new Date(doc.dataEnvio).toLocaleDateString('pt-BR'))
-            : '12/05/2025';
-
-        const previewUrl = doc.urlPreview || `/api/documentos-responsaveis/${doc._id}/preview`;
-        const downloadUrl = doc.urlDownload || `/api/documentos-responsaveis/${doc._id}/download`;
+        const nomeArquivo = `${doc.nome}.${doc.ext.toLowerCase()}`;
 
         tr.innerHTML = `
             <td>
                 <div class="ap-doc-name-cell">
-                    <span class="ap-doc-type-icon ${extClass}">${ext}</span>
-                    <span>${doc.nomeDocumento || doc.tipoDocumento || 'Documento Assinado'}</span>
+                    <span class="ap-doc-type-icon ${doc.extClass}">${D.esc(doc.ext)}</span>
+                    <span>${D.esc(doc.nome)}</span>
                 </div>
             </td>
-            <td><span style="font-weight: 600;">${ext}</span></td>
-            <td>${dataFormatada}</td>
+            <td><span style="font-weight: 600;">${D.esc(doc.ext)}</span></td>
+            <td>${D.esc(doc.dataEnvio)}</td>
             <td style="text-align: right;">
                 <div class="ap-actions-group" style="justify-content: flex-end;">
-                    <button type="button" class="ap-btn-action preview" data-id="${doc._id}" data-url="${previewUrl}" data-title="${doc.nomeDocumento}">
+                    <button type="button" class="ap-btn-action preview">
                         <i class="bi bi-eye"></i> Visualizar
                     </button>
-                    <a href="${downloadUrl}" class="ap-btn-action download" target="_blank" download="${doc.nomeDocumento || 'documento'}.${ext.toLowerCase()}">
+                    <a href="${D.esc(doc.urlDownload)}" class="ap-btn-action download" target="_blank" download="${D.esc(nomeArquivo)}">
                         <i class="bi bi-download"></i> Baixar
                     </a>
                 </div>
             </td>
         `;
 
-        // Evento de preview
-        const btnPrev = tr.querySelector('.ap-btn-action.preview');
-        if (btnPrev) {
-            btnPrev.addEventListener('click', () => {
-                abrirPreviewDocumento(doc.nomeDocumento, previewUrl, downloadUrl, ext);
-            });
-        }
+        tr.querySelector('.ap-btn-action.preview')?.addEventListener('click', () => {
+            abrirPreviewDocumento(doc.nome, doc.urlPreview, doc.urlDownload, doc.ext);
+        });
 
         tbody.appendChild(tr);
     });
@@ -886,7 +795,7 @@ function abrirPreviewDocumento(titulo, previewUrl, downloadUrl, extensao) {
     if (!backdrop || !elBody) return;
 
     if (elTitle) {
-        elTitle.innerHTML = `<i class="bi bi-file-earmark-text"></i> ${titulo || 'Pré-visualização do Documento'}`;
+        elTitle.innerHTML = `<i class="bi bi-file-earmark-text"></i> ${D.esc(titulo || 'Pré-visualização do Documento')}`;
     }
 
     if (elDownload) {

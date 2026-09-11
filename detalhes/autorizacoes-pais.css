@@ -761,6 +761,13 @@ body.ap-body {
     border: 1px solid var(--ap-badge-danger-border);
 }
 
+/* "Sem resposta": o responsável ainda não respondeu. Não é aceite nem recusa. */
+.ap-status-badge.neutral {
+    background-color: transparent;
+    color: var(--ap-text-muted);
+    border: 1px dashed var(--ap-border);
+}
+
 /* --------------------------------------------------------------------------
    COLUNA DIREITA: DETALHE DO ESTUDANTE (DETAIL)
    -------------------------------------------------------------------------- */
