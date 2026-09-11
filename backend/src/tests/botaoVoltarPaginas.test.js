@@ -85,4 +85,13 @@ describe('botão Voltar padronizado nas páginas internas (Issue #259)', () => {
         const js = fs.readFileSync(path.join(RAIZ, 'direcao/direcao-notificacoes.js'), 'utf8');
         expect(js).not.toMatch(/getElementById\('btnVoltar'\)/);
     });
+
+    // Issue #283: em produção a área admin é servida sob ADMIN_PATH
+    // (`/html/<segredo>/...`) e `/html/admin/...` responde 404 de propósito
+    // (backend/src/middleware/protegerPaginas.js). Destino absoluto para dentro
+    // da área quebra o Voltar de quem abriu a página sem histórico.
+    it.each(paginas)('%s não usa destino absoluto para dentro de /html/admin/', (pagina) => {
+        const html = fs.readFileSync(path.join(RAIZ, pagina), 'utf8');
+        expect(html).not.toMatch(/data-fallback="\/html\/admin\//);
+    });
 });
