@@ -211,6 +211,12 @@ const UsuarioSchema = new mongoose.Schema(
             institucionalSecretaria: { type: Boolean, default: false },
             institucionalSistemas: { type: Boolean, default: false },
             institucionalPlataformas: { type: Boolean, default: false },
+            // As três autorizações da aba "Termos LGPD" do `EditarPerfil`, cada
+            // uma independente (Issue #280). A quarta caixa daquela aba é a
+            // ciência da política, que já mora em `consentimentoAceiteEm`.
+            perfilDadosCadastrais: { type: Boolean, default: false },
+            perfilNotasDesempenho: { type: Boolean, default: false },
+            perfilComunicacoes: { type: Boolean, default: false },
         },
 
         // Identificação Única de Conta
