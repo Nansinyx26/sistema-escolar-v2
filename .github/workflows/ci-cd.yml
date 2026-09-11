@@ -299,6 +299,14 @@ jobs:
       - name: 🔐 Dependency Check (npm audit — raiz)
         run: npm audit --audit-level=high
 
+      # O portal é o que produção serve aos responsáveis: o `dompurify` e o
+      # `socket.io-client` vão dentro do bundle em `portal-responsavel/dist/`.
+      # Até a #279 nenhum gate olhava para ele, e ele tinha duas vulnerabilidades
+      # altas e uma XSS no `dompurify`.
+      - name: 🔐 Dependency Check (npm audit — portal)
+        working-directory: ./portal-responsavel
+        run: npm audit --audit-level=high
+
       # O resultado precisa aparecer no LOG, e não só num arquivo .sarif.
       # Antes, a única saída do Trivy era o arquivo enviado para a aba Security
       # — que neste repositório nunca chegou lá (ver o passo seguinte). Ou seja:
@@ -307,16 +315,11 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: "fs"
-          # Raiz E backend (#238): a partir de `.`, o Trivy desce no
-          # `backend/package-lock.json` também. Antes era só `./backend`, e
-          # nenhuma vulnerabilidade da raiz virava alerta.
-          #
-          # O portal fica fora por ora, e de propósito: ele tem vulnerabilidades
-          # altas próprias (ver #279), e incluí-lo aqui reprovaria todo PR do
-          # repositório a partir do merge. Quando a #279 fechar, apague esta
-          # linha — o portal é o que produção serve aos responsáveis.
+          # A partir de `.`, o Trivy cobre os três lockfiles: raiz, backend e
+          # portal. Até a #238 era só `./backend`; o portal entrou na #279,
+          # depois de as vulnerabilidades dele serem corrigidas — incluí-lo
+          # antes reprovaria todo PR do repositório.
           scan-ref: "."
-          skip-dirs: "portal-responsavel"
           format: "table"
           severity: "CRITICAL,HIGH"
           # Agora é gate. A triagem que faltava foi feita: `npm audit fix`
@@ -334,7 +337,6 @@ jobs:
           scan-type: "fs"
           # Mesmo alcance do passo de log acima — os dois precisam ver o mesmo.
           scan-ref: "."
-          skip-dirs: "portal-responsavel"
           format: "sarif"
           output: "trivy-results.sarif"
 
