@@ -172,6 +172,8 @@
 
     <div id="toastContainer" class="toast-container"></div>
     <script src="../../js/api-config.js"></script>
+    <!-- csrfHeaders(): sem o header X-CSRF-Token o backend devolve 403 na rotação. -->
+    <script src="../../js/csrf-helper.js"></script>
     <script defer src="../../js/auth.js"></script>
     <script defer src="../../js/utils.js"></script>
     <script>
@@ -260,7 +262,8 @@
                 try {
                     const res = await fetch(`${window.API_BASE_URL}/escolas/${id}/codigo-secreto`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' }
+                        headers: window.csrfHeaders(true),
+                        credentials: 'include'
                     });
                     const json = await res.json();
                     if (json.success) {

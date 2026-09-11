@@ -305,6 +305,12 @@
 
     <div id="toastContainer" class="toast-container"></div>
     <script src="../../js/api-config.js"></script>
+    <!--
+      csrf-helper.js define window.csrfHeaders(). Sem ele, o backend
+      (csrfValidator) rejeita todo POST/PUT/DELETE desta tela com 403 e
+      nenhuma alteração de usuário chega ao banco.
+    -->
+    <script src="../../js/csrf-helper.js"></script>
     <script defer src="../../js/database.js"></script>
     <script defer src="../../js/auth.js"></script>
     <script defer src="../../js/utils.js"></script>
@@ -358,7 +364,9 @@
                     }
                     
                     const res = await fetch(`${window.API_BASE_URL}/security/rotate`, {
-                        method: 'POST'
+                        method: 'POST',
+                        headers: window.csrfHeaders(),
+                        credentials: 'include'
                     });
                     const json = await res.json();
                     if (json.success && json.data) {
@@ -420,9 +428,8 @@
 
                     const res = await fetch(`${window.API_BASE_URL}/usuarios`, {
                         method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json'
-                        },
+                        headers: window.csrfHeaders(true),
+                        credentials: 'include',
                         body: JSON.stringify(userData)
                     });
 
@@ -451,8 +458,10 @@
                 try {
                     let success = false;
                     if (source === 'MongoDB') {
-                        const res = await fetch(`${window.API_BASE_URL}/usuarios/${id}`, { 
-                            method: 'DELETE'
+                        const res = await fetch(`${window.API_BASE_URL}/usuarios/${id}`, {
+                            method: 'DELETE',
+                            headers: window.csrfHeaders(),
+                            credentials: 'include'
                         });
                         const json = await res.json();
                         if (json.success) success = true;
@@ -622,7 +631,7 @@
                 try {
                     const res = await fetch(`${window.API_BASE_URL}/admin/2fa/backup-codes/${encodeURIComponent(backupUsuarioId)}`, {
                         method: 'POST',
-                        headers: window.csrfHeaders ? window.csrfHeaders(true) : { 'Content-Type': 'application/json' },
+                        headers: window.csrfHeaders(true),
                         credentials: 'include'
                     });
                     const d = await res.json();
@@ -672,9 +681,8 @@
                 try {
                     const response = await fetch(`${window.API_BASE_URL}/usuarios/${id}/anonymize`, {
                         method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
+                        headers: window.csrfHeaders(true),
+                        credentials: 'include'
                     });
 
                     const json = await response.json();
@@ -696,9 +704,8 @@
                 try {
                     const res = await fetch(`${window.API_BASE_URL}/usuarios`, {
                         method: 'POST',
-                        headers: { 
-                            'Content-Type': 'application/json'
-                        },
+                        headers: window.csrfHeaders(true),
+                        credentials: 'include',
                         body: JSON.stringify({ ...user, id: undefined, _id: undefined, source: undefined, isDuplicate: undefined, ativo: true })
                     });
 

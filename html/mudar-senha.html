@@ -252,6 +252,11 @@
     <div id="toastContainer" class="toast-container"></div>
 
     <script src="../js/api-config.js"></script>
+    <!--
+      csrfHeaders(): /api/auth/update-password-force NÃO está na lista de rotas
+      isentas do csrfValidator, então sem o header a troca de senha morria em 403.
+    -->
+    <script src="../js/csrf-helper.js"></script>
     <script src="../js/database.js"></script>
     <script src="../js/utils.js"></script>
     <script src="../js/auth.js"></script>
@@ -318,9 +323,8 @@
                 try {
                     const res = await fetch(`${window.API_BASE_URL}/auth/update-password-force`, {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
+                        headers: window.csrfHeaders(true),
+                        credentials: 'include',
                         body: JSON.stringify({ password: passInput.value })
                     });
 
