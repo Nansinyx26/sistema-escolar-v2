@@ -291,6 +291,14 @@ jobs:
         working-directory: ./backend
         run: npm audit --audit-level=high
 
+      # A raiz tem `dependencies: {}` — tudo aqui é de desenvolvimento e nada vai
+      # para produção. Mas é o que roda no CI e na máquina de quem desenvolve, e
+      # até a #238 nenhum gate olhava para ela: o `fast-uri` (#237) passou com 4
+      # CVEs altas, e o `tmp` do Stryker 8 ficou com uma alta invisível. O
+      # `npm audit` lê só o lockfile, então não precisa de `npm ci` antes.
+      - name: 🔐 Dependency Check (npm audit — raiz)
+        run: npm audit --audit-level=high
+
       # O resultado precisa aparecer no LOG, e não só num arquivo .sarif.
       # Antes, a única saída do Trivy era o arquivo enviado para a aba Security
       # — que neste repositório nunca chegou lá (ver o passo seguinte). Ou seja:
@@ -299,7 +307,16 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: "fs"
-          scan-ref: "./backend"
+          # Raiz E backend (#238): a partir de `.`, o Trivy desce no
+          # `backend/package-lock.json` também. Antes era só `./backend`, e
+          # nenhuma vulnerabilidade da raiz virava alerta.
+          #
+          # O portal fica fora por ora, e de propósito: ele tem vulnerabilidades
+          # altas próprias (ver #279), e incluí-lo aqui reprovaria todo PR do
+          # repositório a partir do merge. Quando a #279 fechar, apague esta
+          # linha — o portal é o que produção serve aos responsáveis.
+          scan-ref: "."
+          skip-dirs: "portal-responsavel"
           format: "table"
           severity: "CRITICAL,HIGH"
           # Agora é gate. A triagem que faltava foi feita: `npm audit fix`
@@ -315,7 +332,9 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: "fs"
-          scan-ref: "./backend"
+          # Mesmo alcance do passo de log acima — os dois precisam ver o mesmo.
+          scan-ref: "."
+          skip-dirs: "portal-responsavel"
           format: "sarif"
           output: "trivy-results.sarif"
 
