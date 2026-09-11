@@ -66,6 +66,12 @@ const pedirTurmas = (cookies) =>
     request(app).get('/api/secretaria/relatorios/alunos-por-turma').set('Cookie', cookies);
 
 beforeAll(async () => { await conectarBanco(); });
+// Limpa ANTES também, e não só depois (Issue #286). Outra suíte pode terminar
+// com dado no banco — o `secretariaTurmaAlunos` limpa só no `beforeEach`, então
+// o último teste dele deixa as turmas 5A e 5B para trás. Com `--runInBand` as
+// suítes dividem o banco, e o Jest ordena os arquivos por duração: quando esta
+// rodava logo depois daquela, o primeiro teste daqui achava duas turmas a mais.
+beforeEach(async () => { await limparBanco(); invalidarCacheEscolas(); });
 afterEach(async () => { await limparBanco(); invalidarCacheEscolas(); });
 afterAll(async () => { await desconectarBanco(); });
 
