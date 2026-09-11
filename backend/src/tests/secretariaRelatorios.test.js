@@ -15,9 +15,7 @@
  */
 const request = require('supertest');
 const app = require('../app');
-const {
-    conectarBanco, limparBanco, desconectarBanco, criarUsuario,
-} = require('./helpers');
+const { conectarBanco, limparBanco, desconectarBanco, criarUsuario } = require('./helpers');
 const { assinarTokenSessao } = require('../utils/sessionToken');
 
 const Turma = require('../models/Turma');
@@ -44,14 +42,22 @@ async function sessaoSecretaria() {
  * por tenant passa a valer.
  */
 async function sessaoComEscola() {
-    const escola = await Escola.create({ nome: `Escola Rel ${Date.now()}`, tipo: 'EMEF', ativo: true });
+    const escola = await Escola.create({
+        nome: `Escola Rel ${Date.now()}`,
+        tipo: 'EMEF',
+        ativo: true,
+    });
     const escolaId = String(escola._id);
 
     const usuario = await criarUsuario({
-        email: `sec_esc_${Date.now()}@escola.test`, perfil: 'secretaria', escolaId,
+        email: `sec_esc_${Date.now()}@escola.test`,
+        perfil: 'secretaria',
+        escolaId,
     });
     await Secretaria.create({
-        idUsuario: String(usuario._id), nome: usuario.nome, email: usuario.email,
+        idUsuario: String(usuario._id),
+        nome: usuario.nome,
+        email: usuario.email,
         vinculos: [{ escolaId, cargo: 'secretaria' }],
     });
 
@@ -65,9 +71,25 @@ async function sessaoComEscola() {
 const pedirTurmas = (cookies) =>
     request(app).get('/api/secretaria/relatorios/alunos-por-turma').set('Cookie', cookies);
 
-beforeAll(async () => { await conectarBanco(); });
-afterEach(async () => { await limparBanco(); invalidarCacheEscolas(); });
-afterAll(async () => { await desconectarBanco(); });
+beforeAll(async () => {
+    await conectarBanco();
+});
+// Limpa ANTES também, e não só depois (Issue #286). Outra suíte pode terminar
+// com dado no banco — o `secretariaTurmaAlunos` limpa só no `beforeEach`, então
+// o último teste dele deixa as turmas 5A e 5B para trás. Com `--runInBand` as
+// suítes dividem o banco, e o Jest ordena os arquivos por duração: quando esta
+// rodava logo depois daquela, o primeiro teste daqui achava duas turmas a mais.
+beforeEach(async () => {
+    await limparBanco();
+    invalidarCacheEscolas();
+});
+afterEach(async () => {
+    await limparBanco();
+    invalidarCacheEscolas();
+});
+afterAll(async () => {
+    await desconectarBanco();
+});
 
 describe('Relatório de alunos por turma', () => {
     it('agrupa alunos vinculados pelo NOME da turma', async () => {
@@ -100,7 +122,13 @@ describe('Relatório de alunos por turma', () => {
         // chaves em memória o faria aparecer nas duas listas.
         const cookies = await sessaoSecretaria();
         await Turma.create({ _id: 't3', nome: '7C', escolaId: ESCOLA, ativo: true });
-        await Aluno.create({ nome: 'Diego', turma: '7C', turmaId: 't3', escolaId: ESCOLA, ativo: true });
+        await Aluno.create({
+            nome: 'Diego',
+            turma: '7C',
+            turmaId: 't3',
+            escolaId: ESCOLA,
+            ativo: true,
+        });
 
         const res = await pedirTurmas(cookies);
 
@@ -128,7 +156,12 @@ describe('Relatório de alunos por turma', () => {
         const { escolaId, cookies } = await sessaoComEscola();
         await Turma.create({ _id: 't5', nome: '9E', escolaId, ativo: true });
         await Aluno.create({ nome: 'Daqui', turma: '9E', escolaId, ativo: true });
-        await Aluno.create({ nome: 'DeOutra', turma: '9E', escolaId: 'outra-escola-id', ativo: true });
+        await Aluno.create({
+            nome: 'DeOutra',
+            turma: '9E',
+            escolaId: 'outra-escola-id',
+            ativo: true,
+        });
 
         const res = await pedirTurmas(cookies);
 
@@ -163,12 +196,16 @@ describe('Relatório de alunos por turma', () => {
 describe('Relatório de matrículas', () => {
     async function criarMatriculas(quantidade, status = 'cursando') {
         for (let i = 0; i < quantidade; i++) {
-            const aluno = await Aluno.create({ nome: `Aluno ${status} ${i}`, escolaId: ESCOLA, ativo: true });
+            const aluno = await Aluno.create({
+                nome: `Aluno ${status} ${i}`,
+                escolaId: ESCOLA,
+                ativo: true,
+            });
             await Matricula.create({
                 alunoId: String(aluno._id),
                 turmaId: 'turma-x',
                 escolaId: ESCOLA,
-                anoLetivo: 2000 + i,   // o índice único é (escolaId, alunoId, anoLetivo)
+                anoLetivo: 2000 + i, // o índice único é (escolaId, alunoId, anoLetivo)
                 status,
             });
         }
@@ -237,7 +274,10 @@ describe('Relatório de matrículas', () => {
 
 describe('Relatórios: autorização', () => {
     it('professor nao acessa os relatorios da secretaria', async () => {
-        const usuario = await criarUsuario({ email: `prof_rel_${Date.now()}@escola.test`, perfil: 'professor' });
+        const usuario = await criarUsuario({
+            email: `prof_rel_${Date.now()}@escola.test`,
+            perfil: 'professor',
+        });
         const cookies = [`escola_jwt=${assinarTokenSessao(usuario)}`];
 
         const res = await pedirTurmas(cookies);
