@@ -22,8 +22,9 @@
 # binário e não é tocado — o que é o comportamento seguro, mas esconde o arquivo
 # do lint e do diff. Se `git ls-files --eol` mostrar `-text` num `.json`, `.css`
 # ou `.html` escrito à mão, o problema é o arquivo, não esta regra: foi o caso de
-# `portal-responsavel/tsconfig-eval.json` (UTF-16LE, gravado pelo PowerShell) e de
+# um `tsconfig` do portal gravado em UTF-16LE pelo PowerShell e de
 # `detalhes/detalhes.css` (um resto de quebra de linha UTF-16), corrigidos na #245.
+# Ao gerar arquivo de texto no Windows PowerShell 5.1, passe `-Encoding utf8`.
 * text=auto eol=lf
 
 # Binários declarados explicitamente. A detecção automática já acerta em todos
