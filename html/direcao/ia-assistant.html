@@ -16,6 +16,7 @@
     <link rel="preload" href="../../js/libs/fonts/bootstrap-icons.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="../../js/libs/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="../../css/responsive-global.css?v=1.2" />
+    <link rel="stylesheet" href="../../css/botao-voltar.css" />
 
     <style>
       /* ═══════════════════════════════════════════════════════════════
@@ -837,7 +838,7 @@
       <div class="stage" id="stage">
         <!-- href/title são reescritos por perfil em pagina-ia-assistant.js:
              a página é compartilhada por diretor, professor e secretaria. -->
-        <a class="stage-btn back-btn" id="backBtn" href="/html/dashboard.html" title="Voltar ao painel" aria-label="Voltar ao painel">
+        <a class="stage-btn back-btn btn-voltar-global" id="backBtn" data-voltar href="/html/dashboard.html" title="Voltar ao painel" aria-label="Voltar ao painel">
           <i class="bi bi-arrow-left" aria-hidden="true"></i>
         </a>
 
@@ -952,6 +953,7 @@
     </div>
 
     <!-- Scripts base (clássicos: definem window.API_BASE_URL, db, auth, speak) -->
+    <script defer src="../../js/botao-voltar.js"></script>
     <script src="../../js/api-config.js"></script>
     <script src="../../js/database.js"></script>
     <script src="../../js/auth.js"></script>

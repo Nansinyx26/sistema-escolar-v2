@@ -15,7 +15,7 @@ function showToast(message, type = 'info', duration = 3000) {
         success: 'bi-check-circle-fill',
         error: 'bi-x-circle-fill',
         warning: 'bi-exclamation-triangle-fill',
-        info: 'bi-info-circle-fill'
+        info: 'bi-info-circle-fill',
     };
 
     toast.innerHTML = `
@@ -55,7 +55,7 @@ function showModalAlert(title, message, type = 'info') {
         success: { icon: 'bi-check-circle', color: 'var(--success)' },
         error: { icon: 'bi-exclamation-circle', color: 'var(--error)' },
         warning: { icon: 'bi-exclamation-triangle', color: 'var(--warning)' },
-        info: { icon: 'bi-info-circle', color: 'var(--info)' }
+        info: { icon: 'bi-info-circle', color: 'var(--info)' },
     };
 
     const config = icons[type] || icons.info;
@@ -143,7 +143,7 @@ function formatDate(date) {
         month: 'long',
         day: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
     };
 
     return date.toLocaleDateString('pt-BR', options);
@@ -190,7 +190,7 @@ function throttle(func, limit) {
         if (!inThrottle) {
             func.apply(this, args);
             inThrottle = true;
-            setTimeout(() => inThrottle = false, limit);
+            setTimeout(() => (inThrottle = false), limit);
         }
     };
 }
@@ -265,9 +265,15 @@ function imageToBase64(file, maxWidth = 800, maxHeight = 800) {
                 let height = img.height;
 
                 if (width > height) {
-                    if (width > maxWidth) { height = Math.round(height * maxWidth / width); width = maxWidth; }
+                    if (width > maxWidth) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    }
                 } else {
-                    if (height > maxHeight) { width = Math.round(width * maxHeight / height); height = maxHeight; }
+                    if (height > maxHeight) {
+                        width = Math.round((width * maxHeight) / height);
+                        height = maxHeight;
+                    }
                 }
 
                 const canvas = document.createElement('canvas');
@@ -277,7 +283,9 @@ function imageToBase64(file, maxWidth = 800, maxHeight = 800) {
 
                 // Sempre WebP — fallback para JPEG se o browser não suportar WebP
                 const webp = canvas.toDataURL('image/webp', 0.82);
-                resolve(webp.startsWith('data:image/webp') ? webp : canvas.toDataURL('image/jpeg', 0.85));
+                resolve(
+                    webp.startsWith('data:image/webp') ? webp : canvas.toDataURL('image/jpeg', 0.85)
+                );
             };
             img.onerror = reject;
             img.src = e.target.result;
@@ -298,9 +306,15 @@ function resizeImage(file, maxWidth = 800, maxHeight = 800) {
                 let height = img.height;
 
                 if (width > height) {
-                    if (width > maxWidth) { height = Math.round(height * maxWidth / width); width = maxWidth; }
+                    if (width > maxWidth) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    }
                 } else {
-                    if (height > maxHeight) { width = Math.round(width * maxHeight / height); height = maxHeight; }
+                    if (height > maxHeight) {
+                        width = Math.round((width * maxHeight) / height);
+                        height = maxHeight;
+                    }
                 }
 
                 const canvas = document.createElement('canvas');
@@ -309,10 +323,17 @@ function resizeImage(file, maxWidth = 800, maxHeight = 800) {
                 canvas.getContext('2d').drawImage(img, 0, 0, width, height);
 
                 // Tenta WebP, cai para JPEG se não suportado
-                canvas.toBlob((blob) => {
-                    if (blob) { resolve(blob); return; }
-                    canvas.toBlob(resolve, 'image/jpeg', 0.85);
-                }, 'image/webp', 0.82);
+                canvas.toBlob(
+                    (blob) => {
+                        if (blob) {
+                            resolve(blob);
+                            return;
+                        }
+                        canvas.toBlob(resolve, 'image/jpeg', 0.85);
+                    },
+                    'image/webp',
+                    0.82
+                );
             };
             img.onerror = reject;
             img.src = e.target.result;
@@ -325,8 +346,8 @@ function resizeImage(file, maxWidth = 800, maxHeight = 800) {
 // === GENERATE UUID ===
 function generateUUID() {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-        const r = Math.random() * 16 | 0;
-        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        const r = (Math.random() * 16) | 0;
+        const v = c === 'x' ? r : (r & 0x3) | 0x8;
         return v.toString(16);
     });
 }
@@ -371,7 +392,7 @@ const storage = {
             console.error('Erro ao limpar localStorage:', err);
             return false;
         }
-    }
+    },
 };
 
 // === SESSION STORAGE HELPERS ===
@@ -414,12 +435,12 @@ const session = {
             console.error('Erro ao limpar sessionStorage:', err);
             return false;
         }
-    }
+    },
 };
 
 // === WAIT / SLEEP ===
 function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // === RETRY FUNCTION ===
@@ -460,32 +481,44 @@ try {
         sessionStorage.setItem('prev_page_url', lastUrl);
     }
     sessionStorage.setItem('current_page_url', currentUrl);
-} catch (e) {
+} catch (_e) {
     // sessionStorage pode não estar disponível em contextos restritos
 }
 
 /**
- * Navegação inteligente: tenta voltar via histórico se possível, 
+ * Navegação inteligente: tenta voltar via histórico se possível,
  * caso contrário redireciona para a URL de fallback ou página anterior armazenada.
  */
 window.smartBack = function (fallbackUrl = 'dashboard.html') {
+    if (
+        typeof window.NavegacaoVoltar !== 'undefined' &&
+        typeof window.NavegacaoVoltar.voltar === 'function'
+    ) {
+        return window.NavegacaoVoltar.voltar(fallbackUrl);
+    }
     const referrer = document.referrer;
     const host = window.location.host || window.location.hostname;
     let prevUrl = null;
 
     try {
         prevUrl = sessionStorage.getItem('prev_page_url');
-    } catch (e) {}
+    } catch (_e) {}
 
     const currentClean = window.location.href.split('?')[0].split('#')[0];
     const referrerClean = referrer ? referrer.split('?')[0].split('#')[0] : '';
-    const isSameHost = referrer && (referrer.includes(host) || referrer.includes(window.location.hostname));
+    const isSameHost =
+        referrer && (referrer.includes(host) || referrer.includes(window.location.hostname));
     const isSamePage = referrerClean === currentClean;
 
     // 1. Tentar window.history.back() se viemos de outra página do mesmo host ou se há histórico no navegador
-    if ((isSameHost && !isSamePage) || (window.history.length > 1 && !isSamePage && referrerClean)) {
+    if (
+        (isSameHost && !isSamePage) ||
+        (window.history.length > 1 && !isSamePage && referrerClean)
+    ) {
         let navigated = false;
-        const markNavigated = () => { navigated = true; };
+        const markNavigated = () => {
+            navigated = true;
+        };
         window.addEventListener('pagehide', markNavigated, { once: true });
         window.addEventListener('beforeunload', markNavigated, { once: true });
 
@@ -543,5 +576,5 @@ window.utils = {
     preventFormDefault,
     togglePass,
     toggleSecretVisibility,
-    smartBack: window.smartBack
+    smartBack: window.smartBack,
 };

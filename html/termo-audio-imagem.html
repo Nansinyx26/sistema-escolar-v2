@@ -23,6 +23,7 @@
     <link rel="stylesheet" href="../css/components-new.css?v=2.0">
     <link rel="stylesheet" href="../css/responsive-global.css?v=1.2">
     <link rel="stylesheet" href="../css/motion.css?v=1.0">
+    <link rel="stylesheet" href="../css/botao-voltar.css">
 
     <style>
         :root {
@@ -382,7 +383,7 @@
 
     <!-- Header com navegação e badge -->
     <header class="header-termo">
-        <a href="dashboard.html" class="btn-voltar" id="btnVoltarNav">
+        <a href="dashboard.html" class="btn-voltar-global btn-voltar" id="btnVoltarNav" aria-label="Voltar para a página anterior">
             <i class="bi bi-arrow-left"></i>
             <span>Voltar</span>
         </a>
@@ -827,6 +828,7 @@
             consultarStatus();
         });
     </script>
+    <script defer src="../js/botao-voltar.js"></script>
     <script defer src="../js/acessibilidade.js"></script>
 </body>
 </html>

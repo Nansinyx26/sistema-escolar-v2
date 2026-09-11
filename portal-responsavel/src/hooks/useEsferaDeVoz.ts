@@ -109,6 +109,7 @@ export function useEsferaDeVoz(
   const aoFalharRef = useRef(aoFalhar);
   aoFalharRef.current = aoFalhar;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: estado é aplicado pelo efeito dedicado abaixo
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!ativo || !canvas || typeof canvas.getContext !== 'function') return;
@@ -152,7 +153,7 @@ export function useEsferaDeVoz(
       // A esfera nasce em repouso, mas o componente pode já estar tocando —
       // o orb só aparece DEPOIS que a narração começa, então este é o caso
       // normal, não a exceção.
-      esferaRef.current.definirEstado(estado);
+      esferaRef.current?.definirEstado(estado);
 
       const audio = ttsService.getAudioElement();
       if (audio) medidorRef.current?.observar(audio);

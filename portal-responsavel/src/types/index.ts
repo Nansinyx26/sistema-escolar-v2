@@ -2,7 +2,14 @@
  * types/index.ts — Guardian & authorization types
  */
 
-export type TipoResponsavel = 'Mãe' | 'Pai' | 'Responsável Legal' | 'Avó' | 'Avô' | 'Tutor(a)' | 'Outro';
+export type TipoResponsavel =
+  | 'Mãe'
+  | 'Pai'
+  | 'Responsável Legal'
+  | 'Avó'
+  | 'Avô'
+  | 'Tutor(a)'
+  | 'Outro';
 
 export interface ResponsavelDados {
   nome: string;
@@ -52,6 +59,32 @@ export interface DocumentosAluno {
   ultimoEnvio?: string;
   conferidoEm?: string;
   conferidoPor?: string;
+}
+
+export interface DocumentoResponsavelArquivo {
+  nomeOriginal: string;
+  url: string;
+  storageId: string;
+  mimeType: string;
+  tamanho: number;
+}
+
+export interface DocumentoResponsavelItem {
+  _id: string;
+  alunoId: string;
+  alunoNome?: string;
+  responsavelId: string;
+  responsavelNome?: string;
+  turmaId?: string;
+  turmaNome?: string;
+  tipoDocumento: string;
+  nomeDocumento: string;
+  arquivo: DocumentoResponsavelArquivo;
+  status: 'Enviado' | 'Em Análise' | 'Conferido' | 'Substituído';
+  observacoes?: string;
+  dataEnvio: string;
+  ultimaAtualizacao: string;
+  escolaId?: string;
 }
 
 export interface Student {

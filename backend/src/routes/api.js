@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
-const crypto = require('crypto');
+const crypto = require('node:crypto');
 
 // Middlewares Globais
 const authJWT = require('../middleware/authJWT');
@@ -22,7 +22,7 @@ const { runHealthCheck } = require('../utils/healthMonitor');
 const monitoring = require('../services/MonitoringService');
 
 // --- 1. Diagnóstico / Health Check (Públicos) ---
-router.get('/health', (req, res) => {
+router.get('/health', (_req, res) => {
     const health = runHealthCheck();
     const statusCode = health.db.healthy ? 200 : 503;
     res.status(statusCode).json({
@@ -37,7 +37,7 @@ router.get('/health', (req, res) => {
         },
     });
 });
-router.get('/monitoring/health', async (req, res) => {
+router.get('/monitoring/health', async (_req, res) => {
     const health = await monitoring.health();
     res.status(health.ok ? 200 : 503).json(health);
 });
@@ -47,7 +47,7 @@ router.get('/monitoring/health', async (req, res) => {
 // Fica atrás de autenticação de admin: os caminhos revelam a superfície da API,
 // e o volume por rota diz quando a escola está em uso. Nada disso precisa ser
 // público. É o mesmo cuidado que /metrics já tinha com o METRICS_TOKEN.
-router.get('/monitoring/rotas', authJWT, authorize('admin'), (req, res) => {
+router.get('/monitoring/rotas', authJWT, authorize('admin'), (_req, res) => {
     res.json({
         success: true,
         rotas: monitoring.metricasPorRota(),
@@ -68,7 +68,7 @@ router.get('/metrics', (req, res) => {
     res.type('text/plain');
     res.send(monitoring.getPrometheusMetrics());
 });
-router.get('/ping', (req, res) => res.json({ success: true, message: 'API is working' }));
+router.get('/ping', (_req, res) => res.json({ success: true, message: 'API is working' }));
 
 // --- 2. Configurações Globais ---
 router.get('/config', ConfigController.get);
@@ -102,7 +102,7 @@ router.post(
         try {
             const db = mongoose.connection.db;
             const bucket = new mongoose.mongo.GridFSBucket(db, { bucketName: 'uploads' });
-            const filename = crypto.randomBytes(16).toString('hex') + '.webp';
+            const filename = `${crypto.randomBytes(16).toString('hex')}.webp`;
             const uploadStream = bucket.openUploadStream(filename, {
                 contentType: 'image/webp',
                 // Metadata é o que permite ao FileController decidir quem pode baixar
@@ -227,6 +227,12 @@ router.post(
 router.use('/auth', require('./auth'));
 router.use('/escolas', require('./escolas')); // GET público (modal) + troca de escola (auth interna)
 router.use('/responsavel', authJWT, require('./responsavel'));
+router.use(
+    '/documentos-responsaveis',
+    authJWT,
+    filtrarPorEscola,
+    require('./documentosResponsaveis')
+);
 router.use('/notificacoes', authJWT, filtrarPorEscola, require('./notificacoes'));
 // `filtrarPorEscola`: é o req.escolaId que faz o SecurityController escopar o
 // código de cadastro à escola do diretor em vez do código global da rede.
@@ -263,6 +269,13 @@ router.use('/dashboard', require('./dashboard'));
 router.use('/tabela-geral', authJWT, filtrarPorEscola, require('./tabela-geral'));
 router.use('/grade-horaria', authJWT, filtrarPorEscola, require('./grade-horaria'));
 router.use('/avaliacoes', require('./avaliacoes'));
+router.use(
+    '/avaliacoes-escolares',
+    authJWT,
+    horizontalFilter,
+    filtrarPorEscola,
+    require('./avaliacoesEscolares')
+);
 router.use('/reviews', authJWT, require('./reviews'));
 router.use('/reactions', authJWT, require('./reactions'));
 router.use('/notifications/realtime', authJWT, require('./realtime-notifications'));

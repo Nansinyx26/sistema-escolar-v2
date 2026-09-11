@@ -42,7 +42,9 @@
 (function () {
     'use strict';
 
-    var API = function () { return window.API_BASE_URL || '/api'; };
+    var API = function () {
+        return window.API_BASE_URL || '/api';
+    };
 
     // Rotas fixas — não dependem de segredo, então são constantes de verdade.
     var ESTATICAS = {
@@ -50,6 +52,8 @@
         login: '/html/login.html',
         perfil: '/html/perfil.html',
         meusDados: '/html/meus-dados.html',
+        autorizacoesPais: '/detalhes/autorizacoes-pais.html',
+        avaliacoes: '/detalhes/avaliacoes.html',
         secretaria: {
             painel: '/html/secretaria/painel.html',
             relatorios: '/html/secretaria/relatorios.html',
@@ -57,18 +61,18 @@
             comunicados: '/html/secretaria/comunicados.html',
             documentos: '/html/secretaria/documentos.html',
             justificativas: '/html/secretaria/justificativas.html',
-            importarAlunos: '/html/secretaria/importar-alunos.html'
+            importarAlunos: '/html/secretaria/importar-alunos.html',
         },
         direcao: {
             painel: '/html/direcao/index.html',
             biPedagogico: '/html/direcao/bi-pedagogico.html',
             gerenciarSecretaria: '/html/direcao/gerenciar-secretaria.html',
-            iaAssistant: '/html/direcao/ia-assistant.html'
-        }
+            iaAssistant: '/html/direcao/ia-assistant.html',
+        },
     };
 
-    var adminCache = null;      // mapa resolvido, ou {} quando sem acesso
-    var adminPromessa = null;   // desduplica chamadas concorrentes
+    var adminCache = null; // mapa resolvido, ou {} quando sem acesso
+    var adminPromessa = null; // desduplica chamadas concorrentes
 
     /**
      * Busca as rotas administrativas no servidor. Uma vez por carregamento de
@@ -80,7 +84,9 @@
         if (adminPromessa) return adminPromessa;
 
         adminPromessa = fetch(API() + '/auth/rotas', { credentials: 'include' })
-            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (r) {
+                return r.ok ? r.json() : null;
+            })
             .then(function (json) {
                 adminCache = (json && json.success && json.rotas && json.rotas.admin) || {};
                 return adminCache;
@@ -113,7 +119,9 @@
 
         if (chave.indexOf('admin.') === 0) {
             var pagina = chave.slice('admin.'.length);
-            return carregarAdmin().then(function (mapa) { return mapa[pagina] || null; });
+            return carregarAdmin().then(function (mapa) {
+                return mapa[pagina] || null;
+            });
         }
 
         var caminho = estatica(chave);
@@ -151,30 +159,34 @@
         var elementos = escopo.querySelectorAll('[data-rota]:not([data-rota-ligada])');
         if (!elementos.length) return Promise.resolve();
 
-        return Promise.all(Array.prototype.map.call(elementos, function (el) {
-            el.setAttribute('data-rota-ligada', '1');
-            var chave = el.getAttribute('data-rota');
+        return Promise.all(
+            Array.prototype.map.call(elementos, function (el) {
+                el.setAttribute('data-rota-ligada', '1');
+                var chave = el.getAttribute('data-rota');
 
-            return resolver(chave).then(function (caminho) {
-                if (!caminho) {
-                    // Sem acesso (ou rota inexistente): esconde em vez de deixar
-                    // um botão que só descobre o 404 depois do clique.
-                    el.hidden = true;
-                    el.style.display = 'none';
-                    return;
-                }
+                return resolver(chave).then(function (caminho) {
+                    if (!caminho) {
+                        // Sem acesso (ou rota inexistente): esconde em vez de deixar
+                        // um botão que só descobre o 404 depois do clique.
+                        el.hidden = true;
+                        el.style.display = 'none';
+                        return;
+                    }
 
-                if (el.tagName === 'A') {
-                    el.setAttribute('href', caminho);
-                    return;
-                }
+                    if (el.tagName === 'A') {
+                        el.setAttribute('href', caminho);
+                        return;
+                    }
 
-                el.addEventListener('click', function (ev) {
-                    ev.preventDefault();
-                    window.location.href = caminho;
+                    el.addEventListener('click', function (ev) {
+                        ev.preventDefault();
+                        window.location.href = caminho;
+                    });
                 });
-            });
-        })).then(function () { /* void */ });
+            })
+        ).then(function () {
+            /* void */
+        });
     }
 
     window.ROTAS = {
@@ -183,11 +195,16 @@
         ir: ir,
         ativar: ativar,
         /** Descarta o cache — usar após trocar de conta na mesma aba. */
-        limparCache: function () { adminCache = null; adminPromessa = null; }
+        limparCache: function () {
+            adminCache = null;
+            adminPromessa = null;
+        },
     };
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function () { ativar(); });
+        document.addEventListener('DOMContentLoaded', function () {
+            ativar();
+        });
     } else {
         ativar();
     }

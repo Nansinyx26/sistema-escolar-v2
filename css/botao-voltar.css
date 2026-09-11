@@ -1,0 +1,200 @@
+/**
+ * css/botao-voltar.css
+ * Estilos padronizados para o botão Voltar (<- Voltar)
+ * Padrão Visual: Black Mint e Claro (Light)
+ * Diretrizes: Emil Kowalski & Jakub Krehel (design-motion-principles)
+ */
+
+:root {
+    --btn-voltar-mint: #00dc82;
+    --btn-voltar-mint-rgb: 0, 220, 130;
+    --btn-voltar-dark-text: #052e16;
+    --btn-voltar-bg-normal: rgba(0, 220, 130, 0.08);
+    --btn-voltar-border: #00dc82;
+    --btn-voltar-text: #00dc82;
+    --btn-voltar-hover-bg: #00dc82;
+    --btn-voltar-hover-text: #052e16;
+    --btn-voltar-hover-shadow: 0 0 16px rgba(0, 220, 130, 0.55), 0 2px 8px rgba(0, 0, 0, 0.25);
+    --btn-voltar-focus-ring: 0 0 0 3px rgba(0, 220, 130, 0.45);
+    --btn-voltar-radius: 10px;
+    --btn-voltar-easing: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Tema Claro (Light) */
+:root[data-theme="light"],
+html[data-theme="light"] {
+    --btn-voltar-mint: #00dc82;
+    --btn-voltar-bg-normal: rgba(0, 220, 130, 0.08);
+    --btn-voltar-border: #00dc82;
+    --btn-voltar-text: #059669;
+    --btn-voltar-hover-bg: #00dc82;
+    --btn-voltar-hover-text: #052e16;
+    --btn-voltar-hover-shadow: 0 0 14px rgba(0, 220, 130, 0.45), 0 2px 6px rgba(5, 46, 22, 0.15);
+    --btn-voltar-focus-ring: 0 0 0 3px rgba(0, 220, 130, 0.4);
+}
+
+/* Tema Black Mint (Dark) */
+:root[data-theme="dark"],
+html[data-theme="dark"] {
+    --btn-voltar-mint: #00dc82;
+    --btn-voltar-bg-normal: rgba(0, 220, 130, 0.08);
+    --btn-voltar-border: #00dc82;
+    --btn-voltar-text: #00dc82;
+    --btn-voltar-hover-bg: #00dc82;
+    --btn-voltar-hover-text: #052e16;
+    --btn-voltar-hover-shadow: 0 0 16px rgba(0, 220, 130, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
+    --btn-voltar-focus-ring: 0 0 0 3px rgba(0, 220, 130, 0.45);
+}
+
+/* ── Estrutura e Estado Normal ── */
+.btn-voltar-global,
+.btn-voltar-nav,
+a.btn-voltar,
+button.btn-voltar,
+[data-voltar-btn] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.45rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.25;
+    text-decoration: none;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    border-radius: var(--btn-voltar-radius);
+    border: 1.5px solid var(--btn-voltar-border);
+    background-color: var(--btn-voltar-bg-normal);
+    color: var(--btn-voltar-text);
+    box-shadow: none;
+    transition: background-color 0.2s var(--btn-voltar-easing),
+                color 0.2s var(--btn-voltar-easing),
+                border-color 0.2s var(--btn-voltar-easing),
+                box-shadow 0.2s var(--btn-voltar-easing),
+                transform 0.2s var(--btn-voltar-easing);
+    will-change: transform, box-shadow;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Ícone de seta */
+.btn-voltar-global i,
+.btn-voltar-nav i,
+a.btn-voltar i,
+button.btn-voltar i,
+[data-voltar-btn] i,
+.btn-voltar-global svg,
+.btn-voltar-nav svg,
+a.btn-voltar svg,
+button.btn-voltar svg,
+[data-voltar-btn] svg {
+    font-size: 1rem;
+    line-height: 1;
+    display: inline-block;
+    transition: transform 0.2s var(--btn-voltar-easing);
+}
+
+/* ── Estado Hover ── */
+.btn-voltar-global:hover,
+.btn-voltar-nav:hover,
+a.btn-voltar:hover,
+button.btn-voltar:hover,
+[data-voltar-btn]:hover {
+    background-color: var(--btn-voltar-hover-bg);
+    color: var(--btn-voltar-hover-text);
+    border-color: var(--btn-voltar-border);
+    box-shadow: var(--btn-voltar-hover-shadow);
+    transform: translateX(-2px);
+    text-decoration: none;
+}
+
+.btn-voltar-global:hover i,
+.btn-voltar-nav:hover i,
+a.btn-voltar:hover i,
+button.btn-voltar:hover i,
+[data-voltar-btn]:hover i,
+.btn-voltar-global:hover svg,
+.btn-voltar-nav:hover svg,
+a.btn-voltar:hover svg,
+button.btn-voltar:hover svg,
+[data-voltar-btn]:hover svg {
+    transform: translateX(-2px);
+}
+
+/* ── Estado Foco (Acessibilidade) ── */
+.btn-voltar-global:focus-visible,
+.btn-voltar-nav:focus-visible,
+a.btn-voltar:focus-visible,
+button.btn-voltar:focus-visible,
+[data-voltar-btn]:focus-visible {
+    outline: none;
+    box-shadow: var(--btn-voltar-focus-ring);
+    border-color: var(--btn-voltar-mint);
+}
+
+/* ── Estado Ativo (Clique / Pressionado) ── */
+.btn-voltar-global:active,
+.btn-voltar-nav:active,
+a.btn-voltar:active,
+button.btn-voltar:active,
+[data-voltar-btn]:active {
+    transform: scale(0.97) translateX(-1px);
+}
+
+/* ── Container no Topo Esquerdo da Página ── */
+.btn-voltar-top-left-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+/* ── Ocultação Obrigatória em Dashboards ── */
+body.is-dashboard-page .btn-voltar-global,
+body.is-dashboard-page .btn-voltar-nav,
+body.is-dashboard-page a.btn-voltar,
+body.is-dashboard-page button.btn-voltar,
+body.is-dashboard-page [data-voltar-btn],
+.is-dashboard-root .btn-voltar-global {
+    display: none !important;
+}
+
+/* ── Responsividade Mobile / Tablet ── */
+@media (max-width: 768px) {
+    .btn-voltar-global,
+    .btn-voltar-nav,
+    a.btn-voltar,
+    button.btn-voltar,
+    [data-voltar-btn] {
+        padding: 0.35rem 0.75rem;
+        font-size: 0.85rem;
+        min-height: 40px;
+        gap: 0.375rem;
+        border-radius: 8px;
+    }
+
+    .btn-voltar-global i,
+    .btn-voltar-nav i,
+    a.btn-voltar i,
+    button.btn-voltar i,
+    [data-voltar-btn] i {
+        font-size: 0.95rem;
+    }
+}
+
+/* ── Respeito a Movimento Reduzido ── */
+@media (prefers-reduced-motion: reduce) {
+    .btn-voltar-global,
+    .btn-voltar-nav,
+    a.btn-voltar,
+    button.btn-voltar,
+    [data-voltar-btn],
+    .btn-voltar-global i,
+    .btn-voltar-nav i,
+    a.btn-voltar i,
+    button.btn-voltar i,
+    [data-voltar-btn] i {
+        transition: none !important;
+        transform: none !important;
+    }
+}

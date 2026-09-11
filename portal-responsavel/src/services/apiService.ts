@@ -12,6 +12,7 @@ import type {
   AuthUser,
   BIInsights,
   DocumentoArquivo,
+  DocumentoResponsavelItem,
   Grade,
   HeatmapEntry,
   Notification,
@@ -707,4 +708,76 @@ export async function enviarDenuncia(payload: {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+}
+
+// ─── Documentos Assinados pelos Responsáveis ─────────────────────────────────
+
+/**
+ * Busca documentos enviados pelo responsável (opcionalmente filtrados pelo aluno).
+ */
+export async function fetchDocumentosEnviados(
+  alunoId?: string
+): Promise<DocumentoResponsavelItem[]> {
+  const query = alunoId ? `?alunoId=${encodeURIComponent(alunoId)}` : '';
+  return apiFetch<DocumentoResponsavelItem[]>(`/documentos-responsaveis/meus${query}`);
+}
+
+/**
+ * Envia um novo documento assinado com upload multipart para o backend.
+ */
+export async function uploadDocumentoResponsavel(
+  formData: FormData
+): Promise<DocumentoResponsavelItem> {
+  const headers: Record<string, string> = {};
+  const csrf = getCsrfToken();
+  if (csrf) headers['X-CSRF-Token'] = csrf;
+
+  const res = await fetch(`${BASE_URL}/documentos-responsaveis/upload`, {
+    method: 'POST',
+    credentials: 'include',
+    headers,
+    body: formData,
+  });
+
+  const body = (await res.json()) as {
+    success: boolean;
+    data?: DocumentoResponsavelItem;
+    error?: string;
+  };
+  if (!res.ok || !body.success || !body.data) {
+    throw new ApiError(body.error ?? `HTTP ${res.status}`, res.status);
+  }
+  return body.data;
+}
+
+/**
+ * Substitui o arquivo de um documento assinado existente.
+ */
+export async function substituirDocumentoResponsavel(
+  id: string,
+  formData: FormData
+): Promise<DocumentoResponsavelItem> {
+  const headers: Record<string, string> = {};
+  const csrf = getCsrfToken();
+  if (csrf) headers['X-CSRF-Token'] = csrf;
+
+  const res = await fetch(
+    `${BASE_URL}/documentos-responsaveis/${encodeURIComponent(id)}/substituir`,
+    {
+      method: 'PUT',
+      credentials: 'include',
+      headers,
+      body: formData,
+    }
+  );
+
+  const body = (await res.json()) as {
+    success: boolean;
+    data?: DocumentoResponsavelItem;
+    error?: string;
+  };
+  if (!res.ok || !body.success || !body.data) {
+    throw new ApiError(body.error ?? `HTTP ${res.status}`, res.status);
+  }
+  return body.data;
 }

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR" data-theme="dark">
 
 <head>
@@ -22,6 +22,7 @@
     <link rel="stylesheet" href="../css/variables.css">
     <link rel="stylesheet" href="../css/base.css">
     <link rel="stylesheet" href="../css/components-new.css">
+    <link rel="stylesheet" href="../css/botao-voltar.css">
     <link rel="stylesheet" href="../css/parallax-glass.css">
 
     <link rel="stylesheet" href="../css/cadastro-aluno.css">
@@ -84,7 +85,7 @@
         <!-- ── Header ── -->
         <div class="ca-header">
             <div class="ca-header-top">
-                <a href="javascript:history.back()" class="ca-back-btn">
+                <a href="javascript:void(0)" class="btn-voltar-global ca-back-btn" id="btnVoltarNav" aria-label="Voltar">
                     <i class="bi bi-arrow-left"></i> Voltar
                 </a>
                 <div class="lgpd-badge">
@@ -773,6 +774,7 @@
 
     </div><!-- /ca-wrap -->
 
+    <script defer src="../js/botao-voltar.js"></script>
     <script src="../js/api-config.js"></script>
     <script src="../js/cadastro-aluno.js"></script>
     <script src="../js/vendor.js"></script>
