@@ -1095,7 +1095,7 @@ exports.googleLogin = async (req, res) => {
                 loginGoogle: true,
                 fotoGoogle: picture,
                 ativo: true,
-                consentimentoAceiteEm: new Date(),
+                // Sem consentimentoAceiteEm: criar a conta não é consentir (Issue #236).
             });
         } else {
             // Usuário existente: sincronizar foto do Google se houver mudança
@@ -1939,7 +1939,7 @@ exports.registerResponsavel = async (req, res) => {
             escolaId: escolaIdDoAluno,
             ultimoLogin: now,
             lastLogin: now,
-            consentimentoAceiteEm: now,
+            // Sem consentimentoAceiteEm: criar a conta não é consentir (Issue #236).
         });
 
         // 3. Vincular o aluno ao responsável automaticamente
@@ -2071,7 +2071,7 @@ exports.registerDocente = async (req, res) => {
             ativo: true,
             ultimoLogin: now,
             lastLogin: now,
-            consentimentoAceiteEm: now,
+            // Sem consentimentoAceiteEm: criar a conta não é consentir (Issue #236).
         });
 
         // Auto-criação do registro na coleção 'professores' para vincular a turma e disciplina ao painel do professor
@@ -2635,7 +2635,7 @@ exports.registerDiretor = async (req, res) => {
             ativo: true,
             ultimoLogin: now,
             lastLogin: now,
-            consentimentoAceiteEm: now,
+            // Sem consentimentoAceiteEm: criar a conta não é consentir (Issue #236).
         });
 
         // 4. Auto-criação do registro na coleção 'diretores'
@@ -2781,7 +2781,7 @@ exports.registerSecretaria = async (req, res) => {
             ativo: true,
             ultimoLogin: now,
             lastLogin: now,
-            consentimentoAceiteEm: now,
+            // Sem consentimentoAceiteEm: criar a conta não é consentir (Issue #236).
         });
 
         // 4. Auto-criação do registro na coleção 'secretarias' (com o vínculo
