@@ -26,6 +26,7 @@
  *   3. o prefixo secreto da área administrativa vaza para o navegador?
  */
 
+const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -326,28 +327,54 @@ describe('matriz de acesso — o gate do servidor consome a mesma tabela', () =>
         const semGuard = [];
         const comGuardIndevido = [];
 
-        const varrer = (dir) => {
-            for (const nome of fs.readdirSync(dir)) {
-                if (
-                    ['node_modules', '.git', 'portal-responsavel', 'dist', '.claude'].includes(nome)
-                )
-                    continue;
-                const completo = path.join(dir, nome);
-                const info = fs.statSync(completo);
-                if (info.isDirectory()) {
-                    varrer(completo);
-                    continue;
-                }
-                if (!nome.endsWith('.html')) continue;
+        // POR QUE PERGUNTAR AO GIT, E NÃO VARRER O DISCO (Issue #267)
+        // ------------------------------------------------------------
+        // A versão anterior percorria o disco e pulava uma lista fixa de
+        // diretórios. Qualquer HTML GERADO fora dessa lista entrava na conta
+        // como "página sem guard": o `test:coverage` escreve ~195 relatórios em
+        // `backend/coverage/lcov-report/`, e a segunda execução local do
+        // `verify` reprovava. No CI não aparecia, porque o checkout é limpo.
+        //
+        // `coverage` era só o primeiro. O `.gitignore` ignora mais quatro
+        // diretórios que geram HTML — `playwright-report/`, `test-results/`,
+        // `.stryker-tmp/` (cada sandbox é uma cópia do repositório inteiro) e
+        // `reports/` — e rodar E2E ou Stryker localmente quebrava este teste do
+        // mesmo jeito. Acrescentar nomes à lista seria correr atrás do próximo.
+        //
+        // `--cached --others --exclude-standard` devolve o rastreado MAIS o
+        // novo ainda não adicionado, menos o ignorado. É exatamente "o que o
+        // repositório entrega": uma página nova é cobrada antes do `git add`, e
+        // nenhum artefato ignorado entra — nem os de hoje, nem os futuros.
+        //
+        // As três exclusões que sobram não são de artefato, são de escopo:
+        // `portal-responsavel` e `dist` são o app React, que tem autenticação
+        // própria, e `.claude` guarda modelos HTML das skills, que não são
+        // páginas servidas.
+        const FORA_DO_ESCOPO = ['portal-responsavel', 'dist', '.claude'];
 
-                const url = `/${path.relative(RAIZ, completo).split(path.sep).join('/')}`;
-                const temGuard = fs.readFileSync(completo, 'utf8').includes('guarda-acesso.js');
+        const paginas = execFileSync(
+            'git',
+            ['ls-files', '--cached', '--others', '--exclude-standard', '-z', '--', '*.html'],
+            { cwd: RAIZ, encoding: 'utf8' }
+        )
+            .split('\0')
+            .filter(Boolean)
+            .filter(
+                (relativo) => !relativo.split('/').some((parte) => FORA_DO_ESCOPO.includes(parte))
+            )
+            // `--cached` também lista o que foi apagado do disco e ainda não
+            // saiu do índice; sem este filtro, o `readFileSync` abaixo estouraria.
+            .filter((relativo) => fs.existsSync(path.join(RAIZ, relativo)));
 
-                if (publicas.has(url) && temGuard) comGuardIndevido.push(url);
-                if (!publicas.has(url) && !temGuard) semGuard.push(url);
-            }
-        };
-        varrer(RAIZ);
+        for (const relativo of paginas) {
+            const url = `/${relativo}`;
+            const temGuard = fs
+                .readFileSync(path.join(RAIZ, relativo), 'utf8')
+                .includes('guarda-acesso.js');
+
+            if (publicas.has(url) && temGuard) comGuardIndevido.push(url);
+            if (!publicas.has(url) && !temGuard) semGuard.push(url);
+        }
 
         expect(semGuard).toEqual([]);
         expect(comGuardIndevido).toEqual([]);
