@@ -33,12 +33,30 @@
  *
  * DOIS LUGARES ONDE O ACEITE PODE ESTAR — E ISSO É HERANÇA, NÃO DESIGN
  * -------------------------------------------------------------------
- * Contas antigas têm `consentimentoAceiteEm` preenchido no cadastro sem
- * nenhuma entrada correspondente em `lgpdHistory` (ver os `Usuario.create` do
- * `UserController`). Ignorar esse campo faria o sistema pedir de novo um
- * consentimento que a pessoa já deu; ignorar o histórico faria o registro
- * auditável valer menos que o carimbo. Por isso `consentimentoVigente()` olha
- * os dois e devolve o mais recente.
+ * O aceite auditável mora em `lgpdHistory` (com IP, navegador e versão). O
+ * campo `consentimentoAceiteEm` é o formato antigo, e ainda é o que o portal e
+ * o `GET /api/auth/me` leem — por isso `consentimentoVigente()` olha os dois e
+ * devolve o mais recente.
+ *
+ * O CAMPO SÓ VALE SE ALGUÉM CONSENTIU (Issue #236)
+ * ------------------------------------------------
+ * Até a #236, sete caminhos de criação de conta gravavam
+ * `consentimentoAceiteEm: now` no próprio `Usuario.create`, sem tela e sem
+ * ninguém marcar nada. Como esta função trata o campo como consentimento
+ * válido, o carimbo fazia três estragos:
+ *
+ *   • "Meus Dados" (Art. 18) informava ao titular um consentimento que ele
+ *     nunca deu, com a data do cadastro;
+ *   • o `ModeracaoController` só grava o aceite auditável quando
+ *     `!consentimentoAtual.aceito` — com o carimbo, nunca gravava, nem quando
+ *     a pessoa assinava de verdade;
+ *   • o `EditarPerfil` do portal abria as caixas de consentimento já marcadas.
+ *
+ * Os sete caminhos pararam de gravar, e a migração
+ * `1788652800000-invalidar-consentimento-carimbado-no-cadastro` tirou o
+ * carimbo das contas antigas — só onde ele coincide com o `createdAt` e não há
+ * aceite no histórico. Quem gravar este campo de novo precisa ter um ato do
+ * titular por trás; criar a conta não é um.
  */
 
 /** Mesmo par que o portal grava — ver o bloco "A VERSÃO" acima. */
