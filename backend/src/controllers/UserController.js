@@ -21,6 +21,12 @@ const { painelDoPerfil } = require('../utils/painelPorPerfil');
 // Emissão de sessão centralizada: garante `jti` em todo token (pré-requisito
 // para o logout conseguir revogar) e opções de cookie idênticas em todo lugar.
 const { emitirTokenSessao } = require('../utils/sessionToken');
+const {
+    CONSENTIMENTO_ID,
+    CONSENTIMENTO_VERSAO,
+    decidirConsentimentoDoPerfil,
+    assinaturaDoPerfil,
+} = require('../utils/consentimentoDoPerfil');
 
 const SALT_ROUNDS = 12;
 
@@ -2226,9 +2232,9 @@ exports.updateProfile = async (req, res) => {
                 if (body[field] !== undefined) updateData[field] = body[field];
             });
 
-            if (body.consentimentoAceiteEm) {
-                updateData.consentimentoAceiteEm = new Date();
-            }
+            // `consentimentoAceiteEm` NÃO é gravado aqui: ele só pode sair junto
+            // de uma assinatura no `lgpdHistory`, e isso é decidido abaixo, depois
+            // de conhecido o lote de `newLgpdRecords` (Issue #280).
 
             // Gerar contaId se profileCompleted estiver sendo marcado como true pela primeira vez
             const currentUser = await Usuario.findById(userId).select('contaId profileCompleted');
@@ -2265,6 +2271,7 @@ exports.updateProfile = async (req, res) => {
         }
 
         const updateQuery = { $set: updateData };
+        const historyEntries = [];
 
         // Registro de Histórico LGPD (Imutável)
         if (isResponsavel && body.newLgpdRecords && Array.isArray(body.newLgpdRecords)) {
@@ -2279,16 +2286,49 @@ exports.updateProfile = async (req, res) => {
                       ? 'iOS'
                       : 'Outro';
 
-            const historyEntries = body.newLgpdRecords.map((record) => ({
-                termoId: record.termoId,
-                versao: record.versao || '1.0',
-                aceitoEm: new Date(),
-                ip: req.ip || '127.0.0.1',
-                browser: userAgent.substring(0, 200),
-                os: os,
-                loginType: record.loginType || (req.user.loginGoogle ? 'Google' : 'Conta Local'),
-            }));
+            historyEntries.push(
+                ...body.newLgpdRecords.map((record) => ({
+                    termoId: record.termoId,
+                    versao: record.versao || '1.0',
+                    aceitoEm: new Date(),
+                    ip: req.ip || '127.0.0.1',
+                    browser: userAgent.substring(0, 200),
+                    os: os,
+                    loginType:
+                        record.loginType || (req.user.loginGoogle ? 'Google' : 'Conta Local'),
+                }))
+            );
+        }
 
+        // Consentimento geral dado por uma tela de perfil (Issue #280).
+        //
+        // Campo e assinatura saem juntos ou não saem: o `EditarPerfil` manda
+        // `consentimentoAceiteEm` em todo salvamento, então gravar o campo aqui
+        // sem mais nada produzia aceite sem prova e movia a data do consentimento
+        // a cada correção de telefone. A pergunta é se já existe assinatura da
+        // versão VIGENTE — o campo legado não responde, porque pode ser o carimbo
+        // automático de cadastro da Issue #236.
+        if (isResponsavel && body.consentimentoAceiteEm) {
+            const jaTemAssinatura = !!(await Usuario.exists({
+                _id: userId,
+                lgpdHistory: {
+                    $elemMatch: { termoId: CONSENTIMENTO_ID, versao: CONSENTIMENTO_VERSAO },
+                },
+            }));
+            const { gravarCampo, acrescentarAssinatura } = decidirConsentimentoDoPerfil({
+                jaTemAssinatura,
+                loteTrazAssinatura: historyEntries.some((h) => h.termoId === CONSENTIMENTO_ID),
+            });
+
+            if (gravarCampo) {
+                const agora = new Date();
+                updateData.consentimentoAceiteEm = agora;
+                updateData.consentimentoVersao = CONSENTIMENTO_VERSAO;
+                if (acrescentarAssinatura) historyEntries.push(assinaturaDoPerfil(req, agora));
+            }
+        }
+
+        if (historyEntries.length > 0) {
             updateQuery.$push = { lgpdHistory: { $each: historyEntries } };
         }
 
