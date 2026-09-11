@@ -49,12 +49,7 @@
     }
     .envolucro { max-width: 800px; margin: 0 auto; }
 
-    a.voltar {
-        color: var(--suave); font-size: .85rem; text-decoration: none;
-        display: inline-flex; align-items: center; gap: .4rem; margin-bottom: 1.3rem;
-        transition: color .18s;
-    }
-    a.voltar:hover { color: var(--mint); }
+    .envolucro > .btn-voltar-global { margin-bottom: 1.3rem; }
 
     h1 {
         font-size: 1.55rem; margin: 0 0 .4rem; letter-spacing: -.02em;
@@ -165,7 +160,7 @@
         h1, h1 i, h2 { color: #000; }
         .codigo { border-color: #666; background: #f2f2f2; color: #000; }
         .aviso { color: #000; background: #f8f8f8; }
-        .nao-imprimir, a.voltar, .subtitulo { display: none !important; }
+        .nao-imprimir, .subtitulo { display: none !important; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -178,11 +173,15 @@
     <script src="../../js/scroll-lock.js?v=1.0"></script>
     <!-- Acessibilidade (LBI/eMAG) — ver docs/CONFORMIDADE-LEGAL.md -->
     <link rel="stylesheet" href="../../css/acessibilidade.css">
+    <link rel="stylesheet" href="/css/botao-voltar.css">
 </head>
 
 <body>
 <div class="envolucro">
-    <a href="./usuarios.html" class="voltar">&larr; Voltar para usuários</a>
+    <button type="button" class="btn-voltar-global nao-imprimir" data-fallback="/html/admin/usuarios.html" aria-label="Voltar para a página anterior">
+        <i class="bi bi-arrow-left"></i>
+        <span>Voltar</span>
+    </button>
     <h1><i class="bi bi-key"></i> Códigos de Backup 2FA</h1>
     <p class="subtitulo">
         Segundo fator que não depende de e-mail. Use quando o provedor estiver
@@ -716,5 +715,6 @@
 })();
 </script>
     <script defer src="../../js/acessibilidade.js"></script>
+    <script defer src="/js/botao-voltar.js"></script>
 </body>
 </html>

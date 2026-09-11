@@ -49,6 +49,7 @@
     <script src="../js/scroll-lock.js?v=1.0"></script>
     <!-- Acessibilidade (LBI/eMAG) — ver docs/CONFORMIDADE-LEGAL.md -->
     <link rel="stylesheet" href="../css/acessibilidade.css">
+    <link rel="stylesheet" href="/css/botao-voltar.css">
 </head>
 
 <body>
@@ -83,7 +84,10 @@
                     <span>Escola Jaguari</span>
                 </div>
                 <div class="navbar-nav">
-                    <a href="../html/direcao/index.html" class="btn btn-ghost"><i class="bi bi-arrow-left"></i> Voltar</a>
+                    <button type="button" class="btn-voltar-global" data-fallback="/html/direcao/index.html" aria-label="Voltar para a página anterior">
+                        <i class="bi bi-arrow-left"></i>
+                        <span>Voltar</span>
+                    </button>
                 </div>
             </div>
         </nav>
@@ -262,5 +266,6 @@
     <script defer src="../js/observability.js"></script>
     <script defer src="../js/motion.js"></script>
     <script defer src="../js/acessibilidade.js"></script>
+    <script defer src="/js/botao-voltar.js"></script>
 </body>
 </html>
