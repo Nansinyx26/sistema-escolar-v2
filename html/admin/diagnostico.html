@@ -156,6 +156,7 @@
     <script src="../../js/scroll-lock.js?v=1.0"></script>
     <!-- Acessibilidade (LBI/eMAG) — ver docs/CONFORMIDADE-LEGAL.md -->
     <link rel="stylesheet" href="../../css/acessibilidade.css">
+    <link rel="stylesheet" href="/css/botao-voltar.css">
 </head>
 <body>
     <!-- Splash Screen (PWA) -->
@@ -181,7 +182,13 @@
     <script src="../../js/splash-screen.js"></script>
 
     <div class="header">
-        <h1><i class="ti ti-activity"></i> Diagnóstico do Sistema</h1>
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+            <button type="button" class="btn-voltar-global" data-fallback="/html/dashboard.html" aria-label="Voltar para a página anterior">
+                <i class="bi bi-arrow-left"></i>
+                <span>Voltar</span>
+            </button>
+            <h1><i class="ti ti-activity"></i> Diagnóstico do Sistema</h1>
+        </div>
         <button class="refresh-btn" onclick="location.reload()">
             <i class="ti ti-refresh"></i> Atualizar
         </button>
@@ -266,5 +273,6 @@
     <script defer src="../../js/observability.js"></script>
     <script defer src="../../js/motion.js"></script>
     <script defer src="../../js/acessibilidade.js"></script>
+    <script defer src="/js/botao-voltar.js"></script>
 </body>
 </html>
