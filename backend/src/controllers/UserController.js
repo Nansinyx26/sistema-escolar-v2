@@ -18,13 +18,16 @@ const { emitirParaPerfis } = require('../utils/realtime');
 const { sanitizeInput } = require('../utils/sanitize');
 // A casa de cada perfil: a mesma tabela que o gate de páginas consulta.
 const { painelDoPerfil } = require('../utils/painelPorPerfil');
+const { aceiteExplicitoVigente } = require('../utils/consentimentoLgpd');
 // Emissão de sessão centralizada: garante `jti` em todo token (pré-requisito
 // para o logout conseguir revogar) e opções de cookie idênticas em todo lugar.
 const { emitirTokenSessao } = require('../utils/sessionToken');
 const {
     CONSENTIMENTO_ID,
     CONSENTIMENTO_VERSAO,
+    AUTORIZACOES_DO_PERFIL,
     decidirConsentimentoDoPerfil,
+    mesclarAutorizacoes,
     assinaturaDoPerfil,
 } = require('../utils/consentimentoDoPerfil');
 
@@ -1935,6 +1938,20 @@ exports.registerResponsavel = async (req, res) => {
         const escolaIdDoAluno = aluno.escolaId || undefined;
 
         const now = new Date();
+
+        // Criar a conta não é consentir (Issue #236): o consentimento só nasce
+        // junto da conta quando a tela manda o aceite explícito — a caixa da
+        // Política de Privacidade marcada no "Criar Conta" do portal (Issue
+        // #288). E nasce como no perfil: campo e assinatura auditável juntos,
+        // com a mesma data. Sem a marcação, o aceite fica para o CompletarCadastro.
+        const consentimento = aceiteExplicitoVigente(req.body.consentimentoLgpd)
+            ? {
+                  consentimentoAceiteEm: now,
+                  consentimentoVersao: CONSENTIMENTO_VERSAO,
+                  lgpdHistory: [assinaturaDoPerfil(req, now)],
+              }
+            : {};
+
         const user = await Usuario.create({
             nome,
             email: email.toLowerCase(),
@@ -1945,7 +1962,7 @@ exports.registerResponsavel = async (req, res) => {
             escolaId: escolaIdDoAluno,
             ultimoLogin: now,
             lastLogin: now,
-            // Sem consentimentoAceiteEm: criar a conta não é consentir (Issue #236).
+            ...consentimento,
         });
 
         // 3. Vincular o aluno ao responsável automaticamente
@@ -2214,6 +2231,10 @@ exports.updateProfile = async (req, res) => {
             updateData.cpf = body.cpf;
         }
 
+        // Autorizações do perfil que o titular marcou AGORA — cada uma assina
+        // no `lgpdHistory` mais abaixo, junto do lote (Issue #280).
+        let autorizacoesAceitas = [];
+
         // Atributos específicos do Responsável (Onboarding LGPD)
         if (isResponsavel) {
             const responsavelFields = [
@@ -2224,7 +2245,6 @@ exports.updateProfile = async (req, res) => {
                 'autorizadoRetirar',
                 'segundoResponsavel',
                 'pessoasAutorizadas',
-                'lgpdConsents',
                 'profileCompleted',
             ];
 
@@ -2236,8 +2256,23 @@ exports.updateProfile = async (req, res) => {
             // de uma assinatura no `lgpdHistory`, e isso é decidido abaixo, depois
             // de conhecido o lote de `newLgpdRecords` (Issue #280).
 
+            const currentUser = await Usuario.findById(userId).select(
+                'contaId profileCompleted lgpdConsents'
+            );
+
+            // `lgpdConsents` é mesclado chave a chave, e não substituído: a aba
+            // "Termos LGPD" do perfil manda só as três chaves dela (Issue #280).
+            if (body.lgpdConsents && typeof body.lgpdConsents === 'object') {
+                const { campos, aceitasAgora } = mesclarAutorizacoes(
+                    currentUser?.lgpdConsents,
+                    body.lgpdConsents,
+                    (chave) => !!Usuario.schema.path(`lgpdConsents.${chave}`)
+                );
+                Object.assign(updateData, campos);
+                autorizacoesAceitas = aceitasAgora;
+            }
+
             // Gerar contaId se profileCompleted estiver sendo marcado como true pela primeira vez
-            const currentUser = await Usuario.findById(userId).select('contaId profileCompleted');
             if (
                 body.profileCompleted === true &&
                 (!currentUser.profileCompleted || !currentUser.contaId)
@@ -2326,6 +2361,15 @@ exports.updateProfile = async (req, res) => {
                 updateData.consentimentoVersao = CONSENTIMENTO_VERSAO;
                 if (acrescentarAssinatura) historyEntries.push(assinaturaDoPerfil(req, agora));
             }
+        }
+
+        if (autorizacoesAceitas.length > 0) {
+            const agora = new Date();
+            historyEntries.push(
+                ...autorizacoesAceitas.map((chave) =>
+                    assinaturaDoPerfil(req, agora, AUTORIZACOES_DO_PERFIL[chave])
+                )
+            );
         }
 
         if (historyEntries.length > 0) {

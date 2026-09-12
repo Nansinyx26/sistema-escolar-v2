@@ -94,4 +94,24 @@ function consentimentoVigente(usuario) {
     return { aceito: true, aceitoEm: maisRecente.aceitoEm, versao: maisRecente.versao };
 }
 
-module.exports = { CONSENTIMENTO_ID, CONSENTIMENTO_VERSAO, consentimentoVigente };
+/**
+ * O pedido traz um aceite EXPLÍCITO da versão vigente? (Issue #288)
+ *
+ * É a forma com que uma tela de cadastro diz "a pessoa marcou a caixa":
+ * `{ aceito: true, versao: '2.0' }`. Qualquer outra coisa — campo ausente,
+ * `aceito` que não seja o booleano `true`, versão que o servidor não conhece —
+ * não é consentimento, e a conta nasce sem ele (Issue #236).
+ *
+ * @param {unknown} consentimento `consentimentoLgpd` do corpo do pedido.
+ * @returns {boolean}
+ */
+function aceiteExplicitoVigente(consentimento) {
+    return consentimento?.aceito === true && consentimento?.versao === CONSENTIMENTO_VERSAO;
+}
+
+module.exports = {
+    CONSENTIMENTO_ID,
+    CONSENTIMENTO_VERSAO,
+    consentimentoVigente,
+    aceiteExplicitoVigente,
+};

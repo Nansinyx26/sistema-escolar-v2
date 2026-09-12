@@ -26,6 +26,20 @@
  * versão VIGENTE? A existência do campo legado não serve de resposta — ele pode
  * ser um carimbo automático de cadastro (Issue #236), que é justamente o que
  * não prova nada.
+ *
+ * AS QUATRO CAIXAS SÃO INDEPENDENTES
+ * ----------------------------------
+ * Salvar o perfil exigia as quatro caixas da aba "Termos LGPD" marcadas: quem
+ * só queria corrigir o telefone precisava consentir com tudo, inclusive com
+ * "Comunicações Rápidas". Corrigir dado cadastral é direito do titular
+ * (Art. 18, III) e consentimento vale por finalidade (Art. 8º, §4º), então a
+ * decisão registrada na #280 foi separar: nome e telefone salvam sem caixa
+ * nenhuma, e cada caixa é uma escolha própria.
+ *
+ * Três delas moram em `lgpdConsents` (`AUTORIZACOES_DO_PERFIL`); a quarta,
+ * ciência da política, é o consentimento geral acima. Cada aceite novo deixa
+ * sua própria assinatura no histórico — a caixa das notas do aluno é dado de
+ * criança (Art. 14, §1º), e é ali que a prova pesa mais.
  */
 const {
     registroDeConsentimento,
@@ -56,16 +70,60 @@ function decidirConsentimentoDoPerfil({ jaTemAssinatura, loteTrazAssinatura } = 
 }
 
 /**
+ * Chave em `lgpdConsents` → `termoId` da assinatura que o aceite deixa no
+ * `lgpdHistory`.
+ */
+const AUTORIZACOES_DO_PERFIL = Object.freeze({
+    perfilDadosCadastrais: 'perfil_dados_cadastrais',
+    perfilNotasDesempenho: 'perfil_notas_desempenho',
+    perfilComunicacoes: 'perfil_comunicacoes',
+});
+
+/**
+ * Mescla as autorizações pedidas nas que o titular já tem.
+ *
+ * Mesclar, e não substituir: o `updateProfile` gravava `lgpdConsents` inteiro,
+ * e a aba do perfil manda só as três chaves dela — as outras onze, escolhidas
+ * no `CompletarCadastro`, voltariam para `false` em silêncio.
+ *
+ * @param {object} atuais          `lgpdConsents` gravado hoje (pode faltar).
+ * @param {object} pedidas         `lgpdConsents` do corpo do pedido.
+ * @param {(chave: string) => boolean} chaveValida o schema conhece a chave.
+ * @returns {{campos: Object<string, boolean>, aceitasAgora: string[]}}
+ *   `campos` em notação de ponto, prontos para o `$set`; `aceitasAgora`, as
+ *   autorizações do perfil que passaram de desmarcada a marcada neste pedido.
+ */
+function mesclarAutorizacoes(atuais, pedidas, chaveValida) {
+    const campos = {};
+    const aceitasAgora = [];
+
+    for (const [chave, valor] of Object.entries(pedidas || {})) {
+        if (typeof valor !== 'boolean' || !chaveValida(chave)) continue;
+        campos[`lgpdConsents.${chave}`] = valor;
+
+        // Só o aceite NOVO assina: remarcar o que já estava marcado não é
+        // consentir de novo. Desmarcar é revogar (Art. 8º, §5º) e só apaga a
+        // escolha — o histórico de aceites anteriores é imutável.
+        if (valor && Object.hasOwn(AUTORIZACOES_DO_PERFIL, chave) && !atuais?.[chave]) {
+            aceitasAgora.push(chave);
+        }
+    }
+
+    return { campos, aceitasAgora };
+}
+
+/**
  * A assinatura auditável do aceite dado pelo perfil, no mesmo formato de todo
  * o sistema (`registroDeConsentimento`): termo, versão, data, IP, navegador e
  * método de validação.
  *
  * @param {object} req requisição autenticada.
  * @param {Date} aceitoEm a MESMA data gravada no campo, para os dois baterem.
+ * @param {string} [termoId] padrão: o consentimento geral (política).
  */
-function assinaturaDoPerfil(req, aceitoEm) {
+function assinaturaDoPerfil(req, aceitoEm, termoId = CONSENTIMENTO_ID) {
     const registro = registroDeConsentimento({
-        termoId: CONSENTIMENTO_ID,
+        termoId,
         versao: CONSENTIMENTO_VERSAO,
         metodoValidacao: METODOS.SESSAO,
         req,
@@ -79,6 +137,8 @@ function assinaturaDoPerfil(req, aceitoEm) {
 module.exports = {
     CONSENTIMENTO_ID,
     CONSENTIMENTO_VERSAO,
+    AUTORIZACOES_DO_PERFIL,
     decidirConsentimentoDoPerfil,
+    mesclarAutorizacoes,
     assinaturaDoPerfil,
 };

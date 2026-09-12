@@ -23,6 +23,7 @@ import {
 } from '../services/apiService';
 import styles from '../styles/portal.module.scss';
 import type { Attendance, AuthUser, GmailUser, Grade, Student } from '../types';
+import { mascaraTelefone } from '../utils/cadastroResponsavel';
 import { getPhotoUrl } from '../utils/photoUtils';
 
 function toGmailUser(u: AuthUser, googleProfile?: GmailUser | null): GmailUser {
@@ -290,6 +291,30 @@ const PortalResponsavel: React.FC = () => {
                 </div>
               </div>
               <div className={styles.formGroup}>
+                <label className={styles.formLabel} htmlFor="campo-telefone">
+                  Telefone Celular
+                </label>
+                <div className={styles.inputWrapper}>
+                  <Icon name="phone" aria-hidden="true" />
+                  <input
+                    id="campo-telefone"
+                    type="tel"
+                    inputMode="numeric"
+                    autoComplete="tel"
+                    className={styles.formInput}
+                    placeholder="(00) 00000-0000"
+                    value={registerForm.telefone}
+                    onChange={(e) =>
+                      setRegisterForm({
+                        ...registerForm,
+                        telefone: mascaraTelefone(e.target.value),
+                      })
+                    }
+                    required
+                  />
+                </div>
+              </div>
+              <div className={styles.formGroup}>
                 <label className={styles.formLabel} htmlFor="campo-senha">
                   Senha
                 </label>
@@ -317,6 +342,72 @@ const PortalResponsavel: React.FC = () => {
                   </button>
                 </div>
               </div>
+              <div className={styles.formGroup}>
+                <label className={styles.formLabel} htmlFor="campo-codigo-aluno">
+                  Código Secreto do Aluno
+                </label>
+                <div className={styles.inputWrapper}>
+                  <Icon name="key" aria-hidden="true" />
+                  <input
+                    id="campo-codigo-aluno"
+                    type="text"
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                    className={styles.formInput}
+                    placeholder="Ex: A1B2C3"
+                    value={registerForm.codigoSecreto}
+                    onChange={(e) =>
+                      setRegisterForm({
+                        ...registerForm,
+                        codigoSecreto: e.target.value.toUpperCase(),
+                      })
+                    }
+                    aria-describedby="ajuda-codigo-aluno"
+                    required
+                  />
+                </div>
+                <small id="ajuda-codigo-aluno" style={{ color: '#94a3b8', fontSize: '0.75rem' }}>
+                  Fornecido pela direção da escola.
+                </small>
+              </div>
+              {/* Nasce desmarcada e é opcional: criar a conta não é consentir
+                  (Issue #236). Sem a marcação, o aceite fica para o
+                  CompletarCadastro, como no cadastro pela página HTML. */}
+              <label
+                htmlFor="campo-aceite-politica"
+                style={{
+                  display: 'flex',
+                  gap: '10px',
+                  alignItems: 'flex-start',
+                  fontSize: '0.8rem',
+                  color: '#cbd5e1',
+                  lineHeight: 1.5,
+                  margin: '4px 0 16px',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                <input
+                  id="campo-aceite-politica"
+                  type="checkbox"
+                  checked={registerForm.aceitePolitica}
+                  onChange={(e) =>
+                    setRegisterForm({ ...registerForm, aceitePolitica: e.target.checked })
+                  }
+                  style={{ marginTop: '3px' }}
+                />
+                <span>
+                  Li e aceito a{' '}
+                  <a
+                    href="/html/politica-privacidade.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Política de Privacidade
+                  </a>
+                  . Opcional agora: você também pode aceitar depois, ao completar o cadastro.
+                </span>
+              </label>
               <button type="submit" className={styles.submitBtn} disabled={loginLoading}>
                 {loginLoading ? 'Criando...' : 'Criar Conta'}
               </button>

@@ -1,17 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ApiError, getMe, googleLogin, login, logout as apiLogout } from '../services/apiService';
-import { useGmailAuth } from './useGmailAuth';
+import { ApiError, logout as apiLogout, getMe, googleLogin, login } from '../services/apiService';
 import type { AuthUser } from '../types';
+import { type FormularioCadastro, montarCorpoCadastro } from '../utils/cadastroResponsavel';
+import { useGmailAuth } from './useGmailAuth';
 
 type Toast = { message: string; type: 'success' | 'error' } | null;
-
-interface RegisterForm {
-  nome: string;
-  email: string;
-  senha: string;
-  cpf: string;
-  telefone: string;
-}
 
 interface UseAuthOptions {
   cleanApiUrl: string;
@@ -28,12 +21,13 @@ export function useAuth({ cleanApiUrl, onToast }: UseAuthOptions) {
   const [showPassword, setShowPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
-  const [registerForm, setRegisterForm] = useState<RegisterForm>({
+  const [registerForm, setRegisterForm] = useState<FormularioCadastro>({
     nome: '',
     email: '',
     senha: '',
-    cpf: '',
     telefone: '',
+    codigoSecreto: '',
+    aceitePolitica: false,
   });
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
@@ -128,7 +122,10 @@ export function useAuth({ cleanApiUrl, onToast }: UseAuthOptions) {
       });
       const data = await response.json();
       if (data.success) {
-        onToast({ message: data.message || 'Código enviado! Verifique seu e-mail.', type: 'success' });
+        onToast({
+          message: data.message || 'Código enviado! Verifique seu e-mail.',
+          type: 'success',
+        });
         setForgotStep(2);
         startTimers();
       } else {
@@ -215,7 +212,11 @@ export function useAuth({ cleanApiUrl, onToast }: UseAuthOptions) {
       const response = await fetch(`${cleanApiUrl}/api/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: forgotEmail, codigo: forgotCode, password: forgotNewPassword }),
+        body: JSON.stringify({
+          email: forgotEmail,
+          codigo: forgotCode,
+          password: forgotNewPassword,
+        }),
       });
       const data = await response.json();
       if (data.success) {
@@ -230,7 +231,15 @@ export function useAuth({ cleanApiUrl, onToast }: UseAuthOptions) {
     } finally {
       setForgotLoading(false);
     }
-  }, [cleanApiUrl, forgotCode, forgotConfirmPassword, forgotEmail, forgotNewPassword, onToast, resetForgotModal]);
+  }, [
+    cleanApiUrl,
+    forgotCode,
+    forgotConfirmPassword,
+    forgotEmail,
+    forgotNewPassword,
+    onToast,
+    resetForgotModal,
+  ]);
 
   const handleGoogleLogin = useCallback(async () => {
     setLoginLoading(true);
@@ -249,52 +258,61 @@ export function useAuth({ cleanApiUrl, onToast }: UseAuthOptions) {
     }
   }, [loginWithGmail, onToast]);
 
-  const handleLogin = useCallback(async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!email || !senha) return;
+  const handleLogin = useCallback(
+    async (event: React.FormEvent) => {
+      event.preventDefault();
+      if (!email || !senha) return;
 
-    setLoginLoading(true);
-    setAuthError(null);
-    try {
-      const user = await login({ email, senha });
-      setAuthUser(user);
-      onToast({ message: 'Login realizado com sucesso!', type: 'success' });
-    } catch (err) {
-      const message = err instanceof ApiError
-        ? err.message
-        : 'Erro de conexão. Verifique se o servidor está ativo.';
-      setAuthError(message);
-      onToast({ message, type: 'error' });
-    } finally {
-      setLoginLoading(false);
-    }
-  }, [email, onToast, senha]);
+      setLoginLoading(true);
+      setAuthError(null);
+      try {
+        const user = await login({ email, senha });
+        setAuthUser(user);
+        onToast({ message: 'Login realizado com sucesso!', type: 'success' });
+      } catch (err) {
+        const message =
+          err instanceof ApiError
+            ? err.message
+            : 'Erro de conexão. Verifique se o servidor está ativo.';
+        setAuthError(message);
+        onToast({ message, type: 'error' });
+      } finally {
+        setLoginLoading(false);
+      }
+    },
+    [email, onToast, senha]
+  );
 
-  const handleRegister = useCallback(async (event: React.FormEvent) => {
-    event.preventDefault();
-    setLoginLoading(true);
-    setAuthError(null);
-    try {
-      const response = await fetch(`${cleanApiUrl}/api/auth/register-responsavel`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(registerForm),
-      });
-      const data = await response.json();
-      if (!response.ok || !data.success) throw new Error(data.error || 'Erro ao criar conta');
+  const handleRegister = useCallback(
+    async (event: React.FormEvent) => {
+      event.preventDefault();
+      setLoginLoading(true);
+      setAuthError(null);
+      try {
+        const response = await fetch(`${cleanApiUrl}/api/auth/register-responsavel`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          // Nunca o estado da tela direto: foi mandando `registerForm` inteiro
+          // que o portal ficou sem os campos que o backend exige (Issue #288).
+          body: JSON.stringify(montarCorpoCadastro(registerForm)),
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.error || 'Erro ao criar conta');
 
-      onToast({ message: 'Conta criada com sucesso! Entrando...', type: 'success' });
-      const user = await login({ email: registerForm.email, senha: registerForm.senha });
-      setAuthUser(user);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Erro ao criar conta.';
-      setAuthError(message);
-      onToast({ message, type: 'error' });
-    } finally {
-      setLoginLoading(false);
-    }
-  }, [cleanApiUrl, onToast, registerForm]);
+        onToast({ message: 'Conta criada com sucesso! Entrando...', type: 'success' });
+        const user = await login({ email: registerForm.email, senha: registerForm.senha });
+        setAuthUser(user);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Erro ao criar conta.';
+        setAuthError(message);
+        onToast({ message, type: 'error' });
+      } finally {
+        setLoginLoading(false);
+      }
+    },
+    [cleanApiUrl, onToast, registerForm]
+  );
 
   const handleLogout = useCallback(async () => {
     try {
@@ -307,86 +325,89 @@ export function useAuth({ cleanApiUrl, onToast }: UseAuthOptions) {
     setAuthError(null);
   }, [gmailLogout]);
 
-  const value = useMemo(() => ({
-    authUser,
-    setAuthUser,
-    authLoading,
-    authError,
-    setAuthError,
-    email,
-    setEmail,
-    senha,
-    setSenha,
-    loginLoading,
-    showPassword,
-    setShowPassword,
-    showRegisterPassword,
-    setShowRegisterPassword,
-    isRegistering,
-    setIsRegistering,
-    registerForm,
-    setRegisterForm,
-    showForgotModal,
-    setShowForgotModal,
-    forgotEmail,
-    setForgotEmail,
-    forgotLoading,
-    forgotStep,
-    setForgotStep,
-    forgotCode,
-    setForgotCode,
-    forgotNewPassword,
-    setForgotNewPassword,
-    forgotConfirmPassword,
-    setForgotConfirmPassword,
-    codeCountdown,
-    resendCountdown,
-    showNewPassword,
-    setShowNewPassword,
-    gmailUser,
-    gmailAuthError,
-    resetForgotModal,
-    handleForgotSendCode,
-    handleResendCode,
-    handleForgotVerifyCode,
-    handleForgotResetPassword,
-    handleGoogleLogin,
-    handleLogin,
-    handleRegister,
-    handleLogout,
-  }), [
-    authError,
-    authLoading,
-    authUser,
-    codeCountdown,
-    email,
-    forgotCode,
-    forgotConfirmPassword,
-    forgotEmail,
-    forgotLoading,
-    forgotNewPassword,
-    forgotStep,
-    gmailAuthError,
-    gmailUser,
-    handleForgotResetPassword,
-    handleForgotSendCode,
-    handleForgotVerifyCode,
-    handleGoogleLogin,
-    handleLogin,
-    handleLogout,
-    handleRegister,
-    handleResendCode,
-    isRegistering,
-    loginLoading,
-    registerForm,
-    resendCountdown,
-    resetForgotModal,
-    senha,
-    showForgotModal,
-    showNewPassword,
-    showPassword,
-    showRegisterPassword,
-  ]);
+  const value = useMemo(
+    () => ({
+      authUser,
+      setAuthUser,
+      authLoading,
+      authError,
+      setAuthError,
+      email,
+      setEmail,
+      senha,
+      setSenha,
+      loginLoading,
+      showPassword,
+      setShowPassword,
+      showRegisterPassword,
+      setShowRegisterPassword,
+      isRegistering,
+      setIsRegistering,
+      registerForm,
+      setRegisterForm,
+      showForgotModal,
+      setShowForgotModal,
+      forgotEmail,
+      setForgotEmail,
+      forgotLoading,
+      forgotStep,
+      setForgotStep,
+      forgotCode,
+      setForgotCode,
+      forgotNewPassword,
+      setForgotNewPassword,
+      forgotConfirmPassword,
+      setForgotConfirmPassword,
+      codeCountdown,
+      resendCountdown,
+      showNewPassword,
+      setShowNewPassword,
+      gmailUser,
+      gmailAuthError,
+      resetForgotModal,
+      handleForgotSendCode,
+      handleResendCode,
+      handleForgotVerifyCode,
+      handleForgotResetPassword,
+      handleGoogleLogin,
+      handleLogin,
+      handleRegister,
+      handleLogout,
+    }),
+    [
+      authError,
+      authLoading,
+      authUser,
+      codeCountdown,
+      email,
+      forgotCode,
+      forgotConfirmPassword,
+      forgotEmail,
+      forgotLoading,
+      forgotNewPassword,
+      forgotStep,
+      gmailAuthError,
+      gmailUser,
+      handleForgotResetPassword,
+      handleForgotSendCode,
+      handleForgotVerifyCode,
+      handleGoogleLogin,
+      handleLogin,
+      handleLogout,
+      handleRegister,
+      handleResendCode,
+      isRegistering,
+      loginLoading,
+      registerForm,
+      resendCountdown,
+      resetForgotModal,
+      senha,
+      showForgotModal,
+      showNewPassword,
+      showPassword,
+      showRegisterPassword,
+    ]
+  );
 
   return value;
 }
