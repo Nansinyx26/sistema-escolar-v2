@@ -59,11 +59,11 @@ document.addEventListener('DOMContentLoaded', () => {
             clearTimeout(codeTimer);
             codeTimer = setTimeout(async () => {
                 try {
-                    const baseUrl = window.API_BASE_URL || (window.location.origin + '/api');
+                    const baseUrl = window.API_BASE_URL || window.location.origin + '/api';
                     const res = await fetch(`${baseUrl}/auth/validate-code`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ codigo: code })
+                        body: JSON.stringify({ codigo: code }),
                     });
                     const data = await res.json();
                     if (data.success && data.valid) {
@@ -116,16 +116,21 @@ document.addEventListener('DOMContentLoaded', () => {
         submitBtn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Criando conta...';
 
         try {
-            const baseUrl = window.API_BASE_URL || (window.location.origin + '/api');
+            const baseUrl = window.API_BASE_URL || window.location.origin + '/api';
             const res = await fetch(`${baseUrl}/auth/register-diretor`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({
-                    nome, email, senha, telefone, escola, codigoEscola,
+                    nome,
+                    email,
+                    senha,
+                    telefone,
+                    escola,
+                    codigoEscola,
                     // Multi-escola: escola pré-selecionada no modal da landing
-                    escolaId: (window.EscolaContexto && window.EscolaContexto.id) || undefined
-                })
+                    escolaId: (window.EscolaContexto && window.EscolaContexto.id) || undefined,
+                }),
             });
 
             const data = await res.json();
@@ -144,7 +149,6 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 window.location.href = data.redirect_to || '../dashboard.html';
             }, 1200);
-
         } catch (error) {
             console.error('Erro no registro de diretor:', error);
             showToast(error.message || 'Erro ao criar conta.', 'error');
@@ -161,7 +165,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const senha = senhaInput?.value;
         const confirmSenha = confirmSenhaInput?.value;
 
-        const passwordValid = senha && senha.length >= 8 && /[A-Z]/.test(senha) && /[0-9]/.test(senha) && /[^A-Za-z0-9]/.test(senha);
+        const passwordValid =
+            senha &&
+            senha.length >= 8 &&
+            /[A-Z]/.test(senha) &&
+            /[0-9]/.test(senha) &&
+            /[^A-Za-z0-9]/.test(senha);
         const passwordsMatch = senha === confirmSenha && confirmSenha;
         const allFilled = nome && email && telefone && codigo;
 
@@ -186,18 +195,27 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.addEventListener('click', () => {
                 const type = input.type === 'password' ? 'text' : 'password';
                 input.type = type;
-                btn.innerHTML = type === 'text' ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
+                btn.innerHTML =
+                    type === 'text'
+                        ? '<i class="bi bi-eye"></i>'
+                        : '<i class="bi bi-eye-slash"></i>';
             });
         }
     }
 
     function showToast(msg, type) {
         const container = document.getElementById('toastContainer');
-        if (!container) { alert(msg); return; }
+        if (!container) {
+            alert(msg);
+            return;
+        }
 
         const toast = document.createElement('div');
         toast.className = 'dnc-toast';
-        toast.style.background = type === 'error' ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'linear-gradient(135deg, #10b981, #059669)';
+        toast.style.background =
+            type === 'error'
+                ? 'linear-gradient(135deg, #ef4444, #dc2626)'
+                : 'linear-gradient(135deg, #10b981, #059669)';
         toast.innerHTML = `<i class="bi ${type === 'error' ? 'bi-exclamation-circle' : 'bi-check-circle'}"></i> ${msg}`;
         container.appendChild(toast);
         setTimeout(() => toast.remove(), 4000);

@@ -6,7 +6,15 @@
  */
 const request = require('supertest');
 const app = require('../app');
-const { conectarBanco, limparBanco, desconectarBanco, criarUsuario, SENHA_TESTE, SENHA_TESTE_NOVA, CODIGO_ESCOLA_TESTE } = require('./helpers');
+const {
+    conectarBanco,
+    limparBanco,
+    desconectarBanco,
+    criarUsuario,
+    SENHA_TESTE,
+    SENHA_TESTE_NOVA,
+    CODIGO_ESCOLA_TESTE,
+} = require('./helpers');
 
 const Escola = require('../models/Escola');
 const Professor = require('../models/Professor');
@@ -14,22 +22,35 @@ const Turma = require('../models/Turma');
 
 let escolaA, escolaB, escolaBloqueada;
 
-beforeAll(async () => { await conectarBanco(); });
-afterAll(async () => { await desconectarBanco(); });
+beforeAll(async () => {
+    await conectarBanco();
+});
+afterAll(async () => {
+    await desconectarBanco();
+});
 
 beforeEach(async () => {
     await limparBanco();
     escolaA = await Escola.create({
-        nome: 'CIEP Escola A', tipo: 'CIEP', bairro: 'Bairro A',
-        codigoSecreto: 'CODIGO-A-123', ativo: true
+        nome: 'CIEP Escola A',
+        tipo: 'CIEP',
+        bairro: 'Bairro A',
+        codigoSecreto: 'CODIGO-A-123',
+        ativo: true,
     });
     escolaB = await Escola.create({
-        nome: 'EMEF Escola B', tipo: 'EMEF', bairro: 'Bairro B',
-        codigoSecreto: 'CODIGO-B-456', ativo: true
+        nome: 'EMEF Escola B',
+        tipo: 'EMEF',
+        bairro: 'Bairro B',
+        codigoSecreto: 'CODIGO-B-456',
+        ativo: true,
     });
     escolaBloqueada = await Escola.create({
-        nome: 'EMEF Bloqueada', tipo: 'EMEF', bairro: 'Bairro C',
-        codigoSecreto: 'CODIGO-C-789', ativo: false
+        nome: 'EMEF Bloqueada',
+        tipo: 'EMEF',
+        bairro: 'Bairro C',
+        codigoSecreto: 'CODIGO-C-789',
+        ativo: false,
     });
 });
 
@@ -49,13 +70,13 @@ describe('GET /api/escolas', () => {
     it('filtra por tipo EMEF', async () => {
         const res = await request(app).get('/api/escolas?tipo=EMEF');
         expect(res.status).toBe(200);
-        expect(res.body.data.every(e => e.tipo === 'EMEF')).toBe(true);
+        expect(res.body.data.every((e) => e.tipo === 'EMEF')).toBe(true);
         expect(res.body.data).toHaveLength(2);
     });
 
     it('inclui o campo ativo (cadeado do modal)', async () => {
         const res = await request(app).get('/api/escolas');
-        const bloqueada = res.body.data.find(e => e.nome === 'EMEF Bloqueada');
+        const bloqueada = res.body.data.find((e) => e.nome === 'EMEF Bloqueada');
         expect(bloqueada.ativo).toBe(false);
     });
 });
@@ -65,9 +86,14 @@ describe('GET /api/escolas', () => {
 // ─────────────────────────────────────────────────────────
 describe('POST /api/auth/register-docente (multi-escola)', () => {
     const docente = (extra = {}) => ({
-        nome: 'Prof Multi', email: `multi_${Date.now()}@escola.test`, senha: SENHA_TESTE,
-        disciplina: 'Matemática', turma: '1A', matricula: 'M123',
-        telefone: '(19) 99999-0000', ...extra
+        nome: 'Prof Multi',
+        email: `multi_${Date.now()}@escola.test`,
+        senha: SENHA_TESTE,
+        disciplina: 'Matemática',
+        turma: '1A',
+        matricula: 'M123',
+        telefone: '(19) 99999-0000',
+        ...extra,
     });
 
     it('cria vinculo com a escola do escolaId quando o código bate', async () => {
@@ -98,7 +124,10 @@ describe('POST /api/auth/register-docente (multi-escola)', () => {
     });
 
     it('rejeita cadastro em escola bloqueada (ativo:false)', async () => {
-        const body = docente({ escolaId: String(escolaBloqueada._id), codigoEscola: 'CODIGO-C-789' });
+        const body = docente({
+            escolaId: String(escolaBloqueada._id),
+            codigoEscola: 'CODIGO-C-789',
+        });
         const res = await request(app).post('/api/auth/register-docente').send(body);
         expect(res.status).toBe(403);
     });
@@ -111,16 +140,19 @@ describe('POST /api/auth/login (multi-escola)', () => {
     async function criarProfessorVinculado(email, escolas) {
         const user = await criarUsuario({ email, perfil: 'professor' });
         await Professor.create({
-            idUsuario: String(user._id), nome: user.nome, email,
-            vinculos: escolas.map(e => ({ escolaId: String(e._id), cargo: 'professor' })),
-            ativo: true
+            idUsuario: String(user._id),
+            nome: user.nome,
+            email,
+            vinculos: escolas.map((e) => ({ escolaId: String(e._id), cargo: 'professor' })),
+            ativo: true,
         });
         return user;
     }
 
     it('403 quando pede escola sem vínculo', async () => {
         await criarProfessorVinculado('so_a@escola.test', [escolaA]);
-        const res = await request(app).post('/api/auth/login')
+        const res = await request(app)
+            .post('/api/auth/login')
             .send({ email: 'so_a@escola.test', senha: SENHA_TESTE, escolaId: String(escolaB._id) });
         expect(res.status).toBe(403);
         expect(res.body.error).toMatch(/vínculo/i);
@@ -128,8 +160,13 @@ describe('POST /api/auth/login (multi-escola)', () => {
 
     it('entra normalmente na escola vinculada', async () => {
         await criarProfessorVinculado('so_a2@escola.test', [escolaA]);
-        const res = await request(app).post('/api/auth/login')
-            .send({ email: 'so_a2@escola.test', senha: SENHA_TESTE, escolaId: String(escolaA._id) });
+        const res = await request(app)
+            .post('/api/auth/login')
+            .send({
+                email: 'so_a2@escola.test',
+                senha: SENHA_TESTE,
+                escolaId: String(escolaA._id),
+            });
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
         expect(res.body.requiresEscolha).toBeUndefined();
@@ -137,7 +174,8 @@ describe('POST /api/auth/login (multi-escola)', () => {
 
     it('com múltiplos vínculos e sem escolaId, pede escolha com a lista', async () => {
         await criarProfessorVinculado('duplo@escola.test', [escolaA, escolaB]);
-        const res = await request(app).post('/api/auth/login')
+        const res = await request(app)
+            .post('/api/auth/login')
             .send({ email: 'duplo@escola.test', senha: SENHA_TESTE });
         expect(res.status).toBe(200);
         expect(res.body.requiresEscolha).toBe(true);
@@ -152,13 +190,16 @@ describe('Troca de escola e isolamento por escolaId', () => {
     async function agentLogado(email, escolas) {
         const user = await criarUsuario({ email, perfil: 'professor' });
         await Professor.create({
-            idUsuario: String(user._id), nome: user.nome, email,
+            idUsuario: String(user._id),
+            nome: user.nome,
+            email,
             salaPrincipal: '1A',
-            vinculos: escolas.map(e => ({ escolaId: String(e._id), cargo: 'professor' })),
-            ativo: true
+            vinculos: escolas.map((e) => ({ escolaId: String(e._id), cargo: 'professor' })),
+            ativo: true,
         });
         const agent = request.agent(app); // persiste cookies (JWT + sessão)
-        const login = await agent.post('/api/auth/login')
+        const login = await agent
+            .post('/api/auth/login')
             .send({ email, senha: SENHA_TESTE, escolaId: String(escolas[0]._id) });
         expect(login.status).toBe(200);
         return agent;
@@ -179,9 +220,27 @@ describe('Troca de escola e isolamento por escolaId', () => {
     });
 
     it('GET /api/turmas retorna apenas turmas da escola ativa da sessão', async () => {
-        await Turma.create({ id: '1A', nome: '1A', ano: 1, escolaId: String(escolaA._id), ativo: true });
-        await Turma.create({ id: '1A', nome: '1A', ano: 1, escolaId: String(escolaB._id), ativo: true });
-        await Turma.create({ id: '2B', nome: '2B', ano: 2, escolaId: String(escolaB._id), ativo: true });
+        await Turma.create({
+            id: '1A',
+            nome: '1A',
+            ano: 1,
+            escolaId: String(escolaA._id),
+            ativo: true,
+        });
+        await Turma.create({
+            id: '1A',
+            nome: '1A',
+            ano: 1,
+            escolaId: String(escolaB._id),
+            ativo: true,
+        });
+        await Turma.create({
+            id: '2B',
+            nome: '2B',
+            ano: 2,
+            escolaId: String(escolaB._id),
+            ativo: true,
+        });
 
         const agent = await agentLogado('isolado@escola.test', [escolaA]);
         const res = await agent.get('/api/turmas');
