@@ -179,6 +179,12 @@ export interface UseGmailAuthReturn {
   logout: () => void;
 }
 
+/** Autorizações independentes da aba "Termos LGPD" do EditarPerfil (Issue #280). */
+export type AutorizacaoDoPerfil =
+  | 'perfilDadosCadastrais'
+  | 'perfilNotasDesempenho'
+  | 'perfilComunicacoes';
+
 export interface AuthUser {
   id: string;
   nome: string;
@@ -189,6 +195,8 @@ export interface AuthUser {
   fotoGoogle?: string;
   loginGoogle?: boolean;
   consentimentoAceiteEm?: string;
+  /** Escolhas LGPD por finalidade. Só as três da aba "Termos LGPD" do perfil estão tipadas. */
+  lgpdConsents?: Partial<Record<AutorizacaoDoPerfil, boolean>>;
   profileCompleted?: boolean;
   tutorialResponsavelConcluido?: boolean;
   tutorialProfessorConcluido?: boolean;

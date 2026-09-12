@@ -24,7 +24,9 @@ const { emitirTokenSessao } = require('../utils/sessionToken');
 const {
     CONSENTIMENTO_ID,
     CONSENTIMENTO_VERSAO,
+    AUTORIZACOES_DO_PERFIL,
     decidirConsentimentoDoPerfil,
+    mesclarAutorizacoes,
     assinaturaDoPerfil,
 } = require('../utils/consentimentoDoPerfil');
 
@@ -2214,6 +2216,10 @@ exports.updateProfile = async (req, res) => {
             updateData.cpf = body.cpf;
         }
 
+        // Autorizações do perfil que o titular marcou AGORA — cada uma assina
+        // no `lgpdHistory` mais abaixo, junto do lote (Issue #280).
+        let autorizacoesAceitas = [];
+
         // Atributos específicos do Responsável (Onboarding LGPD)
         if (isResponsavel) {
             const responsavelFields = [
@@ -2224,7 +2230,6 @@ exports.updateProfile = async (req, res) => {
                 'autorizadoRetirar',
                 'segundoResponsavel',
                 'pessoasAutorizadas',
-                'lgpdConsents',
                 'profileCompleted',
             ];
 
@@ -2236,8 +2241,23 @@ exports.updateProfile = async (req, res) => {
             // de uma assinatura no `lgpdHistory`, e isso é decidido abaixo, depois
             // de conhecido o lote de `newLgpdRecords` (Issue #280).
 
+            const currentUser = await Usuario.findById(userId).select(
+                'contaId profileCompleted lgpdConsents'
+            );
+
+            // `lgpdConsents` é mesclado chave a chave, e não substituído: a aba
+            // "Termos LGPD" do perfil manda só as três chaves dela (Issue #280).
+            if (body.lgpdConsents && typeof body.lgpdConsents === 'object') {
+                const { campos, aceitasAgora } = mesclarAutorizacoes(
+                    currentUser?.lgpdConsents,
+                    body.lgpdConsents,
+                    (chave) => !!Usuario.schema.path(`lgpdConsents.${chave}`)
+                );
+                Object.assign(updateData, campos);
+                autorizacoesAceitas = aceitasAgora;
+            }
+
             // Gerar contaId se profileCompleted estiver sendo marcado como true pela primeira vez
-            const currentUser = await Usuario.findById(userId).select('contaId profileCompleted');
             if (
                 body.profileCompleted === true &&
                 (!currentUser.profileCompleted || !currentUser.contaId)
@@ -2326,6 +2346,15 @@ exports.updateProfile = async (req, res) => {
                 updateData.consentimentoVersao = CONSENTIMENTO_VERSAO;
                 if (acrescentarAssinatura) historyEntries.push(assinaturaDoPerfil(req, agora));
             }
+        }
+
+        if (autorizacoesAceitas.length > 0) {
+            const agora = new Date();
+            historyEntries.push(
+                ...autorizacoesAceitas.map((chave) =>
+                    assinaturaDoPerfil(req, agora, AUTORIZACOES_DO_PERFIL[chave])
+                )
+            );
         }
 
         if (historyEntries.length > 0) {

@@ -10,6 +10,7 @@
 import type {
   Attendance,
   AuthUser,
+  AutorizacaoDoPerfil,
   BIInsights,
   DocumentoArquivo,
   DocumentoResponsavelItem,
@@ -137,6 +138,8 @@ export async function updateProfile(payload: {
   telefone?: string;
   foto?: string;
   consentimentoAceiteEm?: boolean;
+  /** Mesclado chave a chave no servidor: mandar só as que mudam não apaga as outras. */
+  lgpdConsents?: Partial<Record<AutorizacaoDoPerfil, boolean>>;
   notificacoesPreferencias?: {
     portal: boolean;
     push: boolean;
