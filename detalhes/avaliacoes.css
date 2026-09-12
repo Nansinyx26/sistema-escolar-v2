@@ -23,7 +23,10 @@
     position: relative;
     overflow: hidden;
     backdrop-filter: blur(14px);
-    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    transition:
+        transform var(--motion-base, 180ms) var(--motion-ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+        border-color var(--motion-base, 180ms) var(--motion-ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+        box-shadow var(--motion-base, 180ms) var(--motion-ease-out, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 [data-theme="dark"] .stat-card-modern {
@@ -240,16 +243,24 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1050;
+    /* Acima do selo "Desenvolvido por" (watermark.css, 3000) e dos botões
+       flutuantes de acessibilidade, que cobriam o botão Salvar. */
+    z-index: 3100;
     padding: 1rem;
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0.2s ease, visibility 0.2s ease;
+    /* Saída mais sutil que a entrada: some rápido, sem deslocamento. */
+    transition:
+        opacity var(--motion-fast, 120ms) var(--motion-ease-in, cubic-bezier(0.4, 0, 1, 1)),
+        visibility 0s linear var(--motion-fast, 120ms);
 }
 
 .modal-overlay.active {
     opacity: 1;
     visibility: visible;
+    transition:
+        opacity var(--motion-base, 180ms) var(--motion-ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+        visibility 0s;
 }
 
 .modal-dialog-custom {
@@ -261,8 +272,11 @@
     max-height: 90vh;
     overflow-y: auto;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
-    transform: translateY(20px) scale(0.98);
-    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    transform: translateY(var(--motion-enter-y, 8px));
+    filter: blur(var(--motion-enter-blur, 4px));
+    transition:
+        transform var(--motion-surface, 340ms) var(--motion-ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+        filter var(--motion-surface, 340ms) var(--motion-ease-out, cubic-bezier(0.16, 1, 0.3, 1));
     display: flex;
     flex-direction: column;
 }
@@ -278,7 +292,8 @@
 }
 
 .modal-overlay.active .modal-dialog-custom {
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
+    filter: none;
 }
 
 .modal-header-custom {
@@ -356,8 +371,13 @@
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 10px;
     color: #fff;
+    font-family: inherit; /* textarea não herda: a descrição saía monoespaçada */
     font-size: 0.9rem;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    /* Controles nativos (calendário, setas do número) no esquema escuro. */
+    color-scheme: dark;
+    transition:
+        border-color var(--motion-fast, 120ms) var(--motion-ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+        box-shadow var(--motion-fast, 120ms) var(--motion-ease-out, cubic-bezier(0.16, 1, 0.3, 1));
     outline: none;
 }
 
@@ -365,11 +385,61 @@
     background: #f8fafc;
     border-color: #cbd5e1;
     color: #0f172a;
+    color-scheme: light;
+}
+
+/* A lista nativa do <select> herda a cor do texto (branca) mas não o fundo
+   translúcido: no Windows ela abria branca, com as turmas invisíveis. */
+select.form-control-custom,
+.filtro-select {
+    color-scheme: dark;
+    cursor: pointer;
+}
+
+select.form-control-custom option,
+select.form-control-custom optgroup,
+.filtro-select option,
+.filtro-select optgroup {
+    background-color: #18181b;
+    color: #fafafa;
+}
+
+select.form-control-custom optgroup,
+.filtro-select optgroup {
+    color: #00dc82;
+    font-weight: 700;
+}
+
+[data-theme="light"] select.form-control-custom,
+[data-theme="light"] .filtro-select {
+    color-scheme: light;
+}
+
+[data-theme="light"] select.form-control-custom option,
+[data-theme="light"] .filtro-select option {
+    background-color: #ffffff;
+    color: #0f172a;
+}
+
+[data-theme="light"] select.form-control-custom optgroup,
+[data-theme="light"] .filtro-select optgroup {
+    background-color: #ffffff;
+    color: #047857;
+}
+
+.form-control-custom:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
 }
 
 .form-control-custom:focus {
     border-color: #00dc82;
     box-shadow: 0 0 0 3px rgba(0, 220, 130, 0.25);
+}
+
+.form-control-custom[aria-invalid="true"] {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
 }
 
 /* ── Painel de Lançamento de Notas ── */
@@ -591,6 +661,335 @@
 
 [data-theme="light"] .audit-reason {
     background: rgba(0, 0, 0, 0.03);
+}
+
+/* ── Filtros ── */
+.filtro-select {
+    width: auto;
+    min-width: 170px;
+    padding: 0.6rem 0.85rem;
+}
+
+/* ── Formulário: obrigatório, dica, erro ── */
+.obrigatorio {
+    color: #00dc82;
+}
+
+.opcional {
+    font-weight: 400;
+    color: var(--text-muted, #94a3b8);
+}
+
+.form-dica,
+.form-erro {
+    display: block;
+    font-size: 0.76rem;
+    margin-top: 5px;
+    line-height: 1.35;
+}
+
+.form-dica {
+    color: var(--text-muted, #94a3b8);
+}
+
+.form-erro {
+    color: #f87171;
+    font-weight: 500;
+}
+
+.form-erro:empty {
+    display: none;
+}
+
+.form-resumo-erros {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    color: #fca5a5;
+    border-radius: 10px;
+    padding: 0.7rem 0.9rem;
+    font-size: 0.85rem;
+    margin-bottom: 1.1rem;
+}
+
+[data-theme="light"] .form-resumo-erros {
+    color: #b91c1c;
+}
+
+/* ── Aviso de perfil (professor sem turma, opções indisponíveis) ── */
+.avaliacoes-aviso {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.88rem;
+    line-height: 1.45;
+}
+
+.avaliacoes-aviso i {
+    font-size: 1.05rem;
+    margin-top: 1px;
+}
+
+.avaliacoes-aviso-alerta {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    color: #fbbf24;
+}
+
+.avaliacoes-aviso-erro {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    color: #fca5a5;
+}
+
+[data-theme="light"] .avaliacoes-aviso-alerta {
+    color: #92400e;
+}
+
+[data-theme="light"] .avaliacoes-aviso-erro {
+    color: #b91c1c;
+}
+
+.btn-novo-avaliacao:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* ── Tabela: textos, skeleton, estados ── */
+.linha-skeleton td {
+    padding: 1rem 1.25rem;
+}
+
+.linha-skeleton .skeleton-line {
+    display: block;
+    height: 1.1rem;
+    width: 100%;
+    margin: 0;
+}
+
+.avaliacao-titulo {
+    font-weight: 600;
+    color: var(--text-primary, #fff);
+}
+
+.texto-suave {
+    font-size: 0.78rem;
+    color: var(--text-muted, #94a3b8);
+    margin-top: 2px;
+}
+
+.texto-forte {
+    font-weight: 600;
+    color: var(--text-primary, #fff);
+}
+
+.celula-erro {
+    text-align: center;
+    color: #f87171;
+    padding: 2rem 1rem;
+}
+
+.celula-vazia {
+    text-align: center;
+    color: var(--text-muted, #94a3b8);
+    padding: 1.5rem 1rem;
+}
+
+.historico-vazio-icone {
+    font-size: 2rem;
+    display: block;
+    margin-bottom: 1rem;
+    opacity: 0.4;
+}
+
+.empty-state-texto {
+    color: var(--text-muted, #94a3b8);
+    font-size: 0.9rem;
+    margin-top: 4px;
+}
+
+.acoes-linha {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.celula-acoes {
+    text-align: right;
+}
+
+.badge-turma {
+    white-space: nowrap;
+}
+
+.media-valor {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.media-valor.nota-aprovado { color: #10b981; }
+.media-valor.nota-recuperacao { color: #f59e0b; }
+.media-valor.nota-reprovado { color: #ef4444; }
+
+/* ── Lançamento de notas ── */
+.aluno-celula {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.aluno-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(0, 220, 130, 0.15);
+    color: #00dc82;
+    font-size: 0.78rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.input-obs-aluno {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
+}
+
+/* ── Tablet ── */
+@media (max-width: 1024px) {
+    .avaliacoes-stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* ── Tablet em pé e celular: a tabela de 7 colunas vira uma lista de cartões.
+   Até 900px as colunas ficavam tão estreitas que quebravam palavras ao meio. ── */
+@media (max-width: 900px) {
+    .lista-container .detalhes-table thead {
+        display: none;
+    }
+
+    #avaliacoesTableBody tr:not(.linha-skeleton) {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.35rem 1rem;
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+    }
+
+    #avaliacoesTableBody tr:not(.linha-skeleton) td {
+        display: block;
+        padding: 0;
+        border: none;
+    }
+
+    #avaliacoesTableBody td[data-label]::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 0.68rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--text-muted, #94a3b8);
+        margin-bottom: 2px;
+    }
+
+    #avaliacoesTableBody td[data-label="Avaliação"],
+    #avaliacoesTableBody td[data-label="Ações"] {
+        grid-column: 1 / -1;
+    }
+
+    #avaliacoesTableBody td[data-label="Avaliação"]::before,
+    #avaliacoesTableBody td[data-label="Ações"]::before {
+        display: none;
+    }
+
+    #avaliacoesTableBody .celula-acoes {
+        text-align: left;
+        margin-top: 0.5rem;
+    }
+
+    #avaliacoesTableBody .acoes-linha {
+        justify-content: flex-start;
+    }
+
+    #avaliacoesTableBody .btn-action-table {
+        min-height: 40px;
+        min-width: 40px;
+        justify-content: center;
+    }
+}
+
+@media (min-width: 560px) and (max-width: 900px) {
+    #avaliacoesTableBody tr:not(.linha-skeleton) {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+/* ── Celular ── */
+@media (max-width: 720px) {
+    .filtro-select {
+        min-width: 0;
+    }
+
+    /* Modal ocupa a tela; rodapé com botões de toque confortável */
+    .modal-overlay {
+        padding: 0;
+        align-items: flex-end;
+    }
+
+    .modal-dialog-custom {
+        max-height: 100dvh;
+        border-radius: 18px 18px 0 0;
+    }
+
+    .modal-footer-custom {
+        flex-wrap: wrap;
+    }
+
+    .modal-footer-custom .btn {
+        flex: 1 1 auto;
+        min-height: 44px;
+        justify-content: center;
+    }
+
+    /* 16px evita o zoom automático do iOS ao focar o campo */
+    .form-control-custom {
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 420px) {
+    .avaliacoes-stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .modal-overlay,
+    .modal-overlay.active,
+    .modal-dialog-custom,
+    .stat-card-modern,
+    .btn-novo-avaliacao {
+        transition: none;
+    }
+
+    .modal-dialog-custom {
+        transform: none;
+        filter: none;
+    }
+
+    .stat-card-modern:hover,
+    .btn-novo-avaliacao:hover {
+        transform: none;
+    }
 }
 
 /* Responsividade Mobile */

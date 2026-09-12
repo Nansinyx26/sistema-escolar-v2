@@ -5,6 +5,12 @@ const authorize = require('../middleware/authorize');
 
 // Todas as rotas exigem autorização de equipe escolar (admin, diretor, secretaria, professor)
 router.get('/', authorize('admin', 'diretor', 'secretaria', 'professor'), AvaliacaoController.list);
+// Antes de '/:id': senão "opcoes" seria lido como id de avaliação.
+router.get(
+    '/opcoes',
+    authorize('admin', 'diretor', 'secretaria', 'professor'),
+    AvaliacaoController.opcoes
+);
 router.post(
     '/',
     authorize('admin', 'diretor', 'secretaria', 'professor'),
