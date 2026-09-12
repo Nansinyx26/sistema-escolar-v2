@@ -291,6 +291,22 @@ jobs:
         working-directory: ./backend
         run: npm audit --audit-level=high
 
+      # A raiz tem `dependencies: {}` — tudo aqui é de desenvolvimento e nada vai
+      # para produção. Mas é o que roda no CI e na máquina de quem desenvolve, e
+      # até a #238 nenhum gate olhava para ela: o `fast-uri` (#237) passou com 4
+      # CVEs altas, e o `tmp` do Stryker 8 ficou com uma alta invisível. O
+      # `npm audit` lê só o lockfile, então não precisa de `npm ci` antes.
+      - name: 🔐 Dependency Check (npm audit — raiz)
+        run: npm audit --audit-level=high
+
+      # O portal é o que produção serve aos responsáveis: o `dompurify` e o
+      # `socket.io-client` vão dentro do bundle em `portal-responsavel/dist/`.
+      # Até a #279 nenhum gate olhava para ele, e ele tinha duas vulnerabilidades
+      # altas e uma XSS no `dompurify`.
+      - name: 🔐 Dependency Check (npm audit — portal)
+        working-directory: ./portal-responsavel
+        run: npm audit --audit-level=high
+
       # O resultado precisa aparecer no LOG, e não só num arquivo .sarif.
       # Antes, a única saída do Trivy era o arquivo enviado para a aba Security
       # — que neste repositório nunca chegou lá (ver o passo seguinte). Ou seja:
@@ -299,7 +315,11 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: "fs"
-          scan-ref: "./backend"
+          # A partir de `.`, o Trivy cobre os três lockfiles: raiz, backend e
+          # portal. Até a #238 era só `./backend`; o portal entrou na #279,
+          # depois de as vulnerabilidades dele serem corrigidas — incluí-lo
+          # antes reprovaria todo PR do repositório.
+          scan-ref: "."
           format: "table"
           severity: "CRITICAL,HIGH"
           # Agora é gate. A triagem que faltava foi feita: `npm audit fix`
@@ -315,7 +335,8 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: "fs"
-          scan-ref: "./backend"
+          # Mesmo alcance do passo de log acima — os dois precisam ver o mesmo.
+          scan-ref: "."
           format: "sarif"
           output: "trivy-results.sarif"
 

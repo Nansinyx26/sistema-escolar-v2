@@ -27,6 +27,8 @@
     "htmlReporter": {
         "fileName": "reports/mutation/index.html"
     },
+    "dryRunTimeoutMinutes": 30,
+    "_comment_dryRun": "A rodada inicial roda a suíte INTEIRA do backend com cobertura por teste, antes de qualquer mutação. O padrão do Stryker corta em 5 minutos, e isso bastava quando o baseline foi medido (63 suítes, docs/QUALITY.md). Com 140 suítes (setembro de 2026) a rodada inicial passou de 5 minutos e o Stryker desistia sem relatório — Issue #238. 30 minutos é folga para a suíte continuar crescendo.",
     "timeoutMS": 30000,
     "timeoutFactor": 2,
     "concurrency": 2,
@@ -40,7 +42,7 @@
         "reports",
         "playwright-report",
         "test-results",
-        "js/libs",
         "js/legacy"
-    ]
+    ],
+    "_comment_ignore": "ignorePatterns decide o que o Stryker COPIA para o sandbox, não só o que ele muta. `js/libs` saiu daqui na #238: o paginasDeErroAssets.test.js (#116) confere que os assets de 404.html e 500.html existem em /js/libs/, e sem a pasta no sandbox a rodada inicial reprovava — e o Stryker não muta nada com teste vermelho. As mutações são só no backend, então a pasta continua fora da instrumentação."
 }
