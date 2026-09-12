@@ -18,6 +18,7 @@ const { emitirParaPerfis } = require('../utils/realtime');
 const { sanitizeInput } = require('../utils/sanitize');
 // A casa de cada perfil: a mesma tabela que o gate de páginas consulta.
 const { painelDoPerfil } = require('../utils/painelPorPerfil');
+const { aceiteExplicitoVigente } = require('../utils/consentimentoLgpd');
 // Emissão de sessão centralizada: garante `jti` em todo token (pré-requisito
 // para o logout conseguir revogar) e opções de cookie idênticas em todo lugar.
 const { emitirTokenSessao } = require('../utils/sessionToken');
@@ -1937,6 +1938,20 @@ exports.registerResponsavel = async (req, res) => {
         const escolaIdDoAluno = aluno.escolaId || undefined;
 
         const now = new Date();
+
+        // Criar a conta não é consentir (Issue #236): o consentimento só nasce
+        // junto da conta quando a tela manda o aceite explícito — a caixa da
+        // Política de Privacidade marcada no "Criar Conta" do portal (Issue
+        // #288). E nasce como no perfil: campo e assinatura auditável juntos,
+        // com a mesma data. Sem a marcação, o aceite fica para o CompletarCadastro.
+        const consentimento = aceiteExplicitoVigente(req.body.consentimentoLgpd)
+            ? {
+                  consentimentoAceiteEm: now,
+                  consentimentoVersao: CONSENTIMENTO_VERSAO,
+                  lgpdHistory: [assinaturaDoPerfil(req, now)],
+              }
+            : {};
+
         const user = await Usuario.create({
             nome,
             email: email.toLowerCase(),
@@ -1947,7 +1962,7 @@ exports.registerResponsavel = async (req, res) => {
             escolaId: escolaIdDoAluno,
             ultimoLogin: now,
             lastLogin: now,
-            // Sem consentimentoAceiteEm: criar a conta não é consentir (Issue #236).
+            ...consentimento,
         });
 
         // 3. Vincular o aluno ao responsável automaticamente
