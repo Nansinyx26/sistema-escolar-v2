@@ -21,6 +21,7 @@ const Diretor = require('../models/Diretor');
 const Secretaria = require('../models/Secretaria');
 const Professor = require('../models/Professor');
 const Aluno = require('../models/Aluno');
+const Turma = require('../models/Turma');
 const Avaliacao = require('../models/Avaliacao');
 const Nota = require('../models/Nota');
 const AvaliacaoHistorico = require('../models/AvaliacaoHistorico');
@@ -223,6 +224,7 @@ describe('Módulo de Avaliações Escolares (/api/avaliacoes-escolares)', () => 
 
         it('diretor cria avaliação com sucesso (POST 201)', async () => {
             const { cookie } = await criarDiretorComCookie(escolaA);
+            await Turma.create({ id: '7A', nome: '7A', escolaId: String(escolaA._id) });
 
             const payload = {
                 titulo: 'Prova 1 - Álgebra Linear',
@@ -265,6 +267,7 @@ describe('Módulo de Avaliações Escolares (/api/avaliacoes-escolares)', () => 
                     turmaId: '8B',
                     materiaId: 'História',
                     bimestre: 2,
+                    data: '2026-04-10',
                 });
 
             expect(resProibido.status).toBe(403);
@@ -279,6 +282,7 @@ describe('Módulo de Avaliações Escolares (/api/avaliacoes-escolares)', () => 
                     turmaId: '7A',
                     materiaId: 'História',
                     bimestre: 2,
+                    data: '2026-04-10',
                 });
 
             expect(resPermitido.status).toBe(201);
@@ -615,6 +619,419 @@ describe('Módulo de Avaliações Escolares (/api/avaliacoes-escolares)', () => 
                 .get(`/api/avaliacoes-escolares/${avaliacaoB._id}`)
                 .set('Cookie', cookieA);
             expect(resGetA.status).toBe(404);
+        });
+    });
+
+    describe('6. Turmas e disciplinas reais no formulário (GET /opcoes)', () => {
+        const idsDas = (res) => res.body.data.turmas.map((t) => t.id);
+
+        it('junta as grafias do banco numa turma só, agrupada por série', async () => {
+            const { cookie } = await criarDiretorComCookie(escolaA);
+            const escolaId = String(escolaA._id);
+
+            // Três grafias de sala convivendo no banco, como na produção.
+            await Turma.create([
+                { id: '1A', nome: '1º Ano A', escolaId },
+                { nome: '1ºB', escolaId },
+                { id: '5D', nome: '5D', escolaId },
+                { id: '4B', nome: '4B', escolaId, ativo: false },
+                { id: '9Z', nome: '9Z', escolaId: String(escolaB._id) },
+            ]);
+            // Sala que só existe porque tem aluno matriculado nela.
+            await Aluno.create({ nome: 'Aluno 2C', turma: '2ºC', ativo: true, escolaId });
+            // Turma desativada não volta pelo aluno que ainda aponta para ela.
+            await Aluno.create({ nome: 'Aluno 4B', turma: '4B', ativo: true, escolaId });
+            await criarProfessorComCookie(escolaA, ['3A']);
+
+            const res = await request(app)
+                .get('/api/avaliacoes-escolares/opcoes')
+                .set('Cookie', cookie);
+
+            expect(res.status).toBe(200);
+            expect(idsDas(res)).toEqual(['1A', '1B', '2C', '3A', '5D']);
+            expect(res.body.data.turmas[0].nome).toBe('1ºA');
+            expect(res.body.data.series.map((s) => s.nome)).toEqual([
+                '1º Ano',
+                '2º Ano',
+                '3º Ano',
+                '5º Ano',
+            ]);
+            expect(res.body.data.series[0].turmas.map((t) => t.nome)).toEqual(['1ºA', '1ºB']);
+        });
+
+        it('oferece os componentes obrigatórios e só mostra Inglês quando cadastrado', async () => {
+            const { cookie } = await criarDiretorComCookie(escolaA);
+
+            const semIngles = await request(app)
+                .get('/api/avaliacoes-escolares/opcoes')
+                .set('Cookie', cookie);
+            const nomes = semIngles.body.data.disciplinas.map((d) => d.nome);
+            expect(nomes).toEqual([
+                'Língua Portuguesa',
+                'Matemática',
+                'Ciências',
+                'História',
+                'Geografia',
+                'Arte',
+                'Educação Física',
+                'Ensino Religioso',
+            ]);
+
+            // Professor de Inglês da escola, com "Geral" (marca de regente) de sujeira.
+            await Professor.create({
+                idUsuario: new mongoose.Types.ObjectId().toString(),
+                nome: 'Prof. Inglês',
+                materias: ['Inglês', 'Geral'],
+                tipoEspecial: true,
+                salaPrincipal: 'VARIADOS',
+                salasAdicionais: ['1A'],
+                vinculos: [{ escolaId: String(escolaA._id), cargo: 'professor' }],
+            });
+
+            const comIngles = await request(app)
+                .get('/api/avaliacoes-escolares/opcoes')
+                .set('Cookie', cookie);
+            const nomesDepois = comIngles.body.data.disciplinas.map((d) => d.nome);
+            expect(nomesDepois).toContain('Inglês');
+            expect(nomesDepois).not.toContain('Geral');
+            expect(nomesDepois.filter((n) => n === 'Inglês')).toHaveLength(1);
+        });
+
+        it('professor recebe só as turmas dele; especialista, só a disciplina dele', async () => {
+            const { cookie: cookieRegente } = await criarProfessorComCookie(escolaA, ['2ºB']);
+            const regente = await request(app)
+                .get('/api/avaliacoes-escolares/opcoes')
+                .set('Cookie', cookieRegente);
+            expect(idsDas(regente)).toEqual(['2B']);
+            expect(regente.body.data.disciplinas.length).toBeGreaterThanOrEqual(8);
+
+            const user = await criarUsuario({
+                perfil: 'professor',
+                nome: 'Prof. Ed. Física',
+                email: `edf_${Date.now()}@escola.test`,
+                escolaId: String(escolaA._id),
+            });
+            await Professor.create({
+                idUsuario: String(user._id),
+                nome: user.nome,
+                email: user.email,
+                materias: ['Ed. Física'],
+                tipoEspecial: true,
+                salaPrincipal: 'VARIADOS',
+                salasAdicionais: ['1A', '1B'],
+                turmas: ['1A', '1B'],
+                vinculos: [{ escolaId: String(escolaA._id), cargo: 'professor' }],
+            });
+            const especialista = await request(app)
+                .get('/api/avaliacoes-escolares/opcoes')
+                .set('Cookie', gerarCookieAuth(user));
+            expect(idsDas(especialista)).toEqual(['1A', '1B']);
+            expect(especialista.body.data.disciplinas.map((d) => d.nome)).toEqual([
+                'Educação Física',
+            ]);
+
+            // E o servidor segura a mesma regra, não só o formulário.
+            const outraDisciplina = await request(app)
+                .post('/api/avaliacoes-escolares')
+                .set('Cookie', gerarCookieAuth(user))
+                .send({
+                    titulo: 'Prova de Matemática',
+                    turmaId: '1A',
+                    materiaId: 'Matemática',
+                    bimestre: 1,
+                    data: '2026-05-04',
+                });
+            expect(outraDisciplina.status).toBe(403);
+        });
+
+        it('responsável (família) não acessa as opções', async () => {
+            const resp = await criarUsuario({
+                perfil: 'responsavel',
+                email: `resp_op_${Date.now()}@escola.test`,
+                escolaId: String(escolaA._id),
+            });
+            const res = await request(app)
+                .get('/api/avaliacoes-escolares/opcoes')
+                .set('Cookie', gerarCookieAuth(resp));
+            expect(res.status).toBe(403);
+        });
+    });
+
+    describe('7. Nova Avaliação grava tudo no banco', () => {
+        async function prepararEscola() {
+            const escolaId = String(escolaA._id);
+            await Turma.create([
+                { id: '1A', nome: '1A', escolaId },
+                { id: '5D', nome: '5D', escolaId },
+            ]);
+            const regente = await criarProfessorComCookie(escolaA, ['1A']);
+            return { escolaId, regente };
+        }
+
+        it('grava turma canônica, série, disciplina, valor, datas, professor e autor', async () => {
+            const { regente } = await prepararEscola();
+            const { cookie, user } = await criarSecretariaComCookie(escolaA);
+
+            const res = await request(app)
+                .post('/api/avaliacoes-escolares')
+                .set('Cookie', cookie)
+                .send({
+                    titulo: 'Leitura e interpretação',
+                    descricao: 'Texto narrativo, questões 1 a 5',
+                    turmaId: '1ºA',
+                    materiaId: 'Português',
+                    bimestre: 2,
+                    tipo: 'Prova',
+                    valor: '8,5',
+                    data: '2026-05-04',
+                    dataEntrega: '2026-05-11',
+                });
+
+            expect(res.status).toBe(201);
+            const doc = await Avaliacao.findById(res.body.data._id).lean();
+            expect(doc).toMatchObject({
+                turmaId: '1A',
+                turmaNome: '1ºA',
+                serie: 1,
+                materiaId: 'Língua Portuguesa',
+                materiaNome: 'Língua Portuguesa',
+                professorId: String(regente.user._id),
+                professorNome: regente.user.nome,
+                titulo: 'Leitura e interpretação',
+                descricao: 'Texto narrativo, questões 1 a 5',
+                valor: 8.5,
+                criadoPor: String(user._id),
+                criadoPorNome: user.nome,
+                criadoPorPerfil: 'secretaria',
+                escolaId: String(escolaA._id),
+            });
+            // Meio-dia UTC: continua sendo dia 4 no horário de Brasília.
+            expect(doc.data.toISOString()).toBe('2026-05-04T12:00:00.000Z');
+            expect(doc.dataEntrega.toISOString()).toBe('2026-05-11T12:00:00.000Z');
+            expect(doc.createdAt).toBeInstanceOf(Date);
+        });
+
+        it('diretor escolhe o professor responsável', async () => {
+            await prepararEscola();
+            const outro = await criarProfessorComCookie(escolaA, ['5D']);
+            const { cookie } = await criarDiretorComCookie(escolaA);
+
+            const res = await request(app)
+                .post('/api/avaliacoes-escolares')
+                .set('Cookie', cookie)
+                .send({
+                    titulo: 'Simulado',
+                    turmaId: '1A',
+                    materiaId: 'Matemática',
+                    bimestre: 1,
+                    data: '2026-05-04',
+                    professorId: String(outro.user._id),
+                });
+            expect(res.status).toBe(201);
+            expect(res.body.data.professorId).toBe(String(outro.user._id));
+
+            const estranho = await request(app)
+                .post('/api/avaliacoes-escolares')
+                .set('Cookie', cookie)
+                .send({
+                    titulo: 'Simulado',
+                    turmaId: '1A',
+                    materiaId: 'Matemática',
+                    bimestre: 1,
+                    data: '2026-05-04',
+                    professorId: new mongoose.Types.ObjectId().toString(),
+                });
+            expect(estranho.status).toBe(400);
+        });
+
+        it.each([
+            ['turma que a escola não tem', { turmaId: '3C' }, /não está cadastrada/],
+            ['texto que não é turma', { turmaId: 'Turma X' }, /Turma inválida/],
+            ['disciplina inexistente', { materiaId: 'Astronomia Avançada' }, /Disciplina/],
+            ['valor acima de 10', { valor: 12 }, /valor da avaliação/],
+            ['entrega antes da avaliação', { dataEntrega: '2026-05-01' }, /entrega/],
+            ['sem data', { data: '' }, /Data da avaliação/],
+        ])('recusa %s (400)', async (_caso, troca, mensagem) => {
+            await prepararEscola();
+            const { cookie } = await criarDiretorComCookie(escolaA);
+            const res = await request(app)
+                .post('/api/avaliacoes-escolares')
+                .set('Cookie', cookie)
+                .send({
+                    titulo: 'Avaliação',
+                    turmaId: '1A',
+                    materiaId: 'Matemática',
+                    bimestre: 1,
+                    data: '2026-05-04',
+                    ...troca,
+                });
+            expect(res.status).toBe(400);
+            expect(res.body.error).toMatch(mensagem);
+            expect(await Avaliacao.countDocuments()).toBe(0);
+        });
+
+        it('nota respeita o valor da avaliação e o status usa a proporção', async () => {
+            const { escolaId } = await prepararEscola();
+            const { cookie } = await criarDiretorComCookie(escolaA);
+            // Aluno gravado com a outra grafia da mesma sala.
+            const aluno = await Aluno.create({ nome: 'Bia', turma: '1ºA', ativo: true, escolaId });
+
+            const criada = await request(app)
+                .post('/api/avaliacoes-escolares')
+                .set('Cookie', cookie)
+                .send({
+                    titulo: 'Trabalho',
+                    turmaId: '1A',
+                    materiaId: 'Ciências',
+                    bimestre: 1,
+                    data: '2026-05-04',
+                    valor: 5,
+                });
+            const id = criada.body.data._id;
+
+            const acima = await request(app)
+                .post(`/api/avaliacoes-escolares/${id}/notas`)
+                .set('Cookie', cookie)
+                .send({ notas: [{ alunoId: String(aluno._id), nota: 6 }] });
+            expect(acima.status).toBe(400);
+            expect(acima.body.error).toMatch(/entre 0 e 5/);
+
+            const pendente = await Aluno.create({
+                nome: 'Caio',
+                turma: '1A',
+                ativo: true,
+                escolaId,
+            });
+            await request(app)
+                .post(`/api/avaliacoes-escolares/${id}/notas`)
+                .set('Cookie', cookie)
+                .send({
+                    notas: [
+                        { alunoId: String(aluno._id), nota: 4 },
+                        { alunoId: String(pendente._id), nota: null },
+                    ],
+                });
+
+            const detalhe = await request(app)
+                .get(`/api/avaliacoes-escolares/${id}`)
+                .set('Cookie', cookie);
+            expect(detalhe.body.data.alunos).toHaveLength(2);
+            const bia = detalhe.body.data.alunos.find((a) => a.alunoNome === 'Bia');
+            expect(bia.status).toBe('Aprovado'); // 4 de 5 = 8,0
+
+            // Na lista, o aluno sem nota não conta como nota lançada.
+            const lista = await request(app).get('/api/avaliacoes-escolares').set('Cookie', cookie);
+            expect(lista.body.data[0]).toMatchObject({
+                totalNotas: 1,
+                totalAprovados: 1,
+                mediaTurma: 4,
+                valor: 5,
+            });
+        });
+
+        it('professor não lê o histórico de avaliação de outra turma', async () => {
+            await prepararEscola();
+            const { cookie: cookieDir } = await criarDiretorComCookie(escolaA);
+            const criada = await request(app)
+                .post('/api/avaliacoes-escolares')
+                .set('Cookie', cookieDir)
+                .send({
+                    titulo: 'Prova 5D',
+                    turmaId: '5D',
+                    materiaId: 'História',
+                    bimestre: 1,
+                    data: '2026-05-04',
+                });
+
+            const { cookie: cookieProf } = await criarProfessorComCookie(escolaA, ['1A']);
+            const res = await request(app)
+                .get(`/api/avaliacoes-escolares/${criada.body.data._id}/historico`)
+                .set('Cookie', cookieProf);
+            expect(res.status).toBe(403);
+        });
+
+        it('filtro por disciplina acha também a grafia antiga gravada', async () => {
+            const { escolaId } = await prepararEscola();
+            const { cookie } = await criarDiretorComCookie(escolaA);
+            // Gravada antes da grafia canônica, com o nome informal.
+            await Avaliacao.create({
+                titulo: 'Antiga',
+                turmaId: '1ºA',
+                materiaId: 'Português',
+                bimestre: 1,
+                escolaId,
+            });
+            await request(app).post('/api/avaliacoes-escolares').set('Cookie', cookie).send({
+                titulo: 'Nova',
+                turmaId: '1A',
+                materiaId: 'Língua Portuguesa',
+                bimestre: 1,
+                data: '2026-05-04',
+            });
+            await request(app).post('/api/avaliacoes-escolares').set('Cookie', cookie).send({
+                titulo: 'De outra disciplina',
+                turmaId: '1A',
+                materiaId: 'Matemática',
+                bimestre: 1,
+                data: '2026-05-04',
+            });
+
+            const res = await request(app)
+                .get(
+                    `/api/avaliacoes-escolares?materiaId=${encodeURIComponent('Língua Portuguesa')}`
+                )
+                .set('Cookie', cookie);
+            const porTitulo = Object.fromEntries(res.body.data.map((a) => [a.titulo, a]));
+            expect(Object.keys(porTitulo).sort()).toEqual(['Antiga', 'Nova']);
+            expect(porTitulo.Antiga.materiaNome).toBe('Língua Portuguesa');
+            expect(porTitulo.Antiga.turmaNome).toBe('1ºA');
+
+            // E o filtro de turma acha a grafia antiga "1ºA" pelo id canônico.
+            const porTurma = await request(app)
+                .get('/api/avaliacoes-escolares?turmaId=1A')
+                .set('Cookie', cookie);
+            expect(porTurma.body.data).toHaveLength(3);
+        });
+
+        it('lista marca o que cada perfil pode gerenciar', async () => {
+            await prepararEscola();
+            const prof = await criarProfessorComCookie(escolaA, ['1A']);
+            const { cookie: cookieDir } = await criarDiretorComCookie(escolaA);
+
+            await request(app)
+                .post('/api/avaliacoes-escolares')
+                .set('Cookie', cookieDir)
+                .send({
+                    titulo: 'Da direção',
+                    turmaId: '1A',
+                    materiaId: 'Geografia',
+                    bimestre: 1,
+                    data: '2026-05-04',
+                    professorId: String(prof.user._id),
+                });
+            await request(app).post('/api/avaliacoes-escolares').set('Cookie', prof.cookie).send({
+                titulo: 'Do professor',
+                turmaId: '1A',
+                materiaId: 'Arte',
+                bimestre: 1,
+                data: '2026-05-05',
+            });
+
+            const visao = await request(app)
+                .get('/api/avaliacoes-escolares')
+                .set('Cookie', prof.cookie);
+            const porTitulo = Object.fromEntries(
+                visao.body.data.map((a) => [a.titulo, a.podeGerenciar])
+            );
+            expect(porTitulo['Do professor']).toBe(true);
+            // A direção atribuiu a avaliação a ele: passa a ser dele também.
+            expect(porTitulo['Da direção']).toBe(true);
+
+            const outroProf = await criarProfessorComCookie(escolaA, ['1A', '5D']);
+            const visaoOutro = await request(app)
+                .get('/api/avaliacoes-escolares')
+                .set('Cookie', outroProf.cookie);
+            expect(visaoOutro.body.data.every((a) => a.podeGerenciar === false)).toBe(true);
         });
     });
 });
