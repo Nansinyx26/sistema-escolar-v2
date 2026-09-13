@@ -126,7 +126,18 @@ describe('updateProfile: consentimento dado pela tela de perfil', () => {
         // É a conta que a Issue #236 descreve: o cadastro carimbou o campo
         // sozinho, e nenhuma assinatura existe.
         const carimbo = new Date('2025-01-01T12:00:00Z');
-        const usuario = await criarResponsavel({ consentimentoAceiteEm: carimbo });
+        // Direto na coleção: o model não deixa mais NASCER uma conta assim
+        // (Issue #295), mas as antigas existem e é delas que este caso trata.
+        const usuario = {
+            _id: 'conta-carimbada-280',
+            nome: 'Responsável Teste',
+            email: 'carimbada@t.com',
+            perfil: 'responsavel',
+            ativo: true,
+            telefone: '(11) 90000-0000',
+            consentimentoAceiteEm: carimbo,
+        };
+        await Usuario.collection.insertOne(usuario);
 
         const depois = await salvarPerfil(usuario, CORPO_EDITAR_PERFIL);
 

@@ -370,9 +370,9 @@ const PortalResponsavel: React.FC = () => {
                   Fornecido pela direção da escola.
                 </small>
               </div>
-              {/* Nasce desmarcada e é opcional: criar a conta não é consentir
-                  (Issue #236). Sem a marcação, o aceite fica para o
-                  CompletarCadastro, como no cadastro pela página HTML. */}
+              {/* Nasce desmarcada, porque criar a conta não é consentir (Issue
+                  #236), e é obrigatória: sem o aceite, o servidor recusa o
+                  cadastro (Issue #295), como nas páginas HTML. */}
               <label
                 htmlFor="campo-aceite-politica"
                 style={{
@@ -394,6 +394,7 @@ const PortalResponsavel: React.FC = () => {
                   onChange={(e) =>
                     setRegisterForm({ ...registerForm, aceitePolitica: e.target.checked })
                   }
+                  required
                   style={{ marginTop: '3px' }}
                 />
                 <span>
@@ -404,8 +405,8 @@ const PortalResponsavel: React.FC = () => {
                     rel="noopener noreferrer"
                   >
                     Política de Privacidade
-                  </a>
-                  . Opcional agora: você também pode aceitar depois, ao completar o cadastro.
+                  </a>{' '}
+                  e autorizo o tratamento dos meus dados para fins educacionais.
                 </span>
               </label>
               <button type="submit" className={styles.submitBtn} disabled={loginLoading}>

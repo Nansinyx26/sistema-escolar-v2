@@ -42,6 +42,12 @@ const VALIDADE_MS = 5 * 60 * 1000;
 const MAX_TENTATIVAS = 5;
 
 const METODOS = {
+    /**
+     * Caixa marcada no formulário de criação da conta, antes de existir sessão
+     * (Issue #295). A prova mais fraca da lista — e registrada como tal, para
+     * nunca ser confundida com um aceite feito de dentro de uma conta logada.
+     */
+    CADASTRO: 'FORMULARIO_CADASTRO',
     /** Sessão autenticada, sem segundo fator — o que existia antes. */
     SESSAO: 'SESSAO_AUTENTICADA',
     /** Código de uso único enviado ao e-mail cadastrado do responsável. */

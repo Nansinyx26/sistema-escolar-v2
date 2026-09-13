@@ -25,9 +25,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!container) return;
         const toast = document.createElement('div');
         toast.className = 'dnc-toast';
-        toast.style.background = type === 'error'
-            ? 'linear-gradient(135deg, #ef4444, #dc2626)'
-            : 'linear-gradient(135deg, #10b981, #059669)';
+        toast.style.background =
+            type === 'error'
+                ? 'linear-gradient(135deg, #ef4444, #dc2626)'
+                : 'linear-gradient(135deg, #10b981, #059669)';
         toast.innerHTML = `<i class="bi ${type === 'error' ? 'bi-x-circle' : 'bi-check-circle'}"></i> ${msg}`;
         container.appendChild(toast);
         setTimeout(() => toast.remove(), 4500);
@@ -39,15 +40,42 @@ document.addEventListener('DOMContentLoaded', () => {
         if (turmaSelect && turmaSelect.tagName === 'SELECT') {
             // Lista padrão de turmas caso o banco esteja vazio
             const TURMAS_PADRAO = [
-                '1º Ano A', '1º Ano B', '1º Ano C', '1º Ano D',
-                '2º Ano A', '2º Ano B', '2º Ano C', '2º Ano D',
-                '3º Ano A', '3º Ano B', '3º Ano C', '3º Ano D',
-                '4º Ano A', '4º Ano B', '4º Ano C', '4º Ano D',
-                '5º Ano A', '5º Ano B', '5º Ano C', '5º Ano D',
-                '6º Ano A', '6º Ano B', '6º Ano C', '6º Ano D',
-                '7º Ano A', '7º Ano B', '7º Ano C', '7º Ano D',
-                '8º Ano A', '8º Ano B', '8º Ano C', '8º Ano D',
-                '9º Ano A', '9º Ano B', '9º Ano C', '9º Ano D'
+                '1º Ano A',
+                '1º Ano B',
+                '1º Ano C',
+                '1º Ano D',
+                '2º Ano A',
+                '2º Ano B',
+                '2º Ano C',
+                '2º Ano D',
+                '3º Ano A',
+                '3º Ano B',
+                '3º Ano C',
+                '3º Ano D',
+                '4º Ano A',
+                '4º Ano B',
+                '4º Ano C',
+                '4º Ano D',
+                '5º Ano A',
+                '5º Ano B',
+                '5º Ano C',
+                '5º Ano D',
+                '6º Ano A',
+                '6º Ano B',
+                '6º Ano C',
+                '6º Ano D',
+                '7º Ano A',
+                '7º Ano B',
+                '7º Ano C',
+                '7º Ano D',
+                '8º Ano A',
+                '8º Ano B',
+                '8º Ano C',
+                '8º Ano D',
+                '9º Ano A',
+                '9º Ano B',
+                '9º Ano C',
+                '9º Ano D',
             ];
 
             function populateSelect(lista) {
@@ -59,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 defaultOpt.textContent = 'Selecione a turma';
                 turmaSelect.appendChild(defaultOpt);
 
-                lista.forEach(nome => {
+                lista.forEach((nome) => {
                     const opt = document.createElement('option');
                     opt.value = nome;
                     opt.textContent = nome;
@@ -70,11 +98,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const API_BASE = window.API_BASE_URL || '/api';
             fetch(`${API_BASE}/auth/turmas-publicas`, { credentials: 'include' })
-                .then(res => res.json())
-                .then(data => {
+                .then((res) => res.json())
+                .then((data) => {
                     const turmas = data.data || data || [];
                     if (turmas.length > 0) {
-                        const nomes = turmas.map(t => t.nome || t.id || t._id);
+                        const nomes = turmas.map((t) => t.nome || t.id || t._id);
                         // Ordena naturalmente: primeiro pelo número, depois pela letra
                         nomes.sort((a, b) => {
                             const numA = parseInt(a.replace(/\D/g, '')) || 0;
@@ -101,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function getEscolaCadastroId() {
         if (window.EscolaContexto && window.EscolaContexto.id) return window.EscolaContexto.id;
         const sel = document.getElementById('escolaCadastro');
-        return (sel && sel.value) ? sel.value : null;
+        return sel && sel.value ? sel.value : null;
     }
 
     if (isDocente) {
@@ -111,13 +139,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (escolaGroup && escolaSelect && !(window.EscolaContexto && window.EscolaContexto.id)) {
             const API_BASE = window.API_BASE_URL || '/api';
             fetch(`${API_BASE}/escolas`, { credentials: 'include' })
-                .then(res => res.json())
-                .then(data => {
-                    const escolas = (data && data.success && Array.isArray(data.data)) ? data.data.filter(e => e.ativo) : [];
+                .then((res) => res.json())
+                .then((data) => {
+                    const escolas =
+                        data && data.success && Array.isArray(data.data)
+                            ? data.data.filter((e) => e.ativo)
+                            : [];
                     if (!escolas.length) return; // sem escolas ativas → mantém oculto
                     escolas
                         .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''))
-                        .forEach(e => {
+                        .forEach((e) => {
                             const opt = document.createElement('option');
                             opt.value = e._id;
                             opt.textContent = e.nome + (e.bairro ? ' — ' + e.bairro : '');
@@ -127,11 +158,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Trocar de escola revalida o código secreto (agora escopado à escola)
                     escolaSelect.addEventListener('change', () => {
                         const codigoInput = document.getElementById('codigoEscola');
-                        if (codigoInput && codigoInput.value.trim()) codigoInput.dispatchEvent(new Event('input'));
+                        if (codigoInput && codigoInput.value.trim())
+                            codigoInput.dispatchEvent(new Event('input'));
                         else validateForm();
                     });
                 })
-                .catch(() => { /* falha de rede → mantém oculto; código secreto identifica a escola */ });
+                .catch(() => {
+                    /* falha de rede → mantém oculto; código secreto identifica a escola */
+                });
         }
     }
 
@@ -175,11 +209,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const val = senhaInput.value;
         const reqs = {
             length: val.length >= 8,
-            upper:  /[A-Z]/.test(val),
+            upper: /[A-Z]/.test(val),
             number: /[0-9]/.test(val),
-            special: /[^A-Za-z0-9]/.test(val)
+            special: /[^A-Za-z0-9]/.test(val),
         };
-        Object.keys(reqs).forEach(key => {
+        Object.keys(reqs).forEach((key) => {
             const el = document.getElementById(`req-${key}`);
             if (!el) return;
             if (reqs[key]) {
@@ -210,11 +244,14 @@ document.addEventListener('DOMContentLoaded', () => {
             clearTimeout(codeTimer);
             codeTimer = setTimeout(async () => {
                 try {
-                    const baseUrl = window.API_BASE_URL || (window.location.origin + '/api');
+                    const baseUrl = window.API_BASE_URL || window.location.origin + '/api';
                     const res = await fetch(`${baseUrl}/auth/validate-code`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ codigo: code, escolaId: getEscolaCadastroId() || undefined })
+                        body: JSON.stringify({
+                            codigo: code,
+                            escolaId: getEscolaCadastroId() || undefined,
+                        }),
                     });
                     const data = await res.json();
                     if (data.success && data.valid) {
@@ -231,7 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Escuta mudanças em todos os inputs do formulário para revalidar
-    form.querySelectorAll('input, select').forEach(el => {
+    form.querySelectorAll('input, select').forEach((el) => {
         el.addEventListener('input', validateForm);
         el.addEventListener('change', validateForm);
     });
@@ -239,16 +276,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // ── Função de validação geral ────────────────────────────────────────
     function validateForm() {
         const val = senhaInput.value;
-        const passOk = val.length >= 8
-            && /[A-Z]/.test(val)
-            && /[0-9]/.test(val)
-            && /[^A-Za-z0-9]/.test(val)
-            && val === confirmInput.value
-            && val !== '';
+        const passOk =
+            val.length >= 8 &&
+            /[A-Z]/.test(val) &&
+            /[0-9]/.test(val) &&
+            /[^A-Za-z0-9]/.test(val) &&
+            val === confirmInput.value &&
+            val !== '';
 
         // Verifica se todos os campos obrigatórios estão preenchidos
         let allFilled = true;
-        form.querySelectorAll('[required]').forEach(el => {
+        form.querySelectorAll('[required]').forEach((el) => {
             if (!el.value || el.value.trim() === '') allFilled = false;
         });
 
@@ -258,9 +296,18 @@ document.addEventListener('DOMContentLoaded', () => {
         // Multi-escola: se o seletor de escola estiver visível, escolher é obrigatório
         const escolaGroup = document.getElementById('escolaCadastroGroup');
         const escolaSelect = document.getElementById('escolaCadastro');
-        const escolaOk = !escolaGroup || escolaGroup.style.display === 'none' || (escolaSelect && !!escolaSelect.value);
+        const escolaOk =
+            !escolaGroup ||
+            escolaGroup.style.display === 'none' ||
+            (escolaSelect && !!escolaSelect.value);
 
-        btnSubmit.disabled = !(passOk && allFilled && codeOk && escolaOk);
+        // Aceite da Política de Privacidade (Issue #295): obrigatório para o
+        // docente e para o responsável — o servidor recusa o cadastro sem ele.
+        // O `[required]` acima não serve para checkbox: o `value` dela é "on"
+        // marcada ou não.
+        const consentimentoOk = Boolean(window.ConsentimentoCadastro?.marcado());
+
+        btnSubmit.disabled = !(passOk && allFilled && codeOk && escolaOk && consentimentoOk);
     }
 
     // ── Submissão do formulário ──────────────────────────────────────────
@@ -279,25 +326,30 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isDocente) {
                 endpoint = `${API_BASE}/auth/register-docente`;
                 body = {
-                    nome:       document.getElementById('nome').value.trim(),
-                    email:      document.getElementById('email').value.trim(),
-                    senha:      senhaInput.value,
+                    nome: document.getElementById('nome').value.trim(),
+                    email: document.getElementById('email').value.trim(),
+                    senha: senhaInput.value,
                     disciplina: document.getElementById('disciplina').value.trim(),
-                    turma:      document.getElementById('turma').value.trim(),
-                    matricula:  document.getElementById('matricula').value.trim(),
-                    telefone:   document.getElementById('telefone').value.trim(),
+                    turma: document.getElementById('turma').value.trim(),
+                    matricula: document.getElementById('matricula').value.trim(),
+                    telefone: document.getElementById('telefone').value.trim(),
                     codigoEscola: document.getElementById('codigoEscola').value.trim(),
                     // Multi-escola: escola travada da landing OU escolhida no seletor
-                    escolaId: getEscolaCadastroId() || undefined
+                    escolaId: getEscolaCadastroId() || undefined,
+                    consentimentoLgpd: window.ConsentimentoCadastro.payload(),
                 };
             } else {
                 endpoint = `${API_BASE}/auth/register-responsavel`;
                 body = {
-                    nome:       document.getElementById('nome').value.trim(),
-                    email:      document.getElementById('email').value.trim(),
-                    senha:      senhaInput.value,
-                    telefone:   document.getElementById('telefone').value.trim(),
-                    codigoSecreto: document.getElementById('codigoSecreto').value.trim().toUpperCase()
+                    nome: document.getElementById('nome').value.trim(),
+                    email: document.getElementById('email').value.trim(),
+                    senha: senhaInput.value,
+                    telefone: document.getElementById('telefone').value.trim(),
+                    codigoSecreto: document
+                        .getElementById('codigoSecreto')
+                        .value.trim()
+                        .toUpperCase(),
+                    consentimentoLgpd: window.ConsentimentoCadastro.payload(),
                 };
             }
 
@@ -305,7 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify(body)
+                body: JSON.stringify(body),
             });
 
             const data = await res.json();

@@ -341,6 +341,15 @@
   },
   {
     "type": "module",
+    "from": "js/consentimento-cadastro.js",
+    "to": "js/consentimento-cadastro.js",
+    "rule": {
+      "severity": "warn",
+      "name": "sem-orfaos"
+    }
+  },
+  {
+    "type": "module",
     "from": "js/csrf-helper.js",
     "to": "js/csrf-helper.js",
     "rule": {

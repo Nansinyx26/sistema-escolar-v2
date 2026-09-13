@@ -31,6 +31,7 @@ const {
     CONSENTIMENTO_VERSAO,
     aceiteExplicitoVigente,
 } = require('../utils/consentimentoLgpd');
+const { CODIGO_RECUSA } = require('../services/conformidade/consentimentoCadastro');
 const { conectarBanco, limparBanco, desconectarBanco, SENHA_TESTE } = require('./helpers');
 
 const ARQUIVO_DO_PORTAL = path.join(
@@ -86,7 +87,8 @@ function formularioPreenchido(extra = {}) {
         telefone: portal.mascaraTelefone('11987654321'),
         // Digitado em minúsculas: o portal normaliza, como a página HTML.
         codigoSecreto: CODIGO_ALUNO.toLowerCase(),
-        aceitePolitica: false,
+        // Obrigatória desde a #295: sem ela, a tela nem envia o formulário.
+        aceitePolitica: true,
         ...extra,
     };
 }
@@ -115,16 +117,19 @@ describe('POST /api/auth/register-responsavel com o corpo que o portal monta', (
         expect(aluno.responsavel).toBe('maria.cadastro@escola.test');
     });
 
-    it('caixa desmarcada: a conta nasce SEM consentimento (criar conta não é consentir)', async () => {
+    it('caixa desmarcada: o portal não inventa o aceite, e o backend recusa (Issue #295)', async () => {
+        // Criar a conta não é consentir (#236): o portal não manda aceite que a
+        // pessoa não deu. E sem ele, desde a #295, a conta não nasce.
         const corpo = portal.montarCorpoCadastro(formularioPreenchido({ aceitePolitica: false }));
         expect(corpo).not.toHaveProperty('consentimentoLgpd');
 
         const res = await cadastrar(corpo);
-        expect(res.status).toBe(201);
+        expect(res.status).toBe(400);
+        expect(res.body.code).toBe(CODIGO_RECUSA);
 
-        const conta = await Usuario.findOne({ email: 'maria.cadastro@escola.test' }).lean();
-        expect(conta.consentimentoAceiteEm).toBeFalsy();
-        expect(conta.lgpdHistory || []).toHaveLength(0);
+        expect(await Usuario.countDocuments({ perfil: 'responsavel' })).toBe(0);
+        const aluno = await Aluno.findOne({ codigoSecreto: CODIGO_ALUNO }).lean();
+        expect(aluno.responsavel).toBeFalsy();
     });
 
     it('caixa marcada: o aceite chega ao lgpdHistory, com IP, navegador e a data do campo', async () => {
@@ -139,7 +144,9 @@ describe('POST /api/auth/register-responsavel com o corpo que o portal monta', (
         expect(assinaturas[0].versao).toBe(CONSENTIMENTO_VERSAO);
         expect(assinaturas[0].browser).toBe(NAVEGADOR);
         expect(assinaturas[0].ip).toBeTruthy();
-        expect(assinaturas[0].metodoValidacao).toBe('SESSAO_AUTENTICADA');
+        // No cadastro ainda não existe sessão: o que se prova é a caixa marcada no
+        // formulário, e é isso que fica dito (Issue #295).
+        expect(assinaturas[0].metodoValidacao).toBe('FORMULARIO_CADASTRO');
 
         expect(conta.consentimentoVersao).toBe(CONSENTIMENTO_VERSAO);
         expect(new Date(conta.consentimentoAceiteEm).getTime()).toBe(

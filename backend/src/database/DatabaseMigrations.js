@@ -262,8 +262,82 @@ module.exports = {
  * CLI Commands (se rodado como script)
  */
 if (require.main === module) {
+    // Carrega backend/.env (e o da raiz, como fallback) ANTES de ler process.env.
+    //
+    // Este runner roda como script solto, fora do arranque de src/index.js — que é
+    // quem normalmente carrega config/env.js. Sem esta linha, MONGODB_URI ficava
+    // indefinida mesmo com o .env no lugar. No CI e pelo db-alvo.js a variável já
+    // chega pelo ambiente, e o dotenv não sobrescreve o que já existe.
+    require('../config/env');
+
+    const { resumirUri, formatarResumo, CONFIRMACAO_EXIGIDA } = require('../utils/alvoBanco');
+
     const command = process.argv[2];
     const arg = process.argv[3];
+
+    /** Comandos que tocam o banco. `create` e a ajuda só mexem em arquivo. */
+    const PRECISA_BANCO = new Set(['status', 'up', 'run', 'down', 'revert']);
+    /** Comandos que ESCREVEM no banco. */
+    const ESCREVE = new Set(['up', 'run', 'down', 'revert']);
+    /**
+     * `test` é o banco de produção deste projeto — e também o que o driver usa
+     * quando a URI não nomeia banco nenhum, daí a string vazia (Issue #60).
+     */
+    const BANCOS_DE_PRODUCAO = new Set(['test', '']);
+
+    /**
+     * Conexão própria do runner, sem passar por utils/db.js.
+     *
+     * O connectDB() da aplicação faz três coisas que uma migração não pode herdar:
+     *   1. sem MONGODB_URI, sobe um MongoDB EM MEMÓRIA — e a migração "aplicada"
+     *      num banco descartável relata sucesso sem ter tocado no banco real;
+     *   2. se a conexão falha em development, cai no mesmo banco em memória;
+     *   3. em development, pode rodar _seedDevData(), que grava turmas, alunos e
+     *      um usuário de teste (senha 123456). Um comando de migração só grava o
+     *      que a própria migração grava — e um `status` não grava nada.
+     *
+     * Aqui é o contrário: sem URI, recusa; conexão falhou, falha; e nada é gravado
+     * além do que a própria migração grava.
+     */
+    async function conectarParaMigrar() {
+        const uri = process.env.MONGODB_URI;
+        if (!uri) {
+            console.error('\n❌ MONGODB_URI não definida.');
+            console.error('   Configure backend/.env a partir do backend/.env.example.');
+            console.error('   O runner não usa banco em memória: migração aplicada num banco');
+            console.error('   descartável é sucesso falso.\n');
+            process.exit(1);
+        }
+
+        const dbName = process.env.MONGODB_DB_NAME || undefined;
+        const { host, banco } = resumirUri(uri);
+        const bancoEfetivo = dbName || banco;
+        const producao = BANCOS_DE_PRODUCAO.has(bancoEfetivo);
+
+        console.log(
+            formatarResumo({
+                alvo: producao ? 'producao' : 'desenvolvimento',
+                host,
+                banco: bancoEfetivo || 'test (padrão do driver)',
+            })
+        );
+
+        if (producao && ESCREVE.has(command) && process.env.CONFIRMO !== CONFIRMACAO_EXIGIDA) {
+            const script =
+                command === 'up' || command === 'run'
+                    ? 'migrate:up'
+                    : `migrate:down ${arg || '<nome-da-migracao>'}`;
+            console.error(
+                '❌ Este banco é o de PRODUÇÃO. Migração em produção só com confirmação:'
+            );
+            console.error(`   CONFIRMO=${CONFIRMACAO_EXIGIDA} npm run db:producao -- ${script}`);
+            console.error('   Se a intenção era desenvolvimento, o backend/.env está apontando');
+            console.error('   para o lugar errado — ver Issue #60.\n');
+            process.exit(1);
+        }
+
+        await mongoose.connect(uri, { dbName, serverSelectionTimeoutMS: 5000 });
+    }
 
     (async () => {
         try {
@@ -277,8 +351,13 @@ if (require.main === module) {
             // Por isso o runner ficou órfão desde que foi escrito: qualquer
             // tentativa de usá-lo estourava em MODULE_NOT_FOUND antes da primeira
             // linha útil. Ver Issue #1.
-            const connectDB = require('../utils/db');
-            await connectDB();
+            //
+            // Depois disso a CLI passou a usar o connectDB() da aplicação — e com
+            // ele o banco em memória e o seed de desenvolvimento. Ver
+            // conectarParaMigrar() acima.
+            if (PRECISA_BANCO.has(command)) {
+                await conectarParaMigrar();
+            }
 
             switch (command) {
                 case 'status': {

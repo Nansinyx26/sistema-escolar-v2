@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { CONSENTIMENTO_ID } = require('../utils/consentimentoLgpd');
 
 const UsuarioSchema = new mongoose.Schema(
     {
@@ -232,10 +233,12 @@ const UsuarioSchema = new mongoose.Schema(
                 ip: String,
                 browser: String,
                 os: String,
-                loginType: String, // 'Google', 'Portal Local'
+                loginType: String, // 'Google', 'Portal Local', 'Conta Local'
                 // COMO se provou que foi o titular (ou o responsável legal) que
-                // assinou: 'SESSAO_AUTENTICADA', 'EMAIL_VERIFICADO',
-                // 'SMS_VERIFICADO' ou 'GOV_BR_AUTH'. Sem este campo, dois
+                // assinou: 'FORMULARIO_CADASTRO', 'SESSAO_AUTENTICADA',
+                // 'EMAIL_VERIFICADO', 'SMS_VERIFICADO' ou 'GOV_BR_AUTH' — ver
+                // `METODOS` em services/conformidade/validacaoConsentimento.js.
+                // Sem este campo, dois
                 // registros idênticos podem ter forças probatórias muito
                 // diferentes e ninguém consegue distinguir depois — é a
                 // pergunta que a ANPD faz quando há reclamação sobre dado de
@@ -328,6 +331,42 @@ function removerCamposSensiveis(doc, ret) {
 
 UsuarioSchema.set('toJSON', { transform: removerCamposSensiveis });
 UsuarioSchema.set('toObject', { transform: removerCamposSensiveis });
+
+// ============================================
+// CONTA NOVA SÓ NASCE CONSENTINDO COM PROVA (Issue #295)
+// ============================================
+// Sete caminhos de cadastro carimbavam `consentimentoAceiteEm` sozinhos, e
+// `consentimentoVigente()` lia o carimbo como consentimento (Issue #236).
+// `consentimentoCadastro.test.js` já reprova o carimbo lendo o código-fonte;
+// esta é a segunda camada, em tempo de execução, que também pega o que a
+// leitura do código não vê (um campo montado fora do `Usuario.create`, um
+// script, um serviço novo).
+//
+// Conta nova com o campo legado precisa trazer, no mesmo documento, a
+// assinatura `politica_privacidade` de MESMA data no `lgpdHistory` — que é o
+// que `assinaturasDoCadastro()` monta. Sem ela, a conta não é criada.
+//
+// Só vale para conta NOVA. Conta antiga com o campo sem histórico existe
+// (onboarding de antes do histórico) e continua lida como está.
+UsuarioSchema.pre('validate', function exigirAssinaturaDoConsentimento() {
+    if (!this.isNew || !this.consentimentoAceiteEm) return;
+
+    const aceitoEm = this.consentimentoAceiteEm.getTime();
+    const assinado = (this.lgpdHistory || []).some(
+        (registro) =>
+            registro.termoId === CONSENTIMENTO_ID &&
+            registro.aceitoEm instanceof Date &&
+            registro.aceitoEm.getTime() === aceitoEm
+    );
+
+    if (!assinado) {
+        this.invalidate(
+            'consentimentoAceiteEm',
+            'Conta nova com consentimento LGPD sem a assinatura correspondente no lgpdHistory ' +
+                '(Issue #295). Use assinaturasDoCadastro().'
+        );
+    }
+});
 
 // Índice de performance: busca por perfil (ex: listar todos os professores)
 UsuarioSchema.index({ perfil: 1, ativo: 1 });

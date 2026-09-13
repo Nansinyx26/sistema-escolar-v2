@@ -12,7 +12,9 @@ Esta pasta contém diversos scripts utilitários usados para manutenção, migra
 Scripts legados ou ativos usados durante a transição do banco local do navegador para a nuvem.
 - `migrate-to-mongodb.js` — Script principal de migração
 - `migrate-with-webp.js` — Migração convertendo fotos para WebP
-- `migrate_indexeddb_to_mongodb.js` — Outro utilitário de migração
+- `importar_indexeddb_historico.js` — Importação ONE-SHOT do dump antigo de IndexedDB.
+  Histórico e manual: **não** é migração de schema e não roda no CI (foi a causa da Issue #1).
+  Migração de schema é `npm run migrate:up` — ver `src/database/DatabaseMigrations.js`.
 - `migrate_user_to_usuarios.js` — Migração de esquema (coleção Users para Usuarios)
 - `migrate_notes.js` — Migração específica de notas
 - `migrate_english_to_portuguese.js` — Tradução de chaves no DB

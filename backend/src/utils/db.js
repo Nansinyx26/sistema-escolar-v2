@@ -54,8 +54,20 @@ const connectDB = async () => {
             }
         }
 
-        // Se estiver explicitamente em dev e conectado com sucesso, tenta seed
-        if (process.env.NODE_ENV === 'development') {
+        // Seed de desenvolvimento SÓ no banco em memória (`global.__MONGOD__`).
+        //
+        // Antes rodava em qualquer conexão com NODE_ENV=development. O seed só grava
+        // quando acha a coleção vazia — mas "vazia" não quer dizer "banco de teste".
+        // Basta um .env com NODE_ENV=development apontando para um banco real
+        // (Issue #60) que ainda não tenha usuário com perfil `professor` para surgir
+        // lá o professor@teste.com, senha 123456; o mesmo vale para turmas e alunos
+        // fictícios num banco real ainda sem turmas, como o de uma escola recém-
+        // criada. Para popular um banco de desenvolvimento de verdade existe
+        // `npm run seed:dev`, que recusa os bancos de produção.
+        //
+        // O fallback do catch acima (conexão falhou → banco em memória) continua
+        // semeando por conta própria.
+        if (process.env.NODE_ENV === 'development' && global.__MONGOD__) {
             await _seedDevData();
         }
 
