@@ -409,15 +409,27 @@ class AuthManager {
 
     /**
      * Registro de novo usuário com Código Secreto da Escola
+     *
+     * @param {{aceito: boolean, versao: string}} consentimentoLgpd o aceite da
+     *   Política de Privacidade — `ConsentimentoCadastro.payload(...)`. Sem ele o
+     *   servidor recusa o cadastro (Issue #295).
      */
-    async registerWithCode(email, senha, nome, codigoEscola, cpf, telefone) {
+    async registerWithCode(email, senha, nome, codigoEscola, cpf, telefone, consentimentoLgpd) {
         try {
             const baseUrl = this._apiBase();
 
             const res = await fetch(`${baseUrl}/auth/register-code`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, senha, nome, codigoEscola, cpf, telefone }),
+                body: JSON.stringify({
+                    email,
+                    senha,
+                    nome,
+                    codigoEscola,
+                    cpf,
+                    telefone,
+                    consentimentoLgpd,
+                }),
             });
 
             const data = await res.json();

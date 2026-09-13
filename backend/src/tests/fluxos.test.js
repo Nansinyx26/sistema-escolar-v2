@@ -16,9 +16,12 @@ const {
 } = require('./helpers');
 
 const SecurityConfig = require('../models/SecurityConfig');
+const { CONSENTIMENTO_VERSAO } = require('../utils/consentimentoLgpd');
 const Professor = require('../models/Professor');
 
 const CODIGO_GLOBAL = CODIGO_ESCOLA_TESTE;
+// Todo cadastro exige o aceite da Política de Privacidade (Issue #295).
+const ACEITE_LGPD = { aceito: true, versao: CONSENTIMENTO_VERSAO };
 
 beforeAll(async () => {
     await conectarBanco();
@@ -47,6 +50,7 @@ describe('Cadastro com auto-login e redirect por perfil', () => {
             senha: SENHA_TESTE,
             telefone: '(19) 99999-0001',
             codigoEscola: CODIGO_GLOBAL,
+            consentimentoLgpd: ACEITE_LGPD,
         });
         expect(res.status).toBe(201);
         expect(res.body.redirect_to).toBe('/html/dashboard.html');
@@ -61,6 +65,7 @@ describe('Cadastro com auto-login e redirect por perfil', () => {
             senha: SENHA_TESTE,
             telefone: '(19) 99999-0002',
             codigoEscola: CODIGO_GLOBAL,
+            consentimentoLgpd: ACEITE_LGPD,
         });
         expect(res.status).toBe(201);
         expect(res.body.redirect_to).toBe('/html/secretaria/painel.html');
@@ -78,6 +83,7 @@ describe('Cadastro com auto-login e redirect por perfil', () => {
             matricula: 'M42',
             telefone: '(19) 99999-0003',
             codigoEscola: CODIGO_GLOBAL,
+            consentimentoLgpd: ACEITE_LGPD,
         });
         expect(res.status).toBe(201);
         expect(res.body.redirect_to).toBe('/html/dashboard.html');
@@ -92,6 +98,7 @@ describe('Cadastro com auto-login e redirect por perfil', () => {
             senha: SENHA_TESTE,
             telefone: '(19) 99999-0004',
             codigoEscola: CODIGO_GLOBAL,
+            consentimentoLgpd: ACEITE_LGPD,
         });
         expect(res.body.redirect_to).not.toMatch(/index\.html|login\.html|primeiro-acesso/);
     });

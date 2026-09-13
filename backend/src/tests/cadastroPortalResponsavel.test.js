@@ -139,7 +139,9 @@ describe('POST /api/auth/register-responsavel com o corpo que o portal monta', (
         expect(assinaturas[0].versao).toBe(CONSENTIMENTO_VERSAO);
         expect(assinaturas[0].browser).toBe(NAVEGADOR);
         expect(assinaturas[0].ip).toBeTruthy();
-        expect(assinaturas[0].metodoValidacao).toBe('SESSAO_AUTENTICADA');
+        // No cadastro ainda não existe sessão: o que se prova é a caixa marcada no
+        // formulário, e é isso que fica dito (Issue #295).
+        expect(assinaturas[0].metodoValidacao).toBe('FORMULARIO_CADASTRO');
 
         expect(conta.consentimentoVersao).toBe(CONSENTIMENTO_VERSAO);
         expect(new Date(conta.consentimentoAceiteEm).getTime()).toBe(
