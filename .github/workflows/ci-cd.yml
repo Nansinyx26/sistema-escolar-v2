@@ -561,6 +561,12 @@ jobs:
         working-directory: ./backend
         run: npm ci
 
+      # `CONFIRMO: producao` é a confirmação explícita que o runner exige para
+      # ESCREVER no banco de produção (`test`). Fica aqui, visível no diff, e não
+      # como exceção escondida no código: este passo é o único lugar do pipeline
+      # que tem o direito de migrar produção. Se o secret de dev um dia voltar a
+      # apontar para produção (Issue #60), o job `migrations` é barrado — ele não
+      # tem esta linha.
       - name: 🗄️ Run migrations (PRODUÇÃO)
         working-directory: ./backend
         run: npm run migrate:up
@@ -568,6 +574,7 @@ jobs:
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI_PROD }}
           NODE_ENV: production
+          CONFIRMO: producao
 
       - name: 📊 Status das migrations (PRODUÇÃO)
         working-directory: ./backend
