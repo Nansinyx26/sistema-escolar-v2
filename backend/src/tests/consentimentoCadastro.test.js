@@ -3,13 +3,12 @@
  *
  * `consentimentoCarimboCadastro.test.js` (#236) prova que a conta não nasce
  * mais com consentimento carimbado, e que a migração tira o carimbo das
- * antigas. Este arquivo prova o outro lado: o cadastro de docente, diretor e
- * secretaria EXIGE a manifestação da pessoa e recusa sem ela; e as cinco
- * rotas gravam o aceite do jeito auditável — no `lgpdHistory`, com data,
- * versão, IP, navegador e método.
+ * antigas. Este arquivo prova o outro lado: as cinco rotas de cadastro EXIGEM
+ * a manifestação da pessoa e recusam sem ela; e gravam o aceite do jeito
+ * auditável — no `lgpdHistory`, com data, versão, IP, navegador e método.
  *
- * No responsável o aceite é opcional (Issue #288) — o portal o pede no
- * CompletarCadastro antes de abrir. Esse lado está em
+ * O responsável chegou a ficar opcional (Issue #288); a decisão registrada na
+ * #295 foi exigir nas cinco. O corpo que o portal monta está em
  * `cadastroPortalResponsavel.test.js`.
  *
  * AS ROTAS VIVAS, E NÃO O SERVIÇO
@@ -48,7 +47,10 @@ const {
     CONSENTIMENTO_VERSAO,
     consentimentoVigente,
 } = require('../utils/consentimentoLgpd');
-const { CODIGO_RECUSA } = require('../services/conformidade/consentimentoCadastro');
+const {
+    CODIGO_RECUSA,
+    assinaturasDoCadastro,
+} = require('../services/conformidade/consentimentoCadastro');
 const { METODOS } = require('../services/conformidade/validacaoConsentimento');
 const migracao = require('../../migrations/1788652800000-invalidar-consentimento-carimbado-no-cadastro');
 
@@ -101,13 +103,8 @@ const ROTAS = {
     }),
 };
 
-/** As rotas em que o cadastro não acontece sem o aceite. */
-const OBRIGATORIAS = [
-    'register-docente',
-    'register-diretor',
-    'register-secretaria',
-    'register-code',
-];
+/** As rotas em que o cadastro não acontece sem o aceite: todas (Issue #295). */
+const OBRIGATORIAS = Object.keys(ROTAS);
 
 beforeAll(async () => {
     await conectarBanco();
@@ -244,6 +241,8 @@ describe('POST /api/usuarios (conta criada por gestor)', () => {
                         aceitoEm: new Date(),
                     },
                 ],
+                // As autorizações por finalidade também são da pessoa.
+                lgpdConsents: { imagemSite: true, perfilNotasDesempenho: true },
             },
         };
         const res = respostaFalsa();
@@ -254,13 +253,15 @@ describe('POST /api/usuarios (conta criada por gestor)', () => {
         const usuario = await Usuario.findOne({ email }).lean();
         expect(usuario.consentimentoAceiteEm).toBeUndefined();
         expect(usuario.lgpdHistory || []).toHaveLength(0);
+        expect(usuario.lgpdConsents?.imagemSite).toBeFalsy();
+        expect(usuario.lgpdConsents?.perfilNotasDesempenho).toBeFalsy();
         expect(consentimentoVigente(usuario).aceito).toBe(false);
     });
 });
 
 describe('frontend: a caixa e a versão', () => {
     const PAGINAS = [
-        ['html/pages/cadastro-responsavel.html', 'aceiteLgpdCadastro', false],
+        ['html/pages/cadastro-responsavel.html', 'aceiteLgpdCadastro', true],
         ['html/pages/cadastro-docente.html', 'aceiteLgpdCadastro', true],
         ['html/pages/cadastro-diretor-publico.html', 'aceiteLgpdCadastro', true],
         ['html/pages/cadastro-secretaria-publico.html', 'aceiteLgpdCadastro', true],
@@ -285,8 +286,7 @@ describe('frontend: a caixa e a versão', () => {
         expect(caixa).not.toBeNull();
         expect(caixa[0]).toContain('type="checkbox"');
         expect(caixa[0]).not.toMatch(/\bchecked\b/);
-        // Obrigatória onde o servidor recusa sem ela; no responsável, opcional —
-        // `required` ali bloquearia o envio pela validação nativa do navegador.
+        // Obrigatória onde o servidor recusa sem ela — hoje, em todas (#295).
         expect(/\brequired\b/.test(caixa[0])).toBe(obrigatoria);
         expect(html).toMatch(/<script[^>]+src="[./]*js\/consentimento-cadastro\.js"/);
     });
@@ -337,7 +337,7 @@ describe('trava: nenhum caminho de criação de conta grava consentimento sozinh
         expect(infratores).toEqual([]);
     });
 
-    it('as rotas obrigatórias validam antes do create, e as cinco gravam pelo módulo', () => {
+    it('as cinco rotas validam antes do create e gravam pelo módulo', () => {
         const fonte = fs.readFileSync(path.join(SRC, 'controllers/UserController.js'), 'utf8');
         const handlers = [
             'registerResponsavel',
@@ -353,12 +353,94 @@ describe('trava: nenhum caminho de criação de conta grava consentimento sozinh
 
             const validacao = corpo.indexOf('validarConsentimentoDoCadastro(req.body)');
             const create = corpo.indexOf('Usuario.create(');
-            const obrigatoria = nome !== 'registerResponsavel';
             expect({ nome, validaAntes: validacao !== -1 && validacao < create }).toEqual({
                 nome,
-                validaAntes: obrigatoria,
+                validaAntes: true,
             });
             expect(corpo).toContain('assinaturasDoCadastro(req)');
         }
+    });
+});
+
+describe('trava em tempo de execução: models/Usuario.js', () => {
+    // A trava estática acima lê o código; esta pega o que a leitura não vê —
+    // um campo montado fora do `Usuario.create`, um script, um serviço novo.
+    const base = (email) => ({
+        nome: 'Titular Fixture',
+        email,
+        telefone: '(19) 99999-0007',
+        perfil: 'professor',
+        ativo: true,
+    });
+
+    const assinatura = (aceitoEm, termoId = CONSENTIMENTO_ID) => ({
+        termoId,
+        versao: CONSENTIMENTO_VERSAO,
+        aceitoEm,
+        ip: '203.0.113.9',
+        browser: NAVEGADOR,
+        metodoValidacao: METODOS.CADASTRO,
+    });
+
+    it('conta nova só com o campo, como o carimbo da #236: não é criada', async () => {
+        await expect(
+            Usuario.create({ ...base('carimbo@escola.test'), consentimentoAceiteEm: new Date() })
+        ).rejects.toThrow(/Issue #295/);
+        expect(await Usuario.countDocuments({ email: 'carimbo@escola.test' })).toBe(0);
+    });
+
+    it('assinatura de OUTRA data não serve: campo e histórico contam o mesmo ato', async () => {
+        const agora = new Date();
+        const ontem = new Date(agora.getTime() - 24 * 60 * 60 * 1000);
+
+        await expect(
+            Usuario.create({
+                ...base('outra-data@escola.test'),
+                consentimentoAceiteEm: agora,
+                lgpdHistory: [assinatura(ontem)],
+            })
+        ).rejects.toThrow(/Issue #295/);
+    });
+
+    it('assinatura de OUTRO termo não serve', async () => {
+        const agora = new Date();
+
+        await expect(
+            Usuario.create({
+                ...base('outro-termo@escola.test'),
+                consentimentoAceiteEm: agora,
+                lgpdHistory: [assinatura(agora, 'termo_audio_imagem')],
+            })
+        ).rejects.toThrow(/Issue #295/);
+    });
+
+    it('com o que assinaturasDoCadastro() monta, a conta nasce', async () => {
+        const req = { ip: '203.0.113.9', headers: { 'user-agent': NAVEGADOR } };
+
+        const conta = await Usuario.create({
+            ...base('assinada@escola.test'),
+            ...assinaturasDoCadastro(req),
+        });
+
+        expect(consentimentoVigente(conta).aceito).toBe(true);
+    });
+
+    it('conta sem consentimento nenhum continua nascendo normalmente', async () => {
+        const conta = await Usuario.create(base('sem-consentimento@escola.test'));
+        expect(consentimentoVigente(conta).aceito).toBe(false);
+    });
+
+    it('conta ANTIGA com só o campo continua podendo ser salva', async () => {
+        // A trava vale para conta NOVA. As antigas (onboarding de antes do
+        // histórico) existem, e editar o nome delas não pode quebrar.
+        await Usuario.collection.insertOne({
+            _id: 'conta-antiga-295',
+            ...base('antiga@escola.test'),
+            consentimentoAceiteEm: new Date('2025-02-03T10:00:00Z'),
+        });
+
+        const antiga = await Usuario.findById('conta-antiga-295');
+        antiga.nome = 'Titular Renomeada';
+        await expect(antiga.save()).resolves.toBeTruthy();
     });
 });
