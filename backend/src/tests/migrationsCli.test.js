@@ -22,7 +22,8 @@
  */
 
 const path = require('node:path');
-const { spawnSync } = require('node:child_process');
+const { spawn, spawnSync } = require('node:child_process');
+const mongoose = require('mongoose');
 
 const CLI = path.join(__dirname, '..', 'database', 'DatabaseMigrations.js');
 const INALCANCAVEL = '127.0.0.1:1';
@@ -45,6 +46,39 @@ function rodar(args, env = {}) {
         timeout: 60000,
     });
     return { codigo: r.status, saida: `${r.stdout}\n${r.stderr}` };
+}
+
+/**
+ * Versão assíncrona do `rodar`, para comandos que ESCREVEM no banco em memória.
+ *
+ * O MongoDB em memória é um processo filho deste processo do Jest. Com
+ * `spawnSync`, o event loop do Jest fica parado enquanto a CLI roda, e nada
+ * esvazia o pipe de saída do mongod. Um `up` — que grava e cria índices — travava
+ * até o timeout; um `status`, que quase não gera log, passava. Com `spawn`, o
+ * event loop continua drenando o pipe e o mesmo `up` termina em segundos.
+ */
+function rodarAsync(args, env = {}) {
+    return new Promise((resolve) => {
+        const filho = spawn(process.execPath, [CLI, ...args], {
+            cwd: path.join(__dirname, '..', '..'),
+            env: {
+                ...process.env,
+                MONGODB_URI: '',
+                MONGODB_DB_NAME: '',
+                CONFIRMO: '',
+                NODE_ENV: 'test',
+                ...env,
+            },
+        });
+        let saida = '';
+        filho.stdout.on('data', (d) => {
+            saida += d;
+        });
+        filho.stderr.on('data', (d) => {
+            saida += d;
+        });
+        filho.on('exit', (codigo) => resolve({ codigo, saida }));
+    });
 }
 
 describe('CLI do runner de migrations (Issue #302)', () => {
@@ -102,4 +136,57 @@ describe('CLI do runner de migrations (Issue #302)', () => {
         expect(r.codigo).toBe(0);
         expect(r.saida).toMatch(/Usage/);
     });
+
+    it('com CONFIRMO=producao a trava libera — e o erro que sobra é o da conexão', () => {
+        const r = rodar(['up'], {
+            MONGODB_URI: `mongodb://${INALCANCAVEL}/test`,
+            CONFIRMO: 'producao',
+        });
+        expect(r.codigo).toBe(1);
+        // A trava deixou passar: o que falhou foi a conexão, não a confirmação.
+        expect(r.saida).not.toMatch(/Este banco é o de PRODUÇÃO/);
+        expect(r.saida).toMatch(/ECONNREFUSED/);
+    }, 60000);
+
+    // O caso que prova, de ponta a ponta, que o runner não herdou o seed do
+    // connectDB(): em NODE_ENV=development, contra um banco vazio de verdade, as
+    // migrações rodam uma vez só e nenhuma turma nem o professor@teste.com aparece.
+    it('status → up → status → up aplica tudo uma vez e não semeia nada', async () => {
+        const dbName = `migrations_cli_w${process.env.JEST_WORKER_ID || '1'}`;
+        const env = {
+            MONGODB_URI: process.env.MONGODB_URI_TEST,
+            MONGODB_DB_NAME: dbName,
+            NODE_ENV: 'development',
+        };
+
+        const antes = await rodarAsync(['status'], env);
+        expect(antes.codigo).toBe(0);
+        expect(antes.saida).toMatch(/Applied:\s+0/);
+
+        const up = await rodarAsync(['up'], env);
+        expect(up.codigo).toBe(0);
+        expect(up.saida).not.toMatch(/failed/);
+
+        const depois = await rodarAsync(['status'], env);
+        expect(depois.codigo).toBe(0);
+        expect(depois.saida).toMatch(/Pending:\s+0/);
+
+        const deNovo = await rodarAsync(['up'], env);
+        expect(deNovo.codigo).toBe(0);
+        expect(deNovo.saida).toContain('Applied 0 migrations');
+
+        const conexao = await mongoose
+            .createConnection(process.env.MONGODB_URI_TEST, { dbName })
+            .asPromise();
+        try {
+            const db = conexao.db;
+            expect(
+                await db.collection('usuarios').countDocuments({ email: 'professor@teste.com' })
+            ).toBe(0);
+            expect(await db.collection('turmas').countDocuments()).toBe(0);
+        } finally {
+            await conexao.dropDatabase();
+            await conexao.close();
+        }
+    }, 120000);
 });
