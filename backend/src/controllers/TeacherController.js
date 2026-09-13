@@ -341,15 +341,52 @@ exports.statusOnline = async (req, res) => {
         const escolaId = req.escolaId;
 
         // Busca professores da escola
-        const profs = await Professor.find(escopo)
+        const profsBrutos = await Professor.find(escopo)
             .select('nome foto salaPrincipal idUsuario escola vinculos')
             .lean();
 
         // Busca diretores da escola
         const escopoDiretores = escolaId ? { 'vinculos.escolaId': String(escolaId) } : {};
-        const diretores = await Diretor.find(escopoDiretores)
+        const diretoresBrutos = await Diretor.find(escopoDiretores)
             .select('nome foto idUsuario escola vinculos')
             .lean();
+
+        // Conta apagada não pode continuar no card da equipe.
+        //
+        // Esta lista é montada a partir de `professores`/`diretores`, não de
+        // `usuarios`: quem foi excluído pela tela de administração some do
+        // login mas continuava aqui, com foto e botão de conversar, porque o
+        // documento de perfil ficou para trás. A limpeza desse passivo existe
+        // em scripts/limpar-perfis-orfaos.js, mas depender de alguém rodar um
+        // script é frágil demais para um dado que a tela mostra todo dia — o
+        // filtro precisa valer sozinho, em toda requisição.
+        //
+        // O critério é só o que dá para afirmar com certeza: `idUsuario`
+        // preenchido apontando para uma conta que não existe mais. Perfil SEM
+        // `idUsuario` é pré-cadastro da direção (professor que ainda não fez o
+        // primeiro acesso) e continua aparecendo — esconder seria apagar da
+        // vista trabalho legítimo da secretaria.
+        const vinculos = [...profsBrutos, ...diretoresBrutos]
+            .map((x) => (x.idUsuario ? String(x.idUsuario) : ''))
+            .filter(Boolean);
+
+        let contasVivas = new Set();
+        if (vinculos.length > 0) {
+            const Usuario = require('../models/Usuario');
+            const contas = await Usuario.find({ _id: { $in: [...new Set(vinculos)] } })
+                .select('_id')
+                .lean();
+            contasVivas = new Set(contas.map((u) => String(u._id)));
+        }
+
+        const contaFoiApagada = (item) => {
+            const vinculo = item.idUsuario ? String(item.idUsuario) : '';
+            if (!vinculo) return false; // pré-cadastro: mantém
+            return !contasVivas.has(vinculo); // vínculo morto: esconde
+        };
+
+        const profs = profsBrutos.filter((p) => !contaFoiApagada(p));
+        const diretores = diretoresBrutos.filter((d) => !contaFoiApagada(d));
 
         // Contagem de mensagens não lidas enviadas para o usuário logado
         const meuId = String(req.user?.id || req.user?._id || '');

@@ -418,6 +418,16 @@ window.fetch = async (...args) => {
     try {
         const res = await originalFetch(resource, config);
 
+        // O cache de GET tem 2s de vida, mas um DELETE/POST/PUT costuma ser
+        // seguido de um reload imediato da lista — que caía justamente dentro
+        // dessa janela e devolvia a resposta antiga. Na tela de usuários o
+        // efeito era a conta excluída reaparecer na tabela, dando a impressão
+        // de que nada tinha sido removido do banco. Depois de mudar estado, o
+        // cache inteiro deixa de valer.
+        if (isApiRequest && res.ok) {
+            getCache.clear();
+        }
+
         // Tratamento global para erros HTTP (como 429 Rate Limit)
         if (res.status === 429) {
             const msg = 'Muitas requisições vindas deste IP. Tente novamente em alguns minutos.';

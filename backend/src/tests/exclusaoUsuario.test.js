@@ -264,3 +264,85 @@ describe('Busca dirigida por nome/e-mail', () => {
         expect(r.perfis).toBe(0);
     });
 });
+
+/**
+ * A defesa que não depende de ninguém rodar script: mesmo com o perfil órfão
+ * ainda no banco, o card "Professores da Escola" não pode mostrar quem já foi
+ * excluído. Era esse o sintoma relatado — a conta sumia do login e continuava
+ * na lista, com foto e botão de conversar.
+ */
+const TeacherController = require('../controllers/TeacherController');
+
+describe('Card da equipe ignora perfil de conta apagada', () => {
+    function reqEquipe(user) {
+        return {
+            user: {
+                id: String(user._id),
+                _id: String(user._id),
+                perfil: user.perfil,
+                email: user.email,
+            },
+            query: {},
+            params: {},
+            body: {},
+            headers: {},
+        };
+    }
+
+    it('não lista o professor cujo vínculo aponta para conta excluída', async () => {
+        const eu = await criarUsuario('professor', 'eu@t.com');
+        await Professor.create({ idUsuario: String(eu._id), nome: 'Eu', email: 'eu@t.com' });
+        // Adrian: conta apagada pela tela de admin, perfil ficou para trás.
+        await Professor.create({
+            idUsuario: 'conta-apagada-1',
+            nome: 'Adrian',
+            email: 'adrian@t.com',
+        });
+
+        const res = respostaFake();
+        await TeacherController.statusOnline(reqEquipe(eu), res);
+
+        const nomes = (res.corpo.data || []).map((p) => p.nome);
+        expect(nomes).toContain('Eu');
+        expect(nomes).not.toContain('Adrian');
+    });
+
+    it('não lista o diretor cujo vínculo aponta para conta excluída', async () => {
+        const eu = await criarUsuario('professor', 'eu2@t.com');
+        await Diretor.create({
+            idUsuario: 'conta-apagada-2',
+            nome: 'Leonardo',
+            email: 'leo@t.com',
+        });
+
+        const res = respostaFake();
+        await TeacherController.statusOnline(reqEquipe(eu), res);
+
+        expect((res.corpo.data || []).map((p) => p.nome)).not.toContain('Leonardo');
+    });
+
+    it('continua listando o pré-cadastro sem idUsuario', async () => {
+        const eu = await criarUsuario('professor', 'eu3@t.com');
+        await Professor.create({ nome: 'Pré-cadastrada', email: 'nova@t.com' });
+
+        const res = respostaFake();
+        await TeacherController.statusOnline(reqEquipe(eu), res);
+
+        expect((res.corpo.data || []).map((p) => p.nome)).toContain('Pré-cadastrada');
+    });
+
+    it('continua listando quem tem conta ativa', async () => {
+        const eu = await criarUsuario('professor', 'eu4@t.com');
+        const colega = await criarUsuario('professor', 'colega@t.com');
+        await Professor.create({
+            idUsuario: String(colega._id),
+            nome: 'Colega',
+            email: 'colega@t.com',
+        });
+
+        const res = respostaFake();
+        await TeacherController.statusOnline(reqEquipe(eu), res);
+
+        expect((res.corpo.data || []).map((p) => p.nome)).toContain('Colega');
+    });
+});
