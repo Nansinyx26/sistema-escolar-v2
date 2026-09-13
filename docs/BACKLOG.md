@@ -25,11 +25,20 @@ IndexedDB para MongoDB. O argumento `up` é ignorado. Ou seja: **toda push na `d
 migração de dado histórica contra o banco de dev**, e a migração real versionada em
 `backend/migrations/1718745600000-add-deve-mudar-senha.js` nunca roda.
 
-**Aceite**
-- [ ] Existe um runner de migrations de verdade (`migrate:up` / `migrate:down`) lendo `backend/migrations/`
-- [ ] O job do CI chama o runner, não o script one-shot
-- [ ] `migrate_indexeddb_to_mongodb.js` renomeado para deixar claro que é histórico e manual
-- [ ] Migrations são idempotentes e registram o que já aplicaram
+**Aceite** — ✅ resolvido (Issue #1), conferido em 2026-09-12
+- [x] Existe um runner de migrations de verdade (`migrate:up` / `migrate:down`) lendo `backend/migrations/`
+      — `backend/src/database/DatabaseMigrations.js`, com `up`/`down`/`status`/`create` no `package.json`
+- [x] O job do CI chama o runner, não o script one-shot
+      — job `migrations` do `ci-cd.yml` roda `npm run migrate:up`, guardado por `HAS_MONGO_DEV`
+- [x] `migrate_indexeddb_to_mongodb.js` renomeado para deixar claro que é histórico e manual
+      — agora `backend/scripts/importar_indexeddb_historico.js`
+- [x] Migrations são idempotentes e registram o que já aplicaram
+      — cada aplicação fica na coleção `__migrations__`; coberto por `src/tests/migrations.test.js`
+
+**Ajuste posterior (2026-09-12):** rodado à mão, o runner não carregava o `backend/.env` e conectava
+pelo `connectDB()` da aplicação — que, sem URI ou com a conexão falhando, sobe um banco em memória, e
+em development roda o seed de teste. Agora a CLI carrega `config/env.js`, conecta sozinha, mostra o
+banco de destino e recusa escrever no banco `test` (produção) sem `CONFIRMO=producao`.
 
 ### C2 🟠 Corrigir upload de cobertura que nunca recebe arquivo
 `tipo:correcao` `area:infra` `prioridade:alta`
