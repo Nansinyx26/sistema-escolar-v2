@@ -33,7 +33,7 @@ function setupTabs() {
     const tabs = document.querySelectorAll('.login-tab');
     const contents = document.querySelectorAll('.login-tab-content');
 
-    tabs.forEach(tab => {
+    tabs.forEach((tab) => {
         tab.addEventListener('click', () => {
             const targetTab = tab.dataset.tab;
 
@@ -43,17 +43,25 @@ function setupTabs() {
                 const cfg = window.LOGIN_CONFIG || {};
                 const cadastroUrl = cfg.cadastroUrl || 'pages/cadastro-docente.html';
                 try {
-                    sessionStorage.setItem('primeiroAcessoTipo', cfg.primeiroAcessoTipo || 'docente');
-                } catch (e) { }
+                    sessionStorage.setItem(
+                        'primeiroAcessoTipo',
+                        cfg.primeiroAcessoTipo || 'docente'
+                    );
+                } catch (e) {}
 
                 const ctxEscola = getEscolaIdFromUrl();
-                window.location.href = cadastroUrl + (ctxEscola ? ('?escolaId=' + encodeURIComponent(ctxEscola)) : '');
+                window.location.href =
+                    cadastroUrl + (ctxEscola ? '?escolaId=' + encodeURIComponent(ctxEscola) : '');
                 return;
             }
 
             // Remove active de todos
-            tabs.forEach(t => t.classList.remove('active'));
-            contents.forEach(c => c.classList.remove('active'));
+            tabs.forEach((t) => {
+                t.classList.remove('active');
+            });
+            contents.forEach((c) => {
+                c.classList.remove('active');
+            });
 
             // Adiciona active ao clicado
             tab.classList.add('active');
@@ -62,12 +70,13 @@ function setupTabs() {
     });
 }
 
-
 // === MULTI-ESCOLA: contexto vindo do modal da landing (?escolaId=...) ===
 function getEscolaIdFromUrl() {
     try {
         return new URLSearchParams(window.location.search).get('escolaId') || null;
-    } catch (e) { return null; }
+    } catch (e) {
+        return null;
+    }
 }
 
 /**
@@ -85,10 +94,13 @@ async function setupEscolaSelect() {
     if (!group || !select) return;
 
     try {
-        const baseUrl = (window.auth && auth._apiBase) ? auth._apiBase() : (window.API_BASE_URL || 'http://localhost:3001/api');
+        const baseUrl =
+            window.auth && auth._apiBase
+                ? auth._apiBase()
+                : window.API_BASE_URL || 'http://localhost:3001/api';
         const res = await fetch(`${baseUrl}/escolas`, { credentials: 'include' });
         const data = await res.json();
-        let escolas = (data && data.success && Array.isArray(data.data)) ? data.data : [];
+        const escolas = data && data.success && Array.isArray(data.data) ? data.data : [];
 
         if (!escolas.length) return; // sem escolas → mantém oculto (fallback do backend)
 
@@ -103,12 +115,23 @@ async function setupEscolaSelect() {
 
         escolas
             .sort((a, b) => {
-                const aIsJ = (a.nome || '').toLowerCase().includes('jaguari') || (a.nome || '').toLowerCase().includes('mascellani') || a.ativo;
-                const bIsJ = (b.nome || '').toLowerCase().includes('jaguari') || (b.nome || '').toLowerCase().includes('mascellani') || b.ativo;
-                return (bIsJ ? 1 : 0) - (aIsJ ? 1 : 0) || (a.nome || '').localeCompare(b.nome || '');
+                const aIsJ =
+                    (a.nome || '').toLowerCase().includes('jaguari') ||
+                    (a.nome || '').toLowerCase().includes('mascellani') ||
+                    a.ativo;
+                const bIsJ =
+                    (b.nome || '').toLowerCase().includes('jaguari') ||
+                    (b.nome || '').toLowerCase().includes('mascellani') ||
+                    b.ativo;
+                return (
+                    (bIsJ ? 1 : 0) - (aIsJ ? 1 : 0) || (a.nome || '').localeCompare(b.nome || '')
+                );
             })
             .forEach((e) => {
-                const isJaguari = (e.nome || '').toLowerCase().includes('jaguari') || (e.nome || '').toLowerCase().includes('mascellani') || e.ativo;
+                const isJaguari =
+                    (e.nome || '').toLowerCase().includes('jaguari') ||
+                    (e.nome || '').toLowerCase().includes('mascellani') ||
+                    e.ativo;
                 const opt = document.createElement('option');
                 opt.value = e._id;
                 opt.textContent = e.nome + (isJaguari ? ' (Disponível)' : ' 🔒 (Em breve)');
@@ -120,11 +143,11 @@ async function setupEscolaSelect() {
 
         // Pré-seleciona a escola vinda do modal da landing, se houver e estiver ativa
         const ctx = getEscolaIdFromUrl();
-        if (ctx && escolas.some(e => String(e._id) === String(ctx))) {
+        if (ctx && escolas.some((e) => String(e._id) === String(ctx))) {
             select.value = ctx;
         } else {
             // Seleciona a Jaguari por padrão
-            const jaguariOpt = Array.from(select.options).find(o => !o.disabled && o.value);
+            const jaguariOpt = Array.from(select.options).find((o) => !o.disabled && o.value);
             if (jaguariOpt) select.value = jaguariOpt.value;
         }
 
@@ -152,10 +175,12 @@ function mostrarSeletorEscolas(escolas, onEscolha) {
 
     const overlay = document.createElement('div');
     overlay.id = 'modalSeletorEscolas';
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;';
+    overlay.style.cssText =
+        'position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;';
 
     const card = document.createElement('div');
-    card.style.cssText = 'background:var(--bg-elevated,#18181b);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:28px;max-width:420px;width:100%;';
+    card.style.cssText =
+        'background:var(--bg-elevated,#18181b);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:28px;max-width:420px;width:100%;';
 
     const titulo = document.createElement('h3');
     titulo.textContent = 'Em qual escola você quer entrar?';
@@ -170,11 +195,16 @@ function mostrarSeletorEscolas(escolas, onEscolha) {
     escolas.forEach((e) => {
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.style.cssText = 'display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 14px;margin-bottom:8px;color:var(--text-primary,#fafafa);cursor:pointer;font-size:14.5px;font-family:inherit;';
+        btn.style.cssText =
+            'display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:12px 14px;margin-bottom:8px;color:var(--text-primary,#fafafa);cursor:pointer;font-size:14.5px;font-family:inherit;';
         btn.innerHTML = `<i class="bi ${e.tipo === 'CIEP' ? 'bi-mortarboard' : 'bi-book'}" style="color:var(--primary,#10b981)"></i>`;
         btn.appendChild(document.createTextNode(e.nome + (e.bairro ? ' — ' + e.bairro : '')));
-        btn.addEventListener('mouseenter', () => { btn.style.borderColor = 'var(--primary,#10b981)'; });
-        btn.addEventListener('mouseleave', () => { btn.style.borderColor = 'rgba(255,255,255,.1)'; });
+        btn.addEventListener('mouseenter', () => {
+            btn.style.borderColor = 'var(--primary,#10b981)';
+        });
+        btn.addEventListener('mouseleave', () => {
+            btn.style.borderColor = 'rgba(255,255,255,.1)';
+        });
         btn.addEventListener('click', () => {
             overlay.remove();
             onEscolha(e._id);
@@ -222,7 +252,12 @@ function setupLoginForm() {
             }
 
             // Fallback raso caso o backend não retorne redirect_to
-            if (usuario.perfil && (usuario.perfil === 'admin' || usuario.perfil === 'professor' || usuario.perfil === 'diretor')) {
+            if (
+                usuario.perfil &&
+                (usuario.perfil === 'admin' ||
+                    usuario.perfil === 'professor' ||
+                    usuario.perfil === 'diretor')
+            ) {
                 window.location.href = 'dashboard.html';
             } else if (usuario.perfilDefinidoEm) {
                 window.location.href = 'dashboard.html';
@@ -258,7 +293,12 @@ function setupLoginForm() {
         // Multi-escola: se o seletor estiver visível, escolher a escola é obrigatório
         const escolaGroup = document.getElementById('loginEscolaGroup');
         const escolaSelect = document.getElementById('loginEscola');
-        if (escolaGroup && escolaGroup.style.display !== 'none' && escolaSelect && !escolaSelect.value) {
+        if (
+            escolaGroup &&
+            escolaGroup.style.display !== 'none' &&
+            escolaSelect &&
+            !escolaSelect.value
+        ) {
             showToast('Selecione a escola que deseja acessar', 'error');
             escolaSelect.focus();
             return;
@@ -298,28 +338,28 @@ function setupRegisterForm() {
                 strengthWrapper.style.display = 'none';
                 return;
             }
-            
+
             strengthWrapper.style.display = 'block';
-            
+
             let score = 0;
-            
+
             // Critério 1: Comprimento
             if (val.length >= 8) score++;
-            
+
             // Critério 2: Letra maiúscula
             if (/[A-Z]/.test(val)) score++;
-            
+
             // Critério 3: Número
             if (/[0-9]/.test(val)) score++;
-            
+
             // Critério 4: Caractere especial
             if (/[^A-Za-z0-9]/.test(val)) score++;
-            
+
             // Atualiza UI
             let width = '0%';
             let color = '#ef4444'; // Vermelho
             let text = 'Senha muito fraca';
-            
+
             if (val.length < 6) {
                 width = '20%';
                 color = '#ef4444';
@@ -349,7 +389,7 @@ function setupRegisterForm() {
                         break;
                 }
             }
-            
+
             strengthProgress.style.width = width;
             strengthProgress.style.backgroundColor = color;
             strengthText.innerText = `Força da Senha: ${text}`;
@@ -361,24 +401,24 @@ function setupRegisterForm() {
     if (codeInput && validationIcon) {
         codeInput.addEventListener('input', () => {
             const codigo = codeInput.value.trim();
-            
+
             // Limpa classes e esconde ícone temporariamente
             codeInput.classList.remove('code-valid', 'code-invalid');
             validationIcon.style.display = 'none';
             validationIcon.className = 'bi';
-            
+
             if (!codigo) return;
-            
+
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(async () => {
                 try {
                     const response = await fetch(`${window.API_BASE_URL}/auth/validate-code`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ codigo })
+                        body: JSON.stringify({ codigo }),
                     });
                     const data = await response.json();
-                    
+
                     if (data.success && data.valid) {
                         codeInput.classList.add('code-valid');
                         validationIcon.className = 'bi bi-check-circle-fill code-valid-icon';
@@ -434,13 +474,28 @@ function setupRegisterForm() {
             return;
         }
 
+        // A caixa "Li e aceito" sempre esteve na tela, mas o aceite nunca era
+        // enviado — a pessoa consentia e nada ficava registrado (Issue #295).
+        if (!window.ConsentimentoCadastro?.marcado('registerConsent')) {
+            showToast('Para criar a conta, leia e aceite a Política de Privacidade.', 'error');
+            return;
+        }
+
         // Loading
         const submitBtn = form.querySelector('button[type="submit"]');
         showLoading(submitBtn);
 
         try {
             // Registra via Código Secreto (Backend)
-            const data = await auth.registerWithCode(email, password, nome, codigoEscola, cpf, telefone);
+            const data = await auth.registerWithCode(
+                email,
+                password,
+                nome,
+                codigoEscola,
+                cpf,
+                telefone,
+                window.ConsentimentoCadastro.payload('registerConsent')
+            );
 
             showToast('Conta criada com sucesso! Redirecionando...', 'success');
 
@@ -455,7 +510,6 @@ function setupRegisterForm() {
 
             // Já autenticado via cookie JWT — vai direto ao painel do perfil criado
             window.location.href = (data && data.redirect_to) || 'escolher-perfil.html';
-            
         } catch (error) {
             console.error('Erro no registro:', error);
             showToast(error.message || 'Erro ao criar conta', 'error');
@@ -476,16 +530,14 @@ function setupPasswordToggles() {
         toggle.addEventListener('click', () => {
             const type = passwordInput.type === 'password' ? 'text' : 'password';
             passwordInput.type = type;
-            toggle.innerHTML = type === 'text'
-                ? '<i class="bi bi-eye"></i>'
-                : '<i class="bi bi-eye-slash"></i>';
+            toggle.innerHTML =
+                type === 'text' ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
         });
     }
-
 }
 // === FORGOT PASSWORD MODAL ===
 let recoveryEmail = ''; // Email armazenado entre passos
-let recoveryCode = '';  // Código armazenado entre passos
+let recoveryCode = ''; // Código armazenado entre passos
 let codeTimerInterval = null;
 let resendTimerInterval = null;
 
@@ -513,7 +565,7 @@ window.openForgotPasswordModal = function () {
         recoveryCode = '';
         clearTimers();
     }
-}
+};
 
 // Garante que o link funcione mesmo se o onclick falhar
 document.addEventListener('DOMContentLoaded', () => {
@@ -541,8 +593,14 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function clearTimers() {
-    if (codeTimerInterval) { clearInterval(codeTimerInterval); codeTimerInterval = null; }
-    if (resendTimerInterval) { clearInterval(resendTimerInterval); resendTimerInterval = null; }
+    if (codeTimerInterval) {
+        clearInterval(codeTimerInterval);
+        codeTimerInterval = null;
+    }
+    if (resendTimerInterval) {
+        clearInterval(resendTimerInterval);
+        resendTimerInterval = null;
+    }
 }
 
 window.closeForgotPasswordModal = function () {
@@ -559,7 +617,7 @@ window.closeForgotPasswordModal = function () {
     clearTimers();
     recoveryEmail = '';
     recoveryCode = '';
-}
+};
 
 // Inicia countdown de expiração do código (15 minutos)
 function startCodeCountdown() {
@@ -630,14 +688,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const submitBtn = document.getElementById('btnEnviarCodigo');
             const originalText = submitBtn.innerHTML;
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Enviando...';
+            submitBtn.innerHTML =
+                '<span class="spinner-border spinner-border-sm"></span> Enviando...';
 
             try {
                 const baseUrl = window.API_BASE_URL;
                 const res = await fetch(`${baseUrl}/auth/forgot-password`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email })
+                    body: JSON.stringify({ email }),
                 });
 
                 const data = await res.json();
@@ -686,7 +745,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch(`${baseUrl}/auth/forgot-password`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: recoveryEmail })
+                    body: JSON.stringify({ email: recoveryEmail }),
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -694,7 +753,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     startCodeCountdown();
                     startResendCountdown();
                     const codeInput = document.getElementById('recoveryCode');
-                    if (codeInput) { codeInput.value = ''; codeInput.focus(); }
+                    if (codeInput) {
+                        codeInput.value = '';
+                        codeInput.focus();
+                    }
                 } else {
                     showToast(data.error || 'Erro ao reenviar código', 'error');
                 }
@@ -719,14 +781,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const submitBtn = document.getElementById('btnVerificarCodigo');
             const originalText = submitBtn.innerHTML;
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Verificando...';
+            submitBtn.innerHTML =
+                '<span class="spinner-border spinner-border-sm"></span> Verificando...';
 
             try {
                 const baseUrl = window.API_BASE_URL;
                 const res = await fetch(`${baseUrl}/auth/verify-recovery-code`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: recoveryEmail, codigo })
+                    body: JSON.stringify({ email: recoveryEmail, codigo }),
                 });
                 const data = await res.json();
 
@@ -812,7 +875,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const submitBtn = document.getElementById('btnAlterarSenha');
             const originalText = submitBtn.innerHTML;
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Alterando...';
+            submitBtn.innerHTML =
+                '<span class="spinner-border spinner-border-sm"></span> Alterando...';
 
             try {
                 const baseUrl = window.API_BASE_URL;
@@ -822,13 +886,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify({
                         email: recoveryEmail,
                         codigo: recoveryCode,
-                        password
-                    })
+                        password,
+                    }),
                 });
                 const data = await res.json();
 
                 if (data.success) {
-                    showToast('Senha alterada com sucesso! Faça login com sua nova senha.', 'success');
+                    showToast(
+                        'Senha alterada com sucesso! Faça login com sua nova senha.',
+                        'success'
+                    );
                     setTimeout(() => {
                         closeForgotPasswordModal();
                     }, 2000);
@@ -867,15 +934,36 @@ document.addEventListener('DOMContentLoaded', () => {
             if (/[0-9]/.test(val)) score++;
             if (/[^A-Za-z0-9]/.test(val)) score++;
 
-            let width = '0%', color = '#ef4444', text = 'Muito fraca';
+            let width = '0%',
+                color = '#ef4444',
+                text = 'Muito fraca';
             if (val.length < 6) {
-                width = '15%'; color = '#ef4444'; text = 'Muito curta';
+                width = '15%';
+                color = '#ef4444';
+                text = 'Muito curta';
             } else {
                 switch (score) {
-                    case 0: case 1: width = '25%'; color = '#ef4444'; text = 'Fraca'; break;
-                    case 2: width = '50%'; color = '#f59e0b'; text = 'Média'; break;
-                    case 3: width = '75%'; color = '#3b82f6'; text = 'Boa'; break;
-                    case 4: width = '100%'; color = '#10b981'; text = 'Forte'; break;
+                    case 0:
+                    case 1:
+                        width = '25%';
+                        color = '#ef4444';
+                        text = 'Fraca';
+                        break;
+                    case 2:
+                        width = '50%';
+                        color = '#f59e0b';
+                        text = 'Média';
+                        break;
+                    case 3:
+                        width = '75%';
+                        color = '#3b82f6';
+                        text = 'Boa';
+                        break;
+                    case 4:
+                        width = '100%';
+                        color = '#10b981';
+                        text = 'Forte';
+                        break;
                 }
             }
             if (resetStrengthProgress) {
@@ -910,9 +998,10 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.addEventListener('click', () => {
                 const type = input.type === 'password' ? 'text' : 'password';
                 input.type = type;
-                btn.innerHTML = type === 'text'
-                    ? '<i class="bi bi-eye"></i>'
-                    : '<i class="bi bi-eye-slash"></i>';
+                btn.innerHTML =
+                    type === 'text'
+                        ? '<i class="bi bi-eye"></i>'
+                        : '<i class="bi bi-eye-slash"></i>';
             });
         }
     }
@@ -932,7 +1021,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function setupInputMasks() {
     // Máscara de CPF
     const cpfInputs = document.querySelectorAll('#registerCPF');
-    cpfInputs.forEach(input => {
+    cpfInputs.forEach((input) => {
         input.addEventListener('input', (e) => {
             let value = e.target.value.replace(/\D/g, '');
             if (value.length > 11) value = value.slice(0, 11);
@@ -948,7 +1037,7 @@ function setupInputMasks() {
 
     // Máscara de Telefone
     const telefoneInputs = document.querySelectorAll('#registerTelefone');
-    telefoneInputs.forEach(input => {
+    telefoneInputs.forEach((input) => {
         input.addEventListener('input', (e) => {
             let value = e.target.value.replace(/\D/g, '');
             if (value.length > 11) value = value.slice(0, 11);
@@ -968,13 +1057,13 @@ function setupInputMasks() {
 }
 
 // === PRIVACY MODAL ===
-window.openPrivacyModal = function(e) {
+window.openPrivacyModal = function (e) {
     if (e) e.preventDefault();
     const modal = document.getElementById('privacyModal');
     if (modal) modal.classList.remove('hidden');
-}
+};
 
-window.closePrivacyModal = function() {
+window.closePrivacyModal = function () {
     const modal = document.getElementById('privacyModal');
     if (modal) modal.classList.add('hidden');
-}
+};

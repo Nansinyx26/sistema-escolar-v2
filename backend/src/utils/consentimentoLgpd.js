@@ -57,6 +57,12 @@
  * carimbo das contas antigas — só onde ele coincide com o `createdAt` e não há
  * aceite no histórico. Quem gravar este campo de novo precisa ter um ato do
  * titular por trás; criar a conta não é um.
+ *
+ * O ato, quando existe, agora é colhido no próprio cadastro (Issue #295): o
+ * docente, o diretor e a secretaria só criam a conta com o aceite, e ele vai
+ * para o `lgpdHistory` (`services/conformidade/consentimentoCadastro.js`). O
+ * responsável e a conta Google podem deixar para o `CompletarCadastro`, que o
+ * portal exige antes de abrir.
  */
 
 /** Mesmo par que o portal grava — ver o bloco "A VERSÃO" acima. */

@@ -22,6 +22,11 @@ const { aceiteExplicitoVigente } = require('../utils/consentimentoLgpd');
 // Emissão de sessão centralizada: garante `jti` em todo token (pré-requisito
 // para o logout conseguir revogar) e opções de cookie idênticas em todo lugar.
 const { emitirTokenSessao } = require('../utils/sessionToken');
+// Cadastro exige e registra o consentimento LGPD (Issue #295).
+const {
+    validarConsentimentoDoCadastro,
+    assinaturasDoCadastro,
+} = require('../services/conformidade/consentimentoCadastro');
 const {
     CONSENTIMENTO_ID,
     CONSENTIMENTO_VERSAO,
@@ -160,6 +165,13 @@ exports.create = async (req, res) => {
             'twoFactorFixedCode',
             'twoFactorSecret',
             'twoFactorPendingToken',
+            // Consentimento é ato do titular, não de quem cria a conta dele
+            // (Issue #295). Sem estes quatro, um gestor registrava — ou forjava
+            // no histórico — o aceite LGPD de outra pessoa.
+            'consentimentoAceiteEm',
+            'consentimentoVersao',
+            'consentimentoInvalidado',
+            'lgpdHistory',
         ].forEach((campo) => {
             delete req.body[campo];
         });
@@ -299,6 +311,13 @@ exports.registerWithCode = async (req, res) => {
             });
         }
 
+        // Criar a conta exige o aceite da Política de Privacidade (Issue #295).
+        // A tela de login já mostrava a caixa "Li e aceito", mas o aceite nunca
+        // chegava aqui: a pessoa consentia e nada ficava registrado.
+        // Antes de qualquer consulta ao banco: sem aceite, nada é criado.
+        const recusaConsentimento = validarConsentimentoDoCadastro(req.body);
+        if (recusaConsentimento) return res.status(400).json(recusaConsentimento);
+
         // 1. Valida o código secreto e RESOLVE a escola correspondente.
         //    Quando o modal pré-seleciona a escola, `escolaId` garante que o
         //    código digitado é o daquela escola; sem ele, o código identifica
@@ -339,6 +358,9 @@ exports.registerWithCode = async (req, res) => {
             emailVerificacaoToken,
             emailVerificacaoExpiry: Date.now() + 24 * 60 * 60 * 1000, // 24 horas
             deveMudarSenha: false, // usuário não precisa mudar senha no primeiro acesso
+            // O aceite que a pessoa marcou no formulário, com IP e navegador —
+            // conferido acima por validarConsentimentoDoCadastro (Issue #295).
+            ...assinaturasDoCadastro(req),
         });
 
         // 3b. Registro na coleção 'professores' com o VÍNCULO da escola. É por
@@ -1104,7 +1126,11 @@ exports.googleLogin = async (req, res) => {
                 loginGoogle: true,
                 fotoGoogle: picture,
                 ativo: true,
-                // Sem consentimentoAceiteEm: criar a conta não é consentir (Issue #236).
+                // Sem consentimento: criar a conta não é consentir (Issue #236).
+                // Este é um LOGIN, não um formulário — não há caixa para marcar.
+                // A conta nasce com `profileCompleted: false`, e o portal só abre
+                // depois do `CompletarCadastro`, que colhe o aceite e o grava no
+                // `lgpdHistory` (ver `newLgpdRecords` em updateProfile).
             });
         } else {
             // Usuário existente: sincronizar foto do Google se houver mudança
@@ -1944,12 +1970,17 @@ exports.registerResponsavel = async (req, res) => {
         // Política de Privacidade marcada no "Criar Conta" do portal (Issue
         // #288). E nasce como no perfil: campo e assinatura auditável juntos,
         // com a mesma data. Sem a marcação, o aceite fica para o CompletarCadastro.
+        //
+        // Aqui o aceite é OPCIONAL, e só aqui: as duas telas que chamam esta rota
+        // (o portal e html/pages/cadastro-responsavel.html) levam ao portal, que
+        // não abre antes do CompletarCadastro — e ele pede o aceite. Docente,
+        // diretor e secretaria não têm essa etapa depois, e por isso as rotas
+        // deles recusam o cadastro sem o aceite (Issue #295).
+        //
+        // Quando vem, grava como todo aceite de cadastro: método
+        // FORMULARIO_CADASTRO, não SESSAO_AUTENTICADA — ainda não há sessão.
         const consentimento = aceiteExplicitoVigente(req.body.consentimentoLgpd)
-            ? {
-                  consentimentoAceiteEm: now,
-                  consentimentoVersao: CONSENTIMENTO_VERSAO,
-                  lgpdHistory: [assinaturaDoPerfil(req, now)],
-              }
+            ? assinaturasDoCadastro(req)
             : {};
 
         const user = await Usuario.create({
@@ -2044,6 +2075,11 @@ exports.registerDocente = async (req, res) => {
             });
         }
 
+        // Criar a conta exige o aceite da Política de Privacidade (Issue #295).
+        // Antes de qualquer consulta ao banco: sem aceite, nada é criado.
+        const recusaConsentimento = validarConsentimentoDoCadastro(req.body);
+        if (recusaConsentimento) return res.status(400).json(recusaConsentimento);
+
         // Valida o código secreto (por escola quando escolaId presente)
         const SecurityController = require('./SecurityController');
         const codeResult = await SecurityController.validateCode(codigoEscola, escolaId || null);
@@ -2094,7 +2130,9 @@ exports.registerDocente = async (req, res) => {
             ativo: true,
             ultimoLogin: now,
             lastLogin: now,
-            // Sem consentimentoAceiteEm: criar a conta não é consentir (Issue #236).
+            // O aceite que a pessoa marcou no formulário, com IP e navegador —
+            // conferido acima por validarConsentimentoDoCadastro (Issue #295).
+            ...assinaturasDoCadastro(req),
         });
 
         // Auto-criação do registro na coleção 'professores' para vincular a turma e disciplina ao painel do professor
@@ -2664,6 +2702,11 @@ exports.registerDiretor = async (req, res) => {
             });
         }
 
+        // Criar a conta exige o aceite da Política de Privacidade (Issue #295).
+        // Antes de qualquer consulta ao banco: sem aceite, nada é criado.
+        const recusaConsentimento = validarConsentimentoDoCadastro(req.body);
+        if (recusaConsentimento) return res.status(400).json(recusaConsentimento);
+
         // 1. Valida o código secreto (por escola quando escolaId presente)
         const SecurityController = require('./SecurityController');
         const codeResult = await SecurityController.validateCode(codigoEscola, escolaId || null);
@@ -2719,7 +2762,9 @@ exports.registerDiretor = async (req, res) => {
             ativo: true,
             ultimoLogin: now,
             lastLogin: now,
-            // Sem consentimentoAceiteEm: criar a conta não é consentir (Issue #236).
+            // O aceite que a pessoa marcou no formulário, com IP e navegador —
+            // conferido acima por validarConsentimentoDoCadastro (Issue #295).
+            ...assinaturasDoCadastro(req),
         });
 
         // 4. Auto-criação do registro na coleção 'diretores'
@@ -2805,6 +2850,11 @@ exports.registerSecretaria = async (req, res) => {
             });
         }
 
+        // Criar a conta exige o aceite da Política de Privacidade (Issue #295).
+        // Antes de qualquer consulta ao banco: sem aceite, nada é criado.
+        const recusaConsentimento = validarConsentimentoDoCadastro(req.body);
+        if (recusaConsentimento) return res.status(400).json(recusaConsentimento);
+
         // 1. Valida o código secreto (por escola quando escolaId presente)
         const SecurityController = require('./SecurityController');
         const codeResult = await SecurityController.validateCode(codigoEscola, escolaId || null);
@@ -2865,7 +2915,9 @@ exports.registerSecretaria = async (req, res) => {
             ativo: true,
             ultimoLogin: now,
             lastLogin: now,
-            // Sem consentimentoAceiteEm: criar a conta não é consentir (Issue #236).
+            // O aceite que a pessoa marcou no formulário, com IP e navegador —
+            // conferido acima por validarConsentimentoDoCadastro (Issue #295).
+            ...assinaturasDoCadastro(req),
         });
 
         // 4. Auto-criação do registro na coleção 'secretarias' (com o vínculo
