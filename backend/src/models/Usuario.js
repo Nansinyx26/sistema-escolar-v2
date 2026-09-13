@@ -232,10 +232,12 @@ const UsuarioSchema = new mongoose.Schema(
                 ip: String,
                 browser: String,
                 os: String,
-                loginType: String, // 'Google', 'Portal Local'
+                loginType: String, // 'Google', 'Portal Local', 'Conta Local'
                 // COMO se provou que foi o titular (ou o responsável legal) que
-                // assinou: 'SESSAO_AUTENTICADA', 'EMAIL_VERIFICADO',
-                // 'SMS_VERIFICADO' ou 'GOV_BR_AUTH'. Sem este campo, dois
+                // assinou: 'FORMULARIO_CADASTRO', 'SESSAO_AUTENTICADA',
+                // 'EMAIL_VERIFICADO', 'SMS_VERIFICADO' ou 'GOV_BR_AUTH' — ver
+                // `METODOS` em services/conformidade/validacaoConsentimento.js.
+                // Sem este campo, dois
                 // registros idênticos podem ter forças probatórias muito
                 // diferentes e ninguém consegue distinguir depois — é a
                 // pergunta que a ANPD faz quando há reclamação sobre dado de

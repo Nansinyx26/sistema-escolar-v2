@@ -301,7 +301,13 @@ document.addEventListener('DOMContentLoaded', () => {
             escolaGroup.style.display === 'none' ||
             (escolaSelect && !!escolaSelect.value);
 
-        btnSubmit.disabled = !(passOk && allFilled && codeOk && escolaOk);
+        // Aceite da Política de Privacidade (Issue #295): obrigatório para o
+        // docente. Para o responsável é opcional — o portal pede no
+        // CompletarCadastro antes de abrir (Issue #288). O `[required]` acima não
+        // serve para checkbox: o `value` dela é "on" marcada ou não.
+        const consentimentoOk = !isDocente || Boolean(window.ConsentimentoCadastro?.marcado());
+
+        btnSubmit.disabled = !(passOk && allFilled && codeOk && escolaOk && consentimentoOk);
     }
 
     // ── Submissão do formulário ──────────────────────────────────────────
@@ -330,6 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     codigoEscola: document.getElementById('codigoEscola').value.trim(),
                     // Multi-escola: escola travada da landing OU escolhida no seletor
                     escolaId: getEscolaCadastroId() || undefined,
+                    consentimentoLgpd: window.ConsentimentoCadastro.payload(),
                 };
             } else {
                 endpoint = `${API_BASE}/auth/register-responsavel`;
@@ -342,6 +349,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         .getElementById('codigoSecreto')
                         .value.trim()
                         .toUpperCase(),
+                    consentimentoLgpd: window.ConsentimentoCadastro.payload(),
                 };
             }
 

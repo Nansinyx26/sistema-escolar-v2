@@ -48,6 +48,9 @@ document.addEventListener('DOMContentLoaded', () => {
         confirmSenhaInput.addEventListener('input', checkFormReady);
     }
 
+    // Aceite da Política de Privacidade (Issue #295): marcar/desmarcar revalida.
+    window.ConsentimentoCadastro?.caixa()?.addEventListener('change', checkFormReady);
+
     // Real-time secret code validation
     let codeTimer;
     if (codigoInput) {
@@ -112,6 +115,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        if (!window.ConsentimentoCadastro?.marcado()) {
+            showToast('Para criar a conta, leia e aceite a Política de Privacidade.', 'error');
+            return;
+        }
+
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Criando conta...';
 
@@ -130,6 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     codigoEscola,
                     // Multi-escola: escola pré-selecionada no modal da landing
                     escolaId: (window.EscolaContexto && window.EscolaContexto.id) || undefined,
+                    consentimentoLgpd: window.ConsentimentoCadastro.payload(),
                 }),
             });
 
@@ -174,7 +183,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const passwordsMatch = senha === confirmSenha && confirmSenha;
         const allFilled = nome && email && telefone && codigo;
 
-        submitBtn.disabled = !(allFilled && passwordValid && passwordsMatch);
+        const consentimentoOk = Boolean(window.ConsentimentoCadastro?.marcado());
+
+        submitBtn.disabled = !(allFilled && passwordValid && passwordsMatch && consentimentoOk);
     }
 
     function updateRequirement(el, valid) {

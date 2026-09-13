@@ -19,7 +19,7 @@
 // linha, e o CI roda essa verificação. O script lê a lista daqui de baixo —
 // não mantém cópia — então acrescentar um asset já o coloca sob a regra.
 // Detalhes em docs/QUALITY.md, seção "Service worker: o bump do VERSION".
-const VERSION = 'v19';
+const VERSION = 'v20';
 const STATIC_CACHE = `escola-static-${VERSION}`;
 const PAGES_CACHE = `escola-pages-${VERSION}`;
 const CURRENT_CACHES = [STATIC_CACHE, PAGES_CACHE];
@@ -42,6 +42,9 @@ const STATIC_ASSETS = [
     '/css/responsive-global.css',
     '/css/watermark.css',
     '/js/login.js',
+    // O cadastro do login.js lê o aceite LGPD por este módulo (Issue #295):
+    // servir um sem o outro deixaria o botão "Criar conta" recusando sempre.
+    '/js/consentimento-cadastro.js',
     '/js/auth.js',
     // ============================================
     // O GUARD PRECISA ESTAR AQUI, E O MOTIVO É ESTE ARQUIVO

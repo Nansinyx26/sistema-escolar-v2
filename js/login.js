@@ -474,6 +474,13 @@ function setupRegisterForm() {
             return;
         }
 
+        // A caixa "Li e aceito" sempre esteve na tela, mas o aceite nunca era
+        // enviado — a pessoa consentia e nada ficava registrado (Issue #295).
+        if (!window.ConsentimentoCadastro?.marcado('registerConsent')) {
+            showToast('Para criar a conta, leia e aceite a Política de Privacidade.', 'error');
+            return;
+        }
+
         // Loading
         const submitBtn = form.querySelector('button[type="submit"]');
         showLoading(submitBtn);
@@ -486,7 +493,8 @@ function setupRegisterForm() {
                 nome,
                 codigoEscola,
                 cpf,
-                telefone
+                telefone,
+                window.ConsentimentoCadastro.payload('registerConsent')
             );
 
             showToast('Conta criada com sucesso! Redirecionando...', 'success');

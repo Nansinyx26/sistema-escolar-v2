@@ -6,6 +6,7 @@
  */
 const request = require('supertest');
 const app = require('../app');
+const { CONSENTIMENTO_VERSAO } = require('../utils/consentimentoLgpd');
 const {
     conectarBanco,
     limparBanco,
@@ -93,6 +94,8 @@ describe('POST /api/auth/register-docente (multi-escola)', () => {
         turma: '1A',
         matricula: 'M123',
         telefone: '(19) 99999-0000',
+        // Todo cadastro exige o aceite da Política de Privacidade (Issue #295).
+        consentimentoLgpd: { aceito: true, versao: CONSENTIMENTO_VERSAO },
         ...extra,
     });
 
