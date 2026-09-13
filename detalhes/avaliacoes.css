@@ -23,10 +23,8 @@
     position: relative;
     overflow: hidden;
     backdrop-filter: blur(14px);
-    transition:
-        transform var(--motion-base, 180ms) var(--motion-ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
-        border-color var(--motion-base, 180ms) var(--motion-ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
-        box-shadow var(--motion-base, 180ms) var(--motion-ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+    /* Só transform anima (AGENTS.md §8); borda e sombra mudam na hora. */
+    transition: transform var(--motion-base, 180ms) var(--motion-ease-out, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 [data-theme="dark"] .stat-card-modern {
@@ -118,7 +116,7 @@
     align-items: center;
     gap: 0.5rem;
     cursor: pointer;
-    transition: background-color 0.2s, transform 0.15s, box-shadow 0.2s;
+    transition: transform var(--motion-fast, 120ms) var(--motion-ease-out, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 .btn-novo-avaliacao:hover {
@@ -195,7 +193,7 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    transition: transform var(--motion-fast, 120ms) var(--motion-ease-out, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 .btn-action-lancar {
@@ -322,7 +320,6 @@
     cursor: pointer;
     padding: 4px;
     border-radius: 8px;
-    transition: color 0.15s, background 0.15s;
 }
 
 .modal-close-btn:hover {
@@ -375,10 +372,7 @@
     font-size: 0.9rem;
     /* Controles nativos (calendário, setas do número) no esquema escuro. */
     color-scheme: dark;
-    transition:
-        border-color var(--motion-fast, 120ms) var(--motion-ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
-        box-shadow var(--motion-fast, 120ms) var(--motion-ease-out, cubic-bezier(0.16, 1, 0.3, 1));
-    outline: none;
+    outline: none; /* foco vem de teclado: muda na hora, sem transição */
 }
 
 [data-theme="light"] .form-control-custom {
@@ -520,7 +514,6 @@ select.form-control-custom optgroup,
     background: rgba(255, 255, 255, 0.05);
     color: #fff;
     outline: none;
-    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 [data-theme="light"] .input-nota-aluno {
@@ -607,7 +600,6 @@ select.form-control-custom optgroup,
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 12px;
     padding: 1rem 1.2rem;
-    transition: border-color 0.15s ease;
 }
 
 [data-theme="light"] .audit-card {
@@ -977,7 +969,8 @@ select.form-control-custom optgroup,
     .modal-overlay.active,
     .modal-dialog-custom,
     .stat-card-modern,
-    .btn-novo-avaliacao {
+    .btn-novo-avaliacao,
+    .btn-action-table {
         transition: none;
     }
 
@@ -987,7 +980,8 @@ select.form-control-custom optgroup,
     }
 
     .stat-card-modern:hover,
-    .btn-novo-avaliacao:hover {
+    .btn-novo-avaliacao:hover,
+    .btn-novo-avaliacao:active {
         transform: none;
     }
 }
