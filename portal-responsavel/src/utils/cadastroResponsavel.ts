@@ -23,7 +23,7 @@ export interface FormularioCadastro {
   senha: string;
   telefone: string;
   codigoSecreto: string;
-  /** Caixa da Política de Privacidade: nasce desmarcada e é opcional. */
+  /** Caixa da Política de Privacidade: nasce desmarcada e é obrigatória (Issue #295). */
   aceitePolitica: boolean;
 }
 
@@ -55,8 +55,8 @@ export function montarCorpoCadastro(formulario: FormularioCadastro): CorpoCadast
   };
 
   // Só vai consentimento quando a pessoa marcou a caixa. Criar a conta não é
-  // consentir (Issue #236): sem a marcação, o aceite fica para o
-  // CompletarCadastro, como no cadastro pela página HTML.
+  // consentir (Issue #236), então o portal nunca manda um aceite que ninguém
+  // deu — e sem ele, desde a #295, o servidor recusa o cadastro.
   if (formulario.aceitePolitica) {
     corpo.consentimentoLgpd = { aceito: true, versao: VERSAO_POLITICA_PRIVACIDADE };
   }
