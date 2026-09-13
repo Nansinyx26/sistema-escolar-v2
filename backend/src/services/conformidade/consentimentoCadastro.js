@@ -17,15 +17,15 @@
  *
  * QUEM USA, E ONDE O ACEITE É OBRIGATÓRIO
  * ---------------------------------------
- * `assinaturasDoCadastro()` grava o aceite nas cinco rotas de formulário do
- * `UserController`. `validarConsentimentoDoCadastro()` — a recusa 400 — vale
- * em quatro delas: `register-docente`, `register-diretor`,
- * `register-secretaria` e `register-code`. Esses perfis não passam por
- * nenhuma etapa depois do cadastro que peça o consentimento.
+ * As cinco rotas de formulário do `UserController` — `register-responsavel`,
+ * `register-docente`, `register-diretor`, `register-secretaria` e
+ * `register-code` — recusam (400) sem o aceite, por
+ * `validarConsentimentoDoCadastro()`, e o gravam por `assinaturasDoCadastro()`.
  *
- * No `register-responsavel` o aceite é opcional (Issue #288): as duas telas que
- * chamam a rota levam ao portal, que não abre antes do `CompletarCadastro` — e
- * ele pede o aceite. Quando a caixa vem marcada, grava daqui igual.
+ * O `register-responsavel` chegou a ficar opcional (Issue #288), porque o
+ * portal pede o aceite depois, no `CompletarCadastro`. A decisão registrada na
+ * #295 foi exigir nas cinco: o que se pede aqui é só a ciência da política, e
+ * as finalidades específicas continuam opcionais no perfil (Issue #280).
  *
  * O `google-login` não usa nenhuma das duas: é um login que cria a conta como
  * efeito colateral, não um formulário. A conta Google nasce com

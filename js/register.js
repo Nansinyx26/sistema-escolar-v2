@@ -302,10 +302,10 @@ document.addEventListener('DOMContentLoaded', () => {
             (escolaSelect && !!escolaSelect.value);
 
         // Aceite da Política de Privacidade (Issue #295): obrigatório para o
-        // docente. Para o responsável é opcional — o portal pede no
-        // CompletarCadastro antes de abrir (Issue #288). O `[required]` acima não
-        // serve para checkbox: o `value` dela é "on" marcada ou não.
-        const consentimentoOk = !isDocente || Boolean(window.ConsentimentoCadastro?.marcado());
+        // docente e para o responsável — o servidor recusa o cadastro sem ele.
+        // O `[required]` acima não serve para checkbox: o `value` dela é "on"
+        // marcada ou não.
+        const consentimentoOk = Boolean(window.ConsentimentoCadastro?.marcado());
 
         btnSubmit.disabled = !(passOk && allFilled && codeOk && escolaOk && consentimentoOk);
     }

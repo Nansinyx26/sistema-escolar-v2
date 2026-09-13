@@ -18,7 +18,6 @@ const { emitirParaPerfis } = require('../utils/realtime');
 const { sanitizeInput } = require('../utils/sanitize');
 // A casa de cada perfil: a mesma tabela que o gate de páginas consulta.
 const { painelDoPerfil } = require('../utils/painelPorPerfil');
-const { aceiteExplicitoVigente } = require('../utils/consentimentoLgpd');
 // Emissão de sessão centralizada: garante `jti` em todo token (pré-requisito
 // para o logout conseguir revogar) e opções de cookie idênticas em todo lugar.
 const { emitirTokenSessao } = require('../utils/sessionToken');
@@ -166,12 +165,17 @@ exports.create = async (req, res) => {
             'twoFactorSecret',
             'twoFactorPendingToken',
             // Consentimento é ato do titular, não de quem cria a conta dele
-            // (Issue #295). Sem estes quatro, um gestor registrava — ou forjava
-            // no histórico — o aceite LGPD de outra pessoa.
+            // (Issue #295). Sem estes, um gestor registrava — ou forjava no
+            // histórico — o aceite LGPD de outra pessoa, ou marcava por ela as
+            // autorizações de `lgpdConsents` (imagem, notas, comunicações).
             'consentimentoAceiteEm',
             'consentimentoVersao',
             'consentimentoInvalidado',
             'lgpdHistory',
+            'lgpdConsents',
+            'consentimentoPendingToken',
+            'consentimentoPendingExpiry',
+            'consentimentoPendingTentativas',
         ].forEach((campo) => {
             delete req.body[campo];
         });
@@ -1918,6 +1922,9 @@ exports.registerResponsavel = async (req, res) => {
             });
         }
 
+        const recusaConsentimento = validarConsentimentoDoCadastro(req.body);
+        if (recusaConsentimento) return res.status(400).json(recusaConsentimento);
+
         if (!validateEmail(email)) {
             return res.status(400).json({ success: false, error: 'E-mail inválido.' });
         }
@@ -1965,24 +1972,12 @@ exports.registerResponsavel = async (req, res) => {
 
         const now = new Date();
 
-        // Criar a conta não é consentir (Issue #236): o consentimento só nasce
-        // junto da conta quando a tela manda o aceite explícito — a caixa da
-        // Política de Privacidade marcada no "Criar Conta" do portal (Issue
-        // #288). E nasce como no perfil: campo e assinatura auditável juntos,
-        // com a mesma data. Sem a marcação, o aceite fica para o CompletarCadastro.
-        //
-        // Aqui o aceite é OPCIONAL, e só aqui: as duas telas que chamam esta rota
-        // (o portal e html/pages/cadastro-responsavel.html) levam ao portal, que
-        // não abre antes do CompletarCadastro — e ele pede o aceite. Docente,
-        // diretor e secretaria não têm essa etapa depois, e por isso as rotas
-        // deles recusam o cadastro sem o aceite (Issue #295).
-        //
-        // Quando vem, grava como todo aceite de cadastro: método
-        // FORMULARIO_CADASTRO, não SESSAO_AUTENTICADA — ainda não há sessão.
-        const consentimento = aceiteExplicitoVigente(req.body.consentimentoLgpd)
-            ? assinaturasDoCadastro(req)
-            : {};
-
+        // Criar a conta não é consentir (Issue #236), mas marcar a caixa do
+        // formulário é. O aceite era opcional aqui (Issue #288), porque o
+        // CompletarCadastro o pede depois; a decisão registrada na #295 foi
+        // exigi-lo nas cinco rotas, conferido acima por
+        // validarConsentimentoDoCadastro. Método FORMULARIO_CADASTRO, não
+        // SESSAO_AUTENTICADA — ainda não há sessão.
         const user = await Usuario.create({
             nome,
             email: email.toLowerCase(),
@@ -1993,7 +1988,7 @@ exports.registerResponsavel = async (req, res) => {
             escolaId: escolaIdDoAluno,
             ultimoLogin: now,
             lastLogin: now,
-            ...consentimento,
+            ...assinaturasDoCadastro(req),
         });
 
         // 3. Vincular o aluno ao responsável automaticamente

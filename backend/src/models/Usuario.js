@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { CONSENTIMENTO_ID } = require('../utils/consentimentoLgpd');
 
 const UsuarioSchema = new mongoose.Schema(
     {
@@ -330,6 +331,42 @@ function removerCamposSensiveis(doc, ret) {
 
 UsuarioSchema.set('toJSON', { transform: removerCamposSensiveis });
 UsuarioSchema.set('toObject', { transform: removerCamposSensiveis });
+
+// ============================================
+// CONTA NOVA SÓ NASCE CONSENTINDO COM PROVA (Issue #295)
+// ============================================
+// Sete caminhos de cadastro carimbavam `consentimentoAceiteEm` sozinhos, e
+// `consentimentoVigente()` lia o carimbo como consentimento (Issue #236).
+// `consentimentoCadastro.test.js` já reprova o carimbo lendo o código-fonte;
+// esta é a segunda camada, em tempo de execução, que também pega o que a
+// leitura do código não vê (um campo montado fora do `Usuario.create`, um
+// script, um serviço novo).
+//
+// Conta nova com o campo legado precisa trazer, no mesmo documento, a
+// assinatura `politica_privacidade` de MESMA data no `lgpdHistory` — que é o
+// que `assinaturasDoCadastro()` monta. Sem ela, a conta não é criada.
+//
+// Só vale para conta NOVA. Conta antiga com o campo sem histórico existe
+// (onboarding de antes do histórico) e continua lida como está.
+UsuarioSchema.pre('validate', function exigirAssinaturaDoConsentimento() {
+    if (!this.isNew || !this.consentimentoAceiteEm) return;
+
+    const aceitoEm = this.consentimentoAceiteEm.getTime();
+    const assinado = (this.lgpdHistory || []).some(
+        (registro) =>
+            registro.termoId === CONSENTIMENTO_ID &&
+            registro.aceitoEm instanceof Date &&
+            registro.aceitoEm.getTime() === aceitoEm
+    );
+
+    if (!assinado) {
+        this.invalidate(
+            'consentimentoAceiteEm',
+            'Conta nova com consentimento LGPD sem a assinatura correspondente no lgpdHistory ' +
+                '(Issue #295). Use assinaturasDoCadastro().'
+        );
+    }
+});
 
 // Índice de performance: busca por perfil (ex: listar todos os professores)
 UsuarioSchema.index({ perfil: 1, ativo: 1 });

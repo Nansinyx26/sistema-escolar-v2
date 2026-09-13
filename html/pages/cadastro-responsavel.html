@@ -443,11 +443,11 @@
                     </div>
                 </div>
 
-                <!-- Consentimento LGPD (Issues #288 e #295): nasce desmarcado e é opcional aqui — o portal pede o aceite no CompletarCadastro antes de abrir -->
+                <!-- Consentimento LGPD (Issue #295): nasce desmarcado — criar a conta não é consentir — e é obrigatório, como nas outras telas de cadastro -->
                 <div class="form-group" style="margin-bottom: 1.5rem; display: flex; align-items: flex-start; gap: 0.8rem;">
-                    <input type="checkbox" id="aceiteLgpdCadastro" style="width: 18px; height: 18px; cursor: pointer; margin-top: 2px; flex-shrink: 0;">
+                    <input type="checkbox" id="aceiteLgpdCadastro" required style="width: 18px; height: 18px; cursor: pointer; margin-top: 2px; flex-shrink: 0;">
                     <label for="aceiteLgpdCadastro" style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4; cursor: pointer;">
-                        Li e aceito a <a href="../politica-privacidade.html" target="_blank" rel="noopener" style="color: var(--primary-color); text-decoration: underline;">Política de Privacidade</a> e autorizo o tratamento dos meus dados para fins educacionais. Opcional agora: você também pode aceitar depois, ao completar o cadastro.
+                        Li e aceito a <a href="../politica-privacidade.html" target="_blank" rel="noopener" style="color: var(--primary-color); text-decoration: underline;">Política de Privacidade</a> e autorizo o tratamento dos meus dados para fins educacionais.
                     </label>
                 </div>
                 <button type="submit" id="btnSubmit" class="btn-primary" disabled>
