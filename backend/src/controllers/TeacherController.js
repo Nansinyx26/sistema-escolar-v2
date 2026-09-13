@@ -4,18 +4,41 @@ const ImageProcessor = require('../utils/imageProcessor');
 const PERFIS_GESTAO = ['admin', 'diretor', 'secretaria'];
 
 // Filtros de query aceitos na listagem. Qualquer outro parâmetro é ignorado.
-const ALLOWED_FILTERS = ['nome', 'email', 'idUsuario', 'disciplina', 'salaPrincipal', 'tipoEspecial', 'role', 'ativo'];
+const ALLOWED_FILTERS = [
+    'nome',
+    'email',
+    'idUsuario',
+    'disciplina',
+    'salaPrincipal',
+    'tipoEspecial',
+    'role',
+    'ativo',
+];
 
 // Campos que o próprio docente pode editar no seu cadastro. As turmas
 // (salaPrincipal/salasAdicionais/turmas) e os vínculos de escola definem o
 // escopo horizontal — só a gestão os altera.
 const CAMPOS_PROPRIOS = [
-    'nome', 'telefone', 'idade', 'biografia', 'atividadesPessoais',
-    'ideiasParaAno', 'foto'
+    'nome',
+    'telefone',
+    'idade',
+    'biografia',
+    'atividadesPessoais',
+    'ideiasParaAno',
+    'foto',
 ];
 const CAMPOS_GESTAO = [
-    'email', 'disciplina', 'materias', 'tipoAtuacao', 'tipoEspecial', 'professorKey',
-    'salaPrincipal', 'salasAdicionais', 'escola', 'vinculos', 'ativo'
+    'email',
+    'disciplina',
+    'materias',
+    'tipoAtuacao',
+    'tipoEspecial',
+    'professorKey',
+    'salaPrincipal',
+    'salasAdicionais',
+    'escola',
+    'vinculos',
+    'ativo',
 ];
 
 /** Restringe a consulta à escola ativa (Professor usa vinculos[].escolaId). */
@@ -29,7 +52,7 @@ function pertenceAEscola(req, teacher) {
     if (!req.escolaId || req.user?.perfil === 'admin') return true;
     const vinculos = Array.isArray(teacher.vinculos) ? teacher.vinculos : [];
     if (vinculos.length === 0) return true; // legado sem vínculo — migração pendente
-    return vinculos.some(v => String(v.escolaId) === String(req.escolaId));
+    return vinculos.some((v) => String(v.escolaId) === String(req.escolaId));
 }
 
 /** true se o usuário logado é o dono do cadastro pedagógico. */
@@ -47,33 +70,42 @@ exports.list = async (req, res) => {
 
         // SEGURANÇA: whitelist + coerção para String. Antes, todo parâmetro de
         // query virava filtro Mongo — ?ativo[$ne]=false devolvia a rede inteira.
-        Object.keys(req.query).forEach(key => {
+        Object.keys(req.query).forEach((key) => {
             if (!ALLOWED_FILTERS.includes(key)) return;
             const valor = req.query[key];
-            if (valor === null || valor === undefined || valor === '' || typeof valor === 'object') return;
-            filters[key] = key === 'ativo' || key === 'tipoEspecial'
-                ? String(valor) === 'true'
-                : String(valor);
+            if (valor === null || valor === undefined || valor === '' || typeof valor === 'object')
+                return;
+            filters[key] =
+                key === 'ativo' || key === 'tipoEspecial'
+                    ? String(valor) === 'true'
+                    : String(valor);
         });
 
         // Mecanismo de auto-correção: garante que todo Usuario com perfil 'professor' tenha um registro na coleção 'professores'
         const Usuario = require('../models/Usuario');
         const mongoose = require('mongoose');
         const filtroUsuarios = { perfil: 'professor', ativo: { $ne: false } };
-        if (req.escolaId && req.user?.perfil !== 'admin') filtroUsuarios.escolaId = String(req.escolaId);
+        if (req.escolaId && req.user?.perfil !== 'admin')
+            filtroUsuarios.escolaId = String(req.escolaId);
         const usuariosProfessores = await Usuario.find(filtroUsuarios).lean();
 
         for (const u of usuariosProfessores) {
             const existingProf = await Professor.findOne({
-                $or: [
-                    { idUsuario: u._id.toString() },
-                    { email: u.email.toLowerCase() }
-                ]
+                $or: [{ idUsuario: u._id.toString() }, { email: u.email.toLowerCase() }],
             });
 
             if (!existingProf) {
-                console.log(`🔧 [AUTO-HEAL] Sincronizando perfil pedagógico de Professor em falta para: ${u.nome} (${u.email})`);
-                const materiasEspeciais = ['Inglês', 'Educação Física', 'Artes', 'SEBRAE', 'Oficina de Leitura', 'Of. Maker'];
+                console.log(
+                    `🔧 [AUTO-HEAL] Sincronizando perfil pedagógico de Professor em falta para: ${u.nome} (${u.email})`
+                );
+                const materiasEspeciais = [
+                    'Inglês',
+                    'Educação Física',
+                    'Artes',
+                    'SEBRAE',
+                    'Oficina de Leitura',
+                    'Of. Maker',
+                ];
                 const disc = u.disciplina || 'Geral';
                 const isEspecial = materiasEspeciais.includes(disc);
                 const t = u.turma || '';
@@ -98,18 +130,22 @@ exports.list = async (req, res) => {
                     ativo: true,
                     // Multi-escola: herda a escola da conta; nunca grava 'default'
                     escola: u.escolaId ? String(u.escolaId) : undefined,
-                    vinculos: u.escolaId ? [{ escolaId: String(u.escolaId), cargo: 'professor' }] : []
+                    vinculos: u.escolaId
+                        ? [{ escolaId: String(u.escolaId), cargo: 'professor' }]
+                        : [],
                 });
             }
         }
 
         const escopo = escopoEscola(req);
-        const teachers = await Professor.find(escopo ? { $and: [filters, escopo] } : filters).lean();
+        const teachers = await Professor.find(
+            escopo ? { $and: [filters, escopo] } : filters
+        ).lean();
 
         // Normalização para o frontend. Dados de contato completos só para a
         // gestão; docentes entre si veem o essencial pedagógico.
         const ehGestao = PERFIS_GESTAO.includes(String(req.user?.perfil || '').toLowerCase());
-        const normalizedTeachers = teachers.map(t => {
+        const normalizedTeachers = teachers.map((t) => {
             const base = { ...t, id: t.id || t._id };
             if (!ehGestao) {
                 delete base.telefone;
@@ -128,12 +164,17 @@ exports.list = async (req, res) => {
 
 exports.get = async (req, res) => {
     try {
-        const teacher = await Professor.findOne({ $or: [{ _id: req.params.id }, { id: req.params.id }] }).lean();
-        if (!teacher) return res.status(404).json({ success: false, error: 'Professor não encontrado' });
+        const teacher = await Professor.findOne({
+            $or: [{ _id: req.params.id }, { id: req.params.id }],
+        }).lean();
+        if (!teacher)
+            return res.status(404).json({ success: false, error: 'Professor não encontrado' });
 
         // Multi-escola: não devolve cadastro de docente de outra escola
         if (!pertenceAEscola(req, teacher)) {
-            return res.status(403).json({ success: false, error: 'Este professor pertence a outra escola.' });
+            return res
+                .status(403)
+                .json({ success: false, error: 'Este professor pertence a outra escola.' });
         }
 
         const ehGestao = PERFIS_GESTAO.includes(String(req.user?.perfil || '').toLowerCase());
@@ -153,7 +194,7 @@ exports.get = async (req, res) => {
 exports.create = async (req, res) => {
     try {
         const dados = {};
-        [...CAMPOS_PROPRIOS, ...CAMPOS_GESTAO, 'idUsuario'].forEach(campo => {
+        [...CAMPOS_PROPRIOS, ...CAMPOS_GESTAO, 'idUsuario'].forEach((campo) => {
             if (req.body[campo] !== undefined) dados[campo] = req.body[campo];
         });
 
@@ -169,7 +210,8 @@ exports.create = async (req, res) => {
         // Calcula turmas unificadas
         const principal = dados.salaPrincipal;
         const adicionais = Array.isArray(dados.salasAdicionais) ? dados.salasAdicionais : [];
-        dados.turmas = principal && principal !== 'VARIADOS' ? [principal, ...adicionais] : adicionais;
+        dados.turmas =
+            principal && principal !== 'VARIADOS' ? [principal, ...adicionais] : adicionais;
 
         // Multi-escola: o novo docente nasce vinculado à escola ativa da sessão.
         // O vínculo NUNCA vem do corpo da requisição.
@@ -191,13 +233,16 @@ exports.create = async (req, res) => {
 exports.update = async (req, res) => {
     try {
         const existente = await Professor.findOne({
-            $or: [{ _id: req.params.id }, { id: req.params.id }]
+            $or: [{ _id: req.params.id }, { id: req.params.id }],
         }).lean();
-        if (!existente) return res.status(404).json({ success: false, error: 'Professor não encontrado' });
+        if (!existente)
+            return res.status(404).json({ success: false, error: 'Professor não encontrado' });
 
         // Multi-escola: nunca edita cadastro de outra escola
         if (!pertenceAEscola(req, existente)) {
-            return res.status(403).json({ success: false, error: 'Este professor pertence a outra escola.' });
+            return res
+                .status(403)
+                .json({ success: false, error: 'Este professor pertence a outra escola.' });
         }
 
         const perfil = String(req.user?.perfil || '').toLowerCase();
@@ -209,12 +254,14 @@ exports.update = async (req, res) => {
         // professor reescrevia salaPrincipal/salasAdicionais/turmas/vinculos de
         // qualquer registro e passava a enxergar toda a rede.
         if (!ehGestao && !ehProprio) {
-            return res.status(403).json({ success: false, error: 'Você só pode editar o seu próprio cadastro.' });
+            return res
+                .status(403)
+                .json({ success: false, error: 'Você só pode editar o seu próprio cadastro.' });
         }
 
         const permitidos = ehGestao ? [...CAMPOS_PROPRIOS, ...CAMPOS_GESTAO] : CAMPOS_PROPRIOS;
         const dados = {};
-        permitidos.forEach(campo => {
+        permitidos.forEach((campo) => {
             if (req.body[campo] !== undefined) dados[campo] = req.body[campo];
         });
 
@@ -230,12 +277,17 @@ exports.update = async (req, res) => {
         }
 
         // Só a gestão remonta as turmas (elas definem o escopo de acesso)
-        if (ehGestao && (dados.salaPrincipal !== undefined || dados.salasAdicionais !== undefined)) {
-            const principal = dados.salaPrincipal !== undefined ? dados.salaPrincipal : existente.salaPrincipal;
+        if (
+            ehGestao &&
+            (dados.salaPrincipal !== undefined || dados.salasAdicionais !== undefined)
+        ) {
+            const principal =
+                dados.salaPrincipal !== undefined ? dados.salaPrincipal : existente.salaPrincipal;
             const adicionais = Array.isArray(dados.salasAdicionais)
                 ? dados.salasAdicionais
-                : (existente.salasAdicionais || []);
-            dados.turmas = principal && principal !== 'VARIADOS' ? [principal, ...adicionais] : adicionais;
+                : existente.salasAdicionais || [];
+            dados.turmas =
+                principal && principal !== 'VARIADOS' ? [principal, ...adicionais] : adicionais;
         }
 
         // Vínculos de escola só mudam por admin — nem diretor move docente entre escolas pelo body
@@ -246,7 +298,8 @@ exports.update = async (req, res) => {
             { $set: dados },
             { new: true }
         );
-        if (!teacher) return res.status(404).json({ success: false, error: 'Professor não encontrado' });
+        if (!teacher)
+            return res.status(404).json({ success: false, error: 'Professor não encontrado' });
         res.json({ success: true, data: teacher });
     } catch (error) {
         res.status(400).json({ success: false, error: error.message });
@@ -256,11 +309,13 @@ exports.update = async (req, res) => {
 exports.delete = async (req, res) => {
     try {
         const existente = await Professor.findOne({
-            $or: [{ _id: req.params.id }, { id: req.params.id }]
+            $or: [{ _id: req.params.id }, { id: req.params.id }],
         }).lean();
         if (!existente) return res.json({ success: true, message: 'Professor removido' });
         if (!pertenceAEscola(req, existente)) {
-            return res.status(403).json({ success: false, error: 'Este professor pertence a outra escola.' });
+            return res
+                .status(403)
+                .json({ success: false, error: 'Este professor pertence a outra escola.' });
         }
         await Professor.findOneAndDelete({ $or: [{ _id: req.params.id }, { id: req.params.id }] });
         res.json({ success: true, message: 'Professor removido' });
@@ -298,46 +353,60 @@ exports.statusOnline = async (req, res) => {
 
         // Contagem de mensagens não lidas enviadas para o usuário logado
         const meuId = String(req.user?.id || req.user?._id || '');
-        const unreadsAgg = meuId ? await ChatDireto.aggregate([
-            { $match: { destinatarioId: meuId, lida: false } },
-            { $group: { _id: '$remetenteId', count: { $sum: 1 } } }
-        ]) : [];
+        const unreadsAgg = meuId
+            ? await ChatDireto.aggregate([
+                  { $match: { destinatarioId: meuId, lida: false } },
+                  { $group: { _id: '$remetenteId', count: { $sum: 1 } } },
+              ])
+            : [];
 
         const unreadsMap = new Map();
-        unreadsAgg.forEach(u => unreadsMap.set(String(u._id), u.count));
+        unreadsAgg.forEach((u) => {
+            unreadsMap.set(String(u._id), u.count);
+        });
 
         // Mapeia nomes das escolas
         const ehObjectId = (v) => /^[0-9a-fA-F]{24}$/.test(String(v || ''));
         const ids = new Set();
         if (ehObjectId(escolaId)) ids.add(String(escolaId));
-        profs.forEach((p) => (p.vinculos || []).forEach((v) => {
-            if (ehObjectId(v?.escolaId)) ids.add(String(v.escolaId));
-        }));
-        diretores.forEach((d) => (d.vinculos || []).forEach((v) => {
-            if (ehObjectId(v?.escolaId)) ids.add(String(v.escolaId));
-        }));
+        profs.forEach((p) => {
+            (p.vinculos || []).forEach((v) => {
+                if (ehObjectId(v?.escolaId)) ids.add(String(v.escolaId));
+            });
+        });
+        diretores.forEach((d) => {
+            (d.vinculos || []).forEach((v) => {
+                if (ehObjectId(v?.escolaId)) ids.add(String(v.escolaId));
+            });
+        });
 
         const nomePorEscolaId = new Map();
         if (ids.size > 0) {
-            const escolas = await Escola.find({ _id: { $in: [...ids] } }).select('nome').lean();
-            escolas.forEach((e) => nomePorEscolaId.set(String(e._id), e.nome));
+            const escolas = await Escola.find({ _id: { $in: [...ids] } })
+                .select('nome')
+                .lean();
+            escolas.forEach((e) => {
+                nomePorEscolaId.set(String(e._id), e.nome);
+            });
         }
 
         const nomeDaEscola = (item) => {
             const vinculos = Array.isArray(item.vinculos) ? item.vinculos : [];
-            const alvo = escolaId && vinculos.some((v) => String(v.escolaId) === String(escolaId))
-                ? String(escolaId)
-                : (vinculos[0]?.escolaId ? String(vinculos[0].escolaId) : null);
+            const alvo =
+                escolaId && vinculos.some((v) => String(v.escolaId) === String(escolaId))
+                    ? String(escolaId)
+                    : vinculos[0]?.escolaId
+                      ? String(vinculos[0].escolaId)
+                      : null;
             return (alvo && nomePorEscolaId.get(alvo)) || item.escola || '—';
         };
 
         // Presença agregada: 'online' | 'ausente' | 'offline', desde quando
         // está online e último acesso conhecido (ver realtime/presence.js).
-        const presencaDe = (uid) => (
+        const presencaDe = (uid) =>
             escolaId
                 ? presence.infoDe(escolaId, uid)
-                : { status: 'offline', online: false, onlineDesde: null, ultimoAcesso: null }
-        );
+                : { status: 'offline', online: false, onlineDesde: null, ultimoAcesso: null };
 
         const listaProfs = profs.map((p) => {
             const uid = p.idUsuario ? String(p.idUsuario) : String(p._id);
@@ -354,7 +423,7 @@ exports.statusOnline = async (req, res) => {
                 status: pres.status,
                 onlineDesde: pres.onlineDesde,
                 ultimoAcesso: pres.ultimoAcesso,
-                unreadsCount: unreadsMap.get(uid) || 0
+                unreadsCount: unreadsMap.get(uid) || 0,
             };
         });
 
@@ -373,7 +442,7 @@ exports.statusOnline = async (req, res) => {
                 status: pres.status,
                 onlineDesde: pres.onlineDesde,
                 ultimoAcesso: pres.ultimoAcesso,
-                unreadsCount: unreadsMap.get(uid) || 0
+                unreadsCount: unreadsMap.get(uid) || 0,
             };
         });
 
@@ -382,7 +451,7 @@ exports.statusOnline = async (req, res) => {
 
         // Evita duplicatas se um diretor também tiver registro de professor
         const vistos = new Set();
-        const listaUnica = lista.filter(item => {
+        const listaUnica = lista.filter((item) => {
             if (!item.userId || vistos.has(item.userId)) return false;
             vistos.add(item.userId);
             return true;

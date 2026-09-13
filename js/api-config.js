@@ -5,14 +5,15 @@
 
 const API_URLS = {
     development: `http://${window.location.hostname || 'localhost'}:3001/api`,
-    production: 'https://sistema-escolar-bfty.onrender.com/api'
+    production: 'https://sistema-escolar-bfty.onrender.com/api',
 };
 
 function getApiBaseUrl() {
     const hostname = window.location.hostname;
     const isLocalIP = /^(127\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|10\.)/.test(hostname);
-    
-    const isDevelopment = hostname === 'localhost' ||
+
+    const isDevelopment =
+        hostname === 'localhost' ||
         hostname === '127.0.0.1' ||
         hostname === '::1' ||
         isLocalIP ||
@@ -40,7 +41,7 @@ window.getCookie = getCookie;
 /**
  * Utilitário global para resolver URLs de fotos (GridFS, Google ou Base64)
  */
-window.getPhotoUrl = function(foto, fotoGoogle = '') {
+window.getPhotoUrl = function (foto, fotoGoogle = '') {
     // Helper to check if a value is truly empty or a literal "null"/"undefined" string
     const isEmpty = (v) => !v || v === 'null' || v === 'undefined' || v === '[object Object]';
 
@@ -48,24 +49,31 @@ window.getPhotoUrl = function(foto, fotoGoogle = '') {
     if (typeof foto === 'string' && foto.startsWith('data:image')) return foto;
 
     // 2. Se for uma URL completa (Google Oauth ou externa)
-    if (typeof foto === 'string' && (foto.startsWith('http') || foto.startsWith('https'))) return foto;
+    if (typeof foto === 'string' && (foto.startsWith('http') || foto.startsWith('https')))
+        return foto;
     if (typeof fotoGoogle === 'string' && fotoGoogle.startsWith('http')) return fotoGoogle;
 
     // 3. Se for um ID do GridFS ou caminho relativo da nossa API
     if (!isEmpty(foto)) {
         let photoId = typeof foto === 'object' && foto.$oid ? foto.$oid : foto;
-        
+
         if (typeof photoId === 'string' && photoId.startsWith('gridfs:')) {
             photoId = photoId.slice('gridfs:'.length);
         }
 
         // Se já for uma URL completa da nossa API, limpa qualquer gridfs: solto
-        if (typeof photoId === 'string' && (photoId.startsWith('/api/files/') || photoId.startsWith('/api/upload/photo/'))) {
+        if (
+            typeof photoId === 'string' &&
+            (photoId.startsWith('/api/files/') || photoId.startsWith('/api/upload/photo/'))
+        ) {
             const cleaned = photoId.replace(/gridfs:/g, '');
             return `${window.API_BASE_URL.replace('/api', '')}${cleaned}`;
         }
-        
-        if (typeof photoId === 'string' && (photoId.includes('/api/files/') || photoId.includes('/api/upload/photo/'))) {
+
+        if (
+            typeof photoId === 'string' &&
+            (photoId.includes('/api/files/') || photoId.includes('/api/upload/photo/'))
+        ) {
             return photoId.replace(/gridfs:/g, '');
         }
 
@@ -84,19 +92,27 @@ window.getPhotoUrl = function(foto, fotoGoogle = '') {
  * Atualiza todos os elementos de avatar/foto na tela baseado no usuário fornecido.
  * Procura por IDs específicos e classes globais.
  */
-window.updateAllAvatars = function(user) {
+window.updateAllAvatars = function (user) {
     if (!user) return;
     const photoUrl = window.getPhotoUrl(user.foto, user.fotoGoogle);
     const isDefault = !photoUrl || photoUrl.includes('default-avatar.png');
-    const initialsText = window.utils?.getInitials ? window.utils.getInitials(user.nome || "U") : (user.nome || "U").charAt(0);
-    
+    const initialsText = window.utils?.getInitials
+        ? window.utils.getInitials(user.nome || 'U')
+        : (user.nome || 'U').charAt(0);
+
     // IDs comuns de avatar
-    ['sidebarAvatar', 'userPhotoPreview', 'headerAvatar', 'profilePhotoDisplay', 'sidebarAvatarImg'].forEach(id => {
+    [
+        'sidebarAvatar',
+        'userPhotoPreview',
+        'headerAvatar',
+        'profilePhotoDisplay',
+        'sidebarAvatarImg',
+    ].forEach((id) => {
         const el = document.getElementById(id);
         if (!el) return;
 
         const wrapper = el.parentElement;
-        
+
         if (isDefault) {
             if (el.tagName === 'IMG') {
                 el.style.display = 'none';
@@ -142,7 +158,7 @@ window.updateAllAvatars = function(user) {
     });
 
     // Elementos com data-user-photo="self"
-    document.querySelectorAll('[data-user-photo="self"]').forEach(el => {
+    document.querySelectorAll('[data-user-photo="self"]').forEach((el) => {
         const wrapper = el.parentElement;
         if (isDefault) {
             if (el.tagName === 'IMG') {
@@ -182,7 +198,9 @@ window.updateAllAvatars = function(user) {
     });
 
     // Notitica o React se aplicável
-    window.dispatchEvent(new CustomEvent('userPhotoUpdated', { detail: { photoUrl, user, isDefault } }));
+    window.dispatchEvent(
+        new CustomEvent('userPhotoUpdated', { detail: { photoUrl, user, isDefault } })
+    );
 };
 
 /**
@@ -200,9 +218,9 @@ async function apiFetch(path, opts = {}) {
     const headers = {
         // Não setar Content-Type para FormData — o browser define automaticamente com boundary
         ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-        ...(opts.headers || {})
+        ...(opts.headers || {}),
     };
-    
+
     // SEGURANÇA: Envia token CSRF em requisições que mudam estado
     const method = (opts.method || 'GET').toUpperCase();
     if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
@@ -212,12 +230,12 @@ async function apiFetch(path, opts = {}) {
         }
     }
 
-    const res = await fetch(window.API_BASE_URL + path, { 
-        ...opts, 
+    const res = await fetch(window.API_BASE_URL + path, {
+        ...opts,
         headers,
-        credentials: 'include' // IMPORTANTE: Envia cookies (JWT + CSRF) para a API
+        credentials: 'include', // IMPORTANTE: Envia cookies (JWT + CSRF) para a API
     });
-    
+
     return res.json();
 }
 window.apiFetch = apiFetch;
@@ -230,7 +248,7 @@ window.apiFetch = apiFetch;
 async function apiLogin(email, senha) {
     const data = await apiFetch('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, senha })
+        body: JSON.stringify({ email, senha }),
     });
     if (data.success && data.user) {
         // Armazena apenas dados de UI do usuário em sessionStorage (não sensível)
@@ -243,9 +261,9 @@ window.apiLogin = apiLogin;
 /** Remove dados de sessão (logout) */
 function apiLogout() {
     // Limpeza completa de todos os storages
-    localStorage.removeItem('escola_jwt');       // Legado — limpeza preventiva
-    localStorage.removeItem('escola_jwt_user');   // Legado — limpeza preventiva
-    localStorage.removeItem('escola_session');    // Legado — limpeza preventiva
+    localStorage.removeItem('escola_jwt'); // Legado — limpeza preventiva
+    localStorage.removeItem('escola_jwt_user'); // Legado — limpeza preventiva
+    localStorage.removeItem('escola_session'); // Legado — limpeza preventiva
     sessionStorage.removeItem('currentUser');
     sessionStorage.removeItem('forcePasswordChange');
     // O cookie HttpOnly só pode ser removido pelo backend via rota de logout
@@ -255,9 +273,10 @@ window.apiLogout = apiLogout;
 // ============================================
 // DEVELOPER LOGS SYSTEM
 // ============================================
-const isDev = window.location.hostname === 'localhost' || 
-              window.location.hostname === '127.0.0.1' || 
-              window.location.hostname === '';
+const isDev =
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname === '';
 
 window.DEVELOPER_MODE = isDev;
 
@@ -267,11 +286,11 @@ const originalConsole = {
     warn: console.warn,
     error: console.error,
     info: console.info,
-    debug: console.debug
+    debug: console.debug,
 };
 
 // Safe wrapper for developer logs
-window.devLog = function(...args) {
+window.devLog = function (...args) {
     if (window.DEVELOPER_MODE) {
         originalConsole.log('[DEV]', ...args);
     }
@@ -307,10 +326,11 @@ window.fetch = async (...args) => {
     let [resource, config] = args;
     config = config || {};
 
-    const url = typeof resource === 'string' ? resource : (resource.url || '');
+    const url = typeof resource === 'string' ? resource : resource.url || '';
     const method = (config.method || 'GET').toUpperCase();
-    
-    const isApiRequest = url.includes(window.API_BASE_URL) || url.startsWith('/api') || url.startsWith('./api');
+
+    const isApiRequest =
+        url.includes(window.API_BASE_URL) || url.startsWith('/api') || url.startsWith('./api');
 
     if (isApiRequest) {
         config.credentials = 'include';
@@ -319,7 +339,10 @@ window.fetch = async (...args) => {
         if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
             config.headers = config.headers || {};
             const csrfToken = getCookie('csrf_token');
-            if (window.DEVELOPER_MODE) console.log(`[CSRF] Injecting token for ${method} ${url}: ${csrfToken ? 'YES' : 'NO'}`);
+            if (window.DEVELOPER_MODE)
+                console.log(
+                    `[CSRF] Injecting token for ${method} ${url}: ${csrfToken ? 'YES' : 'NO'}`
+                );
             if (csrfToken) {
                 if (config.headers instanceof Headers) {
                     config.headers.set('X-CSRF-Token', csrfToken);
@@ -328,7 +351,7 @@ window.fetch = async (...args) => {
                 }
             }
         }
-        
+
         // Se o recurso for um objeto Request, precisamos cloná-lo
         if (typeof resource !== 'string') {
             resource = new Request(resource, config);
@@ -362,22 +385,24 @@ window.fetch = async (...args) => {
         }
 
         // 3. Fazer requisição real
-        const fetchPromise = originalFetch(resource, config).then(async (res) => {
-            pendingRequests.delete(cacheKey);
+        const fetchPromise = originalFetch(resource, config)
+            .then(async (res) => {
+                pendingRequests.delete(cacheKey);
 
-            // Se for bem sucedido, coloca no cache
-            if (res.ok) {
-                const clonedRes = res.clone();
-                getCache.set(cacheKey, {
-                    timestamp: Date.now(),
-                    response: clonedRes
-                });
-            }
-            return res;
-        }).catch(err => {
-            pendingRequests.delete(cacheKey);
-            throw err;
-        });
+                // Se for bem sucedido, coloca no cache
+                if (res.ok) {
+                    const clonedRes = res.clone();
+                    getCache.set(cacheKey, {
+                        timestamp: Date.now(),
+                        response: clonedRes,
+                    });
+                }
+                return res;
+            })
+            .catch((err) => {
+                pendingRequests.delete(cacheKey);
+                throw err;
+            });
 
         pendingRequests.set(cacheKey, fetchPromise);
 
@@ -392,7 +417,7 @@ window.fetch = async (...args) => {
     // Para requisições POST/PUT/DELETE ou requisições fora da API
     try {
         const res = await originalFetch(resource, config);
-        
+
         // Tratamento global para erros HTTP (como 429 Rate Limit)
         if (res.status === 429) {
             const msg = 'Muitas requisições vindas deste IP. Tente novamente em alguns minutos.';
@@ -403,10 +428,10 @@ window.fetch = async (...args) => {
             }
             return new Response(JSON.stringify({ success: false, error: msg }), {
                 status: 429,
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 'Content-Type': 'application/json' },
             });
         }
-        
+
         return res;
     } catch (error) {
         return handleFetchError(error);
@@ -417,16 +442,16 @@ window.fetch = async (...args) => {
 function handleFetchError(error) {
     window.devLog('Global Fetch Error Intercepted:', error);
     const userMsg = 'Não foi possível conectar ao servidor. Verifique sua conexão com a internet.';
-    
+
     if (window.showToast) {
         window.showToast(userMsg, 'error');
     } else if (window.utils && window.utils.showToast) {
         window.utils.showToast(userMsg, 'error');
     }
-    
+
     return new Response(JSON.stringify({ success: false, error: userMsg }), {
         status: 503,
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
     });
 }
 
