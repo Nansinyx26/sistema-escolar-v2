@@ -918,15 +918,117 @@ describe('Módulo de Avaliações Escolares (/api/avaliacoes-escolares)', () => 
             expect(detalhe.body.data.alunos).toHaveLength(2);
             const bia = detalhe.body.data.alunos.find((a) => a.alunoNome === 'Bia');
             expect(bia.status).toBe('Aprovado'); // 4 de 5 = 8,0
+            expect(bia.nota).toBe(4); // a tela de lançamento continua em pontos
 
-            // Na lista, o aluno sem nota não conta como nota lançada.
+            // No banco, `nota` vai em 0–10: é o que boletim, portal e médias leem (Issue #330).
+            const gravada = await Nota.findOne({ alunoId: String(aluno._id) }).lean();
+            expect(gravada).toMatchObject({ nota: 8, pontos: 4, valorAvaliacao: 5 });
+
+            // Na lista, o aluno sem nota não conta como nota lançada, e a média sai em 0–10.
             const lista = await request(app).get('/api/avaliacoes-escolares').set('Cookie', cookie);
             expect(lista.body.data[0]).toMatchObject({
                 totalNotas: 1,
                 totalAprovados: 1,
-                mediaTurma: 4,
+                mediaTurma: 8,
                 valor: 5,
             });
+        });
+
+        it('boletim do aluno recebe a nota em 0–10, não em pontos', async () => {
+            const { escolaId } = await prepararEscola();
+            const { cookie } = await criarDiretorComCookie(escolaA);
+            const aluno = await Aluno.create({ nome: 'Duda', turma: '1A', ativo: true, escolaId });
+            const criada = await request(app)
+                .post('/api/avaliacoes-escolares')
+                .set('Cookie', cookie)
+                .send({
+                    titulo: 'Ditado',
+                    turmaId: '1A',
+                    materiaId: 'Língua Portuguesa',
+                    bimestre: 2,
+                    data: '2026-05-04',
+                    valor: 2.5,
+                });
+            await request(app)
+                .post(`/api/avaliacoes-escolares/${criada.body.data._id}/notas`)
+                .set('Cookie', cookie)
+                .send({ notas: [{ alunoId: String(aluno._id), nota: 2 }] });
+
+            // 2 de 2,5 = 8,0 — é esse número que qualquer média do sistema soma.
+            const notas = await Nota.find({ alunoId: String(aluno._id), bimestre: 2 }).lean();
+            expect(notas.map((n) => n.nota)).toEqual([8]);
+        });
+
+        it('histórico registra a alteração em pontos, como o professor digitou', async () => {
+            const { escolaId } = await prepararEscola();
+            const { cookie } = await criarDiretorComCookie(escolaA);
+            const aluno = await Aluno.create({ nome: 'Enzo', turma: '1A', ativo: true, escolaId });
+            const criada = await request(app)
+                .post('/api/avaliacoes-escolares')
+                .set('Cookie', cookie)
+                .send({
+                    titulo: 'Trabalho em grupo',
+                    turmaId: '1A',
+                    materiaId: 'Arte',
+                    bimestre: 1,
+                    data: '2026-05-04',
+                    valor: 4,
+                });
+            const id = criada.body.data._id;
+            const lancar = (nota) =>
+                request(app)
+                    .post(`/api/avaliacoes-escolares/${id}/notas`)
+                    .set('Cookie', cookie)
+                    .send({ notas: [{ alunoId: String(aluno._id), nota }] });
+
+            await lancar(2);
+            await lancar(3.5);
+
+            const hist = await request(app)
+                .get(`/api/avaliacoes-escolares/${id}/historico`)
+                .set('Cookie', cookie);
+            expect(hist.body.data).toHaveLength(1);
+            expect(hist.body.data[0]).toMatchObject({ notaAnterior: 2, notaNova: 3.5 });
+            const gravada = await Nota.findOne({ alunoId: String(aluno._id) }).lean();
+            expect(gravada).toMatchObject({ nota: 8.8, pontos: 3.5 }); // 3,5 de 4 = 8,75 → 8,8
+        });
+
+        it('valor fica preso depois da primeira nota lançada', async () => {
+            const { escolaId } = await prepararEscola();
+            const { cookie } = await criarDiretorComCookie(escolaA);
+            const aluno = await Aluno.create({ nome: 'Fábio', turma: '1A', ativo: true, escolaId });
+            const criada = await request(app)
+                .post('/api/avaliacoes-escolares')
+                .set('Cookie', cookie)
+                .send({
+                    titulo: 'Prova',
+                    turmaId: '1A',
+                    materiaId: 'Matemática',
+                    bimestre: 1,
+                    data: '2026-05-04',
+                    valor: 5,
+                });
+            const id = criada.body.data._id;
+            const editar = (valor) =>
+                request(app)
+                    .put(`/api/avaliacoes-escolares/${id}`)
+                    .set('Cookie', cookie)
+                    .send({ valor });
+
+            // Sem nota lançada, o valor ainda muda.
+            expect((await editar(6)).status).toBe(200);
+
+            await request(app)
+                .post(`/api/avaliacoes-escolares/${id}/notas`)
+                .set('Cookie', cookie)
+                .send({ notas: [{ alunoId: String(aluno._id), nota: 3 }] });
+
+            const depois = await editar(10);
+            expect(depois.status).toBe(409);
+            expect(depois.body.error).toMatch(/valor não pode mais ser alterado/);
+            // Mandar o mesmo valor (o formulário manda o campo inteiro) continua valendo.
+            expect((await editar(6)).status).toBe(200);
+            expect((await Avaliacao.findById(id).lean()).valor).toBe(6);
         });
 
         it('professor não lê o histórico de avaliação de outra turma', async () => {
