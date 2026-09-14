@@ -307,6 +307,49 @@ describe('a tela real, com a API simulada', () => {
     });
 });
 
+describe('foto do aluno que não carrega', () => {
+    it('vira as iniciais, na lista e no cartão do aluno, em vez de ícone quebrado', async () => {
+        await abrirTela({
+            '/api/secretaria/autorizacoes/aluno/': detalhe(TIPOS.map(() => null)),
+            '/api/secretaria/autorizacoes': {
+                success: true,
+                alunos: [
+                    {
+                        id: ALUNO_ID,
+                        nome: 'Davi Rocha',
+                        turma: '4ºA',
+                        matricula: '9',
+                        responsavel: 'Ana Lima',
+                        aceitas: 0,
+                        naoAceitas: 0,
+                        pendentes: 7,
+                    },
+                ],
+            },
+            '/api/documentos-responsaveis': { success: true, data: [] },
+            '/api/alunos': {
+                success: true,
+                data: [{ _id: ALUNO_ID, foto: '/api/upload/photo/6a0c6aa552296d437350d3b8' }],
+            },
+            '/api/turmas': { success: true, data: [] },
+        });
+
+        const avatarLista = document.querySelector('.ap-student-avatar');
+        const avatarCartao = document.getElementById('detailAvatar');
+        expect(avatarLista.querySelector('img').getAttribute('src')).toBe(
+            '/api/upload/photo/6a0c6aa552296d437350d3b8'
+        );
+
+        avatarLista.querySelector('img').dispatchEvent(new window.Event('error'));
+        avatarCartao.querySelector('img').dispatchEvent(new window.Event('error'));
+
+        expect(avatarLista.querySelector('img')).toBeNull();
+        expect(avatarLista.textContent.trim()).toBe('D');
+        expect(avatarCartao.querySelector('img')).toBeNull();
+        expect(avatarCartao.textContent.trim()).toBe('DR');
+    });
+});
+
 describe('o código da tela não guarda dado de exemplo', () => {
     const fonte = fs.readFileSync(TELA_JS, 'utf8');
 
