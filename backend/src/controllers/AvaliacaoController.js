@@ -54,6 +54,32 @@ function validarNota(valor, maximo = VALOR_MAXIMO) {
 }
 
 /**
+ * Pontos lançados → nota na escala 0–10 do sistema (4 de 5 = 8,0).
+ *
+ * É esta nota que vai para `Nota.nota`, e não os pontos: boletim, portal da
+ * família, dashboards, BI, dados abertos e as ferramentas da IA calculam média
+ * direto nesse campo e não conhecem o valor da avaliação (Issue #330). Os
+ * pontos ficam em `Nota.pontos`, só para a tela de lançamento.
+ */
+function naEscalaDoSistema(pontos, maximo = VALOR_MAXIMO) {
+    if (pontos === null || pontos === undefined) return null;
+    return Math.round((pontos / maximo) * VALOR_MAXIMO * 10) / 10;
+}
+
+/**
+ * Pontos de uma nota gravada. Sem `pontos` (lançada antes do campo), a nota é
+ * de avaliação que vale 10 — a migração da Issue #330 preencheu as demais —,
+ * e aí pontos e nota são o mesmo número.
+ */
+function pontosDe(notaDoc) {
+    if (notaDoc.pontos !== undefined && notaDoc.pontos !== null) return notaDoc.pontos;
+    return notaDoc.nota !== undefined && notaDoc.nota !== null ? notaDoc.nota : null;
+}
+
+/** Nota lançada é nota preenchida ou ausência registrada — "pendente" não conta. */
+const FILTRO_NOTA_LANCADA = { $or: [{ presente: false }, { nota: { $ne: null } }] };
+
+/**
  * Status pedagógico. Os cortes (6,0 aprovado · 4,0 recuperação) são da escala
  * 0–10; numa avaliação que vale menos, compara-se a proporção.
  */
@@ -435,8 +461,8 @@ exports.get = async (req, res) => {
 
             if (notaDoc) {
                 notaId = notaDoc._id || notaDoc.id;
-                notaValor =
-                    notaDoc.nota !== undefined && notaDoc.nota !== null ? notaDoc.nota : null;
+                // A tela de lançamento trabalha em pontos; `nota` já está em 0–10.
+                notaValor = pontosDe(notaDoc);
                 presente = notaDoc.presente !== false;
                 observacoes = notaDoc.observacoes || notaDoc.descricao || '';
                 status = calcularStatus(notaValor, presente, maximo);
@@ -705,16 +731,20 @@ exports.update = async (req, res) => {
             const valor = lerValor(corpo.valor);
             if (!valor.ok) return res.status(400).json({ success: false, error: valor.msg });
             const novoValor = valor.valor ?? VALOR_MAXIMO;
-            // Baixar o valor abaixo de uma nota já lançada deixaria essa nota fora da escala.
-            const acima = await Nota.findOne({
-                avaliacaoId: avaliacaoIdStr,
-                nota: { $gt: novoValor },
-            }).lean();
-            if (acima) {
-                return res.status(409).json({
-                    success: false,
-                    error: `Já existe nota lançada acima de ${String(novoValor).replace('.', ',')}. Ajuste as notas antes de reduzir o valor.`,
+            // Cada nota lançada foi convertida para 0–10 com o valor da época
+            // (Issue #330): trocar o valor depois deixaria o boletim com a
+            // conversão antiga. Mesma regra de turma e disciplina.
+            if (novoValor !== valorDa(avaliacao)) {
+                const lancadas = await Nota.countDocuments({
+                    avaliacaoId: avaliacaoIdStr,
+                    ...FILTRO_NOTA_LANCADA,
                 });
+                if (lancadas > 0) {
+                    return res.status(409).json({
+                        success: false,
+                        error: 'Esta avaliação já tem notas lançadas: o valor não pode mais ser alterado.',
+                    });
+                }
             }
             avaliacao.valor = novoValor;
         }
@@ -833,15 +863,19 @@ exports.lancarNotas = async (req, res) => {
             }
 
             const presente = item.presente !== false;
-            const notaFinal = presente ? check.valor : 0;
-            const status = calcularStatus(notaFinal, presente, maximo);
+            // O professor digita PONTOS (0 até o valor); o sistema guarda 0–10.
+            const pontos = presente ? check.valor : 0;
+            const notaFinal = presente ? naEscalaDoSistema(check.valor, maximo) : 0;
+            const status = calcularStatus(pontos, presente, maximo);
             const observacoes = item.observacoes ? String(item.observacoes).trim() : '';
+            const gravado = { nota: notaFinal, pontos, valorAvaliacao: maximo };
 
             const notaAntiga = notasExistentesMap[String(item.alunoId)];
 
             if (notaAntiga) {
-                // Atualização
-                const mudouNota = notaAntiga.nota !== notaFinal;
+                // Atualização. O histórico fica em pontos: é o que o professor viu e digitou.
+                const pontosAntes = pontosDe(notaAntiga);
+                const mudouNota = pontosAntes !== pontos;
                 const mudouPresenca = (notaAntiga.presente !== false) !== presente;
 
                 if (mudouNota || mudouPresenca) {
@@ -851,8 +885,8 @@ exports.lancarNotas = async (req, res) => {
                         notaId: String(notaAntiga._id || notaAntiga.id),
                         alunoId: String(item.alunoId),
                         alunoNome: alunosMap[String(item.alunoId)] || 'Aluno',
-                        notaAnterior: notaAntiga.nota,
-                        notaNova: notaFinal,
+                        notaAnterior: pontosAntes,
+                        notaNova: pontos,
                         presenteAnterior: notaAntiga.presente !== false,
                         presenteNovo: presente,
                         motivo: motivo ? String(motivo).trim() : 'Atualização de nota',
@@ -866,7 +900,7 @@ exports.lancarNotas = async (req, res) => {
                 const docAtualizado = await Nota.findByIdAndUpdate(
                     notaAntiga._id,
                     {
-                        nota: notaFinal,
+                        ...gravado,
                         presente,
                         observacoes,
                         status,
@@ -886,7 +920,7 @@ exports.lancarNotas = async (req, res) => {
                     materiaId: avaliacao.materiaId,
                     bimestre: avaliacao.bimestre,
                     tipo: avaliacao.tipo,
-                    nota: notaFinal,
+                    ...gravado,
                     presente,
                     observacoes,
                     status,

@@ -12,7 +12,11 @@ const NotaSchema = new mongoose.Schema(
         materiaId: String,
         bimestre: Number,
         tipo: String, // prova, trabalho
-        nota: Number, // ou String
+        nota: Number, // SEMPRE na escala 0–10: boletim, portal e médias leem este campo
+        // Nota de avaliação estruturada (Issue #330): os pontos que o professor lançou e o
+        // valor da avaliação. Numa prova que vale 5, 4 pontos gravam `nota: 8`.
+        pontos: Number,
+        valorAvaliacao: Number,
         presente: { type: Boolean, default: true },
         observacoes: { type: String, default: '' },
         status: { type: String, default: 'Aprovado' }, // Aprovado, Recuperação, Reprovado
