@@ -63,62 +63,86 @@
     --ap-page-active-bg: #10b981;
     --ap-page-active-text: #051b14;
     --ap-page-btn-border: rgba(255, 255, 255, 0.1);
+
+    /* Texto em cor de destaque (aba ativa, links) */
+    --ap-primary-text: #10b981;
+
+    /* Superfícies: no escuro a borda basta; no claro entra a sombra */
+    --ap-card-shadow: none;
+    --ap-btn-download-border: transparent;
+    --ap-avatar-bg: #334155;
+    --ap-avatar-text: #ffffff;
+    --ap-modal-backdrop: rgba(0, 0, 0, 0.75);
+    --ap-modal-body-bg: #000000;
 }
 
+/*
+ * Tema Branco — mesmo padrão das telas de aluno: fundo cinza-menta bem claro,
+ * cartões brancos com sombra suave e verde-menta como cor de destaque.
+ * Texto em verde usa o tom escuro (#047857) para passar no contraste AA.
+ */
 :root[data-theme="light"] {
-    --ap-bg-page: #f4f6fa;
+    --ap-bg-page: #f3f7f6;
     --ap-bg-sidebar: #ffffff;
     --ap-bg-card: #ffffff;
-    --ap-bg-card-hover: #f8fafc;
-    --ap-bg-card-active: rgba(37, 99, 235, 0.05);
-    --ap-border: #e2e8f0;
-    --ap-border-subtle: #edf2f7;
-    --ap-border-active: #2563eb;
+    --ap-bg-card-hover: #f4faf8;
+    --ap-bg-card-active: #effcf6;
+    --ap-border: #e3ebe8;
+    --ap-border-subtle: #eef3f1;
+    --ap-border-active: #34d399;
     --ap-text-title: #0f172a;
     --ap-text-body: #334155;
     --ap-text-muted: #64748b;
     --ap-text-faint: #94a3b8;
     --ap-input-bg: #ffffff;
-    --ap-input-border: #cbd5e1;
-    --ap-primary: #2563eb;
-    --ap-primary-rgb: 37, 99, 235;
+    --ap-input-border: #d5dfdb;
+    --ap-primary: #10b981;
+    --ap-primary-rgb: 16, 185, 129;
+    --ap-primary-text: #047857;
     --ap-accent-mint: #10b981;
 
     /* Status Badges Light */
-    --ap-badge-success-bg: #dcfce7;
-    --ap-badge-success-text: #15803d;
-    --ap-badge-success-border: #bbf7d0;
+    --ap-badge-success-bg: #e3f9ef;
+    --ap-badge-success-text: #047857;
+    --ap-badge-success-border: #86e0bb;
 
-    --ap-badge-warning-bg: #fef3c7;
+    --ap-badge-warning-bg: #fef6e0;
     --ap-badge-warning-text: #b45309;
-    --ap-badge-warning-border: #fde68a;
+    --ap-badge-warning-border: #fcd98a;
 
-    --ap-badge-danger-bg: #fee2e2;
+    --ap-badge-danger-bg: #fdeceb;
     --ap-badge-danger-text: #b91c1c;
-    --ap-badge-danger-border: #fecaca;
+    --ap-badge-danger-border: #f8c2c0;
 
-    /* Botões */
+    /* Botões: contorno neutro e ação principal em menta clara */
     --ap-btn-preview-bg: #ffffff;
-    --ap-btn-preview-border: #cbd5e1;
+    --ap-btn-preview-border: #d5dfdb;
     --ap-btn-preview-text: #1e293b;
-    --ap-btn-download-bg: #10b981;
-    --ap-btn-download-hover: #059669;
-    --ap-btn-download-text: #ffffff;
+    --ap-btn-download-bg: #b5f0d8;
+    --ap-btn-download-hover: #8fe6c3;
+    --ap-btn-download-text: #064e3b;
+    --ap-btn-download-border: #34d399;
 
     /* Tabela */
-    --ap-table-head-bg: #f8fafc;
-    --ap-table-row-border: #e2e8f0;
-    --ap-table-row-hover: #f1f5f9;
+    --ap-table-head-bg: #f7faf9;
+    --ap-table-row-border: #edf2f0;
+    --ap-table-row-hover: #f6fbf9;
 
     /* Sidebar Ativo */
-    --ap-sidebar-active-bg: #1e3a8a;
-    --ap-sidebar-active-border: #1e3a8a;
-    --ap-sidebar-active-text: #ffffff;
+    --ap-sidebar-active-bg: #dff7ee;
+    --ap-sidebar-active-border: transparent;
+    --ap-sidebar-active-text: #064e3b;
 
     /* Paginação */
-    --ap-page-active-bg: #2563eb;
-    --ap-page-active-text: #ffffff;
-    --ap-page-btn-border: #cbd5e1;
+    --ap-page-active-bg: #b5f0d8;
+    --ap-page-active-text: #064e3b;
+    --ap-page-btn-border: #d5dfdb;
+
+    --ap-card-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 14px rgba(15, 23, 42, 0.04);
+    --ap-avatar-bg: #e5eaee;
+    --ap-avatar-text: #475569;
+    --ap-modal-backdrop: rgba(15, 23, 42, 0.45);
+    --ap-modal-body-bg: #eef2f1;
 }
 
 /* ==========================================================================
@@ -145,6 +169,31 @@ body.ap-body {
 .ap-app-layout {
     display: flex;
     min-height: 100vh;
+}
+
+/*
+ * No claro, sidebar e cabeçalho viram cartões soltos sobre o fundo, como nas
+ * telas de aluno. O escuro mantém as faixas coladas às bordas.
+ */
+:root[data-theme="light"] .ap-app-layout {
+    padding: 12px;
+    gap: 12px;
+}
+
+:root[data-theme="light"] .ap-sidebar {
+    border: 1px solid var(--ap-border);
+    border-radius: 16px;
+    box-shadow: var(--ap-card-shadow);
+}
+
+:root[data-theme="light"] .ap-top-header {
+    border: 1px solid var(--ap-border);
+    border-radius: 16px;
+    box-shadow: var(--ap-card-shadow);
+}
+
+:root[data-theme="light"] .ap-page-content {
+    padding-inline: 0.5rem;
 }
 
 /* ==========================================================================
@@ -182,8 +231,8 @@ body.ap-body {
 }
 
 :root[data-theme="light"] .ap-brand-icon {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8);
-    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+    background: linear-gradient(135deg, #34d399, #10b981);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
 }
 
 .ap-brand-text {
@@ -230,8 +279,17 @@ body.ap-body {
     box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
 }
 
+/* No claro, o item ativo é uma faixa menta com barra à esquerda, sem brilho */
 :root[data-theme="light"] .ap-menu-item.active a {
-    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
+    box-shadow: inset 3px 0 0 var(--ap-primary);
+}
+
+:root[data-theme="light"] .ap-menu-item.active a i {
+    color: var(--ap-primary-text);
+}
+
+:root[data-theme="light"] .ap-menu-item a {
+    color: var(--ap-text-body);
 }
 
 .ap-menu-item a i {
@@ -381,6 +439,10 @@ body.ap-body {
     flex-shrink: 0;
 }
 
+:root[data-theme="light"] .ap-user-avatar {
+    background-color: #475569;
+}
+
 .ap-user-avatar img {
     width: 100%;
     height: 100%;
@@ -427,7 +489,7 @@ body.ap-body {
     border-radius: 10px;
     border: 1.5px solid var(--ap-primary);
     background-color: rgba(var(--ap-primary-rgb), 0.1);
-    color: var(--ap-primary);
+    color: var(--ap-primary-text);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -459,6 +521,7 @@ body.ap-body {
     border: 1px solid var(--ap-border);
     padding: 0.85rem 1rem;
     border-radius: 12px;
+    box-shadow: var(--ap-card-shadow);
 }
 
 .ap-filter-search {
@@ -568,6 +631,7 @@ body.ap-body {
     background-color: var(--ap-bg-card);
     border: 1px solid var(--ap-border);
     border-radius: 14px;
+    box-shadow: var(--ap-card-shadow);
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -676,8 +740,8 @@ body.ap-body {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background-color: #334155;
-    color: #ffffff;
+    background-color: var(--ap-avatar-bg);
+    color: var(--ap-avatar-text);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -782,6 +846,7 @@ body.ap-body {
     background-color: var(--ap-bg-card);
     border: 1px solid var(--ap-border);
     border-radius: 14px;
+    box-shadow: var(--ap-card-shadow);
     padding: 1.25rem 1.5rem;
     display: flex;
     align-items: center;
@@ -799,8 +864,8 @@ body.ap-body {
     width: 68px;
     height: 68px;
     border-radius: 50%;
-    background-color: #334155;
-    color: #ffffff;
+    background-color: var(--ap-avatar-bg);
+    color: var(--ap-avatar-text);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -868,7 +933,7 @@ body.ap-body {
 }
 
 .ap-tab-btn.active {
-    color: var(--ap-primary);
+    color: var(--ap-primary-text);
 }
 
 .ap-tab-btn.active::after {
@@ -887,6 +952,7 @@ body.ap-body {
     background-color: var(--ap-bg-card);
     border: 1px solid var(--ap-border);
     border-radius: 14px;
+    box-shadow: var(--ap-card-shadow);
     overflow: hidden;
 }
 
@@ -978,6 +1044,23 @@ body.ap-body {
     color: #818cf8;
 }
 
+/* No fundo branco, os mesmos tons ficam claros demais: versão mais escura */
+:root[data-theme="light"] .ap-doc-type-icon.pdf {
+    background-color: #fdeceb;
+    color: #dc2626;
+}
+
+:root[data-theme="light"] .ap-doc-type-icon.jpg,
+:root[data-theme="light"] .ap-doc-type-icon.jpeg {
+    background-color: #e6f4fb;
+    color: #0369a1;
+}
+
+:root[data-theme="light"] .ap-doc-type-icon.png {
+    background-color: #eceefd;
+    color: #4f46e5;
+}
+
 /* Botões de Ação na Tabela */
 .ap-actions-group {
     display: flex;
@@ -1008,11 +1091,12 @@ body.ap-body {
 .ap-btn-action.preview:hover {
     background-color: var(--ap-bg-card-hover);
     border-color: var(--ap-primary);
-    color: var(--ap-primary);
+    color: var(--ap-primary-text);
 }
 
 .ap-btn-action.download {
     background-color: var(--ap-btn-download-bg);
+    border: 1px solid var(--ap-btn-download-border);
     color: var(--ap-btn-download-text);
 }
 
@@ -1067,7 +1151,7 @@ body.ap-body {
 .ap-modal-backdrop {
     position: fixed;
     inset: 0;
-    background-color: rgba(0, 0, 0, 0.75);
+    background-color: var(--ap-modal-backdrop);
     backdrop-filter: blur(4px);
     z-index: 1000;
     display: none;
@@ -1139,7 +1223,7 @@ body.ap-body {
     flex: 1;
     overflow: hidden;
     position: relative;
-    background-color: #000000;
+    background-color: var(--ap-modal-body-bg);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1153,8 +1237,110 @@ body.ap-body {
     object-fit: contain;
 }
 
+/* Aviso no lugar do documento (erro da API ou imagem que não abriu) */
+.ap-preview-fallback {
+    max-width: 420px;
+    padding: 2rem;
+    text-align: center;
+    color: var(--ap-text-body);
+}
+
+.ap-preview-fallback > i {
+    display: block;
+    margin-bottom: 1rem;
+    font-size: 3rem;
+    color: var(--ap-text-faint);
+}
+
+.ap-preview-fallback p {
+    margin: 0 0 1rem;
+    font-size: 0.95rem;
+}
+
 /* ==========================================================================
-   9. ACESSIBILIDADE E PREFERS-REDUCED-MOTION
+   9. TEMA CLARO: CORES QUE SÃO INFORMAÇÃO
+   ==========================================================================
+   A varredura do tema claro em css/variables.css pinta todo texto e ícone de
+   preto (com !important). Ela mesma abre exceção para selos e para ícones em
+   quadrado colorido, e é o caso aqui: a cor do selo diz se a autorização foi
+   aceita, recusada ou está sem resposta, e o verde marca onde o usuário está
+   (menu, aba). O texto corrido continua preto, como manda a regra.
+
+   O prefixo `:root[data-theme="light"]:not(.high-contrast) body.ap-body` + `[class]`
+   passa a especificidade da varredura e prende a regra a esta tela; o alto
+   contraste fica de fora, como lá.
+   ========================================================================== */
+:root[data-theme="light"]:not(.high-contrast) body.ap-body .ap-status-badge.success[class],
+:root[data-theme="light"]:not(.high-contrast) body.ap-body .ap-status-badge.success[class] * {
+    color: var(--ap-badge-success-text) !important;
+    -webkit-text-fill-color: var(--ap-badge-success-text) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) body.ap-body .ap-status-badge.warning[class],
+:root[data-theme="light"]:not(.high-contrast) body.ap-body .ap-status-badge.warning[class] * {
+    color: var(--ap-badge-warning-text) !important;
+    -webkit-text-fill-color: var(--ap-badge-warning-text) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) body.ap-body .ap-status-badge.danger[class],
+:root[data-theme="light"]:not(.high-contrast) body.ap-body .ap-status-badge.danger[class] * {
+    color: var(--ap-badge-danger-text) !important;
+    -webkit-text-fill-color: var(--ap-badge-danger-text) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) body.ap-body .ap-status-badge.neutral[class],
+:root[data-theme="light"]:not(.high-contrast) body.ap-body .ap-status-badge.neutral[class] * {
+    color: var(--ap-text-muted) !important;
+    -webkit-text-fill-color: var(--ap-text-muted) !important;
+}
+
+/* Verde de "onde estou" e ícones em quadrado colorido */
+:root[data-theme="light"]:not(.high-contrast) body.ap-body .ap-tab-btn.active[class],
+:root[data-theme="light"]:not(.high-contrast) body.ap-body .ap-tab-btn.active[class] *,
+:root[data-theme="light"]:not(.high-contrast) body.ap-body .ap-menu-item.active[class] i,
+:root[data-theme="light"]:not(.high-contrast) body.ap-body .ap-header-icon-box[class] i,
+:root[data-theme="light"]:not(.high-contrast) body.ap-body .ap-sidebar-footer[class] i {
+    color: var(--ap-primary-text) !important;
+    -webkit-text-fill-color: var(--ap-primary-text) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) body.ap-body .ap-brand-icon[class] i,
+:root[data-theme="light"]:not(.high-contrast) body.ap-body .ap-user-avatar[class] {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) body.ap-body .ap-doc-type-icon.pdf[class] {
+    color: #dc2626 !important;
+    -webkit-text-fill-color: #dc2626 !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) body.ap-body .ap-doc-type-icon.jpg[class],
+:root[data-theme="light"]:not(.high-contrast) body.ap-body .ap-doc-type-icon.jpeg[class] {
+    color: #0369a1 !important;
+    -webkit-text-fill-color: #0369a1 !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) body.ap-body .ap-doc-type-icon.png[class] {
+    color: #4f46e5 !important;
+    -webkit-text-fill-color: #4f46e5 !important;
+}
+
+/* Botão Voltar em verde, como nas demais telas do modelo claro */
+:root[data-theme="light"]:not(.high-contrast) body.ap-body .btn-voltar-global[class],
+:root[data-theme="light"]:not(.high-contrast) body.ap-body .btn-voltar-global[class] * {
+    color: var(--btn-voltar-text) !important;
+    -webkit-text-fill-color: var(--btn-voltar-text) !important;
+}
+
+:root[data-theme="light"]:not(.high-contrast) body.ap-body .btn-voltar-global[class]:hover,
+:root[data-theme="light"]:not(.high-contrast) body.ap-body .btn-voltar-global[class]:hover * {
+    color: var(--btn-voltar-hover-text) !important;
+    -webkit-text-fill-color: var(--btn-voltar-hover-text) !important;
+}
+
+/* ==========================================================================
+   10. ACESSIBILIDADE E PREFERS-REDUCED-MOTION
    ========================================================================== */
 @media (prefers-reduced-motion: reduce) {
     *,

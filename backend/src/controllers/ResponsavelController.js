@@ -17,6 +17,7 @@ const Falta = require('../models/Falta');
 const FrequenciaProfessor = require('../models/FrequenciaProfessor');
 const escapeRegex = require('../utils/escapeRegex');
 const logger = require('../utils/logger');
+const urlFotoAluno = require('../utils/urlFotoAluno');
 
 // Trava por conta contra varredura do código secreto do aluno
 const MAX_TENTATIVAS_VINCULO = 5;
@@ -228,14 +229,7 @@ exports.getAlunos = async (req, res) => {
                 escolaNome:
                     (aluno.escolaId && escolaNomePorId[String(aluno.escolaId)]) || 'Escola Jaguari',
             };
-            if (
-                safe.foto &&
-                safe.foto.length > 20 &&
-                !safe.foto.startsWith('data:') &&
-                !safe.foto.startsWith('/api')
-            ) {
-                safe.foto = `/api/upload/photo/${safe.foto}`;
-            }
+            safe.foto = urlFotoAluno(safe.foto);
             return safe;
         });
 

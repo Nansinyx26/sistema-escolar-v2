@@ -19,7 +19,7 @@
 // linha, e o CI roda essa verificação. O script lê a lista daqui de baixo —
 // não mantém cópia — então acrescentar um asset já o coloca sob a regra.
 // Detalhes em docs/QUALITY.md, seção "Service worker: o bump do VERSION".
-const VERSION = 'v21';
+const VERSION = 'v22';
 const STATIC_CACHE = `escola-static-${VERSION}`;
 const PAGES_CACHE = `escola-pages-${VERSION}`;
 const CURRENT_CACHES = [STATIC_CACHE, PAGES_CACHE];
@@ -181,11 +181,21 @@ self.addEventListener('fetch', (event) => {
 
     const url = new URL(request.url);
 
+    // Navegação que o SW não atende (ex.: o <iframe> do preview de documento,
+    // que abre `/api/.../visualizar`) já disparou o navigationPreload. Sem
+    // esperar essa promessa, o Chrome cancela o preload e avisa no console
+    // "navigation preload request was cancelled before 'preloadResponse' settled".
+    const liberarPreload = () => {
+        if (request.mode === 'navigate' && event.preloadResponse) {
+            event.waitUntil(event.preloadResponse.catch(() => {}));
+        }
+    };
+
     // API sempre direto para a rede (dados autenticados e voláteis).
-    if (url.pathname.startsWith('/api/')) return;
+    if (url.pathname.startsWith('/api/')) return liberarPreload();
 
     // Recursos de outros domínios (CDNs) não são gerenciados aqui.
-    if (url.origin !== self.location.origin) return;
+    if (url.origin !== self.location.origin) return liberarPreload();
 
     if (request.mode === 'navigate') {
         event.respondWith(handleNavigation(event));
