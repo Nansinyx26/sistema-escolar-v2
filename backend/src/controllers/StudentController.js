@@ -6,6 +6,7 @@ const busca = require('../utils/buscaAluno');
 const { generateUniqueSecretCode, assignSecretCodes } = require('../utils/secretCodeHelper');
 const logger = require('../utils/logger');
 const assertAcessoAoAluno = require('../middleware/assertAcessoAoAluno');
+const urlFotoAluno = require('../utils/urlFotoAluno');
 
 // Whitelist de campos permitidos para o Aluno (Prevenção de Injeção de Parâmetros)
 const studentWhitelist = [
@@ -143,10 +144,8 @@ exports.list = async (req, res) => {
             // Nunca em listagem genérica: quem tem o código vincula o aluno
             delete student.codigoSecreto;
 
-            // Se a foto for um ID do GridFS, converte para URL
-            if (student.foto && student.foto.length > 20 && !student.foto.startsWith('data:')) {
-                student.foto = `/api/upload/photo/${student.foto}`;
-            }
+            // Referência do GridFS vira URL — sem prefixar o que já é URL
+            student.foto = urlFotoAluno(student.foto);
 
             return student;
         });
@@ -186,10 +185,7 @@ exports.get = async (req, res) => {
         delete studentData.codigoSecreto;
 
         // Resolve URL da foto se estiver no GridFS
-        if (studentData.foto && studentData.foto.startsWith('gridfs:')) {
-            const fileId = studentData.foto.split(':')[1];
-            studentData.foto = `/api/upload/photo/${fileId}`;
-        }
+        studentData.foto = urlFotoAluno(studentData.foto);
 
         res.json({ success: true, data: studentData });
     } catch (error) {

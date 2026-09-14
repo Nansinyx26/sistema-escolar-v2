@@ -265,6 +265,23 @@ function linhaDeCarregamento(colunas) {
     `;
 }
 
+/**
+ * Foto que não carrega (arquivo apagado, sem permissão) vira as iniciais, não
+ * um ícone quebrado. Só troca se a imagem ainda for a do avatar: ao mudar de
+ * aluno, o erro da foto anterior não pode sobrescrever o aluno novo.
+ */
+function trocarFotoQuebradaPorIniciais(avatar, iniciais) {
+    const img = avatar?.querySelector('img');
+    if (!img) return;
+    img.addEventListener(
+        'error',
+        () => {
+            if (img.parentElement === avatar) avatar.textContent = iniciais;
+        },
+        { once: true }
+    );
+}
+
 /** Linha única com uma mensagem (tabela vazia ou erro). */
 function linhaDeMensagem(colunas, texto) {
     return `
@@ -504,6 +521,7 @@ function renderizarListaAlunos() {
             </div>
         `;
 
+        trocarFotoQuebradaPorIniciais(card.querySelector('.ap-student-avatar'), aluno.nome.charAt(0));
         card.addEventListener('click', () => selecionarAluno(aluno.id));
         container.appendChild(card);
     });
@@ -575,15 +593,17 @@ async function selecionarAluno(alunoId) {
         elResp.innerHTML = `Responsável: <strong>${D.esc(aluno.responsavel)}</strong>`;
     }
     if (elAvatar) {
+        const iniciais = aluno.nome
+            .split(' ')
+            .map((n) => n[0])
+            .slice(0, 2)
+            .join('')
+            .toUpperCase();
         if (aluno.foto) {
             elAvatar.innerHTML = `<img src="${D.esc(aluno.foto)}" alt="${D.esc(aluno.nome)}">`;
+            trocarFotoQuebradaPorIniciais(elAvatar, iniciais);
         } else {
-            elAvatar.textContent = aluno.nome
-                .split(' ')
-                .map((n) => n[0])
-                .slice(0, 2)
-                .join('')
-                .toUpperCase();
+            elAvatar.textContent = iniciais;
         }
     }
     if (elBadge) {
@@ -807,35 +827,69 @@ function abrirPreviewDocumento(titulo, previewUrl, downloadUrl, extensao) {
 
     if (extUpper === 'JPG' || extUpper === 'JPEG' || extUpper === 'PNG') {
         const img = document.createElement('img');
-        img.src = previewUrl;
         img.alt = titulo || 'Documento';
-        img.onerror = () => {
-            elBody.innerHTML = `
-                <div style="color:#ffffff;text-align:center;padding:2rem;">
-                    <i class="bi bi-file-earmark-image" style="font-size:3rem;display:block;margin-bottom:1rem;color:#94a3b8;"></i>
-                    <p style="font-size:1rem;margin-bottom:1rem;">Visualização direta da imagem do documento.</p>
-                    <a href="${downloadUrl}" class="ap-btn-action download" target="_blank">Baixar para visualizar</a>
-                </div>
-            `;
-        };
+        img.addEventListener('error', () => {
+            if (!img.isConnected) return;
+            elBody.innerHTML = avisoDoPreview(
+                'bi-file-earmark-image',
+                'Não foi possível exibir a imagem aqui.',
+                downloadUrl
+            );
+        });
+        img.src = previewUrl;
         elBody.appendChild(img);
     } else {
+        // `onerror` não dispara em <iframe>. Um erro da API (sem permissão,
+        // arquivo removido) chega como JSON e o modal mostraria o texto cru
+        // `{"success":false,...}`; o `load` confere o que de fato abriu.
         const iframe = document.createElement('iframe');
-        iframe.src = previewUrl;
         iframe.title = titulo || 'Documento PDF';
-        iframe.onerror = () => {
-            elBody.innerHTML = `
-                <div style="color:#ffffff;text-align:center;padding:2rem;">
-                    <i class="bi bi-file-earmark-pdf" style="font-size:3rem;display:block;margin-bottom:1rem;color:#ef4444;"></i>
-                    <p style="font-size:1rem;margin-bottom:1rem;">Pré-visualização em PDF assinada.</p>
-                    <a href="${downloadUrl}" class="ap-btn-action download" target="_blank">Baixar PDF completo</a>
-                </div>
-            `;
-        };
+        iframe.addEventListener('load', () => {
+            if (!iframe.isConnected) return;
+            const erro = erroDaApiNoIframe(iframe);
+            if (erro) elBody.innerHTML = avisoDoPreview('bi-exclamation-triangle', erro);
+        });
+        iframe.src = previewUrl;
         elBody.appendChild(iframe);
     }
 
     backdrop.classList.add('open');
+}
+
+/** Mensagem no lugar do documento, com o botão de baixar quando ainda faz sentido. */
+function avisoDoPreview(icone, texto, downloadUrl) {
+    const botao = downloadUrl
+        ? `<a href="${D.esc(downloadUrl)}" class="ap-btn-action download" target="_blank" rel="noopener">
+               <i class="bi bi-download"></i> Baixar arquivo
+           </a>`
+        : '';
+    return `
+        <div class="ap-preview-fallback">
+            <i class="bi ${icone}"></i>
+            <p>${D.esc(texto)}</p>
+            ${botao}
+        </div>
+    `;
+}
+
+/**
+ * Erro devolvido pela API dentro do iframe, ou `null` quando abriu o arquivo.
+ * O iframe é da mesma origem, então o documento dele pode ser lido.
+ */
+function erroDaApiNoIframe(iframe) {
+    const GENERICO = 'Não foi possível abrir o documento.';
+    let doc;
+    try {
+        doc = iframe.contentDocument;
+    } catch (_e) {
+        return null;
+    }
+    if (!doc || !/json/i.test(doc.contentType || '')) return null;
+    try {
+        return JSON.parse(doc.body?.textContent || '').error || GENERICO;
+    } catch (_e) {
+        return GENERICO;
+    }
 }
 
 // ==========================================================================

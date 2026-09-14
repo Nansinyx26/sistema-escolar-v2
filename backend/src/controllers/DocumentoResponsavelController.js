@@ -497,10 +497,33 @@ async function localizarEAutorizar(req, idOuStorageId) {
 }
 
 /**
+ * A tela "Autorizações dos Pais" abre o arquivo num <iframe> da própria
+ * aplicação. A política global (`frame-ancestors 'none'` + `X-Frame-Options:
+ * DENY`, em app.js) bloqueava esse iframe, e o preview ficava em branco. Só
+ * nesta resposta o enquadramento passa a valer para a MESMA origem: um site de
+ * fora continua sem poder enquadrar. O resto da CSP fica como está. O upload
+ * só aceita PDF, JPG e PNG (middleware/uploadDocument.js), e as respostas de
+ * erro são JSON, então nada aqui executa script.
+ */
+function permitirEnquadramentoNaMesmaOrigem(res) {
+    const politica = String(res.getHeader('Content-Security-Policy') || '');
+    res.set(
+        'Content-Security-Policy',
+        /frame-ancestors[^;]*/.test(politica)
+            ? politica.replace(/frame-ancestors[^;]*/, "frame-ancestors 'self'")
+            : `${politica ? `${politica};` : ''}frame-ancestors 'self'`
+    );
+    res.set('X-Frame-Options', 'SAMEORIGIN');
+}
+
+/**
  * GET /api/documentos-responsaveis/:id/visualizar
  * Serve o arquivo em modo inline (preview sem forçar download).
  */
 exports.visualizarArquivo = async (req, res) => {
+    // Antes de tudo: o erro (403/404) também precisa abrir no iframe, para a
+    // tela ler a mensagem em vez de receber a página de bloqueio do navegador.
+    permitirEnquadramentoNaMesmaOrigem(res);
     try {
         const { id } = req.params;
         const auth = await localizarEAutorizar(req, id);
