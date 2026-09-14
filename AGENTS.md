@@ -206,6 +206,19 @@ chore(sync): devolver à develop o hotfix de autenticação
 Não aceite o título que o GitHub sugere sozinho (`Develop`, `Main`): ele reprova no gate,
 e com razão — não diz nada a quem lê o histórico daqui a seis meses.
 
+### Release não pede sincronização
+
+Depois do merge de uma release, o GitHub mostra a `main` "1 commit à frente" da `develop`. É o
+commit de merge que o próprio PR de release criou — **não é divergência, e não se abre PR
+`main → develop` por causa dele.** Esse commit não traz arquivo nenhum além do que já está na
+`develop`, e o PR de release seguinte compara a partir do último ponto em comum, que é a ponta
+da `develop` promovida: ele lista só o trabalho novo, com ou sem sincronização. Prova: o #263
+foi aberto com o merge do #251 ainda fora da `develop`, e esse merge não aparece nos commits
+dele.
+
+A sincronização é só para **hotfix**, que traz arquivo que a `develop` não tem. O gate reprova
+PR `main → develop` sem arquivo alterado (#326) — se ele reprovar, feche o PR.
+
 ---
 
 ## 7. Instruções específicas para agentes de IA
@@ -232,6 +245,7 @@ Ao receber uma tarefa neste repositório, **nesta ordem**:
 - ❌ Ampliar o escopo do PR além da Issue ("já que eu estava aqui…")
 - ❌ Desativar teste, lint ou gate para o CI passar — conserte a causa
 - ❌ Commitar segredo, `.env`, chave ou credencial
+- ❌ Abrir PR `main → develop` depois de release — só depois de hotfix (seção 6)
 
 ### Quando a tarefa for grande
 
