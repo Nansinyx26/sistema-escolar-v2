@@ -184,6 +184,16 @@ jobs:
         working-directory: ./portal-responsavel
         run: npm ci
 
+      # O portal é a única parte em TypeScript, e até a Issue #320 nenhum passo
+      # conferia os tipos dele: o `build` deste workflow roda no backend, e o
+      # portal só era instalado para o Knip. Um erro de tipo entrava na develop
+      # com CI verde. Confere o app (`tsconfig.json`) e o `vite.config.ts`
+      # (`tsconfig.node.json`), que o `tsc` sozinho não olha por estar numa
+      # referência. Sem `continue-on-error`: a develop estava limpa quando o
+      # passo entrou, então qualquer erro aqui é novo.
+      - name: 🔷 Tipos do portal (tsc)
+        run: npm run typecheck:portal
+
       # Contrato de camadas: routes → controllers → services → models.
       - name: 🏛️ Contrato de arquitetura (dependency-cruiser)
         run: npm run arch
