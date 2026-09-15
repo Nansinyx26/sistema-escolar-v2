@@ -1,5 +1,127 @@
 const mongoose = require('mongoose');
 const logger = require('./logger');
+const { estaEncerrando } = require('./prontidao');
+
+/**
+ * Opções da conexão — UMA configuração para o backend inteiro (Issue #335).
+ *
+ * Todas vêm do ambiente, com padrão seguro. A sessão (connect-mongo) e o
+ * adapter do Socket.IO reaproveitam este mesmo cliente, então o que se ajusta
+ * aqui vale para tudo que fala com o Atlas.
+ *
+ * - maxPoolSize 20: o padrão do driver é 100 POR INSTÂNCIA. O Atlas gratuito
+ *   aceita 500 conexões no total, e cada instância nova do balanceador soma o
+ *   seu pool. 20 sobra para um processo Node (que é single-thread) e deixa
+ *   espaço para crescer em número de instâncias.
+ * - waitQueueTimeoutMS: com o pool cheio, a requisição falha em 10 s em vez de
+ *   esperar para sempre por uma conexão livre.
+ * - socketTimeoutMS: operação sem resposta do servidor por 45 s é abandonada.
+ *   Nenhuma consulta do sistema chega perto disso; o valor existe para uma
+ *   conexão travada não segurar a requisição indefinidamente.
+ * - retryWrites/retryReads ficam no padrão do driver (ligados): é o que faz
+ *   uma troca de primário do replica set do Atlas passar despercebida.
+ */
+function inteiroDoAmbiente(env, nome, padrao, minimo) {
+    const bruto = Number.parseInt(env[nome], 10);
+    if (!Number.isFinite(bruto) || bruto < minimo) return padrao;
+    return bruto;
+}
+
+function opcoesDeConexao(env = process.env) {
+    const opcoes = {
+        maxPoolSize: inteiroDoAmbiente(env, 'MONGODB_MAX_POOL_SIZE', 20, 1),
+        minPoolSize: inteiroDoAmbiente(env, 'MONGODB_MIN_POOL_SIZE', 0, 0),
+        serverSelectionTimeoutMS: inteiroDoAmbiente(
+            env,
+            'MONGODB_SERVER_SELECTION_TIMEOUT_MS',
+            5000,
+            500
+        ),
+        connectTimeoutMS: inteiroDoAmbiente(env, 'MONGODB_CONNECT_TIMEOUT_MS', 10000, 500),
+        socketTimeoutMS: inteiroDoAmbiente(env, 'MONGODB_SOCKET_TIMEOUT_MS', 45000, 0),
+        waitQueueTimeoutMS: inteiroDoAmbiente(env, 'MONGODB_WAIT_QUEUE_TIMEOUT_MS', 10000, 0),
+        // Aparece no painel do Atlas ao lado de cada conexão: separa o tráfego
+        // do backend do de scripts e migrations na hora de investigar carga.
+        appName: String(env.MONGODB_APP_NAME || 'sistema-escolar-backend').slice(0, 128),
+    };
+    // Pool mínimo acima do máximo o driver recusa na conexão; melhor corrigir
+    // aqui do que o boot cair por uma variável digitada errado.
+    if (opcoes.minPoolSize > opcoes.maxPoolSize) opcoes.minPoolSize = opcoes.maxPoolSize;
+    if (env.MONGODB_DB_NAME) opcoes.dbName = env.MONGODB_DB_NAME;
+    return opcoes;
+}
+
+/**
+ * Eventos da conexão, registrados UMA vez e ANTES do connect — assim a queda
+ * que acontece durante o boot também chega ao log.
+ *
+ * O driver reconecta sozinho (e o `retryReads/retryWrites` cobre a troca de
+ * primário do Atlas). O papel daqui é só tornar visível: alerta na queda,
+ * info na volta. Durante o encerramento a desconexão é esperada e não vira
+ * alerta — senão todo deploy dispararia um DB_DISCONNECTED falso.
+ */
+let eventosRegistrados = false;
+function registrarEventos() {
+    if (eventosRegistrados) return;
+    eventosRegistrados = true;
+    const dbName = process.env.MONGODB_DB_NAME || undefined;
+
+    mongoose.connection.on('disconnected', () => {
+        if (estaEncerrando()) {
+            logger.info('MongoDB desconectado (encerramento da instância)', {
+                action: 'db.desconectado',
+            });
+            return;
+        }
+        logger.alert('DB_DISCONNECTED', 'Conexão com o MongoDB foi perdida', { dbName });
+    });
+
+    mongoose.connection.on('reconnected', () => {
+        logger.info('✅ MongoDB reconectado automaticamente', { dbName });
+    });
+
+    mongoose.connection.on('error', (err) => {
+        logger.alert('DB_ERROR', `Erro na conexão MongoDB: ${err.message}`, {
+            dbName,
+            error: err.message,
+        });
+    });
+}
+
+/**
+ * Promessa do MongoClient do Mongoose, resolvida quando a conexão abrir.
+ * Usada pela sessão (connect-mongo), que é criada no require do app.js —
+ * antes de o index.js conectar.
+ */
+function clienteQuandoConectar() {
+    const conexao = mongoose.connection;
+    if (conexao.readyState === 1) return Promise.resolve(conexao.getClient());
+    return new Promise((resolve) => {
+        conexao.once('connected', () => resolve(conexao.getClient()));
+    });
+}
+
+/**
+ * Fecha a conexão (e o banco em memória de desenvolvimento, se houver).
+ * Chamado pelo encerramento gracioso. Nunca lança: falhar ao fechar não pode
+ * impedir o processo de sair.
+ */
+async function desconectarDB() {
+    try {
+        if (mongoose.connection.readyState !== 0) await mongoose.connection.close();
+    } catch (err) {
+        logger.warn(`[DB] Falha ao fechar a conexão: ${err.message}`, {
+            action: 'db.desconectar',
+        });
+    }
+    if (global.__MONGOD__) {
+        try {
+            await global.__MONGOD__.stop();
+        } catch {
+            // Banco em memória de desenvolvimento: nada a preservar.
+        }
+    }
+}
 
 const connectDB = async () => {
     try {
@@ -25,17 +147,16 @@ const connectDB = async () => {
         const maskedUri = uri.replace(/:([^@]+)@/, ':****@');
         logger.info('🔌 Conectando ao banco de dados', { dbName, uri: maskedUri });
 
-        try {
-            const connectionOptions = {
-                serverSelectionTimeoutMS: 5000, // Limite de 5 segundos para falha
-            };
+        registrarEventos();
 
-            if (dbName) {
-                connectionOptions.dbName = dbName;
-            }
+        try {
+            const connectionOptions = opcoesDeConexao();
 
             await mongoose.connect(uri, connectionOptions);
-            logger.info('✅ MongoDB conectado com sucesso', { dbName });
+            logger.info('✅ MongoDB conectado com sucesso', {
+                dbName,
+                maxPoolSize: connectionOptions.maxPoolSize,
+            });
             // Auto-criação de todas as coleções esperadas no startup
             await _ensureCollectionsExist();
         } catch (err) {
@@ -70,22 +191,6 @@ const connectDB = async () => {
         if (process.env.NODE_ENV === 'development' && global.__MONGOD__) {
             await _seedDevData();
         }
-
-        // Listeners de eventos do Mongoose para observabilidade contínua
-        mongoose.connection.on('disconnected', () => {
-            logger.alert('DB_DISCONNECTED', 'Conexão com o MongoDB foi perdida', { dbName });
-        });
-
-        mongoose.connection.on('reconnected', () => {
-            logger.info('✅ MongoDB reconectado automaticamente', { dbName });
-        });
-
-        mongoose.connection.on('error', (err) => {
-            logger.alert('DB_ERROR', `Erro na conexão MongoDB: ${err.message}`, {
-                dbName,
-                error: err.message,
-            });
-        });
     } catch (error) {
         // LOGA E RELANÇA (Issue #126).
         //
@@ -234,4 +339,9 @@ async function _ensureCollectionsExist() {
     logger.info(`✅ Verificação concluída. ${createdCount} coleções garantidas no banco.`);
 }
 
+// A função continua sendo o export padrão (`require('./utils/db')()`); o resto
+// sai como propriedade para não mudar nenhum chamador existente.
 module.exports = connectDB;
+module.exports.opcoesDeConexao = opcoesDeConexao;
+module.exports.clienteQuandoConectar = clienteQuandoConectar;
+module.exports.desconectarDB = desconectarDB;

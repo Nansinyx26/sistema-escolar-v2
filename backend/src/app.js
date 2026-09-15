@@ -12,6 +12,12 @@ const { requestLogger } = require('./middleware/requestLogger');
 
 const app = express();
 
+// Sondas do balanceador (GET /health e GET /ready) — PRIMEIRO middleware.
+// Respondem antes de compressão, log de acesso, sessão, CSRF e rate limit:
+// sonda é tráfego de infraestrutura e não pode ser barrada nem virar ruído.
+// Qualquer proteção de borda nova precisa deixá-las passar. Issue #335.
+app.use(require('./routes/sondas'));
+
 // Otimização de Performance: Compressão Gzip/Brotli
 app.use(compression());
 
@@ -439,8 +445,12 @@ const sessionOptions = {
 if (process.env.MONGODB_URI && process.env.NODE_ENV !== 'test') {
     const connectMongo = require('connect-mongo');
     const MongoStore = connectMongo.default || connectMongo; // compat CJS/ESM
+    // Reaproveita o cliente do Mongoose em vez de abrir outro com `mongoUrl`:
+    // uma instância, um pool, uma configuração de timeout (utils/db.js). Antes
+    // eram dois pools por instância contra o limite de conexões do Atlas, e o
+    // da sessão ignorava os timeouts e o fallback de desenvolvimento. Issue #335.
     sessionOptions.store = MongoStore.create({
-        mongoUrl: process.env.MONGODB_URI,
+        clientPromise: require('./utils/db').clienteQuandoConectar(),
         dbName: process.env.MONGODB_DB_NAME || undefined,
         collectionName: 'sessions',
         ttl: 8 * 60 * 60,
