@@ -238,6 +238,9 @@ router.use('/notificacoes', authJWT, filtrarPorEscola, require('./notificacoes')
 // código de cadastro à escola do diretor em vez do código global da rede.
 // Diagnóstico administrativo. authorize('admin') aqui e nao dentro do router:
 // uma rota nova no arquivo nasce protegida sem depender de alguem lembrar.
+// Bloqueios de IP e diagnóstico do IP do cliente (docs/RATE-LIMIT.md). Vem
+// antes de '/admin' para o caminho mais específico responder primeiro.
+router.use('/admin/seguranca', authJWT, authorize('admin'), require('./adminSeguranca'));
 router.use('/admin', authJWT, authorize('admin'), require('./admin'));
 router.use('/security', authJWT, filtrarPorEscola, require('./security'));
 router.use('/audit', authJWT, filtrarPorEscola, require('./audit'));

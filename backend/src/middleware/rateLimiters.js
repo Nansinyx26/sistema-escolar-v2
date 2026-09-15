@@ -17,10 +17,21 @@
  * tentativas pertence à conta e é indiferente à origem da rede.
  *
  * IPv6: `req.ip` bruto como chave é furado — um cliente com /64 delegado troca
- * de endereço à vontade. `chaveIp()` colapsa o endereço no prefixo /64.
+ * de endereço à vontade. `chaveIp()` colapsa o endereço no prefixo /64. De onde
+ * vem o IP (e quais proxies são confiáveis) está em utils/ipCliente.js.
+ *
+ * ARMAZENAMENTO: todo limitador conta no MongoDB (StoreMongoRateLimit), com
+ * prefixo próprio. Na memória do processo, cada instância tinha o seu contador
+ * e o teto real se multiplicava pelo número de instâncias e zerava a cada
+ * reinício. Ver config/rateLimit.js e docs/RATE-LIMIT.md.
  */
 const rateLimit = require('express-rate-limit');
 const crypto = require('node:crypto');
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = require('../utils/jwtConfig');
+const { chaveIp } = require('../utils/ipCliente');
+const { tipoDeArmazenamento, configuracaoGlobal, regrasPorRota } = require('../config/rateLimit');
+const StoreMongoRateLimit = require('../services/protecaoAbuso/StoreMongoRateLimit');
 
 const isProduction = process.env.NODE_ENV === 'production';
 const isTest = process.env.NODE_ENV === 'test';
@@ -29,24 +40,67 @@ const isTest = process.env.NODE_ENV === 'test';
 const pularEmTeste = () => isTest;
 
 /**
- * Normaliza o IP para uso como chave de rate limit.
- * IPv4 → o próprio endereço. IPv6 → prefixo /64 (o bloco que um ISP delega a
- * um único assinante), impedindo que a rotação dentro do próprio bloco zere
- * o contador.
+ * Armazenamento de um limitador. Uma instância por limitador (a biblioteca
+ * recusa reaproveitar) e o nome vira prefixo, para que `ip:1.2.3.4` do login
+ * e `ip:1.2.3.4` do chat não somem no mesmo contador.
  */
-function chaveIp(req) {
-    const ip = req.ip || req.socket?.remoteAddress || 'sem-ip';
+function criarStore(nome) {
+    if (tipoDeArmazenamento() !== 'mongo') return undefined; // MemoryStore padrão
+    return new StoreMongoRateLimit(`rl:${nome}`);
+}
 
-    // ::ffff:1.2.3.4 → IPv4 mapeado
-    const mapeado = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(ip);
-    if (mapeado) return mapeado[1];
+/**
+ * Resposta 429 com o mesmo contrato do login: `codigo` para o front reagir sem
+ * ler o texto, e `retryEmSegundos` junto do cabeçalho `Retry-After`.
+ */
+function responderLimite(mensagem) {
+    return (req, res, _next, opcoes) => {
+        const reset = req.rateLimit?.resetTime;
+        const restanteMs = reset ? reset.getTime() - Date.now() : opcoes.windowMs;
+        res.status(opcoes.statusCode).json({
+            ...mensagem,
+            codigo: 'MUITAS_TENTATIVAS',
+            retryEmSegundos: Math.max(1, Math.ceil(restanteMs / 1000)),
+        });
+    };
+}
 
-    if (!ip.includes(':')) return ip; // IPv4
-
-    // IPv6: mantém apenas os 4 primeiros hextetos (/64)
-    const expandido = ip.split('%')[0]; // remove zone id (fe80::1%eth0)
-    const partes = expandido.split(':');
-    return `${partes.slice(0, 4).join(':')}::/64`;
+/**
+ * Id do usuário autenticado, lido do JWT com a assinatura VERIFICADA.
+ *
+ * O limitador global roda antes do authJWT das rotas, então `req.user` ainda
+ * não existe. Decodificar sem verificar deixaria qualquer um forjar um token
+ * com id aleatório e ganhar um contador novo a cada requisição; com a
+ * verificação, token inválido simplesmente cai no contador por IP.
+ * Não consulta o banco: revogação e conta desativada são problema do authJWT,
+ * aqui só importa de quem é a assinatura.
+ *
+ * Token VENCIDO continua contando pela conta (`ignoreExpiration`). A aba
+ * esquecida aberta com a sessão expirada segue fazendo chamadas periódicas;
+ * contada pelo IP, ela gastaria o teto anônimo da escola inteira e poderia
+ * barrar quem está tentando entrar. A assinatura ainda prova de quem é o
+ * navegador, e o authJWT continua recusando o token vencido normalmente.
+ */
+function idDoUsuarioDoToken(req) {
+    if (req._rateLimitUsuario !== undefined) return req._rateLimitUsuario;
+    let id = '';
+    let token = req.cookies?.escola_jwt;
+    const autorizacao = req.headers?.authorization;
+    if (!token && typeof autorizacao === 'string' && autorizacao.startsWith('Bearer ')) {
+        token = autorizacao.slice(7).trim();
+    }
+    if (token && token !== 'null' && token !== 'undefined') {
+        try {
+            const decodificado = jwt.verify(token, JWT_SECRET, { ignoreExpiration: true });
+            if (!decodificado.purpose || decodificado.purpose === 'session') {
+                id = String(decodificado.id || decodificado._id || '');
+            }
+        } catch {
+            id = '';
+        }
+    }
+    req._rateLimitUsuario = id;
+    return id;
 }
 
 /**
@@ -71,7 +125,7 @@ function identificadorDaConta(req) {
     if (!normalizado) return null;
 
     // Hash para não gravar e-mail em claro no store do limiter (que em produção
-    // pode ser Redis/Mongo compartilhado) e para manter a chave de tamanho fixo.
+    // é o Mongo compartilhado) e para manter a chave de tamanho fixo.
     return crypto.createHash('sha256').update(normalizado).digest('hex').slice(0, 32);
 }
 
@@ -83,13 +137,14 @@ const RESPOSTA_PADRAO = {
 /**
  * Fábrica de limiter keyed por IP (com normalização IPv6).
  */
-function limiterPorIp({ windowMs, maxProd, maxDev, mensagem, pular }) {
+function limiterPorIp({ nome, windowMs, maxProd, maxDev, mensagem, pular }) {
     return rateLimit({
         windowMs,
         max: isProduction ? maxProd : maxDev,
         keyGenerator: (req) => `ip:${chaveIp(req)}`,
         skip: pular || pularEmTeste,
-        message: mensagem || RESPOSTA_PADRAO,
+        handler: responderLimite(mensagem || RESPOSTA_PADRAO),
+        store: criarStore(nome),
         standardHeaders: true,
         legacyHeaders: false,
     });
@@ -104,13 +159,14 @@ function limiterPorIp({ windowMs, maxProd, maxDev, mensagem, pular }) {
  * DoS trivial: um atacante estouraria a chave global e derrubaria o login de
  * todo mundo).
  */
-function limiterPorConta({ windowMs, maxProd, maxDev, mensagem }) {
+function limiterPorConta({ nome, windowMs, maxProd, maxDev, mensagem }) {
     return rateLimit({
         windowMs,
         max: isProduction ? maxProd : maxDev,
         keyGenerator: (req) => `conta:${identificadorDaConta(req)}`,
         skip: (req) => isTest || !identificadorDaConta(req),
-        message: mensagem || RESPOSTA_PADRAO,
+        handler: responderLimite(mensagem || RESPOSTA_PADRAO),
+        store: criarStore(nome),
         standardHeaders: true,
         legacyHeaders: false,
     });
@@ -122,20 +178,21 @@ function limiterPorConta({ windowMs, maxProd, maxDev, mensagem }) {
  * Diferente de `limiterPorConta` (que lê o alvo do corpo, para rotas
  * pré-autenticação), este usa `req.user` — serve para rotas já autenticadas
  * cujo custo não é de segurança e sim de RECURSO: cada chamada gasta cota de
- * uma API externa paga. Sem ele, o teto efetivo era só o globalLimiter
- * (milhares de req/15min por IP), o que torna trivial queimar a cota de
- * ElevenLabs/Gemini do projeto com uma única conta válida.
+ * uma API externa paga. Sem ele, o teto efetivo era só o globalLimiter, o que
+ * torna trivial queimar a cota de ElevenLabs/Gemini do projeto com uma única
+ * conta válida.
  *
  * Sem usuário resolvido, cai no limiter por IP que roda em série.
  */
-function limiterPorUsuario({ windowMs, maxProd, maxDev, mensagem }) {
+function limiterPorUsuario({ nome, windowMs, maxProd, maxDev, mensagem }) {
     const idDoUsuario = (req) => String(req.user?.id || req.user?._id || '');
     return rateLimit({
         windowMs,
         max: isProduction ? maxProd : maxDev,
         keyGenerator: (req) => `user:${idDoUsuario(req)}`,
         skip: (req) => isTest || !idDoUsuario(req),
-        message: mensagem || RESPOSTA_PADRAO,
+        handler: responderLimite(mensagem || RESPOSTA_PADRAO),
+        store: criarStore(nome),
         standardHeaders: true,
         legacyHeaders: false,
     });
@@ -155,27 +212,99 @@ function tetoEnv(nome, padrao) {
     return bruto;
 }
 
-// ── Global: DoS em /api ──────────────────────────────────────────────────────
-const globalLimiter = rateLimit({
-    windowMs: QUINZE_MIN,
-    max: isProduction ? 2000 : 5000,
-    keyGenerator: (req) => `ip:${chaveIp(req)}`,
-    message: {
-        success: false,
-        error: 'Muitas requisições vindas deste IP. Tente novamente mais tarde.',
-    },
-    skip: (req) => isTest || !req.path.startsWith('/api'),
-    standardHeaders: true,
-    legacyHeaders: false,
-});
+// ── Global: teto geral de /api ───────────────────────────────────────────────
+// ESTE LIMITADOR NUNCA TINHA RODADO. Ele é montado em `app.use('/api', …)` e
+// pulava quando `!req.path.startsWith('/api')` — mas dentro de um middleware
+// montado em `/api` o Express entrega `req.path` SEM o prefixo (`/api/alunos`
+// chega como `/alunos`), então o skip era sempre verdadeiro (Issue #333).
+//
+// Quem não está autenticado conta pelo IP (100/min por padrão); quem está,
+// pela conta (200/min). A escola inteira costuma sair por um IP só, e contar
+// o professor autenticado pelo IP colocaria a sala dos professores toda no
+// mesmo teto. Tetos e janela em config/rateLimit.js.
+//
+// Precisa vir DEPOIS do cookieParser no app.js: é do cookie que sai o usuário.
+const ROTAS_ISENTAS_DO_GLOBAL = ['/health'];
 
-// ── Login / recuperação de senha ─────────────────────────────────────────────
+function criarLimiteGlobal({
+    config = configuracaoGlobal(),
+    pular = pularEmTeste,
+    nome = 'global',
+} = {}) {
+    return rateLimit({
+        windowMs: config.janelaMs,
+        limit: (req) => (idDoUsuarioDoToken(req) ? config.maxUsuario : config.maxIp),
+        keyGenerator: (req) => {
+            const usuario = idDoUsuarioDoToken(req);
+            return usuario ? `usuario:${usuario}` : `ip:${chaveIp(req)}`;
+        },
+        // Relativo ao ponto de montagem (`/api`): `/health` é `/api/health`.
+        skip: (req) =>
+            pular(req) ||
+            ROTAS_ISENTAS_DO_GLOBAL.some((r) => req.path === r || req.path.startsWith(`${r}/`)),
+        handler: responderLimite({
+            success: false,
+            error: 'Muitas requisições em pouco tempo. Aguarde alguns instantes e tente novamente.',
+        }),
+        store: criarStore(nome),
+        standardHeaders: true,
+        legacyHeaders: false,
+    });
+}
+
+const globalLimiter = criarLimiteGlobal();
+
+// ── Regras por endpoint vindas do ambiente (RATE_LIMIT_ROTAS) ────────────────
+// Permite apertar um endpoint específico em produção sem deploy de código.
+// Cada regra tem contador próprio e vale SOMADA ao teto global. Montado sem
+// prefixo no app.js, por isso compara com o caminho completo.
+function caminhoCompleto(req) {
+    return `${req.baseUrl || ''}${req.path}`;
+}
+
+function criarLimitesPorRota(regras = regrasPorRota(), { pular = pularEmTeste } = {}) {
+    return regras.map((regra) => {
+        const casa = (req) => {
+            if (regra.metodo !== '*' && req.method !== regra.metodo) return false;
+            const caminho = caminhoCompleto(req);
+            return caminho === regra.caminho || caminho.startsWith(`${regra.caminho}/`);
+        };
+        const chave = (req) => {
+            const usuario = regra.chave === 'ip' ? '' : idDoUsuarioDoToken(req);
+            if (usuario) return `usuario:${usuario}`;
+            return regra.chave === 'usuario' ? '' : `ip:${chaveIp(req)}`;
+        };
+        return rateLimit({
+            windowMs: regra.janelaMs,
+            limit: regra.limite,
+            keyGenerator: chave,
+            // Regra "usuario" sem usuário autenticado não conta: quem cobre
+            // o anônimo é o teto global por IP.
+            skip: (req) => pular(req) || !casa(req) || !chave(req),
+            handler: responderLimite({
+                success: false,
+                error: 'Muitas requisições a este recurso. Aguarde alguns instantes.',
+            }),
+            store: criarStore(`rota:${regra.nome}`),
+            standardHeaders: true,
+            legacyHeaders: false,
+        });
+    });
+}
+
+const limitesPorRota = criarLimitesPorRota();
+
+// ── Recuperação de senha ─────────────────────────────────────────────────────
+// O POST /api/auth/login saiu daqui: ele passa pelo middleware/protecaoLogin.js,
+// que conta só a tentativa que FALHA e bloqueia o IP de forma progressiva.
+// Este par continua em forgot-password e reset-password.
 const MSG_AUTH = {
     success: false,
     error: 'Muitas tentativas de login ou recuperação. Tente novamente em 15 minutos.',
 };
 
 const authIpLimiter = limiterPorIp({
+    nome: 'auth-ip',
     windowMs: QUINZE_MIN,
     maxProd: tetoEnv('RATE_LIMIT_LOGIN_IP', 15),
     maxDev: 200,
@@ -188,6 +317,7 @@ const authIpLimiter = limiterPorIp({
 // login já dispara em 5. Ajustável via RATE_LIMIT_LOGIN_CONTA se o suporte
 // indicar atrito real.
 const authContaLimiter = limiterPorConta({
+    nome: 'auth-conta',
     windowMs: QUINZE_MIN,
     maxProd: tetoEnv('RATE_LIMIT_LOGIN_CONTA', 10),
     maxDev: 200,
@@ -201,6 +331,7 @@ const MSG_CODIGO = {
 };
 
 const codeIpLimiter = limiterPorIp({
+    nome: 'codigo-ip',
     windowMs: UMA_HORA,
     maxProd: tetoEnv('RATE_LIMIT_CODIGO_IP', 30),
     maxDev: 300,
@@ -210,6 +341,7 @@ const codeIpLimiter = limiterPorIp({
 // 10^6 códigos possíveis: sem teto por conta, um pool de IPs varre o espaço.
 // 10 tentativas/hora por conta torna a busca inviável.
 const codeContaLimiter = limiterPorConta({
+    nome: 'codigo-conta',
     windowMs: UMA_HORA,
     maxProd: tetoEnv('RATE_LIMIT_CODIGO_CONTA', 10),
     maxDev: 300,
@@ -223,6 +355,7 @@ const MSG_PREFIXO = {
 };
 
 const authPrefixLimiter = limiterPorIp({
+    nome: 'auth-prefixo',
     windowMs: QUINZE_MIN,
     maxProd: 60,
     maxDev: 600,
@@ -250,6 +383,7 @@ const authPrefixLimiter = limiterPorIp({
 // acima de qualquer uso humano e bem abaixo do que um script conseguiria
 // queimar antes de o teto fechar.
 const ttsUsuarioLimiter = limiterPorUsuario({
+    nome: 'tts-usuario',
     windowMs: UMA_HORA,
     maxProd: tetoEnv('RATE_LIMIT_TTS_USUARIO', 200),
     maxDev: 600,
@@ -264,6 +398,7 @@ const ttsUsuarioLimiter = limiterPorUsuario({
 // dos professores esbarrar no limite de IP muito antes de qualquer conta
 // esbarrar no dela.
 const ttsIpLimiter = limiterPorIp({
+    nome: 'tts-ip',
     windowMs: UMA_HORA,
     maxProd: tetoEnv('RATE_LIMIT_TTS_IP', 400),
     maxDev: 1200,
@@ -287,6 +422,7 @@ const ttsIpLimiter = limiterPorIp({
 const UM_MINUTO = 60 * 1000;
 
 const chatMensagemLimiter = limiterPorUsuario({
+    nome: 'chat-mensagem',
     windowMs: UM_MINUTO,
     maxProd: tetoEnv('RATE_LIMIT_CHAT_MENSAGENS', 30),
     maxDev: 300,
@@ -299,6 +435,7 @@ const chatMensagemLimiter = limiterPorUsuario({
 // Upload é ordens de grandeza mais caro que texto (banda + GridFS), então tem
 // orçamento próprio e mais apertado.
 const chatUploadLimiter = limiterPorUsuario({
+    nome: 'chat-upload',
     windowMs: UM_MINUTO * 5,
     maxProd: tetoEnv('RATE_LIMIT_CHAT_UPLOADS', 20),
     maxDev: 200,
@@ -311,6 +448,7 @@ const chatUploadLimiter = limiterPorUsuario({
 // Rede como um todo: se o limiter por usuário for contornado com várias contas,
 // o teto por IP ainda segura o volume vindo de uma única origem.
 const chatIpLimiter = limiterPorIp({
+    nome: 'chat-ip',
     windowMs: UM_MINUTO,
     maxProd: tetoEnv('RATE_LIMIT_CHAT_IP', 120),
     maxDev: 1200,
@@ -323,12 +461,13 @@ const chatIpLimiter = limiterPorIp({
 // ── Copiloto de IA ───────────────────────────────────────────────────────────
 // Mesma natureza do TTS: cada mensagem gasta cota de uma API externa PAGA, e o
 // custo pertence ao projeto. Por isso o teto principal é por CONTA — o
-// globalLimiter (2000/15min por IP) é grande demais para servir de freio aqui.
+// globalLimiter é genérico demais para servir de freio aqui.
 //
 // 20/minuto cobre com folga uma conversa humana (ninguém digita mais que isso)
 // e inviabiliza o laço automatizado que queimaria a cota do modelo com uma
 // única credencial válida.
 const iaChatUsuarioLimiter = limiterPorUsuario({
+    nome: 'ia-usuario',
     windowMs: UM_MINUTO,
     maxProd: tetoEnv('RATE_LIMIT_IA_USUARIO', 20),
     maxDev: 200,
@@ -342,6 +481,7 @@ const iaChatUsuarioLimiter = limiterPorUsuario({
 // resolver o identificador. Este par por IP é a rede de segurança para esse
 // caso — sem ele o endpoint ficaria sem teto próprio.
 const iaChatIpLimiter = limiterPorIp({
+    nome: 'ia-ip',
     windowMs: UM_MINUTO,
     maxProd: tetoEnv('RATE_LIMIT_IA_IP', 40),
     maxDev: 400,
@@ -360,6 +500,7 @@ const iaChatIpLimiter = limiterPorIp({
 // puniria a secretaria inteira por causa de uma pessoa. 10 uploads/hora (§7.6)
 // é folgado — uma escola grande tem ~30 classes e importa cada uma uma vez.
 const importacaoPreviewLimiter = limiterPorUsuario({
+    nome: 'importacao-usuario',
     windowMs: UMA_HORA,
     maxProd: tetoEnv('RATE_LIMIT_IMPORTACAO_USUARIO', 10),
     maxDev: 100,
@@ -372,6 +513,7 @@ const importacaoPreviewLimiter = limiterPorUsuario({
 // Rede de segurança: `limiterPorUsuario` se auto-desliga quando não resolve o
 // usuário, e sem este par o endpoint ficaria sem teto próprio.
 const importacaoIpLimiter = limiterPorIp({
+    nome: 'importacao-ip',
     windowMs: UMA_HORA,
     maxProd: tetoEnv('RATE_LIMIT_IMPORTACAO_IP', 40),
     maxDev: 400,
@@ -391,6 +533,7 @@ const importacaoIpLimiter = limiterPorIp({
 // de boa-fé; quem precisa disso está reportando um incidente que merece
 // telefonema à direção, não formulário.
 const moderacaoAbusoLimiter = limiterPorUsuario({
+    nome: 'moderacao-usuario',
     windowMs: UMA_HORA,
     maxProd: tetoEnv('RATE_LIMIT_MODERACAO', 10),
     maxDev: 100,
@@ -402,6 +545,7 @@ const moderacaoAbusoLimiter = limiterPorUsuario({
 
 module.exports = {
     globalLimiter,
+    limitesPorRota,
     moderacaoAbusoLimiter,
     importacaoPreviewLimiter,
     importacaoIpLimiter,
@@ -420,4 +564,6 @@ module.exports = {
     // exportados para teste
     chaveIp,
     identificadorDaConta,
+    criarLimiteGlobal,
+    criarLimitesPorRota,
 };
