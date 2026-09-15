@@ -9,14 +9,38 @@ const { sanitizeObject, sanitizeInput } = require('./utils/sanitize');
 const { csrfCookieSetter, csrfValidator } = require('./middleware/csrfProtection');
 const logger = require('./utils/logger');
 const { requestLogger } = require('./middleware/requestLogger');
+const edgeGuard = require('./middleware/edgeGuard');
 
 const app = express();
+
+// ============================================
+// TRUST PROXY — precisa valer antes da proteção de borda
+// ============================================
+// Estava lá embaixo, depois do logger. Como é um `app.set` (configuração, não
+// middleware), a posição no arquivo nunca importou para a ordem de execução —
+// mas importa para quem lê: `req.ip` só é o IP real do cliente por causa desta
+// linha, e toda a proteção de borda é keyed por `req.ip`. Subiu para junto de
+// quem depende dela.
+app.set('trust proxy', 1);
 
 // Sondas do balanceador (GET /health e GET /ready) — PRIMEIRO middleware.
 // Respondem antes de compressão, log de acesso, sessão, CSRF e rate limit:
 // sonda é tráfego de infraestrutura e não pode ser barrada nem virar ruído.
 // Qualquer proteção de borda nova precisa deixá-las passar. Issue #335.
 app.use(require('./routes/sondas'));
+
+// ============================================
+// PROTEÇÃO DE BORDA — ETAPA 1: IP BANIDO
+// ============================================
+// Logo DEPOIS das sondas, e não antes: sonda barrada tira a instância do ar,
+// então nem um IP banido pode impedir o balanceador de consultá-la (o
+// edgeGuard também isenta /health e /ready, como segunda garantia).
+//
+// E ANTES de compressão, logger e observabilidade de propósito. Um IP já
+// banido tem de custar um lookup em Map e nada mais: sem esta posição, cada
+// requisição de um ataque em curso ainda pagaria negociação de compressão,
+// serialização de log e criação de span de trace. Ver middleware/edgeGuard.js.
+app.use(edgeGuard.criarGuardaDeBanimento());
 
 // Otimização de Performance: Compressão Gzip/Brotli
 app.use(compression());
@@ -29,8 +53,51 @@ app.use(requestLogger);
 const observability = require('./observability');
 app.use(observability.middleware.request);
 
-// Configurar Trust Proxy para o Render (Necessário para express-rate-limit)
-app.set('trust proxy', 1);
+// ============================================
+// PROTEÇÃO DE BORDA — ETAPAS 2 a 6
+// ============================================
+// Aqui já passou pelo logger e pela observabilidade (o bloqueio APARECE nas
+// métricas, que é o que permite enxergar um ataque em curso), e ainda está
+// antes do helmet, do gate de páginas e do `express.static` — ou seja, antes
+// de qualquer leitura de disco ou cálculo de hash de CSP.
+//
+// Filtros: método fora da allowlist, caminho-armadilha, assinatura de scanner
+// (`/.env`, `/wp-admin`, travessia, log4shell) e User-Agent de ferramenta de
+// ataque ou de scraper comercial.
+app.use(edgeGuard.criarGuardaDeFiltros());
+
+// Teto de taxa por IP em TODAS as rotas — não só em `/api`, como o
+// `globalLimiter`. Sem isto, os 66 HTML, os estáticos e o 404 (que faz
+// `sendFile` de disco a cada caminho desconhecido) não tinham teto nenhum.
+app.use(edgeGuard.criarLimitesDeBorda());
+
+// robots.txt — política de rastreamento + as iscas do edgeGuard.
+// Servido por rota, e não como arquivo estático, porque as iscas precisam
+// ficar em UM lugar só (a constante ARMADILHAS): um `robots.txt` de verdade no
+// disco viraria a segunda cópia da lista, e as duas divergiriam na primeira
+// mudança — deixando iscas anunciadas que não banem, ou iscas que banem sem
+// nunca terem sido anunciadas (aí sim um risco de falso positivo).
+app.get('/robots.txt', (_req, res) => {
+    const iscas = [...edgeGuard.ARMADILHAS].map((caminho) => `Disallow: ${caminho}/`).join('\n');
+    res.type('text/plain').send(
+        [
+            '# Sistema Escolar — apenas a landing page é pública.',
+            '# Todo o resto exige autenticação e não deve ser indexado.',
+            'User-agent: *',
+            'Disallow: /html/',
+            'Disallow: /direcao/',
+            'Disallow: /detalhes/',
+            'Disallow: /graficos/',
+            'Disallow: /api/',
+            'Disallow: /portal-responsavel/',
+            iscas,
+            '',
+            '# Rastreamento agressivo é bloqueado na borda (ver edgeGuard.js).',
+            'Crawl-delay: 10',
+            '',
+        ].join('\n')
+    );
+});
 
 // NOTA: O redirecionamento HTTP -> HTTPS já é feito pelo próprio Render na
 // borda da rede, antes da requisição chegar a este app (toda requisição que

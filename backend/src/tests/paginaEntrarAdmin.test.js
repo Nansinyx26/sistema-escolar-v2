@@ -12,16 +12,20 @@ process.env.ADMIN_PATH = CODIGO;
 
 const request = require('supertest');
 const app = require('../app');
-const {
-    conectarBanco, limparBanco, desconectarBanco, criarUsuario,
-} = require('./helpers');
+const { conectarBanco, limparBanco, desconectarBanco, criarUsuario } = require('./helpers');
 const { assinarTokenSessao } = require('../utils/sessionToken');
 
 const MARCADOR_PAINEL = 'Administrador</option>';
 
-beforeAll(async () => { await conectarBanco(); });
-afterEach(async () => { await limparBanco(); });
-afterAll(async () => { await desconectarBanco(); });
+beforeAll(async () => {
+    await conectarBanco();
+});
+afterEach(async () => {
+    await limparBanco();
+});
+afterAll(async () => {
+    await desconectarBanco();
+});
 
 describe('Tela de login da área', () => {
     it('abre sem sessao no caminho secreto', async () => {
@@ -67,7 +71,9 @@ describe('A isenção NÃO vaza para o resto da área', () => {
 
     it('professor autenticado segue barrado no painel', async () => {
         const usuario = await criarUsuario({
-            email: 'prof_entrar@escola.test', perfil: 'professor', nome: 'Professor',
+            email: 'prof_entrar@escola.test',
+            perfil: 'professor',
+            nome: 'Professor',
         });
         const cookies = [`escola_jwt=${assinarTokenSessao(usuario)}`];
 
@@ -77,12 +83,21 @@ describe('A isenção NÃO vaza para o resto da área', () => {
     });
 
     it('nome parecido nao herda a isencao', async () => {
-        // Só o basename exato entra na lista — 'entrar.html.bak' ou
+        // Só o basename exato entra na lista — 'entrar.html.orig' ou
         // 'naoentrar.html' não podem passar por ser parecidos.
-        for (const arquivo of ['entrar.html.bak', 'naoentrar.html', 'entrar.htm']) {
+        for (const arquivo of ['entrar.html.orig', 'naoentrar.html', 'entrar.htm']) {
             const res = await request(app).get(`/html/${CODIGO}/${arquivo}`);
             expect(`${arquivo}:${res.status}`).toBe(`${arquivo}:302`);
         }
+    });
+
+    it('sufixo de backup nem chega ao gate: a borda recusa antes', async () => {
+        // `.bak` é assinatura de sondagem (docs/PROTECAO-BORDA.md, Issue #332):
+        // a borda responde 404 opaco antes de o gate decidir. A página segue
+        // sem ser entregue; quem recusa é que é outro.
+        const res = await request(app).get(`/html/${CODIGO}/entrar.html.bak`);
+        expect(res.status).toBe(404);
+        expect(res.headers['content-type']).toMatch(/text\/plain/);
     });
 });
 
@@ -96,7 +111,9 @@ describe('Login pela tela da área', () => {
             .send({ email: 'admin_entrar@escola.test', senha: SENHA_TESTE });
 
         expect(res.body.success).toBe(true);
-        expect((res.headers['set-cookie'] || []).some(c => c.startsWith('escola_jwt'))).toBe(true);
+        expect((res.headers['set-cookie'] || []).some((c) => c.startsWith('escola_jwt'))).toBe(
+            true
+        );
 
         // E o cookie obtido por essa tela abre o painel sob o apelido.
         const painel = await request(app)
