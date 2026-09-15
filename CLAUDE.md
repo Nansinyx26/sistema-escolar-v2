@@ -15,6 +15,18 @@ Code carregue esse padrão automaticamente.
 5. **Deploy é consequência do merge**: `develop` → dev, `main` → produção. Nunca manual.
 6. Antes de abrir o PR: `npm run verify`
 
+## Encerramento das sessões
+
+Ao terminar uma tarefa **e todas as pendências dela**, encerre a resposta com:
+
+- a lista curta do que ficou pronto, cada item com ✅;
+- o que continua em aberto com ⏳, dizendo o que é e de quem é a próxima ação;
+- a linha final **✅ TUDO FINALIZADO**.
+
+O ✅ só vem depois de conferir o estado real de cada item — checks do PR, deploy de produção,
+Issue fechada, testes —, nunca por suposição. Pendência que dependa de você, resolva antes de
+encerrar; a que depender do usuário, diga exatamente o que falta.
+
 ## Stack
 
 - **Frontend principal**: HTML/CSS/JS vanilla (66 páginas), SCSS + Tailwind, PWA com service worker
