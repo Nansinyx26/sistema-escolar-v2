@@ -707,6 +707,17 @@ function criarGuardaDeFiltros({ registro = registroPadrao, pontuar = !isTest } =
                 armadilha: veredictoCaminho.armadilha,
             });
             logarBloqueio(obterChave(), veredictoCaminho.motivo, req);
+
+            // Codificação quebrada (`%ZZ`) recebe 400, não o 404 opaco: é o
+            // status correto para URL que não decodifica, e é o que qualquer
+            // servidor responde — não revela filtro nenhum. Também é o que o
+            // gate de páginas já respondia antes desta camada existir.
+            if (veredictoCaminho.motivo === 'url-malformada') {
+                return responderBloqueio(req, res, {
+                    status: 400,
+                    mensagem: 'Requisicao invalida.',
+                });
+            }
             return responderBloqueio(req, res, { status: 404, mensagem: 'Nao encontrado.' });
         }
 

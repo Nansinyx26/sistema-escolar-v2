@@ -29,7 +29,7 @@ o primeiro middleware do Express.
 | 1 | **Banimento** | antes de compressão e logger | `429` com `Retry-After` |
 | 2 | **Método** fora da allowlist (TRACE, PROPFIND, CONNECT) | depois do logger, antes do helmet | `405` com `Allow` |
 | 3 | **Armadilha** (caminho-isca do `robots.txt`) | idem | `404`, banimento imediato |
-| 4 | **Sondagem** (PHP, WordPress, dotfile, painel de outro stack, dump, travessia, injeção) | idem | `404` em texto puro |
+| 4 | **Sondagem** (PHP, WordPress, dotfile, painel de outro stack, dump, travessia, injeção) | idem | `404` em texto puro; `400` para codificação quebrada (`%ZZ`) |
 | 5 | **User-agent** de ferramenta de ataque ou raspador de SEO/IA | idem | `403` |
 | 6 | **Taxa**: teto por IP em todas as rotas, janelas de 10 s e 5 min | idem | `429` com `Retry-After` |
 
@@ -45,6 +45,19 @@ A ordem na cadeia é deliberada:
 A sondagem recebe **404**, não 403. Um 403 confirma a quem está mapeando o servidor que existe
 um filtro ali; o 404 não se distingue de "não existe". E a resposta é texto montado em
 memória: nunca `sendFile` da página de 404.
+
+A exceção é a codificação quebrada (`%ZZ`), que recebe **400**. É o status correto para URL
+que não decodifica e o que qualquer servidor responde, então não revela filtro nenhum.
+
+Duas consequências que valem saber:
+
+- **Travessia com `..` só chega crua ao servidor quando vem de ferramenta** (scanner,
+  `curl --path-as-is`). Navegadores normalizam o caminho antes de enviar, e o cliente dos
+  testes (superagent) também, então para quem navega nada muda: o gate de páginas segue
+  decidindo. É o `..` cru, que só ferramenta manda, que para aqui.
+- **Sufixo de backup numa página real** (`/html/<área>/entrar.html.bak`) para aqui com 404,
+  antes do gate, que respondia com redirecionamento para o login. A página continua sem ser
+  entregue; só mudou quem recusa. `paginaEntrarAdmin.test.js` registra isso.
 
 ## Armadilhas
 

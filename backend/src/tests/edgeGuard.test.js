@@ -159,6 +159,14 @@ describe('edgeGuard — filtros de caminho', () => {
         expect(classificarCaminho('/%zz')).toMatchObject({ motivo: 'url-malformada' });
     });
 
+    it('percent-encoding invalido recebe 400, nao o 404 opaco', async () => {
+        // 400 é o status correto para URL que não decodifica, e era o que o
+        // gate de páginas já respondia (gateAnonimo.test.js).
+        const res = await request(app).get('/html/%ZZ/perfil.html');
+        expect(res.status).toBe(400);
+        expect(res.headers['content-type']).toMatch(/text\/plain/);
+    });
+
     it('isenta .well-known (ACME, security.txt) da regra de dotfile', () => {
         expect(classificarCaminho('/.well-known/security.txt')).toBeNull();
         expect(classificarCaminho('/.well-known/acme-challenge/abc123')).toBeNull();
