@@ -48,8 +48,25 @@ const { initializeSecretCodes } = require('./utils/secretCodeHelper');
 const logger = require('./utils/logger');
 const { startHealthMonitor } = require('./utils/healthMonitor');
 const { criarEncerrador } = require('./utils/encerramento');
+const { marcarEncerrando } = require('./utils/prontidao');
+const { desconectarDB } = connectDB;
 
 const PORT = process.env.PORT || 3001;
+
+/**
+ * Keep-alive HTTP acima do tempo ocioso do balanceador (Issue #335).
+ *
+ * O padrão do Node (5 s) é MENOR que o de todo balanceador comum (60 s no ALB,
+ * por exemplo). O balanceador reaproveita uma conexão que ele acha aberta, o
+ * Node já a fechou, e a requisição volta 502 — erro intermitente, impossível
+ * de reproduzir à mão. `headersTimeout` precisa ficar acima do keep-alive, ou
+ * o Node corta a conexão reaproveitada no meio do cabeçalho.
+ */
+function aplicarTimeoutsHttp(server) {
+    const keepAlive = Number(process.env.HTTP_KEEP_ALIVE_TIMEOUT_MS) || 65000;
+    server.keepAliveTimeout = keepAlive;
+    server.headersTimeout = keepAlive + 1000;
+}
 
 // Tempo que o processo espera antes de sair numa falha de boot, só para o log
 // chegar ao Render. Ver o `catch` de startServer e utils/db.js (Issue #126).
@@ -89,6 +106,7 @@ const startServer = async () => {
 
         // 2. Iniciar Servidor somente se o banco estiver OK
         const server = app.listen(PORT, () => {
+            aplicarTimeoutsHttp(server);
             logger.info(`✅ Servidor iniciado`, { mode: process.env.NODE_ENV, port: PORT });
 
             // 3. Ativa keep-alive para prevenir cold start no Render Free
@@ -424,12 +442,38 @@ const startServer = async () => {
 
         // Saída do processo com prazo máximo. O porquê (e o modo de falha que
         // isso conserta) está em utils/encerramento.js — Issue #125.
+        //
+        // Os dois ganchos são do desligamento gracioso (Issue #335): a instância
+        // sai da rotação do balanceador ANTES de fechar qualquer coisa, e a
+        // conexão com o banco só fecha DEPOIS de as requisições terminarem.
         const encerrarComPrazo = criarEncerrador({
             server,
             io,
             logger,
             prazoMs: Number(process.env.SHUTDOWN_TIMEOUT_MS) || undefined,
+            aoIniciar: marcarEncerrando,
+            antesDeSair: desconectarDB,
         });
+
+        // SIGTERM é como o Render (e qualquer orquestrador) pede a saída — em
+        // todo deploy e em toda troca de instância. Sem este handler o Node sai
+        // na hora e corta as requisições em andamento. SIGINT é o Ctrl+C local.
+        //
+        // Prazo próprio, maior que o da saída por exceção: aqui o processo está
+        // saudável e vale esperar a requisição longa (PDF, resposta do
+        // assistente) terminar. Os 20 s ficam abaixo dos 30 s que o Render
+        // espera antes de matar o processo à força.
+        const PRAZO_GRACIOSO_MS = Number(process.env.SHUTDOWN_GRACE_MS) || 20000;
+        for (const sinal of ['SIGTERM', 'SIGINT']) {
+            process.once(sinal, () => {
+                logger.info(`[Encerramento] ${sinal} recebido — drenando requisições`, {
+                    action: 'encerramento.sinal',
+                    sinal,
+                    prazoMs: PRAZO_GRACIOSO_MS,
+                });
+                encerrarComPrazo(0, { prazoMs: PRAZO_GRACIOSO_MS });
+            });
+        }
 
         // Tratamento de Rejeições Não Tratadas (Promises)
         //

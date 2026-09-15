@@ -46,6 +46,53 @@ const DECLARACAO = [
         obrigatoriaEm: null,
         descricao: 'Nome do banco (padrão: o da connection string)',
     },
+    // ── Conexão e ciclo de vida da instância (Issue #335) ──
+    {
+        nome: 'MONGODB_MAX_POOL_SIZE',
+        obrigatoriaEm: null,
+        descricao: 'Conexões por instância (padrão 20)',
+    },
+    { nome: 'MONGODB_MIN_POOL_SIZE', obrigatoriaEm: null, descricao: 'Pool mínimo (padrão 0)' },
+    {
+        nome: 'MONGODB_SERVER_SELECTION_TIMEOUT_MS',
+        obrigatoriaEm: null,
+        descricao: 'Prazo para achar o cluster (padrão 5000)',
+    },
+    {
+        nome: 'MONGODB_CONNECT_TIMEOUT_MS',
+        obrigatoriaEm: null,
+        descricao: 'Prazo para abrir conexão (padrão 10000)',
+    },
+    {
+        nome: 'MONGODB_SOCKET_TIMEOUT_MS',
+        obrigatoriaEm: null,
+        descricao: 'Operação sem resposta (padrão 45000)',
+    },
+    {
+        nome: 'MONGODB_WAIT_QUEUE_TIMEOUT_MS',
+        obrigatoriaEm: null,
+        descricao: 'Espera por conexão livre no pool (padrão 10000)',
+    },
+    {
+        nome: 'MONGODB_APP_NAME',
+        obrigatoriaEm: null,
+        descricao: 'Nome da aplicação no painel do Atlas',
+    },
+    {
+        nome: 'SHUTDOWN_GRACE_MS',
+        obrigatoriaEm: null,
+        descricao: 'Prazo do desligamento gracioso no SIGTERM (padrão 20000)',
+    },
+    {
+        nome: 'SHUTDOWN_TIMEOUT_MS',
+        obrigatoriaEm: null,
+        descricao: 'Prazo da saída por exceção (padrão 5000)',
+    },
+    {
+        nome: 'HTTP_KEEP_ALIVE_TIMEOUT_MS',
+        obrigatoriaEm: null,
+        descricao: 'Keep-alive HTTP, acima do ocioso do balanceador (padrão 65000)',
+    },
     { nome: 'PORT', obrigatoriaEm: null, descricao: 'Porta HTTP (padrão 3001)' },
     { nome: 'NODE_ENV', obrigatoriaEm: null, descricao: 'development | production | test' },
     {

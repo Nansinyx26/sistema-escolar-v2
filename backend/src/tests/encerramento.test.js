@@ -146,3 +146,145 @@ describe('encerramento do processo (Issue #125)', () => {
         expect(PRAZO_PADRAO_MS).toBe(5000);
     });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Desligamento gracioso (Issue #335): o mesmo encerrador atende o SIGTERM do
+// deploy. A ordem é o que importa — sair da rotação, drenar, liberar, sair.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('desligamento gracioso (Issue #335)', () => {
+    let server;
+
+    afterEach(async () => {
+        if (server?.listening) await new Promise((r) => server.close(r));
+        server = null;
+    });
+
+    test('ordem: aoIniciar → io → drenagem → antesDeSair → saída com código 0', async () => {
+        ({ server } = await subirServidor());
+        const ordem = [];
+
+        criarEncerrador({
+            server,
+            io: { close: () => ordem.push('io') },
+            logger: loggerFalso(),
+            prazoMs: 1000,
+            sair: (codigo) => ordem.push(`exit:${codigo}`),
+            aoIniciar: () => ordem.push('naoPronto'),
+            antesDeSair: async () => {
+                await new Promise((r) => setTimeout(r, 20));
+                ordem.push('banco');
+            },
+        })(0);
+
+        await new Promise((r) => setTimeout(r, 200));
+        expect(ordem).toEqual(['naoPronto', 'io', 'banco', 'exit:0']);
+    });
+
+    test('requisição em andamento termina antes de a conexão com o banco fechar', async () => {
+        const eventos = [];
+        server = http.createServer((_req, res) => {
+            setTimeout(() => {
+                eventos.push('respondeu');
+                res.end('ok');
+            }, 150);
+        });
+        await new Promise((r) => server.listen(0, '127.0.0.1', r));
+        const porta = server.address().port;
+
+        const resposta = new Promise((resolve) => {
+            // agent:false = conexão fechada ao fim da resposta, como a de um
+            // navegador que saiu da página; o keep-alive é coberto pelo prazo.
+            http.get({ host: '127.0.0.1', port: porta, path: '/', agent: false }, (res) => {
+                res.resume();
+                res.on('end', () => resolve(res.statusCode));
+            });
+        });
+        await new Promise((r) => setTimeout(r, 30)); // a requisição já chegou
+
+        const sair = jest.fn(() => eventos.push('saiu'));
+        criarEncerrador({
+            server,
+            logger: loggerFalso(),
+            prazoMs: 2000,
+            sair,
+            antesDeSair: () => eventos.push('banco'),
+        })(0);
+
+        expect(await resposta).toBe(200);
+        await new Promise((r) => setTimeout(r, 50));
+        expect(eventos).toEqual(['respondeu', 'banco', 'saiu']);
+        expect(sair).toHaveBeenCalledWith(0);
+    });
+
+    test('antesDeSair que falha não impede a saída', async () => {
+        ({ server } = await subirServidor());
+        const sair = jest.fn();
+        const logger = loggerFalso();
+
+        criarEncerrador({
+            server,
+            logger,
+            prazoMs: 500,
+            sair,
+            antesDeSair: async () => {
+                throw new Error('banco já fechado');
+            },
+        })(0);
+
+        await new Promise((r) => setTimeout(r, 150));
+        expect(sair).toHaveBeenCalledWith(0);
+        expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('liberar recursos'));
+    });
+
+    test('antesDeSair que trava é cortado pelo prazo', async () => {
+        ({ server } = await subirServidor());
+        const sair = jest.fn();
+        const logger = loggerFalso();
+
+        criarEncerrador({
+            server,
+            logger,
+            prazoMs: 150,
+            sair,
+            antesDeSair: () => new Promise(() => {}), // nunca termina
+        })(0);
+
+        await new Promise((r) => setTimeout(r, 300));
+        expect(sair).toHaveBeenCalledWith(0);
+        expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('não liberaram'));
+    });
+
+    test('prazo por chamada sobrepõe o do encerrador (SIGTERM espera mais que a exceção)', async () => {
+        ({ server } = await subirServidor());
+        const socketPreso = await prenderConexao(server.address().port);
+        const sair = jest.fn();
+
+        criarEncerrador({ server, logger: loggerFalso(), prazoMs: 100, sair })(0, {
+            prazoMs: 400,
+        });
+
+        await new Promise((r) => setTimeout(r, 200));
+        expect(sair).not.toHaveBeenCalled(); // o prazo de 100 ms foi substituído
+        await new Promise((r) => setTimeout(r, 350));
+        expect(sair).toHaveBeenCalledWith(0);
+        socketPreso.destroy();
+    });
+
+    test('aoIniciar que lança não impede o encerramento', async () => {
+        ({ server } = await subirServidor());
+        const sair = jest.fn();
+
+        criarEncerrador({
+            server,
+            logger: loggerFalso(),
+            prazoMs: 300,
+            sair,
+            aoIniciar: () => {
+                throw new Error('falhou');
+            },
+        })(0);
+
+        await new Promise((r) => setTimeout(r, 150));
+        expect(sair).toHaveBeenCalledWith(0);
+    });
+});

@@ -42,15 +42,34 @@
 const PRAZO_PADRAO_MS = 5000;
 
 /**
+ * DESLIGAMENTO GRACIOSO (Issue #335)
+ * ----------------------------------
+ * O mesmo encerrador serve ao `SIGTERM` do deploy, com código 0. A diferença
+ * para a saída por exceção está em dois ganchos:
+ *
+ * - `aoIniciar`: roda ANTES de fechar qualquer coisa. É onde a instância passa
+ *   a responder 503 no /ready, para o balanceador parar de mandar requisição
+ *   nova enquanto as que já chegaram terminam.
+ * - `antesDeSair`: roda DEPOIS de o servidor drenar. É onde a conexão com o
+ *   Mongo fecha — fechar antes derrubaria justamente as requisições que se
+ *   estava esperando terminar.
+ *
+ * O prazo continua valendo sobre tudo, ganchos inclusive: um `close()` do
+ * banco que trave não segura o processo.
+ */
+
+/**
  * @param {object} deps
  * @param {import('http').Server} deps.server  servidor HTTP que está escutando
  * @param {{ close?: Function }} [deps.io]     instância do Socket.IO, se houver
- * @param {{ warn: Function }} deps.logger
+ * @param {{ warn: Function, info?: Function }} deps.logger
  * @param {number} [deps.prazoMs]
  * @param {(codigo: number) => void} [deps.sair]  injetável em teste
- * @returns {(codigo: number) => void}
+ * @param {(codigo: number) => void} [deps.aoIniciar]
+ * @param {(codigo: number) => Promise<void>|void} [deps.antesDeSair]
+ * @returns {(codigo: number, opcoes?: { prazoMs?: number }) => void}
  */
-function criarEncerrador({ server, io, logger, prazoMs, sair }) {
+function criarEncerrador({ server, io, logger, prazoMs, sair, aoIniciar, antesDeSair }) {
     const prazo = Number(prazoMs) || PRAZO_PADRAO_MS;
     const encerrar = typeof sair === 'function' ? sair : (codigo) => process.exit(codigo);
 
@@ -69,9 +88,19 @@ function criarEncerrador({ server, io, logger, prazoMs, sair }) {
         encerrar(codigo);
     };
 
-    return function encerrarComPrazo(codigo) {
+    return function encerrarComPrazo(codigo, opcoes = {}) {
         if (encerrando) return;
         encerrando = true;
+        const prazoDesta = Number(opcoes.prazoMs) || prazo;
+        let drenou = false;
+
+        if (typeof aoIniciar === 'function') {
+            try {
+                aoIniciar(codigo);
+            } catch (e) {
+                logger.warn(`[Encerramento] Falha no início do encerramento: ${e.message}`);
+            }
+        }
 
         if (io && typeof io.close === 'function') {
             try {
@@ -82,15 +111,31 @@ function criarEncerrador({ server, io, logger, prazoMs, sair }) {
         }
 
         const prazoId = setTimeout(() => {
-            logger.warn(`[Encerramento] Conexões não drenaram em ${prazo}ms — saindo assim mesmo`);
+            logger.warn(
+                drenou
+                    ? `[Encerramento] Recursos não liberaram em ${prazoDesta}ms — saindo assim mesmo`
+                    : `[Encerramento] Conexões não drenaram em ${prazoDesta}ms — saindo assim mesmo`
+            );
             sairUmaVez(codigo);
-        }, prazo);
+        }, prazoDesta);
 
         // `unref()` é o que impede o prazo de virar custo: sem ele, uma saída
         // sem conexão pendente esperaria os ${prazo}ms inteiros.
         prazoId.unref();
 
-        server.close(() => {
+        // O callback vem no evento 'close' do servidor, isto é, depois que a
+        // última conexão terminou — também quando o `io.close()` acima já tiver
+        // fechado o socket de escuta (aí ele chega com ERR_SERVER_NOT_RUNNING,
+        // que aqui não muda nada).
+        server.close(async () => {
+            drenou = true;
+            if (typeof antesDeSair === 'function') {
+                try {
+                    await antesDeSair(codigo);
+                } catch (e) {
+                    logger.warn(`[Encerramento] Falha ao liberar recursos: ${e.message}`);
+                }
+            }
             clearTimeout(prazoId);
             sairUmaVez(codigo);
         });

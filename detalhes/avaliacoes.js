@@ -380,13 +380,10 @@ async function carregarAvaliacoes() {
 /* ── Métricas Gerais (topo) ─────────────────────────────────────────────── */
 function atualizarMetricasGerais(lista) {
     const comMedia = lista.filter((a) => typeof a.mediaTurma === 'number');
-    // Média na escala 0–10: cada média é convertida pelo valor da própria avaliação.
+    // `mediaTurma` já vem na escala 0–10 do sistema, qualquer que seja o valor (Issue #330).
     const mediaGeral =
         comMedia.length > 0
-            ? numeroBR(
-                  comMedia.reduce((s, a) => s + (a.mediaTurma / valorDa(a)) * 10, 0) /
-                      comMedia.length
-              )
+            ? numeroBR(comMedia.reduce((s, a) => s + a.mediaTurma, 0) / comMedia.length)
             : '—';
     const notasLancadas = lista.reduce((s, a) => s + (a.totalNotas || 0), 0);
     const aprovados = lista.reduce((s, a) => s + (a.totalAprovados || 0), 0);
@@ -426,7 +423,7 @@ function renderizarTabela(lista) {
             const valor = valorDa(a);
             const media =
                 typeof a.mediaTurma === 'number'
-                    ? `<span class="media-valor ${notaInputClass(a.mediaTurma, valor).replace('is-', 'nota-')}">${numeroBR(a.mediaTurma)}</span>`
+                    ? `<span class="media-valor ${notaInputClass(a.mediaTurma, 10).replace('is-', 'nota-')}" title="Média na escala de 0 a 10">${numeroBR(a.mediaTurma)}</span>`
                     : `<span class="texto-suave">—</span>`;
 
             const acoesGestao = a.podeGerenciar
@@ -634,6 +631,7 @@ function abrirModalNova(avaliacao = null) {
     document.getElementById('formValor').value = '10';
     selTurma.disabled = false;
     selMateria.disabled = false;
+    document.getElementById('formValor').disabled = false;
     dicaTurma.hidden = true;
 
     if (avaliacao) {
@@ -651,12 +649,14 @@ function abrirModalNova(avaliacao = null) {
         document.getElementById('formDataEntrega').value = paraInputDate(avaliacao.dataEntrega);
         document.getElementById('formDescricao').value = avaliacao.descricao || '';
 
-        // Com nota lançada, turma e disciplina ficam presas (o servidor recusa a troca).
+        // Com nota lançada, turma, disciplina e valor ficam presos (o servidor recusa a troca):
+        // cada nota foi convertida para 0–10 com o valor da época.
         if ((avaliacao.totalNotas || 0) > 0) {
             selTurma.disabled = true;
             selMateria.disabled = true;
+            document.getElementById('formValor').disabled = true;
             dicaTurma.textContent =
-                'Já há notas lançadas: turma e disciplina não podem mais ser alteradas.';
+                'Já há notas lançadas: turma, disciplina e valor não podem mais ser alterados.';
             dicaTurma.hidden = false;
         }
         atualizarProfessores(avaliacao.professorId || '');
@@ -745,6 +745,7 @@ async function salvarAvaliacao(e) {
             // Campo desabilitado não muda: não mandar evita o 409 de "já tem notas".
             if (document.getElementById('formTurma').disabled) delete payload.turmaId;
             if (document.getElementById('formMateria').disabled) delete payload.materiaId;
+            if (document.getElementById('formValor').disabled) delete payload.valor;
             await apiFetch(`/avaliacoes-escolares/${encodeURIComponent(id)}`, {
                 method: 'PUT',
                 body: JSON.stringify(payload),

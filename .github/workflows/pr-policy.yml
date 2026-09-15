@@ -60,6 +60,42 @@ jobs:
             echo "release=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # Depois de uma release, a `main` fica "1 commit à frente" da `develop`:
+      # o commit de merge que o próprio PR de release criou. Esse commit não
+      # traz arquivo nenhum além do que já está na `develop`, e o release
+      # seguinte compara a partir da ponta da `develop` promovida — não há o
+      # que devolver. Um PR main → develop sem arquivo alterado é só esse merge;
+      # ele rodava o CI inteiro e pedia um merge manual a cada release (#326).
+      # Sincronização é para hotfix, que traz arquivo.
+      - name: 🔁 Sincronização precisa trazer arquivo
+        if: github.head_ref == 'main' && github.base_ref == 'develop'
+        env:
+          ARQUIVOS: ${{ github.event.pull_request.changed_files }}
+        run: |
+          if [ "$ARQUIVOS" -gt 0 ]; then
+            echo "OK — $ARQUIVOS arquivo(s) a devolver à develop."
+            exit 0
+          fi
+
+          echo "::error title=Sincronização sem arquivo::Este PR main → develop não altera nenhum arquivo. Feche-o."
+          cat <<'MSG'
+
+          ┌───────────────────────────────────────────────────────────────┐
+          │  Este PR main → develop não traz nenhum arquivo.              │
+          └───────────────────────────────────────────────────────────────┘
+
+          O que ele levaria à develop é só o commit de merge de uma
+          release, e esse commit não precisa voltar (AGENTS.md, seção 6):
+          o próximo PR de release lista só o trabalho novo, com ou sem
+          esta sincronização.
+
+          Como corrigir: feche este PR.
+
+          Sincronização main → develop é para hotfix, que traz arquivo.
+
+          MSG
+          exit 1
+
       - name: 🔗 A descrição do PR precisa referenciar uma Issue
         if: steps.tipo.outputs.release != 'true'
         env:
