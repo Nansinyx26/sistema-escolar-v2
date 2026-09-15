@@ -227,6 +227,74 @@ const DECLARACAO = [
         obrigatoriaEm: null,
         descricao: 'Teto/hora de denúncias e contestações por conta (padrão: 10)',
     },
+
+    // ── Rate limit e IP do cliente (docs/RATE-LIMIT.md) ──────────────────────
+    // Todos opcionais: sem nada definido valem os padrões de config/rateLimit.js.
+    {
+        nome: 'TRUST_PROXY',
+        obrigatoriaEm: null,
+        descricao: 'Proxies confiáveis para o X-Forwarded-For (padrão: 1 salto; true é recusado)',
+    },
+    {
+        nome: 'IP_CLIENTE_CABECALHO',
+        obrigatoriaEm: null,
+        descricao: 'Cabeçalho de IP da CDN, ex.: cf-connecting-ip (só vindo de proxy confiável)',
+    },
+    {
+        nome: 'RATE_LIMIT_STORE',
+        obrigatoriaEm: null,
+        descricao: 'mongo (padrão, compartilhado entre instâncias) | memoria',
+    },
+    {
+        nome: 'RATE_LIMIT_GLOBAL_IP',
+        obrigatoriaEm: null,
+        descricao: 'Teto geral de /api por IP anônimo (padrão: 100)',
+    },
+    {
+        nome: 'RATE_LIMIT_GLOBAL_USUARIO',
+        obrigatoriaEm: null,
+        descricao: 'Teto geral de /api por conta autenticada (padrão: 200)',
+    },
+    {
+        nome: 'RATE_LIMIT_GLOBAL_JANELA',
+        obrigatoriaEm: null,
+        descricao: 'Janela do teto geral (padrão: 1m)',
+    },
+    {
+        nome: 'RATE_LIMIT_ROTAS',
+        obrigatoriaEm: null,
+        descricao: 'Regras por endpoint em JSON (ver docs/RATE-LIMIT.md)',
+    },
+    {
+        nome: 'RATE_LIMIT_LOGIN_FALHAS',
+        obrigatoriaEm: null,
+        descricao: 'Falhas de login por IP antes do bloqueio (padrão: 5)',
+    },
+    {
+        nome: 'RATE_LIMIT_LOGIN_JANELA',
+        obrigatoriaEm: null,
+        descricao: 'Janela de contagem das falhas de login (padrão: 15m)',
+    },
+    {
+        nome: 'RATE_LIMIT_LOGIN_BLOQUEIO',
+        obrigatoriaEm: null,
+        descricao: 'Primeiro bloqueio de IP; dobra a cada reincidência (padrão: 15m)',
+    },
+    {
+        nome: 'RATE_LIMIT_LOGIN_BLOQUEIO_MAX',
+        obrigatoriaEm: null,
+        descricao: 'Teto do bloqueio progressivo (padrão: 24h)',
+    },
+    {
+        nome: 'RATE_LIMIT_LOGIN_MEMORIA',
+        obrigatoriaEm: null,
+        descricao: 'Tempo sem bloqueio para a reincidência recomeçar (padrão: 24h)',
+    },
+    {
+        nome: 'RATE_LIMIT_IPS_LIVRES',
+        obrigatoriaEm: null,
+        descricao: 'IPs/faixas fora do bloqueio por IP, ex.: IP fixo da escola',
+    },
 ];
 
 /**

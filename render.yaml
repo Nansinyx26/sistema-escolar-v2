@@ -176,6 +176,23 @@ services:
       # - key: CHAT_RETENCAO_DIAS
       #   value: "730"
 
+      # ── Rate limit e bloqueio de IP no login (docs/RATE-LIMIT.md) ──────────
+      # Todos opcionais: os padrões do código já valem (100/min por IP anônimo,
+      # 200/min por conta, 5 falhas de login em 15 min → bloqueio de 15 min que
+      # dobra a cada reincidência até 24 h). Os contadores ficam no MongoDB e
+      # valem para todas as instâncias.
+      #
+      # TRUST_PROXY: padrão 1 salto (o balanceador do Render). Depois do deploy,
+      # abra GET /api/admin/seguranca/diag-ip logado como admin: `ipResolvido` precisa ser o
+      # seu IP público. `true` é recusado.
+      # - key: TRUST_PROXY
+      #   value: "1"
+      #
+      # IP fixo da escola, para um erro de senha coletivo não bloquear todo mundo
+      # (o bloqueio por conta continua valendo). Exemplo com IP de documentação:
+      # - key: RATE_LIMIT_IPS_LIVRES
+      #   value: "203.0.113.25"
+
       # Tetos de uso do chat (opcionais — os padrões do código já valem).
       # - key: RATE_LIMIT_CHAT_MENSAGENS
       #   value: "30"   # mensagens por minuto, por conta

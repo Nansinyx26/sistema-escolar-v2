@@ -21,7 +21,13 @@ const app = express();
 // mas importa para quem lê: `req.ip` só é o IP real do cliente por causa desta
 // linha, e toda a proteção de borda é keyed por `req.ip`. Subiu para junto de
 // quem depende dela.
-app.set('trust proxy', 1);
+//
+// De quais proxies aceitar o X-Forwarded-For vem de TRUST_PROXY (Issue #333).
+// O padrão é 1 salto, que é o balanceador do Render e o valor que já rodava.
+// Nunca `true`: com ele qualquer cliente escolhe o próprio IP e zera o rate
+// limit a cada requisição. Ver utils/ipCliente.js e
+// GET /api/admin/seguranca/diag-ip para conferir em produção.
+require('./utils/ipCliente').configurarConfiancaProxy(app);
 
 // Sondas do balanceador (GET /health e GET /ready) — PRIMEIRO middleware.
 // Respondem antes de compressão, log de acesso, sessão, CSRF e rate limit:
@@ -357,12 +363,13 @@ app.get('/', (req, res) => {
 // o atacante martela a mesma conta e cada request cai numa chave nova.
 // Agora os endpoints sensíveis passam por dois limiters em série — um keyed
 // pelo IP (normalizado para /64 em IPv6) e outro pelo e-mail/CPF alvo.
-// Detalhes e limites em middleware/rateLimiters.js.
+// Detalhes e limites em middleware/rateLimiters.js e docs/RATE-LIMIT.md.
 const isProduction = process.env.NODE_ENV === 'production';
 const isTest = process.env.NODE_ENV === 'test';
 
 const {
     globalLimiter,
+    limitesPorRota,
     authIpLimiter,
     authContaLimiter,
     codeIpLimiter,
@@ -402,9 +409,6 @@ app.use('/api', (req, res, next) => {
     res.vary('Cookie');
     next();
 });
-
-// Aplicar o globalLimiter APENAS em rotas /api
-app.use('/api', globalLimiter);
 
 // ============================================
 // CORS — ALLOWLIST ESTRITA (nunca reflete a Origin recebida)
@@ -488,6 +492,13 @@ app.use(
 );
 
 app.use(cookieParser());
+
+// Teto geral de /api. Fica DEPOIS do cookieParser porque o usuário autenticado
+// sai do cookie do JWT (sem ele, todo mundo contaria pelo IP da escola) e
+// ANTES da sessão e do parse do corpo, para recusar o excesso sem gastar banco
+// nem memória. As regras por endpoint de RATE_LIMIT_ROTAS vêm logo em seguida.
+app.use('/api', globalLimiter);
+if (limitesPorRota.length > 0) app.use(limitesPorRota);
 
 // ============================================
 // SESSÃO PERSISTENTE (express-session + connect-mongo)
@@ -650,9 +661,15 @@ app.use('/api/auth/verify-recovery-code', limitarCodigo);
 app.use('/api/responsavel/vincular', limitarCodigo);
 app.use('/api/responsavel/buscar-aluno', limitarCodigo);
 
-// Os três endpoints historicamente mais atacados mantêm o teto mais baixo
+// Login: freio por IP que conta só a tentativa que FALHA, com bloqueio
+// temporário progressivo (middleware/protecaoLogin.js), seguido do teto por
+// conta. O `authIpLimiter` saiu do login porque somava login certo e errado no
+// mesmo teto — a entrada da manhã de uma escola num IP só esbarrava nele.
+app.post('/api/auth/login', require('./middleware/protecaoLogin').protecaoLogin);
+app.use('/api/auth/login', authContaLimiter);
+
+// Recuperação de senha mantém o par IP + conta.
 const limitarAuth = [authIpLimiter, authContaLimiter];
-app.use('/api/auth/login', limitarAuth);
 app.use('/api/auth/forgot-password', limitarAuth);
 app.use('/api/auth/reset-password', limitarAuth);
 
