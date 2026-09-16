@@ -1290,6 +1290,12 @@ exports.update = async (req, res) => {
         // sem isso qualquer conta autenticada se promovia a diretor com um
         // PUT /api/usuarios/<próprioId> { "perfil": "diretor" }.
         const CAMPOS_PRIVILEGIO = ['perfil', 'ativo', 'escola', 'email', 'cpf', 'deveMudarSenha'];
+        // SEGURANÇA / LGPD (Issue #310): consentimento e autorizações
+        // (consentimentoAceiteEm, consentimentoVersao, lgpdConsents) NÃO entram
+        // na whitelist de edição. O consentimento é ato exclusivo do titular
+        // com prova e assinatura gravadas via `updateProfile` (Issue #280/#289).
+        // Um gestor não consente por terceiros, e o titular não grava carimbo
+        // legado sem assinatura no lgpdHistory.
         const CAMPOS_PROPRIOS = [
             'nome',
             'telefone',
@@ -1303,12 +1309,9 @@ exports.update = async (req, res) => {
             'autorizadoRetirar',
             'segundoResponsavel',
             'pessoasAutorizadas',
-            'lgpdConsents',
             'profileCompleted',
             'tutorialProfessorConcluido',
             'tutorialResponsavelConcluido',
-            'consentimentoAceiteEm',
-            'consentimentoVersao',
             'preferenciaNarracao',
             'voiceSpeed',
             'accessibilityFontSize',
