@@ -16,12 +16,7 @@ const Usuario = require('../models/Usuario');
 const Escola = require('../models/Escola');
 const Diretor = require('../models/Diretor');
 const { invalidarCacheEscolas } = require('../middleware/filtrarPorEscola');
-const {
-    conectarBanco,
-    limparBanco,
-    desconectarBanco,
-    criarUsuario,
-} = require('./helpers');
+const { conectarBanco, limparBanco, desconectarBanco, criarUsuario } = require('./helpers');
 const { assinarTokenSessao } = require('../utils/sessionToken');
 
 beforeAll(async () => {
