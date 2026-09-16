@@ -119,4 +119,25 @@ describe('CORS', () => {
         const res = await request(app).get('/api/ping').set('Origin', 'https://evil.example.com');
         expect(res.status).toBe(403);
     });
+
+    it('preflight com Access-Control-Request-Method: PATCH vindo de origem permitida devolve PATCH (Issue #344)', async () => {
+        const res = await request(app)
+            .options('/api/chat-direto/lida/abc')
+            .set('Origin', 'http://localhost:5500')
+            .set('Access-Control-Request-Method', 'PATCH');
+
+        expect([200, 204]).toContain(res.status);
+        expect(res.headers['access-control-allow-origin']).toBe('http://localhost:5500');
+        expect(res.headers['access-control-allow-methods']).toMatch(/\bPATCH\b/);
+    });
+
+    it('preflight com PATCH vindo de origem nao permitida continua recusado com 403', async () => {
+        const res = await request(app)
+            .options('/api/chat-direto/lida/abc')
+            .set('Origin', 'https://evil.example.com')
+            .set('Access-Control-Request-Method', 'PATCH');
+
+        expect(res.status).toBe(403);
+        expect(res.headers['access-control-allow-origin']).toBeUndefined();
+    });
 });
