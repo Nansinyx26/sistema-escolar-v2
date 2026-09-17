@@ -1,6 +1,7 @@
 const Aluno = require('../models/Aluno');
-const crypto = require('crypto');
+const crypto = require('node:crypto');
 const { emitirParaEscola } = require('./realtime');
+const { executarComArrendamento } = require('./travaDistribuida');
 
 // Alfabeto sem caracteres ambíguos (0/O, 1/I) — o código é ditado por telefone
 // e transcrito à mão pelos responsáveis.
@@ -45,7 +46,9 @@ async function generateUniqueSecretCode() {
     // Colisão em 2^50 é praticamente impossível; se acontecer, alonga o código
     // em vez de aceitar uma repetição silenciosa.
     if (exists) {
-        console.warn(`⚠️ [SECRET-CODES] Colisões após ${attempts} tentativas — gerando código estendido.`);
+        console.warn(
+            `⚠️ [SECRET-CODES] Colisões após ${attempts} tentativas — gerando código estendido.`
+        );
         code = generateRandomCode(TAMANHO_CODIGO + 4);
     }
 
@@ -59,8 +62,8 @@ const FILTRO_SEM_CODIGO = {
         { codigoSecreto: null },
         { codigoSecreto: '' },
         { codigoSecreto: 'N/A' },
-        { codigoSecreto: 'n/a' }
-    ]
+        { codigoSecreto: 'n/a' },
+    ],
 };
 
 /** Divide uma lista em blocos de tamanho fixo. */
@@ -107,15 +110,17 @@ async function assignSecretCodes(ids) {
                 .select('codigoSecreto')
                 .lean();
             if (emUso.length === 0) break;
-            const usados = new Set(emUso.map(d => d.codigoSecreto));
-            candidatos = candidatos.map(c => (usados.has(c) ? generateRandomCode(TAMANHO_CODIGO + 4) : c));
+            const usados = new Set(emUso.map((d) => d.codigoSecreto));
+            candidatos = candidatos.map((c) =>
+                usados.has(c) ? generateRandomCode(TAMANHO_CODIGO + 4) : c
+            );
         }
 
         const ops = lote.map((id, i) => ({
             updateOne: {
                 filter: { _id: id },
-                update: { $set: { codigoSecreto: candidatos[i] } }
-            }
+                update: { $set: { codigoSecreto: candidatos[i] } },
+            },
         }));
 
         try {
@@ -130,7 +135,7 @@ async function assignSecretCodes(ids) {
         const gravados = await Aluno.find({ _id: { $in: lote } })
             .select('codigoSecreto')
             .lean();
-        gravados.forEach(d => {
+        gravados.forEach((d) => {
             if (d.codigoSecreto) atribuidos.set(String(d._id), d.codigoSecreto);
         });
     }
@@ -142,40 +147,57 @@ async function assignSecretCodes(ids) {
  * Checks all students in the database and generates a unique secret code
  * for any student that doesn't already have one.
  */
-async function initializeSecretCodes() {
-    try {
-        console.log('🔑 [SECRET-CODES] Checking students with missing or invalid secret codes...');
-        const students = await Aluno.find(FILTRO_SEM_CODIGO)
-            .select('nome sobrenome escolaId id')
-            .lean();
+async function initializeSecretCodes(opcoesTrava = {}) {
+    return executarComArrendamento(
+        'inicializacao-codigos',
+        async () => {
+            try {
+                console.log(
+                    '🔑 [SECRET-CODES] Checking students with missing or invalid secret codes...'
+                );
+                const students = await Aluno.find(FILTRO_SEM_CODIGO)
+                    .select('nome sobrenome escolaId id')
+                    .lean();
 
-        if (students.length === 0) {
-            console.log('✅ [SECRET-CODES] All students already have secret codes.');
-            return;
-        }
+                if (students.length === 0) {
+                    console.log('✅ [SECRET-CODES] All students already have secret codes.');
+                    return;
+                }
 
-        console.log(`🔑 [SECRET-CODES] Found ${students.length} students without valid secret codes. Generating...`);
-        const atribuidos = await assignSecretCodes(students.map(s => s._id));
+                console.log(
+                    `🔑 [SECRET-CODES] Found ${students.length} students without valid secret codes. Generating...`
+                );
+                const atribuidos = await assignSecretCodes(students.map((s) => s._id));
 
-        for (const student of students) {
-            if (!atribuidos.has(String(student._id))) {
-                console.warn(`   └─ ⚠️ ${student.nome}: código NÃO gravado — verificar o documento.`);
-                continue;
+                for (const student of students) {
+                    if (!atribuidos.has(String(student._id))) {
+                        console.warn(
+                            `   └─ ⚠️ ${student.nome}: código NÃO gravado — verificar o documento.`
+                        );
+                        continue;
+                    }
+
+                    // SEGURANÇA: o broadcast antigo entregava o código secreto a TODOS
+                    // os sockets conectados. O evento agora só avisa que houve mudança
+                    // (restrito à escola do aluno); o código sai apenas pela rota
+                    // autenticada /api/alunos/codigos-secretos.
+                    emitirParaEscola(student.escolaId, 'student:code_updated', {
+                        id: student._id || student.id,
+                        nome: `${student.nome} ${student.sobrenome || ''}`.trim(),
+                    });
+                }
+                console.log(
+                    `✅ [SECRET-CODES] ${atribuidos.size}/${students.length} código(s) inicializado(s).`
+                );
+            } catch (err) {
+                console.error(
+                    '❌ [SECRET-CODES] Error during secret codes initialization:',
+                    err.message
+                );
             }
-
-            // SEGURANÇA: o broadcast antigo entregava o código secreto a TODOS
-            // os sockets conectados. O evento agora só avisa que houve mudança
-            // (restrito à escola do aluno); o código sai apenas pela rota
-            // autenticada /api/alunos/codigos-secretos.
-            emitirParaEscola(student.escolaId, 'student:code_updated', {
-                id: student._id || student.id,
-                nome: `${student.nome} ${student.sobrenome || ''}`.trim()
-            });
-        }
-        console.log(`✅ [SECRET-CODES] ${atribuidos.size}/${students.length} código(s) inicializado(s).`);
-    } catch (err) {
-        console.error('❌ [SECRET-CODES] Error during secret codes initialization:', err.message);
-    }
+        },
+        { duracaoMs: 60000, ...opcoesTrava }
+    );
 }
 
 module.exports = {
@@ -183,5 +205,5 @@ module.exports = {
     generateUniqueSecretCode,
     assignSecretCodes,
     initializeSecretCodes,
-    FILTRO_SEM_CODIGO
+    FILTRO_SEM_CODIGO,
 };

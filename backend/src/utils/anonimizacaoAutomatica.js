@@ -19,6 +19,7 @@ const cron = require('node-cron');
 const Usuario = require('../models/Usuario');
 const { logAction } = require('./auditHelper');
 const { enviarEmail } = require('../services/EnvioEmail');
+const { executarComTravaJanela, formatarJanelaMes } = require('./travaDistribuida');
 
 // Threshold: 12 meses = 365 dias
 const THRESHOLD_ANONIMIZACAO_DIAS = 365;
@@ -84,76 +85,94 @@ async function enviarAvisoAnonimizacao(usuario) {
 // --------------------------------------------------
 // Executa a rotina de anonimização
 // --------------------------------------------------
-async function executarAnonimizacao() {
-    console.log('🔄 [LGPD] Iniciando rotina de anonimização automática...');
+async function executarAnonimizacao(opcoesTrava = {}) {
+    const janela = formatarJanelaMes();
+    return executarComTravaJanela(
+        'anonimizacao-lgpd',
+        janela,
+        async () => {
+            console.log('🔄 [LGPD] Iniciando rotina de anonimização automática...');
 
-    let anonimizados = 0;
-    let avisoEnviados = 0;
+            let anonimizados = 0;
+            let avisoEnviados = 0;
 
-    try {
-        // --- FASE 1: Enviar aviso para usuários próximos ao threshold ---
-        const dataAviso = diasAtras(THRESHOLD_AVISO_DIAS);
-        const dataAnonimizacao = diasAtras(THRESHOLD_ANONIMIZACAO_DIAS);
+            try {
+                // --- FASE 1: Enviar aviso para usuários próximos ao threshold ---
+                const dataAviso = diasAtras(THRESHOLD_AVISO_DIAS);
+                const dataAnonimizacao = diasAtras(THRESHOLD_ANONIMIZACAO_DIAS);
 
-        const usuariosParaAviso = await Usuario.find({
-            ativo: true,
-            anonimizadoEm: null,
-            ultimoLogin: {
-                $lte: dataAviso,   // Inativo há mais de 11 meses
-                $gt: dataAnonimizacao  // Mas menos de 12 meses (ainda não será anonimizado)
+                const usuariosParaAviso = await Usuario.find({
+                    ativo: true,
+                    anonimizadoEm: null,
+                    ultimoLogin: {
+                        $lte: dataAviso, // Inativo há mais de 11 meses
+                        $gt: dataAnonimizacao, // Mas menos de 12 meses (ainda não será anonimizado)
+                    },
+                })
+                    .select('_id email nome ultimoLogin')
+                    .lean();
+
+                for (const usuario of usuariosParaAviso) {
+                    await enviarAvisoAnonimizacao(usuario);
+                    avisoEnviados++;
+                }
+
+                // --- FASE 2: Anonimizar os que ultrapassaram 12 meses ---
+                const usuariosParaAnonimizar = await Usuario.find({
+                    ativo: true,
+                    anonimizadoEm: null,
+                    ultimoLogin: { $lte: dataAnonimizacao },
+                })
+                    .select('_id email nome ultimoLogin')
+                    .lean();
+
+                for (const usuario of usuariosParaAnonimizar) {
+                    const idAnonimo = `anon_${usuario._id}_${Date.now()}`;
+
+                    await Usuario.findByIdAndUpdate(usuario._id, {
+                        $set: {
+                            nome: 'Usuário Anonimizado (LGPD)',
+                            email: `${idAnonimo}@escola.anon`,
+                            cpf: '000.000.000-00',
+                            telefone: '(00) 00000-0000',
+                            ativo: false,
+                            senha: 'ANONIMIZADO_LGPD',
+                            anonimizadoEm: new Date(),
+                            foto: null,
+                            resetToken: null,
+                            resetTokenExpiry: null,
+                        },
+                    });
+
+                    // Registra no audit log (sem req, é uma ação do sistema)
+                    await logAction(
+                        {
+                            ip: 'SISTEMA-CRON',
+                            user: { id: 'SISTEMA', email: 'cron@sistema', perfil: 'sistema' },
+                        },
+                        'AUTO_ANONYMIZE_USER',
+                        'Usuarios',
+                        {
+                            recursoId: usuario._id,
+                            descricao: `Usuário ${usuario.email} anonimizado automaticamente por inatividade (>${THRESHOLD_ANONIMIZACAO_DIAS} dias). Último login: ${usuario.ultimoLogin?.toISOString() || 'nunca'}`,
+                        }
+                    );
+
+                    console.log(
+                        `✅ [LGPD] Anonimizado: ${usuario.email} (último login: ${usuario.ultimoLogin?.toLocaleDateString('pt-BR') || 'nunca'})`
+                    );
+                    anonimizados++;
+                }
+
+                console.log(
+                    `✅ [LGPD] Rotina concluída — Anonimizados: ${anonimizados} | Avisos enviados: ${avisoEnviados}`
+                );
+            } catch (err) {
+                console.error('❌ [LGPD] Erro na rotina de anonimização:', err.message);
             }
-        }).select('_id email nome ultimoLogin').lean();
-
-        for (const usuario of usuariosParaAviso) {
-            await enviarAvisoAnonimizacao(usuario);
-            avisoEnviados++;
-        }
-
-        // --- FASE 2: Anonimizar os que ultrapassaram 12 meses ---
-        const usuariosParaAnonimizar = await Usuario.find({
-            ativo: true,
-            anonimizadoEm: null,
-            ultimoLogin: { $lte: dataAnonimizacao }
-        }).select('_id email nome ultimoLogin').lean();
-
-        for (const usuario of usuariosParaAnonimizar) {
-            const idAnonimo = `anon_${usuario._id}_${Date.now()}`;
-
-            await Usuario.findByIdAndUpdate(usuario._id, {
-                $set: {
-                    nome: 'Usuário Anonimizado (LGPD)',
-                    email: `${idAnonimo}@escola.anon`,
-                    cpf: '000.000.000-00',
-                    telefone: '(00) 00000-0000',
-                    ativo: false,
-                    senha: 'ANONIMIZADO_LGPD',
-                    anonimizadoEm: new Date(),
-                    foto: null,
-                    resetToken: null,
-                    resetTokenExpiry: null
-                }
-            });
-
-            // Registra no audit log (sem req, é uma ação do sistema)
-            await logAction(
-                { ip: 'SISTEMA-CRON', user: { id: 'SISTEMA', email: 'cron@sistema', perfil: 'sistema' } },
-                'AUTO_ANONYMIZE_USER',
-                'Usuarios',
-                {
-                    recursoId: usuario._id,
-                    descricao: `Usuário ${usuario.email} anonimizado automaticamente por inatividade (>${THRESHOLD_ANONIMIZACAO_DIAS} dias). Último login: ${usuario.ultimoLogin?.toISOString() || 'nunca'}`
-                }
-            );
-
-            console.log(`✅ [LGPD] Anonimizado: ${usuario.email} (último login: ${usuario.ultimoLogin?.toLocaleDateString('pt-BR') || 'nunca'})`);
-            anonimizados++;
-        }
-
-        console.log(`✅ [LGPD] Rotina concluída — Anonimizados: ${anonimizados} | Avisos enviados: ${avisoEnviados}`);
-
-    } catch (err) {
-        console.error('❌ [LGPD] Erro na rotina de anonimização:', err.message);
-    }
+        },
+        { ttlSegundos: 35 * 24 * 3600, ...opcoesTrava }
+    );
 }
 
 // --------------------------------------------------
@@ -167,13 +186,19 @@ function startAnonimizacaoAutomatica() {
 
     // Executa todo dia 1 do mês às 03:00
     // Cron: '0 3 1 * *'  →  minuto=0, hora=3, dia=1, mês=*, dia-semana=*
-    cron.schedule('0 3 1 * *', () => {
-        executarAnonimizacao();
-    }, {
-        timezone: 'America/Sao_Paulo'
-    });
+    cron.schedule(
+        '0 3 1 * *',
+        () => {
+            executarAnonimizacao();
+        },
+        {
+            timezone: 'America/Sao_Paulo',
+        }
+    );
 
-    console.log('🔒 [LGPD] Cron de anonimização automática ativo — Executa todo dia 1 do mês às 03:00.');
+    console.log(
+        '🔒 [LGPD] Cron de anonimização automática ativo — Executa todo dia 1 do mês às 03:00.'
+    );
 }
 
 module.exports = { startAnonimizacaoAutomatica, executarAnonimizacao };
