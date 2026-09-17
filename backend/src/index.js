@@ -45,6 +45,7 @@ const cron = require('node-cron');
 const SecurityController = require('./controllers/SecurityController');
 const SecurityConfig = require('./models/SecurityConfig');
 const { initializeSecretCodes } = require('./utils/secretCodeHelper');
+const { executarComTravaJanela, formatarJanelaDia } = require('./utils/travaDistribuida');
 const logger = require('./utils/logger');
 const { startHealthMonitor } = require('./utils/healthMonitor');
 const { criarEncerrador } = require('./utils/encerramento');
@@ -218,27 +219,32 @@ const startServer = async () => {
             cron.schedule(
                 '0 0 * * *',
                 async () => {
-                    try {
-                        logger.info(
-                            '🔐 [CRON] Rotação automática do código secreto (meia-noite BR)'
-                        );
-                        let config = await SecurityConfig.findOne({ chave: 'CONFIG_GERAL' });
-                        if (!config) {
-                            config = await SecurityConfig.create({
-                                codigoSecretoEscola: SecurityController.generateCode(),
-                                dataUltimaRotacao: new Date(),
-                                rotacaoAutomatica: true,
-                            });
-                        } else {
-                            await SecurityController.rotateCodeInternal(
-                                config,
-                                'CRON (Meia-Noite-BR)'
+                    const janela = formatarJanelaDia();
+                    await executarComTravaJanela('rotacao-codigo', janela, async () => {
+                        try {
+                            logger.info(
+                                '🔐 [CRON] Rotação automática do código secreto (meia-noite BR)'
                             );
+                            let config = await SecurityConfig.findOne({ chave: 'CONFIG_GERAL' });
+                            if (!config) {
+                                config = await SecurityConfig.create({
+                                    codigoSecretoEscola: SecurityController.generateCode(),
+                                    dataUltimaRotacao: new Date(),
+                                    rotacaoAutomatica: true,
+                                });
+                            } else {
+                                await SecurityController.rotateCodeInternal(
+                                    config,
+                                    'CRON (Meia-Noite-BR)'
+                                );
+                            }
+                            logger.info('✅ [CRON] Código secreto atualizado com sucesso');
+                        } catch (err) {
+                            logger.error('❌ [CRON] Erro na rotação do código', {
+                                error: err.message,
+                            });
                         }
-                        logger.info('✅ [CRON] Código secreto atualizado com sucesso');
-                    } catch (err) {
-                        logger.error('❌ [CRON] Erro na rotação do código', { error: err.message });
-                    }
+                    });
                 },
                 { timezone: 'America/Sao_Paulo' }
             );
