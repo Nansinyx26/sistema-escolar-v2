@@ -6,19 +6,10 @@
  * balanceador de carga (Issue #336 / Épico #334).
  */
 
-const os = require('node:os');
-const crypto = require('node:crypto');
 const mongoose = require('mongoose');
 const TravaDistribuida = require('../models/TravaDistribuida');
 const logger = require('./logger');
-
-const ID_INSTANCIA =
-    process.env.RENDER_INSTANCE_ID ||
-    `${os.hostname()}:${process.pid}:${crypto.randomBytes(4).toString('hex')}`;
-
-function obterIdInstancia() {
-    return ID_INSTANCIA;
-}
+const { ID_INSTANCIA, obterIdInstancia } = require('./instanciaId');
 
 /**
  * Retorna a data no formato YYYY-MM-DD no fuso de Brasília (America/Sao_Paulo).
