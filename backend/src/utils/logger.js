@@ -23,10 +23,9 @@
  *   logger.error('Falha ao salvar nota', { err, notaId }); // ou dentro do meta
  */
 
-'use strict';
-
 const { sanitize, PINO_REDACT_PATHS } = require('./logSanitizer');
 const logContext = require('./logContext');
+const { obterIdInstancia } = require('./instanciaId');
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const IS_TEST = process.env.NODE_ENV === 'test';
@@ -61,7 +60,11 @@ function createEngine() {
                 level: (label) => ({ level: label }),
             },
 
-            base: { pid: process.pid, env: process.env.NODE_ENV || 'development' },
+            base: {
+                pid: process.pid,
+                env: process.env.NODE_ENV || 'development',
+                instanciaId: obterIdInstancia(),
+            },
             timestamp: () => `,"timestamp":"${new Date().toISOString()}"`,
             messageKey: 'message',
         };
@@ -89,7 +92,11 @@ function createEngine() {
         // torna o comportamento impossível de verificar em teste e imprevisível
         // sob supervisores que reencaminham a saída. O custo é desprezível no
         // volume desta aplicação.
-        const destino = { write: (linha) => { process.stdout.write(linha); } };
+        const destino = {
+            write: (linha) => {
+                process.stdout.write(linha);
+            },
+        };
 
         return { kind: 'pino', instance: pino(options, destino) };
     } catch {
@@ -109,6 +116,7 @@ function createFallbackEngine() {
             timestamp: new Date().toISOString(),
             pid: process.pid,
             env: process.env.NODE_ENV || 'development',
+            instanciaId: obterIdInstancia(),
             message,
             ...logContext.get(),
             ...obj,
@@ -120,8 +128,11 @@ function createFallbackEngine() {
     };
 
     return {
-        debug: write('debug'), info: write('info'), warn: write('warn'),
-        error: write('error'), fatal: write('fatal'),
+        debug: write('debug'),
+        info: write('info'),
+        warn: write('warn'),
+        error: write('error'),
+        fatal: write('fatal'),
     };
 }
 
@@ -154,7 +165,7 @@ function buildMeta(metaOrError, extra) {
 
     // A sanitização é o último passo antes da escrita — nada escapa dela.
     const safe = sanitize(meta);
-    return (safe && typeof safe === 'object' && !Array.isArray(safe)) ? safe : { detail: safe };
+    return safe && typeof safe === 'object' && !Array.isArray(safe) ? safe : { detail: safe };
 }
 
 function emit(level, message, metaOrError, extra) {
@@ -183,9 +194,11 @@ function alert(type, message, context = {}) {
     const now = Date.now();
     const last = _alertCooldowns.get(fingerprint);
 
-    if (last && (now - last) < ALERT_COOLDOWN_MS) {
+    if (last && now - last < ALERT_COOLDOWN_MS) {
         emit('warn', `[ALERTA suprimido: ${type}] ${message}`, {
-            ...context, alertType: type, suppressed: true,
+            ...context,
+            alertType: type,
+            suppressed: true,
             sinceLastMs: now - last,
         });
         return;
@@ -199,7 +212,9 @@ function alert(type, message, context = {}) {
     }
 
     emit('fatal', `🚨 [ALERTA: ${type}] ${message}`, {
-        ...context, alertType: type, severity: 'critical',
+        ...context,
+        alertType: type,
+        severity: 'critical',
     });
 }
 
@@ -228,8 +243,11 @@ const logger = {
         const wrap = (level) => (msg, meta, extra) =>
             emit(level, msg, { ...safe, ...buildMeta(meta, extra) });
         return {
-            debug: wrap('debug'), info: wrap('info'), warn: wrap('warn'),
-            error: wrap('error'), fatal: wrap('fatal'),
+            debug: wrap('debug'),
+            info: wrap('info'),
+            warn: wrap('warn'),
+            error: wrap('error'),
+            fatal: wrap('fatal'),
             alert: (type, msg, ctx = {}) => alert(type, msg, { ...safe, ...ctx }),
             child: (more) => logger.child({ ...bindings, ...more }),
         };
