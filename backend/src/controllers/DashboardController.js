@@ -372,112 +372,33 @@ exports.getTeacherPanel = async (req, res) => {
         const frequenciaGeral = 0;
         const frequenciaPorTurma = [];
 
-        // --- GESTÃO DE HORÁRIO DINÂMICO E GRADE POR PERÍODO ---
+        // --- AGENDA DO DIA: SÓ A GRADE CADASTRADA (Issue #371) ---
+        // A agenda sai da `tabela_geral` da escola ativa e de mais nada. Sem
+        // grade para hoje, a lista vem vazia e a tela mostra o estado vazio —
+        // nunca uma agenda de exemplo com nomes de colegas.
         const Turma = require('../models/Turma');
-        // Descobre o período da turma principal do professor
-        const turmaPrincipalInfo =
-            turmas.length > 0
-                ? await Turma.findOne({
-                      ...ef,
-                      $or: [{ _id: turmas[0] }, { id: turmas[0] }, { nome: turmas[0] }],
-                  }).lean()
-                : null;
-        const periodo = 'Manhã';
+        const TabelaGeral = require('../models/TabelaGeral');
 
         const disciplinaName = prof
             ? prof.disciplina || (prof.materias && prof.materias[0]) || 'PEB I'
             : 'PEB I';
+        const disciplinaUpper = disciplinaName.toUpperCase();
         const isPeb2 =
-            disciplinaName.toUpperCase().includes('PEB II') ||
-            disciplinaName.toUpperCase().includes('PEB 2') ||
-            disciplinaName.toUpperCase().includes('PEBII') ||
-            disciplinaName.toUpperCase().includes('PEB2') ||
+            disciplinaUpper.includes('PEB II') ||
+            disciplinaUpper.includes('PEB 2') ||
+            disciplinaUpper.includes('PEBII') ||
+            disciplinaUpper.includes('PEB2') ||
             (prof && prof.tipoAtuacao === 'materia') ||
             turmas.length > 1;
 
-        // Definição de horários padrão baseados no período escolar e tipo de cargo (PEB I vs PEB II)
-        let horarios = [];
-        let horarioRanges = [];
-        if (isPeb2) {
-            // PEB II - Períodos de aula de 50 minutos (especialistas)
-            if (periodo === 'Tarde') {
-                horarios = ['13:00', '13:50', '14:40'];
-                horarioRanges = ['13:00 - 13:50', '13:50 - 14:40', '14:40 - 15:30'];
-            } else if (periodo === 'Noite') {
-                horarios = ['19:00', '19:45', '20:30'];
-                horarioRanges = ['19:00 - 19:45', '19:45 - 20:30', '20:30 - 21:15'];
-            } else {
-                horarios = ['07:30', '08:20', '09:30', '10:20', '11:10', '13:00', '13:50'];
-                horarioRanges = [
-                    '07:30 - 08:20',
-                    '08:20 - 09:10',
-                    '09:30 - 10:20',
-                    '10:20 - 11:10',
-                    '11:10 - 12:00',
-                    '13:00 - 13:50',
-                    '13:50 - 14:40',
-                ];
-            }
-        } else {
-            // PEB I - Blocos de aula maiores (polivalentes)
-            if (periodo === 'Tarde') {
-                horarios = ['13:00', '14:20', '16:00'];
-                horarioRanges = ['13:00 - 14:20', '14:20 - 15:40', '16:00 - 17:20'];
-            } else if (periodo === 'Noite') {
-                horarios = ['19:00', '20:15', '21:30'];
-                horarioRanges = ['19:00 - 20:15', '20:15 - 21:30', '21:30 - 22:45'];
-            } else {
-                horarios = ['07:30', '08:20', '09:30', '10:20', '11:10', '13:00', '13:50'];
-                horarioRanges = [
-                    '07:30 - 08:20',
-                    '08:20 - 09:10',
-                    '09:30 - 10:20',
-                    '10:20 - 11:10',
-                    '11:10 - 12:00',
-                    '13:00 - 13:50',
-                    '13:50 - 14:40',
-                ];
-            }
-        }
+        const currentTotalMinutes = brasilHour * 60 + brasilMinute;
 
-        let proximasAulas = [];
+        // Chave do professor na grade: só a do cadastro. Deduzir pelo nome
+        // da pessoa ou pelo texto da disciplina ligava um professor à grade
+        // de outro.
+        const professorKey = prof && typeof prof.professorKey === 'string' ? prof.professorKey : '';
 
-        // Usar hora do Brasil (já calculada acima)
-        const currentHour = brasilHour;
-        const currentMinute = brasilMinute;
-        const currentTotalMinutes = currentHour * 60 + currentMinute;
-
-        // Resolvendo o professorKey do docente logado para buscar na tabela_geral
-        let professorKey = prof ? prof.professorKey : '';
-        if (!professorKey || professorKey === 'undefined' || professorKey === '') {
-            const disc = ((prof && prof.disciplina) || '').toUpperCase();
-            const name = (user.nome || '').toUpperCase();
-            if (disc.includes('INGLÊS') || disc.includes('INGLES') || disc.includes('INGL')) {
-                professorKey = 'INGLS';
-            } else if (disc.includes('ARTES') || disc.includes('ARTE')) {
-                professorKey = 'MIRIAN';
-            } else if (disc.includes('MAKER') || disc.includes('MK')) {
-                professorKey = 'OFMAKER';
-            } else if (disc.includes('LEITURA') || disc.includes('OL')) {
-                professorKey = 'OFLEITURA';
-            } else if (
-                disc.includes('SEBRAE') ||
-                disc.includes('DSE') ||
-                disc.includes('EMPREENDEDORISMO')
-            ) {
-                professorKey = 'OFSEBRAE';
-            } else if (disc.includes('PROERD') || disc.includes('LIMA')) {
-                professorKey = 'LIMA';
-            } else if (disc.includes('FÍSICA') || disc.includes('FISICA') || disc.includes('EF')) {
-                if (name.includes('MARCOS')) {
-                    professorKey = 'MARCOS';
-                } else {
-                    professorKey = 'MARJORIE';
-                }
-            }
-        }
-
-        // Buscar salas associadas para busca dinâmica de nome de sala
+        // Salas das turmas da escola ativa, para mostrar onde é a aula
         const dbTurmasList = await Turma.find(ef).lean();
         const turmasSalaMap = {};
         dbTurmasList.forEach((t) => {
@@ -487,16 +408,19 @@ exports.getTeacherPanel = async (req, res) => {
             if (idKey) turmasSalaMap[idKey] = t.sala || '';
         });
 
-        const getSalaForTurma = (turmaName) => {
-            if (!turmaName) return 'Sala de Aula';
-            const cleanKey = turmaName
+        const normalizarTurma = (turmaName) =>
+            String(turmaName || '')
                 .replace(/º/g, '')
                 .replace(/ANO/g, '')
                 .replace(/\s/g, '')
                 .toUpperCase();
-            return turmasSalaMap[cleanKey] || 'Sala de Aula';
+
+        const getSalaForTurma = (turmaName) => {
+            if (!turmaName) return '';
+            return turmasSalaMap[normalizarTurma(turmaName)] || '';
         };
 
+        // Sábado e domingo não têm grade: nada de cair na segunda-feira.
         const diasSemanaMap = {
             'Segunda-feira': 'SEGUNDA',
             'Terça-feira': 'TERÇA',
@@ -504,7 +428,7 @@ exports.getTeacherPanel = async (req, res) => {
             'Quinta-feira': 'QUINTA',
             'Sexta-feira': 'SEXTA',
         };
-        const diaBusca = diasSemanaMap[hojeNome] || 'SEGUNDA';
+        const diaBusca = diasSemanaMap[hojeNome] || null;
 
         const periodTimes = [
             { start: 7 * 60 + 30, end: 8 * 60 + 20, startStr: '07:30', rangeStr: '07:30 - 08:20' },
@@ -526,165 +450,69 @@ exports.getTeacherPanel = async (req, res) => {
             },
         ];
 
-        if (turmas.length === 0) {
-            proximasAulas = [];
-        } else if (isPeb2) {
-            // ========================================================
-            // CRONOGRAMA DE HOJE PARA ESPECIALISTA (PEB II)
-            // ========================================================
-            // Busca as células do cronograma onde este professor leciona hoje no fuso do Brasil
-            const TabelaGeral = require('../models/TabelaGeral');
-            const cells = professorKey
-                ? await TabelaGeral.find({
-                      professorKey: professorKey,
-                      dia: diaBusca,
-                  }).lean()
-                : [];
+        const statusDoHorario = (timeInfo) => {
+            if (currentTotalMinutes >= timeInfo.end) {
+                return { status: 'Concluída', statusColor: 'badge-ok' };
+            }
+            if (currentTotalMinutes >= timeInfo.start) {
+                return { status: 'Agora', statusColor: 'badge-ok' };
+            }
+            return { status: `Às ${timeInfo.startStr}`, statusColor: 'badge-warn' };
+        };
 
-            const cellsMap = {};
-            cells.forEach((c) => {
-                cellsMap[c.aulaIdx] = c;
-            });
+        let proximasAulas = [];
 
-            proximasAulas = [];
-            for (let i = 0; i < 7; i++) {
-                const cell = cellsMap[i];
-                const timeInfo = periodTimes[i];
+        if (diaBusca && turmas.length > 0 && isPeb2 && professorKey) {
+            // Especialista (PEB II): as células onde a chave dele aparece hoje
+            const cells = await TabelaGeral.find({
+                ...ef,
+                professorKey: professorKey,
+                dia: diaBusca,
+            }).lean();
 
-                let status = 'Mais tarde';
-                let statusColor = '';
-                if (currentTotalMinutes >= timeInfo.end) {
-                    status = 'Concluída';
-                    statusColor = 'badge-ok';
-                } else if (
-                    currentTotalMinutes >= timeInfo.start &&
-                    currentTotalMinutes < timeInfo.end
-                ) {
-                    status = 'Agora';
-                    statusColor = 'badge-ok';
-                } else {
-                    status = `Às ${timeInfo.startStr}`;
-                    statusColor = 'badge-warn';
-                }
+            if (cells.length > 0) {
+                const cellsMap = {};
+                cells.forEach((c) => {
+                    cellsMap[c.aulaIdx] = c;
+                });
 
-                if (cell) {
-                    proximasAulas.push({
+                proximasAulas = periodTimes.map((timeInfo, i) => {
+                    const cell = cellsMap[i];
+                    const base = {
                         hora: timeInfo.startStr,
                         horarioRange: timeInfo.rangeStr,
-                        materia: `${disciplinaName} (${cell.turmaNome})`,
+                        ...statusDoHorario(timeInfo),
+                    };
+                    if (!cell) {
+                        return {
+                            ...base,
+                            materia: 'Horário de planejamento',
+                            turma: '',
+                            sala: '',
+                            livre: true,
+                            barColor: 'rgba(255,255,255,0.06)',
+                        };
+                    }
+                    return {
+                        ...base,
+                        materia: disciplinaName,
                         turma: cell.turmaNome,
                         sala: getSalaForTurma(cell.turmaNome),
-                        status: status,
-                        statusColor: statusColor,
+                        livre: false,
                         barColor: '#a855f7',
-                    });
-                } else {
-                    // Horário Livre / Vagante / Planejamento
-                    proximasAulas.push({
-                        hora: timeInfo.startStr,
-                        horarioRange: timeInfo.rangeStr,
-                        materia: 'Horário de Planejamento',
-                        turma: '-',
-                        sala: 'Sala dos Professores',
-                        status: status,
-                        statusColor: statusColor,
-                        barColor: 'rgba(255,255,255,0.06)',
-                    });
-                }
-            }
-        } else {
-            // ========================================================
-            // CRONOGRAMA DE HOJE PARA PROFESSOR REGULAR (PEB I)
-            // ========================================================
-            if (diaBusca === 'SEGUNDA') {
-                // Grade exata da imagem do professor na segunda-feira (Mock do enunciado)
-                const monAulas = [
-                    {
-                        hora: '07:30',
-                        horarioRange: '07:30 – 09:10',
-                        materia: 'Aula Regular (PEB 1)',
-                        turma: '',
-                        sala: 'Sala 16',
-                        barColor: 'var(--primary-color)',
-                        startMin: 7 * 60 + 30,
-                        endMin: 9 * 60 + 10,
-                    },
-                    {
-                        hora: '09:30',
-                        horarioRange: '09:30 – 11:10',
-                        materia: 'Artes (PEB 2) — Prof. Mirian',
-                        turma: '',
-                        sala: 'Sala de Artes',
-                        barColor: '#a855f7',
-                        startMin: 9 * 60 + 30,
-                        endMin: 11 * 60 + 10,
-                    },
-                    {
-                        hora: '11:10',
-                        horarioRange: '11:10 – 12:00',
-                        materia: 'Oficina de Leitura — Prof. Raquel',
-                        turma: '',
-                        sala: 'Biblioteca',
-                        barColor: '#eab308',
-                        startMin: 11 * 60 + 10,
-                        endMin: 12 * 60 + 0,
-                    },
-                    {
-                        hora: '15:00',
-                        horarioRange: '15:00 – 18:00',
-                        materia: 'Reunião Pedagógica',
-                        turma: '',
-                        sala: 'Biblioteca',
-                        barColor: '#ef4444',
-                        startMin: 15 * 60 + 0,
-                        endMin: 18 * 60 + 0,
-                    },
-                ];
-
-                proximasAulas = monAulas.map((aula) => {
-                    let status = 'Mais tarde';
-                    let statusColor = '';
-
-                    if (currentTotalMinutes >= aula.endMin) {
-                        status = 'Concluída';
-                        statusColor = 'badge-ok';
-                    } else if (
-                        currentTotalMinutes >= aula.startMin &&
-                        currentTotalMinutes < aula.endMin
-                    ) {
-                        status = 'Agora';
-                        statusColor = 'badge-ok';
-                    } else {
-                        status = `Às ${aula.hora}`;
-                        statusColor = 'badge-warn';
-                    }
-
-                    return {
-                        hora: aula.hora,
-                        horarioRange: aula.horarioRange,
-                        materia: aula.materia,
-                        turma: aula.turma || turmas[0],
-                        sala: aula.sala,
-                        status: status,
-                        statusColor: statusColor,
-                        barColor: aula.barColor,
                     };
                 });
-            } else {
-                // Outros dias da semana, carrega horários reais da turma do banco de dados
-                const TabelaGeral = require('../models/TabelaGeral');
-                const normalizedTurma = turmas[0]
-                    .replace(/º/g, '')
-                    .replace(/ANO/g, '')
-                    .replace(/\s/g, '')
-                    .toUpperCase();
+            }
+        } else if (diaBusca && turmas.length > 0 && !isPeb2) {
+            // Polivalente (PEB I): a grade da turma dele, todos os dias igual
+            const turmaGrade = normalizarTurma(turmas[0]);
+            const cells = await TabelaGeral.find({
+                ...ef,
+                turmaId: turmaGrade,
+                dia: diaBusca,
+            }).lean();
 
-                // Buscar células da turma no banco
-                const cells = await TabelaGeral.find({
-                    turmaId: normalizedTurma,
-                    dia: diaBusca,
-                }).lean();
-
+            if (cells.length > 0) {
                 const cellsMap = {};
                 cells.forEach((c) => {
                     cellsMap[c.aulaIdx] = c;
@@ -701,91 +529,37 @@ exports.getTeacherPanel = async (req, res) => {
                     LIMA: 'PROERD',
                 };
 
-                proximasAulas = [];
-                for (let i = 0; i < 7; i++) {
+                proximasAulas = periodTimes.map((timeInfo, i) => {
                     const cell = cellsMap[i];
-                    const abrev = cell ? cell.abrev : '';
-                    let materia = 'Aula Regular (PEB 1)';
-                    let professorNome = '';
+                    const abrev = cell ? String(cell.abrev || '').trim() : '';
+                    let materia = 'Aula regular';
 
-                    if (abrev && abrev.trim() !== '') {
+                    if (abrev) {
                         materia = abrevNomes[abrev.toUpperCase()] || abrev;
-                        const key = TabelaGeral.getProfessorKey(abrev, normalizedTurma);
-                        professorNome = TabelaGeral.PROFESSOR_NOME[key] || '';
+                        const key = TabelaGeral.getProfessorKey(abrev, turmaGrade);
+                        const professorNome = TabelaGeral.PROFESSOR_NOME[key] || '';
                         if (professorNome) {
                             materia = `${materia} (${professorNome.split(' ')[0]})`;
                         }
                     }
 
-                    // Determinar o status temporal baseado na hora do dia
-                    let status = 'Mais tarde';
-                    let statusColor = '';
-                    const timeInfo = periodTimes[i];
-                    if (currentTotalMinutes >= timeInfo.end) {
-                        status = 'Concluída';
-                        statusColor = 'badge-ok';
-                    } else if (
-                        currentTotalMinutes >= timeInfo.start &&
-                        currentTotalMinutes < timeInfo.end
-                    ) {
-                        status = 'Agora';
-                        statusColor = 'badge-ok';
-                    } else {
-                        status = `Às ${timeInfo.startStr}`;
-                        statusColor = 'badge-warn';
-                    }
-
-                    proximasAulas.push({
+                    return {
                         hora: timeInfo.startStr,
                         horarioRange: timeInfo.rangeStr,
                         materia: materia,
                         turma: turmas[0],
                         sala: getSalaForTurma(turmas[0]),
-                        status: status,
-                        statusColor: statusColor,
+                        livre: false,
+                        ...statusDoHorario(timeInfo),
                         barColor: abrev ? '#a855f7' : 'var(--a)',
-                    });
-                }
-            }
-        }
-
-        // --- REUNIÃO PEDAGÓGICA: toda segunda-feira das 15:00 às 18:00 ---
-        const isSegunda = brasilDay === 1; // 1 = Segunda-feira (fuso Brasil)
-
-        if (isSegunda) {
-            // Só adiciona se não estiver presente na lista (para evitar duplicidade)
-            const jaTemReuniao = proximasAulas.some(
-                (a) => a.materia.includes('Pedagógica') || a.materia.includes('pedagógica')
-            );
-            if (!jaTemReuniao) {
-                let status = 'Às 15:00';
-                let statusColor = 'badge-warn';
-                if (currentTotalMinutes >= 18 * 60) {
-                    status = 'Concluída';
-                    statusColor = 'badge-ok';
-                } else if (currentTotalMinutes >= 15 * 60 && currentTotalMinutes < 18 * 60) {
-                    status = 'Agora';
-                    statusColor = 'badge-ok';
-                }
-
-                proximasAulas.push({
-                    hora: '15:00',
-                    horarioRange: '15:00 - 18:00',
-                    materia: 'Reunião Pedagógica',
-                    turma: '',
-                    sala: 'Biblioteca',
-                    status: status,
-                    statusColor: statusColor,
-                    barColor: '#ef4444',
+                    };
                 });
             }
         }
-        // Aviso especial de segunda-feira
-        let ultimoAvisoText =
+
+        const isSegunda = brasilDay === 1;
+        const ultimoAvisoText =
             avisos.length > 0 ? avisos[0].mensagem || avisos[0].titulo : 'Nenhum aviso pendente';
-        if (isSegunda) {
-            ultimoAvisoText = 'Reunião pedagógica das 15:00 às 18:00 na Biblioteca.';
-        }
 
         let saudacao = 'Bom dia';
         if (brasilHour >= 12 && brasilHour < 18) {
