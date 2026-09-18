@@ -95,6 +95,34 @@ Próximo passo sugerido: migrar `Modal.tsx` para usar este `Dialog` (herda acess
 
 ---
 
+## 4. Base visual dos logins e painéis — `ui3` (épico #370)
+
+Visual "giz neon": no escuro a tela é um quadro-negro (preto/grafite) com destaque
+verde-turquesa; no claro vira quadro branco com o mesmo verde em tom de tinta.
+Referência: as artes do Portal do Docente e do dashboard do professor.
+
+| Arquivo | O que tem |
+|---------|-----------|
+| `css/ui-base.css` | Tokens (`--ui-*`) dos dois temas, botões, campos, caixa de seleção, selos, foco e o combobox de escola |
+| `css/ui-login.css` | Layout dos logins de professor, direção e secretaria |
+| `js/escola-combobox.js` | Aprimora `<select data-ui-combo>` com busca e teclado; o `value` (id) nunca aparece na tela |
+| `js/login-tema.js` | Botão de tema dos logins (usa o `ThemeManager` de `theme.js`) |
+
+Como usar numa página:
+
+- Marcar o `<body>` com `class="ui3"` e carregar `ui-base.css` **depois** dos CSS antigos.
+- Usar só classes `ui-*` (ou um prefixo da própria tela, como `lg-*`): tudo é escopado em
+  `body.ui3` para não colidir com `components-new.css`, `dashboard.css` etc.
+- Tipografia: **Sora** (títulos e números, `ui-display`, `ui-num`) + **Inter** (texto).
+- Cor que é informação (destaque, status, ícone em quadrado colorido) leva `ui-tint`
+  (usa `--ui-tint`, padrão o verde) ou `ui-on-color` (texto sobre fundo colorido). Sem essas
+  classes, a varredura do tema claro em `variables.css` pinta tudo de preto.
+- Foco: o anel é o global de `acessibilidade.css` (3px). Componente novo não soma um
+  segundo anel por cima.
+- Movimento: entrada com `opacity + translateY(8px) + blur(4px)`, uma vez; nada em loop.
+
+---
+
 ## Próximos passos (replicação)
 1. Incluir os 2 `<script>` do Lucide nas 57 páginas restantes (o shim faz o resto).
 2. Migrar os 17 arquivos `ti ti-*` do portal para `lucide-react`.

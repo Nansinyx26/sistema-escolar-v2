@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     setupTabs();
+    setupLembrarMe();
     setupEscolaSelect();
     setupLoginForm();
     setupRegisterForm();
@@ -111,7 +112,7 @@ async function setupEscolaSelect() {
         // um termo do mapa (ex.: bairro "Jaguari") era renomeada ou sumia do login,
         // divergindo do modal da landing, que já exibe e.nome direto.
 
-        select.innerHTML = '<option value="">Selecione a sua escola...</option>';
+        select.innerHTML = '<option value="">Selecione sua escola</option>';
 
         escolas
             .sort((a, b) => {
@@ -132,19 +133,28 @@ async function setupEscolaSelect() {
                     (e.nome || '').toLowerCase().includes('jaguari') ||
                     (e.nome || '').toLowerCase().includes('mascellani') ||
                     e.ativo;
+                // A tela mostra só o nome da escola: o _id fica no value, e
+                // "Em breve" vira selo no seletor (escola-combobox.js) a partir
+                // do disabled — nada disso entra no texto da opção.
                 const opt = document.createElement('option');
                 opt.value = e._id;
-                opt.textContent = e.nome + (isJaguari ? ' (Disponível)' : ' 🔒 (Em breve)');
+                opt.textContent = e.nome;
                 if (!isJaguari) {
                     opt.disabled = true;
                 }
                 select.appendChild(opt);
             });
 
-        // Pré-seleciona a escola vinda do modal da landing, se houver e estiver ativa
+        // Pré-seleciona a escola vinda do modal da landing, se houver e estiver
+        // ativa; senão, a última escolhida com "Lembrar-me".
         const ctx = getEscolaIdFromUrl();
+        const lembrada = lerLembrado().escolaId;
+        const habilitada = (id) =>
+            id && Array.from(select.options).some((o) => o.value === String(id) && !o.disabled);
         if (ctx && escolas.some((e) => String(e._id) === String(ctx))) {
             select.value = ctx;
+        } else if (habilitada(lembrada)) {
+            select.value = lembrada;
         } else {
             // Seleciona a Jaguari por padrão
             const jaguariOpt = Array.from(select.options).find((o) => !o.disabled && o.value);
@@ -154,6 +164,47 @@ async function setupEscolaSelect() {
         group.style.display = '';
     } catch (e) {
         console.warn('Não foi possível carregar as escolas:', e);
+    }
+}
+
+// === LEMBRAR-ME ===
+// Guarda só o e-mail e a escola escolhida, neste navegador, para preencher o
+// formulário na próxima visita. Senha e sessão nunca passam por aqui.
+const CHAVE_LEMBRAR = 'loginLembrar';
+
+function lerLembrado() {
+    try {
+        const salvo = JSON.parse(localStorage.getItem(CHAVE_LEMBRAR) || '{}');
+        return salvo && typeof salvo === 'object' ? salvo : {};
+    } catch {
+        // localStorage bloqueado (aba anônima) ou valor corrompido: sem lembrança.
+        return {};
+    }
+}
+
+function gravarLembrado(email, escolaId) {
+    try {
+        if (email) {
+            localStorage.setItem(
+                CHAVE_LEMBRAR,
+                JSON.stringify({ email, escolaId: escolaId || null })
+            );
+        } else {
+            localStorage.removeItem(CHAVE_LEMBRAR);
+        }
+    } catch {
+        // Sem localStorage o login segue normal, só não lembra.
+    }
+}
+
+function setupLembrarMe() {
+    const caixa = document.getElementById('rememberMe');
+    const email = document.getElementById('loginEmail');
+    if (!caixa || !email) return;
+    const salvo = lerLembrado();
+    if (salvo.email) {
+        caixa.checked = true;
+        if (!email.value) email.value = salvo.email;
     }
 }
 
@@ -172,6 +223,11 @@ function getEscolaSelecionada() {
 function mostrarSeletorEscolas(escolas, onEscolha) {
     const antigo = document.getElementById('modalSeletorEscolas');
     if (antigo) antigo.remove();
+
+    if (document.body.classList.contains('ui3')) {
+        mostrarSeletorEscolasUi3(escolas, onEscolha);
+        return;
+    }
 
     const overlay = document.createElement('div');
     overlay.id = 'modalSeletorEscolas';
@@ -216,6 +272,66 @@ function mostrarSeletorEscolas(escolas, onEscolha) {
     document.body.appendChild(overlay);
 }
 
+/**
+ * Mesmo seletor, no visual dos logins novos (body.ui3, css/ui-login.css).
+ * Só o nome e o bairro aparecem; o _id segue apenas no callback.
+ */
+function mostrarSeletorEscolasUi3(escolas, onEscolha) {
+    const overlay = document.createElement('div');
+    overlay.id = 'modalSeletorEscolas';
+    overlay.className = 'lg-escolha';
+
+    const card = document.createElement('div');
+    card.className = 'lg-escolha-card';
+    card.setAttribute('role', 'dialog');
+    card.setAttribute('aria-modal', 'true');
+    card.setAttribute('aria-labelledby', 'lgEscolhaTitulo');
+
+    const titulo = document.createElement('h2');
+    titulo.id = 'lgEscolhaTitulo';
+    titulo.className = 'ui-display';
+    titulo.textContent = 'Em qual escola você quer entrar?';
+    card.appendChild(titulo);
+
+    const sub = document.createElement('p');
+    sub.textContent = 'Sua conta tem vínculo com mais de uma escola.';
+    card.appendChild(sub);
+
+    const fechar = () => {
+        overlay.remove();
+        document.removeEventListener('keydown', aoTeclar);
+    };
+    const aoTeclar = (ev) => {
+        if (ev.key === 'Escape') fechar();
+    };
+    document.addEventListener('keydown', aoTeclar);
+
+    escolas.forEach((e) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'lg-atalho';
+        btn.innerHTML =
+            '<span class="lg-atalho-ico ui-tint" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V10l7-5 7 5v11"/><path d="M9 21v-5h6v5"/></svg></span><span class="lg-atalho-texto"><strong></strong><small></small></span>';
+        btn.querySelector('strong').textContent = e.nome;
+        const bairro = btn.querySelector('small');
+        if (e.bairro) bairro.textContent = e.bairro;
+        else bairro.remove();
+        btn.addEventListener('click', () => {
+            fechar();
+            onEscolha(e._id);
+        });
+        card.appendChild(btn);
+    });
+
+    overlay.addEventListener('click', (ev) => {
+        if (ev.target === overlay) fechar();
+    });
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+    const primeiro = card.querySelector('button');
+    if (primeiro) primeiro.focus();
+}
+
 // === LOGIN FORM ===
 function setupLoginForm() {
     const form = document.getElementById('loginForm');
@@ -242,6 +358,9 @@ function setupLoginForm() {
                 hideLoading(submitBtn);
                 return;
             }
+
+            const lembrar = document.getElementById('rememberMe');
+            if (lembrar) gravarLembrado(lembrar.checked ? email : null, escolaId);
 
             showToast('Login realizado com sucesso!', 'success');
             await sleep(500);
