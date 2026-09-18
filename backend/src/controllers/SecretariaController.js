@@ -16,6 +16,7 @@ const AuditLog = require('../models/AuditLog');
 const logger = require('../utils/logger');
 const busca = require('../utils/buscaAluno');
 const { emitirParaEscola } = require('../utils/realtime');
+const { extrairPaginacao } = require('../middleware/pagination');
 
 // ─── Helper: registrar auditoria ─────────────────────────────────────────────
 async function audit(req, acao, recurso, recursoId, detalhes = {}) {
@@ -183,17 +184,17 @@ const CAMPOS_IMPORT_ALUNO = [
 // Normaliza uma data solta ("dd/mm/aaaa", "aaaa-mm-dd" ou ISO) para Date válido
 function parseDataNascimento(valor) {
     if (!valor) return undefined;
-    if (valor instanceof Date) return isNaN(valor) ? undefined : valor;
+    if (valor instanceof Date) return Number.isNaN(valor.getTime()) ? undefined : valor;
     const txt = String(valor).trim();
     if (!txt) return undefined;
     // dd/mm/aaaa
     const br = txt.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
     if (br) {
         const d = new Date(Date.UTC(+br[3], +br[2] - 1, +br[1]));
-        return isNaN(d) ? undefined : d;
+        return Number.isNaN(d.getTime()) ? undefined : d;
     }
     const d = new Date(txt);
-    return isNaN(d) ? undefined : d;
+    return Number.isNaN(d.getTime()) ? undefined : d;
 }
 
 // Monta o objeto de aluno a partir de uma linha crua, aplicando a whitelist
@@ -359,7 +360,7 @@ JSON:`;
             const fim = bruto.lastIndexOf(']');
             const json = inicio !== -1 && fim !== -1 ? bruto.slice(inicio, fim + 1) : bruto;
             linhas = JSON.parse(json);
-        } catch (e) {
+        } catch (_e) {
             return res.status(422).json({
                 success: false,
                 error: 'A IA não retornou dados estruturados legíveis. Revise o documento ou use CSV.',
@@ -672,7 +673,7 @@ exports.gerarDeclaracaoMatricula = async (req, res) => {
 
         const conteudoHTML = `
             <h2 style="text-align:center">DECLARAÇÃO DE MATRÍCULA</h2>
-            <p>Declaramos, para os devidos fins, que <strong>${aluno.nome}${aluno.sobrenome ? ' ' + aluno.sobrenome : ''}</strong>,
+            <p>Declaramos, para os devidos fins, que <strong>${aluno.nome}${aluno.sobrenome ? ` ${aluno.sobrenome}` : ''}</strong>,
             encontra-se devidamente matriculado(a) nesta instituição de ensino,
             na turma <strong>${turma}</strong>, referente ao ano letivo de <strong>${anoLetivo}</strong>.</p>
             ${matricula ? `<p>Número de matrícula: <strong>${matricula.matriculaNumero || 'N/A'}</strong></p>` : ''}
@@ -728,7 +729,7 @@ exports.gerarDeclaracaoFrequencia = async (req, res) => {
 
         const conteudoHTML = `
             <h2 style="text-align:center">DECLARAÇÃO DE FREQUÊNCIA</h2>
-            <p>Declaramos que o(a) aluno(a) <strong>${aluno.nome}${aluno.sobrenome ? ' ' + aluno.sobrenome : ''}</strong>,
+            <p>Declaramos que o(a) aluno(a) <strong>${aluno.nome}${aluno.sobrenome ? ` ${aluno.sobrenome}` : ''}</strong>,
             turma <strong>${aluno.turma || 'N/A'}</strong>, possui a seguinte frequência escolar:</p>
             <ul>
                 <li>Total de registros: <strong>${totalRegistros}</strong></li>
@@ -790,7 +791,7 @@ exports.gerarHistoricoEscolar = async (req, res) => {
 
         const conteudoHTML = `
             <h2 style="text-align:center">HISTÓRICO ESCOLAR</h2>
-            <p><strong>Aluno(a):</strong> ${aluno.nome}${aluno.sobrenome ? ' ' + aluno.sobrenome : ''}</p>
+            <p><strong>Aluno(a):</strong> ${aluno.nome}${aluno.sobrenome ? ` ${aluno.sobrenome}` : ''}</p>
             <p><strong>RA:</strong> ${aluno.matricula || 'N/A'}</p>
             <p><strong>Data de Nascimento:</strong> ${aluno.nascimento ? new Date(aluno.nascimento).toLocaleDateString('pt-BR') : 'N/A'}</p>
             <table border="1" cellpadding="8" cellspacing="0" style="width:100%; border-collapse: collapse; margin-top: 20px;">
@@ -955,7 +956,7 @@ exports.listarCalendario = async (req, res) => {
     try {
         const { anoLetivo } = req.query;
         const query = escopo(req, { ativo: true });
-        if (anoLetivo) query.anoLetivo = parseInt(anoLetivo);
+        if (anoLetivo) query.anoLetivo = parseInt(anoLetivo, 10);
 
         const eventos = await CalendarioEscolar.find(query).sort({ dataInicio: 1 }).lean();
         res.json({ success: true, data: eventos });
@@ -1229,9 +1230,23 @@ exports.criarComunicado = async (req, res) => {
 // GET /api/secretaria/comunicados
 exports.listarComunicados = async (req, res) => {
     try {
-        const comunicados = await Comunicado.find(escopo(req, { ativo: true }))
-            .sort({ dataCriacao: -1 })
-            .lean();
+        const query = escopo(req, { ativo: true });
+        const paginacao = extrairPaginacao(req.query);
+
+        if (paginacao) {
+            const [comunicados, totalDocs] = await Promise.all([
+                Comunicado.find(query)
+                    .sort({ dataCriacao: -1 })
+                    .skip(paginacao.skip)
+                    .limit(paginacao.limit)
+                    .lean(),
+                Comunicado.countDocuments(query),
+            ]);
+
+            return res.json(paginacao.formatarResposta(comunicados, totalDocs));
+        }
+
+        const comunicados = await Comunicado.find(query).sort({ dataCriacao: -1 }).lean();
 
         res.json({ success: true, data: comunicados });
     } catch (error) {
@@ -1371,7 +1386,7 @@ exports.relatorioMatriculas = async (req, res) => {
         const salaPedida = String(req.query.turma || req.query.sala || '').trim();
 
         const query = escopo(req, {});
-        if (anoLetivo) query.anoLetivo = parseInt(anoLetivo);
+        if (anoLetivo) query.anoLetivo = parseInt(anoLetivo, 10);
         if (status) query.status = String(status);
 
         // ── Filtro por nome de aluno e por sala ──────────────────────────────
@@ -1581,7 +1596,7 @@ exports.exportarRelatorio = async (req, res) => {
             'Content-Disposition',
             `attachment; filename=relatorio_${tipo}_${Date.now()}.csv`
         );
-        res.send('\uFEFF' + csv); // BOM for Excel UTF-8 compatibility
+        res.send(`\uFEFF${csv}`); // BOM for Excel UTF-8 compatibility
     } catch (error) {
         logger.error(`[Secretaria.exportarRelatorio] ${error.message}`);
         res.status(500).json({ success: false, error: error.message });

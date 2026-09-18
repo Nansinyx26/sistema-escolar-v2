@@ -2,6 +2,7 @@ const Notificacao = require('../models/Notificacao');
 const Professor = require('../models/Professor');
 const Aluno = require('../models/Aluno');
 const { escolaMatch } = require('../middleware/filtrarPorEscola');
+const { extrairPaginacao } = require('../middleware/pagination');
 const escapeRegex = require('../utils/escapeRegex');
 
 /** Regex ancorada e escapada para casar e-mail exato. */
@@ -28,7 +29,8 @@ module.exports = {
                 let professorTurmas = [];
                 if (professor) {
                     if (professor.salaPrincipal) professorTurmas.push(professor.salaPrincipal);
-                    if (Array.isArray(professor.salasAdicionais)) professorTurmas.push(...professor.salasAdicionais);
+                    if (Array.isArray(professor.salasAdicionais))
+                        professorTurmas.push(...professor.salasAdicionais);
                     if (Array.isArray(professor.turmas)) professorTurmas.push(...professor.turmas);
                 }
                 professorTurmas = [...new Set(professorTurmas.filter(Boolean))];
@@ -38,9 +40,9 @@ module.exports = {
                         { paraResponsavel: true },
                         {
                             paraResponsavel: { $ne: true },
-                            destinatarios: { $in: ['todos', 'professores', ...professorTurmas] }
-                        }
-                    ]
+                            destinatarios: { $in: ['todos', 'professores', ...professorTurmas] },
+                        },
+                    ],
                 };
             } else if (userPerfil === 'diretor') {
                 // Diretor gerencia tudo, mas vê por padrão avisos administrativos (todos, diretores) e avisos enviados aos pais
@@ -49,9 +51,9 @@ module.exports = {
                         { paraResponsavel: true },
                         {
                             paraResponsavel: { $ne: true },
-                            destinatarios: { $in: ['todos', 'diretores'] }
-                        }
-                    ]
+                            destinatarios: { $in: ['todos', 'diretores'] },
+                        },
+                    ],
                 };
             } else if (userPerfil === 'responsavel') {
                 // Responsável/Pai NUNCA vê notificações internas de funcionários
@@ -64,16 +66,16 @@ module.exports = {
                     const query = { responsavel: emailRegexExato(email) };
                     const alunos = await Aluno.find(query).lean();
                     const destinatariosList = ['todos'];
-                    alunos.forEach(a => {
+                    alunos.forEach((a) => {
                         const turmaId = a.turma || a.turmaId;
                         if (turmaId) destinatariosList.push(turmaId);
                         destinatariosList.push(String(a._id));
                         if (a.id) destinatariosList.push(String(a.id));
                     });
-                    
+
                     filter = {
                         paraResponsavel: true,
-                        destinatarios: { $in: destinatariosList }
+                        destinatarios: { $in: destinatariosList },
                     };
                 } else {
                     filter = { paraResponsavel: true, destinatarios: 'todos' };
@@ -85,19 +87,43 @@ module.exports = {
 
             const temEscolaFilter = escolaFilter && Object.keys(escolaFilter).length > 0;
             const filtroFinal = temEscolaFilter ? { $and: [filter, escolaFilter] } : filter;
-            const notificacoes = await Notificacao.find(filtroFinal).sort({ dataCriacao: -1 }).lean();
-            
+
+            const paginacao = extrairPaginacao(req.query);
+            let notificacoes;
+            let totalDocs = 0;
+
+            if (paginacao) {
+                [notificacoes, totalDocs] = await Promise.all([
+                    Notificacao.find(filtroFinal)
+                        .sort({ dataCriacao: -1 })
+                        .skip(paginacao.skip)
+                        .limit(paginacao.limit)
+                        .lean(),
+                    Notificacao.countDocuments(filtroFinal),
+                ]);
+            } else {
+                notificacoes = await Notificacao.find(filtroFinal).sort({ dataCriacao: -1 }).lean();
+            }
+
             // Adiciona campo lidoPorMim para que o frontend saiba quais já foram lidas pelo usuário atual
-            const formatted = notificacoes.map(n => ({
+            const formatted = notificacoes.map((n) => ({
                 ...n,
                 id: n.id || String(n._id),
-                lidoPorMim: Array.isArray(n.lido) && userId ? n.lido.includes(userId) : false
+                lidoPorMim: Array.isArray(n.lido) && userId ? n.lido.includes(userId) : false,
             }));
+
+            if (paginacao) {
+                return res.json(paginacao.formatarResposta(formatted, totalDocs));
+            }
 
             res.json({ success: true, data: formatted });
         } catch (error) {
             console.error('Erro em NotificacaoController.getAll:', error);
-            res.status(500).json({ success: false, error: 'Erro ao buscar notificações', details: error.message });
+            res.status(500).json({
+                success: false,
+                error: 'Erro ao buscar notificações',
+                details: error.message,
+            });
         }
     },
 
@@ -105,18 +131,22 @@ module.exports = {
         try {
             const userPerfil = req.user?.perfil || '';
             const data = req.body;
-            
+
             // Regra 6: Professores NÃO podem enviar notificações diretamente para responsáveis.
-            if (data.paraResponsavel === true && userPerfil !== 'diretor' && userPerfil !== 'admin') {
-                return res.status(403).json({ 
-                    success: false, 
-                    error: 'Acesso negado. Apenas diretores e administradores podem enviar avisos aos responsáveis/pais.' 
+            if (
+                data.paraResponsavel === true &&
+                userPerfil !== 'diretor' &&
+                userPerfil !== 'admin'
+            ) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Acesso negado. Apenas diretores e administradores podem enviar avisos aos responsáveis/pais.',
                 });
             }
-            
+
             // Ensure ID exists
             if (!data.id) {
-                data.id = 'notif_' + Date.now();
+                data.id = `notif_${Date.now()}`;
             }
 
             // Atribui o nome do remetente (diretor/admin que enviou)
@@ -129,7 +159,11 @@ module.exports = {
             res.status(201).json({ success: true, data: notificacao });
         } catch (error) {
             console.error('Erro em NotificacaoController.create:', error);
-            res.status(400).json({ success: false, error: 'Erro ao criar notificação', details: error.message });
+            res.status(400).json({
+                success: false,
+                error: 'Erro ao criar notificação',
+                details: error.message,
+            });
         }
     },
 
@@ -147,19 +181,25 @@ module.exports = {
             const deleted = await Notificacao.findOneAndDelete(filtroFinal);
 
             if (!deleted) {
-                return res.status(404).json({ success: false, error: 'Notificação não encontrada' });
+                return res
+                    .status(404)
+                    .json({ success: false, error: 'Notificação não encontrada' });
             }
 
             const { logAction } = require('../utils/auditHelper');
             await logAction(req, 'DELETE_NOTIFICATION', 'Notificacoes', {
                 recursoId: deleted._id,
-                descricao: `Notificação "${deleted.titulo || deleted.id}" removida.`
+                descricao: `Notificação "${deleted.titulo || deleted.id}" removida.`,
             });
 
             res.json({ success: true, message: 'Notificação removida com sucesso' });
         } catch (error) {
             console.error('Erro em NotificacaoController.delete:', error);
-            res.status(500).json({ success: false, error: 'Erro ao deletar notificação', details: error.message });
+            res.status(500).json({
+                success: false,
+                error: 'Erro ao deletar notificação',
+                details: error.message,
+            });
         }
     },
 
@@ -172,7 +212,9 @@ module.exports = {
             }
             const notificacao = await Notificacao.findOne({ $or: [{ _id: id }, { id: id }] });
             if (!notificacao) {
-                return res.status(404).json({ success: false, error: 'Notificação não encontrada.' });
+                return res
+                    .status(404)
+                    .json({ success: false, error: 'Notificação não encontrada.' });
             }
             if (!notificacao.lido) {
                 notificacao.lido = [];
@@ -202,7 +244,8 @@ module.exports = {
                 let professorTurmas = [];
                 if (professor) {
                     if (professor.salaPrincipal) professorTurmas.push(professor.salaPrincipal);
-                    if (Array.isArray(professor.salasAdicionais)) professorTurmas.push(...professor.salasAdicionais);
+                    if (Array.isArray(professor.salasAdicionais))
+                        professorTurmas.push(...professor.salasAdicionais);
                     if (Array.isArray(professor.turmas)) professorTurmas.push(...professor.turmas);
                 }
                 professorTurmas = [...new Set(professorTurmas.filter(Boolean))];
@@ -211,9 +254,9 @@ module.exports = {
                         { paraResponsavel: true },
                         {
                             paraResponsavel: { $ne: true },
-                            destinatarios: { $in: ['todos', 'professores', ...professorTurmas] }
-                        }
-                    ]
+                            destinatarios: { $in: ['todos', 'professores', ...professorTurmas] },
+                        },
+                    ],
                 };
             } else if (userPerfil === 'diretor') {
                 filter = {
@@ -221,16 +264,16 @@ module.exports = {
                         { paraResponsavel: true },
                         {
                             paraResponsavel: { $ne: true },
-                            destinatarios: { $in: ['todos', 'diretores'] }
-                        }
-                    ]
+                            destinatarios: { $in: ['todos', 'diretores'] },
+                        },
+                    ],
                 };
             } else if (userPerfil === 'responsavel') {
                 const email = req.user?.email;
                 const query = { responsavel: emailRegexExato(email) };
                 const alunos = await Aluno.find(query).lean();
                 const destinatariosList = ['todos'];
-                alunos.forEach(a => {
+                alunos.forEach((a) => {
                     const turmaId = a.turma || a.turmaId;
                     if (turmaId) destinatariosList.push(turmaId);
                     destinatariosList.push(String(a._id));
@@ -238,7 +281,7 @@ module.exports = {
                 });
                 filter = {
                     paraResponsavel: true,
-                    destinatarios: { $in: destinatariosList }
+                    destinatarios: { $in: destinatariosList },
                 };
             } else if (userPerfil === 'admin') {
                 filter = {};
@@ -246,9 +289,10 @@ module.exports = {
 
             // Add userId to lido of all notifications matching filter that don't already have it
             const escolaFilter = escolaMatch(req.escolaId);
-            const baseFilter = (escolaFilter && Object.keys(escolaFilter).length > 0)
-                ? { $and: [filter, escolaFilter] }
-                : filter;
+            const baseFilter =
+                escolaFilter && Object.keys(escolaFilter).length > 0
+                    ? { $and: [filter, escolaFilter] }
+                    : filter;
             await Notificacao.updateMany(
                 { ...baseFilter, lido: { $ne: String(userId) } },
                 { $push: { lido: String(userId) } }
@@ -258,5 +302,5 @@ module.exports = {
             console.error('Erro em NotificacaoController.marcarTodasComoLidas:', error);
             res.status(500).json({ success: false, error: 'Erro ao marcar todas como lidas' });
         }
-    }
+    },
 };

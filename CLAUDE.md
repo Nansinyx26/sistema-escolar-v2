@@ -59,3 +59,8 @@ regra de lei, não escolha de produto.
 
 Hub em `backend/src/observability/`. Ver [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md).
 Nunca logar PII (CPF, endereço, telefone, e-mail de aluno/responsável).
+
+## Escalabilidade e Múltiplas Instâncias
+
+Arquitetura multi-instância, balanceamento, sondas de saúde, travas distribuídas e índices descritos em [`docs/ESCALABILIDADE.md`](docs/ESCALABILIDADE.md).
+
