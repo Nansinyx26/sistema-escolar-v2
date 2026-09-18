@@ -1,0 +1,656 @@
+/**
+ * ui-base.css — Base visual compartilhada dos logins e painéis (épico #370)
+ * ============================================================================
+ * Tokens e componentes do visual "giz neon": no tema escuro a tela é um
+ * quadro-negro (preto/grafite) e o destaque é verde-turquesa; no claro vira
+ * quadro branco com o mesmo verde em tom de tinta, legível sobre branco.
+ *
+ * Tudo vive sob `body.ui3` e usa classes `ui-*`, para não colidir com os CSS
+ * antigos que continuam carregados nas páginas (components-new.css,
+ * dashboard.css…). Páginas novas ligam a base marcando o body com `ui3`.
+ *
+ * Cor que é informação (destaque, status, ícone em quadrado colorido) usa as
+ * classes `ui-tint` ou `ui-on-color`: sem elas, a varredura de acessibilidade
+ * do tema claro (variables.css, "TIPOGRAFIA 100% PRETA") pinta tudo de preto.
+ * ============================================================================
+ */
+
+/* ───────────────────────────── Tokens: escuro ───────────────────────────── */
+body.ui3 {
+    --ui-bg: #060809;
+    --ui-bg-2: #090c0e;
+    --ui-surface: #0d1214;
+    --ui-surface-2: #121a1d;
+    --ui-surface-3: #182226;
+    --ui-line: rgba(170, 255, 232, 0.08);
+    --ui-line-strong: rgba(170, 255, 232, 0.16);
+    --ui-text: #e9f2f0;
+    --ui-text-2: #a9b8b5;
+    --ui-text-3: #74857f;
+
+    --ui-accent: #2ee6b6;
+    --ui-accent-strong: #5cf0c9;
+    --ui-accent-ink: #032019;
+    --ui-accent-soft: rgba(46, 230, 182, 0.12);
+    --ui-accent-line: rgba(46, 230, 182, 0.35);
+    --ui-cyan: #22d3ee;
+
+    --ui-violet: #9b8cff;
+    --ui-blue: #5b9cff;
+    --ui-pink: #ea6fe0;
+    --ui-amber: #f6c34a;
+    --ui-red: #ff6b6b;
+
+    --ui-glow: 0 0 0 1px var(--ui-accent-line), 0 0 24px -6px rgba(46, 230, 182, 0.45);
+    --ui-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 12px 32px -18px rgba(0, 0, 0, 0.8);
+    --ui-shadow-pop: 0 24px 60px -20px rgba(0, 0, 0, 0.85), 0 0 0 1px var(--ui-line-strong);
+
+    --ui-font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --ui-font-display: 'Sora', 'Inter', system-ui, sans-serif;
+
+    --ui-r-sm: 8px;
+    --ui-r: 12px;
+    --ui-r-lg: 18px;
+    --ui-r-xl: 24px;
+
+    --ui-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ui-ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --ui-fast: 140ms;
+    --ui-base: 200ms;
+
+    background: var(--ui-bg);
+    color: var(--ui-text);
+    font-family: var(--ui-font);
+    color-scheme: dark;
+}
+
+/* ───────────────────────────── Tokens: claro ────────────────────────────── */
+:root[data-theme='light'] body.ui3 {
+    --ui-bg: #f4f7f6;
+    --ui-bg-2: #ffffff;
+    --ui-surface: #ffffff;
+    --ui-surface-2: #f2f6f5;
+    --ui-surface-3: #e8efed;
+    --ui-line: #e2eae8;
+    --ui-line-strong: #cfdbd8;
+    --ui-text: #07110f;
+    --ui-text-2: #2f3d3a;
+    --ui-text-3: #52625e;
+
+    /* Verde em tom de tinta: 4.9:1 sobre branco (o #2ee6b6 dá 1.6:1). */
+    --ui-accent: #0b8f6c;
+    --ui-accent-strong: #087a5c;
+    --ui-accent-ink: #ffffff;
+    --ui-accent-soft: rgba(11, 143, 108, 0.1);
+    --ui-accent-line: rgba(11, 143, 108, 0.35);
+    --ui-cyan: #0e7490;
+
+    --ui-violet: #6d5ce8;
+    --ui-blue: #2f6fdb;
+    --ui-pink: #c23fb6;
+    --ui-amber: #b7791f;
+    --ui-red: #d64545;
+
+    --ui-glow: 0 0 0 1px var(--ui-accent-line), 0 8px 24px -12px rgba(11, 143, 108, 0.35);
+    --ui-shadow: 0 1px 2px rgba(7, 17, 15, 0.04), 0 10px 28px -18px rgba(7, 17, 15, 0.18);
+    --ui-shadow-pop: 0 24px 60px -24px rgba(7, 17, 15, 0.28), 0 0 0 1px var(--ui-line-strong);
+
+    color-scheme: light;
+}
+
+/* ─────────────── Cor que é informação vence a varredura preta ───────────── */
+/* Especificidade (0,5,1) contra (0,4,1) da varredura de variables.css. */
+:root[data-theme='light']:not(.high-contrast) body.ui3 .ui-tint,
+:root[data-theme='light']:not(.high-contrast) body.ui3 .ui-tint * {
+    color: var(--ui-tint, var(--ui-accent)) !important;
+    -webkit-text-fill-color: var(--ui-tint, var(--ui-accent)) !important;
+}
+
+:root[data-theme='light']:not(.high-contrast) body.ui3 .ui-on-color,
+:root[data-theme='light']:not(.high-contrast) body.ui3 .ui-on-color * {
+    color: var(--ui-on, #ffffff) !important;
+    -webkit-text-fill-color: var(--ui-on, #ffffff) !important;
+}
+
+/* ──────────────────────────────── Tipografia ─────────────────────────────── */
+body.ui3 .ui-display {
+    font-family: var(--ui-font-display);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.05;
+}
+
+body.ui3 .ui-eyebrow {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ui-text-3);
+}
+
+body.ui3 .ui-num {
+    font-family: var(--ui-font-display);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+/* ───────────────────────────────── Botões ────────────────────────────────── */
+body.ui3 .ui-btn {
+    --ui-btn-bg: var(--ui-surface-2);
+    --ui-btn-fg: var(--ui-text);
+    --ui-btn-line: var(--ui-line-strong);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding: 0 1.1rem;
+    border: 1px solid var(--ui-btn-line);
+    border-radius: var(--ui-r);
+    background: var(--ui-btn-bg);
+    color: var(--ui-btn-fg);
+    font: 600 0.95rem/1 var(--ui-font);
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+        background-color var(--ui-fast) var(--ui-ease-out),
+        border-color var(--ui-fast) var(--ui-ease-out),
+        box-shadow var(--ui-base) var(--ui-ease-out),
+        transform var(--ui-fast) var(--ui-ease-out);
+}
+
+body.ui3 .ui-btn:hover:not(:disabled) {
+    border-color: var(--ui-accent-line);
+}
+
+body.ui3 .ui-btn:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+body.ui3 .ui-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+body.ui3 .ui-btn--primary {
+    --ui-btn-bg: linear-gradient(100deg, var(--ui-accent) 0%, var(--ui-cyan) 100%);
+    --ui-btn-fg: var(--ui-accent-ink);
+    --ui-btn-line: transparent;
+    --ui-on: var(--ui-accent-ink);
+    min-height: 48px;
+    background: var(--ui-btn-bg);
+    font-size: 1rem;
+}
+
+body.ui3 .ui-btn--primary:hover:not(:disabled) {
+    border-color: transparent;
+    box-shadow: 0 10px 28px -12px rgba(46, 230, 182, 0.7);
+}
+
+:root[data-theme='light'] body.ui3 .ui-btn--primary {
+    --ui-btn-bg: linear-gradient(100deg, #0b8f6c 0%, #0e7490 100%);
+}
+
+body.ui3 .ui-btn--block {
+    width: 100%;
+}
+
+body.ui3 .ui-btn svg {
+    flex: none;
+    width: 18px;
+    height: 18px;
+}
+
+/* Estado de carregamento: utils.js põe `.loading` e `disabled` no botão. */
+body.ui3 .ui-btn.loading {
+    position: relative;
+    color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
+}
+
+body.ui3 .ui-btn.loading > * {
+    visibility: hidden;
+}
+
+body.ui3 .ui-btn.loading::after {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    border-color: var(--ui-accent-ink) var(--ui-accent-ink) transparent transparent;
+    animation: ui-giro 700ms linear infinite;
+}
+
+@keyframes ui-giro {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Botão só de ícone (tema, fechar, notificações) */
+body.ui3 .ui-icon-btn {
+    display: inline-grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border-radius: var(--ui-r);
+    border: 1px solid var(--ui-line);
+    background: var(--ui-surface);
+    color: var(--ui-text-2);
+    cursor: pointer;
+    transition:
+        color var(--ui-fast) var(--ui-ease-out),
+        border-color var(--ui-fast) var(--ui-ease-out),
+        transform var(--ui-fast) var(--ui-ease-out);
+}
+
+body.ui3 .ui-icon-btn:hover {
+    color: var(--ui-text);
+    border-color: var(--ui-accent-line);
+}
+
+body.ui3 .ui-icon-btn:active {
+    transform: scale(0.96);
+}
+
+body.ui3 .ui-icon-btn svg,
+body.ui3 .ui-icon-btn i {
+    width: 18px;
+    height: 18px;
+    font-size: 1.05rem;
+}
+
+/* Alternância de tema: mostra o ícone do tema para o qual o clique leva. */
+body.ui3 .ui-theme-toggle .ui-ico-sol {
+    display: none;
+}
+
+:root[data-theme='light'] body.ui3 .ui-theme-toggle .ui-ico-sol {
+    display: inline;
+}
+
+:root[data-theme='light'] body.ui3 .ui-theme-toggle .ui-ico-lua {
+    display: none;
+}
+
+/* ───────────────────────────────── Campos ────────────────────────────────── */
+body.ui3 .ui-field {
+    display: grid;
+    gap: 0.45rem;
+}
+
+body.ui3 .ui-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ui-text-2);
+}
+
+body.ui3 .ui-control {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+body.ui3 .ui-control > .ui-control-ico {
+    position: absolute;
+    left: 14px;
+    width: 18px;
+    height: 18px;
+    font-size: 1.05rem;
+    color: var(--ui-text-3);
+    pointer-events: none;
+    transition: color var(--ui-fast) var(--ui-ease-out);
+}
+
+body.ui3 .ui-control:focus-within > .ui-control-ico {
+    color: var(--ui-accent);
+}
+
+body.ui3 .ui-input {
+    width: 100%;
+    min-height: 48px;
+    padding: 0 0.95rem 0 2.75rem;
+    border: 1px solid var(--ui-line-strong);
+    border-radius: var(--ui-r);
+    background: var(--ui-surface-2);
+    color: var(--ui-text);
+    font: 500 0.95rem/1.2 var(--ui-font);
+    box-shadow: none;
+    transition:
+        border-color var(--ui-fast) var(--ui-ease-out),
+        box-shadow var(--ui-base) var(--ui-ease-out),
+        background-color var(--ui-fast) var(--ui-ease-out);
+}
+
+body.ui3 .ui-input::placeholder {
+    color: var(--ui-text-3);
+    opacity: 1;
+}
+
+body.ui3 .ui-input:hover {
+    border-color: var(--ui-accent-line);
+}
+
+/* O anel de foco é o do sistema (acessibilidade.css, 3px, WCAG 2.4.7); aqui só
+   a borda acompanha, para não somar dois anéis. */
+body.ui3 .ui-input:focus {
+    border-color: var(--ui-accent);
+    background: var(--ui-surface);
+}
+
+body.ui3 .ui-input[aria-invalid='true'] {
+    border-color: var(--ui-red);
+}
+
+/* Autofill do Chrome pinta o fundo de amarelo/azul claro. */
+body.ui3 .ui-input:-webkit-autofill {
+    -webkit-text-fill-color: var(--ui-text);
+    -webkit-box-shadow: 0 0 0 40px var(--ui-surface-2) inset;
+    caret-color: var(--ui-text);
+}
+
+body.ui3 .ui-input--trail {
+    padding-right: 3rem;
+}
+
+body.ui3 .ui-control > .ui-trail-btn {
+    position: absolute;
+    right: 6px;
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border: 0;
+    border-radius: var(--ui-r-sm);
+    background: transparent;
+    color: var(--ui-text-3);
+    cursor: pointer;
+}
+
+body.ui3 .ui-control > .ui-trail-btn:hover {
+    color: var(--ui-text);
+}
+
+/* Caixa de seleção */
+body.ui3 .ui-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.9rem;
+    color: var(--ui-text-2);
+    cursor: pointer;
+    user-select: none;
+}
+
+body.ui3 .ui-check input {
+    appearance: none;
+    display: grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    border: 1.5px solid var(--ui-line-strong);
+    border-radius: 5px;
+    background: var(--ui-surface-2);
+    cursor: pointer;
+    transition:
+        background-color var(--ui-fast) var(--ui-ease-out),
+        border-color var(--ui-fast) var(--ui-ease-out);
+}
+
+body.ui3 .ui-check input::after {
+    content: '';
+    width: 9px;
+    height: 5px;
+    border: 2px solid var(--ui-accent-ink);
+    border-top: 0;
+    border-right: 0;
+    transform: translateY(-1px) rotate(-45deg) scale(0);
+    transition: transform var(--ui-fast) var(--ui-ease-out);
+}
+
+body.ui3 .ui-check input:checked {
+    border-color: var(--ui-accent);
+    background: var(--ui-accent);
+}
+
+body.ui3 .ui-check input:checked::after {
+    transform: translateY(-1px) rotate(-45deg) scale(1);
+}
+
+/* ─────────────────────────────── Links e selos ───────────────────────────── */
+body.ui3 .ui-link {
+    color: var(--ui-accent);
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: color var(--ui-fast) var(--ui-ease-out);
+}
+
+body.ui3 button.ui-link {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+body.ui3 .ui-link:hover {
+    color: var(--ui-accent-strong);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+body.ui3 .ui-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent);
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1.3;
+    white-space: nowrap;
+}
+
+body.ui3 .ui-pill--muted {
+    background: var(--ui-surface-3);
+    color: var(--ui-text-3);
+}
+
+/* ─────────────────────────────── Foco visível ────────────────────────────── */
+body.ui3 :is(a, button, [role='option'], [role='tab'], input[type='checkbox']):focus-visible {
+    outline: 2px solid var(--ui-accent);
+    outline-offset: 2px;
+}
+
+/* ───────────────────── Combobox de escola (escola-combobox.js) ───────────── */
+body.ui3 .ui-combo {
+    position: relative;
+}
+
+body.ui3 .ui-combo-trigger {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 48px;
+    padding: 0 0.9rem 0 0.95rem;
+    border: 1px solid var(--ui-line-strong);
+    border-radius: var(--ui-r);
+    background: var(--ui-surface-2);
+    color: var(--ui-text);
+    font: 500 0.95rem/1.25 var(--ui-font);
+    text-align: left;
+    cursor: pointer;
+    transition:
+        border-color var(--ui-fast) var(--ui-ease-out),
+        box-shadow var(--ui-base) var(--ui-ease-out);
+}
+
+body.ui3 .ui-combo-trigger:hover {
+    border-color: var(--ui-accent-line);
+}
+
+body.ui3 .ui-combo-trigger[aria-expanded='true'] {
+    border-color: var(--ui-accent);
+    box-shadow: 0 0 0 3px var(--ui-accent-soft);
+}
+
+body.ui3 .ui-combo-trigger .ui-combo-ico {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: 1.05rem;
+    color: var(--ui-accent);
+}
+
+body.ui3 .ui-combo-valor {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body.ui3 .ui-combo-valor[data-vazio] {
+    color: var(--ui-text-3);
+}
+
+body.ui3 .ui-combo-seta {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    color: var(--ui-text-3);
+    transition: transform var(--ui-base) var(--ui-ease-out);
+}
+
+body.ui3 .ui-combo-trigger[aria-expanded='true'] .ui-combo-seta {
+    transform: rotate(180deg);
+}
+
+body.ui3 .ui-combo-pop {
+    position: absolute;
+    z-index: 40;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    padding: 0.4rem;
+    border-radius: var(--ui-r);
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow-pop);
+    transform-origin: top center;
+    animation: ui-pop-in var(--ui-base) var(--ui-ease-out);
+}
+
+body.ui3 .ui-combo-pop[hidden] {
+    display: none;
+}
+
+@keyframes ui-pop-in {
+    from {
+        opacity: 0;
+        transform: translateY(-4px) scale(0.98);
+    }
+}
+
+body.ui3 .ui-combo-busca {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.35rem;
+}
+
+body.ui3 .ui-combo-busca > .ui-control-ico {
+    position: absolute;
+    left: 11px;
+    width: 16px;
+    height: 16px;
+    color: var(--ui-text-3);
+    pointer-events: none;
+}
+
+body.ui3 .ui-combo-busca input {
+    width: 100%;
+    min-height: 40px;
+    padding: 0 0.75rem 0 2.2rem;
+    border: 1px solid var(--ui-line);
+    border-radius: var(--ui-r-sm);
+    background: var(--ui-surface-2);
+    color: var(--ui-text);
+    font: 500 0.9rem/1 var(--ui-font);
+}
+
+body.ui3 .ui-combo-busca input:focus {
+    border-color: var(--ui-accent-line);
+    box-shadow: none;
+}
+
+/* Dentro do popover o anel global (3px, offset 2px) encostaria na borda:
+   continua com 3px, só que por dentro do campo. */
+body.ui3 .ui-combo-busca input:focus-visible {
+    outline-offset: -3px !important;
+}
+
+body.ui3 .ui-combo-lista {
+    max-height: 244px;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    list-style: none;
+}
+
+body.ui3 .ui-combo-opcao {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-height: 42px;
+    padding: 0.55rem 0.7rem;
+    border-radius: var(--ui-r-sm);
+    color: var(--ui-text);
+    font-size: 0.9rem;
+    line-height: 1.3;
+    cursor: pointer;
+}
+
+body.ui3 .ui-combo-opcao[data-ativa] {
+    background: var(--ui-surface-3);
+}
+
+body.ui3 .ui-combo-opcao[aria-selected='true'] {
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent);
+    font-weight: 600;
+}
+
+body.ui3 .ui-combo-opcao[aria-disabled='true'] {
+    color: var(--ui-text-3);
+    cursor: not-allowed;
+}
+
+body.ui3 .ui-combo-vazio {
+    padding: 0.9rem 0.7rem;
+    color: var(--ui-text-3);
+    font-size: 0.88rem;
+}
+
+/* ────────────────────────────── Movimento reduzido ───────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    body.ui3 *,
+    body.ui3 *::before,
+    body.ui3 *::after {
+        animation-duration: 1ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 1ms !important;
+    }
+}

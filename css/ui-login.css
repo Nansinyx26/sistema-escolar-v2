@@ -1,0 +1,928 @@
+/**
+ * ui-login.css — Login dos portais do professor, da direção e da secretaria (#366)
+ * ============================================================================
+ * Duas colunas: à esquerda o painel do portal (boas-vindas, benefícios, LGPD e
+ * a ilustração do perfil); à direita o cartão de acesso. Abaixo de 1024px o
+ * painel encolhe para uma faixa de cabeçalho e o cartão ocupa a tela.
+ * Depende dos tokens de ui-base.css.
+ * ============================================================================
+ */
+
+body.ui3.ui-login {
+    min-height: 100vh;
+    min-height: 100dvh;
+    margin: 0;
+    overflow-x: hidden;
+}
+
+body.ui3 .lg-page {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1.08fr) minmax(420px, 0.92fr);
+    min-height: 100vh;
+    min-height: 100dvh;
+    isolation: isolate;
+}
+
+/* Fundo: preto com um halo verde muito baixo, sem orbes animados. */
+body.ui3 .lg-page::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background:
+        radial-gradient(60% 55% at 12% 8%, rgba(46, 230, 182, 0.08), transparent 70%),
+        radial-gradient(50% 45% at 92% 96%, rgba(34, 211, 238, 0.06), transparent 70%),
+        var(--ui-bg);
+}
+
+:root[data-theme='light'] body.ui3 .lg-page::before {
+    background:
+        radial-gradient(60% 55% at 12% 8%, rgba(11, 143, 108, 0.07), transparent 70%),
+        radial-gradient(50% 45% at 92% 96%, rgba(14, 116, 144, 0.06), transparent 70%),
+        var(--ui-bg);
+}
+
+/* ───────────────────────────── Painel do portal ──────────────────────────── */
+body.ui3 .lg-hero {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+    padding: clamp(2rem, 4vw, 3.5rem) clamp(2rem, 5vw, 4.5rem);
+    overflow: hidden;
+    border-right: 1px solid var(--ui-line);
+    background: linear-gradient(160deg, var(--ui-bg-2) 0%, var(--ui-bg) 70%);
+}
+
+body.ui3 .lg-marca {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    color: var(--ui-text);
+    text-decoration: none;
+}
+
+body.ui3 .lg-marca-ico {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: var(--ui-accent-soft);
+    box-shadow: var(--ui-glow);
+    color: var(--ui-accent);
+}
+
+body.ui3 .lg-marca-ico svg {
+    width: 26px;
+    height: 26px;
+}
+
+body.ui3 .lg-marca-nome {
+    display: block;
+    font-family: var(--ui-font-display);
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+
+body.ui3 .lg-marca-sub {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.85rem;
+    color: var(--ui-text-2);
+}
+
+body.ui3 .lg-hero-corpo {
+    position: relative;
+    z-index: 1;
+    max-width: 34rem;
+    margin-top: auto;
+}
+
+body.ui3 .lg-titulo {
+    margin: 0 0 1.1rem;
+    font-size: clamp(2.4rem, 4.4vw, 3.9rem);
+    color: var(--ui-text);
+}
+
+body.ui3 .lg-titulo em {
+    display: block;
+    font-style: normal;
+    color: var(--ui-accent);
+}
+
+body.ui3 .lg-lead {
+    margin: 0 0 2rem;
+    max-width: 30rem;
+    font-size: 1.05rem;
+    line-height: 1.6;
+    color: var(--ui-text-2);
+}
+
+body.ui3 .lg-beneficios {
+    display: grid;
+    gap: 1.05rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+body.ui3 .lg-beneficios li {
+    display: flex;
+    align-items: center;
+    gap: 0.95rem;
+    font-size: 0.98rem;
+    line-height: 1.4;
+    color: var(--ui-text);
+}
+
+body.ui3 .lg-beneficio-ico {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--ui-accent-line);
+    border-radius: 12px;
+    color: var(--ui-accent);
+}
+
+body.ui3 .lg-beneficio-ico svg {
+    width: 20px;
+    height: 20px;
+}
+
+body.ui3 .lg-lgpd {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    max-width: 21rem;
+    margin-top: auto;
+    font-size: 0.83rem;
+    line-height: 1.5;
+    color: var(--ui-text-2);
+}
+
+body.ui3 .lg-lgpd svg {
+    flex: none;
+    width: 26px;
+    height: 26px;
+    color: var(--ui-accent);
+}
+
+/* Ilustração do perfil: traço de giz neon, no canto do painel. */
+body.ui3 .lg-ilustra {
+    position: absolute;
+    z-index: 1;
+    right: 4%;
+    bottom: 13%;
+    width: min(36%, 310px);
+    color: var(--ui-accent);
+    opacity: 0.9;
+    pointer-events: none;
+}
+
+/* Com seis destaques em grade o texto ocupa mais largura: ilustração menor. */
+body.ui3 .lg-hero:has(.lg-beneficios--grade) .lg-ilustra {
+    bottom: 11%;
+    width: min(28%, 230px);
+}
+
+/* Preenchimento opaco nas peças principais: o traço passa por trás delas. */
+body.ui3 .lg-ilustra .lg-ilustra-fundo {
+    fill: var(--ui-bg);
+}
+
+body.ui3 .lg-ilustra svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+}
+
+/* Assinatura: o traço luminoso que atravessa o painel. */
+body.ui3 .lg-traco {
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 58%;
+    pointer-events: none;
+}
+
+body.ui3 .lg-traco svg {
+    width: 100%;
+    height: 100%;
+}
+
+body.ui3 .lg-traco path {
+    fill: none;
+    stroke-linecap: round;
+}
+
+body.ui3 .lg-traco .lg-traco-brilho {
+    stroke-width: 7;
+    opacity: 0.18;
+    filter: blur(6px);
+}
+
+body.ui3 .lg-traco .lg-traco-linha {
+    stroke-width: 1.6;
+}
+
+:root[data-theme='light'] body.ui3 .lg-traco .lg-traco-brilho {
+    opacity: 0.1;
+}
+
+/* Desenho do traço uma vez só, na entrada — sem loop. */
+@media (prefers-reduced-motion: no-preference) {
+    body.ui3 .lg-traco path {
+        stroke-dasharray: 1600;
+        stroke-dashoffset: 1600;
+        animation: lg-desenha 1.1s var(--ui-ease-out) 120ms forwards;
+    }
+
+    body.ui3 .lg-ilustra {
+        animation: lg-surge 600ms var(--ui-ease-out) 200ms both;
+    }
+
+    body.ui3 .lg-hero-corpo > *,
+    body.ui3 .lg-card {
+        animation: lg-surge 420ms var(--ui-ease-out) both;
+    }
+
+    body.ui3 .lg-hero-corpo > :nth-child(2) {
+        animation-delay: 40ms;
+    }
+
+    body.ui3 .lg-hero-corpo > :nth-child(3) {
+        animation-delay: 80ms;
+    }
+
+    body.ui3 .lg-card {
+        animation-delay: 60ms;
+    }
+}
+
+@keyframes lg-desenha {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes lg-surge {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+        filter: blur(4px);
+    }
+}
+
+/* ───────────────────────────── Coluna do cartão ──────────────────────────── */
+body.ui3 .lg-lado {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 4rem clamp(1rem, 4vw, 3.5rem) 1.25rem;
+}
+
+body.ui3 .lg-topo {
+    position: absolute;
+    z-index: 5;
+    top: 1.25rem;
+    right: clamp(1rem, 3vw, 2rem);
+    display: flex;
+    gap: 0.5rem;
+}
+
+body.ui3 .lg-card {
+    width: 100%;
+    max-width: 480px;
+    padding: clamp(1.4rem, 2.6vw, 1.9rem);
+    border: 1px solid var(--ui-line-strong);
+    border-radius: var(--ui-r-xl);
+    background: color-mix(in srgb, var(--ui-surface) 88%, transparent);
+    box-shadow: var(--ui-shadow);
+    backdrop-filter: blur(12px);
+}
+
+body.ui3 .lg-card-cabeca {
+    margin-bottom: 1.25rem;
+    text-align: center;
+}
+
+body.ui3 .lg-card-ico {
+    display: inline-grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    margin-bottom: 0.75rem;
+    border-radius: 16px;
+    background: var(--ui-accent-soft);
+    box-shadow: var(--ui-glow);
+    color: var(--ui-accent);
+}
+
+body.ui3 .lg-card-ico svg {
+    width: 26px;
+    height: 26px;
+}
+
+body.ui3 .lg-card-titulo {
+    margin: 0 0 0.4rem;
+    font-size: 1.65rem;
+    color: var(--ui-text);
+}
+
+body.ui3 .lg-card-titulo span {
+    color: var(--ui-accent);
+}
+
+body.ui3 .lg-card-sub {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.5;
+    color: var(--ui-text-2);
+}
+
+/* Abas de perfil: são links para o login de cada perfil. */
+body.ui3 .lg-abas {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    margin-bottom: 1.5rem;
+    padding: 4px;
+    border: 1px solid var(--ui-line);
+    border-radius: 14px;
+    background: var(--ui-surface-2);
+}
+
+body.ui3 .lg-aba {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    min-height: 42px;
+    padding: 0 0.5rem;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    color: var(--ui-text-2);
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition:
+        color var(--ui-fast) var(--ui-ease-out),
+        background-color var(--ui-fast) var(--ui-ease-out);
+}
+
+body.ui3 .lg-aba svg {
+    width: 17px;
+    height: 17px;
+    flex: none;
+}
+
+body.ui3 .lg-aba:hover {
+    color: var(--ui-text);
+    background: var(--ui-surface-3);
+}
+
+body.ui3 .lg-aba[aria-current='page'] {
+    border-color: var(--ui-accent-line);
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent);
+    box-shadow: 0 0 18px -8px rgba(46, 230, 182, 0.6);
+}
+
+body.ui3 .lg-form {
+    display: grid;
+    gap: 0.9rem;
+}
+
+body.ui3 .lg-opcoes {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    font-size: 0.9rem;
+}
+
+body.ui3 .lg-divisor {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    margin: 0.35rem 0 0;
+    color: var(--ui-text-3);
+    font-size: 0.8rem;
+}
+
+body.ui3 .lg-divisor::before,
+body.ui3 .lg-divisor::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--ui-line-strong);
+}
+
+body.ui3 .lg-secundarios {
+    display: grid;
+    gap: 0.6rem;
+}
+
+body.ui3 .lg-atalho {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    width: 100%;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid var(--ui-line);
+    border-radius: var(--ui-r);
+    background: transparent;
+    color: var(--ui-text);
+    font: inherit;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+        border-color var(--ui-fast) var(--ui-ease-out),
+        background-color var(--ui-fast) var(--ui-ease-out);
+}
+
+body.ui3 .lg-atalho:hover {
+    border-color: var(--ui-accent-line);
+    background: var(--ui-surface-2);
+}
+
+body.ui3 .lg-atalho-ico {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--ui-surface-3);
+    color: var(--ui-accent);
+}
+
+body.ui3 .lg-atalho-ico svg {
+    width: 18px;
+    height: 18px;
+}
+
+body.ui3 .lg-atalho-texto {
+    flex: 1;
+    min-width: 0;
+}
+
+body.ui3 .lg-atalho-texto strong {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+body.ui3 .lg-atalho-texto small {
+    display: block;
+    margin-top: 0.1rem;
+    font-size: 0.8rem;
+    color: var(--ui-text-2);
+}
+
+body.ui3 .lg-atalho-seta {
+    width: 16px;
+    height: 16px;
+    color: var(--ui-text-3);
+}
+
+/* responsive-global.css encolhe todo .login-tab no celular (abas antigas);
+   aqui o .login-tab é só o link "Criar conta". */
+body.ui3 .lg-links .login-tab {
+    padding: 0 !important;
+    font-size: inherit !important;
+}
+
+body.ui3 .lg-links {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    margin: 0.2rem 0 0;
+    font-size: 0.9rem;
+    color: var(--ui-text-3);
+}
+
+/* O botão de acessibilidade (acessibilidade.js) entra neste slot, ao lado do
+   botão de tema, com a mesma forma. */
+body.ui3 .lg-topo .acessibilidade-botao {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    min-height: 42px;
+    border: 1px solid var(--ui-line);
+    border-radius: var(--ui-r);
+    background: var(--ui-surface);
+    color: var(--ui-text-2);
+    box-shadow: none;
+}
+
+body.ui3 .lg-topo .acessibilidade-botao:hover {
+    color: var(--ui-text);
+    border-color: var(--ui-accent-line);
+}
+
+body.ui3 .lg-rodape {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    margin: 1.1rem 0 0;
+    font-size: 0.78rem;
+    color: var(--ui-text-3);
+}
+
+body.ui3 .lg-rodape svg {
+    width: 13px;
+    height: 13px;
+}
+
+/* A aba de cadastro fica no DOM (login.js e o teste de consentimento dependem
+   dela), mas "Criar conta" leva à página própria de cadastro do perfil. */
+body.ui3 .login-tab-content:not(.active) {
+    display: none;
+}
+
+/* ───────────────────── Seletor de escolas (múltiplos vínculos) ───────────── */
+body.ui3 .lg-escolha {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgba(3, 6, 7, 0.72);
+    backdrop-filter: blur(6px);
+}
+
+body.ui3 .lg-escolha-card {
+    width: 100%;
+    max-width: 440px;
+    padding: 1.75rem;
+    border-radius: var(--ui-r-lg);
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow-pop);
+    animation: lg-surge 260ms var(--ui-ease-out);
+}
+
+body.ui3 .lg-escolha-card h2 {
+    margin: 0 0 0.35rem;
+    font-size: 1.2rem;
+}
+
+body.ui3 .lg-escolha-card p {
+    margin: 0 0 1.2rem;
+    font-size: 0.9rem;
+    color: var(--ui-text-2);
+}
+
+body.ui3 .lg-escolha-card .lg-atalho + .lg-atalho {
+    margin-top: 0.5rem;
+}
+
+/* ──────────────── Modais (recuperar senha, 2FA, privacidade) ─────────────── */
+/* A marcação dos modais é a de sempre (login.js e login-events.js dependem
+   dela); o layout vinha do login-new.css, que estas páginas não carregam mais. */
+body.ui3 .modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+body.ui3 .modal.hidden {
+    display: none !important;
+}
+
+body.ui3 .modal > .backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: rgba(3, 6, 7, 0.72);
+    backdrop-filter: blur(6px);
+}
+
+:root[data-theme='light'] body.ui3 .modal > .backdrop {
+    background: rgba(7, 17, 15, 0.35);
+}
+
+body.ui3 .modal .modal-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 480px;
+    max-height: 90vh;
+    overflow: hidden;
+    border: 1px solid var(--ui-line-strong);
+    border-radius: var(--ui-r-lg);
+    background: var(--ui-surface);
+    color: var(--ui-text);
+    box-shadow: var(--ui-shadow-pop);
+    animation: lg-surge 260ms var(--ui-ease-out);
+}
+
+body.ui3 .modal .modal-header,
+body.ui3 .modal .modal-footer {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.1rem 1.5rem;
+    border-color: var(--ui-line);
+    background: transparent;
+}
+
+body.ui3 .modal .modal-header {
+    justify-content: space-between;
+    border-bottom: 1px solid var(--ui-line);
+}
+
+body.ui3 .modal .modal-footer {
+    justify-content: flex-end;
+    margin: 1.25rem -1.5rem -1.5rem;
+    border-top: 1px solid var(--ui-line);
+}
+
+body.ui3 .modal .modal-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    font-family: var(--ui-font-display);
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--ui-text);
+}
+
+body.ui3 .modal .modal-close {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: var(--ui-r-sm);
+    background: transparent;
+    color: var(--ui-text-3);
+    font-size: 1.3rem;
+    cursor: pointer;
+}
+
+body.ui3 .modal .modal-close:hover {
+    background: var(--ui-surface-3);
+    color: var(--ui-text);
+}
+
+body.ui3 .modal .modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+
+body.ui3 .modal .input-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+body.ui3 .modal .input-icon {
+    position: absolute;
+    left: 14px;
+    z-index: 1;
+    color: var(--ui-text-3);
+    pointer-events: none;
+}
+
+body.ui3 .modal .form-input {
+    width: 100%;
+    min-height: 46px;
+    padding: 0 2.75rem 0 2.6rem;
+    border: 1px solid var(--ui-line-strong);
+    border-radius: var(--ui-r);
+    background: var(--ui-surface-2);
+    color: var(--ui-text);
+}
+
+body.ui3 .modal .form-input:focus {
+    border-color: var(--ui-accent);
+}
+
+body.ui3 .modal .password-toggle {
+    position: absolute;
+    right: 6px;
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border: 0;
+    background: transparent;
+    color: var(--ui-text-3);
+    cursor: pointer;
+}
+
+:root[data-theme='light'] body.ui3 .modal .form-input {
+    color: var(--ui-text);
+}
+
+/* Tema claro: variables.css pinta todo .modal-content de preto com texto
+   branco (caixas pretas sobre página branca). Nas telas ui3 o tema claro é
+   branco de ponta a ponta, então o modal volta a ser branco com texto preto —
+   a mesma regra de texto preto do sistema. Especificidade (0,6,1) contra
+   (0,4,0) e (0,5,1) das regras de caixa preta. */
+:root[data-theme='light']:not(.high-contrast) body.ui3 .modal .modal-content {
+    background: var(--ui-surface) !important;
+    border-color: var(--ui-line-strong) !important;
+    box-shadow: var(--ui-shadow-pop) !important;
+}
+
+:root[data-theme='light']:not(.high-contrast) body.ui3 .modal .modal-content * {
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+}
+
+:root[data-theme='light']:not(.high-contrast) body.ui3 .modal .modal-content :is(input, .form-input) {
+    background: var(--ui-surface-2) !important;
+    border-color: var(--ui-line-strong) !important;
+    caret-color: #000000 !important;
+}
+
+:root[data-theme='light']:not(.high-contrast) body.ui3 .modal .modal-content :is(input, .form-input)::placeholder {
+    color: #52625e !important;
+    -webkit-text-fill-color: #52625e !important;
+}
+
+:root[data-theme='light']:not(.high-contrast) body.ui3 .modal .modal-content .btn-secondary {
+    background: var(--ui-surface-3) !important;
+    border-color: var(--ui-line-strong) !important;
+}
+
+:root[data-theme='light']:not(.high-contrast) body.ui3 .modal .modal-content :is([class*='btn-primary'], [class*='btn-primary'] *) {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+/* Marca d'água do autor: no login fica no pé da coluna do cartão, sem cobrir
+   o painel do portal. */
+@media (min-width: 1181px) {
+    body.ui3.ui-login .nandev-watermark {
+        left: auto !important;
+        right: calc(46% + 1.25rem) !important;
+        transform: none !important;
+    }
+}
+
+@media (min-width: 1024px) and (max-width: 1180px) {
+    body.ui3.ui-login .nandev-watermark {
+        left: auto !important;
+        right: calc(50% + 1rem) !important;
+        transform: none !important;
+    }
+}
+
+/* ─────────────────────────────── Responsivo ──────────────────────────────── */
+@media (max-width: 1180px) {
+    body.ui3 .lg-page {
+        grid-template-columns: minmax(0, 1fr) minmax(400px, 1fr);
+    }
+
+    body.ui3 .lg-ilustra {
+        display: none;
+    }
+}
+
+/* Tela baixa (notebook 1366×768, tablet deitado): sem altura para a ilustração
+   entre os destaques e o aviso da LGPD. */
+@media (max-height: 820px) {
+    body.ui3 .lg-ilustra {
+        display: none;
+    }
+}
+
+@media (max-width: 1023px) {
+    body.ui3 .lg-page {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+    }
+
+    body.ui3 .lg-hero {
+        gap: 0;
+        padding: 1.1rem clamp(1rem, 4vw, 2rem);
+        border-right: 0;
+        border-bottom: 1px solid var(--ui-line);
+    }
+
+    body.ui3 .lg-hero-corpo,
+    body.ui3 .lg-ilustra,
+    body.ui3 .lg-traco {
+        display: none;
+    }
+
+    body.ui3 .lg-lgpd {
+        display: none;
+    }
+
+    body.ui3 .lg-lado {
+        justify-content: flex-start;
+        padding-top: 1.75rem;
+        /* folga para a marca d'água fixa no pé da tela */
+        padding-bottom: 4.5rem;
+    }
+
+    /* A faixa do topo já diz qual é o portal: o título do cartão fica só
+       para leitores de tela, e o ícone sai. */
+    body.ui3 .lg-card-ico {
+        display: none;
+    }
+
+    body.ui3 .lg-card-titulo {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+
+    body.ui3 .lg-topo {
+        top: 1.1rem;
+    }
+
+    body.ui3 .lg-lado .lg-lgpd-mobile {
+        display: flex;
+    }
+}
+
+body.ui3 .lg-lgpd-mobile {
+    display: none;
+    align-items: flex-start;
+    gap: 0.6rem;
+    max-width: 480px;
+    margin: 0;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--ui-text-2);
+}
+
+body.ui3 .lg-lgpd-mobile svg {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    color: var(--ui-accent);
+}
+
+@media (max-width: 480px) {
+    body.ui3 .lg-marca-sub {
+        display: none;
+    }
+
+    body.ui3 .lg-card {
+        padding: 1.35rem 1.1rem;
+        border-radius: var(--ui-r-lg);
+    }
+
+    body.ui3 .lg-card-cabeca {
+        margin-bottom: 1.2rem;
+    }
+
+    body.ui3 .lg-card-ico {
+        display: none;
+    }
+
+    body.ui3 .lg-aba {
+        flex-direction: column;
+        gap: 0.2rem;
+        min-height: 54px;
+        font-size: 0.78rem;
+    }
+}
+
+/* Direção e secretaria têm seis destaques: duas colunas mais compactas. */
+body.ui3 .lg-beneficios--grade {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.9rem 1.25rem;
+}
+
+body.ui3 .lg-beneficios--grade li {
+    font-size: 0.93rem;
+}
+
+body.ui3 .lg-beneficios--grade .lg-beneficio-ico {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+}
