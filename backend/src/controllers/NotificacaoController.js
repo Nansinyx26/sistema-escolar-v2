@@ -146,7 +146,7 @@ module.exports = {
 
             // Ensure ID exists
             if (!data.id) {
-                data.id = 'notif_' + Date.now();
+                data.id = `notif_${Date.now()}`;
             }
 
             // Atribui o nome do remetente (diretor/admin que enviou)

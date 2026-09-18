@@ -83,7 +83,7 @@ exports.create = async (req, res) => {
         // Validar e limpar imagens base64 — máx 5 imagens, cada uma até 3MB em base64
         const MAX_IMAGES = 5;
         const MAX_IMAGE_B64_BYTES = 3 * 1024 * 1024; // 3MB por imagem
-        let imagensValidadas = [];
+        const imagensValidadas = [];
 
         if (Array.isArray(imagens) && imagens.length > 0) {
             if (imagens.length > MAX_IMAGES) {
@@ -201,7 +201,7 @@ exports.getAll = async (req, res) => {
         // agendados para o futuro que ainda não deveriam ser visíveis.
         const agora = new Date();
         const condicoes = [{ $or: [{ dataAgendada: null }, { dataAgendada: { $lte: agora } }] }];
-        let query = { ativo: true, $and: condicoes };
+        const query = { ativo: true, $and: condicoes };
 
         // Multi-escola: isola por tenant quando o contexto está resolvido
         if (req.escolaId) query.escolaId = String(req.escolaId);
