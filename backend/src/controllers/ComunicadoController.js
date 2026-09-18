@@ -72,12 +72,10 @@ exports.create = async (req, res) => {
         const diretorId = req.user.id || req.user._id;
 
         if (!titulo || !conteudo || !destinatarios || destinatarios.length === 0) {
-            return res
-                .status(400)
-                .json({
-                    success: false,
-                    error: 'Título, conteúdo e destinatários são obrigatórios.',
-                });
+            return res.status(400).json({
+                success: false,
+                error: 'Título, conteúdo e destinatários são obrigatórios.',
+            });
         }
 
         // Validar e limpar imagens base64 — máx 5 imagens, cada uma até 3MB em base64
@@ -87,12 +85,10 @@ exports.create = async (req, res) => {
 
         if (Array.isArray(imagens) && imagens.length > 0) {
             if (imagens.length > MAX_IMAGES) {
-                return res
-                    .status(400)
-                    .json({
-                        success: false,
-                        error: `Máximo de ${MAX_IMAGES} imagens por comunicado.`,
-                    });
+                return res.status(400).json({
+                    success: false,
+                    error: `Máximo de ${MAX_IMAGES} imagens por comunicado.`,
+                });
             }
             for (const img of imagens) {
                 if (typeof img !== 'string') continue;
@@ -106,12 +102,10 @@ exports.create = async (req, res) => {
                 } else if (img.startsWith('data:image/')) {
                     const base64Part = img.split(',')[1] || '';
                     if (base64Part.length > MAX_IMAGE_B64_BYTES) {
-                        return res
-                            .status(400)
-                            .json({
-                                success: false,
-                                error: 'Uma das imagens é muito grande. Máximo permitido: 3MB por imagem.',
-                            });
+                        return res.status(400).json({
+                            success: false,
+                            error: 'Uma das imagens é muito grande. Máximo permitido: 3MB por imagem.',
+                        });
                     }
                     // Garante WebP no backend (double-safety — frontend já converte)
                     try {
