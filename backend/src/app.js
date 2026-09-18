@@ -54,6 +54,10 @@ app.use(compression());
 // Monitoramento e Observabilidade: Métricas HTTP (Roadmap #6)
 app.use(requestLogger);
 
+// Padronização e blindagem de respostas de erro (Issue #337)
+const { padronizadorResposta } = require('./middleware/padronizadorResposta');
+app.use(padronizadorResposta);
+
 // Correlaciona requisição ↔ trace ↔ erro e devolve X-Trace-Id ao cliente.
 // Vira no-op quando a observabilidade está desligada (que é o padrão).
 const observability = require('./observability');
@@ -754,11 +758,15 @@ app.use((err, req, res, next) => {
         return res.status(statusCode).sendFile(path.join(frontendRootPath, 'html', '500.html'));
     }
 
+    const mensagemErro =
+        isProduction && statusCode >= 500
+            ? 'Ocorreu um erro interno. Tente novamente.'
+            : err.message || 'Erro interno do servidor.';
+
     res.status(statusCode).json({
         success: false,
-        message: isProduction ? 'Erro interno do servidor.' : err.message,
-        // Detalhes extras apenas em dev
-        error: isProduction ? {} : err,
+        message: mensagemErro,
+        error: mensagemErro,
     });
 });
 

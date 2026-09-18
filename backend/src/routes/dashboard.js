@@ -11,7 +11,26 @@ router.get('/chart-data', authJWT, filtrarPorEscola, DashboardController.getChar
 router.get('/charts', authJWT, filtrarPorEscola, DashboardController.getChartData);
 router.get('/ranking', authJWT, filtrarPorEscola, DashboardController.getRanking);
 router.get('/teacher-panel', authJWT, filtrarPorEscola, DashboardController.getTeacherPanel);
-router.get('/director-notices', authJWT, filtrarPorEscola, authorize('admin', 'diretor', 'secretaria'), DashboardController.getDirectorNotices);
-router.get('/summary/notices', authJWT, filtrarPorEscola, authorize('admin', 'diretor', 'secretaria'), DashboardController.getDirectorNotices);
+router.get(
+    '/director-notices',
+    authJWT,
+    filtrarPorEscola,
+    authorize('admin', 'diretor', 'secretaria'),
+    DashboardController.getDirectorNotices
+);
+router.get(
+    '/summary/notices',
+    authJWT,
+    filtrarPorEscola,
+    authorize('admin', 'diretor', 'secretaria'),
+    DashboardController.getSummaryNotices
+);
+router.get(
+    '/summary/activity',
+    authJWT,
+    filtrarPorEscola,
+    authorize('admin', 'diretor', 'secretaria'),
+    DashboardController.getSummaryActivity
+);
 
 module.exports = router;

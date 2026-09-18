@@ -71,6 +71,22 @@ function rotaNormalizada(req) {
     return `${metodo} ${generico}`;
 }
 
+/**
+ * Extrai e valida um X-Request-Id fornecido externamente (balanceador de carga ou cliente).
+ * Apenas formatos seguros (alfanumérico, hífen, underline, tamanho entre 4 e 128) são aceitos.
+ * Cabeçalhos inválidos, maliciosos ou vazios são descartados.
+ */
+function extrairRequestIdValido(req) {
+    const raw = req.headers['x-request-id'];
+    if (typeof raw === 'string') {
+        const trimmed = raw.trim();
+        if (/^[a-zA-Z0-9_-]{4,128}$/.test(trimmed)) {
+            return trimmed;
+        }
+    }
+    return null;
+}
+
 function requestLogger(req, res, next) {
     // Health checks e assets não geram linha de acesso (ruído puro), mas ainda
     // assim recebem contexto — um erro dentro deles precisa ser rastreável.
@@ -78,7 +94,7 @@ function requestLogger(req, res, next) {
     const silent = skipPaths.some((p) => req.path.startsWith(p));
 
     const start = process.hrtime();
-    const requestId = logContext.generateRequestId();
+    const requestId = extrairRequestIdValido(req) || logContext.generateRequestId();
 
     req.requestId = requestId;
     // Devolve o id ao cliente: um usuário que reporta erro traz o id do incidente.
@@ -145,4 +161,4 @@ function requestLogger(req, res, next) {
     });
 }
 
-module.exports = { requestLogger };
+module.exports = { requestLogger, extrairRequestIdValido };

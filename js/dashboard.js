@@ -381,17 +381,39 @@ async function carregarResumoDiretor() {
             const jsonNotices = await resNotices.json();
 
             if (jsonNotices.success) {
-                atualizarListaAvisosMini(jsonNotices.data.slice(0, 5));
+                atualizarListaAvisosMini(jsonNotices.data);
             } else {
                 atualizarListaAvisosMini([]);
             }
         } catch (e) {
             console.warn('Erro ao carregar últimos avisos:', e);
-            atualizarListaAvisosMini([]);
+            const noticesList = document.getElementById('latestNoticesList');
+            if (noticesList) {
+                noticesList.innerHTML =
+                    '<div class="activity-item-mini" style="justify-content: center; color: #94a3b8; padding: 1rem;"><i class="bi bi-exclamation-triangle" style="margin-right: 6px;"></i> Não foi possível carregar os avisos</div>';
+            }
         }
 
-        // Mock de atividades (pode ser expandido futuramente)
-        atualizarGridAtividade();
+        // Carregar atividade recente da escola (Issue #331)
+        try {
+            const resActivity = await fetch(`${window.API_BASE_URL}/dashboard/summary/activity`, {
+                credentials: 'include',
+            });
+            const jsonActivity = await resActivity.json();
+
+            if (jsonActivity.success) {
+                atualizarGridAtividade(jsonActivity.data);
+            } else {
+                atualizarGridAtividade([]);
+            }
+        } catch (e) {
+            console.warn('Erro ao carregar atividade recente:', e);
+            const actList = document.getElementById('recentActivityList');
+            if (actList) {
+                actList.innerHTML =
+                    '<div class="activity-item-mini" style="justify-content: center; color: #94a3b8; padding: 1rem;"><i class="bi bi-exclamation-triangle" style="margin-right: 6px;"></i> Não foi possível carregar as atividades</div>';
+            }
+        }
     } catch (error) {
         console.warn('Erro ao carregar resumo do diretor:', error);
     }
@@ -496,25 +518,41 @@ function atualizarListaAvisosMini(notices) {
         .join('');
 }
 
-function atualizarGridAtividade() {
+function formatarTempoRelativo(dataStr) {
+    if (!dataStr) return '';
+    const data = new Date(dataStr);
+    if (Number.isNaN(data.getTime())) return '';
+    const agora = Date.now();
+    const diffMs = agora - data.getTime();
+    const minutos = Math.floor(diffMs / 60000);
+    if (minutos < 1) return 'Agora mesmo';
+    if (minutos < 60) return `Há ${minutos} min`;
+    const horas = Math.floor(minutos / 60);
+    if (horas < 24) return `Há ${horas}h`;
+    const dias = Math.floor(horas / 24);
+    if (dias === 1) return 'Ontem';
+    if (dias < 7) return `Há ${dias} dias`;
+    return data.toLocaleDateString('pt-BR');
+}
+
+function atualizarGridAtividade(atividades) {
     const list = document.getElementById('recentActivityList');
     if (!list) return;
 
-    // Mock para visual inicial premium
-    const activities = [
-        { text: 'Novo professor cadastrado: Marcos Silva', time: 'Há 2 horas', color: '#3b82f6' },
-        { text: 'Relatório mensal de frequência gerado', time: 'Há 5 horas', color: '#10b981' },
-        { text: 'Aviso enviado para a Turma 2º Ano A', time: 'Ontem às 18:30', color: '#f59e0b' },
-    ];
+    if (!atividades || atividades.length === 0) {
+        list.innerHTML =
+            '<div class="activity-item-mini" style="justify-content: center; color: #94a3b8; padding: 1rem;"><i class="bi bi-inbox" style="margin-right: 6px;"></i> Nenhuma atividade recente</div>';
+        return;
+    }
 
-    list.innerHTML = activities
+    list.innerHTML = atividades
         .map(
             (a) => `
         <div class="activity-item-mini">
-            <div class="activity-dot" style="background: ${a.color};"></div>
+            <div class="activity-dot" style="background: ${a.cor || '#3b82f6'};"></div>
             <div class="activity-text">
-                ${escHtml(a.text)}
-                <span class="activity-time">${escHtml(a.time)}</span>
+                ${escHtml(a.texto)}
+                <span class="activity-time">${escHtml(formatarTempoRelativo(a.data))}</span>
             </div>
         </div>
     `

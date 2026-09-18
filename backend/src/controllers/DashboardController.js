@@ -11,16 +11,19 @@ exports.getPublicSummary = async (req, res) => {
         let totalProfessores = 0;
         let totalTurmas = 0;
         try {
-            totalProfessores = await mongoose.connection.db.collection('professores').countDocuments();
+            totalProfessores = await mongoose.connection.db
+                .collection('professores')
+                .countDocuments();
             totalTurmas = await mongoose.connection.db.collection('turmas').countDocuments();
         } catch (e) {
             console.error('Error fetching public stats:', e);
         }
         const totalPresencas = await Falta.countDocuments({ presente: true });
         const totalRegistrosPresenca = await Falta.countDocuments({ presente: { $exists: true } });
-        const disponibilidade = totalRegistrosPresenca > 0
-            ? Math.round((totalPresencas / totalRegistrosPresenca) * 100)
-            : 100;
+        const disponibilidade =
+            totalRegistrosPresenca > 0
+                ? Math.round((totalPresencas / totalRegistrosPresenca) * 100)
+                : 100;
 
         // Escolas cadastradas na rede (multi-escola) — métrica real da landing
         let totalEscolas = 0;
@@ -31,7 +34,8 @@ exports.getPublicSummary = async (req, res) => {
             // Métrica opcional: a landing tem fallback, então não propaga o erro —
             // mas um Mongo fora do ar não pode passar despercebido.
             logger.warn('Falha ao contar escolas para a landing (usando fallback 0)', {
-                err: e, action: 'dashboard.metricasPublicas',
+                err: e,
+                action: 'dashboard.metricasPublicas',
             });
         }
 
@@ -42,11 +46,14 @@ exports.getPublicSummary = async (req, res) => {
                 professoresAtivos: totalProfessores,
                 totalTurmas,
                 totalEscolas,
-                disponibilidade
-            }
+                disponibilidade,
+            },
         });
     } catch (error) {
-        res.status(500).json({ success: false, error: 'Erro ao processar resumo público: ' + error.message });
+        res.status(500).json({
+            success: false,
+            error: 'Erro ao processar resumo público: ' + error.message,
+        });
     }
 };
 
@@ -80,7 +87,9 @@ exports.getSummary = async (req, res) => {
         try {
             // NOTA: professores usam vinculos[].escolaId (não um campo plano),
             // então esta contagem permanece global. É apenas um inteiro sem PII.
-            totalProfessores = await require('mongoose').connection.db.collection('professores').countDocuments();
+            totalProfessores = await require('mongoose')
+                .connection.db.collection('professores')
+                .countDocuments();
             totalTurmas = await Turma.countDocuments(ef); // escopado por escola
         } catch (e) {
             console.error('Error fetching additional dashboard stats:', e);
@@ -97,12 +106,12 @@ exports.getSummary = async (req, res) => {
 
             // Students at risk (avg < 5)
             const studentGrades = {};
-            notes.forEach(n => {
+            notes.forEach((n) => {
                 if (!studentGrades[n.alunoId]) studentGrades[n.alunoId] = [];
                 studentGrades[n.alunoId].push(n.nota);
             });
 
-            Object.values(studentGrades).forEach(grades => {
+            Object.values(studentGrades).forEach((grades) => {
                 const avg = grades.reduce((a, b) => a + b, 0) / grades.length;
                 if (avg < 5) alunosRisco++;
             });
@@ -116,8 +125,8 @@ exports.getSummary = async (req, res) => {
                 totalProfessores,
                 totalTurmas,
                 mediaGeral: parseFloat(mediaGeral.toFixed(1)),
-                alunosRisco
-            }
+                alunosRisco,
+            },
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -136,7 +145,7 @@ exports.getChartData = async (req, res) => {
 
         // 1. By Turma
         const turmaMap = {};
-        notes.forEach(n => {
+        notes.forEach((n) => {
             const val = Number(n.nota);
             if (!isNaN(val)) {
                 const key = n.turmaId || 'Sem Turma';
@@ -144,14 +153,14 @@ exports.getChartData = async (req, res) => {
                 turmaMap[key].push(val);
             }
         });
-        const turmasData = Object.keys(turmaMap).map(id => ({
+        const turmasData = Object.keys(turmaMap).map((id) => ({
             label: id,
-            value: (turmaMap[id].reduce((a, b) => a + b, 0) / turmaMap[id].length).toFixed(1)
+            value: (turmaMap[id].reduce((a, b) => a + b, 0) / turmaMap[id].length).toFixed(1),
         }));
 
         // 2. By Materia
         const materiaMap = {};
-        notes.forEach(n => {
+        notes.forEach((n) => {
             const val = Number(n.nota);
             if (!isNaN(val)) {
                 const key = n.materiaId || n.materia || 'Geral';
@@ -159,22 +168,25 @@ exports.getChartData = async (req, res) => {
                 materiaMap[key].push(val);
             }
         });
-        const materiasData = Object.keys(materiaMap).map(id => ({
+        const materiasData = Object.keys(materiaMap).map((id) => ({
             label: id,
-            value: (materiaMap[id].reduce((a, b) => a + b, 0) / materiaMap[id].length).toFixed(1)
+            value: (materiaMap[id].reduce((a, b) => a + b, 0) / materiaMap[id].length).toFixed(1),
         }));
 
         // 3. Evolution (Bimestre)
         const bimMap = { 1: [], 2: [], 3: [], 4: [] };
-        notes.forEach(n => {
+        notes.forEach((n) => {
             const val = Number(n.nota);
             if (!isNaN(val) && bimMap[n.bimestre]) {
                 bimMap[n.bimestre].push(val);
             }
         });
-        const evolucaoData = [1, 2, 3, 4].map(b => ({
+        const evolucaoData = [1, 2, 3, 4].map((b) => ({
             label: `${b}º Bim`,
-            value: bimMap[b].length > 0 ? (bimMap[b].reduce((a, c) => a + c, 0) / bimMap[b].length).toFixed(1) : null
+            value:
+                bimMap[b].length > 0
+                    ? (bimMap[b].reduce((a, c) => a + c, 0) / bimMap[b].length).toFixed(1)
+                    : null,
         }));
 
         res.json({
@@ -182,10 +194,9 @@ exports.getChartData = async (req, res) => {
             data: {
                 turmas: turmasData,
                 materias: materiasData,
-                evolucao: evolucaoData
-            }
+                evolucao: evolucaoData,
+            },
         });
-
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
@@ -207,7 +218,7 @@ exports.getRanking = async (req, res) => {
         const studentMap = {};
         const studentIds = new Set();
 
-        notes.forEach(n => {
+        notes.forEach((n) => {
             if (!studentMap[n.alunoId]) studentMap[n.alunoId] = [];
             studentMap[n.alunoId].push(n.nota);
             studentIds.add(n.alunoId);
@@ -217,19 +228,16 @@ exports.getRanking = async (req, res) => {
         const ids = Array.from(studentIds);
         const students = await Aluno.find({
             ...ef,
-            $or: [
-                { _id: { $in: ids } },
-                { id: { $in: ids } }
-            ]
+            $or: [{ _id: { $in: ids } }, { id: { $in: ids } }],
         }).lean();
 
         const studentInfoMap = {};
-        students.forEach(s => {
+        students.forEach((s) => {
             if (s.id) studentInfoMap[s.id] = s;
             if (s._id) studentInfoMap[s._id.toString()] = s;
         });
 
-        const ranking = Object.keys(studentMap).map(alunoId => {
+        const ranking = Object.keys(studentMap).map((alunoId) => {
             const grades = studentMap[alunoId];
             const avg = grades.reduce((a, b) => a + b, 0) / grades.length;
 
@@ -241,7 +249,7 @@ exports.getRanking = async (req, res) => {
                 id: alunoId,
                 nome: nome,
                 turma: turma,
-                media: parseFloat(avg.toFixed(1))
+                media: parseFloat(avg.toFixed(1)),
             };
         });
 
@@ -250,9 +258,8 @@ exports.getRanking = async (req, res) => {
 
         res.json({
             success: true,
-            data: ranking.slice(0, 10) // Top 10
+            data: ranking.slice(0, 10), // Top 10
         });
-
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
@@ -281,8 +288,8 @@ exports.getTeacherPanel = async (req, res) => {
 
         // Buscar dados do professor vinculado
         const prof = await Professor.findOne({ email: user.email }).lean();
-        
-        let nomeProfessor = user.nome ? user.nome.split(' ')[0] : 'Docente';
+
+        const nomeProfessor = user.nome ? user.nome.split(' ')[0] : 'Docente';
         let turmas = [];
         if (prof) {
             if (prof.turmas && prof.turmas.length > 0) {
@@ -294,9 +301,9 @@ exports.getTeacherPanel = async (req, res) => {
                 }
             }
         }
-        
+
         // Normaliza e limpa duplicatas (ex: remove '1C' se '1ºC' estiver presente ou vice-versa, limpa strings vazias)
-        turmas = [...new Set(turmas)].map(t => t.trim()).filter(Boolean);
+        turmas = [...new Set(turmas)].map((t) => t.trim()).filter(Boolean);
 
         // Se turmas for vazio, tenta buscar no banco de dados na collection de Turmas pelo vinculo com professor
         if (turmas.length === 0) {
@@ -306,11 +313,11 @@ exports.getTeacherPanel = async (req, res) => {
                 $or: [
                     { professor: prof ? prof._id : '' },
                     { professor: prof ? prof.id : '' },
-                    { professor: user.nome }
-                ]
+                    { professor: user.nome },
+                ],
             }).lean();
             if (dbTurmas.length > 0) {
-                turmas = dbTurmas.map(t => t.nome || t.id).filter(Boolean);
+                turmas = dbTurmas.map((t) => t.nome || t.id).filter(Boolean);
             }
         }
 
@@ -322,7 +329,7 @@ exports.getTeacherPanel = async (req, res) => {
         // Avisos ativos usando a estrutura real do banco de dados (destinatarios)
         const queryNotif = {
             ...ef,
-            destinatarios: { $in: ['todos', 'professores', ...turmas] }
+            destinatarios: { $in: ['todos', 'professores', ...turmas] },
         };
         const avisosCount = await Notificacao.countDocuments(queryNotif);
         const avisos = await Notificacao.find(queryNotif).sort({ dataCriacao: -1 }).limit(1).lean();
@@ -332,12 +339,22 @@ exports.getTeacherPanel = async (req, res) => {
         // O servidor Render roda em UTC; sem esta correção, o painel
         // mostra status de aulas 3 horas adiantado.
         // ================================================================
-        const brasilNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+        const brasilNow = new Date(
+            new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })
+        );
         const brasilHour = brasilNow.getHours();
         const brasilMinute = brasilNow.getMinutes();
         const brasilDay = brasilNow.getDay(); // 0=Dom, 1=Seg, ..., 6=Sab
 
-        const diasSemana = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+        const diasSemana = [
+            'Domingo',
+            'Segunda-feira',
+            'Terça-feira',
+            'Quarta-feira',
+            'Quinta-feira',
+            'Sexta-feira',
+            'Sábado',
+        ];
         const hojeNome = diasSemana[brasilDay];
 
         // Média Geral baseada UNICAMENTE nas notas reais da(s) sala(s) deste professor
@@ -358,23 +375,25 @@ exports.getTeacherPanel = async (req, res) => {
         // --- GESTÃO DE HORÁRIO DINÂMICO E GRADE POR PERÍODO ---
         const Turma = require('../models/Turma');
         // Descobre o período da turma principal do professor
-        const turmaPrincipalInfo = (turmas.length > 0) ? await Turma.findOne({
-            ...ef,
-            $or: [
-                { _id: turmas[0] },
-                { id: turmas[0] },
-                { nome: turmas[0] }
-            ]
-        }).lean() : null;
+        const turmaPrincipalInfo =
+            turmas.length > 0
+                ? await Turma.findOne({
+                      ...ef,
+                      $or: [{ _id: turmas[0] }, { id: turmas[0] }, { nome: turmas[0] }],
+                  }).lean()
+                : null;
         const periodo = 'Manhã';
 
-        const disciplinaName = prof ? (prof.disciplina || (prof.materias && prof.materias[0]) || 'PEB I') : 'PEB I';
-        const isPeb2 = disciplinaName.toUpperCase().includes('PEB II') || 
-                       disciplinaName.toUpperCase().includes('PEB 2') || 
-                       disciplinaName.toUpperCase().includes('PEBII') || 
-                       disciplinaName.toUpperCase().includes('PEB2') ||
-                       (prof && prof.tipoAtuacao === 'materia') || 
-                       turmas.length > 1;
+        const disciplinaName = prof
+            ? prof.disciplina || (prof.materias && prof.materias[0]) || 'PEB I'
+            : 'PEB I';
+        const isPeb2 =
+            disciplinaName.toUpperCase().includes('PEB II') ||
+            disciplinaName.toUpperCase().includes('PEB 2') ||
+            disciplinaName.toUpperCase().includes('PEBII') ||
+            disciplinaName.toUpperCase().includes('PEB2') ||
+            (prof && prof.tipoAtuacao === 'materia') ||
+            turmas.length > 1;
 
         // Definição de horários padrão baseados no período escolar e tipo de cargo (PEB I vs PEB II)
         let horarios = [];
@@ -389,7 +408,15 @@ exports.getTeacherPanel = async (req, res) => {
                 horarioRanges = ['19:00 - 19:45', '19:45 - 20:30', '20:30 - 21:15'];
             } else {
                 horarios = ['07:30', '08:20', '09:30', '10:20', '11:10', '13:00', '13:50'];
-                horarioRanges = ['07:30 - 08:20', '08:20 - 09:10', '09:30 - 10:20', '10:20 - 11:10', '11:10 - 12:00', '13:00 - 13:50', '13:50 - 14:40'];
+                horarioRanges = [
+                    '07:30 - 08:20',
+                    '08:20 - 09:10',
+                    '09:30 - 10:20',
+                    '10:20 - 11:10',
+                    '11:10 - 12:00',
+                    '13:00 - 13:50',
+                    '13:50 - 14:40',
+                ];
             }
         } else {
             // PEB I - Blocos de aula maiores (polivalentes)
@@ -401,7 +428,15 @@ exports.getTeacherPanel = async (req, res) => {
                 horarioRanges = ['19:00 - 20:15', '20:15 - 21:30', '21:30 - 22:45'];
             } else {
                 horarios = ['07:30', '08:20', '09:30', '10:20', '11:10', '13:00', '13:50'];
-                horarioRanges = ['07:30 - 08:20', '08:20 - 09:10', '09:30 - 10:20', '10:20 - 11:10', '11:10 - 12:00', '13:00 - 13:50', '13:50 - 14:40'];
+                horarioRanges = [
+                    '07:30 - 08:20',
+                    '08:20 - 09:10',
+                    '09:30 - 10:20',
+                    '10:20 - 11:10',
+                    '11:10 - 12:00',
+                    '13:00 - 13:50',
+                    '13:50 - 14:40',
+                ];
             }
         }
 
@@ -415,7 +450,7 @@ exports.getTeacherPanel = async (req, res) => {
         // Resolvendo o professorKey do docente logado para buscar na tabela_geral
         let professorKey = prof ? prof.professorKey : '';
         if (!professorKey || professorKey === 'undefined' || professorKey === '') {
-            const disc = (prof && prof.disciplina || '').toUpperCase();
+            const disc = ((prof && prof.disciplina) || '').toUpperCase();
             const name = (user.nome || '').toUpperCase();
             if (disc.includes('INGLÊS') || disc.includes('INGLES') || disc.includes('INGL')) {
                 professorKey = 'INGLS';
@@ -425,7 +460,11 @@ exports.getTeacherPanel = async (req, res) => {
                 professorKey = 'OFMAKER';
             } else if (disc.includes('LEITURA') || disc.includes('OL')) {
                 professorKey = 'OFLEITURA';
-            } else if (disc.includes('SEBRAE') || disc.includes('DSE') || disc.includes('EMPREENDEDORISMO')) {
+            } else if (
+                disc.includes('SEBRAE') ||
+                disc.includes('DSE') ||
+                disc.includes('EMPREENDEDORISMO')
+            ) {
                 professorKey = 'OFSEBRAE';
             } else if (disc.includes('PROERD') || disc.includes('LIMA')) {
                 professorKey = 'LIMA';
@@ -441,7 +480,7 @@ exports.getTeacherPanel = async (req, res) => {
         // Buscar salas associadas para busca dinâmica de nome de sala
         const dbTurmasList = await Turma.find(ef).lean();
         const turmasSalaMap = {};
-        dbTurmasList.forEach(t => {
+        dbTurmasList.forEach((t) => {
             const nameKey = (t.nome || '').replace(/\s/g, '').toUpperCase();
             const idKey = (t.id || '').replace(/\s/g, '').toUpperCase();
             if (nameKey) turmasSalaMap[nameKey] = t.sala || '';
@@ -450,7 +489,11 @@ exports.getTeacherPanel = async (req, res) => {
 
         const getSalaForTurma = (turmaName) => {
             if (!turmaName) return 'Sala de Aula';
-            const cleanKey = turmaName.replace(/º/g, '').replace(/ANO/g, '').replace(/\s/g, '').toUpperCase();
+            const cleanKey = turmaName
+                .replace(/º/g, '')
+                .replace(/ANO/g, '')
+                .replace(/\s/g, '')
+                .toUpperCase();
             return turmasSalaMap[cleanKey] || 'Sala de Aula';
         };
 
@@ -459,7 +502,7 @@ exports.getTeacherPanel = async (req, res) => {
             'Terça-feira': 'TERÇA',
             'Quarta-feira': 'QUARTA',
             'Quinta-feira': 'QUINTA',
-            'Sexta-feira': 'SEXTA'
+            'Sexta-feira': 'SEXTA',
         };
         const diaBusca = diasSemanaMap[hojeNome] || 'SEGUNDA';
 
@@ -467,10 +510,20 @@ exports.getTeacherPanel = async (req, res) => {
             { start: 7 * 60 + 30, end: 8 * 60 + 20, startStr: '07:30', rangeStr: '07:30 - 08:20' },
             { start: 8 * 60 + 20, end: 9 * 60 + 10, startStr: '08:20', rangeStr: '08:20 - 09:10' },
             { start: 9 * 60 + 30, end: 10 * 60 + 20, startStr: '09:30', rangeStr: '09:30 - 10:20' },
-            { start: 10 * 60 + 20, end: 11 * 60 + 10, startStr: '10:20', rangeStr: '10:20 - 11:10' },
+            {
+                start: 10 * 60 + 20,
+                end: 11 * 60 + 10,
+                startStr: '10:20',
+                rangeStr: '10:20 - 11:10',
+            },
             { start: 11 * 60 + 10, end: 12 * 60 + 0, startStr: '11:10', rangeStr: '11:10 - 12:00' },
             { start: 13 * 60 + 0, end: 13 * 60 + 50, startStr: '13:00', rangeStr: '13:00 - 13:50' },
-            { start: 13 * 60 + 50, end: 14 * 60 + 40, startStr: '13:50', rangeStr: '13:50 - 14:40' }
+            {
+                start: 13 * 60 + 50,
+                end: 14 * 60 + 40,
+                startStr: '13:50',
+                rangeStr: '13:50 - 14:40',
+            },
         ];
 
         if (turmas.length === 0) {
@@ -481,13 +534,15 @@ exports.getTeacherPanel = async (req, res) => {
             // ========================================================
             // Busca as células do cronograma onde este professor leciona hoje no fuso do Brasil
             const TabelaGeral = require('../models/TabelaGeral');
-            const cells = professorKey ? await TabelaGeral.find({
-                professorKey: professorKey,
-                dia: diaBusca
-            }).lean() : [];
+            const cells = professorKey
+                ? await TabelaGeral.find({
+                      professorKey: professorKey,
+                      dia: diaBusca,
+                  }).lean()
+                : [];
 
             const cellsMap = {};
-            cells.forEach(c => {
+            cells.forEach((c) => {
                 cellsMap[c.aulaIdx] = c;
             });
 
@@ -495,13 +550,16 @@ exports.getTeacherPanel = async (req, res) => {
             for (let i = 0; i < 7; i++) {
                 const cell = cellsMap[i];
                 const timeInfo = periodTimes[i];
-                
+
                 let status = 'Mais tarde';
                 let statusColor = '';
                 if (currentTotalMinutes >= timeInfo.end) {
                     status = 'Concluída';
                     statusColor = 'badge-ok';
-                } else if (currentTotalMinutes >= timeInfo.start && currentTotalMinutes < timeInfo.end) {
+                } else if (
+                    currentTotalMinutes >= timeInfo.start &&
+                    currentTotalMinutes < timeInfo.end
+                ) {
                     status = 'Agora';
                     statusColor = 'badge-ok';
                 } else {
@@ -518,7 +576,7 @@ exports.getTeacherPanel = async (req, res) => {
                         sala: getSalaForTurma(cell.turmaNome),
                         status: status,
                         statusColor: statusColor,
-                        barColor: '#a855f7'
+                        barColor: '#a855f7',
                     });
                 } else {
                     // Horário Livre / Vagante / Planejamento
@@ -530,7 +588,7 @@ exports.getTeacherPanel = async (req, res) => {
                         sala: 'Sala dos Professores',
                         status: status,
                         statusColor: statusColor,
-                        barColor: 'rgba(255,255,255,0.06)'
+                        barColor: 'rgba(255,255,255,0.06)',
                     });
                 }
             }
@@ -549,7 +607,7 @@ exports.getTeacherPanel = async (req, res) => {
                         sala: 'Sala 16',
                         barColor: 'var(--primary-color)',
                         startMin: 7 * 60 + 30,
-                        endMin: 9 * 60 + 10
+                        endMin: 9 * 60 + 10,
                     },
                     {
                         hora: '09:30',
@@ -559,7 +617,7 @@ exports.getTeacherPanel = async (req, res) => {
                         sala: 'Sala de Artes',
                         barColor: '#a855f7',
                         startMin: 9 * 60 + 30,
-                        endMin: 11 * 60 + 10
+                        endMin: 11 * 60 + 10,
                     },
                     {
                         hora: '11:10',
@@ -569,7 +627,7 @@ exports.getTeacherPanel = async (req, res) => {
                         sala: 'Biblioteca',
                         barColor: '#eab308',
                         startMin: 11 * 60 + 10,
-                        endMin: 12 * 60 + 0
+                        endMin: 12 * 60 + 0,
                     },
                     {
                         hora: '15:00',
@@ -579,18 +637,21 @@ exports.getTeacherPanel = async (req, res) => {
                         sala: 'Biblioteca',
                         barColor: '#ef4444',
                         startMin: 15 * 60 + 0,
-                        endMin: 18 * 60 + 0
-                    }
+                        endMin: 18 * 60 + 0,
+                    },
                 ];
 
-                proximasAulas = monAulas.map(aula => {
+                proximasAulas = monAulas.map((aula) => {
                     let status = 'Mais tarde';
                     let statusColor = '';
 
                     if (currentTotalMinutes >= aula.endMin) {
                         status = 'Concluída';
                         statusColor = 'badge-ok';
-                    } else if (currentTotalMinutes >= aula.startMin && currentTotalMinutes < aula.endMin) {
+                    } else if (
+                        currentTotalMinutes >= aula.startMin &&
+                        currentTotalMinutes < aula.endMin
+                    ) {
                         status = 'Agora';
                         statusColor = 'badge-ok';
                     } else {
@@ -606,40 +667,44 @@ exports.getTeacherPanel = async (req, res) => {
                         sala: aula.sala,
                         status: status,
                         statusColor: statusColor,
-                        barColor: aula.barColor
+                        barColor: aula.barColor,
                     };
                 });
             } else {
                 // Outros dias da semana, carrega horários reais da turma do banco de dados
                 const TabelaGeral = require('../models/TabelaGeral');
-                const normalizedTurma = turmas[0].replace(/º/g, '').replace(/ANO/g, '').replace(/\s/g, '').toUpperCase();
-                
+                const normalizedTurma = turmas[0]
+                    .replace(/º/g, '')
+                    .replace(/ANO/g, '')
+                    .replace(/\s/g, '')
+                    .toUpperCase();
+
                 // Buscar células da turma no banco
                 const cells = await TabelaGeral.find({
                     turmaId: normalizedTurma,
-                    dia: diaBusca
+                    dia: diaBusca,
                 }).lean();
 
                 const cellsMap = {};
-                cells.forEach(c => {
+                cells.forEach((c) => {
                     cellsMap[c.aulaIdx] = c;
                 });
 
                 const abrevNomes = {
-                    'EF': 'Ed. Física',
-                    'I': 'Inglês',
-                    'A': 'Artes',
-                    'MK': 'Of. Maker',
-                    'OL': 'Oficina de Leitura',
-                    'DSE': 'Oficina Sebrae/DSE',
-                    'PROERD': 'PROERD',
-                    'LIMA': 'PROERD'
+                    EF: 'Ed. Física',
+                    I: 'Inglês',
+                    A: 'Artes',
+                    MK: 'Of. Maker',
+                    OL: 'Oficina de Leitura',
+                    DSE: 'Oficina Sebrae/DSE',
+                    PROERD: 'PROERD',
+                    LIMA: 'PROERD',
                 };
 
                 proximasAulas = [];
                 for (let i = 0; i < 7; i++) {
                     const cell = cellsMap[i];
-                    let abrev = cell ? cell.abrev : '';
+                    const abrev = cell ? cell.abrev : '';
                     let materia = 'Aula Regular (PEB 1)';
                     let professorNome = '';
 
@@ -659,7 +724,10 @@ exports.getTeacherPanel = async (req, res) => {
                     if (currentTotalMinutes >= timeInfo.end) {
                         status = 'Concluída';
                         statusColor = 'badge-ok';
-                    } else if (currentTotalMinutes >= timeInfo.start && currentTotalMinutes < timeInfo.end) {
+                    } else if (
+                        currentTotalMinutes >= timeInfo.start &&
+                        currentTotalMinutes < timeInfo.end
+                    ) {
                         status = 'Agora';
                         statusColor = 'badge-ok';
                     } else {
@@ -675,7 +743,7 @@ exports.getTeacherPanel = async (req, res) => {
                         sala: getSalaForTurma(turmas[0]),
                         status: status,
                         statusColor: statusColor,
-                        barColor: abrev ? '#a855f7' : 'var(--a)'
+                        barColor: abrev ? '#a855f7' : 'var(--a)',
                     });
                 }
             }
@@ -686,7 +754,9 @@ exports.getTeacherPanel = async (req, res) => {
 
         if (isSegunda) {
             // Só adiciona se não estiver presente na lista (para evitar duplicidade)
-            const jaTemReuniao = proximasAulas.some(a => a.materia.includes('Pedagógica') || a.materia.includes('pedagógica'));
+            const jaTemReuniao = proximasAulas.some(
+                (a) => a.materia.includes('Pedagógica') || a.materia.includes('pedagógica')
+            );
             if (!jaTemReuniao) {
                 let status = 'Às 15:00';
                 let statusColor = 'badge-warn';
@@ -706,12 +776,13 @@ exports.getTeacherPanel = async (req, res) => {
                     sala: 'Biblioteca',
                     status: status,
                     statusColor: statusColor,
-                    barColor: '#ef4444'
+                    barColor: '#ef4444',
                 });
             }
         }
         // Aviso especial de segunda-feira
-        let ultimoAvisoText = avisos.length > 0 ? (avisos[0].mensagem || avisos[0].titulo) : 'Nenhum aviso pendente';
+        let ultimoAvisoText =
+            avisos.length > 0 ? avisos[0].mensagem || avisos[0].titulo : 'Nenhum aviso pendente';
         if (isSegunda) {
             ultimoAvisoText = 'Reunião pedagógica das 15:00 às 18:00 na Biblioteca.';
         }
@@ -723,7 +794,7 @@ exports.getTeacherPanel = async (req, res) => {
             saudacao = 'Boa noite';
         }
 
-        const turmaLabel = (turmas.length > 0) ? turmas.join(', ') : 'Nenhuma turma';
+        const turmaLabel = turmas.length > 0 ? turmas.join(', ') : 'Nenhuma turma';
 
         res.json({
             success: true,
@@ -740,8 +811,8 @@ exports.getTeacherPanel = async (req, res) => {
                 isSegunda: isSegunda,
                 turmas: turmas,
                 turmaLabel: turmaLabel,
-                saudacao: saudacao
-            }
+                saudacao: saudacao,
+            },
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -757,45 +828,224 @@ exports.getDirectorNotices = async (req, res) => {
         // Busca as notificações da escola ativa para o mural completo do Diretor.
         // Multi-escola: escopa por escolaId — antes varria a rede inteira,
         // vazando comunicados e nomes de alunos de todas as escolas.
-        const notices = await Notificacao.find(escolaMatch(req.escolaId)).sort({ dataCriacao: -1 }).lean();
+        const notices = await Notificacao.find(escolaMatch(req.escolaId))
+            .sort({ dataCriacao: -1 })
+            .lean();
 
         // Resolve os IDs de destinatários para nomes amigáveis
-        const resolvedNotices = await Promise.all(notices.map(async (notice) => {
-            let destName = notice.destinatarios;
-            if (notice.destinatarios === 'todos') {
-                destName = 'Todos';
-            } else if (notice.destinatarios === 'professores') {
-                destName = 'Professores';
-            } else if (notice.destinatarios === 'diretores') {
-                destName = 'Diretores';
-            } else if (notice.destinatarios && notice.destinatarios.length === 24 && /^[0-9a-fA-F]{24}$/.test(notice.destinatarios)) {
-                // É um ObjectID de Aluno
-                const aluno = await Aluno.findById(notice.destinatarios).lean();
-                if (aluno) {
-                    destName = `${aluno.nome} ${aluno.sobrenome || ''}`.trim();
+        const resolvedNotices = await Promise.all(
+            notices.map(async (notice) => {
+                let destName = notice.destinatarios;
+                if (notice.destinatarios === 'todos') {
+                    destName = 'Todos';
+                } else if (notice.destinatarios === 'professores') {
+                    destName = 'Professores';
+                } else if (notice.destinatarios === 'diretores') {
+                    destName = 'Diretores';
+                } else if (
+                    notice.destinatarios &&
+                    notice.destinatarios.length === 24 &&
+                    /^[0-9a-fA-F]{24}$/.test(notice.destinatarios)
+                ) {
+                    // É um ObjectID de Aluno
+                    const aluno = await Aluno.findById(notice.destinatarios).lean();
+                    if (aluno) {
+                        destName = `${aluno.nome} ${aluno.sobrenome || ''}`.trim();
+                    }
+                } else if (notice.destinatarios) {
+                    // Tenta buscar se é uma Turma
+                    const turma = await Turma.findOne({
+                        $or: [
+                            { _id: notice.destinatarios },
+                            { id: notice.destinatarios },
+                            { nome: notice.destinatarios },
+                        ],
+                    }).lean();
+                    if (turma) {
+                        destName = `Turma: ${turma.nome || turma.id}`;
+                    }
                 }
-            } else if (notice.destinatarios) {
-                // Tenta buscar se é uma Turma
-                const turma = await Turma.findOne({ 
-                    $or: [
-                        { _id: notice.destinatarios }, 
-                        { id: notice.destinatarios }, 
-                        { nome: notice.destinatarios }
-                    ] 
-                }).lean();
-                if (turma) {
-                    destName = `Turma: ${turma.nome || turma.id}`;
-                }
-            }
-            return {
-                ...notice,
-                destinatarioNome: destName
-            };
-        }));
-        
+                return {
+                    ...notice,
+                    destinatarioNome: destName,
+                };
+            })
+        );
+
         res.json({
             success: true,
-            data: resolvedNotices
+            data: resolvedNotices,
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+exports.getSummaryNotices = async (req, res) => {
+    try {
+        const Notificacao = require('../models/Notificacao');
+        const Aluno = require('../models/Aluno');
+        const Turma = require('../models/Turma');
+
+        // Busca as notificacoes da escola ativa, excluindo tipo 'cadastro'
+        // e limitando a 5 no banco (Issue #331)
+        const notices = await Notificacao.find({
+            ...escolaMatch(req.escolaId),
+            tipo: { $ne: 'cadastro' },
+        })
+            .sort({ dataCriacao: -1 })
+            .limit(5)
+            .lean();
+
+        // Resolve os IDs de destinatarios para nomes amigaveis apenas para os 5 avisos
+        const resolvedNotices = await Promise.all(
+            notices.map(async (notice) => {
+                let destName = notice.destinatarios;
+                if (notice.destinatarios === 'todos') {
+                    destName = 'Todos';
+                } else if (notice.destinatarios === 'professores') {
+                    destName = 'Professores';
+                } else if (notice.destinatarios === 'diretores') {
+                    destName = 'Diretores';
+                } else if (
+                    notice.destinatarios &&
+                    notice.destinatarios.length === 24 &&
+                    /^[0-9a-fA-F]{24}$/.test(notice.destinatarios)
+                ) {
+                    const aluno = await Aluno.findById(notice.destinatarios).lean();
+                    if (aluno) {
+                        destName = `${aluno.nome} ${aluno.sobrenome || ''}`.trim();
+                    }
+                } else if (notice.destinatarios) {
+                    const turma = await Turma.findOne({
+                        $or: [
+                            { _id: notice.destinatarios },
+                            { id: notice.destinatarios },
+                            { nome: notice.destinatarios },
+                        ],
+                    }).lean();
+                    if (turma) {
+                        destName = `Turma: ${turma.nome || turma.id}`;
+                    }
+                }
+                return {
+                    ...notice,
+                    destinatarioNome: destName,
+                };
+            })
+        );
+
+        res.json({
+            success: true,
+            data: resolvedNotices,
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+exports.getSummaryActivity = async (req, res) => {
+    try {
+        const Usuario = require('../models/Usuario');
+        const Aluno = require('../models/Aluno');
+        const Avaliacao = require('../models/Avaliacao');
+        const DocumentoEmitido = require('../models/DocumentoEmitido');
+        const JustificativaFalta = require('../models/JustificativaFalta');
+
+        const filter = escolaMatch(req.escolaId);
+
+        const [usuarios, alunos, avaliacoes, documentos, justificativas] = await Promise.all([
+            Usuario.find({
+                ...filter,
+                perfil: { $in: ['professor', 'diretor', 'secretaria', 'responsavel'] },
+            })
+                .sort({ createdAt: -1 })
+                .limit(10)
+                .select('nome perfil createdAt criadoEm')
+                .lean(),
+            Aluno.find(filter)
+                .sort({ createdAt: -1 })
+                .limit(10)
+                .select('nome turma createdAt')
+                .lean(),
+            Avaliacao.find(filter)
+                .sort({ createdAt: -1 })
+                .limit(10)
+                .select('titulo turmaId materiaId createdAt')
+                .lean(),
+            DocumentoEmitido.find(filter)
+                .sort({ createdAt: -1 })
+                .limit(10)
+                .select('tipo titulo alunoNome createdAt')
+                .lean(),
+            JustificativaFalta.find(filter)
+                .sort({ createdAt: -1 })
+                .limit(10)
+                .select('alunoNome motivo categoria createdAt')
+                .lean(),
+        ]);
+
+        const perfilLabels = {
+            professor: 'professor',
+            diretor: 'membro da direção',
+            secretaria: 'membro da secretaria',
+            responsavel: 'responsável',
+        };
+        const tipoDocNomes = {
+            declaracao_matricula: 'Declaração de Matrícula',
+            declaracao_frequencia: 'Declaração de Frequência',
+            historico_escolar: 'Histórico Escolar',
+            transferencia: 'Guia de Transferência',
+        };
+
+        const list = [
+            ...usuarios.map((u) => {
+                const label = perfilLabels[u.perfil] || 'usuário';
+                return {
+                    tipo: 'usuario',
+                    texto: `Novo ${label} cadastrado: ${u.nome}`,
+                    data: u.createdAt || u.criadoEm,
+                    cor: '#3b82f6',
+                };
+            }),
+            ...alunos.map((a) => ({
+                tipo: 'aluno',
+                texto: `Aluno matriculado: ${a.nome}${a.turma ? ` (Turma ${a.turma})` : ''}`,
+                data: a.createdAt,
+                cor: '#10b981',
+            })),
+            ...avaliacoes.map((av) => ({
+                tipo: 'avaliacao',
+                texto: `Avaliação criada: ${av.titulo}${av.turmaId ? ` (${av.turmaId})` : ''}`,
+                data: av.createdAt,
+                cor: '#f59e0b',
+            })),
+            ...documentos.map((d) => {
+                const docNome = tipoDocNomes[d.tipo] || d.titulo || 'Documento';
+                return {
+                    tipo: 'documento',
+                    texto: `Documento emitido: ${docNome}${d.alunoNome ? ` (${d.alunoNome})` : ''}`,
+                    data: d.createdAt,
+                    cor: '#8b5cf6',
+                };
+            }),
+            ...justificativas.map((jf) => ({
+                tipo: 'justificativa',
+                texto: `Justificativa de falta recebida: ${jf.alunoNome || 'Aluno'}${jf.motivo ? ` — ${jf.motivo}` : ''}`,
+                data: jf.createdAt,
+                cor: '#ec4899',
+            })),
+        ];
+
+        const dataValida = (d) => d && !Number.isNaN(new Date(d).getTime());
+        const atividades = list
+            .filter((item) => dataValida(item.data))
+            .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
+            .slice(0, 10);
+
+        res.json({
+            success: true,
+            data: atividades,
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });

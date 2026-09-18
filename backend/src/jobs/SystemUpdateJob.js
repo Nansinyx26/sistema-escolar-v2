@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * SystemUpdateJob.js
  * Executa todos os dias às 16h (horário de Brasília) e, sempre que houver uma
@@ -17,6 +15,7 @@ const Notificacao = require('../models/Notificacao');
 const NotificationService = require('../services/NotificationService');
 const { releaseAtual, montarNotificacao } = require('../config/changelog');
 const logger = require('../utils/logger');
+const { executarComTravaJanela, formatarJanelaDia } = require('../utils/travaDistribuida');
 
 const TIPO = 'atualizacao_sistema';
 
@@ -57,51 +56,69 @@ async function anunciarParaEscola(notif, escolaId) {
 /**
  * Rotina principal: anuncia a versão atual do changelog, se ainda não anunciada.
  */
-async function anunciarAtualizacao() {
-    try {
-        const notif = montarNotificacao(releaseAtual());
-        if (!notif) {
-            logger.info('[SystemUpdate] Nenhuma release no changelog. Nada a anunciar.');
-            return;
-        }
+async function anunciarAtualizacao(opcoesTrava = {}) {
+    const janela = formatarJanelaDia();
+    return executarComTravaJanela(
+        'aviso-atualizacao',
+        janela,
+        async () => {
+            try {
+                const notif = montarNotificacao(releaseAtual());
+                if (!notif) {
+                    logger.info('[SystemUpdate] Nenhuma release no changelog. Nada a anunciar.');
+                    return;
+                }
 
-        logger.info(`[SystemUpdate] Verificando atualização v${notif.versao} às 16h...`);
+                logger.info(`[SystemUpdate] Verificando atualização v${notif.versao} às 16h...`);
 
-        const escolas = await Escola.find({ ativo: true }).select('_id').lean();
+                const escolas = await Escola.find({ ativo: true }).select('_id').lean();
 
-        // Sem escolas cadastradas (pré-migração/testes): envia uma vez sem escola.
-        if (escolas.length === 0) {
-            const enviado = await anunciarParaEscola(notif, null);
-            logger.info(`[SystemUpdate] Sem escolas ativas. ${enviado ? 'Anúncio enviado.' : 'Já anunciado antes.'}`);
-            return;
-        }
+                // Sem escolas cadastradas (pré-migração/testes): envia uma vez sem escola.
+                if (escolas.length === 0) {
+                    const enviado = await anunciarParaEscola(notif, null);
+                    logger.info(
+                        `[SystemUpdate] Sem escolas ativas. ${enviado ? 'Anúncio enviado.' : 'Já anunciado antes.'}`
+                    );
+                    return;
+                }
 
-        let enviados = 0;
-        for (const escola of escolas) {
-            if (await anunciarParaEscola(notif, String(escola._id))) {
-                enviados += 1;
+                let enviados = 0;
+                for (const escola of escolas) {
+                    if (await anunciarParaEscola(notif, String(escola._id))) {
+                        enviados += 1;
+                    }
+                }
+
+                if (enviados > 0) {
+                    logger.info(
+                        `[SystemUpdate] Atualização v${notif.versao} anunciada para ${enviados} escola(s).`
+                    );
+                } else {
+                    logger.info(
+                        `[SystemUpdate] Atualização v${notif.versao} já havia sido anunciada. Nada enviado.`
+                    );
+                }
+            } catch (err) {
+                logger.error(`[SystemUpdate] Erro ao anunciar atualização: ${err.message}`);
             }
-        }
-
-        if (enviados > 0) {
-            logger.info(`[SystemUpdate] Atualização v${notif.versao} anunciada para ${enviados} escola(s).`);
-        } else {
-            logger.info(`[SystemUpdate] Atualização v${notif.versao} já havia sido anunciada. Nada enviado.`);
-        }
-    } catch (err) {
-        logger.error(`[SystemUpdate] Erro ao anunciar atualização: ${err.message}`);
-    }
+        },
+        opcoesTrava
+    );
 }
 
 /**
  * Inicializa o job: todo dia às 16:00 (horário de Brasília).
  */
 function iniciarSystemUpdateJob() {
-    cron.schedule('0 16 * * *', () => {
-        anunciarAtualizacao();
-    }, {
-        timezone: 'America/Sao_Paulo',
-    });
+    cron.schedule(
+        '0 16 * * *',
+        () => {
+            anunciarAtualizacao();
+        },
+        {
+            timezone: 'America/Sao_Paulo',
+        }
+    );
 
     logger.info('[SystemUpdate] Job agendado: aviso de atualizações às 16h (BRT).');
 }
