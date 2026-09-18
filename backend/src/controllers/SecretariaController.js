@@ -16,6 +16,7 @@ const AuditLog = require('../models/AuditLog');
 const logger = require('../utils/logger');
 const busca = require('../utils/buscaAluno');
 const { emitirParaEscola } = require('../utils/realtime');
+const { extrairPaginacao } = require('../middleware/pagination');
 
 // ─── Helper: registrar auditoria ─────────────────────────────────────────────
 async function audit(req, acao, recurso, recursoId, detalhes = {}) {
@@ -1229,9 +1230,23 @@ exports.criarComunicado = async (req, res) => {
 // GET /api/secretaria/comunicados
 exports.listarComunicados = async (req, res) => {
     try {
-        const comunicados = await Comunicado.find(escopo(req, { ativo: true }))
-            .sort({ dataCriacao: -1 })
-            .lean();
+        const query = escopo(req, { ativo: true });
+        const paginacao = extrairPaginacao(req.query);
+
+        if (paginacao) {
+            const [comunicados, totalDocs] = await Promise.all([
+                Comunicado.find(query)
+                    .sort({ dataCriacao: -1 })
+                    .skip(paginacao.skip)
+                    .limit(paginacao.limit)
+                    .lean(),
+                Comunicado.countDocuments(query),
+            ]);
+
+            return res.json(paginacao.formatarResposta(comunicados, totalDocs));
+        }
+
+        const comunicados = await Comunicado.find(query).sort({ dataCriacao: -1 }).lean();
 
         res.json({ success: true, data: comunicados });
     } catch (error) {

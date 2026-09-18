@@ -4,6 +4,7 @@ const ImageProcessor = require('../utils/imageProcessor');
 const logger = require('../utils/logger');
 const escapeRegex = require('../utils/escapeRegex');
 const { emitirParaEscola } = require('../utils/realtime');
+const { extrairPaginacao } = require('../middleware/pagination');
 
 /**
  * Restringe a consulta à escola ativa. Admin enxerga a rede toda.
@@ -36,16 +37,18 @@ async function podeVerComunicado(comunicado, user) {
             $or: [
                 { responsavel: emailRegex },
                 { 'responsavelDados.email': emailRegex },
-                { 'responsaveis.email': emailRegex }
-            ]
-        }).select('turma turmaId').lean();
-        alunos.forEach(a => {
+                { 'responsaveis.email': emailRegex },
+            ],
+        })
+            .select('turma turmaId')
+            .lean();
+        alunos.forEach((a) => {
             const t = a.turma || a.turmaId;
             if (t) alvos.push(t, `turma:${t}`);
         });
     }
 
-    return destinatarios.some(d => alvos.includes(d));
+    return destinatarios.some((d) => alvos.includes(d));
 }
 
 // Reexportados para o ComentarioController: quem pode LER/COMENTAR um
@@ -56,11 +59,25 @@ exports.escopoEscola = escopoEscola;
 
 exports.create = async (req, res) => {
     try {
-        const { titulo, conteudo, imagens, destinatarios, categoria, prioridade, arquivos, dataAgendada } = req.body;
+        const {
+            titulo,
+            conteudo,
+            imagens,
+            destinatarios,
+            categoria,
+            prioridade,
+            arquivos,
+            dataAgendada,
+        } = req.body;
         const diretorId = req.user.id || req.user._id;
 
         if (!titulo || !conteudo || !destinatarios || destinatarios.length === 0) {
-            return res.status(400).json({ success: false, error: 'Título, conteúdo e destinatários são obrigatórios.' });
+            return res
+                .status(400)
+                .json({
+                    success: false,
+                    error: 'Título, conteúdo e destinatários são obrigatórios.',
+                });
         }
 
         // Validar e limpar imagens base64 — máx 5 imagens, cada uma até 3MB em base64
@@ -70,17 +87,31 @@ exports.create = async (req, res) => {
 
         if (Array.isArray(imagens) && imagens.length > 0) {
             if (imagens.length > MAX_IMAGES) {
-                return res.status(400).json({ success: false, error: `Máximo de ${MAX_IMAGES} imagens por comunicado.` });
+                return res
+                    .status(400)
+                    .json({
+                        success: false,
+                        error: `Máximo de ${MAX_IMAGES} imagens por comunicado.`,
+                    });
             }
             for (const img of imagens) {
                 if (typeof img !== 'string') continue;
                 // Aceita URLs externas ou base64
-                if (img.startsWith('http://') || img.startsWith('https://') || img.startsWith('/')) {
+                if (
+                    img.startsWith('http://') ||
+                    img.startsWith('https://') ||
+                    img.startsWith('/')
+                ) {
                     imagensValidadas.push(img);
                 } else if (img.startsWith('data:image/')) {
                     const base64Part = img.split(',')[1] || '';
                     if (base64Part.length > MAX_IMAGE_B64_BYTES) {
-                        return res.status(400).json({ success: false, error: 'Uma das imagens é muito grande. Máximo permitido: 3MB por imagem.' });
+                        return res
+                            .status(400)
+                            .json({
+                                success: false,
+                                error: 'Uma das imagens é muito grande. Máximo permitido: 3MB por imagem.',
+                            });
                     }
                     // Garante WebP no backend (double-safety — frontend já converte)
                     try {
@@ -115,7 +146,7 @@ exports.create = async (req, res) => {
             categoria: categoria || 'Direção',
             prioridade: prioridade || 'Normal',
             arquivos: arquivos || [],
-            dataAgendada: dataAgendada ? new Date(dataAgendada) : null
+            dataAgendada: dataAgendada ? new Date(dataAgendada) : null,
         });
 
         await novoComunicado.save();
@@ -129,13 +160,16 @@ exports.create = async (req, res) => {
                 categoria: (categoria || 'direcao').toLowerCase(),
                 prioridade: prioridade === 'Urgente' ? 'alta' : 'media',
                 titulo,
-                mensagem: conteudo.replace(/<[^>]*>/g, '').substring(0, 150) + (conteudo.length > 150 ? '...' : ''),
+                mensagem:
+                    conteudo.replace(/<[^>]*>/g, '').substring(0, 150) +
+                    (conteudo.length > 150 ? '...' : ''),
                 corpoHtml: conteudo,
                 destinatarios,
                 criadoPor: diretorId,
                 link: '/dashboard',
                 comunicadoId: novoComunicado._id,
-                escolaId: req.escolaId || req.session?.escolaAtivaId || novoComunicado.escolaId || null
+                escolaId:
+                    req.escolaId || req.session?.escolaAtivaId || novoComunicado.escolaId || null,
             });
 
             // Broadcast restrito à escola do comunicado — o emit global
@@ -166,9 +200,7 @@ exports.getAll = async (req, res) => {
         // em query.$or e a busca textual a SOBRESCREVIA, expondo comunicados
         // agendados para o futuro que ainda não deveriam ser visíveis.
         const agora = new Date();
-        const condicoes = [
-            { $or: [{ dataAgendada: null }, { dataAgendada: { $lte: agora } }] }
-        ];
+        const condicoes = [{ $or: [{ dataAgendada: null }, { dataAgendada: { $lte: agora } }] }];
         let query = { ativo: true, $and: condicoes };
 
         // Multi-escola: isola por tenant quando o contexto está resolvido
@@ -185,32 +217,37 @@ exports.getAll = async (req, res) => {
             condicoes.push({
                 $or: [
                     { titulo: { $regex: termo, $options: 'i' } },
-                    { conteudo: { $regex: termo, $options: 'i' } }
-                ]
+                    { conteudo: { $regex: termo, $options: 'i' } },
+                ],
             });
         }
 
         if (perfil !== 'diretor' && perfil !== 'admin') {
             const targets = ['todos'];
             if (perfil === 'professor') targets.push('professores');
-            
+
             if (perfil === 'responsavel') {
                 targets.push('responsaveis');
-                
+
                 // Buscar turmas dos alunos vinculados a este responsável
                 const email = user.email;
                 if (email) {
                     const Aluno = require('../models/Aluno');
-                    const emailRegex = new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
+                    const emailRegex = new RegExp(
+                        `^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
+                        'i'
+                    );
                     const alunos = await Aluno.find({
                         $or: [
                             { responsavel: emailRegex },
                             { 'responsavelDados.email': emailRegex },
-                            { 'responsaveis.email': emailRegex }
-                        ]
-                    }).select('turma turmaId').lean();
-                    
-                    alunos.forEach(aluno => {
+                            { 'responsaveis.email': emailRegex },
+                        ],
+                    })
+                        .select('turma turmaId')
+                        .lean();
+
+                    alunos.forEach((aluno) => {
                         const tId = aluno.turma || aluno.turmaId;
                         if (tId) {
                             targets.push(tId);
@@ -219,44 +256,68 @@ exports.getAll = async (req, res) => {
                     });
                 }
             }
-            
-            query.destinatarios = { 
-                $in: [
-                    ...targets,
-                    `usuario:${userId}`
-                ]
+
+            query.destinatarios = {
+                $in: [...targets, `usuario:${userId}`],
             };
         }
 
-        const comunicados = await Comunicado.find(query)
-            .sort({ dataCriacao: -1 })
-            .lean();
+        const paginacao = extrairPaginacao(req.query);
+        let comunicados;
+        let totalDocs = 0;
+
+        if (paginacao) {
+            [comunicados, totalDocs] = await Promise.all([
+                Comunicado.find(query)
+                    .sort({ dataCriacao: -1 })
+                    .skip(paginacao.skip)
+                    .limit(paginacao.limit)
+                    .lean(),
+                Comunicado.countDocuments(query),
+            ]);
+        } else {
+            comunicados = await Comunicado.find(query).sort({ dataCriacao: -1 }).lean();
+        }
 
         // População manual robusta para lidar com tipos mistos (ObjectId vs String)
-        const diretorIds = [...new Set(comunicados.map(c => c.diretorId ? c.diretorId.toString() : null).filter(Boolean))];
-        const diretores = await Usuario.find({ _id: { $in: diretorIds } }).select('nome foto fotoGoogle perfil').lean();
-        
+        const diretorIds = [
+            ...new Set(
+                comunicados
+                    .map((c) => (c.diretorId ? c.diretorId.toString() : null))
+                    .filter(Boolean)
+            ),
+        ];
+        const diretores = await Usuario.find({ _id: { $in: diretorIds } })
+            .select('nome foto fotoGoogle perfil')
+            .lean();
+
         const diretoresMap = {};
-        diretores.forEach(d => {
+        diretores.forEach((d) => {
             diretoresMap[d._id.toString()] = d;
         });
 
-        const formatted = comunicados.map(c => {
+        const formatted = comunicados.map((c) => {
             const dId = c.diretorId ? c.diretorId.toString() : null;
             const diretor = dId ? diretoresMap[dId] : null;
-            
+
             return {
                 ...c,
-                diretorNome: diretor?.nome || c.diretorNome || "Direção",
-                diretorFoto: diretor?.foto || diretor?.fotoGoogle || c.diretorFoto || "",
-                diretorPerfil: diretor?.perfil || c.diretorPerfil || "Diretor"
+                diretorNome: diretor?.nome || c.diretorNome || 'Direção',
+                diretorFoto: diretor?.foto || diretor?.fotoGoogle || c.diretorFoto || '',
+                diretorPerfil: diretor?.perfil || c.diretorPerfil || 'Diretor',
             };
         });
 
+        if (paginacao) {
+            return res.json(paginacao.formatarResposta(formatted, totalDocs));
+        }
+
         res.json({ success: true, data: formatted });
     } catch (error) {
-        logger.error(`[ComunicadoController.getAll] Error: ${error.message}`, { stack: error.stack });
-        res.status(500).json({ success: false, error: "Erro ao buscar comunicados." });
+        logger.error(`[ComunicadoController.getAll] Error: ${error.message}`, {
+            stack: error.stack,
+        });
+        res.status(500).json({ success: false, error: 'Erro ao buscar comunicados.' });
     }
 };
 
@@ -272,24 +333,32 @@ exports.getById = async (req, res) => {
         }
 
         if (!(await podeVerComunicado(comunicado, req.user))) {
-            return res.status(403).json({ success: false, error: 'Você não tem acesso a este comunicado.' });
+            return res
+                .status(403)
+                .json({ success: false, error: 'Você não tem acesso a este comunicado.' });
         }
 
         // População manual para garantir o vínculo correto da foto
-        const diretor = await Usuario.findById(comunicado.diretorId ? comunicado.diretorId.toString() : null).select('nome foto fotoGoogle perfil').lean();
+        const diretor = await Usuario.findById(
+            comunicado.diretorId ? comunicado.diretorId.toString() : null
+        )
+            .select('nome foto fotoGoogle perfil')
+            .lean();
 
         // Format consistent output
         const formatted = {
             ...comunicado,
-            diretorNome: diretor?.nome || comunicado.diretorNome || "Direção",
-            diretorFoto: diretor?.foto || diretor?.fotoGoogle || comunicado.diretorFoto || "",
-            diretorPerfil: diretor?.perfil || comunicado.diretorPerfil || "Diretor"
+            diretorNome: diretor?.nome || comunicado.diretorNome || 'Direção',
+            diretorFoto: diretor?.foto || diretor?.fotoGoogle || comunicado.diretorFoto || '',
+            diretorPerfil: diretor?.perfil || comunicado.diretorPerfil || 'Diretor',
         };
 
         res.json({ success: true, data: formatted });
     } catch (error) {
-        logger.error(`[ComunicadoController.getById] Error: ${error.message}`, { id: req.params.id });
-        res.status(500).json({ success: false, error: "Erro ao buscar comunicado." });
+        logger.error(`[ComunicadoController.getById] Error: ${error.message}`, {
+            id: req.params.id,
+        });
+        res.status(500).json({ success: false, error: 'Erro ao buscar comunicado.' });
     }
 };
 
@@ -310,34 +379,40 @@ exports.delete = async (req, res) => {
         const { logAction } = require('../utils/auditHelper');
         await logAction(req, 'DELETE_ANNOUNCEMENT', 'Comunicados', {
             recursoId: comunicado._id,
-            descricao: `Comunicado "${comunicado.titulo}" removido.`
+            descricao: `Comunicado "${comunicado.titulo}" removido.`,
         });
 
         res.json({ success: true, message: 'Comunicado removido.' });
     } catch (error) {
-        logger.error(`[ComunicadoController.delete] Error: ${error.message}`, { id: req.params.id });
-        res.status(500).json({ success: false, error: "Erro ao remover comunicado." });
+        logger.error(`[ComunicadoController.delete] Error: ${error.message}`, {
+            id: req.params.id,
+        });
+        res.status(500).json({ success: false, error: 'Erro ao remover comunicado.' });
     }
 };
 
 exports.markAsRead = async (req, res) => {
     try {
         const userId = req.user.id || req.user._id;
-        if (!userId) return res.status(401).json({ success: false, error: 'Usuário não autenticado.' });
+        if (!userId)
+            return res.status(401).json({ success: false, error: 'Usuário não autenticado.' });
 
         const comunicado = await Comunicado.findByIdAndUpdate(
             req.params.id,
             { $addToSet: { visualizacoes: userId } },
             { new: true }
         );
-        
+
         if (!comunicado) {
             return res.status(404).json({ success: false, error: 'Comunicado não encontrado.' });
         }
 
         res.json({ success: true, data: comunicado });
     } catch (error) {
-        logger.error(`[ComunicadoController.markAsRead] Error: ${error.message}`, { id: req.params.id, userId: req.user?.id });
-        res.status(500).json({ success: false, error: "Erro ao marcar como lido." });
+        logger.error(`[ComunicadoController.markAsRead] Error: ${error.message}`, {
+            id: req.params.id,
+            userId: req.user?.id,
+        });
+        res.status(500).json({ success: false, error: 'Erro ao marcar como lido.' });
     }
 };
