@@ -107,6 +107,7 @@ Referência: as artes do Portal do Docente e do dashboard do professor.
 | `css/ui-login.css` | Layout dos logins de professor, direção e secretaria |
 | `js/escola-combobox.js` | Aprimora `<select data-ui-combo>` com busca e teclado; o `value` (id) nunca aparece na tela |
 | `js/login-tema.js` | Botão de tema dos logins (usa o `ThemeManager` de `theme.js`) |
+| `portal-responsavel/src/components/LoginResponsavel.tsx` | Login do responsável (#365): importa as duas folhas acima e liga `ui3` no body só enquanto está montado; o próprio fica em `src/styles/login-responsavel.scss` (prefixo `lr-*`) |
 
 Como usar numa página:
 
