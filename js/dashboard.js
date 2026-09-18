@@ -205,6 +205,8 @@ function atualizarHeader(user, perfil) {
 
     if (sidebarUserName) sidebarUserName.textContent = nomeExibir;
     if (sidebarUserRole) sidebarUserRole.textContent = roleLabel;
+    // Cabeçalho dos painéis novos (js/ui-painel.js): mesma leitura da barra.
+    if (window.PainelUI) window.PainelUI.preencherConta(nomeExibir, roleLabel);
 
     // Sincroniza fotos em toda a interface.
     // Só sobrescreve a foto do login se o perfil estendido realmente tiver uma
@@ -233,7 +235,8 @@ function atualizarWelcome(user, perfil) {
     if (user.perfil === 'admin') {
         welcomeMessage.textContent = 'Você tem acesso total ao sistema como Administrador.';
     } else if (user.perfil === 'professor') {
-        welcomeMessage.textContent = 'Pronto para gerenciar suas turmas e atividades.';
+        welcomeMessage.textContent =
+            'Aqui está o resumo das suas turmas, da agenda de hoje e dos avisos da escola.';
     } else if (user.perfil === 'secretaria') {
         welcomeMessage.textContent = 'Gerencie matrículas, documentos e comunicados da escola.';
     } else {
@@ -315,6 +318,9 @@ async function atualizarCards(user, perfil) {
             cardMeuHorario.style.display = 'flex';
             // ... (rest of card logic if still needed, but sidebar is priority)
         }
+
+        // Resumo do dia, agenda e cartões do professor (js/painel-professor.js)
+        if (window.PainelProfessor) window.PainelProfessor.iniciar();
     } else if (user.perfil === 'secretaria') {
         // Secretaria vê lista de alunos mas não vê ferramentas admin, horários, gerencial
         if (cardGerencial) cardGerencial.style.display = 'none';
