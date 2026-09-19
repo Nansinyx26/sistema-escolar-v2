@@ -20,6 +20,8 @@ const logger = require('../utils/logger');
 const urlFotoAluno = require('../utils/urlFotoAluno');
 const { projetarAluno } = require('../utils/projecaoAluno');
 const assertAcessoAoAluno = require('../middleware/assertAcessoAoAluno');
+const vinculos = require('../services/vinculosResponsavel');
+const { logAction } = require('../utils/auditHelper');
 
 // Trava por conta contra varredura do código secreto do aluno
 const MAX_TENTATIVAS_VINCULO = 5;
@@ -357,7 +359,6 @@ exports.vincularAluno = async (req, res) => {
             }
             await Usuario.updateOne({ _id: usuarioId }, { $set: update });
 
-            const { logAction } = require('../utils/auditHelper');
             await logAction(req, 'LINK_STUDENT_FAILED', 'Alunos', {
                 descricao: `Tentativa de vínculo com código inválido por ${email} (${tentativas}/${MAX_TENTATIVAS_VINCULO}).`,
             });
@@ -376,7 +377,6 @@ exports.vincularAluno = async (req, res) => {
         // log — o responsável legítimo era desvinculado e o atacante passava a
         // ler notas/frequência e a editar quem pode retirar a criança da escola.
         if (aluno.responsavel && String(aluno.responsavel).toLowerCase() !== targetEmail) {
-            const { logAction } = require('../utils/auditHelper');
             await logAction(req, 'LINK_STUDENT_BLOCKED', 'Alunos', {
                 recursoId: aluno._id,
                 descricao: `Tentativa de vínculo por ${targetEmail} em aluno já vinculado a outro responsável.`,
@@ -417,7 +417,6 @@ exports.vincularAluno = async (req, res) => {
 
         // O código secreto NUNCA vai para o log de auditoria — ele continua
         // válido depois do vínculo e dá acesso à conta do aluno.
-        const { logAction } = require('../utils/auditHelper');
         await logAction(req, 'LINK_STUDENT_VIA_CODE', 'Alunos', {
             recursoId: aluno._id,
             valorNovo: { email: targetEmail },
@@ -942,6 +941,51 @@ exports.updateAlunoDados = async (req, res) => {
             }
         }
 
+        // ── Inclusão de responsável vira PEDIDO (Issue #398) ────────────────
+        //
+        // O e-mail que consta na ficha é o que dá acesso aos dados da criança.
+        // Um e-mail NOVO, portanto, não entra aqui: vira pedido pendente, e a
+        // secretaria decide. Editar dados de quem já está na ficha continua
+        // valendo, e remover continua bloqueado (regra acima).
+        const antesDoUpdate = await Aluno.findOne({ $or: [{ _id: alunoId }, { id: alunoId }] })
+            .select(
+                'responsaveis responsavelDados guardaLegal pessoasAutorizadasRetirada autorizacoesEscolares escolaId nome sobrenome'
+            )
+            .lean();
+        if (!antesDoUpdate) {
+            return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
+        }
+
+        let pedidos = [];
+        if (Array.isArray(update.responsaveis)) {
+            const { conhecidos, novos } = vinculos.separarNovos(antesDoUpdate, update.responsaveis);
+            if (novos.length > 0) {
+                pedidos = await vinculos.registrarPedidos({
+                    aluno: antesDoUpdate,
+                    novos,
+                    solicitante: req.user,
+                });
+                await logAction(req, 'VINCULO_RESPONSAVEL_SOLICITADO', 'Alunos', {
+                    recursoId: String(antesDoUpdate._id),
+                    valorNovo: { pedidos: pedidos.map((p) => vinculos.mascarar(p.email)) },
+                    descricao: `Responsável pediu inclusão de ${pedidos.length} e-mail(s) no aluno ${antesDoUpdate._id}.`,
+                });
+            }
+            update.responsaveis = conhecidos;
+        }
+        // `responsavelDados.email` é outra porta para o mesmo efeito: só é
+        // aceito quando repete um e-mail que já está na ficha.
+        if (update.responsavelDados?.email) {
+            const jaNaFicha = vinculos.emailsDaFicha(antesDoUpdate);
+            if (!jaNaFicha.has(String(update.responsavelDados.email).trim().toLowerCase())) {
+                return res.status(403).json({
+                    success: false,
+                    codigo: 'INCLUSAO_DEPENDE_DA_SECRETARIA',
+                    error: 'Para incluir outro responsável, faça o pedido pela lista de responsáveis; a secretaria confirma a inclusão.',
+                });
+            }
+        }
+
         const aluno = await Aluno.findOneAndUpdate(
             { $or: [{ _id: alunoId }, { id: alunoId }] },
             { $set: update },
@@ -1022,7 +1066,37 @@ exports.updateAlunoDados = async (req, res) => {
         }
 
         if (!aluno) return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
-        res.json({ success: true, data: projetarAluno(aluno, 'responsavel') });
+
+        // Trilha do que decide guarda e segurança da criança. Só contagem e
+        // e-mail mascarado: a trilha prova o que mudou sem virar mais um lugar
+        // onde o dado pessoal fica guardado.
+        const sensiveis = ['guardaLegal', 'pessoasAutorizadasRetirada', 'autorizacoesEscolares'];
+        const alterados = sensiveis.filter((c) => update[c] !== undefined);
+        if (alterados.length > 0) {
+            const medir = (doc) => ({
+                guardaLegal: doc?.guardaLegal || null,
+                pessoasAutorizadasRetirada: (doc?.pessoasAutorizadasRetirada || []).length,
+                autorizacoesEscolares: doc?.autorizacoesEscolares ? 'definidas' : null,
+            });
+            await logAction(req, 'FICHA_ALUNO_ALTERADA_PELO_RESPONSAVEL', 'Alunos', {
+                recursoId: String(aluno._id),
+                valorAnterior: medir(antesDoUpdate),
+                valorNovo: medir(aluno),
+                descricao: `Responsável alterou ${alterados.join(', ')} do aluno ${aluno._id}.`,
+            });
+        }
+
+        res.json({
+            success: true,
+            data: projetarAluno(aluno, 'responsavel'),
+            ...(pedidos.length
+                ? {
+                      pedidosDeInclusao: pedidos,
+                      message:
+                          'O pedido de inclusão de responsável foi enviado à secretaria. O acesso começa depois da aprovação.',
+                  }
+                : {}),
+        });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
@@ -1115,7 +1189,6 @@ exports.updateDocumentoStatus = async (req, res) => {
 
         if (!aluno) return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
 
-        const { logAction } = require('../utils/auditHelper');
         await logAction(req, 'DOCUMENTO_ALUNO_STATUS', 'Alunos', {
             recursoId: String(aluno._id),
             valorNovo: { fichaDocumentoStatus: status },
