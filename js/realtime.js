@@ -7,24 +7,55 @@
 (function () {
     'use strict';
 
-    const API = window.API_BASE_URL || (
-        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    const API =
+        window.API_BASE_URL ||
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
             ? 'http://localhost:3001/api'
-            : window.location.origin + '/api'
-    );
+            : window.location.origin + '/api');
 
     const SOCKET_URL = API.replace('/api', '');
     const EMOJIS = [
-        '👍', '👎', '❤️', '💙', '💚', '💛', '🧡', '💜',
-        '😂', '🤣', '😆', '😄', '😊', '😍', '😘',
-        '😮', '🤯', '😲', '😱',
-        '😢', '😭', '🥺',
-        '👏', '🙌', '🤝',
-        '🔥', '💯', '⭐', '✨',
-        '🎉', '🎊', '🏆',
-        '🤔', '🤨', '😎',
-        '🙏', '💪', '🚀',
-        '📚', '✏️', '🎓'
+        '👍',
+        '👎',
+        '❤️',
+        '💙',
+        '💚',
+        '💛',
+        '🧡',
+        '💜',
+        '😂',
+        '🤣',
+        '😆',
+        '😄',
+        '😊',
+        '😍',
+        '😘',
+        '😮',
+        '🤯',
+        '😲',
+        '😱',
+        '😢',
+        '😭',
+        '🥺',
+        '👏',
+        '🙌',
+        '🤝',
+        '🔥',
+        '💯',
+        '⭐',
+        '✨',
+        '🎉',
+        '🎊',
+        '🏆',
+        '🤔',
+        '🤨',
+        '😎',
+        '🙏',
+        '💪',
+        '🚀',
+        '📚',
+        '✏️',
+        '🎓',
     ];
 
     let socket = null;
@@ -59,8 +90,9 @@
         // nenhuma pista no console de por quê.
         scriptEl.onerror = () => {
             console.error(
-                '[Realtime] Falha ao carregar o Socket.IO de ' + SOCKET_URL +
-                '. Chat e avisos em tempo real ficarão indisponíveis.'
+                '[Realtime] Falha ao carregar o Socket.IO de ' +
+                    SOCKET_URL +
+                    '. Chat e avisos em tempo real ficarão indisponíveis.'
             );
             // Permite nova tentativa numa chamada posterior de connectSocket().
             scriptEl.remove();
@@ -89,7 +121,7 @@
             // usuário ficava sem realtime até dar F5. A instância free do
             // Render hiberna e pode levar mais que isso para acordar, então o
             // cliente insiste indefinidamente com o intervalo crescendo.
-            reconnectionAttempts: Infinity
+            reconnectionAttempts: Infinity,
         });
 
         window.socket = socket; // Expor globalmente para outros componentes (ex: Feed)
@@ -135,7 +167,7 @@
         try {
             const response = await fetch(url, {
                 ...options,
-                signal: controller.signal
+                signal: controller.signal,
             });
             clearTimeout(id);
             return response;
@@ -196,7 +228,8 @@
                 `;
             }
             if (listEl) {
-                listEl.innerHTML = '<p style="text-align:center;color:#ef4444;font-size:0.75rem;padding:0.5rem;">Falha ao carregar as avaliações recentes.</p>';
+                listEl.innerHTML =
+                    '<p style="text-align:center;color:#ef4444;font-size:0.75rem;padding:0.5rem;">Falha ao carregar as avaliações recentes.</p>';
             }
         }
     }
@@ -204,7 +237,11 @@
     async function loadMyReview() {
         const formEl = document.getElementById('reviewForm');
         try {
-            const res = await fetchWithTimeout(`${API}/reviews/mine`, { credentials: 'include' }, 8000);
+            const res = await fetchWithTimeout(
+                `${API}/reviews/mine`,
+                { credentials: 'include' },
+                8000
+            );
             const json = await res.json();
             if (json.success && json.data) {
                 renderMyReviewForm(json.data);
@@ -228,19 +265,22 @@
         const el = document.getElementById('reviewStats');
         if (!el || !stats) return;
 
-        const starsHtml = Array.from({ length: 5 }, (_, i) =>
-            `<i class="bi bi-star${i < Math.round(stats.average) ? '-fill' : ''}"></i>`
+        const starsHtml = Array.from(
+            { length: 5 },
+            (_, i) => `<i class="bi bi-star${i < Math.round(stats.average) ? '-fill' : ''}"></i>`
         ).join('');
 
-        const distHtml = [5, 4, 3, 2, 1].map(n => {
-            const count = stats.distribution?.[n] || 0;
-            const pct = stats.total > 0 ? (count / stats.total * 100) : 0;
-            return `<div class="dist-row">
+        const distHtml = [5, 4, 3, 2, 1]
+            .map((n) => {
+                const count = stats.distribution?.[n] || 0;
+                const pct = stats.total > 0 ? (count / stats.total) * 100 : 0;
+                return `<div class="dist-row">
                 <span class="dist-label">${n}</span>
                 <div class="dist-bar"><div class="dist-fill" style="width:${pct}%"></div></div>
                 <span class="dist-count">${count}</span>
             </div>`;
-        }).join('');
+            })
+            .join('');
 
         el.innerHTML = `
             <div class="review-stats">
@@ -269,25 +309,37 @@
             return;
         }
 
-        el.innerHTML = reviews.map(r => {
-            const initials = r.userName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-            const stars = Array.from({ length: 5 }, (_, i) =>
-                `<i class="bi bi-star${i < r.rating ? '-fill' : ''}"></i>`
-            ).join('');
-            const timeAgo = formatTimeAgo(r.updatedAt || r.createdAt);
+        el.innerHTML = reviews
+            .map((r) => {
+                // Nome, iniciais e tipo vêm do cadastro, que a pessoa edita no
+                // perfil: entram escapados, como o comentário (Issue #383).
+                const nome = String(r.userName || '');
+                const initials = nome
+                    .split(' ')
+                    .filter(Boolean)
+                    .map((n) => n[0])
+                    .join('')
+                    .substring(0, 2)
+                    .toUpperCase();
+                const stars = Array.from(
+                    { length: 5 },
+                    (_, i) => `<i class="bi bi-star${i < r.rating ? '-fill' : ''}"></i>`
+                ).join('');
+                const timeAgo = formatTimeAgo(r.updatedAt || r.createdAt);
 
-            return `<div class="review-item">
-                <div class="review-avatar type-${r.userType}">${initials}</div>
+                return `<div class="review-item">
+                <div class="review-avatar type-${escapeHtml(r.userType)}">${escapeHtml(initials)}</div>
                 <div class="review-content">
                     <div class="review-header">
-                        <span class="review-name">${r.userName}</span>
+                        <span class="review-name">${escapeHtml(nome)}</span>
                         <span class="review-date">${timeAgo}</span>
                     </div>
                     <div class="review-stars-small">${stars}</div>
                     <p class="review-text">${escapeHtml(r.comment)}</p>
                 </div>
             </div>`;
-        }).join('');
+            })
+            .join('');
     }
 
     function renderMyReviewForm(existingReview) {
@@ -324,7 +376,7 @@
         const picker = document.getElementById('starRatingPicker');
         const starEls = picker.querySelectorAll('.star');
 
-        starEls.forEach(star => {
+        starEls.forEach((star) => {
             star.addEventListener('mouseenter', () => {
                 const r = parseInt(star.dataset.rating);
                 starEls.forEach((s, i) => {
@@ -342,7 +394,9 @@
         });
 
         picker.addEventListener('mouseleave', () => {
-            starEls.forEach(s => s.classList.remove('hover-preview'));
+            starEls.forEach((s) => {
+                s.classList.remove('hover-preview');
+            });
         });
 
         // Char count
@@ -362,20 +416,27 @@
             const comment = textarea.value.trim();
             if (selectedRating === 0) return showToast?.('Selecione de 1 a 5 estrelas', 'warning');
             if (!comment) return showToast?.('Escreva um comentário', 'warning');
-            if (window.FiltroPalavroesUI
-                && !window.FiltroPalavroesUI.validarAntesDeEnviar(comment, { campo: textarea })) return;
+            if (
+                window.FiltroPalavroesUI &&
+                !window.FiltroPalavroesUI.validarAntesDeEnviar(comment, { campo: textarea })
+            )
+                return;
 
             const btn = document.getElementById('btnSubmitReview');
             btn.disabled = true;
             btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Salvando...';
 
             try {
-                const res = await fetchWithTimeout(`${API}/reviews`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ rating: selectedRating, comment })
-                }, 8000);
+                const res = await fetchWithTimeout(
+                    `${API}/reviews`,
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ rating: selectedRating, comment }),
+                    },
+                    8000
+                );
                 const json = await res.json();
                 if (json.success) {
                     showToast?.('Avaliação salva com sucesso! ⭐', 'success');
@@ -396,7 +457,11 @@
         document.getElementById('btnDeleteReview')?.addEventListener('click', async () => {
             if (!confirm('Tem certeza que deseja remover sua avaliação?')) return;
             try {
-                const res = await fetchWithTimeout(`${API}/reviews`, { method: 'DELETE', credentials: 'include' }, 8000);
+                const res = await fetchWithTimeout(
+                    `${API}/reviews`,
+                    { method: 'DELETE', credentials: 'include' },
+                    8000
+                );
                 const json = await res.json();
                 if (json.success) {
                     showToast?.('Avaliação removida', 'info');
@@ -424,10 +489,11 @@
         const userId = currentUser?.id || currentUser?._id;
 
         let html = '<div class="reaction-bar" data-message-id="' + messageId + '">';
-        EMOJIS.forEach(emoji => {
+        EMOJIS.forEach((emoji) => {
             const data = summary[emoji] || { count: 0, users: [] };
-            const isSelected = data.users?.some(u => u.name === currentUser?.nome);
-            const tooltipContent = data.users?.map(u => `${u.name} reagiu ${emoji}`).join('\n') || '';
+            const isSelected = data.users?.some((u) => u.name === currentUser?.nome);
+            const tooltipContent =
+                data.users?.map((u) => `${u.name} reagiu ${emoji}`).join('\n') || '';
 
             html += `<span class="reaction-emoji ${isSelected ? 'selected' : ''}" data-emoji="${emoji}" data-message="${messageId}">
                 ${emoji}
@@ -440,8 +506,10 @@
     }
 
     function updateReactionUI(data) {
-        const bars = document.querySelectorAll(`.reaction-bar[data-item-id="${data.messageId}"], .reaction-bar[data-message-id="${data.messageId}"]`);
-        bars.forEach(bar => {
+        const bars = document.querySelectorAll(
+            `.reaction-bar[data-item-id="${data.messageId}"], .reaction-bar[data-message-id="${data.messageId}"]`
+        );
+        bars.forEach((bar) => {
             if (window.renderBarWithData) {
                 window.renderBarWithData(bar, data.messageId, data.summary);
             } else {
@@ -452,7 +520,7 @@
     }
 
     function attachReactionListeners() {
-        document.querySelectorAll('.reaction-emoji').forEach(el => {
+        document.querySelectorAll('.reaction-emoji').forEach((el) => {
             el.removeEventListener('click', handleReactionClick);
             el.addEventListener('click', handleReactionClick);
         });
@@ -470,7 +538,8 @@
             if (el.classList.contains('selected')) {
                 // Remove reaction
                 await fetch(`${API}/reactions/${messageId}`, {
-                    method: 'DELETE', credentials: 'include'
+                    method: 'DELETE',
+                    credentials: 'include',
                 });
             } else {
                 // Add/update reaction
@@ -478,7 +547,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ messageId, emoji })
+                    body: JSON.stringify({ messageId, emoji }),
                 });
             }
         } catch (err) {
@@ -518,7 +587,9 @@
                 renderNotificationList(json.data);
                 updateNotifBadge(json.unreadCount);
             }
-        } catch (err) { /* silent */ }
+        } catch (err) {
+            /* silent */
+        }
     }
 
     function renderNotificationList(notifications) {
@@ -526,11 +597,14 @@
         if (!list) return;
 
         if (!notifications || notifications.length === 0) {
-            list.innerHTML = '<div class="notif-empty"><i class="bi bi-bell-slash" style="font-size:1.5rem;display:block;margin-bottom:0.5rem;"></i>Nenhuma notificação</div>';
+            list.innerHTML =
+                '<div class="notif-empty"><i class="bi bi-bell-slash" style="font-size:1.5rem;display:block;margin-bottom:0.5rem;"></i>Nenhuma notificação</div>';
             return;
         }
 
-        list.innerHTML = notifications.map(n => `
+        list.innerHTML = notifications
+            .map(
+                (n) => `
             <div class="notif-item ${n.read ? '' : 'unread'}" data-id="${n._id}" onclick="window.RealtimeSystem.markRead('${n._id}')">
                 <div class="notif-icon">${n.icon || '🔔'}</div>
                 <div class="notif-body">
@@ -539,7 +613,9 @@
                     <div class="notif-time">${formatTimeAgo(n.createdAt)}</div>
                 </div>
             </div>
-        `).join('');
+        `
+            )
+            .join('');
     }
 
     function addNotificationToUI(notification) {
@@ -598,7 +674,10 @@
     /** Tira HTML, normaliza espaços e corta no limite pedido. */
     function resumirTexto(texto, limite) {
         if (!texto) return '';
-        const limpo = String(texto).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        const limpo = String(texto)
+            .replace(/<[^>]*>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
         if (limpo.length <= limite) return limpo;
         return limpo.slice(0, limite).trimEnd() + '…';
     }
@@ -618,35 +697,45 @@
             const n = new Notification(titulo, {
                 body: resumo || 'Novo aviso da escola.',
                 icon: '/img/icons/icon-192.png',
-                tag: `notif-${notification._id || Date.now()}`
+                tag: `notif-${notification._id || Date.now()}`,
             });
             n.onclick = () => {
                 window.focus();
                 if (notification.link) window.location.href = notification.link;
                 n.close();
             };
-        } catch (e) { /* navegador exige service worker */ }
+        } catch (e) {
+            /* navegador exige service worker */
+        }
     }
 
     async function markRead(id) {
         try {
             await fetch(`${API}/notifications/realtime/read/${id}`, {
-                method: 'PUT', credentials: 'include'
+                method: 'PUT',
+                credentials: 'include',
             });
             const item = document.querySelector(`.notif-item[data-id="${id}"]`);
             item?.classList.remove('unread');
             loadNotifications();
-        } catch (err) { /* silent */ }
+        } catch (err) {
+            /* silent */
+        }
     }
 
     async function markAllRead() {
         try {
             await fetch(`${API}/notifications/realtime/read-all`, {
-                method: 'PUT', credentials: 'include'
+                method: 'PUT',
+                credentials: 'include',
             });
-            document.querySelectorAll('.notif-item.unread').forEach(el => el.classList.remove('unread'));
+            document.querySelectorAll('.notif-item.unread').forEach((el) => {
+                el.classList.remove('unread');
+            });
             updateNotifBadge(0);
-        } catch (err) { /* silent */ }
+        } catch (err) {
+            /* silent */
+        }
     }
 
     // =============================================
@@ -670,7 +759,14 @@
     function escapeHtml(text) {
         if (text === null || text === undefined) return '';
         return String(text).replace(/[&<>"'`]/g, function (c) {
-            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c];
+            return {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;',
+                '`': '&#96;',
+            }[c];
         });
     }
 
@@ -705,6 +801,6 @@
         markAllRead,
         loadReviews,
         loadMyReview,
-        loadNotifications
+        loadNotifications,
     };
 })();
