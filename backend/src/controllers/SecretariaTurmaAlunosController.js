@@ -892,7 +892,7 @@ exports.confirmarImportacao = async (req, res) => {
         // sistema inutilizável.
         const ras = aGravar.map((linha) => linha.dadosNormalizados.ra);
         const gravados = await Aluno.find(escopo(req, { matricula: { $in: ras } }))
-            .select('_id matricula codigoSecreto')
+            .select('_id matricula +codigoSecreto')
             .lean();
         const idPorRa = new Map(
             gravados.map((aluno) => [String(aluno.matricula), String(aluno._id)])

@@ -19,34 +19,39 @@ const request = require('supertest');
 jest.mock('google-auth-library', () => ({
     OAuth2Client: jest.fn().mockImplementation(() => ({
         verifyIdToken: jest.fn(async () => ({
-            getPayload: () => global.__GOOGLE_PAYLOAD__
-        }))
-    }))
+            getPayload: () => global.__GOOGLE_PAYLOAD__,
+        })),
+    })),
 }));
 
 const app = require('../app');
 const Usuario = require('../models/Usuario');
 const { conectarBanco, limparBanco, desconectarBanco } = require('./helpers');
 
-beforeAll(async () => { await conectarBanco(); });
-afterEach(async () => { await limparBanco(); });
-afterAll(async () => { await desconectarBanco(); });
+beforeAll(async () => {
+    await conectarBanco();
+});
+afterEach(async () => {
+    await limparBanco();
+});
+afterAll(async () => {
+    await desconectarBanco();
+});
 
 // O controller só usa o caminho de ID Token quando o valor começa com 'eyJ'
 const TOKEN_FALSO = 'eyJ.fake.token';
 
 function loginGoogle(payload) {
-    global.__GOOGLE_PAYLOAD__ = payload;
+    global.__GOOGLE_PAYLOAD__ = { email_verified: true, ...payload };
     return request(app).post('/api/auth/google-login').send({ token: TOKEN_FALSO });
 }
 
 describe('Google login: nome de exibição malicioso', () => {
-
     it('remove markup do nome antes de gravar', async () => {
         const res = await loginGoogle({
             email: 'atacante@gmail.com',
             name: '<img src=x onerror="fetch(1)">',
-            picture: ''
+            picture: '',
         });
         expect(res.status).toBe(200);
 
@@ -60,7 +65,7 @@ describe('Google login: nome de exibição malicioso', () => {
         const res = await loginGoogle({
             email: 'joana@gmail.com',
             name: 'Joana Dávila Conceição',
-            picture: ''
+            picture: '',
         });
         expect(res.status).toBe(200);
 
@@ -74,7 +79,7 @@ describe('Google login: nome de exibição malicioso', () => {
         const res = await loginGoogle({
             email: 'vazio@gmail.com',
             name: '<script>alert(1)</script>',
-            picture: ''
+            picture: '',
         });
         expect(res.status).toBe(200);
 
@@ -86,7 +91,7 @@ describe('Google login: nome de exibição malicioso', () => {
         const res = await loginGoogle({
             email: 'longo@gmail.com',
             name: 'A'.repeat(5000),
-            picture: ''
+            picture: '',
         });
         expect(res.status).toBe(200);
 
@@ -96,7 +101,6 @@ describe('Google login: nome de exibição malicioso', () => {
 });
 
 describe('Google login: foto de perfil', () => {
-
     it('aceita URL legitima do Google', async () => {
         const url = 'https://lh3.googleusercontent.com/a/abc123';
         const res = await loginGoogle({ email: 'foto-ok@gmail.com', name: 'Ana', picture: url });
@@ -110,7 +114,7 @@ describe('Google login: foto de perfil', () => {
         ['host de terceiro', 'https://evil.example.com/x.png'],
         ['esquema javascript', 'javascript:alert(1)'],
         ['aspas para quebrar o atributo', 'https://lh3.googleusercontent.com/a" onerror="alert(1)'],
-        ['http sem TLS', 'http://lh3.googleusercontent.com/a']
+        ['http sem TLS', 'http://lh3.googleusercontent.com/a'],
     ])('rejeita foto: %s', async (_rotulo, url) => {
         const email = `foto-${Math.random().toString(36).slice(2)}@gmail.com`;
         const res = await loginGoogle({ email, name: 'Ana', picture: url });

@@ -24,6 +24,8 @@ const PAGINAS_SO_ADMIN = [
     '/html/admin/auditoria.html',
     '/html/admin/configuracoes.html',
     '/html/admin/codigos-escolas.html',
+    // Cria convites que viram conta de gestão (Issue #386).
+    '/html/admin/convites-equipe.html',
     // Estas duas não tinham NENHUMA verificação, nem a de fachada.
     '/html/admin/diagnostico.html',
     // Exibe códigos de backup 2FA recém-gerados: se vazasse, entregaria a um

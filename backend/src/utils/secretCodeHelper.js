@@ -107,7 +107,7 @@ async function assignSecretCodes(ids) {
         // aluno afetado é regerado estendido em vez de repetir silenciosamente.
         for (let tentativa = 0; tentativa < 5; tentativa++) {
             const emUso = await Aluno.find({ codigoSecreto: { $in: candidatos } })
-                .select('codigoSecreto')
+                .select('+codigoSecreto')
                 .lean();
             if (emUso.length === 0) break;
             const usados = new Set(emUso.map((d) => d.codigoSecreto));
@@ -133,7 +133,7 @@ async function assignSecretCodes(ids) {
 
         // Confirma no banco (1 consulta) em vez de assumir que tudo passou.
         const gravados = await Aluno.find({ _id: { $in: lote } })
-            .select('codigoSecreto')
+            .select('+codigoSecreto')
             .lean();
         gravados.forEach((d) => {
             if (d.codigoSecreto) atribuidos.set(String(d._id), d.codigoSecreto);

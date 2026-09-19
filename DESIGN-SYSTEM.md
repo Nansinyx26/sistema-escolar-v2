@@ -111,6 +111,9 @@ Referência: as artes do Portal do Docente e do dashboard do professor.
 | `css/ui-painel.css` | Esqueleto dos painéis (`body.ui3.ui-painel`): barra lateral, cabeçalho, saudação, cartões de número (`pn-kpi`), cartões (`pn-card`), agenda do dia, ações rápidas e o ajuste dos blocos montados por outros scripts (equipe online, mural, avaliações) |
 | `js/ui-painel.js` | Tema, menu da conta, estado do hambúrguer e cartão "Instalar" dos painéis |
 | `js/painel-professor.js` | Dados do painel do professor (#367): cartões, agenda do dia, estados vazio e de erro |
+| `js/painel-dados.js` | Peças comuns dos painéis: busca, cartões, barras por turma, frequência (75%), comunicados, agenda e pendências |
+| `js/painel-direcao.js` | Dados do painel da direção (#368) |
+| `js/painel-secretaria.js` | Dados do painel da secretaria (#369), em `html/secretaria/painel.html` |
 
 Como usar numa página:
 

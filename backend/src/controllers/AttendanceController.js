@@ -1,4 +1,16 @@
 const Falta = require('../models/Falta');
+const { projetarAluno } = require('../utils/projecaoAluno');
+
+/**
+ * O `populate('aluno')` traria o cadastro inteiro da criança em cada registro
+ * de chamada. Aqui o aluno passa pela mesma projeção por perfil das rotas de
+ * aluno (Issue #388).
+ */
+function comAlunoProjetado(doc, perfil) {
+    const obj = typeof doc.toObject === 'function' ? doc.toObject({ flattenMaps: true }) : doc;
+    if (obj.aluno && typeof obj.aluno === 'object') obj.aluno = projetarAluno(obj.aluno, perfil);
+    return obj;
+}
 const AuditoriaService = require('../services/AuditoriaService');
 
 exports.list = async (req, res) => {
@@ -27,7 +39,10 @@ exports.list = async (req, res) => {
         // -------------------------------------------------------------------------
 
         const docs = await Falta.find(query).populate('aluno');
-        res.json({ success: true, data: docs });
+        res.json({
+            success: true,
+            data: docs.map((d) => comAlunoProjetado(d, req.user?.perfil)),
+        });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
@@ -74,7 +89,7 @@ exports.get = async (req, res) => {
         }
         // -------------------------------------------------------------------------
 
-        res.json({ success: true, data: doc });
+        res.json({ success: true, data: comAlunoProjetado(doc, req.user?.perfil) });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }

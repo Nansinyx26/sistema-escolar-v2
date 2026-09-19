@@ -9,15 +9,21 @@
  *   - Validação de campos obrigatórios
  */
 
-const request  = require('supertest');
-const jwt      = require('jsonwebtoken');
-const app      = require('../app');
-const Aluno    = require('../models/Aluno');
+const request = require('supertest');
+const jwt = require('jsonwebtoken');
+const app = require('../app');
+const Aluno = require('../models/Aluno');
 const { conectarBanco, limparBanco, desconectarBanco, criarUsuario } = require('./helpers');
 
-beforeAll(async () => { await conectarBanco(); });
-afterEach(async () => { await limparBanco(); });
-afterAll(async () => { await desconectarBanco(); });
+beforeAll(async () => {
+    await conectarBanco();
+});
+afterEach(async () => {
+    await limparBanco();
+});
+afterAll(async () => {
+    await desconectarBanco();
+});
 
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Helper — cookie JWT de admin para rotas protegidas
@@ -36,7 +42,6 @@ async function cookieAdmin() {
 // Autenticação nas rotas de alunos
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 describe('GET /api/alunos — autenticação', () => {
-
     it('deve retornar 401 sem cookie JWT', async () => {
         const res = await request(app).get('/api/alunos');
         expect(res.status).toBe(401);
@@ -44,9 +49,7 @@ describe('GET /api/alunos — autenticação', () => {
 
     it('deve retornar 200 com cookie JWT válido de admin', async () => {
         const cookie = await cookieAdmin();
-        const res = await request(app)
-            .get('/api/alunos')
-            .set('Cookie', cookie);
+        const res = await request(app).get('/api/alunos').set('Cookie', cookie);
 
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
@@ -57,7 +60,6 @@ describe('GET /api/alunos — autenticação', () => {
 // CRUD de alunos
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 describe('POST /api/alunos — criação', () => {
-
     it('deve rejeitar aluno sem nome com erro de validação', async () => {
         const cookie = await cookieAdmin();
         const res = await request(app)
@@ -89,7 +91,6 @@ describe('POST /api/alunos — criação', () => {
 });
 
 describe('GET /api/alunos — filtragem por turma', () => {
-
     it('deve retornar somente alunos da turma solicitada', async () => {
         const cookie = await cookieAdmin();
 
@@ -97,12 +98,10 @@ describe('GET /api/alunos — filtragem por turma', () => {
         await Aluno.create({ nome: 'Ana', turma: '1A', ativo: true });
         await Aluno.create({ nome: 'Bruno', turma: '2B', ativo: true });
 
-        const res = await request(app)
-            .get('/api/alunos?turma=1A')
-            .set('Cookie', cookie);
+        const res = await request(app).get('/api/alunos?turma=1A').set('Cookie', cookie);
 
         expect(res.status).toBe(200);
-        const nomes = res.body.data.map(a => a.nome);
+        const nomes = res.body.data.map((a) => a.nome);
         expect(nomes).toContain('Ana');
         expect(nomes).not.toContain('Bruno');
     });
@@ -113,17 +112,14 @@ describe('GET /api/alunos/codigos-secretos', () => {
         const cookie = await cookieAdmin();
         const aluno = await Aluno.create({ nome: 'Carlos', turma: '1A', ativo: true });
 
-        const res = await request(app)
-            .get('/api/alunos/codigos-secretos')
-            .set('Cookie', cookie);
+        const res = await request(app).get('/api/alunos/codigos-secretos').set('Cookie', cookie);
 
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
-        expect(res.body.data.some(item => item.nome.includes('Carlos'))).toBe(true);
+        expect(res.body.data.some((item) => item.nome.includes('Carlos'))).toBe(true);
 
-        const alunoAtualizado = await Aluno.findById(aluno._id);
+        const alunoAtualizado = await Aluno.findById(aluno._id).select('+codigoSecreto');
         expect(alunoAtualizado.codigoSecreto).toBeTruthy();
         expect(alunoAtualizado.codigoSecreto).not.toBe('N/A');
     });
 });
-
