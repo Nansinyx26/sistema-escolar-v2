@@ -19,6 +19,7 @@ const escapeRegex = require('../utils/escapeRegex');
 const logger = require('../utils/logger');
 const urlFotoAluno = require('../utils/urlFotoAluno');
 const { projetarAluno } = require('../utils/projecaoAluno');
+const assertAcessoAoAluno = require('../middleware/assertAcessoAoAluno');
 
 // Trava por conta contra varredura do código secreto do aluno
 const MAX_TENTATIVAS_VINCULO = 5;
@@ -1093,6 +1094,13 @@ exports.updateDocumentoStatus = async (req, res) => {
             return res.status(400).json({ success: false, error: 'Status inválido.' });
         }
 
+        // Escola e vínculo (Issue #397): antes, gestão de uma escola alterava —
+        // e recebia de volta — a ficha de aluno de outra.
+        const acesso = await assertAcessoAoAluno(req, alunoId);
+        if (!acesso.ok) {
+            return res.status(acesso.status).json({ success: false, error: acesso.error });
+        }
+
         const update = { fichaDocumentoStatus: status };
         if (status === 'conferido') {
             update['documentos.conferidoEm'] = new Date();
@@ -1106,7 +1114,16 @@ exports.updateDocumentoStatus = async (req, res) => {
         ).lean();
 
         if (!aluno) return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
-        res.json({ success: true, data: projetarAluno(aluno, perfil) });
+
+        const { logAction } = require('../utils/auditHelper');
+        await logAction(req, 'DOCUMENTO_ALUNO_STATUS', 'Alunos', {
+            recursoId: String(aluno._id),
+            valorNovo: { fichaDocumentoStatus: status },
+            descricao: `Status da ficha de documentos do aluno ${aluno._id}: ${status}.`,
+        });
+
+        // Resposta mínima: a tela só precisa saber que o status mudou.
+        res.json({ success: true, data: { id: String(aluno._id), status } });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }

@@ -6,38 +6,11 @@ const _Usuario = require('../models/Usuario');
 const { saveToGridFS, getFileStream, deleteFile } = require('../utils/gridfs');
 const { validarAssinatura } = require('../utils/assinaturaArquivo');
 const { emitirParaPerfis, emitirParaUsuario } = require('../utils/realtime');
+const assertAcessoAoAluno = require('../middleware/assertAcessoAoAluno');
 const escapeRegex = require('../utils/escapeRegex');
 const logger = require('../utils/logger');
 
 const PERFIS_GESTAO = ['admin', 'diretor', 'secretaria'];
-
-function emailRegexExato(email) {
-    return new RegExp(`^${escapeRegex(String(email || ''))}$`, 'i');
-}
-
-async function verifyOwnership(alunoId, email, user = null) {
-    if (user && Array.isArray(user.alunoIds)) {
-        const idStr = String(alunoId);
-        if (user.alunoIds.some((id) => String(id) === idStr)) {
-            return true;
-        }
-    }
-    if (!email) return false;
-    const emailRegex = emailRegexExato(email);
-    const aluno = await Aluno.findOne({
-        $and: [
-            { $or: [{ _id: alunoId }, { id: alunoId }] },
-            {
-                $or: [
-                    { responsavel: emailRegex },
-                    { 'responsavelDados.email': emailRegex },
-                    { 'responsaveis.email': emailRegex },
-                ],
-            },
-        ],
-    }).lean();
-    return !!aluno;
-}
 
 async function carregarAluno(alunoId) {
     const or = [{ id: alunoId }];
@@ -87,14 +60,12 @@ exports.uploadDocumento = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
         }
 
-        if (perfil === 'responsavel') {
-            const isOwner = await verifyOwnership(aluno._id || aluno.id, req.user.email, req.user);
-            if (!isOwner) {
-                return res.status(403).json({
-                    success: false,
-                    error: 'Acesso negado: o aluno informado não está vinculado a este responsável.',
-                });
-            }
+        // Escola e vínculo, para qualquer perfil (Issue #397). Antes, só o
+        // responsável era conferido: a gestão anexava documento a aluno de
+        // qualquer escola da rede.
+        const acesso = await assertAcessoAoAluno(req, String(aluno._id || aluno.id), { aluno });
+        if (!acesso.ok) {
+            return res.status(acesso.status).json({ success: false, error: acesso.error });
         }
 
         // Validação do arquivo (tamanho, formato e assinatura binária)
@@ -216,6 +187,12 @@ exports.substituirDocumento = async (req, res) => {
         }
 
         const usuarioId = String(req.user?.id || req.user?._id || '');
+
+        // Escola e vínculo do aluno do documento (Issue #397).
+        const acesso = await assertAcessoAoAluno(req, String(doc.alunoId));
+        if (!acesso.ok) {
+            return res.status(acesso.status).json({ success: false, error: acesso.error });
+        }
 
         // Segurança: apenas o próprio responsável que enviou ou equipe gestora
         if (perfil === 'responsavel' && String(doc.responsavelId) !== usuarioId) {
@@ -348,14 +325,10 @@ exports.listarPorAluno = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
         }
 
-        // Se for responsável, garante que o aluno é dele
-        if (perfil === 'responsavel') {
-            const isOwner = await verifyOwnership(aluno._id || aluno.id, req.user.email);
-            if (!isOwner) {
-                return res
-                    .status(403)
-                    .json({ success: false, error: 'Acesso negado a este aluno.' });
-            }
+        // Escola e vínculo, para qualquer perfil (Issue #397).
+        const acesso = await assertAcessoAoAluno(req, String(aluno._id || aluno.id), { aluno });
+        if (!acesso.ok) {
+            return res.status(acesso.status).json({ success: false, error: acesso.error });
         }
 
         const idAluno = aluno._id || aluno.id;
@@ -485,7 +458,15 @@ async function localizarEAutorizar(req, idOuStorageId) {
         return { ok: false, status: 404, error: 'Documento não encontrado.' };
     }
 
-    // Se for responsável, verifica se é dele
+    // Escola e vínculo do aluno do documento, para qualquer perfil
+    // (Issue #397): a gestão de uma escola abria documento assinado de aluno
+    // de outra escola da rede.
+    const acesso = await assertAcessoAoAluno(req, String(doc.alunoId));
+    if (!acesso.ok) {
+        return { ok: false, status: acesso.status, error: acesso.error };
+    }
+
+    // Responsável vê só o que ele mesmo enviou.
     if (perfil === 'responsavel') {
         const usuarioId = String(req.user?.id || req.user?._id || '');
         if (String(doc.responsavelId) !== usuarioId) {
@@ -619,6 +600,12 @@ exports.atualizarStatus = async (req, res) => {
         const doc = await DocumentoResponsavel.findById(id);
         if (!doc) {
             return res.status(404).json({ success: false, error: 'Documento não encontrado.' });
+        }
+
+        // Escola e vínculo do aluno do documento (Issue #397).
+        const acesso = await assertAcessoAoAluno(req, String(doc.alunoId));
+        if (!acesso.ok) {
+            return res.status(acesso.status).json({ success: false, error: acesso.error });
         }
 
         if (status && ['Enviado', 'Em Análise', 'Conferido', 'Substituído'].includes(status)) {

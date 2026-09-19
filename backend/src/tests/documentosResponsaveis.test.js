@@ -260,6 +260,9 @@ describe('Documentos Assinados dos Responsáveis (/api/documentos-responsaveis)'
 
         resp.alunoIds = [aluno._id.toString()];
         await resp.save();
+        // Vínculo como na vida real: o responsável é quem consta na ficha do
+        // aluno. Desde a Issue #397 a substituição também confere isso.
+        await Aluno.updateOne({ _id: aluno._id }, { $set: { responsavel: resp.email } });
 
         const docOriginal = await DocumentoResponsavel.create({
             escolaId,
