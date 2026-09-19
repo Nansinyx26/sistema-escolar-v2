@@ -8,8 +8,8 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
-    <meta name="description" content="Dashboard - Sistema Escolar">
-    <title>Dashboard - Sistema Escolar</title>
+    <meta name="description" content="Painel - Sistema Escolar">
+    <title>Painel - Sistema Escolar</title>
 
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json">
@@ -23,19 +23,16 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
 
     <!-- CSS -->
     <link rel="stylesheet" href="../css/variables.css?v=2.1">
     <link rel="stylesheet" href="../css/base.css?v=2.0">
     <link rel="stylesheet" href="../css/components-new.css?v=2.0">
-    <link rel="stylesheet" href="../css/dashboard.css?v=2.1">
     <link rel="stylesheet" href="../css/splash-screen.css?v=1.0">
     <link rel="stylesheet" href="../css/reactions.css?v=1.0">
     <link rel="stylesheet" href="../css/voice-orb.css?v=2.0">
-    <link rel="stylesheet" href="../css/responsive-global.css?v=1.2">
     <link rel="stylesheet" href="../css/sidebar.css?v=1.3">
-    <link rel="stylesheet" href="../css/dashboard-premium.css?v=1.0">
     <link rel="stylesheet" href="../css/chatbot-ia.css?v=1.0">
     <link rel="stylesheet" href="../css/voice-panel.css?v=1.0">
     <link rel="stylesheet" href="../css/professores-online.css?v=2.0">
@@ -53,10 +50,15 @@
     <link rel="stylesheet" href="../css/social-feed.css">
     <!-- Offline Compiled Tailwind CSS -->
     <link rel="stylesheet" href="../css/tailwind-built.css">
-    <!-- React 18 + Framer Motion (Localized) -->
+    <!-- React 18 + Framer Motion (Localized) — usados pelo Mural da Comunidade -->
     <script src="../js/libs/react.min.js"></script>
     <script src="../js/libs/react-dom.min.js"></script>
-    <script src="../js/libs/framer-motion.js"></script>    <link rel="stylesheet" href="../css/system-global.css?v=1.0">
+    <script src="../js/libs/framer-motion.js"></script>
+    <link rel="stylesheet" href="../css/system-global.css?v=1.0">
+    <!-- Base visual dos logins e painéis (épico #370) e o esqueleto dos painéis.
+         Depois dos CSS antigos: as regras ficam sob body.ui3.ui-painel. -->
+    <link rel="stylesheet" href="../css/ui-base.css?v=1.0">
+    <link rel="stylesheet" href="../css/ui-painel.css?v=1.0">
     <!-- Rolagem e performance mobile — deve ser o ÚLTIMO stylesheet -->
     <link rel="stylesheet" href="../css/mobile-scroll.css?v=1.0">
     <link rel="stylesheet" href="../css/motion.css">
@@ -65,7 +67,7 @@
     <link rel="stylesheet" href="../css/acessibilidade.css">
 </head>
 
-<body>
+<body class="ui3 ui-painel">
     <!-- Splash Screen (PWA) -->
     <div id="splashScreen">
         <div class="splash-logo-container">
@@ -88,18 +90,23 @@
     </div>
     <script src="../js/splash-screen.js"></script>
 
+    <a class="pn-pular" href="#mainContent">Pular para o conteúdo</a>
 
-    <!-- Global Sidebar -->
-    <aside class="sidebar" id="mainSidebar">
-        <div class="sidebar-logo">
-            <i class="bi bi-mortarboard-fill"></i>
-            <span>Sistema Escolar</span>
-        </div>
-        
-        <!-- Sidebar User Profile -->
+    <!-- Barra lateral. js/sidebar-voice.js recolhe (desktop) e abre como gaveta
+         (celular); js/dashboard.js mostra os itens de cada perfil. -->
+    <aside class="sidebar pn-side" id="mainSidebar" aria-label="Menu principal">
+        <a href="dashboard.html" class="pn-marca">
+            <span class="pn-marca-ico ui-tint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/><path d="M22 10v6"/></svg></span>
+            <span class="pn-marca-txt">
+                <span class="pn-marca-nome">Sistema Escolar</span>
+                <span class="pn-marca-sub">Escola, família e futuro</span>
+            </span>
+        </a>
+
+        <!-- Perfil. A escola ativa (js/escola-switcher.js) entra logo abaixo. -->
         <div class="sidebar-profile">
             <div class="sidebar-avatar-wrapper">
-                <img src="/img/default-avatar.png" alt="Foto do Usuário" class="sidebar-avatar user-avatar" id="sidebarAvatar" data-user-photo="self" decoding="async" loading="eager" fetchpriority="high">
+                <img src="/img/default-avatar.png" alt="Foto do usuário" class="sidebar-avatar user-avatar" id="sidebarAvatar" data-user-photo="self" decoding="async" loading="eager" fetchpriority="high">
                 <div class="sidebar-status-online"></div>
             </div>
             <div class="sidebar-info">
@@ -108,30 +115,55 @@
             </div>
         </div>
 
-        <nav class="sidebar-nav">
-            <!-- GRUPO: PAINEL -->
-            <div class="sidebar-group-label">PAINEL PRINCIPAL</div>
-            <a href="dashboard.html" class="sidebar-item active" data-page="home">
-                <i class="bi bi-grid-1x2-fill"></i>
+        <nav class="sidebar-nav" aria-label="Seções do sistema">
+            <a href="dashboard.html" class="sidebar-item active" data-page="home" aria-current="page">
+                <i class="bi bi-house-door"></i>
                 <span>Início</span>
             </a>
-            <!-- Sem classe `-only`: professor, diretor e admin usam esta barra
-                 e os tres conversam. Restringir aqui esconderia a tela de quem
-                 tem direito a ela; quem cada um alcanca e decidido no servidor
-                 (GET /chat-direto/contatos). -->
+
+            <!-- Ensino: professor, direção e secretaria. O backend autoriza os
+                 três no Assistente; `director-teacher-shared` é a classe que
+                 atualizarVisibilidadeSidebar() exibe para esses perfis. -->
+            <a href="selecionar.html" class="sidebar-item director-teacher-shared" id="sidebar-turmas-btn">
+                <i class="bi bi-people"></i>
+                <span>Turmas</span>
+            </a>
+            <a href="../detalhes/avaliacoes.html" class="sidebar-item director-teacher-shared" data-page="avaliacoes" id="sidebar-avaliacoes-btn">
+                <i class="bi bi-clipboard-check"></i>
+                <span>Avaliações</span>
+            </a>
+            <a href="frequencia-professores.html" class="sidebar-item teacher-only" style="display: none;">
+                <i class="bi bi-calendar-check"></i>
+                <span>Frequência</span>
+            </a>
+            <a href="planilha-faltas.html" class="sidebar-item director-teacher-shared" id="sidebar-planilha-faltas">
+                <i class="bi bi-journal-check"></i>
+                <span>Planilha de Faltas</span>
+            </a>
+            <a href="meu-horario.html" class="sidebar-item teacher-only" id="sidebar-horario" style="display: none;">
+                <i class="bi bi-clock"></i>
+                <span>Meu Horário</span>
+            </a>
+            <!-- Sem classe `-only`: professor, diretor e admin conversam; quem
+                 cada um alcança é decidido no servidor (GET /chat-direto/contatos). -->
             <a href="/html/conversas.html" class="sidebar-item" data-page="conversas" data-conversas-badge>
-                <i class="bi bi-chat-dots-fill"></i>
+                <i class="bi bi-chat-dots"></i>
                 <span>Conversas</span>
+            </a>
+            <a href="direcao/ia-assistant.html" class="sidebar-item director-teacher-shared" data-page="ia-assistant">
+                <i class="bi bi-stars"></i>
+                <span>Assistente da Escola</span>
+                <span class="pn-tag ui-tint">IA</span>
             </a>
 
             <!-- GRUPO: ADMINISTRAÇÃO ESCOLAR (Diretor/Admin Only) -->
-            <div class="sidebar-group-label director-only" style="display: none;">ADMINISTRAÇÃO ESCOLAR</div>
+            <div class="sidebar-group-label director-only" style="display: none;">Administração escolar</div>
             <a href="../detalhes/alunos.html" class="sidebar-item director-only" style="display: none;">
                 <i class="bi bi-people"></i>
                 <span>Lista de Alunos</span>
             </a>
             <a href="../detalhes/autorizacoes-pais.html" class="sidebar-item director-only" style="display: none;" data-page="autorizacoes-pais">
-                <i class="bi bi-file-earmark-check-fill"></i>
+                <i class="bi bi-file-earmark-check"></i>
                 <span>Autorizações dos Pais</span>
             </a>
             <a href="lista-professores.html" class="sidebar-item director-only" style="display: none;">
@@ -139,7 +171,7 @@
                 <span>Lista de Professores</span>
             </a>
             <a href="gerenciar-salas.html" class="sidebar-item director-only" style="display: none;">
-                <i class="bi bi-door-open-fill"></i>
+                <i class="bi bi-door-open"></i>
                 <span>Gerenciar Salas</span>
             </a>
             <a href="../direcao/horario-jaguari.html" class="sidebar-item director-only" style="display: none;">
@@ -147,12 +179,12 @@
                 <span>Horários</span>
             </a>
             <a href="../direcao/codigos-secretos.html" class="sidebar-item director-only" style="display: none;">
-                <i class="bi bi-key-fill"></i>
+                <i class="bi bi-key"></i>
                 <span>Códigos Secretos</span>
             </a>
 
             <!-- GRUPO: COMUNICAÇÃO E GESTÃO (Diretor/Admin Only) -->
-            <div class="sidebar-group-label director-only" style="display: none;">COMUNICAÇÃO E GESTÃO</div>
+            <div class="sidebar-group-label director-only" style="display: none;">Comunicação e gestão</div>
             <a href="../direcao/direcao-notificacoes.html" class="sidebar-item director-only" style="display: none;">
                 <i class="bi bi-megaphone"></i>
                 <span>Avisos aos Pais</span>
@@ -171,7 +203,7 @@
             </a>
 
             <!-- GRUPO: SECRETARIA (Secretaria Only) -->
-            <div class="sidebar-group-label secretaria-only" style="display: none;">SECRETARIA</div>
+            <div class="sidebar-group-label secretaria-only" style="display: none;">Secretaria</div>
             <a href="../html/secretaria/painel.html" class="sidebar-item secretaria-only" style="display: none;">
                 <i class="bi bi-speedometer2"></i>
                 <span>Painel Secretaria</span>
@@ -181,7 +213,7 @@
                 <span>Alunos</span>
             </a>
             <a href="../detalhes/autorizacoes-pais.html" class="sidebar-item secretaria-only" style="display: none;" data-page="autorizacoes-pais">
-                <i class="bi bi-file-earmark-check-fill"></i>
+                <i class="bi bi-file-earmark-check"></i>
                 <span>Autorizações dos Pais</span>
             </a>
             <a href="../html/secretaria/matriculas.html" class="sidebar-item secretaria-only" style="display: none;">
@@ -205,530 +237,432 @@
                 <span>Relatórios</span>
             </a>
 
-            <!-- GRUPO: PROFESSOR & DIREÇÃO (Shared) -->
-            <div class="sidebar-group-label director-teacher-shared">ENSINO</div>
-            <!-- O copiloto saiu de "COMUNICAÇÃO E GESTÃO" (director-only) para
-                 cá: o backend autoriza diretor, professor e secretaria, e o
-                 `director-teacher-shared` é justamente a classe que
-                 atualizarVisibilidadeSidebar() exibe para esses três perfis.
-                 Antes, um professor tinha permissão no servidor e nenhum
-                 caminho na interface para chegar até ela. -->
-            <a href="direcao/ia-assistant.html" class="sidebar-item director-teacher-shared" data-page="ia-assistant">
-                <i class="bi bi-stars"></i>
-                <span>Assistente da Escola</span>
-            </a>
-            <a href="selecionar.html" class="sidebar-item director-teacher-shared" id="sidebar-turmas-btn">
-                <i class="bi bi-people-fill"></i>
-                <span>Turmas</span>
-            </a>
-            <a href="../detalhes/avaliacoes.html" class="sidebar-item director-teacher-shared" data-page="avaliacoes" id="sidebar-avaliacoes-btn">
-                <i class="bi bi-star-fill"></i>
-                <span>Avaliações</span>
-            </a>
-            <a href="frequencia-professores.html" class="sidebar-item teacher-only" style="display: none;">
-                <i class="bi bi-calendar-check-fill"></i>
-                <span>Frequência</span>
-            </a>
-            <a href="planilha-faltas.html" class="sidebar-item director-teacher-shared" id="sidebar-planilha-faltas">
-                <i class="bi bi-journal-check"></i>
-                <span>Planilha de Faltas</span>
-            </a>
-            <a href="meu-horario.html" class="sidebar-item teacher-only" id="sidebar-horario" style="display: none;">
-                <i class="bi bi-clock-fill"></i>
-                <span>Meu Horário</span>
-            </a>
-
-            <!-- GRUPO: SISTEMA -->
-            <div class="sidebar-group-label">SISTEMA</div>
-            <!-- Sem onclick inline: js/sidebar-voice.js abre a gaveta de
-                 Configurações. O inline clicava em #btn-voice-settings e o
-                 listener do JS desfazia a alternância no mesmo clique. -->
+            <!-- Configurações: js/sidebar-voice.js abre a gaveta (settings-drawer.js),
+                 que reúne tema, voz, acessibilidade e notificações. -->
             <a href="#" class="sidebar-item" id="sidebar-voice-btn">
-                <i class="bi bi-volume-up-fill"></i>
-                <span>Voz & Acessibilidade</span>
-            </a>
-            <a href="#" class="sidebar-item" id="sidebar-notif-btn" onclick="(() => { const b = document.getElementById('notif-btn'); if(b) b.click(); })(); return false;">
-                <i class="bi bi-bell-fill"></i>
-                <span>Notificações</span>
-            </a>
-            <a href="perfil.html" class="sidebar-item" data-page="perfil">
-                <i class="bi bi-person-badge"></i>
-                <span>Meu Perfil</span>
-            </a>
-            <a href="meus-dados.html" class="sidebar-item" data-page="dados">
-                <i class="bi bi-shield-check"></i>
-                <span>Privacidade LGPD</span>
-            </a>
-            <a href="termo-audio-imagem.html" class="sidebar-item" data-page="termo-audio-imagem">
-                <i class="bi bi-file-earmark-check"></i>
-                <span>Termo de Áudio e Imagem</span>
-            </a>
-            <a href="#" class="sidebar-item sidebar-item-danger" onclick="if(window.sair) window.sair(); return false;">
-                <i class="bi bi-box-arrow-right"></i>
-                <span>Sair</span>
+                <i class="bi bi-gear"></i>
+                <span>Configurações</span>
             </a>
         </nav>
-        <div class="sidebar-footer">
-            <button class="sidebar-toggle" id="sidebarToggle">
+
+        <div class="sidebar-footer pn-side-rodape">
+            <p class="pn-lema">“Juntos por uma educação melhor.”</p>
+            <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Recolher o menu">
                 <i class="bi bi-chevron-left"></i>
             </button>
         </div>
     </aside>
 
-    <div class="dashboard-page page-with-sidebar" id="pageWrapper">
-        <!-- Background Decorativo -->
-        <div class="dashboard-bg">
-            <div class="orb orb-primary" id="orb1"></div>
-            <div class="orb orb-secondary" id="orb2"></div>
-            <div class="orb orb-accent" id="orb3"></div>
-        </div>
+    <div class="page-with-sidebar pn-pagina" id="pageWrapper">
+        <header class="dashboard-header pn-topo">
+            <div class="header-left pn-topo-esq">
+                <button type="button" class="ui-icon-btn pn-hamburguer" id="headerHamburger" aria-label="Abrir menu" aria-controls="mainSidebar" aria-expanded="false">
+                    <i class="bi bi-list"></i>
+                </button>
+                <!-- Só o NOME da escola ativa; o id fica no servidor.
+                     Preenchido por js/escola-switcher.js. -->
+                <div class="pn-escola-topo" data-escola-ativa-topo hidden>
+                    <span class="pn-escola-topo-ico ui-tint"><i class="bi bi-building"></i></span>
+                    <span class="pn-escola-topo-txt">
+                        <span class="pn-escola-topo-rot">Escola</span>
+                        <span class="pn-escola-topo-nome" data-escola-ativa-nome></span>
+                    </span>
+                </div>
+            </div>
 
-        <header class="dashboard-header">
-            <div class="header-content">
-                <div class="header-left">
-                    <!-- Hamburger (mobile) -->
-                    <button class="header-hamburger" id="headerHamburger" title="Menu" aria-label="Abrir menu">
-                        <i class="bi bi-list"></i>
+            <div class="header-right pn-topo-dir">
+                <!-- Canal de denúncia (ECA Digital): o botão é montado por
+                     js/canal-denuncia.js neste container. -->
+                <span data-canal-denuncia></span>
+
+                <button type="button" class="ui-icon-btn" id="btn-restart-tour" title="Ver tour guiado" aria-label="Ver tour guiado" onclick="if(window.OnboardingTour) window.OnboardingTour.restart()">
+                    <i class="bi bi-patch-question"></i>
+                </button>
+
+                <!-- Notificações -->
+                <div class="notif-wrapper">
+                    <button id="notif-btn" title="Notificações" class="ui-icon-btn" aria-label="Notificações">
+                        <i class="bi bi-bell"></i>
+                        <span id="notif-badge" style="display:none;">0</span>
                     </button>
-                    <div class="header-logo">
-                        <i class="bi bi-mortarboard-fill"></i>
-                        <span>Portal do Docente</span>
+                    <div id="notif-panel">
+                        <div class="notif-header">
+                            <h4><i class="bi bi-bell-fill"></i> Notificações</h4>
+                            <button id="btn-marcar-lidas"><i class="bi bi-check2-all"></i> Marcar tudo como lido</button>
+                        </div>
+                        <div id="notif-list"></div>
+                        <div class="notif-footer"><i class="bi bi-hand-index"></i> Clique em cada item para marcar como lido</div>
                     </div>
                 </div>
 
-                <div class="header-right">
+                <button type="button" class="ui-icon-btn ui-theme-toggle" data-ui-tema data-acessibilidade-antes aria-label="Usar tema claro">
+                    <span class="ui-ico-lua"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg></span><span class="ui-ico-sol"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></span>
+                </button>
 
-
-                    <!-- Canal de denúncia (ECA Digital): o botão é montado por
-
-
-                         js/canal-denuncia.js neste container. -->
-
-
-                    <span data-canal-denuncia></span>
-                    <!-- Botão Tour Guiado -->
-                    <button class="header-icon-btn" id="btn-restart-tour" title="Ver Tour Guiado" aria-label="Tour guiado" onclick="if(window.OnboardingTour) window.OnboardingTour.restart()">
-                        <i class="bi bi-patch-question"></i>
+                <!-- Menu da conta: perfil, privacidade, termo, sair -->
+                <div class="pn-conta" data-ui-menu>
+                    <button type="button" class="pn-conta-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="pnContaMenu">
+                        <span class="pn-conta-foto"><img src="/img/default-avatar.png" alt="" class="user-avatar" data-user-photo="self" decoding="async"></span>
+                        <span class="pn-conta-txt">
+                            <span class="pn-conta-nome" data-pn-nome>...</span>
+                            <span class="pn-conta-cargo" data-pn-cargo>...</span>
+                        </span>
+                        <i class="bi bi-chevron-down pn-conta-seta"></i>
                     </button>
-
-                    <!-- Notificações -->
-                    <div class="notif-wrapper">
-                        <button id="notif-btn" title="Notificações" class="header-icon-btn" aria-label="Notificações">
-                            <i class="bi bi-bell"></i>
-                            <span id="notif-badge" style="display:none;">0</span>
-                        </button>
-                        <div id="notif-panel">
-                            <div class="notif-header">
-                                <h4><i class="bi bi-bell-fill" style="color:#60a5fa;"></i> Notificações</h4>
-                                <button id="btn-marcar-lidas"><i class="bi bi-check2-all"></i> Marcar tudo lido</button>
-                            </div>
-                            <div id="notif-list"></div>
-                            <div class="notif-footer"><i class="bi bi-hand-index"></i> Clique em cada item para marcar como lido</div>
-                        </div>
+                    <div class="pn-menu" id="pnContaMenu" role="menu" hidden>
+                        <a href="perfil.html" role="menuitem" data-page="perfil"><i class="bi bi-person-badge"></i> Meu perfil</a>
+                        <a href="meus-dados.html" role="menuitem" data-page="dados"><i class="bi bi-shield-check"></i> Privacidade (LGPD)</a>
+                        <a href="termo-audio-imagem.html" role="menuitem" data-page="termo-audio-imagem"><i class="bi bi-file-earmark-check"></i> Termo de áudio e imagem</a>
+                        <button type="button" role="menuitem" data-open-settings><i class="bi bi-gear"></i> Configurações</button>
+                        <hr>
+                        <button type="button" role="menuitem" class="pn-menu-sair" onclick="if(window.sair) window.sair()"><i class="bi bi-box-arrow-right"></i> Sair</button>
                     </div>
-
-                    <!-- Botão Configurações (⚙) -->
-                    <button class="header-icon-btn header-settings-btn" id="btn-open-settings" title="Configurações" aria-label="Abrir configurações" onclick="if(window.openSettingsDrawer) window.openSettingsDrawer()">
-                        <i class="bi bi-gear"></i>
-                    </button>
                 </div>
             </div>
         </header>
 
-        <!-- Voice Settings Panel (hidden, accessed via Settings Drawer) -->
+        <!-- Painel legado de voz, aberto pela gaveta de Configurações -->
         <div id="voice-settings-panel" style="display:none;"></div>
-        <button id="btn-voice-settings" style="display:none;"></button>
+        <button id="btn-voice-settings" style="display:none;" aria-hidden="true" tabindex="-1"></button>
 
-        <!-- Main Content -->
-        <main class="dashboard-main">
-            <main class="dashboard-content" id="mainContent">
-            <!-- WIDGETS SYSTEM (PHASE 2) -->
-            <div class="widgets-container" id="dashboardWidgets" data-stagger>
-                <!-- Widgets will be injected here via JS -->
-                <div class="widget-card" id="widget-ia-insights">
-                    <h4 style="margin-bottom: 1rem;"><i class="bi bi-robot" style="color: #60a5fa;"></i> Insights da IA</h4>
-                    <div id="ia-prediction-content" style="font-size: 0.9rem; color: #94a3b8;">
-                        Carregando predições acadêmicas...
-                    </div>
+        <main class="dashboard-content pn-main" id="mainContent" tabindex="-1">
+            <!-- Saudação -->
+            <section class="pn-hero" aria-labelledby="welcomeTitle">
+                <div class="pn-hero-txt">
+                    <p class="pn-hero-escola" data-escola-ativa-nome></p>
+                    <p class="pn-hero-dia ui-tint" id="pnHoje"></p>
+                    <h1 id="welcomeTitle" class="ui-display">Olá!</h1>
+                    <p id="welcomeMessage">Carregando o seu resumo do dia…</p>
                 </div>
-                
-                <div class="widget-card" id="widget-badges">
-                    <h4 style="margin-bottom: 1rem;"><i class="bi bi-trophy" style="color: #fbbf24;"></i> Suas Conquistas</h4>
-                    <div id="badges-grid-dashboard" data-stagger data-stagger-step="40" style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 5px;">
-                        <!-- Badges injected here -->
-                    </div>
+                <svg class="pn-hero-giz" viewBox="0 0 520 160" preserveAspectRatio="none" aria-hidden="true">
+                    <path d="M0 150 C 150 150, 200 60, 330 50 S 470 20, 520 8" pathLength="1"/>
+                </svg>
+                <blockquote class="pn-hero-frase">
+                    <p>“A educação é a chave para um futuro melhor.”</p>
+                </blockquote>
+            </section>
+
+            <!-- ============ PAINEL DO PROFESSOR (js/painel-professor.js) ============ -->
+            <section class="pn-kpis" id="pnKpisProfessor" data-perfil-bloco="professor" hidden aria-label="Resumo do dia">
+                <a class="pn-kpi" href="selecionar.html" style="--pn-cor: var(--ui-accent)">
+                    <span class="pn-kpi-ico ui-on-color"><i class="bi bi-people"></i></span>
+                    <span class="pn-kpi-txt">
+                        <span class="pn-kpi-rot">Turmas ativas</span>
+                        <span class="pn-kpi-valor ui-num" data-kpi="turmas"><span class="skeleton pn-skel pn-skel-num"></span></span>
+                        <span class="pn-kpi-sub" data-kpi-sub="turmas"></span>
+                    </span>
+                    <i class="bi bi-chevron-right pn-kpi-seta"></i>
+                </a>
+                <a class="pn-kpi" href="meu-horario.html" data-kpi-link="horario" style="--pn-cor: var(--ui-violet)">
+                    <span class="pn-kpi-ico ui-on-color"><i class="bi bi-calendar-event"></i></span>
+                    <span class="pn-kpi-txt">
+                        <span class="pn-kpi-rot">Próxima aula</span>
+                        <span class="pn-kpi-valor ui-num" data-kpi="proxima"><span class="skeleton pn-skel pn-skel-num"></span></span>
+                        <span class="pn-kpi-sub" data-kpi-sub="proxima"></span>
+                    </span>
+                    <i class="bi bi-chevron-right pn-kpi-seta"></i>
+                </a>
+                <a class="pn-kpi" href="../detalhes/avaliacoes.html" style="--pn-cor: var(--ui-amber)">
+                    <span class="pn-kpi-ico ui-on-color"><i class="bi bi-clipboard-check"></i></span>
+                    <span class="pn-kpi-txt">
+                        <span class="pn-kpi-rot">Avaliações sem nota</span>
+                        <span class="pn-kpi-valor ui-num" data-kpi="avaliacoes"><span class="skeleton pn-skel pn-skel-num"></span></span>
+                        <span class="pn-kpi-sub" data-kpi-sub="avaliacoes"></span>
+                    </span>
+                    <i class="bi bi-chevron-right pn-kpi-seta"></i>
+                </a>
+                <a class="pn-kpi" href="selecionar.html" style="--pn-cor: var(--ui-blue)">
+                    <span class="pn-kpi-ico ui-on-color"><i class="bi bi-calendar-check"></i></span>
+                    <span class="pn-kpi-txt">
+                        <span class="pn-kpi-rot">Frequência hoje</span>
+                        <span class="pn-kpi-valor ui-num" data-kpi="frequencia"><span class="skeleton pn-skel pn-skel-num"></span></span>
+                        <span class="pn-kpi-sub" data-kpi-sub="frequencia"></span>
+                    </span>
+                    <i class="bi bi-chevron-right pn-kpi-seta"></i>
+                </a>
+            </section>
+
+            <!-- ============ DIREÇÃO E ADMINISTRAÇÃO (js/dashboard.js) ============ -->
+            <!-- Resumo do diretor -->
+            <div id="directorDashboardSummary" class="pn-kpis" style="display: none;">
+                <div class="pn-kpi" style="--pn-cor: var(--ui-blue)">
+                    <span class="pn-kpi-ico ui-on-color"><i class="bi bi-people"></i></span>
+                    <span class="pn-kpi-txt">
+                        <span class="pn-kpi-rot">Total de alunos</span>
+                        <span class="pn-kpi-valor ui-num" id="stat-total-alunos">…</span>
+                    </span>
+                </div>
+                <div class="pn-kpi" style="--pn-cor: var(--ui-violet)">
+                    <span class="pn-kpi-ico ui-on-color"><i class="bi bi-person-badge"></i></span>
+                    <span class="pn-kpi-txt">
+                        <span class="pn-kpi-rot">Professores</span>
+                        <span class="pn-kpi-valor ui-num" id="stat-total-professores">…</span>
+                    </span>
+                </div>
+                <div class="pn-kpi" style="--pn-cor: var(--ui-accent)">
+                    <span class="pn-kpi-ico ui-on-color"><i class="bi bi-door-open"></i></span>
+                    <span class="pn-kpi-txt">
+                        <span class="pn-kpi-rot">Turmas ativas</span>
+                        <span class="pn-kpi-valor ui-num" id="stat-total-turmas">…</span>
+                    </span>
                 </div>
             </div>
 
-            <!-- Header da Seção Atual -->
-                <div class="welcome-section">
-                    <div class="welcome-content">
-                        <h1 id="welcomeTitle">Bem-vindo ao Sistema Escolar! 🎉</h1>
-                        <p id="welcomeMessage">Seu perfil foi cadastrado com sucesso!</p>
+            <!-- Atividade recente e avisos da direção -->
+            <div id="directorActivityGrid" class="pn-duas" style="display: none;">
+                <article class="pn-card">
+                    <header class="pn-card-topo">
+                        <span class="pn-card-ico ui-tint"><i class="bi bi-activity"></i></span>
+                        <h2 class="pn-card-titulo">Atividade recente</h2>
+                    </header>
+                    <div id="recentActivityList" class="activity-list pn-lista-mini">
+                        <div class="activity-placeholder"><span class="skeleton pn-skel"></span></div>
+                    </div>
+                </article>
+                <article class="pn-card">
+                    <header class="pn-card-topo">
+                        <span class="pn-card-ico ui-tint"><i class="bi bi-megaphone"></i></span>
+                        <h2 class="pn-card-titulo">Últimos avisos</h2>
+                    </header>
+                    <div id="latestNoticesList" class="notices-mini-list pn-lista-mini">
+                        <div class="activity-placeholder"><span class="skeleton pn-skel"></span></div>
+                    </div>
+                </article>
+            </div>
+
+            <!-- Código secreto da escola (Direção/Admin) -->
+            <article id="securityPanel" class="pn-card pn-seguranca" style="display: none;">
+                <header class="pn-card-topo">
+                    <span class="pn-card-ico ui-tint"><i class="bi bi-shield-lock"></i></span>
+                    <div class="pn-card-cab">
+                        <h2 class="pn-card-titulo">Código secreto da escola</h2>
+                        <p class="pn-card-desc">Válido só para hoje. Entregue aos novos professores.</p>
+                    </div>
+                </header>
+                <div class="pn-seguranca-corpo">
+                    <div class="pn-codigo">
+                        <span id="dashboardDailyCode" data-code="------" class="ui-num">••••••</span>
+                        <button type="button" id="btn-toggle-secret" class="ui-icon-btn" aria-label="Mostrar código">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                    <div class="pn-seguranca-acoes">
+                        <button class="ui-btn" data-rota="admin.usuarios">
+                            <i class="bi bi-people"></i> Usuários
+                        </button>
+                        <button class="ui-btn" data-rota="admin.auditoria" id="btnAuditoriaDash" style="display: none;">
+                            <i class="bi bi-shield-shaded"></i> Auditoria
+                        </button>
                     </div>
                 </div>
+            </article>
 
-                <!-- SEÇÃO DE RESUMO DO DIRETOR (Nova) -->
-                <div id="directorDashboardSummary" class="dashboard-stats-grid" style="display: none;" data-stagger>
-                    <div class="stat-card-premium glass-strong">
-                        <div class="stat-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
-                            <i class="bi bi-people"></i>
-                        </div>
-                        <div class="stat-info">
-                            <span class="stat-label">Total Alunos</span>
-                            <h3 class="stat-value" id="stat-total-alunos">...</h3>
-                        </div>
-                    </div>
-                    <div class="stat-card-premium glass-strong">
-                        <div class="stat-icon" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">
-                            <i class="bi bi-person-badge"></i>
-                        </div>
-                        <div class="stat-info">
-                            <span class="stat-label">Professores</span>
-                            <h3 class="stat-value" id="stat-total-professores">...</h3>
-                        </div>
-                    </div>
-                    <div class="stat-card-premium glass-strong">
-                        <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
-                            <i class="bi bi-door-open"></i>
-                        </div>
-                        <div class="stat-info">
-                            <span class="stat-label">Turmas Ativas</span>
-                            <h3 class="stat-value" id="stat-total-turmas">...</h3>
-                        </div>
-                    </div>
-                </div>
+            <div class="pn-grade">
+                <div class="pn-col pn-col--1">
+                    <!-- Agenda do dia: sai da grade cadastrada (GET /dashboard/teacher-panel) -->
+                    <article class="pn-card pn-agenda" id="pnAgenda" data-perfil-bloco="professor" hidden aria-labelledby="pnAgendaTitulo">
+                        <header class="pn-card-topo">
+                            <span class="pn-card-ico ui-tint"><i class="bi bi-calendar-week"></i></span>
+                            <h2 class="pn-card-titulo" id="pnAgendaTitulo">Agenda do dia</h2>
+                            <span class="pn-card-meta" id="pnAgendaData"></span>
+                        </header>
+                        <ol class="pn-aulas" id="pnAgendaLista" aria-live="polite" aria-busy="true">
+                            <li class="pn-aula pn-aula--skel"><span class="skeleton pn-skel"></span></li>
+                            <li class="pn-aula pn-aula--skel"><span class="skeleton pn-skel"></span></li>
+                            <li class="pn-aula pn-aula--skel"><span class="skeleton pn-skel"></span></li>
+                            <li class="pn-aula pn-aula--skel"><span class="skeleton pn-skel"></span></li>
+                        </ol>
+                        <footer class="pn-card-rodape">
+                            <a class="ui-link ui-tint" href="meu-horario.html" data-kpi-link="horario">Ver horário completo <i class="bi bi-chevron-right"></i></a>
+                        </footer>
+                    </article>
 
-                <!-- Grid de Atividades e Avisos -->
-                <div id="directorActivityGrid" class="dashboard-split-grid" style="display: none;">
-                    <div class="activity-panel glass-strong">
-                        <div class="panel-header">
-                            <h4><i class="bi bi-activity"></i> Atividade Recente</h4>
-                        </div>
-                        <div id="recentActivityList" class="activity-list" data-stagger data-stagger-step="45">
-                            <div class="activity-placeholder">Carregando atividades...</div>
-                        </div>
-                    </div>
-                    <div class="notices-panel glass-strong">
-                        <div class="panel-header">
-                            <h4><i class="bi bi-megaphone"></i> Últimos Avisos</h4>
-                        </div>
-                        <div id="latestNoticesList" class="notices-mini-list" data-stagger data-stagger-step="45">
-                            <div class="activity-placeholder">Buscando avisos...</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Professores da escola (tempo real) — estilos em css/professores-online.css.
-                     O mesmo conteúdo aparece no painel flutuante do botão flutuante (FAB). -->
-                <div class="profs-online-card" id="profsOnlineCard">
-                    <button class="profs-online-header" id="profsOnlineToggle" aria-expanded="true" aria-controls="profsOnlineBody">
-                        <span class="profs-online-title">
-                            <i class="bi bi-people-fill"></i> Professores da Escola
-                            <span class="profs-online-count" id="profsOnlineCount">0 online</span>
+                    <!-- Assistente da Escola (IA) -->
+                    <a class="pn-card pn-ia" id="cardIaAssistant" href="direcao/ia-assistant.html" style="display: none;">
+                        <span class="pn-ia-ico ui-tint"><i class="bi bi-stars"></i></span>
+                        <span class="pn-ia-txt">
+                            <span class="pn-ia-titulo">Assistente da Escola (IA) <span class="ui-pill">Beta</span></span>
+                            <span class="pn-ia-desc">Planejamento pedagógico, dúvidas e apoio ao docente com IA.</span>
                         </span>
-                        <i class="bi bi-chevron-down profs-online-chevron"></i>
-                    </button>
-                    <div class="profs-online-body" id="profsOnlineBody">
-                        <div class="profs-online-list" id="profsOnlineList">
-                            <div class="po-empty">Carregando…</div>
-                        </div>
-                    </div>
+                        <i class="bi bi-chevron-right pn-kpi-seta"></i>
+                    </a>
+
+                    <!-- Avaliações recentes do sistema -->
+                    <article class="pn-card pn-recentes" aria-labelledby="pnRecentesTitulo">
+                        <header class="pn-card-topo">
+                            <span class="pn-card-ico ui-tint" style="--ui-tint: var(--ui-amber)"><i class="bi bi-chat-square-heart"></i></span>
+                            <h2 class="pn-card-titulo" id="pnRecentesTitulo">Avaliações recentes</h2>
+                        </header>
+                        <div id="reviewStats"></div>
+                        <div id="reviewList" class="review-list-premium"></div>
+                    </article>
                 </div>
 
-                <!-- Painel de Segurança (Direção/Admin) -->
-                <div id="securityPanel" class="glass-strong" style="display: none; margin-bottom: 2rem; padding: 1.25rem; border-radius: var(--radius-lg); border-left: 4px solid var(--primary-color);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-                        <div style="display: flex; align-items: center; gap: 0.75rem;">
-                            <div style="background: var(--primary-color); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white;">
-                                <i class="bi bi-shield-lock-fill"></i>
-                            </div>
-                            <div>
-                                <h3 style="margin: 0; font-size: 1rem; color: var(--text-primary);">Código Secreto da Escola</h3>
-                                <p class="text-secondary text-xs" style="margin: 0;">Válido apenas para hoje. Forneça aos novos professores.</p>
-                            </div>
-                        </div>
-                        <div style="background: rgba(0,0,0,0.2); padding: 0.5rem 1.5rem; border-radius: var(--radius-md); border: 1px dashed var(--primary-color); display: flex; align-items: center; gap: 1rem;">
-                            <span id="dashboardDailyCode" data-code="------" style="font-family: monospace; font-size: 1.5rem; font-weight: bold; color: var(--primary-color); letter-spacing: 2px;">••••••</span>
-                            <button type="button" id="btn-toggle-secret" style="background: none; border: none; color: var(--primary-color); cursor: pointer; padding: 0; display: flex; align-items: center;">
-                                <i class="bi bi-eye"></i>
-                            </button>
-                        </div>
-                        <div style="display: flex; gap: 0.5rem;">
-                            <button class="btn btn-secondary btn-sm" data-rota="admin.usuarios">
-                                <i class="bi bi-people-fill"></i> Usuários
-                            </button>
-                            <button class="btn btn-secondary btn-sm" data-rota="admin.auditoria" id="btnAuditoriaDash" style="display: none;">
-                                <i class="bi bi-shield-shaded"></i> Auditoria
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Cards Grid - Simplified -->
-                <div class="dashboard-grid">
-                    <!-- Cards de Navegação removidos daqui e movidos para a Sidebar -->
-
-                    <!-- Card Assistente IA (Professor/Diretor/Admin/Secretaria) -->
-                    <div class="dashboard-card" id="cardIaAssistant" style="display: none; border: 1px solid rgba(16,185,129,0.25);">
-                        <div class="card-icon" style="background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(13,148,136,0.15)); color: #10b981;">
-                            <i class="bi bi-stars"></i>
-                        </div>
-                        <div class="card-content">
-                            <h3>Assistente da Escola (IA)</h3>
-                            <p class="card-description">Planejamento pedagógico, dúvidas e apoio ao docente com IA</p>
-                        </div>
-                        <button class="btn btn-outline btn-sm" data-href="direcao/ia-assistant.html" style="border-color: rgba(16,185,129,0.5); color: #10b981;">
-                            Abrir Assistente
-                            <i class="bi bi-arrow-right"></i>
-                        </button>
-                    </div>
-
-                    <!-- Card Lista de Alunos (Diretor/Admin) - NOVO -->
-                    <div class="dashboard-card" id="cardListaAlunos" style="display: none;">
-                        <div class="card-icon card-icon--blue">
-                            <i class="bi bi-people"></i>
-                        </div>
-                        <div class="card-content">
-                            <h3>Lista de Alunos</h3>
-                            <p class="card-description">Gerenciar e transferir alunos</p>
-                        </div>
-                        <button class="btn btn-outline btn-sm" data-href="../detalhes/alunos.html">
-                            Acessar Lista
-                            <i class="bi bi-arrow-right"></i>
-                        </button>
-                    </div>
-
-
-                    <!-- Card Lista de Professores (Diretor/Admin) -->
-                    <div class="dashboard-card" id="cardListaProfessores" style="display: none;">
-                        <div class="card-icon card-icon--indigo">
-                            <i class="bi bi-person-lines-fill"></i>
-                        </div>
-                        <div class="card-content">
-                            <h3>Lista de Professores</h3>
-                            <p class="card-description">Atribuições e controle de carga horária</p>
-                        </div>
-                        <button class="btn btn-outline btn-sm" data-href="lista-professores.html">
-                            Acessar
-                            <i class="bi bi-arrow-right"></i>
-                        </button>
-                    </div>
-
-                    <!-- Card Gerenciar Salas (Diretor/Admin) - NOVO -->
-                    <div class="dashboard-card" id="cardGerenciarSalas" style="display: none;">
-                        <div class="card-icon card-icon--green">
-                            <i class="bi bi-door-open-fill"></i>
-                        </div>
-                        <div class="card-content">
-                            <h3>Gerenciar Salas</h3>
-                            <p class="card-description">Remover professores de turmas</p>
-                        </div>
-                        <button class="btn btn-outline btn-sm" data-href="gerenciar-salas.html">
-                            Gerenciar
-                            <i class="bi bi-arrow-right"></i>
-                        </button>
-                    </div>
-
-                    <!-- Card Notificações para Responsáveis (Diretor/Admin) - NOVO -->
-                    <div class="dashboard-card" id="cardNotificacoesResp" style="display: none;">
-                        <div class="card-icon card-icon--sky">
-                            <i class="bi bi-megaphone-fill"></i>
-                        </div>
-                        <div class="card-content">
-                            <h3>Avisos aos Pais</h3>
-                            <p class="card-description">Enviar notificações para responsáveis</p>
-                        </div>
-                        <button class="btn btn-outline btn-sm" data-href="../direcao/direcao-notificacoes.html">
-                            Acessar Central
-                            <i class="bi bi-arrow-right"></i>
-                        </button>
-                    </div>
-
-                    <!-- Card 3 (Diretor) -->
-                    <div class="dashboard-card" id="cardGerencial" style="display: none;">
-                        <div class="card-icon card-icon--accent">
-                            <i class="bi bi-graph-up"></i>
-                        </div>
-                        <div class="card-content">
-                            <h3>Relatórios</h3>
-                            <p class="card-description">Análises e estatísticas da escola</p>
-                        </div>
-                        <button class="btn btn-outline btn-sm" data-action="verRelatorios">
-                            Ver Relatórios
-                            <i class="bi bi-arrow-right"></i>
-                        </button>
-                    </div>
-
-                    <!-- Card Horários 2026 (Diretor/Admin) -->
-                    <div class="dashboard-card" id="cardHorariosDir" style="display: none;">
-                        <div class="card-icon card-icon--blue2">
-                            <i class="bi bi-calendar3"></i>
-                        </div>
-                        <div class="card-content">
-                            <h3>Horários</h3>
-                            <p class="card-description">Grade horária de todas as turmas</p>
-                        </div>
-                        <button class="btn btn-outline btn-sm" data-href="../direcao/horario-jaguari.html">
-                            Acessar
-                            <i class="bi bi-arrow-right"></i>
-                        </button>
-                    </div>
-
-
-
-                    <!-- Card 4 (Admin - Ferramentas) -->
-                    <div class="dashboard-card" id="cardFerramentas" style="display: none;">
-                        <div class="card-icon card-icon--red">
-                            <i class="bi bi-gear-fill"></i>
-                        </div>
-                        <div class="card-content">
-                            <h3>Ferramentas</h3>
-                            <p class="card-description">Gerenciamento do sistema e dados</p>
-                        </div>
-                        <button class="btn btn-outline btn-sm" data-action="abrirFerramentas">
-                            Acessar
-                            <i class="bi bi-arrow-right"></i>
-                        </button>
-                    </div>
-
-                    <!-- Card Admin - Gerenciar Contas -->
-                    <div class="dashboard-card" id="cardContasAdmin" style="display: none;">
-                        <div class="card-icon card-icon--violet">
-                            <i class="bi bi-person-x-fill"></i>
-                        </div>
-                        <div class="card-content">
-                            <h3>Gestão de Contas</h3>
-                            <p class="card-description">Excluir contas de email e senha</p>
-                        </div>
-                        <button class="btn btn-outline btn-sm" data-rota="admin.usuarios">
-                            Gerenciar
-                            <i class="bi bi-arrow-right"></i>
-                        </button>
-                    </div>
-
-                    <!-- Card Admin - Gestão de Grade -->
-                    <div class="dashboard-card" id="cardGestaoGrade" style="display: none;">
-                        <div class="card-icon card-icon--amber">
-                            <i class="bi bi-calendar-range"></i>
-                        </div>
-                        <div class="card-content">
-                            <h3>Gestão de Grades</h3>
-                            <p class="card-description">Definir horários dos professores</p>
-                        </div>
-                        <button class="btn btn-outline btn-sm" data-href="grade-horaria-admin.html">
-                            Gerenciar
-                            <i class="bi bi-arrow-right"></i>
-                        </button>
-                    </div>
-
-                    <!-- Card Alunos — Códigos Secretos (Diretor/Admin) -->
-                    <div class="dashboard-card" id="cardSecretCodes" style="display: none;">
-                        <div class="card-icon card-icon--purple">
-                            <i class="bi bi-key-fill"></i>
-                        </div>
-                        <div class="card-content">
-                            <h3>Códigos Secretos</h3>
-                            <p class="card-description">Códigos de vinculação dos alunos</p>
-                        </div>
-                        <a href="../direcao/codigos-secretos.html" class="btn btn-outline btn-sm" style="text-decoration: none;">
-                            Ver Códigos
-                            <i class="bi bi-arrow-right"></i>
-                        </a>
-                    </div>
-
-                    <!-- Card Admin — Códigos secretos por escola (cadastro de professores) -->
-                    <div class="dashboard-card" id="cardCodigosEscolas" style="display: none;">
-                        <div class="card-icon card-icon--teal">
-                            <i class="bi bi-building-lock"></i>
-                        </div>
-                        <div class="card-content">
-                            <h3>Códigos por Escola</h3>
-                            <p class="card-description">Códigos de cadastro de professores</p>
-                        </div>
-                        <a data-rota="admin.codigosEscolas" class="btn btn-outline btn-sm" style="text-decoration: none;">
-                            Ver Códigos
-                            <i class="bi bi-arrow-right"></i>
-                        </a>
-                    </div>
-                </div>
-
-
-                <!-- ===== MURAL DA COMUNIDADE ===== -->
-                <div class="mural-dashboard-section" id="muralSection" style="margin-bottom: 2.5rem;">
-                    <div class="mural-section-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1.5rem;">
-                        <div style="display:flex; align-items:center; gap:0.75rem;">
-                            <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#10b981,#0ea5e9);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.2rem;flex-shrink:0;">
-                                <i class="bi bi-newspaper"></i>
-                            </div>
-                            <div>
-                                <h2 style="margin:0;font-size:1.2rem;font-weight:700;color:#fff;">Mural da Comunidade</h2>
-                                <p style="margin:0;font-size:0.8rem;color:#a1a1aa;">Avisos, comunicados e interações da escola</p>
-                            </div>
-                        </div>
-                        <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
-                            <span style="background:rgba(16,185,129,0.1);color:#10b981;font-size:0.7rem;font-weight:700;padding:4px 12px;border-radius:20px;border:1px solid rgba(16,185,129,0.25);animation:pulseLiveMural 2s infinite;">● AO VIVO</span>
-                            <a href="../direcao/direcao-notificacoes.html" class="btn btn-outline btn-sm director-only" id="btnAcessarMuralCompleto" style="display:none;text-decoration:none;">
-                                <i class="bi bi-megaphone"></i> Gerenciar Mural
+                <div class="pn-col pn-col--2">
+                    <!-- Ações rápidas -->
+                    <article class="pn-card pn-acoes-card" data-perfil-bloco="professor" hidden aria-labelledby="pnAcoesTitulo">
+                        <header class="pn-card-topo">
+                            <span class="pn-card-ico ui-tint"><i class="bi bi-lightning-charge"></i></span>
+                            <h2 class="pn-card-titulo" id="pnAcoesTitulo">Ações rápidas</h2>
+                        </header>
+                        <div class="pn-acoes">
+                            <a class="pn-acao ui-on-color" href="../detalhes/avaliacoes.html" style="--pn-cor: var(--ui-accent)">
+                                <i class="bi bi-file-earmark-plus"></i><span>Nova avaliação</span>
+                            </a>
+                            <a class="pn-acao ui-on-color" href="selecionar.html" style="--pn-cor: var(--ui-violet)">
+                                <i class="bi bi-calendar-plus"></i><span>Fazer chamada</span>
+                            </a>
+                            <a class="pn-acao ui-on-color" href="selecionar.html" style="--pn-cor: var(--ui-blue)">
+                                <i class="bi bi-people"></i><span>Minhas turmas</span>
+                            </a>
+                            <a class="pn-acao ui-on-color" href="direcao/ia-assistant.html" style="--pn-cor: var(--ui-pink)">
+                                <i class="bi bi-stars"></i><span>Assistente IA</span>
                             </a>
                         </div>
-                    </div>
-                    <div id="announcement-feed-container"></div>
-                    <div id="muralHistoricoWrap" class="director-only" style="display:none; margin-top:2rem;">
-                        <div style="background:rgba(30,41,59,0.4);border:1px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden;backdrop-filter:blur(12px);">
-                            <div style="padding:1.25rem 1.5rem;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">
-                                <h3 style="margin:0;font-size:1rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:0.5rem;">
-                                    <i class="bi bi-clock-history" style="color:#10b981;"></i> Histórico de Envios
-                                </h3>
-                                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-                                    <span style="font-size:0.75rem;color:#a1a1aa;align-self:center;">Filtrar:</span>
-                                    <button class="hist-filter-btn active" data-status="todos" style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);padding:3px 12px;border-radius:20px;font-size:0.75rem;cursor:pointer;font-weight:600;">Todos</button>
-                                    <button class="hist-filter-btn" data-status="ativo" style="background:rgba(255,255,255,0.05);color:#a1a1aa;border:1px solid rgba(255,255,255,0.1);padding:3px 12px;border-radius:20px;font-size:0.75rem;cursor:pointer;">Ativos</button>
+                    </article>
+
+                    <!-- Professores da escola (tempo real) — js/professores-online.js.
+                         O mesmo conteúdo aparece no painel do botão flutuante. -->
+                    <article class="pn-card profs-online-card" id="profsOnlineCard" aria-labelledby="pnEquipeTitulo">
+                        <header class="pn-card-topo">
+                            <span class="pn-card-ico ui-tint"><i class="bi bi-person-video2"></i></span>
+                            <h2 class="pn-card-titulo" id="pnEquipeTitulo">Equipe</h2>
+                            <span class="ui-pill" id="profsOnlineCount">0 online</span>
+                            <button class="pn-recolher" id="profsOnlineToggle" aria-expanded="true" aria-controls="profsOnlineBody" aria-label="Recolher a lista da equipe">
+                                <i class="bi bi-chevron-down profs-online-chevron"></i>
+                            </button>
+                        </header>
+                        <div class="profs-online-body" id="profsOnlineBody">
+                            <div class="profs-online-list" id="profsOnlineList">
+                                <div class="po-empty"><span class="skeleton pn-skel"></span></div>
+                            </div>
+                        </div>
+                    </article>
+
+                    <!-- Avaliar o sistema (js/realtime.js monta o formulário) -->
+                    <article class="pn-card pn-avaliar review-section" id="reviewSection" aria-labelledby="pnAvaliarTitulo">
+                        <header class="pn-card-topo">
+                            <span class="pn-card-ico ui-tint" style="--ui-tint: var(--ui-amber)"><i class="bi bi-star"></i></span>
+                            <div class="pn-card-cab">
+                                <h2 class="pn-card-titulo" id="pnAvaliarTitulo">Avaliar o sistema</h2>
+                                <p class="pn-card-desc">Sua opinião ajuda a melhorar a plataforma</p>
+                            </div>
+                        </header>
+                        <div id="reviewForm" class="review-form-container"></div>
+                    </article>
+                </div>
+
+                <div class="pn-col pn-col--3">
+                    <!-- Mural da Comunidade — js/announcement-feed-react.js e js/mural-dashboard.js -->
+                    <article class="pn-card pn-mural mural-dashboard-section" id="muralSection" aria-labelledby="pnMuralTitulo">
+                        <header class="pn-card-topo">
+                            <span class="pn-card-ico ui-tint"><i class="bi bi-megaphone"></i></span>
+                            <div class="pn-card-cab">
+                                <h2 class="pn-card-titulo" id="pnMuralTitulo">Mural da comunidade</h2>
+                                <p class="pn-card-desc">Avisos, comunicados e conversas da escola</p>
+                            </div>
+                            <a href="../direcao/direcao-notificacoes.html" class="ui-link ui-tint director-only" id="btnAcessarMuralCompleto" style="display:none;">Gerenciar</a>
+                        </header>
+                        <div id="announcement-feed-container" class="pn-mural-feed"></div>
+                        <div id="muralHistoricoWrap" class="director-only pn-historico" style="display:none;">
+                            <div class="pn-historico-topo">
+                                <h3><i class="bi bi-clock-history"></i> Histórico de envios</h3>
+                                <div class="pn-historico-filtros">
+                                    <button class="hist-filter-btn active" data-status="todos">Todos</button>
+                                    <button class="hist-filter-btn" data-status="ativo">Ativos</button>
                                 </div>
                             </div>
-                            <div style="overflow-x:auto;">
-                                <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+                            <div class="pn-tabela-rolagem">
+                                <table class="pn-tabela">
                                     <thead>
-                                        <tr style="background:rgba(0,0,0,0.2);">
-                                            <th style="padding:0.75rem 1.25rem;text-align:left;color:#a1a1aa;font-weight:600;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">Título</th>
-                                            <th style="padding:0.75rem 1rem;text-align:left;color:#a1a1aa;font-weight:600;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">Público</th>
-                                            <th style="padding:0.75rem 1rem;text-align:left;color:#a1a1aa;font-weight:600;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">Data</th>
-                                            <th style="padding:0.75rem 1rem;text-align:center;color:#a1a1aa;font-weight:600;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">Status</th>
-                                            <th style="padding:0.75rem 1rem;text-align:center;color:#a1a1aa;font-weight:600;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;">Ações</th>
+                                        <tr>
+                                            <th>Título</th>
+                                            <th>Público</th>
+                                            <th>Data</th>
+                                            <th>Status</th>
+                                            <th>Ações</th>
                                         </tr>
                                     </thead>
                                     <tbody id="muralHistoricoBody">
-                                        <tr><td colspan="5" style="text-align:center;padding:2rem;color:#a1a1aa;">Carregando histórico...</td></tr>
+                                        <tr><td colspan="5">Carregando histórico…</td></tr>
                                     </tbody>
                                 </table>
                             </div>
                         </div>
-                    </div>
-                </div>
+                    </article>
 
-                <!-- Seção de Avaliação do Sistema Premium -->
-                <div class="dashboard-section-premium review-section" id="reviewSection">
-                    <div class="section-header">
-                        <div class="section-title">
-                            <div class="icon-box-premium gold">
-                                <i class="bi bi-star-fill"></i>
+                    <!-- Instalar o app (PWA) — js/painel-professor.js liga ao js/pwa-install.js -->
+                    <article class="pn-card pn-instalar" id="pnInstalar" aria-labelledby="pnInstalarTitulo">
+                        <header class="pn-card-topo">
+                            <span class="pn-card-ico ui-tint"><i class="bi bi-download"></i></span>
+                            <div class="pn-card-cab">
+                                <h2 class="pn-card-titulo" id="pnInstalarTitulo">Instalar o Sistema Escolar</h2>
+                                <p class="pn-card-desc" id="pnInstalarDesc">Acesso rápido, em tela cheia e sem depender do navegador.</p>
                             </div>
-                            <div>
-                                <h2>Avaliar Sistema</h2>
-                                <p>Sua opinião nos ajuda a melhorar nossa plataforma</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="reviewCardContent" class="review-grid-premium">
-                        <div id="reviewForm" class="review-form-container"></div>
-                        <div class="review-stats-column">
-                            <div id="reviewStats"></div>
-                            <h4 class="recent-reviews-title">Avaliações Recentes</h4>
-                            <div id="reviewList" class="review-list-premium"></div>
-                        </div>
-                    </div>
+                        </header>
+                        <button type="button" class="ui-btn ui-btn--primary" id="pnInstalarBtn" hidden>
+                            <i class="bi bi-download"></i> <span>Instalar</span>
+                        </button>
+                    </article>
                 </div>
+            </div>
 
+            <!-- Atalhos de administração (admin; os de direção ficam na barra lateral) -->
+            <div class="pn-atalhos">
+                <div class="pn-card pn-atalho" id="cardListaAlunos" style="display: none;">
+                    <span class="pn-card-ico ui-tint"><i class="bi bi-people"></i></span>
+                    <div class="pn-card-cab"><h3 class="pn-card-titulo">Lista de alunos</h3><p class="pn-card-desc">Gerenciar e transferir alunos</p></div>
+                    <button class="ui-btn" data-href="../detalhes/alunos.html">Abrir <i class="bi bi-arrow-right"></i></button>
+                </div>
+                <div class="pn-card pn-atalho" id="cardListaProfessores" style="display: none;">
+                    <span class="pn-card-ico ui-tint"><i class="bi bi-person-lines-fill"></i></span>
+                    <div class="pn-card-cab"><h3 class="pn-card-titulo">Lista de professores</h3><p class="pn-card-desc">Atribuições e carga horária</p></div>
+                    <button class="ui-btn" data-href="lista-professores.html">Abrir <i class="bi bi-arrow-right"></i></button>
+                </div>
+                <div class="pn-card pn-atalho" id="cardGerenciarSalas" style="display: none;">
+                    <span class="pn-card-ico ui-tint"><i class="bi bi-door-open"></i></span>
+                    <div class="pn-card-cab"><h3 class="pn-card-titulo">Gerenciar salas</h3><p class="pn-card-desc">Remover professores de turmas</p></div>
+                    <button class="ui-btn" data-href="gerenciar-salas.html">Abrir <i class="bi bi-arrow-right"></i></button>
+                </div>
+                <div class="pn-card pn-atalho" id="cardNotificacoesResp" style="display: none;">
+                    <span class="pn-card-ico ui-tint"><i class="bi bi-megaphone"></i></span>
+                    <div class="pn-card-cab"><h3 class="pn-card-titulo">Avisos aos pais</h3><p class="pn-card-desc">Notificações para responsáveis</p></div>
+                    <button class="ui-btn" data-href="../direcao/direcao-notificacoes.html">Abrir <i class="bi bi-arrow-right"></i></button>
+                </div>
+                <div class="pn-card pn-atalho" id="cardGerencial" style="display: none;">
+                    <span class="pn-card-ico ui-tint"><i class="bi bi-graph-up"></i></span>
+                    <div class="pn-card-cab"><h3 class="pn-card-titulo">Relatórios</h3><p class="pn-card-desc">Análises e estatísticas da escola</p></div>
+                    <button class="ui-btn" data-action="verRelatorios">Abrir <i class="bi bi-arrow-right"></i></button>
+                </div>
+                <div class="pn-card pn-atalho" id="cardHorariosDir" style="display: none;">
+                    <span class="pn-card-ico ui-tint"><i class="bi bi-calendar3"></i></span>
+                    <div class="pn-card-cab"><h3 class="pn-card-titulo">Horários</h3><p class="pn-card-desc">Grade horária de todas as turmas</p></div>
+                    <button class="ui-btn" data-href="../direcao/horario-jaguari.html">Abrir <i class="bi bi-arrow-right"></i></button>
+                </div>
+                <div class="pn-card pn-atalho" id="cardFerramentas" style="display: none;">
+                    <span class="pn-card-ico ui-tint"><i class="bi bi-tools"></i></span>
+                    <div class="pn-card-cab"><h3 class="pn-card-titulo">Ferramentas</h3><p class="pn-card-desc">Gerenciamento do sistema e dados</p></div>
+                    <button class="ui-btn" data-action="abrirFerramentas">Abrir <i class="bi bi-arrow-right"></i></button>
+                </div>
+                <div class="pn-card pn-atalho" id="cardContasAdmin" style="display: none;">
+                    <span class="pn-card-ico ui-tint"><i class="bi bi-person-x"></i></span>
+                    <div class="pn-card-cab"><h3 class="pn-card-titulo">Gestão de contas</h3><p class="pn-card-desc">Excluir contas de e-mail e senha</p></div>
+                    <button class="ui-btn" data-rota="admin.usuarios">Abrir <i class="bi bi-arrow-right"></i></button>
+                </div>
+                <div class="pn-card pn-atalho" id="cardGestaoGrade" style="display: none;">
+                    <span class="pn-card-ico ui-tint"><i class="bi bi-calendar-range"></i></span>
+                    <div class="pn-card-cab"><h3 class="pn-card-titulo">Gestão de grades</h3><p class="pn-card-desc">Horários dos professores</p></div>
+                    <button class="ui-btn" data-href="grade-horaria-admin.html">Abrir <i class="bi bi-arrow-right"></i></button>
+                </div>
+                <div class="pn-card pn-atalho" id="cardSecretCodes" style="display: none;">
+                    <span class="pn-card-ico ui-tint"><i class="bi bi-key"></i></span>
+                    <div class="pn-card-cab"><h3 class="pn-card-titulo">Códigos secretos</h3><p class="pn-card-desc">Códigos de vinculação dos alunos</p></div>
+                    <a href="../direcao/codigos-secretos.html" class="ui-btn">Abrir <i class="bi bi-arrow-right"></i></a>
+                </div>
+                <div class="pn-card pn-atalho" id="cardCodigosEscolas" style="display: none;">
+                    <span class="pn-card-ico ui-tint"><i class="bi bi-building-lock"></i></span>
+                    <div class="pn-card-cab"><h3 class="pn-card-titulo">Códigos por escola</h3><p class="pn-card-desc">Cadastro de professores</p></div>
+                    <a data-rota="admin.codigosEscolas" class="ui-btn">Abrir <i class="bi bi-arrow-right"></i></a>
                 </div>
             </div>
         </main>
@@ -760,7 +694,7 @@
     </button>
 
     <!-- Watermark -->
-    <a href="https://www.linkedin.com/in/renan-de-oliveira-farias-66a9b412b/" target="_blank" class="nandev-watermark">
+    <a href="https://www.linkedin.com/in/renan-de-oliveira-farias-66a9b412b/" target="_blank" rel="noopener" class="nandev-watermark">
         <div class="cube-container">
             <div class="wireframe-cube">
                 <div class="cube-face front"></div>
@@ -787,11 +721,6 @@
     <!-- Scripts -->
     <script defer src="../js/botao-voltar.js"></script>
     <script src="../js/api-config.js"></script>
-    <script defer src="../js/ui-stagger.js"></script>
-    <!-- Three.js local (deve carregar antes de threejs-dashboard.js) -->
-    <script src="../js/three.min.js"></script>
-    <script src="../js/gsap.min.js"></script>
-    <script src="../js/anime.min.js"></script>
     <script defer src="../js/database.js?v=3"></script>
     <script defer src="../js/auth.js?v=3"></script>
     <!-- Módulo central de rotas: resolve o caminho real das páginas
@@ -800,17 +729,17 @@
     <script defer src="../js/utils.js?v=3"></script>
     <script src="../js/voice-orb.js?v=2.0"></script>
     <script src="../js/sidebar-voice.js?v=5.0"></script>
-    <script defer src="../js/dashboard.js?v=5"></script>
+    <script defer src="../js/ui-painel.js?v=1.0"></script>
+    <script defer src="../js/painel-professor.js?v=1.0"></script>
+    <script defer src="../js/dashboard.js?v=6"></script>
     <script defer src="../js/professores-online.js?v=2.0"></script>
     <!-- Sons de enviar/receber mensagem e de aviso do mural. Precisa vir antes
          do chat e do realtime.js, que são quem os dispara. -->
     <script defer src="../js/menu-conversas.js?v=1.0"></script>
     <script defer src="../js/som-notificacao.js?v=1.0"></script>
     <script defer src="../js/chat-direto-manager.js?v=2.1"></script>
-    <script defer src="../js/escola-switcher.js"></script>
-    <script defer src="../js/parallax.js"></script>
+    <script defer src="../js/escola-switcher.js?v=2"></script>
     <script defer src="../js/changelog.js"></script>
-    <script defer src="../js/threejs-dashboard.js"></script>
     <script defer src="../js/notifications.js"></script>
     <script defer src="../js/events/dashboard-events.js"></script>
     <script defer src="../js/realtime.js"></script>
@@ -825,26 +754,8 @@
     <script defer src="../js/announcement-feed-react.js?v=3.1"></script>
     <script defer src="../js/mural-dashboard.js?v=1.0"></script>
     <script src="../js/chatbot-ia.js?v=5.0"></script>
-    <script>
-        // High Performance Background Movement (RAF Throttled)
-        let ticking = false;
-        document.addEventListener('mousemove', (e) => {
-            if (!ticking) {
-                requestAnimationFrame(() => {
-                    const x = e.clientX / window.innerWidth;
-                    const y = e.clientY / window.innerHeight;
-                    const orb1 = document.getElementById('orb1');
-                    const orb2 = document.getElementById('orb2');
-                    if (orb1) orb1.style.transform = `translate3d(${x * 40}px, ${y * 40}px, 0)`;
-                    if (orb2) orb2.style.transform = `translate3d(${-(x * 25)}px, ${-(y * 25)}px, 0)`;
-                    ticking = false;
-                });
-                ticking = true;
-            }
-        }, { passive: true });
-    </script>
 
-<script src="../js/click-sound.js" defer></script>
+    <script src="../js/click-sound.js" defer></script>
     <script defer src="../js/push-notifications.js"></script>
     <script defer src="../js/pwa-install.js"></script>
     <script defer src="../js/settings-drawer.js"></script>

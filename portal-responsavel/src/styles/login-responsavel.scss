@@ -1,0 +1,339 @@
+/**
+ * login-responsavel.scss — O que é só do login do responsável (Issue #365)
+ * ============================================================================
+ * A tela usa a base dos logins da equipe (`css/ui-base.css` e
+ * `css/ui-login.css`, #366). Aqui ficam só as peças próprias: destaques em
+ * duas linhas, selo do perfil, cena da família, "Primeiro acesso?", aviso de
+ * erro e a recuperação de senha.
+ *
+ * Tudo sob `body.ui3`, como a base: o LoginResponsavel liga essa classe no body
+ * enquanto está montado, então nada daqui vaza para o restante do portal.
+ * ============================================================================
+ */
+
+// O global.scss do portal pinta todo `a` de ciano e todo `svg` como bloco.
+body.ui3 .lr-page a:not(.lg-marca) {
+  color: var(--ui-accent);
+}
+
+body.ui3 .lr-page .lg-marca:hover {
+  color: var(--ui-text);
+}
+
+// O portal não carrega o acessibilidade.css das páginas HTML, de onde vem o
+// anel de foco nos logins da equipe: mesmo anel (3px, WCAG 2.4.7), só para teclado.
+body.ui3 .lr-page :focus-visible {
+  outline: 3px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+body.ui3 .lr-acento {
+  color: var(--ui-accent);
+}
+
+// ───────────────────────────── Painel do portal ────────────────────────────
+body.ui3 .lr-beneficios li {
+  align-items: flex-start;
+}
+
+body.ui3 .lr-beneficios strong {
+  display: block;
+  font-weight: 600;
+  color: var(--ui-text);
+}
+
+body.ui3 .lr-beneficios small {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.86rem;
+  color: var(--ui-text-2);
+}
+
+body.ui3 .lr-hero .lg-lgpd strong {
+  color: var(--ui-text);
+  font-weight: 600;
+}
+
+// A cena da família é mais alta que as ilustrações da equipe: ocupa o lado
+// direito do painel, atrás do texto, e some quando falta largura.
+body.ui3 .lr-ilustra {
+  right: 2%;
+  bottom: 9%;
+  width: min(44%, 380px);
+  opacity: 0.85;
+}
+
+// ─────────────────────────────── Cartão ────────────────────────────────────
+body.ui3 .lr-card-titulo span {
+  color: var(--ui-accent);
+}
+
+// Selo do perfil: mostra de quem é o portal. Não é aba — não há outro perfil
+// para trocar nesta tela.
+body.ui3 .lr-perfil {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  min-height: 48px;
+  margin: 0 0 1.35rem;
+  border: 1px solid var(--ui-accent-line);
+  border-radius: 14px;
+  background: linear-gradient(100deg, var(--ui-accent-soft), transparent 140%);
+  box-shadow: 0 0 22px -10px rgba(46, 230, 182, 0.7);
+  color: var(--ui-text);
+  font-weight: 600;
+
+  svg {
+    width: 22px;
+    height: 22px;
+    color: var(--ui-accent);
+  }
+}
+
+body.ui3 .lr-erro {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin: 0 0 1rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--ui-red) 45%, transparent);
+  border-radius: var(--ui-r);
+  background: color-mix(in srgb, var(--ui-red) 10%, transparent);
+  color: var(--ui-text);
+  font-size: 0.9rem;
+  line-height: 1.45;
+
+  svg {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    color: var(--ui-red);
+  }
+}
+
+body.ui3 .lr-page .lg-card-sub {
+  text-wrap: balance;
+}
+
+// Olho de mostrar/ocultar senha: a base dimensiona ícone de fonte, não SVG.
+body.ui3 .lr-page .ui-trail-btn svg {
+  width: 19px;
+  height: 19px;
+}
+
+// Fora do `.lg-form` o divisor não ganha o espaçamento da grade.
+body.ui3 .lr-page .lg-divisor {
+  margin: 1.1rem 0 0.9rem;
+}
+
+// Link em forma de botão ("Esqueci minha senha?", "Reenviar", "Entrar").
+body.ui3 .lr-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ui-accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  &:disabled {
+    color: var(--ui-text-3);
+    cursor: not-allowed;
+  }
+}
+
+body.ui3 .lr-page .ui-btn--primary .lr-seta {
+  transition: transform var(--ui-fast) var(--ui-ease-out);
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  body.ui3 .lr-page .ui-btn--primary:hover:not(:disabled) .lr-seta {
+    transform: translateX(3px);
+  }
+}
+
+body.ui3 .lr-google {
+  background: var(--ui-surface-2);
+
+  img {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+body.ui3 .lr-primeiro-acesso {
+  border-color: var(--ui-accent-line);
+  background: var(--ui-accent-soft);
+}
+
+body.ui3 .lr-ajuda {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--ui-text-3);
+}
+
+body.ui3 .lr-aceite {
+  align-items: flex-start;
+  font-size: 0.84rem;
+  line-height: 1.5;
+
+  input {
+    flex: none;
+    margin-top: 2px;
+  }
+}
+
+// No celular a base esconde o título do cartão, porque nos logins da equipe a
+// faixa do topo já diz qual é o portal. Aqui a faixa diz "Sistema Escolar":
+// o título fica, e só o ícone sai.
+@media (max-width: 1023px) {
+  body.ui3 .lr-page .lg-card-titulo {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+
+  body.ui3 .lr-page .lg-lado {
+    padding-top: 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  body.ui3 .lr-page .lg-card-titulo {
+    font-size: 1.4rem;
+  }
+
+  body.ui3 .lr-perfil {
+    margin-bottom: 1.1rem;
+  }
+}
+
+// ─────────────────────────── Recuperação de senha ──────────────────────────
+body.ui3 .lr-page .modal {
+  z-index: 99999;
+}
+
+body.ui3 .lr-modal-ico {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+body.ui3 .lr-passos {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 0 0 1.25rem;
+  padding: 0;
+  list-style: none;
+
+  li {
+    width: 28px;
+    height: 4px;
+    border-radius: 4px;
+    background: var(--ui-surface-3);
+    transition: background-color var(--ui-base) var(--ui-ease-out);
+  }
+
+  .lr-passo-feito {
+    background: var(--ui-accent);
+  }
+}
+
+body.ui3 .lr-texto {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--ui-text-2);
+
+  strong {
+    color: var(--ui-text);
+  }
+}
+
+body.ui3 .lr-centro {
+  text-align: center;
+}
+
+body.ui3 .lr-texto .lr-destaque {
+  color: var(--ui-accent);
+}
+
+body.ui3 .lr-codigo {
+  justify-self: center;
+  max-width: 220px;
+  padding: 0 0.95rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.4em;
+  text-align: center;
+}
+
+body.ui3 .lr-acoes {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 0.75rem;
+  margin-top: 0.4rem;
+}
+
+body.ui3 .lr-forca {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--ui-text-2);
+}
+
+body.ui3 .lr-forca-trilho {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--ui-surface-3);
+
+  div {
+    height: 100%;
+    transition: width var(--ui-base) var(--ui-ease-out);
+  }
+}
+
+body.ui3 .lr-requisitos {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--ui-r-sm);
+  background: var(--ui-surface-2);
+  font-size: 0.8rem;
+  color: var(--ui-text-3);
+  list-style: none;
+
+  li::before {
+    content: '○ ';
+  }
+
+  .lr-ok {
+    color: var(--ui-accent);
+  }
+
+  .lr-ok::before {
+    content: '✓ ';
+  }
+}

@@ -1,0 +1,2213 @@
+/**
+ * ui-painel.css — Esqueleto dos painéis de professor, direção e secretaria
+ * (épico #370; painel do professor: #367)
+ * ============================================================================
+ * Usa os tokens de css/ui-base.css. Tudo fica sob `body.ui3.ui-painel`: a
+ * especificidade (0,2,1) vence o sidebar.css e os CSS antigos que continuam
+ * carregados, sem precisar de !important.
+ *
+ * Peças: barra lateral (.pn-side), cabeçalho (.pn-topo), saudação (.pn-hero),
+ * cartões de número (.pn-kpi), cartões de conteúdo (.pn-card), agenda do dia
+ * (.pn-aulas), ações rápidas (.pn-acao) e o ajuste dos blocos montados por
+ * outros scripts (equipe online, mural, avaliações do sistema).
+ *
+ * Tema claro: a varredura de variables.css pinta todo texto de preto. Cor que
+ * é informação usa `.ui-tint` / `.ui-on-color` (ui-base.css).
+ * ============================================================================
+ */
+
+body.ui3.ui-painel {
+    --pn-side-w: 264px;
+    --pn-side-w-mini: 76px;
+    --pn-topo-h: 72px;
+    --pn-gap: 1.25rem;
+    --pn-pad: clamp(1rem, 2.4vw, 2rem);
+    --skeleton-radius: 8px;
+    --bg-tertiary: var(--ui-surface-3);
+    min-height: 100vh;
+    background:
+        radial-gradient(1200px 600px at 110% -10%, rgba(46, 230, 182, 0.06), transparent 60%),
+        radial-gradient(900px 500px at -10% 110%, rgba(34, 211, 238, 0.04), transparent 60%),
+        var(--ui-bg);
+}
+
+:root[data-theme='light'] body.ui3.ui-painel {
+    background:
+        radial-gradient(1200px 600px at 110% -10%, rgba(11, 143, 108, 0.06), transparent 60%),
+        var(--ui-bg);
+}
+
+body.ui3.ui-painel [hidden] {
+    display: none !important;
+}
+
+body.ui3.ui-painel .pn-pular {
+    position: fixed;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 2000;
+    padding: 0.6rem 1rem;
+    border-radius: var(--ui-r);
+    background: var(--ui-accent);
+    color: var(--ui-accent-ink);
+    font-weight: 600;
+    text-decoration: none;
+    transform: translateY(-160%);
+}
+
+body.ui3.ui-painel .pn-pular:focus {
+    transform: none;
+}
+
+/* ─────────────────────────────── Barra lateral ───────────────────────────── */
+body.ui3.ui-painel .pn-side {
+    width: var(--pn-side-w);
+    padding: 1.25rem 0.9rem 1rem;
+    gap: 0.9rem;
+    background: var(--ui-bg-2);
+    border-right: 1px solid var(--ui-line);
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    transition: width var(--ui-base) var(--ui-ease-out);
+}
+
+body.ui3.ui-painel .pn-side.collapsed {
+    width: var(--pn-side-w-mini);
+}
+
+body.ui3.ui-painel .pn-marca {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0 0.35rem;
+    color: var(--ui-text);
+    text-decoration: none;
+}
+
+body.ui3.ui-painel .pn-marca-ico {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: var(--ui-accent-soft);
+    box-shadow: var(--ui-glow);
+    color: var(--ui-accent);
+}
+
+body.ui3.ui-painel .pn-marca-ico svg {
+    width: 24px;
+    height: 24px;
+}
+
+body.ui3.ui-painel .pn-marca-txt {
+    min-width: 0;
+}
+
+body.ui3.ui-painel .pn-marca-nome {
+    display: block;
+    font-family: var(--ui-font-display);
+    font-size: 1.12rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+}
+
+body.ui3.ui-painel .pn-marca-sub {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--ui-text-3);
+}
+
+/* Perfil */
+body.ui3.ui-painel .pn-side .sidebar-profile {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0.4rem 0.35rem;
+    border: 0;
+    background: none;
+}
+
+body.ui3.ui-painel .pn-side .sidebar-avatar {
+    width: 44px;
+    height: 44px;
+    border: 2px solid var(--ui-line-strong);
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+body.ui3.ui-painel .pn-side .sidebar-status-online {
+    border-color: var(--ui-bg-2);
+    background: var(--ui-accent);
+}
+
+body.ui3.ui-painel .pn-side .user-fullname {
+    display: block;
+    overflow: hidden;
+    color: var(--ui-text);
+    font-size: 0.95rem;
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+body.ui3.ui-painel .pn-side .user-role-tag {
+    display: block;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ui-accent);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+/* Escola ativa (js/escola-switcher.js no modo ui3) */
+body.ui3.ui-painel .pn-escola {
+    border: 1px solid var(--ui-accent-line);
+    border-radius: var(--ui-r);
+    background: var(--ui-accent-soft);
+}
+
+body.ui3.ui-painel .pn-escola-atual {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    width: 100%;
+    padding: 0.65rem 0.75rem;
+    border: 0;
+    background: none;
+    color: var(--ui-text);
+    font: inherit;
+    text-align: left;
+    cursor: default;
+}
+
+body.ui3.ui-painel .pn-escola-atual[aria-expanded] {
+    cursor: pointer;
+}
+
+body.ui3.ui-painel .pn-escola-atual > i,
+body.ui3.ui-painel .pn-escola-atual > svg {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    color: var(--ui-accent);
+}
+
+body.ui3.ui-painel .pn-escola-txt {
+    flex: 1;
+    min-width: 0;
+}
+
+body.ui3.ui-painel .pn-escola-rot {
+    display: block;
+    color: var(--ui-accent);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+body.ui3.ui-painel .pn-escola-nome {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1.3;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+body.ui3.ui-painel .pn-escola-lista {
+    padding: 0.35rem;
+    border-top: 1px solid var(--ui-accent-line);
+}
+
+body.ui3.ui-painel .pn-escola-lista button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.5rem;
+    border: 0;
+    border-radius: var(--ui-r-sm);
+    background: none;
+    color: var(--ui-text-2);
+    font: 500 0.8rem/1.3 var(--ui-font);
+    text-align: left;
+    cursor: pointer;
+}
+
+body.ui3.ui-painel .pn-escola-lista button:hover {
+    background: var(--ui-surface-3);
+    color: var(--ui-text);
+}
+
+/* Itens do menu */
+body.ui3.ui-painel .pn-side .sidebar-nav {
+    flex: 1;
+    min-height: 0;
+    margin: 0;
+    padding: 0.2rem 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+body.ui3.ui-painel .pn-side .sidebar-group-label {
+    margin: 1rem 0.75rem 0.35rem;
+    padding: 0;
+    color: var(--ui-text-3);
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+body.ui3.ui-painel .pn-side .sidebar-item {
+    gap: 0.85rem;
+    min-height: 44px;
+    margin: 0 0 2px;
+    padding: 0 0.8rem;
+    border: 1px solid transparent;
+    border-radius: var(--ui-r);
+    color: var(--ui-text-2);
+    font-size: 0.93rem;
+    font-weight: 500;
+    transition:
+        background-color var(--ui-fast) var(--ui-ease-out),
+        color var(--ui-fast) var(--ui-ease-out),
+        border-color var(--ui-fast) var(--ui-ease-out);
+}
+
+body.ui3.ui-painel .pn-side .sidebar-item:hover {
+    padding-left: 0.8rem;
+    background: var(--ui-surface-2);
+    color: var(--ui-text);
+}
+
+body.ui3.ui-painel .pn-side .sidebar-item > i,
+body.ui3.ui-painel .pn-side .sidebar-item > svg {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    font-size: 1.1rem;
+    color: inherit;
+}
+
+body.ui3.ui-painel .pn-side .sidebar-item.active {
+    border-color: var(--ui-accent-line);
+    background: linear-gradient(90deg, var(--ui-accent-soft), transparent 90%);
+    color: var(--ui-text);
+    font-weight: 600;
+}
+
+body.ui3.ui-painel .pn-side .sidebar-item.active::before {
+    top: 22%;
+    height: 56%;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--ui-accent);
+    box-shadow: 0 0 12px var(--ui-accent);
+}
+
+body.ui3.ui-painel .pn-side .sidebar-item.active > i,
+body.ui3.ui-painel .pn-side .sidebar-item.active > svg {
+    color: var(--ui-accent);
+}
+
+:root[data-theme='light']:not(.high-contrast) body.ui3.ui-painel .pn-side .sidebar-item.active > :is(i, svg) {
+    color: var(--ui-accent) !important;
+    -webkit-text-fill-color: var(--ui-accent) !important;
+}
+
+body.ui3.ui-painel .pn-tag {
+    margin-left: auto;
+    padding: 0.1rem 0.4rem;
+    border-radius: 6px;
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent);
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+body.ui3.ui-painel .pn-side .conversas-badge {
+    background: var(--ui-red);
+}
+
+/* Rodapé da barra */
+body.ui3.ui-painel .pn-side-rodape {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0.75rem 0.35rem 0;
+    border-top: 1px solid var(--ui-line);
+}
+
+body.ui3.ui-painel .pn-lema {
+    margin: 0;
+    color: var(--ui-text-3);
+    font-size: 0.75rem;
+    font-style: italic;
+    line-height: 1.35;
+}
+
+body.ui3.ui-painel .pn-side .sidebar-toggle {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    margin: 0;
+    border: 1px solid var(--ui-line);
+    border-radius: var(--ui-r-sm);
+    background: var(--ui-surface);
+    color: var(--ui-text-3);
+}
+
+body.ui3.ui-painel .pn-side .sidebar-toggle:hover {
+    border-color: var(--ui-accent-line);
+    color: var(--ui-text);
+}
+
+/* Iniciais no lugar da foto: js/api-config.js cria .avatar-placeholder-global
+   com estilo em linha (100% do pai, verde sólido). O pai tem tamanho fixo e
+   redondo; aqui só a cor muda para o tom do painel. */
+body.ui3.ui-painel .pn-side .sidebar-avatar-wrapper {
+    position: relative;
+    flex: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+}
+
+body.ui3.ui-painel :is(.sidebar-avatar-wrapper, .pn-conta-foto) .avatar-placeholder-global {
+    border: 1px solid var(--ui-accent-line);
+    background: var(--ui-accent-soft) !important;
+    color: var(--ui-accent) !important;
+    font-size: 0.85rem;
+    letter-spacing: 0.02em;
+}
+
+:root[data-theme='light']:not(.high-contrast) body.ui3.ui-painel :is(.sidebar-avatar-wrapper, .pn-conta-foto) .avatar-placeholder-global {
+    color: var(--ui-accent) !important;
+    -webkit-text-fill-color: var(--ui-accent) !important;
+}
+
+/* Barra recolhida (desktop) */
+body.ui3.ui-painel .pn-side.collapsed :is(.pn-marca-txt, .sidebar-info, .pn-escola, .pn-lema, .pn-tag),
+body.ui3.ui-painel .pn-side.collapsed .sidebar-item > span,
+body.ui3.ui-painel .pn-side.collapsed .sidebar-group-label {
+    display: none;
+}
+
+body.ui3.ui-painel .pn-side.collapsed :is(.pn-marca, .sidebar-profile, .pn-side-rodape) {
+    justify-content: center;
+}
+
+body.ui3.ui-painel .pn-side.collapsed .sidebar-item {
+    justify-content: center;
+    padding: 0;
+}
+
+/* ─────────────────────────────── Página ──────────────────────────────────── */
+body.ui3.ui-painel .pn-pagina {
+    min-height: 100vh;
+    margin-left: var(--pn-side-w);
+    transition: margin-left var(--ui-base) var(--ui-ease-out);
+}
+
+body.ui3.ui-painel .pn-pagina.collapsed {
+    margin-left: var(--pn-side-w-mini);
+}
+
+/* Cabeçalho */
+body.ui3.ui-painel .pn-topo {
+    position: sticky;
+    top: 0;
+    z-index: 900;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: var(--pn-topo-h);
+    padding: 0.75rem var(--pn-pad);
+    border-bottom: 1px solid var(--ui-line);
+    background: color-mix(in srgb, var(--ui-bg) 86%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+body.ui3.ui-painel .pn-topo-esq,
+body.ui3.ui-painel .pn-topo-dir {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-width: 0;
+}
+
+/* O lado esquerdo (escola) cede espaço; os botões da direita nunca encolhem. */
+body.ui3.ui-painel .pn-topo-esq {
+    flex: 1 1 0;
+}
+
+body.ui3.ui-painel .pn-topo-dir {
+    flex: none;
+}
+
+body.ui3.ui-painel .pn-hamburguer {
+    display: none;
+}
+
+body.ui3.ui-painel .pn-escola-topo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+    max-width: 440px;
+    padding: 0.45rem 1rem 0.45rem 0.55rem;
+    border: 1px solid var(--ui-line-strong);
+    border-radius: var(--ui-r);
+    background: var(--ui-surface);
+}
+
+body.ui3.ui-painel .pn-escola-topo-ico {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: var(--ui-accent-soft);
+    --ui-tint: var(--ui-violet);
+    color: var(--ui-violet);
+}
+
+body.ui3.ui-painel .pn-escola-topo-txt {
+    min-width: 0;
+}
+
+body.ui3.ui-painel .pn-escola-topo-rot {
+    display: block;
+    color: var(--ui-text-3);
+    font-size: 0.68rem;
+}
+
+body.ui3.ui-painel .pn-escola-topo-nome {
+    display: block;
+    overflow: hidden;
+    color: var(--ui-text);
+    font-size: 0.88rem;
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/* Canal de denúncia (js/canal-denuncia.js) no mesmo desenho dos botões */
+body.ui3.ui-painel .pn-topo .btn-denuncia {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 42px;
+    padding: 0 0.85rem;
+    border: 1px solid var(--ui-line);
+    border-radius: var(--ui-r);
+    background: var(--ui-surface);
+    color: var(--ui-text-2);
+    font: 600 0.85rem/1 var(--ui-font);
+}
+
+body.ui3.ui-painel .pn-topo .btn-denuncia:hover {
+    border-color: var(--ui-accent-line);
+    color: var(--ui-text);
+}
+
+body.ui3.ui-painel .pn-topo .btn-denuncia :is(i, svg) {
+    width: 17px;
+    height: 17px;
+}
+
+/* A escola aparece na saudação só no celular, onde o cabeçalho não tem espaço. */
+body.ui3.ui-painel .pn-hero-escola {
+    display: none;
+    margin: 0 0 0.25rem;
+    color: var(--ui-text-2);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+body.ui3.ui-painel .pn-topo .notif-wrapper {
+    position: relative;
+}
+
+body.ui3.ui-painel #notif-badge {
+    top: -5px;
+    right: -5px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border: 2px solid var(--ui-bg);
+    border-radius: 999px;
+    background: var(--ui-red);
+    color: #fff;
+    font-size: 0.65rem;
+    line-height: 14px;
+}
+
+body.ui3.ui-painel #notif-panel {
+    top: calc(100% + 10px);
+    right: 0;
+    border: 1px solid var(--ui-line-strong);
+    border-radius: var(--ui-r-lg);
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow-pop);
+}
+
+/* Conta */
+body.ui3.ui-painel .pn-conta {
+    position: relative;
+}
+
+body.ui3.ui-painel .pn-conta-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-height: 48px;
+    padding: 0.3rem 0.75rem 0.3rem 0.35rem;
+    border: 1px solid var(--ui-line);
+    border-radius: var(--ui-r);
+    background: var(--ui-surface);
+    color: var(--ui-text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color var(--ui-fast) var(--ui-ease-out);
+}
+
+body.ui3.ui-painel .pn-conta-btn:hover,
+body.ui3.ui-painel .pn-conta-btn[aria-expanded='true'] {
+    border-color: var(--ui-accent-line);
+}
+
+body.ui3.ui-painel .pn-conta-foto {
+    position: relative;
+    display: block;
+    flex: none;
+    width: 36px;
+    height: 36px;
+    overflow: hidden;
+    border-radius: 50%;
+}
+
+body.ui3.ui-painel .pn-conta-foto img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+body.ui3.ui-painel .pn-conta-nome {
+    display: block;
+    max-width: 150px;
+    overflow: hidden;
+    font-size: 0.86rem;
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+body.ui3.ui-painel .pn-conta-cargo {
+    display: block;
+    color: var(--ui-text-3);
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+body.ui3.ui-painel .pn-conta-seta {
+    width: 16px;
+    height: 16px;
+    color: var(--ui-text-3);
+    transition: transform var(--ui-base) var(--ui-ease-out);
+}
+
+body.ui3.ui-painel .pn-conta-btn[aria-expanded='true'] .pn-conta-seta {
+    transform: rotate(180deg);
+}
+
+body.ui3.ui-painel .pn-menu {
+    position: absolute;
+    z-index: 950;
+    top: calc(100% + 8px);
+    right: 0;
+    min-width: 240px;
+    padding: 0.4rem;
+    border-radius: var(--ui-r);
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow-pop);
+    transform-origin: top right;
+    animation: ui-pop-in var(--ui-base) var(--ui-ease-out);
+}
+
+body.ui3.ui-painel .pn-menu :is(a, button) {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    width: 100%;
+    min-height: 40px;
+    padding: 0 0.7rem;
+    border: 0;
+    border-radius: var(--ui-r-sm);
+    background: none;
+    color: var(--ui-text-2);
+    font: 500 0.88rem/1 var(--ui-font);
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+body.ui3.ui-painel .pn-menu :is(a, button):hover,
+body.ui3.ui-painel .pn-menu :is(a, button):focus-visible {
+    background: var(--ui-surface-3);
+    color: var(--ui-text);
+}
+
+body.ui3.ui-painel .pn-menu :is(i, svg) {
+    width: 18px;
+    height: 18px;
+    font-size: 1rem;
+}
+
+body.ui3.ui-painel .pn-menu hr {
+    margin: 0.35rem 0.4rem;
+    border: 0;
+    border-top: 1px solid var(--ui-line);
+}
+
+body.ui3.ui-painel .pn-menu .pn-menu-sair {
+    color: var(--ui-red);
+}
+
+/* ─────────────────────────────── Conteúdo ────────────────────────────────── */
+body.ui3.ui-painel .pn-main {
+    display: grid;
+    gap: var(--pn-gap);
+    max-width: 1560px;
+    margin: 0 auto;
+    padding: var(--pn-pad);
+    outline: none;
+}
+
+/* Saudação */
+body.ui3.ui-painel .pn-hero {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    min-height: 168px;
+    overflow: hidden;
+    margin: 0;
+    padding: clamp(1.4rem, 3vw, 2.25rem);
+    border: 1px solid var(--ui-line);
+    border-radius: var(--ui-r-xl);
+    background:
+        radial-gradient(520px 220px at 78% 120%, rgba(46, 230, 182, 0.16), transparent 70%),
+        linear-gradient(120deg, var(--ui-surface) 0%, var(--ui-bg-2) 100%);
+    box-shadow: var(--ui-shadow);
+}
+
+:root[data-theme='light'] body.ui3.ui-painel .pn-hero {
+    background:
+        radial-gradient(520px 220px at 78% 120%, rgba(11, 143, 108, 0.12), transparent 70%),
+        linear-gradient(120deg, #ffffff 0%, #eef6f3 100%);
+}
+
+body.ui3.ui-painel .pn-hero-txt {
+    position: relative;
+    z-index: 1;
+    max-width: 620px;
+}
+
+body.ui3.ui-painel .pn-hero-dia {
+    margin: 0 0 0.5rem;
+    color: var(--ui-accent);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+body.ui3.ui-painel .pn-hero h1 {
+    margin: 0 0 0.6rem;
+    color: var(--ui-text);
+    font-size: clamp(1.8rem, 3.4vw, 2.6rem);
+}
+
+body.ui3.ui-painel .pn-hero h1 + p {
+    margin: 0;
+    color: var(--ui-text-2);
+    font-size: 1rem;
+    line-height: 1.55;
+}
+
+/* O traço de giz: desenhado uma vez na entrada, depois fica parado. */
+body.ui3.ui-painel .pn-hero-giz {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: min(46%, 540px);
+    height: 100%;
+    pointer-events: none;
+}
+
+body.ui3.ui-painel .pn-hero-giz path {
+    fill: none;
+    stroke: var(--ui-accent);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    opacity: 0.55;
+    filter: drop-shadow(0 0 6px var(--ui-accent));
+    animation: pn-giz 1400ms var(--ui-ease-out) 200ms forwards;
+    vector-effect: non-scaling-stroke;
+}
+
+@keyframes pn-giz {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+body.ui3.ui-painel .pn-hero-frase {
+    position: relative;
+    z-index: 1;
+    align-self: flex-end;
+    flex: none;
+    max-width: 240px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+body.ui3.ui-painel .pn-hero-frase p {
+    margin: 0;
+    color: var(--ui-text-2);
+    font-family: var(--ui-font-display);
+    font-size: 1.05rem;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+/* Cartões de número */
+body.ui3.ui-painel .pn-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: var(--pn-gap);
+}
+
+body.ui3.ui-painel .pn-kpi {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-height: 104px;
+    padding: 1.1rem 1.1rem 1.1rem 1.2rem;
+    border: 1px solid var(--ui-line);
+    border-radius: var(--ui-r-lg);
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow);
+    color: var(--ui-text);
+    text-decoration: none;
+    transition:
+        border-color var(--ui-fast) var(--ui-ease-out),
+        transform var(--ui-fast) var(--ui-ease-out);
+}
+
+body.ui3.ui-painel a.pn-kpi:hover {
+    border-color: color-mix(in srgb, var(--pn-cor, var(--ui-accent)) 45%, transparent);
+}
+
+body.ui3.ui-painel a.pn-kpi:active {
+    transform: scale(0.99);
+}
+
+body.ui3.ui-painel .pn-kpi-ico {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 54px;
+    height: 54px;
+    border-radius: 16px;
+    background: linear-gradient(
+        150deg,
+        color-mix(in srgb, var(--pn-cor, var(--ui-accent)) 88%, #000) 0%,
+        color-mix(in srgb, var(--pn-cor, var(--ui-accent)) 62%, #000) 100%
+    );
+    box-shadow: 0 10px 24px -12px var(--pn-cor, var(--ui-accent));
+    color: #fff;
+}
+
+body.ui3.ui-painel .pn-kpi-ico :is(i, svg) {
+    width: 24px;
+    height: 24px;
+    font-size: 1.35rem;
+}
+
+body.ui3.ui-painel .pn-kpi-txt {
+    display: grid;
+    flex: 1;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+body.ui3.ui-painel .pn-kpi-rot {
+    color: var(--ui-text-2);
+    font-size: 0.86rem;
+    font-weight: 500;
+}
+
+body.ui3.ui-painel .pn-kpi-valor {
+    color: var(--ui-text);
+    font-size: 1.7rem;
+    line-height: 1.1;
+}
+
+body.ui3.ui-painel .pn-kpi-valor small {
+    color: var(--ui-text-3);
+    font-size: 0.6em;
+    font-weight: 600;
+}
+
+body.ui3.ui-painel .pn-kpi-sub {
+    overflow: hidden;
+    color: var(--ui-text-3);
+    font-size: 0.78rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+body.ui3.ui-painel .pn-kpi-seta {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    color: var(--ui-text-3);
+    transition: transform var(--ui-fast) var(--ui-ease-out);
+}
+
+body.ui3.ui-painel a:hover > .pn-kpi-seta {
+    transform: translateX(2px);
+    color: var(--ui-text);
+}
+
+/* Grade principal: três colunas que empilham os cartões, como na arte.
+   Cada coluna cresce só o que precisa; nada de linha de grade esticando um
+   cartão curto para acompanhar o vizinho alto. */
+body.ui3.ui-painel .pn-grade {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.95fr) minmax(0, 1.05fr);
+    align-items: start;
+    gap: var(--pn-gap);
+}
+
+body.ui3.ui-painel .pn-col {
+    display: grid;
+    gap: var(--pn-gap);
+    align-content: start;
+    min-width: 0;
+}
+
+/* Cartão */
+body.ui3.ui-painel .pn-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 0;
+    margin: 0;
+    padding: 1.25rem;
+    border: 1px solid var(--ui-line);
+    border-radius: var(--ui-r-lg);
+    background: var(--ui-surface);
+    box-shadow: var(--ui-shadow);
+    color: var(--ui-text);
+}
+
+body.ui3.ui-painel .pn-card-topo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+}
+
+body.ui3.ui-painel .pn-card-ico {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--ui-tint, var(--ui-accent)) 14%, transparent);
+    color: var(--ui-tint, var(--ui-accent));
+}
+
+body.ui3.ui-painel .pn-card-ico :is(i, svg) {
+    width: 19px;
+    height: 19px;
+    font-size: 1.1rem;
+}
+
+body.ui3.ui-painel .pn-card-cab {
+    flex: 1;
+    min-width: 0;
+}
+
+body.ui3.ui-painel .pn-card-titulo {
+    flex: 1;
+    margin: 0;
+    color: var(--ui-text);
+    font-family: var(--ui-font-display);
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+body.ui3.ui-painel .pn-card-desc {
+    margin: 0.15rem 0 0;
+    color: var(--ui-text-3);
+    font-size: 0.8rem;
+}
+
+body.ui3.ui-painel .pn-card-meta {
+    flex: none;
+    color: var(--ui-text-3);
+    font-size: 0.8rem;
+}
+
+body.ui3.ui-painel .pn-card-rodape {
+    margin-top: auto;
+    padding-top: 0.25rem;
+}
+
+body.ui3.ui-painel .pn-card-rodape .ui-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+body.ui3.ui-painel .pn-card-rodape .ui-link :is(i, svg) {
+    width: 15px;
+    height: 15px;
+}
+
+body.ui3.ui-painel .pn-recolher {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: var(--ui-r-sm);
+    background: none;
+    color: var(--ui-text-3);
+    cursor: pointer;
+}
+
+body.ui3.ui-painel .pn-recolher:hover {
+    background: var(--ui-surface-3);
+    color: var(--ui-text);
+}
+
+body.ui3.ui-painel .pn-recolher :is(i, svg) {
+    width: 16px;
+    height: 16px;
+    transition: transform var(--ui-base) var(--ui-ease-out);
+}
+
+body.ui3.ui-painel .pn-recolher[aria-expanded='false'] :is(i, svg) {
+    transform: rotate(-90deg);
+}
+
+/* Estado vazio e erro de um bloco */
+body.ui3.ui-painel .pn-vazio {
+    display: grid;
+    justify-items: start;
+    gap: 0.35rem;
+    padding: 1rem;
+    border: 1px dashed var(--ui-line-strong);
+    border-radius: var(--ui-r);
+    color: var(--ui-text-2);
+    font-size: 0.88rem;
+    line-height: 1.5;
+}
+
+body.ui3.ui-painel .pn-vazio strong {
+    color: var(--ui-text);
+    font-size: 0.92rem;
+}
+
+body.ui3.ui-painel .pn-vazio .ui-btn {
+    min-height: 36px;
+    margin-top: 0.35rem;
+    font-size: 0.85rem;
+}
+
+/* Skeleton: a animação é o .skeleton de css/motion.css */
+body.ui3.ui-painel .pn-skel {
+    display: block;
+    width: 100%;
+    height: 1rem;
+}
+
+body.ui3.ui-painel .pn-skel-num {
+    width: 3.2rem;
+    height: 1.6rem;
+    margin: 0.15rem 0;
+}
+
+/* ─────────────────────────────── Agenda do dia ───────────────────────────── */
+/* A assinatura do painel: uma linha de giz corre pelas aulas; o nó da aula em
+   andamento acende, as concluídas ficam ocas e apagadas. */
+body.ui3.ui-painel .pn-aulas {
+    position: relative;
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+body.ui3.ui-painel .pn-aulas::before {
+    content: '';
+    position: absolute;
+    top: 22px;
+    bottom: 22px;
+    left: 8px;
+    width: 2px;
+    border-radius: 2px;
+    background: linear-gradient(
+        180deg,
+        var(--ui-accent) 0%,
+        var(--ui-accent) var(--pn-progresso, 0%),
+        var(--ui-line-strong) var(--pn-progresso, 0%),
+        var(--ui-line-strong) 100%
+    );
+}
+
+body.ui3.ui-painel .pn-aulas:has(> .pn-vazio)::before,
+body.ui3.ui-painel .pn-aulas[aria-busy='true']::before {
+    display: none;
+}
+
+body.ui3.ui-painel .pn-aula {
+    position: relative;
+}
+
+body.ui3.ui-painel .pn-aula + .pn-aula {
+    border-top: 1px solid var(--ui-line);
+}
+
+body.ui3.ui-painel .pn-aula--skel {
+    padding: 0.9rem 0 0.9rem 2rem;
+}
+
+body.ui3.ui-painel .pn-aula--skel .pn-skel {
+    height: 2.1rem;
+}
+
+body.ui3.ui-painel .pn-aula-link {
+    display: grid;
+    grid-template-columns: 18px 6.6rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 58px;
+    padding: 0.45rem 0.25rem 0.45rem 0;
+    border-radius: var(--ui-r-sm);
+    color: var(--ui-text);
+    text-decoration: none;
+    transition: background-color var(--ui-fast) var(--ui-ease-out);
+}
+
+body.ui3.ui-painel .pn-aula-link:hover {
+    background: color-mix(in srgb, var(--ui-surface-3) 60%, transparent);
+}
+
+body.ui3.ui-painel .pn-aula-no {
+    position: relative;
+    z-index: 1;
+    justify-self: center;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--ui-accent);
+    border-radius: 50%;
+    background: var(--ui-accent);
+}
+
+body.ui3.ui-painel .pn-aula[data-estado='concluida'] .pn-aula-no {
+    border-color: var(--ui-line-strong);
+    background: var(--ui-surface);
+}
+
+body.ui3.ui-painel .pn-aula[data-estado='livre'] .pn-aula-no {
+    border-color: var(--ui-line-strong);
+    background: var(--ui-surface-3);
+}
+
+body.ui3.ui-painel .pn-aula[data-estado='agora'] .pn-aula-no {
+    box-shadow:
+        0 0 0 4px var(--ui-accent-soft),
+        0 0 16px var(--ui-accent);
+}
+
+body.ui3.ui-painel .pn-aula-hora {
+    color: var(--ui-text-2);
+    font-size: 0.86rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+body.ui3.ui-painel .pn-aula-materia {
+    min-width: 0;
+}
+
+body.ui3.ui-painel .pn-aula-materia strong {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 0.93rem;
+    font-weight: 600;
+    line-height: 1.3;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+body.ui3.ui-painel .pn-aula-materia span {
+    display: block;
+    overflow: hidden;
+    color: var(--ui-text-3);
+    font-size: 0.76rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+body.ui3.ui-painel .pn-aula[data-estado='concluida'] :is(.pn-aula-hora, .pn-aula-materia) {
+    opacity: 0.55;
+}
+
+body.ui3.ui-painel .pn-aula .ui-pill {
+    justify-self: end;
+}
+
+body.ui3.ui-painel .pn-aula[data-estado='agora'] .ui-pill {
+    background: var(--ui-accent);
+    color: var(--ui-accent-ink);
+}
+
+:root[data-theme='light']:not(.high-contrast) body.ui3.ui-painel .pn-aula[data-estado='agora'] .ui-pill {
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+}
+
+/* ─────────────────────────────── Ações rápidas ───────────────────────────── */
+body.ui3.ui-painel .pn-acoes {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+body.ui3.ui-painel .pn-acao {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 1.1rem;
+    min-height: 92px;
+    padding: 0.9rem;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--pn-cor) 45%, transparent);
+    border-radius: var(--ui-r);
+    background: linear-gradient(
+        140deg,
+        color-mix(in srgb, var(--pn-cor) 34%, var(--ui-surface-2)) 0%,
+        color-mix(in srgb, var(--pn-cor) 12%, var(--ui-surface-2)) 100%
+    );
+    color: var(--ui-text);
+    font-size: 0.86rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition:
+        border-color var(--ui-fast) var(--ui-ease-out),
+        transform var(--ui-fast) var(--ui-ease-out),
+        box-shadow var(--ui-base) var(--ui-ease-out);
+}
+
+body.ui3.ui-painel .pn-acao:hover {
+    border-color: var(--pn-cor);
+    box-shadow: 0 12px 28px -18px var(--pn-cor);
+}
+
+body.ui3.ui-painel .pn-acao:active {
+    transform: scale(0.98);
+}
+
+body.ui3.ui-painel .pn-acao :is(i, svg) {
+    width: 24px;
+    height: 24px;
+    font-size: 1.4rem;
+}
+
+:root[data-theme='light'] body.ui3.ui-painel .pn-kpi-ico {
+    background: linear-gradient(
+        150deg,
+        var(--pn-cor, var(--ui-accent)) 0%,
+        color-mix(in srgb, var(--pn-cor, var(--ui-accent)) 82%, #000) 100%
+    );
+}
+
+:root[data-theme='light'] body.ui3.ui-painel .pn-acao {
+    border-color: transparent;
+    background: linear-gradient(
+        140deg,
+        color-mix(in srgb, var(--pn-cor) 92%, #fff) 0%,
+        color-mix(in srgb, var(--pn-cor) 78%, #000) 100%
+    );
+}
+
+/* ─────────────────────── Equipe online (professores-online.js) ──────────── */
+body.ui3.ui-painel .profs-online-card {
+    margin: 0;
+    padding: 1.25rem;
+}
+
+body.ui3.ui-painel .profs-online-card .profs-online-body {
+    max-height: 340px;
+    overflow-y: auto;
+    padding: 0;
+    scrollbar-width: thin;
+}
+
+body.ui3.ui-painel .profs-online-card .profs-online-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    padding: 0;
+}
+
+body.ui3.ui-painel .profs-online-card .po-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0.6rem 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+}
+
+body.ui3.ui-painel .profs-online-card .po-item + .po-item {
+    border-top: 1px solid var(--ui-line);
+}
+
+body.ui3.ui-painel .profs-online-card .po-item-main {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 0.7rem;
+    min-width: 0;
+}
+
+body.ui3.ui-painel .profs-online-card .po-info {
+    flex: 1;
+    min-width: 0;
+}
+
+body.ui3.ui-painel .profs-online-card .po-nome-row {
+    justify-content: flex-start;
+}
+
+body.ui3.ui-painel .profs-online-card .po-nome {
+    flex: 0 1 auto;
+    min-width: 0;
+}
+
+body.ui3.ui-painel .profs-online-card .pn-card-titulo {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+body.ui3.ui-painel .profs-online-card .po-actions {
+    flex: none;
+    width: auto;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+body.ui3.ui-painel .profs-online-card :is(.po-escola, .po-sala, .po-tempo-online) {
+    display: none;
+}
+
+body.ui3.ui-painel .profs-online-card .po-nome {
+    color: var(--ui-text);
+    font-size: 0.88rem;
+}
+
+body.ui3.ui-painel .profs-online-card .btn-po-conversar {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--ui-line);
+    border-radius: var(--ui-r-sm);
+    background: var(--ui-surface-2);
+    color: var(--ui-text-2);
+    font-size: 0;
+}
+
+body.ui3.ui-painel .profs-online-card .btn-po-conversar :is(i, svg) {
+    width: 17px;
+    height: 17px;
+    font-size: 1rem;
+}
+
+body.ui3.ui-painel .profs-online-card .btn-po-conversar:hover {
+    border-color: var(--ui-accent-line);
+    color: var(--ui-accent);
+}
+
+body.ui3.ui-painel .profs-online-card .po-empty {
+    padding: 0.5rem 0;
+    color: var(--ui-text-3);
+    font-size: 0.86rem;
+}
+
+/* ─────────────────────── Mural (announcement-feed-react.js) ──────────────── */
+body.ui3.ui-painel .pn-mural .announcement-feed-premium {
+    margin: 0;
+    padding: 0;
+    background: none;
+}
+
+body.ui3.ui-painel .pn-mural .feed-header-social {
+    margin: 0 0 0.75rem;
+    padding: 0;
+    border: 0;
+    background: none;
+}
+
+body.ui3.ui-painel .pn-mural .feed-title-wrapper {
+    display: none;
+}
+
+body.ui3.ui-painel .pn-mural .feed-header-top {
+    display: block;
+    margin: 0;
+}
+
+body.ui3.ui-painel .pn-mural .feed-search-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: none;
+}
+
+body.ui3.ui-painel .pn-mural .feed-search-input {
+    width: 100%;
+    min-height: 42px;
+    padding: 0 0.9rem 0 2.5rem;
+    border: 1px solid var(--ui-line-strong);
+    border-radius: var(--ui-r);
+    background: var(--ui-surface-2);
+    color: var(--ui-text);
+    font: 500 0.88rem/1 var(--ui-font);
+}
+
+body.ui3.ui-painel .pn-mural .feed-search-wrapper .search-icon {
+    position: absolute;
+    top: 50%;
+    left: 0.85rem;
+    width: 16px;
+    height: 16px;
+    color: var(--ui-text-3);
+    transform: translateY(-50%);
+}
+
+body.ui3.ui-painel .pn-mural .feed-filters-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 0.6rem 0 0;
+    padding: 0;
+    border: 0;
+}
+
+body.ui3.ui-painel .pn-mural .feed-filter-tab {
+    min-height: 30px;
+    padding: 0 0.7rem;
+    border: 1px solid var(--ui-line);
+    border-radius: 999px;
+    background: none;
+    color: var(--ui-text-2);
+    font-size: 0.74rem;
+    font-weight: 600;
+}
+
+body.ui3.ui-painel .pn-mural .feed-filter-tab.active {
+    border-color: var(--ui-accent-line);
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent);
+}
+
+body.ui3.ui-painel .pn-mural .feed-list-premium {
+    display: grid;
+    gap: 0;
+    max-height: 640px;
+    overflow-y: auto;
+    padding: 0;
+    scrollbar-width: thin;
+}
+
+body.ui3.ui-painel .pn-mural .comunicado-card-premium {
+    margin: 0;
+    padding: 0.85rem 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    color: var(--ui-text);
+}
+
+body.ui3.ui-painel .pn-mural .comunicado-card-premium + .comunicado-card-premium {
+    border-top: 1px solid var(--ui-line);
+}
+
+body.ui3.ui-painel .pn-mural .comunicado-card-premium::before,
+body.ui3.ui-painel .pn-mural .comunicado-card-premium::after {
+    display: none;
+}
+
+body.ui3.ui-painel .pn-mural .card-header-premium {
+    gap: 0.65rem;
+    margin: 0 0 0.45rem;
+    padding: 0;
+}
+
+body.ui3.ui-painel .pn-mural :is(.avatar-md, .card-avatar-premium .avatar-placeholder, .card-avatar-premium img) {
+    width: 36px;
+    height: 36px;
+    font-size: 0.8rem;
+}
+
+body.ui3.ui-painel .pn-mural .card-author-premium {
+    margin: 0;
+    color: var(--ui-text);
+    font-size: 0.86rem;
+}
+
+body.ui3.ui-painel .pn-mural :is(.card-author-role, .card-date-premium) {
+    color: var(--ui-text-3);
+    font-size: 0.72rem;
+}
+
+body.ui3.ui-painel .pn-mural .category-pill-card {
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    background: var(--ui-surface-3);
+    color: var(--ui-text-2);
+    font-size: 0.66rem;
+}
+
+body.ui3.ui-painel .pn-mural .card-body-premium {
+    padding: 0 0 0 calc(36px + 0.65rem);
+}
+
+body.ui3.ui-painel .pn-mural .card-title-premium {
+    margin: 0 0 0.2rem;
+    color: var(--ui-text);
+    font-size: 0.9rem;
+    line-height: 1.35;
+}
+
+body.ui3.ui-painel .pn-mural .card-title-premium > :is(i, svg) {
+    display: none;
+}
+
+body.ui3.ui-painel .pn-mural .card-text-premium {
+    display: -webkit-box;
+    overflow: hidden;
+    color: var(--ui-text-2);
+    font-size: 0.82rem;
+    line-height: 1.5;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
+body.ui3.ui-painel .pn-mural .card-actions-premium {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0.55rem 0 0;
+    padding: 0 0 0 calc(36px + 0.65rem);
+    border: 0;
+}
+
+body.ui3.ui-painel .pn-mural :is(.action-btn-legacy, .audio-ctrl-btn) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 30px;
+    padding: 0 0.6rem;
+    border: 1px solid var(--ui-line);
+    border-radius: 999px;
+    background: none;
+    color: var(--ui-text-2);
+    font-size: 0.74rem;
+    font-weight: 600;
+}
+
+body.ui3.ui-painel .pn-mural :is(.action-btn-legacy, .audio-ctrl-btn):hover,
+body.ui3.ui-painel .pn-mural .action-btn-legacy.active {
+    border-color: var(--ui-accent-line);
+    color: var(--ui-text);
+}
+
+body.ui3.ui-painel .pn-mural :is(.action-btn-legacy, .audio-ctrl-btn) :is(i, svg) {
+    width: 14px;
+    height: 14px;
+}
+
+body.ui3.ui-painel .pn-mural .reaction-container-premium {
+    display: contents;
+}
+
+body.ui3.ui-painel .pn-mural .custom-audio-player {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+}
+
+body.ui3.ui-painel .pn-mural .custom-audio-player > span {
+    display: none;
+}
+
+body.ui3.ui-painel .pn-mural .audio-progress-container {
+    width: 48px;
+    height: 3px;
+    border-radius: 3px;
+    background: var(--ui-line-strong);
+}
+
+body.ui3.ui-painel .pn-mural .audio-progress-bar {
+    height: 100%;
+    border-radius: 3px;
+    background: var(--ui-accent);
+}
+
+body.ui3.ui-painel .pn-mural .count-badge-legacy {
+    min-width: 18px;
+    padding: 0 0.3rem;
+    border-radius: 999px;
+    background: var(--ui-surface-3);
+    color: var(--ui-text-2);
+    font-size: 0.68rem;
+}
+
+body.ui3.ui-painel .pn-mural .card-author-role {
+    display: none;
+}
+
+body.ui3.ui-painel .pn-mural :is(.feed-empty-social, .feed-error-premium, .feed-loading-premium) {
+    padding: 1.5rem 1rem;
+    border: 1px dashed var(--ui-line-strong);
+    border-radius: var(--ui-r);
+    background: none;
+    color: var(--ui-text-2);
+}
+
+/* Histórico de envios (direção) */
+body.ui3.ui-painel .pn-historico-topo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin: 1rem 0 0.6rem;
+}
+
+body.ui3.ui-painel .pn-historico-topo h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0;
+    font-size: 0.92rem;
+}
+
+body.ui3.ui-painel .pn-historico-filtros {
+    display: flex;
+    gap: 0.35rem;
+}
+
+body.ui3.ui-painel .hist-filter-btn {
+    min-height: 30px;
+    padding: 0 0.7rem;
+    border: 1px solid var(--ui-line);
+    border-radius: 999px;
+    background: none;
+    color: var(--ui-text-2);
+    font-size: 0.74rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+body.ui3.ui-painel .hist-filter-btn.active {
+    border-color: var(--ui-accent-line);
+    background: var(--ui-accent-soft);
+    color: var(--ui-accent);
+}
+
+body.ui3.ui-painel .pn-tabela-rolagem {
+    overflow-x: auto;
+}
+
+body.ui3.ui-painel .pn-tabela {
+    width: 100%;
+    min-width: 520px;
+    border-collapse: collapse;
+    font-size: 0.84rem;
+}
+
+body.ui3.ui-painel .pn-tabela :is(th, td) {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--ui-line);
+    text-align: left;
+}
+
+body.ui3.ui-painel .pn-tabela th {
+    color: var(--ui-text-3);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+/* ─────────────────────────────── Assistente (IA) ─────────────────────────── */
+body.ui3.ui-painel .pn-ia {
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+    border-color: var(--ui-accent-line);
+    background:
+        radial-gradient(360px 160px at 100% 50%, var(--ui-accent-soft), transparent 70%),
+        var(--ui-surface);
+    text-decoration: none;
+    transition: border-color var(--ui-fast) var(--ui-ease-out);
+}
+
+body.ui3.ui-painel .pn-ia:hover {
+    border-color: var(--ui-accent);
+}
+
+body.ui3.ui-painel .pn-ia-ico {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    background: var(--ui-accent-soft);
+    box-shadow: var(--ui-glow);
+    color: var(--ui-accent);
+}
+
+body.ui3.ui-painel .pn-ia-ico :is(i, svg) {
+    width: 26px;
+    height: 26px;
+    font-size: 1.5rem;
+}
+
+body.ui3.ui-painel .pn-ia-txt {
+    display: grid;
+    flex: 1;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+body.ui3.ui-painel .pn-ia-titulo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--ui-text);
+    font-family: var(--ui-font-display);
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+body.ui3.ui-painel .pn-ia-desc {
+    color: var(--ui-text-2);
+    font-size: 0.84rem;
+    line-height: 1.45;
+}
+
+/* ─────────────────────── Avaliar o sistema (realtime.js) ─────────────────── */
+body.ui3.ui-painel .pn-avaliar .review-form-container label {
+    color: var(--ui-text) !important;
+}
+
+body.ui3.ui-painel .pn-avaliar .star-rating .star {
+    color: var(--ui-line-strong);
+    font-size: 1.6rem;
+}
+
+body.ui3.ui-painel .pn-avaliar .star-rating .star:is(.active, .hover-preview) {
+    color: var(--ui-amber);
+}
+
+:root[data-theme='light']:not(.high-contrast) body.ui3.ui-painel .pn-avaliar .star-rating .star:is(.active, .hover-preview) {
+    color: var(--ui-amber) !important;
+    -webkit-text-fill-color: var(--ui-amber) !important;
+}
+
+body.ui3.ui-painel .pn-avaliar #reviewComment {
+    min-height: 72px;
+    border: 1px solid var(--ui-line-strong) !important;
+    border-radius: var(--ui-r) !important;
+    background: var(--ui-surface-2) !important;
+    color: var(--ui-text) !important;
+    font: 500 0.88rem/1.45 var(--ui-font) !important;
+}
+
+body.ui3.ui-painel .pn-avaliar #btnSubmitReview {
+    min-height: 38px;
+    padding: 0 1rem !important;
+    border-radius: var(--ui-r-sm) !important;
+    background: linear-gradient(100deg, var(--ui-accent), var(--ui-cyan)) !important;
+    color: var(--ui-accent-ink) !important;
+}
+
+/* ─────────────────────────────── Instalar (PWA) ──────────────────────────── */
+body.ui3.ui-painel .pn-instalar {
+    background:
+        radial-gradient(300px 140px at 100% 100%, var(--ui-accent-soft), transparent 70%),
+        var(--ui-surface);
+}
+
+body.ui3.ui-painel .pn-instalar .ui-btn {
+    align-self: flex-start;
+    min-width: 170px;
+}
+
+/* ─────────────────────── Avaliações recentes (realtime.js) ───────────────── */
+body.ui3.ui-painel .pn-recentes .review-stats {
+    margin: 0;
+    padding: 0.75rem;
+    border: 1px solid var(--ui-line);
+    border-radius: var(--ui-r);
+    background: var(--ui-surface-2);
+}
+
+body.ui3.ui-painel .pn-recentes .avg-number {
+    color: var(--ui-text);
+    font-family: var(--ui-font-display);
+}
+
+body.ui3.ui-painel .pn-recentes :is(.avg-stars, .review-stars-small) {
+    color: var(--ui-amber);
+}
+
+body.ui3.ui-painel .pn-recentes .dist-fill {
+    background: var(--ui-amber);
+}
+
+body.ui3.ui-painel .pn-recentes .review-list-premium {
+    display: grid;
+    gap: 0;
+    max-height: 320px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+body.ui3.ui-painel .pn-recentes .review-item {
+    margin: 0;
+    padding: 0.65rem 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+}
+
+body.ui3.ui-painel .pn-recentes .review-item + .review-item {
+    border-top: 1px solid var(--ui-line);
+}
+
+body.ui3.ui-painel .pn-recentes :is(.review-name, .review-text) {
+    color: var(--ui-text);
+}
+
+body.ui3.ui-painel .pn-recentes .review-date {
+    color: var(--ui-text-3);
+}
+
+/* ─────────────────── Blocos da direção e do admin (dashboard.js) ─────────── */
+body.ui3.ui-painel .pn-duas {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--pn-gap);
+}
+
+body.ui3.ui-painel .pn-lista-mini {
+    display: grid;
+    gap: 0;
+}
+
+body.ui3.ui-painel .pn-lista-mini :is(.activity-item-mini, .activity-placeholder) {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--ui-line);
+    color: var(--ui-text-2);
+    font-size: 0.86rem;
+}
+
+body.ui3.ui-painel .pn-lista-mini .activity-dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    margin-top: 0.4rem;
+    border-radius: 50%;
+}
+
+body.ui3.ui-painel .pn-lista-mini .activity-time {
+    display: block;
+    color: var(--ui-text-3);
+    font-size: 0.74rem;
+}
+
+body.ui3.ui-painel .pn-seguranca-corpo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+body.ui3.ui-painel .pn-codigo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.4rem 0.5rem 0.4rem 1.1rem;
+    border: 1px dashed var(--ui-accent-line);
+    border-radius: var(--ui-r);
+}
+
+body.ui3.ui-painel #dashboardDailyCode {
+    color: var(--ui-accent);
+    font-size: 1.5rem;
+    letter-spacing: 0.2em;
+}
+
+body.ui3.ui-painel .pn-seguranca-acoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+body.ui3.ui-painel .pn-atalhos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: var(--pn-gap);
+}
+
+body.ui3.ui-painel .pn-atalhos:not(:has(> .pn-atalho:not([style*='none']))) {
+    display: none;
+}
+
+body.ui3.ui-painel .pn-atalho {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+body.ui3.ui-painel .pn-atalho .ui-btn {
+    min-height: 38px;
+    font-size: 0.85rem;
+}
+
+/* ─────────────────────────────── Entrada ─────────────────────────────────── */
+/* Uma vez, na chegada: sobe 8px e aparece. Nada anima depois disso. */
+body.ui3.ui-painel .pn-main > *,
+body.ui3.ui-painel .pn-grade > *,
+body.ui3.ui-painel .pn-kpis > * {
+    animation: pn-entra 420ms var(--ui-ease-out) both;
+}
+
+body.ui3.ui-painel .pn-kpis > :nth-child(2),
+body.ui3.ui-painel .pn-grade > :nth-child(2) {
+    animation-delay: 50ms;
+}
+
+body.ui3.ui-painel .pn-kpis > :nth-child(3),
+body.ui3.ui-painel .pn-grade > :nth-child(3) {
+    animation-delay: 100ms;
+}
+
+body.ui3.ui-painel .pn-kpis > :nth-child(4),
+body.ui3.ui-painel .pn-grade > :nth-child(n + 4) {
+    animation-delay: 150ms;
+}
+
+@keyframes pn-entra {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+}
+
+/* ─────────────────────────────── Tema claro ──────────────────────────────── */
+/* variables.css deixa a barra 92% opaca no claro (com !important): como
+   gaveta no celular, a página vazava por trás. */
+:root[data-theme='light']:not(.high-contrast) body.ui3.ui-painel .pn-side {
+    background: #ffffff !important;
+}
+
+:root[data-theme='light'] body.ui3.ui-painel .pn-topo {
+    background: color-mix(in srgb, #ffffff 88%, transparent);
+}
+
+/* Caixas pretas do tema claro (variables.css): o card do mural, montado pelo
+   React com a classe .comunicado-card-premium, cairia no fundo preto com texto
+   branco. Os painéis seguem a arte, com cartão branco: fundo, texto e campos
+   são redeclarados aqui, com especificidade acima da (0,5,1) daquelas regras. */
+:root[data-theme='light']:not(.high-contrast) body.ui3.ui-painel .pn-mural .comunicado-card-premium,
+:root[data-theme='light']:not(.high-contrast) body.ui3.ui-painel .pn-mural .comunicado-card-premium:hover {
+    background: transparent !important;
+    border-color: var(--ui-line) !important;
+    box-shadow: none !important;
+}
+
+:root[data-theme='light']:not(.high-contrast) body.ui3.ui-painel .pn-mural .comunicado-card-premium :is(h1, h2, h3, h4, h5, h6, p, span, small, strong, b, em, i, a, li, div, button, time, label, svg) {
+    color: var(--ui-text) !important;
+    -webkit-text-fill-color: var(--ui-text) !important;
+}
+
+:root[data-theme='light']:not(.high-contrast) body.ui3.ui-painel .pn-mural .comunicado-card-premium :is(input, textarea) {
+    background: var(--ui-surface-2) !important;
+    border-color: var(--ui-line-strong) !important;
+    color: var(--ui-text) !important;
+    -webkit-text-fill-color: var(--ui-text) !important;
+}
+
+:root[data-theme='light']:not(.high-contrast) body.ui3.ui-painel .pn-mural .comunicado-card-premium :is(.avatar-placeholder, .avatar-placeholder *) {
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+}
+
+/* ─────────────────────────────── Responsivo ──────────────────────────────── */
+@media (max-width: 1279px) {
+    body.ui3.ui-painel .pn-grade {
+        grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    }
+
+    body.ui3.ui-painel .pn-col--3 {
+        grid-column: 1 / -1;
+        grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    }
+
+    body.ui3.ui-painel .pn-hero-frase {
+        display: none;
+    }
+}
+
+@media (max-width: 1023px) {
+    /* Uma coluna: as colunas somem e a ordem passa a ser a de uso. */
+    body.ui3.ui-painel .pn-grade {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    body.ui3.ui-painel .pn-col {
+        display: contents;
+    }
+
+    body.ui3.ui-painel .pn-agenda { order: 1; }
+    body.ui3.ui-painel .pn-acoes-card { order: 2; }
+    body.ui3.ui-painel .pn-mural { order: 3; }
+    body.ui3.ui-painel .profs-online-card { order: 4; }
+    body.ui3.ui-painel .pn-ia { order: 5; }
+    body.ui3.ui-painel .pn-avaliar { order: 6; }
+    body.ui3.ui-painel .pn-recentes { order: 7; }
+    body.ui3.ui-painel .pn-instalar { order: 8; }
+
+    body.ui3.ui-painel .pn-duas {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    body.ui3.ui-painel .pn-conta-txt {
+        display: none;
+    }
+}
+
+/* Celular e tablet em pé: a barra vira gaveta (sidebar-voice.js). */
+@media (max-width: 768px) {
+    body.ui3.ui-painel .pn-side {
+        width: min(300px, 86vw);
+        transform: translateX(-100%);
+        transition: transform var(--ui-base) var(--ui-ease-out);
+    }
+
+    body.ui3.ui-painel .pn-side.mobile-open {
+        width: min(300px, 86vw);
+        transform: none;
+        box-shadow: var(--ui-shadow-pop);
+    }
+
+    body.ui3.ui-painel .pn-side.collapsed :is(.pn-marca-txt, .sidebar-info, .pn-escola, .pn-lema, .pn-tag),
+    body.ui3.ui-painel .pn-side.collapsed .sidebar-item > span {
+        display: revert;
+    }
+
+    body.ui3.ui-painel .pn-side .sidebar-toggle {
+        display: none;
+    }
+
+    body.ui3.ui-painel .pn-pagina,
+    body.ui3.ui-painel .pn-pagina.collapsed {
+        margin-left: 0;
+    }
+
+    body.ui3.ui-painel .pn-hamburguer {
+        display: inline-grid;
+    }
+
+    body.ui3.ui-painel .pn-topo {
+        gap: 0.5rem;
+        min-height: 64px;
+        padding: 0.6rem 1rem;
+    }
+
+    body.ui3.ui-painel .pn-escola-topo-ico,
+    body.ui3.ui-painel .pn-escola-topo-rot,
+    body.ui3.ui-painel #btn-restart-tour {
+        display: none;
+    }
+
+    body.ui3.ui-painel .pn-topo-dir {
+        gap: 0.35rem;
+    }
+
+    body.ui3.ui-painel .pn-topo :is(.ui-icon-btn, .btn-denuncia, .acessibilidade-botao) {
+        width: 38px;
+        min-width: 38px;
+        height: 38px;
+        min-height: 38px;
+        padding: 0;
+        justify-content: center;
+    }
+
+    /* Só o ícone; o texto continua para leitor de tela. */
+    body.ui3.ui-painel .pn-topo .btn-denuncia > span {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+
+    body.ui3.ui-painel .pn-conta-btn {
+        padding: 0.25rem;
+    }
+
+    body.ui3.ui-painel .pn-conta-seta {
+        display: none;
+    }
+
+    body.ui3.ui-painel .pn-main {
+        padding: 1rem;
+    }
+
+    body.ui3.ui-painel .pn-hero {
+        min-height: 0;
+    }
+
+    body.ui3.ui-painel .pn-hero-giz {
+        width: 100%;
+        opacity: 0.6;
+    }
+
+    body.ui3.ui-painel .pn-kpis {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    body.ui3.ui-painel .pn-kpi {
+        min-height: 88px;
+    }
+
+    /* Agenda em lista vertical: horário e turma sobem para cima da matéria. */
+    body.ui3.ui-painel .pn-aula-link {
+        grid-template-columns: 18px minmax(0, 1fr) auto;
+        grid-template-areas:
+            'no hora pill'
+            'no materia pill';
+        row-gap: 0.1rem;
+        padding-block: 0.6rem;
+    }
+
+    body.ui3.ui-painel .pn-aula-no {
+        grid-area: no;
+    }
+
+    body.ui3.ui-painel .pn-aula-hora {
+        grid-area: hora;
+        font-size: 0.78rem;
+    }
+
+    body.ui3.ui-painel .pn-aula-materia {
+        grid-area: materia;
+    }
+
+    body.ui3.ui-painel .pn-aula .ui-pill {
+        grid-area: pill;
+    }
+}
+
+@media (max-width: 600px) {
+    body.ui3.ui-painel .pn-escola-topo {
+        display: none !important;
+    }
+
+    body.ui3.ui-painel .pn-hero-escola:not(:empty) {
+        display: block;
+    }
+}
+
+/* ────────────────────────────── Movimento reduzido ───────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    body.ui3.ui-painel .pn-hero-giz path {
+        stroke-dashoffset: 0;
+        animation: none;
+    }
+
+    body.ui3.ui-painel .pn-main > *,
+    body.ui3.ui-painel .pn-grade > *,
+    body.ui3.ui-painel .pn-kpis > * {
+        animation: none;
+    }
+}
+
+/* Com a gaveta aberta no celular, a marca d'água fixa ficava por cima do menu. */
+body.ui3.ui-painel.sidebar-open .nandev-watermark {
+    display: none;
+}
