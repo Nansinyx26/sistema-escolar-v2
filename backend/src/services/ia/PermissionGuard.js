@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * PermissionGuard.js — SEGUNDA barreira de autorização das ferramentas.
  *
@@ -53,12 +51,12 @@ function exigirCargo(ctx, cargosPermitidos, nomeFerramenta) {
     const perfil = ctx.perfil;
     if (perfil === 'admin') return;
 
-    const permitidos = (cargosPermitidos || []).map(c => String(c).toLowerCase());
+    const permitidos = (cargosPermitidos || []).map((c) => String(c).toLowerCase());
     if (permitidos.includes(perfil)) return;
 
     throw new ErroPermissao(
         `O perfil "${perfil}" não tem acesso a esta informação (${nomeFerramenta}). ` +
-        'Explique isso à pessoa com cordialidade e ofereça ajuda com o que ela pode ver.'
+            'Explique isso à pessoa com cordialidade e ofereça ajuda com o que ela pode ver.'
     );
 }
 
@@ -75,7 +73,7 @@ function filtroDaEscola(ctx) {
     if (!ctx.escolaId) {
         throw new ErroPermissao(
             'A escola desta sessão não está definida, então não posso consultar dados. ' +
-            'Peça que a pessoa selecione a escola no sistema e tente de novo.'
+                'Peça que a pessoa selecione a escola no sistema e tente de novo.'
         );
     }
     return escolaMatch(ctx.escolaId);
@@ -93,15 +91,13 @@ function turmasPermitidas(ctx) {
         if (turmas.length === 0) {
             throw new ErroPermissao(
                 'Não encontrei turmas atribuídas a este professor no sistema. ' +
-                'Sugira que ele procure a direção para verificar a atribuição.'
+                    'Sugira que ele procure a direção para verificar a atribuição.'
             );
         }
         return turmas;
     }
 
-    throw new ErroPermissao(
-        `O perfil "${ctx.perfil}" não tem acesso a dados de turma.`
-    );
+    throw new ErroPermissao(`O perfil "${ctx.perfil}" não tem acesso a dados de turma.`);
 }
 
 /**
@@ -115,10 +111,7 @@ function restringirPorTurma(filtro, ctx, campos = ['turma', 'turmaId']) {
 
     return {
         ...filtro,
-        $and: [
-            ...(filtro.$and || []),
-            { $or: campos.map(c => ({ [c]: { $in: permitidas } })) }
-        ]
+        $and: [...(filtro.$and || []), { $or: campos.map((c) => ({ [c]: { $in: permitidas } })) }],
     };
 }
 
@@ -157,5 +150,5 @@ module.exports = {
     restringirPorTurma,
     exigirAcessoAoAluno,
     ehResponsavel,
-    ehGestao
+    ehGestao,
 };

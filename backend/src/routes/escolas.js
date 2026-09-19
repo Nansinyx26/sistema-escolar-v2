@@ -15,7 +15,8 @@ const { logAction } = require('../utils/auditHelper');
 const CODIGO_ESCOLA_ALFABETO = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
 function gerarCodigoEscola(length = 10) {
     let code = '';
-    for (let i = 0; i < length; i++) code += CODIGO_ESCOLA_ALFABETO[crypto.randomInt(CODIGO_ESCOLA_ALFABETO.length)];
+    for (let i = 0; i < length; i++)
+        code += CODIGO_ESCOLA_ALFABETO[crypto.randomInt(CODIGO_ESCOLA_ALFABETO.length)];
     return code;
 }
 
@@ -55,14 +56,16 @@ router.get('/', async (req, res) => {
 router.get('/minhas', authJWT, async (req, res) => {
     try {
         const vinculos = await vinculosDoUsuario(req.user);
-        const ids = vinculos.map(v => v.escolaId);
+        const ids = vinculos.map((v) => v.escolaId);
         const escolas = ids.length
-            ? await Escola.find({ _id: { $in: ids } }).select('nome tipo bairro ativo').lean()
+            ? await Escola.find({ _id: { $in: ids } })
+                  .select('nome tipo bairro ativo')
+                  .lean()
             : [];
         res.json({
             success: true,
             data: escolas,
-            escolaAtivaId: (req.session && req.session.escolaAtivaId) || null
+            escolaAtivaId: (req.session && req.session.escolaAtivaId) || null,
         });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
@@ -79,17 +82,22 @@ router.post('/trocar/:escolaId', authJWT, async (req, res) => {
         const { escolaId } = req.params;
 
         const escola = await Escola.findById(escolaId).select('nome ativo').lean();
-        if (!escola) return res.status(404).json({ success: false, error: 'Escola não encontrada.' });
-        if (!escola.ativo) return res.status(403).json({ success: false, error: 'Esta escola ainda não está disponível no sistema.' });
+        if (!escola)
+            return res.status(404).json({ success: false, error: 'Escola não encontrada.' });
+        if (!escola.ativo)
+            return res.status(403).json({
+                success: false,
+                error: 'Esta escola ainda não está disponível no sistema.',
+            });
 
         // Admin transita livremente; demais perfis precisam de vínculo
         if (req.user.perfil !== 'admin') {
             const vinculos = await vinculosDoUsuario(req.user);
-            const temVinculo = vinculos.some(v => String(v.escolaId) === String(escolaId));
+            const temVinculo = vinculos.some((v) => String(v.escolaId) === String(escolaId));
             if (!temVinculo) {
                 return res.status(403).json({
                     success: false,
-                    error: `Você não possui vínculo com a escola "${escola.nome}". Solicite acesso à direção.`
+                    error: `Você não possui vínculo com a escola "${escola.nome}". Solicite acesso à direção.`,
                 });
             }
         }
@@ -101,7 +109,7 @@ router.post('/trocar/:escolaId', authJWT, async (req, res) => {
             success: true,
             message: `Agora você está operando em: ${escola.nome}`,
             escolaAtivaId: String(escolaId),
-            redirect_to: getRedirectPath(req.user)
+            redirect_to: getRedirectPath(req.user),
         });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
@@ -124,34 +132,41 @@ router.post('/mudar', authJWT, async (req, res) => {
         if (!loader) {
             return res.status(403).json({
                 success: false,
-                error: 'Apenas professor, diretor ou secretaria podem trocar de escola por aqui.'
+                error: 'Apenas professor, diretor ou secretaria podem trocar de escola por aqui.',
             });
         }
 
         const { codigoEscola, escolaId } = req.body || {};
         if (!codigoEscola) {
-            return res.status(400).json({ success: false, error: 'Informe o código secreto da nova escola.' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'Informe o código secreto da nova escola.' });
         }
 
         // 1. Valida o código secreto (por escola quando escolaId presente)
         const codeResult = await SecurityController.validateCode(codigoEscola, escolaId || null);
         if (!codeResult) {
-            return res.status(403).json({ success: false, error: 'Código secreto da escola inválido ou expirado.' });
+            return res
+                .status(403)
+                .json({ success: false, error: 'Código secreto da escola inválido ou expirado.' });
         }
         const escola = codeResult.escola;
         if (!escola || !escola._id) {
-            return res.status(400).json({ success: false, error: 'Nenhuma escola cadastrada corresponde a este código.' });
+            return res.status(400).json({
+                success: false,
+                error: 'Nenhuma escola cadastrada corresponde a este código.',
+            });
         }
         const novaEscolaId = String(escola._id);
 
         // 2. Atualiza o vínculo no documento do cargo (cria se não existir)
         const Model = loader();
         const doc = await Model.findOne({
-            $or: [{ idUsuario: String(req.user.id || req.user._id) }, { email: req.user.email }]
+            $or: [{ idUsuario: String(req.user.id || req.user._id) }, { email: req.user.email }],
         });
         if (doc) {
             doc.vinculos = Array.isArray(doc.vinculos) ? doc.vinculos : [];
-            const jaTem = doc.vinculos.some(v => String(v.escolaId) === novaEscolaId);
+            const jaTem = doc.vinculos.some((v) => String(v.escolaId) === novaEscolaId);
             if (!jaTem) doc.vinculos.push({ escolaId: novaEscolaId, cargo: perfil });
             doc.escola = escola.nome; // nome legível
             await doc.save();
@@ -174,7 +189,7 @@ router.post('/mudar', authJWT, async (req, res) => {
             message: `Escola atualizada para: ${escola.nome}`,
             escolaAtivaId: novaEscolaId,
             escolaNome: escola.nome,
-            redirect_to: getRedirectPath(req.user)
+            redirect_to: getRedirectPath(req.user),
         });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
@@ -197,14 +212,14 @@ router.get('/codigos-secretos', authJWT, authorize('admin'), async (req, res) =>
             .sort({ tipo: 1, nome: 1 })
             .lean();
 
-        const data = escolas.map(e => ({
+        const data = escolas.map((e) => ({
             _id: e._id,
             nome: e.nome,
             tipo: e.tipo,
             bairro: e.bairro || '',
             municipio: e.municipio || '',
             ativo: !!e.ativo,
-            codigoSecreto: e.codigoSecreto || null
+            codigoSecreto: e.codigoSecreto || null,
         }));
 
         res.json({ success: true, data });
@@ -218,24 +233,62 @@ router.get('/codigos-secretos', authJWT, authorize('admin'), async (req, res) =>
  * ADMIN — gera (ou regenera) o codigoSecreto de cadastro de docentes de uma
  * escola. O código anterior deixa de valer imediatamente para novos cadastros.
  */
+/**
+ * PATCH /api/escolas/:escolaId/ia — ADMIN liga ou desliga o assistente naquela
+ * escola (Issue #401). Sem decisão registrada, vale o padrão da rede
+ * (`IA_ESCOLAS_PADRAO`, que nasce desligado): mandar dado de aluno para um
+ * provedor externo é decisão da escola.
+ */
+router.patch('/:escolaId/ia', authJWT, authorize('admin'), async (req, res) => {
+    try {
+        const habilitada = req.body?.habilitada;
+        if (typeof habilitada !== 'boolean') {
+            return res
+                .status(400)
+                .json({ success: false, error: 'Informe habilitada: true ou false.' });
+        }
+        const escola = await Escola.findByIdAndUpdate(
+            req.params.escolaId,
+            { $set: { iaHabilitada: habilitada } },
+            { new: true }
+        )
+            .select('nome iaHabilitada')
+            .lean();
+        if (!escola) {
+            return res.status(404).json({ success: false, error: 'Escola não encontrada.' });
+        }
+        require('../services/ia/interruptor').limparCache();
+        const { logAction } = require('../utils/auditHelper');
+        await logAction(req, 'IA_ESCOLA_ALTERADA', 'Segurança', {
+            recursoId: String(escola._id),
+            valorNovo: { iaHabilitada: escola.iaHabilitada },
+            descricao: `Assistente de IA ${escola.iaHabilitada ? 'ligado' : 'desligado'} na escola ${escola._id}.`,
+        });
+        return res.json({ success: true, data: escola });
+    } catch (e) {
+        return res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 router.post('/:escolaId/codigo-secreto', authJWT, authorize('admin'), async (req, res) => {
     try {
         const { escolaId } = req.params;
         const escola = await Escola.findById(escolaId).select('+codigoSecreto nome');
-        if (!escola) return res.status(404).json({ success: false, error: 'Escola não encontrada.' });
+        if (!escola)
+            return res.status(404).json({ success: false, error: 'Escola não encontrada.' });
 
         escola.codigoSecreto = gerarCodigoEscola();
         await escola.save();
 
         await logAction(req, 'GENERATE_SCHOOL_CODE', 'Escola', {
             descricao: `Novo código secreto de cadastro gerado para a escola "${escola.nome}".`,
-            recursoId: String(escola._id)
+            recursoId: String(escola._id),
         });
 
         res.json({
             success: true,
             message: `Novo código gerado para ${escola.nome}.`,
-            data: { _id: escola._id, nome: escola.nome, codigoSecreto: escola.codigoSecreto }
+            data: { _id: escola._id, nome: escola.nome, codigoSecreto: escola.codigoSecreto },
         });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });

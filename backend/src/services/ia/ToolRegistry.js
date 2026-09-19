@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * ToolRegistry.js — catálogo de ferramentas do copiloto.
  *
@@ -48,12 +46,16 @@ function validarFerramenta(ferramenta, arquivo) {
     // seja, sem confirmação nenhuma. Falhar no carregamento é o único momento
     // em que isso é barato de corrigir.
     if (ferramenta.mutates && typeof ferramenta.confirmar !== 'function') {
-        throw new Error(`[IA] Ferramenta "${ferramenta.name}" declara mutates:true mas não implementa confirmar().`);
+        throw new Error(
+            `[IA] Ferramenta "${ferramenta.name}" declara mutates:true mas não implementa confirmar().`
+        );
     }
     // Um parâmetro `escolaId` vindo do modelo seria um parâmetro vindo, em
     // última instância, do texto do usuário. O tenant NUNCA entra por aí.
     if (ferramenta.schema?.properties?.escolaId) {
-        throw new Error(`[IA] Ferramenta "${ferramenta.name}" declara escolaId como parâmetro. O tenant vem sempre da sessão.`);
+        throw new Error(
+            `[IA] Ferramenta "${ferramenta.name}" declara escolaId como parâmetro. O tenant vem sempre da sessão.`
+        );
     }
 }
 
@@ -66,11 +68,15 @@ function carregar() {
     const mapa = new Map();
     let arquivos = [];
     try {
-        arquivos = fs.readdirSync(DIRETORIO_FERRAMENTAS).filter(f => f.endsWith('.js'));
+        arquivos = fs.readdirSync(DIRETORIO_FERRAMENTAS).filter((f) => f.endsWith('.js'));
     } catch (e) {
-        logger.warn('[IA] Diretório de ferramentas não encontrado — copiloto segue sem ferramentas.', {
-            err: e, action: 'ia.registry'
-        });
+        logger.warn(
+            '[IA] Diretório de ferramentas não encontrado — copiloto segue sem ferramentas.',
+            {
+                err: e,
+                action: 'ia.registry',
+            }
+        );
         catalogo = mapa;
         return catalogo;
     }
@@ -93,7 +99,7 @@ function carregar() {
 /** true se o cargo pode usar a ferramenta. `admin` passa sempre. */
 function cargoPode(ferramenta, perfil) {
     if (perfil === 'admin') return true;
-    return ferramenta.cargosPermitidos.map(c => c.toLowerCase()).includes(perfil);
+    return ferramenta.cargosPermitidos.map((c) => c.toLowerCase()).includes(perfil);
 }
 
 /**
@@ -107,16 +113,16 @@ function cargoPode(ferramenta, perfil) {
 function declaracoesPara(perfil, { incluirMutates = false } = {}) {
     const p = String(perfil || '').toLowerCase();
     const lista = [...carregar().values()]
-        .filter(f => incluirMutates || !f.mutates)
-        .filter(f => cargoPode(f, p))
-        .map(f => ({ name: f.name, description: f.description, schema: f.schema }));
+        .filter((f) => incluirMutates || !f.mutates)
+        .filter((f) => cargoPode(f, p))
+        .map((f) => ({ name: f.name, description: f.description, schema: f.schema }));
 
     return lista.length > 0 ? lista : null;
 }
 
 /** Nomes disponíveis a um cargo — usado pela paleta de comandos (Fase 5). */
 function nomesPara(perfil, opcoes) {
-    return (declaracoesPara(perfil, opcoes) || []).map(f => f.name);
+    return (declaracoesPara(perfil, opcoes) || []).map((f) => f.name);
 }
 
 /**
@@ -135,7 +141,10 @@ async function executar(nome, parametros, ctx) {
     if (!ferramenta) {
         // Modelo alucinou um nome de ferramenta.
         logger.warn(`[IA] Modelo pediu ferramenta inexistente: "${nome}"`, { action: 'ia.tool' });
-        return { ok: false, erro: `A ferramenta "${nome}" não existe. Responda usando apenas o que você já sabe.` };
+        return {
+            ok: false,
+            erro: `A ferramenta "${nome}" não existe. Responda usando apenas o que você já sabe.`,
+        };
     }
 
     try {
@@ -154,11 +163,13 @@ async function executar(nome, parametros, ctx) {
             const { confirmToken, expiraEm } = await ConfirmationStore.emitir(ctx, {
                 ferramenta: nome,
                 parametros: dados.parametros,
-                resumo: dados.resumo
+                resumo: dados.resumo,
             });
 
             logger.info(`[IA] Ação "${nome}" aguardando confirmação.`, {
-                action: 'ia.tool', ferramenta: nome, perfil: ctx.perfil
+                action: 'ia.tool',
+                ferramenta: nome,
+                perfil: ctx.perfil,
             });
 
             return {
@@ -172,29 +183,38 @@ async function executar(nome, parametros, ctx) {
                     // texto. Não são eles que serão executados — o servidor usa
                     // a cópia que guardou junto do token.
                     dados: dados.parametros,
-                    expiraEm
-                }
+                    expiraEm,
+                },
             };
         }
 
         logger.info(`[IA] Ferramenta "${nome}" executada.`, {
-            action: 'ia.tool', ferramenta: nome, perfil: ctx.perfil
+            action: 'ia.tool',
+            ferramenta: nome,
+            perfil: ctx.perfil,
         });
 
         return { ok: true, dados };
     } catch (e) {
         if (e instanceof ErroPermissao || e.permissao) {
             logger.warn(`[IA] Ferramenta "${nome}" recusada por permissão.`, {
-                action: 'ia.tool', ferramenta: nome, perfil: ctx.perfil
+                action: 'ia.tool',
+                ferramenta: nome,
+                perfil: ctx.perfil,
             });
             return { ok: false, erro: e.message };
         }
 
         // Falha real: o detalhe fica no log, o modelo recebe algo genérico.
         logger.error(`[IA] Falha ao executar a ferramenta "${nome}"`, {
-            err: e, action: 'ia.tool', ferramenta: nome
+            err: e,
+            action: 'ia.tool',
+            ferramenta: nome,
         });
-        return { ok: false, erro: 'Não consegui consultar essa informação agora. Avise a pessoa e sugira tentar novamente.' };
+        return {
+            ok: false,
+            erro: 'Não consegui consultar essa informação agora. Avise a pessoa e sugira tentar novamente.',
+        };
     }
 }
 
@@ -228,7 +248,7 @@ async function executarConfirmada(acao, ctx) {
             parametros: acao.parametros,
             resumo: acao.resumo,
             sucesso: true,
-            recursoId: dados?.recursoId
+            recursoId: dados?.recursoId,
         });
 
         return { ok: true, dados };
@@ -242,13 +262,15 @@ async function executarConfirmada(acao, ctx) {
             parametros: acao.parametros,
             resumo: acao.resumo,
             sucesso: false,
-            erro: e.message
+            erro: e.message,
         });
 
         if (dePermissao) return { ok: false, erro: e.message };
 
         logger.error(`[IA] Falha ao executar a ação confirmada "${acao.ferramenta}"`, {
-            err: e, action: 'ia.confirmar', ferramenta: acao.ferramenta
+            err: e,
+            action: 'ia.confirmar',
+            ferramenta: acao.ferramenta,
         });
         return { ok: false, erro: 'Não consegui concluir a ação. Nada foi alterado.' };
     }
@@ -269,7 +291,7 @@ function construirContextoFerramenta(req) {
         email: req.user?.email || '',
         perfil: String(req.user?.perfil || '').toLowerCase(),
         escolaId: req.escolaId ? String(req.escolaId) : null,
-        allowedTurmas: req.allowedTurmas || []
+        allowedTurmas: req.allowedTurmas || [],
     };
 }
 
@@ -285,5 +307,5 @@ module.exports = {
     executarConfirmada,
     construirContextoFerramenta,
     cargoPode,
-    _resetarCatalogo
+    _resetarCatalogo,
 };

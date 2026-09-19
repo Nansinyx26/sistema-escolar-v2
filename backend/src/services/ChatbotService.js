@@ -1358,12 +1358,21 @@ async function processMessage({
     }
 
     // ─── LAYER 2: Deterministic fallback response (always computed) ────────
+    // Esta resposta é montada AQUI, no servidor, com os dados reais: ela nunca
+    // sai da máquina e é a que vale quando a IA está desligada ou falha.
     const respostaDireta = formatarResposta({ intencao, dados, aluno, perfil });
 
     // ─── LAYER 3: Gemini humanization with DB data (optional) ─────────────
     // Aceita os mesmos nomes de variável do voiceService — antes só
     // GOOGLE_TTS_API_KEY era checada aqui, e ambientes com GEMINI_KEY
     // nunca passavam respostas de dados pelo Gemini.
+    // Interruptor por escola (Issue #401): sem decisão da escola, a resposta é
+    // a do servidor — que já está pronta acima.
+    const { iaLiberada } = require('./ia/interruptor');
+    if (!(await iaLiberada(escolaId))) {
+        return { response: respostaDireta, alunoId: resolvedAlunoId };
+    }
+
     const geminiApiKey =
         process.env.GEMINI_KEY ||
         process.env.GEMINI_API_KEY ||
@@ -1374,15 +1383,42 @@ async function processMessage({
         return { response: respostaDireta, alunoId: resolvedAlunoId };
     }
 
-    // Build strict Layer 3 prompt (data intent — humanize DB results)
-    const historico = await fetchHistorico(userId);
-    const prompt = buildPrompt({ perfil, intencao, message, dados, historico });
+    // ── Pseudonimização antes do provedor (Issue #401) ────────────────────
+    // O que vai para fora não tem nome de criança: cada uma vira "Aluno A". Os
+    // campos que nunca saem (motivo de falta, saúde, observação em texto livre)
+    // são removidos pela mesma camada. O mapa fica nesta chamada, em memória, e
+    // traduz a resposta de volta antes de ela chegar à tela.
+    const { criarMapa } = require('./ia/pseudonimizar');
+    const { mascararTexto } = require('./ia/escopoAlunos');
+    const mapaIA = criarMapa();
+    // Escopo da ESCOLA para o mascaramento do texto livre (e não só das turmas
+    // de quem perguntou): aqui o objetivo é impedir que um nome saia, e
+    // mascarar a mais é o lado seguro do erro.
+    const ctxEscopo = { escolaId, usuario: { perfil: 'gestao' } };
+
+    const historicoBruto = await fetchHistorico(userId);
+    const historico = [];
+    for (const h of historicoBruto) {
+        historico.push({
+            ...h,
+            pergunta: await mascararTexto(h.pergunta, ctxEscopo, mapaIA),
+            resposta: await mascararTexto(h.resposta, ctxEscopo, mapaIA),
+        });
+    }
+
+    const prompt = buildPrompt({
+        perfil,
+        intencao,
+        message: await mascararTexto(message, ctxEscopo, mapaIA),
+        dados: mapaIA.mascarar(dados),
+        historico,
+    });
 
     let response;
     try {
         // Chat: respostas curtas — teto menor de tokens controla custo por chamada
         response = await voiceService.generateInsightText(prompt, { maxOutputTokens: 500 });
-        response = (response || '').replace(/[*_~`#]/g, '').trim();
+        response = mapaIA.reidentificar((response || '').replace(/[*_~`#]/g, '').trim());
     } catch (err) {
         if (err.quotaExceeded) {
             logger.warn(

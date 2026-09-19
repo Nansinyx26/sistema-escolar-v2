@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * ConfirmationStore.js — emissão e consumo dos tokens de confirmação.
  *
@@ -52,7 +50,7 @@ async function emitir(ctx, { ferramenta, parametros, resumo }) {
         ferramenta,
         parametros: parametros || {},
         resumo,
-        expiraEm
+        expiraEm,
     });
 
     return { confirmToken: token, expiraEm };
@@ -73,20 +71,27 @@ async function consumir(ctx, token) {
     const acao = await IaAcaoPendente.findOneAndDelete({
         tokenHash: hashDe(token),
         usuarioId: String(ctx.usuarioId),
-        escolaId: ctx.escolaId ? String(ctx.escolaId) : null
+        escolaId: ctx.escolaId ? String(ctx.escolaId) : null,
     }).lean();
 
     if (!acao) {
         // Mensagem única para inexistente, já usado, expirado e de outra
         // pessoa: distinguir os casos entregaria um oráculo de tokens válidos.
-        return { ok: false, erro: 'Esta confirmação não é mais válida. Peça a ação novamente ao assistente.' };
+        return {
+            ok: false,
+            erro: 'Esta confirmação não é mais válida. Peça a ação novamente ao assistente.',
+        };
     }
 
     if (acao.expiraEm && acao.expiraEm.getTime() < Date.now()) {
         logger.info('[IA] Token de confirmação expirado foi descartado.', {
-            action: 'ia.confirmar', ferramenta: acao.ferramenta
+            action: 'ia.confirmar',
+            ferramenta: acao.ferramenta,
         });
-        return { ok: false, erro: 'O prazo desta confirmação expirou. Peça a ação novamente ao assistente.' };
+        return {
+            ok: false,
+            erro: 'O prazo desta confirmação expirou. Peça a ação novamente ao assistente.',
+        };
     }
 
     // MUDANÇA DE PRIVILÉGIO ENTRE O PEDIDO E A CONFIRMAÇÃO.
@@ -95,10 +100,15 @@ async function consumir(ctx, token) {
     // diretor não confirma como professor.
     if (acao.perfil !== ctx.perfil) {
         logger.warn('[IA] Perfil mudou entre o pedido e a confirmação — ação descartada.', {
-            action: 'ia.confirmar', ferramenta: acao.ferramenta,
-            perfilNoPedido: acao.perfil, perfilAgora: ctx.perfil
+            action: 'ia.confirmar',
+            ferramenta: acao.ferramenta,
+            perfilNoPedido: acao.perfil,
+            perfilAgora: ctx.perfil,
         });
-        return { ok: false, erro: 'Suas permissões mudaram desde que a ação foi preparada. Peça novamente.' };
+        return {
+            ok: false,
+            erro: 'Suas permissões mudaram desde que a ação foi preparada. Peça novamente.',
+        };
     }
 
     return { ok: true, acao };
@@ -109,7 +119,7 @@ async function cancelar(ctx, token) {
     if (!token) return false;
     const r = await IaAcaoPendente.deleteOne({
         tokenHash: hashDe(token),
-        usuarioId: String(ctx.usuarioId)
+        usuarioId: String(ctx.usuarioId),
     });
     return r.deletedCount > 0;
 }

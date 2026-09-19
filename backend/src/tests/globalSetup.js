@@ -5,7 +5,7 @@
  */
 const { MongoMemoryServer } = require('mongodb-memory-server');
 
-module.exports = async function () {
+module.exports = async () => {
     const mongod = await MongoMemoryServer.create();
     const uri = mongod.getUri();
 
@@ -26,6 +26,10 @@ module.exports = async function () {
     // NODE_ENV=test por engano continua com CSRF ativo, porque esta flag
     // existe apenas aqui. Ver middleware/csrfProtection.js.
     process.env.CSRF_DISABLE_FOR_TESTS = 'true';
+    // O assistente é ligado por escola e nasce DESLIGADO na rede (Issue #401).
+    // Nas suítes ele fica ligado, senão todo teste de IA viraria teste do
+    // interruptor — que tem suíte própria (`iaPseudonimizada.regressao`).
+    process.env.IA_ESCOLAS_PADRAO = 'ligada';
 
     // Neutraliza a configuração LOCAL do desenvolvedor. O backend/.env é
     // carregado junto com o app, então uma variável definida na máquina de quem

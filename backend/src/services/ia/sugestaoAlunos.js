@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * sugestaoAlunos.js — busca de aluno por nome digitado (autocomplete + chatbot).
  *
