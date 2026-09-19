@@ -96,6 +96,11 @@ As coleções de `comunicados` e `notificacoes` possuem volume contínuo de inse
 
 - O servidor WebSocket suporta o adapter MongoDB oficial (`@socket.io/mongo-adapter`).
 - Com `SOCKET_ADAPTER=mongo`, os eventos emitidos em uma instância (ex: novo comunicado, nova notificação, atualização de notas) são publicados em uma capped collection do Mongo e retransmitidos instantaneamente pelos sockets conectados nas demais instâncias.
+- **Presença online** (Issue #339): com o adapter ligado, quem está online, ausente ou offline é consultado em todas as instâncias (`presence.consultar()`, via `fetchSockets` do adapter), a partir do `socket.data.presenca` de cada conexão. Isso vale para o card da equipe, o cabeçalho e a lista de contatos do chat, e o "digitando"/"gravando áudio". Com uma instância só, a presença continua no mapa em memória, sem ida ao banco.
+  - O "digitando" guarda a resposta por 10 s (online) ou 3 s (offline), porque dispara a cada tecla.
+  - Se o adapter não responder no prazo (5 s), a consulta usa só a instância local e registra um aviso — a tela não quebra.
+  - O "visto por último" de quem já saiu fica na instância em que a pessoa estava conectada.
+  - O `fetchSockets` grava o `handshake` de cada socket na coleção do adapter; por isso o token (`auth.token`, `query.token`, cookie e `Authorization`) é apagado do handshake logo depois da autenticação.
 
 ---
 

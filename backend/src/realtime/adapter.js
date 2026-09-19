@@ -53,7 +53,9 @@ async function instalarAdapter(io) {
         const db = mongoose.connection.db;
 
         if (!db) {
-            logger.warn('⚠️ [Socket.IO] SOCKET_ADAPTER=mongo, mas o Mongoose ainda não conectou. Adapter não instalado.');
+            logger.warn(
+                '⚠️ [Socket.IO] SOCKET_ADAPTER=mongo, mas o Mongoose ainda não conectou. Adapter não instalado.'
+            );
             return false;
         }
 
@@ -62,7 +64,7 @@ async function instalarAdapter(io) {
         try {
             await db.createCollection(COLECAO, {
                 capped: true,
-                size: TAMANHO_BYTES
+                size: TAMANHO_BYTES,
             });
             logger.info(`🗂️ [Socket.IO] Coleção capped '${COLECAO}' criada para o adapter.`);
         } catch (err) {
@@ -74,9 +76,32 @@ async function instalarAdapter(io) {
         logger.info('🔗 [Socket.IO] Adapter Mongo ativo — eventos propagam entre instâncias.');
         return true;
     } catch (err) {
-        logger.error(`❌ [Socket.IO] Falha ao instalar o adapter Mongo: ${err.message}. Seguindo em memória (válido só para uma instância).`);
+        logger.error(
+            `❌ [Socket.IO] Falha ao instalar o adapter Mongo: ${err.message}. Seguindo em memória (válido só para uma instância).`
+        );
         return false;
     }
 }
 
-module.exports = { instalarAdapter, COLECAO };
+/**
+ * Apaga do handshake o token que autenticou o socket.
+ *
+ * Quando outra instância pede os sockets de uma sala (`fetchSockets`, usado
+ * pela presença — ver realtime/presence.js), o adapter grava na coleção acima
+ * o `handshake` inteiro de cada socket, com cookie e cabeçalhos. Depois que o
+ * middleware de autenticação validou o token, ninguém mais o lê; tirá-lo daqui
+ * evita que um JWT válido vá parar no banco.
+ *
+ * @param {import('socket.io').Socket} socket
+ */
+function apagarCredenciaisDoHandshake(socket) {
+    const handshake = socket.handshake || {};
+    if (handshake.auth) delete handshake.auth.token;
+    if (handshake.query) delete handshake.query.token;
+    if (handshake.headers) {
+        delete handshake.headers.cookie;
+        delete handshake.headers.authorization;
+    }
+}
+
+module.exports = { instalarAdapter, apagarCredenciaisDoHandshake, COLECAO };
