@@ -274,8 +274,11 @@ const startServer = async () => {
         // Adapter compartilhado. Com uma instância só (plano free do Render) ele
         // fica desligado; a partir de duas, sem isto as salas ficam presas ao
         // processo e mensagem/presença não cruzam entre instâncias.
-        const { instalarAdapter } = require('./realtime/adapter');
-        await instalarAdapter(io);
+        const { instalarAdapter, apagarCredenciaisDoHandshake } = require('./realtime/adapter');
+        const presence = require('./realtime/presence');
+        // Com o adapter, a presença passa a ser consultada em todas as
+        // instâncias, não só no mapa deste processo (Issue #339).
+        if (await instalarAdapter(io)) presence.usarAdapter(io);
 
         // Middleware de autenticação Socket.IO
         // Replica as MESMAS checagens do authJWT: só verificar a assinatura
@@ -326,6 +329,7 @@ const startServer = async () => {
                     if (vinculos.length === 1) escolaId = String(vinculos[0].escolaId);
                 }
                 socket.escolaId = escolaId;
+                apagarCredenciaisDoHandshake(socket);
 
                 next();
             } catch (err) {
@@ -333,7 +337,11 @@ const startServer = async () => {
             }
         });
 
-        const presence = require('./realtime/presence');
+        // Status agregado do usuário em todas as instâncias. Com uma instância
+        // só, é o mesmo valor do mapa em memória.
+        const statusGlobal = async (escolaId, userId) =>
+            (await presence.consultar(escolaId, userId)).statusDe(userId);
+
         io.on('connection', (socket) => {
             const user = socket.user;
             const uid = user.id || user._id;
@@ -347,13 +355,18 @@ const startServer = async () => {
 
             // Presença online: a equipe (professores e diretores) é notificada em tempo real.
             if (socket.escolaId) {
+                presence.marcarSocket(socket, socket.escolaId, uid);
                 const ficouOnline = presence.addUser(socket.escolaId, uid, socket.id);
                 if (ficouOnline) {
-                    io.to(`escola:${socket.escolaId}`).emit('presence:professor', {
-                        userId: String(uid),
-                        online: true,
-                        status: presence.statusDe(socket.escolaId, uid),
-                        perfil: user.perfil,
+                    // Sem await: os handlers abaixo precisam ser registrados já,
+                    // senão os primeiros eventos do cliente se perdem.
+                    statusGlobal(socket.escolaId, uid).then((status) => {
+                        io.to(`escola:${socket.escolaId}`).emit('presence:professor', {
+                            userId: String(uid),
+                            online: true,
+                            status,
+                            perfil: user.perfil,
+                        });
                     });
                 }
             }
@@ -365,24 +378,24 @@ const startServer = async () => {
             });
 
             // Eventos de digitação e gravação de áudio em tempo real.
-            // O destinatário sai do próprio mapa de presença da escola: assim
-            // um socket não consegue disparar "digitando" para usuários de
-            // outro tenant só informando um id arbitrário.
-            const mesmoTenant = (destinatarioId) =>
-                !!socket.escolaId && presence.isOnline(socket.escolaId, destinatarioId);
+            // O destinatário sai da presença da escola (em todas as instâncias):
+            // assim um socket não consegue disparar "digitando" para usuários
+            // de outro tenant só informando um id arbitrário.
+            const mesmoTenant = async (destinatarioId) =>
+                !!socket.escolaId && (await presence.estaOnline(socket.escolaId, destinatarioId));
 
-            socket.on('chat:typing', (data) => {
+            socket.on('chat:typing', async (data) => {
                 if (!data || !data.destinatarioId) return;
-                if (!mesmoTenant(data.destinatarioId)) return;
+                if (!(await mesmoTenant(data.destinatarioId))) return;
                 io.to(`user:${data.destinatarioId}`).emit('chat:typing', {
                     remetenteId: String(uid),
                     isTyping: !!data.isTyping,
                 });
             });
 
-            socket.on('chat:recording', (data) => {
+            socket.on('chat:recording', async (data) => {
                 if (!data || !data.destinatarioId) return;
-                if (!mesmoTenant(data.destinatarioId)) return;
+                if (!(await mesmoTenant(data.destinatarioId))) return;
                 io.to(`user:${data.destinatarioId}`).emit('chat:recording', {
                     remetenteId: String(uid),
                     isRecording: !!data.isRecording,
@@ -392,15 +405,17 @@ const startServer = async () => {
             // Status 🟡 Ausente: a aba avisa quando o usuário fica ocioso
             // (sem foco/interação) e quando volta. Só vira "ausente" quando
             // TODAS as abas dele estão ociosas — ver realtime/presence.js.
-            socket.on('presence:idle', (data) => {
+            socket.on('presence:idle', async (data) => {
                 if (!socket.escolaId) return;
                 const ausente = !!(data && data.ausente);
+                presence.marcarAusenteNoSocket(socket, ausente);
                 const mudou = presence.setAusente(socket.escolaId, uid, socket.id, ausente);
                 if (mudou) {
                     io.to(`escola:${socket.escolaId}`).emit('presence:professor', {
                         userId: String(uid),
                         online: true,
-                        status: presence.statusDe(socket.escolaId, uid),
+                        // Outra aba ativa em outra instância mantém o usuário online.
+                        status: await statusGlobal(socket.escolaId, uid),
                         perfil: user.perfil,
                     });
                 }
@@ -421,15 +436,19 @@ const startServer = async () => {
                 }
             });
 
-            socket.on('disconnect', () => {
+            socket.on('disconnect', async () => {
                 logger.debug(`❌ [Socket.IO] ${user.nome || 'Usuário'} desconectado`);
                 if (socket.escolaId) {
                     const ficouOffline = presence.removeUser(socket.escolaId, uid, socket.id);
                     if (ficouOffline) {
+                        // Saiu da última aba DESTA instância; pode continuar
+                        // conectado em outra. No 'disconnect' o socket já
+                        // deixou as salas, então a consulta não o conta.
+                        const status = await statusGlobal(socket.escolaId, uid);
                         io.to(`escola:${socket.escolaId}`).emit('presence:professor', {
                             userId: String(uid),
-                            online: false,
-                            status: 'offline',
+                            online: status !== 'offline',
+                            status,
                             perfil: user.perfil,
                         });
                     }

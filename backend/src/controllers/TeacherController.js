@@ -440,9 +440,11 @@ exports.statusOnline = async (req, res) => {
 
         // Presença agregada: 'online' | 'ausente' | 'offline', desde quando
         // está online e último acesso conhecido (ver realtime/presence.js).
+        // Uma consulta só, que enxerga todas as instâncias (Issue #339).
+        const retrato = escolaId ? await presence.consultar(escolaId) : null;
         const presencaDe = (uid) =>
-            escolaId
-                ? presence.infoDe(escolaId, uid)
+            retrato
+                ? retrato.infoDe(uid)
                 : { status: 'offline', online: false, onlineDesde: null, ultimoAcesso: null };
 
         const listaProfs = profs.map((p) => {
