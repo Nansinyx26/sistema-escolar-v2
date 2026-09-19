@@ -316,83 +316,22 @@ exports.importarAlunos = async (req, res) => {
 
 // POST /api/secretaria/alunos/importar/estruturar — usa IA para transformar o
 // texto extraído de um PDF/DOC em linhas de aluno PARA REVISÃO. Não cria nada.
-exports.estruturarTextoAlunos = async (req, res) => {
-    try {
-        const texto = typeof req.body?.texto === 'string' ? req.body.texto.trim() : '';
-        if (!texto || texto.length < 10) {
-            return res
-                .status(400)
-                .json({ success: false, error: 'Texto do documento vazio ou muito curto.' });
-        }
-
-        const voiceService = require('../services/voiceService');
-        const prompt = `Você extrai dados de alunos de um documento escolar e responde SOMENTE com JSON válido, sem comentários.
-Retorne um array de objetos com estas chaves (use string vazia quando não houver o dado): nome, sobrenome, matricula, turma, nascimento, responsavel, telefone, cpfAluno.
-- "nascimento" no formato dd/mm/aaaa quando possível.
-- Não invente dados que não estão no texto.
-- Se o documento não contiver alunos, retorne [].
-
-DOCUMENTO:
-"""
-${texto}
-"""
-
-JSON:`;
-
-        let bruto = '';
-        try {
-            bruto = await voiceService.generateInsightText(prompt, {
-                maxOutputTokens: 2000,
-                temperature: 0,
-            });
-        } catch (e) {
-            const status = e.quotaExceeded ? 503 : 502;
-            return res.status(status).json({
-                success: false,
-                error: `Não foi possível processar o documento por IA: ${e.message}`,
-            });
-        }
-
-        // Extrai o array JSON mesmo que venha com texto ao redor
-        let linhas = [];
-        try {
-            const inicio = bruto.indexOf('[');
-            const fim = bruto.lastIndexOf(']');
-            const json = inicio !== -1 && fim !== -1 ? bruto.slice(inicio, fim + 1) : bruto;
-            linhas = JSON.parse(json);
-        } catch (_e) {
-            return res.status(422).json({
-                success: false,
-                error: 'A IA não retornou dados estruturados legíveis. Revise o documento ou use CSV.',
-            });
-        }
-
-        if (!Array.isArray(linhas)) linhas = [];
-        // Mantém apenas linhas com nome e só as chaves conhecidas
-        const CHAVES = [
-            'nome',
-            'sobrenome',
-            'matricula',
-            'turma',
-            'nascimento',
-            'responsavel',
-            'telefone',
-            'cpfAluno',
-        ];
-        const limpos = linhas
-            .filter((l) => l && typeof l === 'object' && String(l.nome || '').trim())
-            .slice(0, 1000)
-            .map((l) => {
-                const o = {};
-                for (const k of CHAVES) o[k] = l[k] != null ? String(l[k]).trim() : '';
-                return o;
-            });
-
-        res.json({ success: true, data: { alunos: limpos, totalDetectados: limpos.length } });
-    } catch (error) {
-        logger.error(`[Secretaria.estruturarTextoAlunos] ${error.message}`);
-        res.status(500).json({ success: false, error: error.message });
-    }
+// POST /api/secretaria/alunos/importar/estruturar — desativado
+//
+// Esta rota lia o texto de um PDF/DOCX com um provedor externo de IA. O
+// documento de matrícula traz dados de criança (nome, RA, nascimento e, no
+// relatório da SEDUC, deficiência e transtornos) e não deve sair do servidor
+// para estruturação. A importação continua pela planilha e pelo PDF da SEDUC,
+// que são lidos localmente em `services/importacaoAlunos` (tela da turma).
+//
+// A rota fica respondendo 410 em vez de sumir: uma aba antiga aberta na
+// secretaria recebe a orientação em vez de um 404 sem explicação.
+exports.estruturarTextoAlunos = (_req, res) => {
+    res.status(410).json({
+        success: false,
+        codigo: 'IMPORTACAO_POR_IA_DESATIVADA',
+        error: 'A leitura automática de documentos foi desativada. Importe pela planilha ou pelo PDF da SEDUC na tela da turma.',
+    });
 };
 
 // PUT /api/secretaria/alunos/:id — editar aluno
