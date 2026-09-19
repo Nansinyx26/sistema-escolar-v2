@@ -204,7 +204,11 @@ const AlunoSchema = new mongoose.Schema(
 
         // Campos de controle
         ativo: { type: Boolean, default: true },
-        codigoSecreto: { type: String, unique: true, sparse: true },
+        // Credencial de vínculo do responsável. `select: false` (Issue #388):
+        // nenhuma leitura genérica — find, lean, populate — traz o código. Quem
+        // precisa dele pede `.select('+codigoSecreto')` (rota de códigos da
+        // secretaria e geração em lote).
+        codigoSecreto: { type: String, unique: true, sparse: true, select: false },
     },
     {
         timestamps: true,
@@ -228,6 +232,14 @@ AlunoSchema.pre('save', async function (next) {
         if (this.isModified('nome') || this.isModified('sobrenome') || !this.nomeNormalizado) {
             const { normalizarNome } = require('../utils/nomeAluno');
             this.nomeNormalizado = normalizarNome(`${this.nome || ''} ${this.sobrenome || ''}`);
+        }
+
+        // Documento carregado SEM o campo (é `select: false`) e que não mexeu
+        // nele: o código continua o que está no banco. Sem esta guarda, o
+        // `save()` de qualquer rota veria o campo vazio e trocaria o código,
+        // quebrando o vínculo que a família recebeu no papel.
+        if (!this.isNew && !this.isSelected('codigoSecreto') && !this.isModified('codigoSecreto')) {
+            return next();
         }
 
         const atual = typeof this.codigoSecreto === 'string' ? this.codigoSecreto.trim() : '';

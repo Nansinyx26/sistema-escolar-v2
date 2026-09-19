@@ -5,14 +5,26 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
 const app = require('../app');
-const { conectarBanco, limparBanco, desconectarBanco, criarUsuario, SENHA_TESTE } = require('./helpers');
+const {
+    conectarBanco,
+    limparBanco,
+    desconectarBanco,
+    criarUsuario,
+    SENHA_TESTE,
+} = require('./helpers');
 
 const Aluno = require('../models/Aluno');
 const Escola = require('../models/Escola');
 
-beforeAll(async () => { await conectarBanco(); });
-afterAll(async () => { await desconectarBanco(); });
-beforeEach(async () => { await limparBanco(); });
+beforeAll(async () => {
+    await conectarBanco();
+});
+afterAll(async () => {
+    await desconectarBanco();
+});
+beforeEach(async () => {
+    await limparBanco();
+});
 
 async function agentPerfil(perfil, email) {
     await criarUsuario({ email, perfil });
@@ -32,7 +44,12 @@ describe('GET /api/alunos/codigos-secretos', () => {
     });
 
     it('admin lista códigos com id do aluno incluído', async () => {
-        await Aluno.create({ nome: 'Aluno Cod', turma: '1A', codigoSecreto: 'ABC123', ativo: true });
+        await Aluno.create({
+            nome: 'Aluno Cod',
+            turma: '1A',
+            codigoSecreto: 'ABC123',
+            ativo: true,
+        });
         const agent = await agentPerfil('admin', 'admin_cod@escola.test');
         const res = await agent.get('/api/alunos/codigos-secretos');
         expect(res.status).toBe(200);
@@ -54,8 +71,20 @@ describe('GET /api/alunos/codigos-secretos', () => {
         const col = mongoose.connection.collection('alunos');
         await col.insertMany([
             { _id: 'sem-cod-1', nome: 'Sem Codigo Um', turma: '1A', ativo: true },
-            { _id: 'sem-cod-2', nome: 'Sem Codigo Dois', turma: '1A', ativo: true, codigoSecreto: null },
-            { _id: 'sem-cod-3', nome: 'Sem Codigo Tres', turma: '1A', ativo: true, codigoSecreto: 'N/A' },
+            {
+                _id: 'sem-cod-2',
+                nome: 'Sem Codigo Dois',
+                turma: '1A',
+                ativo: true,
+                codigoSecreto: null,
+            },
+            {
+                _id: 'sem-cod-3',
+                nome: 'Sem Codigo Tres',
+                turma: '1A',
+                ativo: true,
+                codigoSecreto: 'N/A',
+            },
             { _id: 'quebrado', turma: '1A', ativo: true }, // sem `nome`: derrubava o laço antigo
         ]);
 
@@ -65,20 +94,20 @@ describe('GET /api/alunos/codigos-secretos', () => {
         expect(res.status).toBe(200);
         // Nada de estado de espera: a resposta já traz o código definitivo.
         expect(res.body.pendingCodes).toBe(false);
-        expect(res.body.data.some(d => d.codigoSecreto === 'Gerando...')).toBe(false);
+        expect(res.body.data.some((d) => d.codigoSecreto === 'Gerando...')).toBe(false);
 
         for (const nome of ['Sem Codigo Um', 'Sem Codigo Dois', 'Sem Codigo Tres']) {
-            const item = res.body.data.find(d => d.nome === nome);
+            const item = res.body.data.find((d) => d.nome === nome);
             expect(item.codigoSecreto).toMatch(/^[A-Z2-9]{10,}$/);
             expect(item.codigoFalhou).toBe(false);
         }
 
         // O documento quebrado também é atendido (bulkWrite grava só o campo)
         // e não deixa a string "undefined" na tela.
-        expect(res.body.data.find(d => d.nome === '(sem nome)')).toBeTruthy();
+        expect(res.body.data.find((d) => d.nome === '(sem nome)')).toBeTruthy();
 
         const noBanco = await Aluno.find({}).select('codigoSecreto').lean();
-        const codigos = noBanco.map(d => d.codigoSecreto);
+        const codigos = noBanco.map((d) => d.codigoSecreto);
         expect(codigos.every(Boolean)).toBe(true);
         expect(new Set(codigos).size).toBe(codigos.length); // todos únicos
     });
@@ -86,8 +115,20 @@ describe('GET /api/alunos/codigos-secretos', () => {
     it('filtra pela escola ativa da sessão (multi-tenant)', async () => {
         const escolaA = await Escola.create({ nome: 'CIEP Cod A', tipo: 'CIEP', ativo: true });
         const escolaB = await Escola.create({ nome: 'EMEF Cod B', tipo: 'EMEF', ativo: true });
-        await Aluno.create({ nome: 'Aluno A', turma: '1A', codigoSecreto: 'AAAAAA', escolaId: String(escolaA._id), ativo: true });
-        await Aluno.create({ nome: 'Aluno B', turma: '1A', codigoSecreto: 'BBBBBB', escolaId: String(escolaB._id), ativo: true });
+        await Aluno.create({
+            nome: 'Aluno A',
+            turma: '1A',
+            codigoSecreto: 'AAAAAA',
+            escolaId: String(escolaA._id),
+            ativo: true,
+        });
+        await Aluno.create({
+            nome: 'Aluno B',
+            turma: '1A',
+            codigoSecreto: 'BBBBBB',
+            escolaId: String(escolaB._id),
+            ativo: true,
+        });
 
         const agent = await agentPerfil('admin', 'admin_multi@escola.test');
         // Ativa a escola A na sessão
@@ -102,7 +143,12 @@ describe('GET /api/alunos/codigos-secretos', () => {
 
 describe('POST /api/alunos/:id/regenerar-codigo', () => {
     it('gera código novo e diferente do anterior', async () => {
-        const aluno = await Aluno.create({ nome: 'Regen Aluno', turma: '2B', codigoSecreto: 'OLD001', ativo: true });
+        const aluno = await Aluno.create({
+            nome: 'Regen Aluno',
+            turma: '2B',
+            codigoSecreto: 'OLD001',
+            ativo: true,
+        });
         const agent = await agentPerfil('admin', 'admin_regen@escola.test');
 
         const res = await agent.post(`/api/alunos/${aluno._id}/regenerar-codigo`);
@@ -111,12 +157,17 @@ describe('POST /api/alunos/:id/regenerar-codigo', () => {
         expect(res.body.data.codigoSecreto).toBeTruthy();
         expect(res.body.data.codigoSecreto).not.toBe('OLD001');
 
-        const noBanco = await Aluno.findById(aluno._id).lean();
+        const noBanco = await Aluno.findById(aluno._id).select('+codigoSecreto').lean();
         expect(noBanco.codigoSecreto).toBe(res.body.data.codigoSecreto);
     });
 
     it('professor não pode regenerar (403)', async () => {
-        const aluno = await Aluno.create({ nome: 'Regen Neg', turma: '2B', codigoSecreto: 'OLD002', ativo: true });
+        const aluno = await Aluno.create({
+            nome: 'Regen Neg',
+            turma: '2B',
+            codigoSecreto: 'OLD002',
+            ativo: true,
+        });
         const agent = await agentPerfil('professor', 'prof_regen@escola.test');
         const res = await agent.post(`/api/alunos/${aluno._id}/regenerar-codigo`);
         expect(res.status).toBe(403);
@@ -125,7 +176,13 @@ describe('POST /api/alunos/:id/regenerar-codigo', () => {
     it('bloqueia regenerar aluno de OUTRA escola (403)', async () => {
         const escolaA = await Escola.create({ nome: 'CIEP Regen A', tipo: 'CIEP', ativo: true });
         const escolaB = await Escola.create({ nome: 'EMEF Regen B', tipo: 'EMEF', ativo: true });
-        const alunoB = await Aluno.create({ nome: 'Aluno Outra', turma: '3C', codigoSecreto: 'OLD003', escolaId: String(escolaB._id), ativo: true });
+        const alunoB = await Aluno.create({
+            nome: 'Aluno Outra',
+            turma: '3C',
+            codigoSecreto: 'OLD003',
+            escolaId: String(escolaB._id),
+            ativo: true,
+        });
 
         const agent = await agentPerfil('admin', 'admin_cross@escola.test');
         await agent.post(`/api/escolas/trocar/${escolaA._id}`); // sessão na escola A
@@ -133,7 +190,7 @@ describe('POST /api/alunos/:id/regenerar-codigo', () => {
         const res = await agent.post(`/api/alunos/${alunoB._id}/regenerar-codigo`);
         expect(res.status).toBe(403);
 
-        const intacto = await Aluno.findById(alunoB._id).lean();
+        const intacto = await Aluno.findById(alunoB._id).select('+codigoSecreto').lean();
         expect(intacto.codigoSecreto).toBe('OLD003');
     });
 

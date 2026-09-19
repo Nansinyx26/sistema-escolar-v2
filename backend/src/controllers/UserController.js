@@ -980,8 +980,8 @@ exports.login = async (req, res) => {
                 perfilRotulo: require('../utils/perfilRotulo').rotuloDoPerfil(user.perfil),
                 email: user.email,
                 deveMudarSenha: user.deveMudarSenha,
-                cpf: user.cpf,
-                telefone: user.telefone,
+                // CPF e telefone não saem no login (Issue #388): quem precisa
+                // deles lê `/api/auth/me`, que devolve os dados da própria conta.
                 consentimentoAceiteEm: user.consentimentoAceiteEm,
                 perfilDefinidoEm: user.perfilDefinidoEm || null,
                 tutorialProfessorConcluido: !!user.tutorialProfessorConcluido,

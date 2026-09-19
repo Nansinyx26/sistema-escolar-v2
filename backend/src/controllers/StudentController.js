@@ -7,6 +7,7 @@ const { generateUniqueSecretCode, assignSecretCodes } = require('../utils/secret
 const logger = require('../utils/logger');
 const assertAcessoAoAluno = require('../middleware/assertAcessoAoAluno');
 const urlFotoAluno = require('../utils/urlFotoAluno');
+const { projetarAluno } = require('../utils/projecaoAluno');
 
 // Whitelist de campos permitidos para o Aluno (Prevenção de Injeção de Parâmetros)
 const studentWhitelist = [
@@ -138,15 +139,12 @@ exports.list = async (req, res) => {
             .lean();
 
         // Normalização para o frontend: garante que cada item tenha um campo 'id' e resolve URLs de fotos
+        // Cada perfil recebe só os campos da sua função (utils/projecaoAluno.js).
+        // `codigoSecreto` nem sai do banco: é `select: false` no schema.
         const normalizedStudents = students.map((s) => {
-            const student = { ...s, id: s.id || s._id };
-
-            // Nunca em listagem genérica: quem tem o código vincula o aluno
-            delete student.codigoSecreto;
-
+            const student = projetarAluno({ ...s, id: s.id || s._id }, req.user?.perfil);
             // Referência do GridFS vira URL — sem prefixar o que já é URL
             student.foto = urlFotoAluno(student.foto);
-
             return student;
         });
 
@@ -177,12 +175,10 @@ exports.get = async (req, res) => {
             return res.status(acesso.status).json({ success: false, error: acesso.error });
         }
 
-        const studentData = { ...acesso.aluno };
-        studentData.id = studentData.id || studentData._id;
-
-        // O código secreto habilita o vínculo de responsável: só a gestão o vê,
-        // e apenas pela rota dedicada /api/alunos/codigos-secretos.
-        delete studentData.codigoSecreto;
+        const studentData = projetarAluno(
+            { ...acesso.aluno, id: acesso.aluno.id || acesso.aluno._id },
+            req.user?.perfil
+        );
 
         // Resolve URL da foto se estiver no GridFS
         studentData.foto = urlFotoAluno(studentData.foto);
@@ -265,7 +261,7 @@ exports.create = async (req, res) => {
         console.log(`✅ [STUDENT-CREATE] Aluno ${student.nome} criado com sucesso.`);
         res.status(201).json({
             success: true,
-            data: student,
+            data: projetarAluno(student, req.user?.perfil),
             message: 'Estudante cadastrado com sucesso!',
         });
     } catch (error) {
@@ -391,7 +387,7 @@ exports.update = async (req, res) => {
             );
         }
 
-        res.json({ success: true, data: student });
+        res.json({ success: true, data: projetarAluno(student, req.user?.perfil) });
     } catch (error) {
         res.status(400).json({ success: false, error: error.message });
     }
@@ -469,7 +465,7 @@ exports.listSecretCodes = async (req, res) => {
 
         // ── Query única ──────────────────────────────────────────────────────
         const students = await Aluno.find(query)
-            .select('nome sobrenome turma turmaId codigoSecreto responsavel matricula')
+            .select('nome sobrenome turma turmaId +codigoSecreto responsavel matricula')
             .sort({ turma: 1, nome: 1 })
             .lean();
 

@@ -86,7 +86,7 @@ describe('POST /api/secretaria/alunos/importar', () => {
         const total = await Aluno.countDocuments({});
         expect(total).toBe(2);
 
-        const ana = await Aluno.findOne({ nome: 'Ana' });
+        const ana = await Aluno.findOne({ nome: 'Ana' }).select('+codigoSecreto');
         expect(ana.ativo).toBe(true);
         expect(ana.matricula).toBe('RA001');
         expect(ana.nascimento).toBeInstanceOf(Date);

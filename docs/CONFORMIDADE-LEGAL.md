@@ -39,7 +39,7 @@ alterações do ECA Digital), **Marco Civil da Internet** (12.965/2014), **LBI**
 | Validação por SMS ou Gov.br | **Pendente** | os dois dependem de contrato/credenciamento do município — o campo `metodoValidacao` já existe para recebê-los; ver §7 |
 | Privacidade por padrão (perfil de aluno nunca público) | **Pronto** | nenhuma rota pública devolve aluno; `FileController.servePublicImage` é **allowlist fechada por omissão** — sem sessão só sai imagem cujo `metadata.type` está liberado (hoje só `avatar`); documento, anexo de conversa e foto de aluno exigem `authJWT` (Issue #216) |
 | Foto de aluno só para quem tem vínculo | **Pronto** | a foto carrega `metadata.alunoId`/`escolaId`, e o download passa por [`middleware/assertAcessoAoAluno.js`](../backend/src/middleware/assertAcessoAoAluno.js): professor só da própria turma, responsável só do próprio filho, gestão só da escola ativa. Antes da Issue #228 a foto era gravada sem `metadata` e a autorização caía na regra de legado, que liberava qualquer `image/*` a qualquer autenticado da rede |
-| Segregação de acesso por perfil e por turma | **Parcial** | o recorte por **turma** está pronto e testado (`conformidadeRotas.test.js`); o recorte por **campo** — cada perfil receber só os campos da sua função — entra com a projeção por perfil (Issue #388). Hoje: [`middleware/authorize.js`](../backend/src/middleware/authorize.js), [`middleware/horizontalFilter.js`](../backend/src/middleware/horizontalFilter.js), [`utils/matrizAcesso.js`](../backend/src/utils/matrizAcesso.js) |
+| Segregação de acesso por perfil e por turma | **Pronto** | recorte por **turma** ([`middleware/horizontalFilter.js`](../backend/src/middleware/horizontalFilter.js), `conformidadeRotas.test.js`) e por **campo**: [`utils/projecaoAluno.js`](../backend/src/utils/projecaoAluno.js) é a lista fechada do que cada perfil recebe do cadastro do aluno, aplicada em listagem, leitura, respostas de escrita e no `populate` da chamada; o professor recebe identificação, dados pedagógicos, alergias e o indicador `necessitaApoio` — detalhe de deficiência e lista de retirada só se a escola ligar `PROFESSOR_VE_DETALHE_DEFICIENCIA=sim` / `PROFESSOR_VE_RETIRADA=nome`; o código de vínculo é `select: false` no schema — [`projecaoAluno.regressao.test.js`](../backend/src/tests/projecaoAluno.regressao.test.js) (Issue #388) |
 | Separação das portas de login (escola x família) | **Parcial** | o login com Google é só da família e só por **ID token**: o servidor confere assinatura, emissor, validade e `audience` igual ao client ID do portal, exige `email_verified` e recusa access token; conta de equipe recebe 403 antes de qualquer escrita (`LOGIN_GOOGLE_RECUSADO` no `AuditLog`). `npm run sessoes:encerrar-equipe` (simulação por padrão) encerra sessões de equipe abertas antes da correção — testes em [`loginGoogle.regressao.test.js`](../backend/src/tests/loginGoogle.regressao.test.js) e [`contencaoAcesso.regressao.test.js`](../backend/src/tests/contencaoAcesso.regressao.test.js) (Issues #378 e #387). Versões anteriores deste mapa citavam um `utils/portaisDeLogin.js` que não existe no repositório; a recusa por porta no login com senha ainda não está implementada |
 | Cadastro de direção e secretaria por convite de uso único | **Pronto** | o código da escola vale só para o cadastro docente; direção e secretaria nascem de convite criado pelo admin (`/api/admin/convites-equipe`) — token de 256 bits guardado só como hash, prazo curto, amarrado a e-mail, escola e perfil, consumido de forma atômica; o aceite cria a conta com o vínculo da escola e **sem sessão** (a entrada é pelo login com 2FA); criação, uso, recusa e revogação vão para o `AuditLog` — [`conviteEquipe.regressao.test.js`](../backend/src/tests/conviteEquipe.regressao.test.js) (Issues #378 e #386) |
 | Isolamento entre escolas da rede | **Parcial** | [`middleware/filtrarPorEscola.js`](../backend/src/middleware/filtrarPorEscola.js) responde 503 quando a resolução da escola **falha com erro**. A recusa para perfil de equipe sem escola resolvida, e a guarda de escola em todas as rotas que recebem id de aluno ou documento, estão previstas para antes da ativação da segunda escola (Fase 2 do plano de conformidade) |
@@ -55,17 +55,17 @@ alterações do ECA Digital), **Marco Civil da Internet** (12.965/2014), **LBI**
 |---|---|---|---|---|
 | Admin/TI | sim | não | não | sim |
 | Secretaria/Direção | todos da escola | sim | sim | sim |
-| Professor | **só as turmas dele** | só as turmas dele | alertas básicos (alergias) — *alvo; garantido pela projeção por perfil da Issue #388* | não |
+| Professor | **só as turmas dele**, só os campos da função | só as turmas dele | alertas básicos (alergias) e o indicador de apoio | não |
 | Responsável/Aluno | só os próprios | não | só os próprios | não |
 
 A coluna "Professor" é a que o código protege de forma mais visível: veja o
 teste `conformidadeRotas.test.js`, caso *"professor enxerga apenas os alunos das
 turmas que leciona"*, e a recusa 403 ao pedir aluno de outra turma.
 
-A tabela descreve o **alvo**. O recorte por turma está garantido; o recorte por
-campo (o professor não receber CPF, endereço ou dados de saúde além dos alertas)
-só passa a ser garantido com a projeção por perfil (Issue #388). Até lá, esta
-tabela não deve ser citada como estado atual em termo de conformidade.
+O recorte por campo é garantido por `utils/projecaoAluno.js` (Issue #388): a
+suíte `projecaoAluno.regressao.test.js` varre as respostas dadas ao professor e
+reprova se encontrar CPF, endereço, religião, plano de saúde, responsáveis,
+guarda, documentos ou o código de vínculo.
 
 ---
 
