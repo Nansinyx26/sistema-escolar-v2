@@ -53,6 +53,86 @@ const studentWhitelist = [
     'lgpdConsentimento',
 ];
 
+// ─── Escrita do professor (Issue #389) ──────────────────────────────────────
+//
+// Vínculo familiar — quem responde pela criança, a guarda e quem pode
+// retirá-la da escola — é atribuição da secretaria. Com conteúdo vindo do
+// professor, a requisição inteira é recusada e a tentativa vai para o
+// AuditLog: esses campos decidem quem acessa os dados e quem leva a criança.
+const CAMPOS_VINCULO_FAMILIAR = [
+    'responsavel',
+    'responsavelDados',
+    'responsaveis',
+    'guardaLegal',
+    'pessoasAutorizadasRetirada',
+];
+
+// LISTA FECHADA do que o professor escreve: a identificação para cadastrar o
+// aluno na própria turma e o registro pedagógico. O resto do corpo é ignorado
+// (e devolvido em `camposIgnorados`), para a ficha de matrícula — que é da
+// secretaria — não ser preenchida pela metade por outro perfil.
+const CAMPOS_PROFESSOR = [
+    'nome',
+    'matricula',
+    'turma',
+    'turmaId',
+    'nascimento',
+    'dataNascimento',
+    'sexo',
+    'foto',
+    'nivel',
+    'nivelBimestre',
+    'condicao',
+    'condicaoOutro',
+    'observacoes',
+    'observacoesBimestre',
+    'recuperacaoBimestre',
+    'faltasBimestre',
+    'alergiasAlimentos',
+    'alergiasRemedio',
+];
+
+/** true quando há algum texto ou número de fato (booleano e vazio não contam). */
+function temConteudo(valor) {
+    if (valor === null || valor === undefined) return false;
+    if (typeof valor === 'string') return valor.trim() !== '';
+    if (typeof valor === 'number') return true;
+    if (Array.isArray(valor)) return valor.some(temConteudo);
+    if (typeof valor === 'object') return Object.values(valor).some(temConteudo);
+    return false;
+}
+
+/**
+ * Recusa (403) e registra quando o professor manda campo de vínculo familiar.
+ * @returns {Promise<boolean>} true se a resposta já foi enviada
+ */
+async function barrarVinculoDoProfessor(req, res, alunoId) {
+    if (req.user?.perfil !== 'professor') return false;
+    const campos = CAMPOS_VINCULO_FAMILIAR.filter((c) => temConteudo(req.body?.[c]));
+    if (campos.length === 0) return false;
+
+    const { logAction } = require('../utils/auditHelper');
+    await logAction(req, 'ALUNO_VINCULO_RECUSADO', 'Alunos', {
+        recursoId: alunoId ? String(alunoId) : undefined,
+        valorNovo: { campos },
+        descricao: `Professor tentou gravar ${campos.join(', ')}${alunoId ? ` no aluno ${alunoId}` : ' ao cadastrar aluno'}.`,
+    });
+    res.status(403).json({
+        success: false,
+        codigo: 'VINCULO_FAMILIAR_SO_SECRETARIA',
+        error: 'Responsáveis, guarda e pessoas autorizadas à retirada são cadastrados pela secretaria.',
+    });
+    return true;
+}
+
+/** Corta o corpo para a lista do professor; devolve o que foi ignorado. */
+function restringirAoProfessor(req, corpo) {
+    if (req.user?.perfil !== 'professor') return [];
+    const ignorados = Object.keys(corpo).filter((c) => !CAMPOS_PROFESSOR.includes(c));
+    for (const c of ignorados) delete corpo[c];
+    return ignorados;
+}
+
 /**
  * Converte a foto do aluno (base64) para WebP e grava no GridFS COM o metadata
  * que autoriza o download.
@@ -192,11 +272,14 @@ exports.get = async (req, res) => {
 
 exports.create = async (req, res) => {
     try {
+        if (await barrarVinculoDoProfessor(req, res)) return;
+
         // Whitelist: Filtra apenas campos permitidos
         const filteredBody = {};
         studentWhitelist.forEach((field) => {
             if (req.body[field] !== undefined) filteredBody[field] = req.body[field];
         });
+        const camposIgnorados = restringirAoProfessor(req, filteredBody);
 
         // Sincronização Obrigatória
         if (filteredBody.turmaId) filteredBody.turma = filteredBody.turmaId;
@@ -262,6 +345,7 @@ exports.create = async (req, res) => {
         res.status(201).json({
             success: true,
             data: projetarAluno(student, req.user?.perfil),
+            ...(camposIgnorados.length ? { camposIgnorados } : {}),
             message: 'Estudante cadastrado com sucesso!',
         });
     } catch (error) {
@@ -300,6 +384,9 @@ exports.update = async (req, res) => {
         if (!acesso.ok)
             return res.status(acesso.status).json({ success: false, error: acesso.error });
         const existingStudent = acesso.aluno;
+
+        if (await barrarVinculoDoProfessor(req, res, existingStudent._id)) return;
+        const camposIgnorados = restringirAoProfessor(req, filteredBody);
 
         if (req.user && req.user.perfil === 'professor') {
             const allowed = req.allowedTurmas || [];
@@ -387,7 +474,11 @@ exports.update = async (req, res) => {
             );
         }
 
-        res.json({ success: true, data: projetarAluno(student, req.user?.perfil) });
+        res.json({
+            success: true,
+            data: projetarAluno(student, req.user?.perfil),
+            ...(camposIgnorados.length ? { camposIgnorados } : {}),
+        });
     } catch (error) {
         res.status(400).json({ success: false, error: error.message });
     }
