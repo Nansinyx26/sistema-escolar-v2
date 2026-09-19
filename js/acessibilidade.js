@@ -285,9 +285,14 @@
                 '.header-actions, .header-right, .topbar-actions, .nav-actions, .dashboard-header-actions, .page-header-actions'
             );
             if (slot) {
-                var btnSettings = slot.querySelector('#btn-open-settings, .settings-trigger');
+                // `[data-acessibilidade-antes]` marca o lugar nos painéis novos
+                // (#370). A referência pode estar aninhada (menu da conta): o
+                // insertBefore vai no pai dela, não no slot.
+                var btnSettings = slot.querySelector(
+                    '[data-acessibilidade-antes], #btn-open-settings, .settings-trigger'
+                );
                 if (btnSettings) {
-                    slot.insertBefore(abre, btnSettings);
+                    btnSettings.parentNode.insertBefore(abre, btnSettings);
                 } else {
                     slot.appendChild(abre);
                 }

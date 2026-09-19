@@ -37,7 +37,9 @@
     function definirSilenciado(valor) {
         try {
             localStorage.setItem(CHAVE_SILENCIADO, String(valor));
-        } catch (e) { /* storage bloqueado: vale só para esta sessão */ }
+        } catch (e) {
+            /* storage bloqueado: vale só para esta sessão */
+        }
     }
 
     /**
@@ -69,42 +71,173 @@
     }
 
     const PROFESSOR_STEPS = [
-        { title: 'Boas-vindas', content: 'Bem-vindo ao Sistema Escolar! Este tour mostra os principais recursos da sua dashboard com o novo layout.', target: null },
-        { title: 'Área Principal', content: 'Aqui você vê a mensagem de boas-vindas e um resumo rápido da sua rotina docente.', target: '.welcome-section' },
-        { title: 'Menu Lateral', content: 'O menu lateral concentra todas as áreas do sistema. No celular, use o botão ☰ no topo para abrir e fechar.', target: '#mainSidebar' },
-        { title: 'Seu Perfil', content: 'Veja sua foto, nome e função. Clique em "Meu Perfil" no menu para editar seus dados.', target: '.sidebar-profile' },
-        { title: 'Área do Professor', content: 'Acesse Minhas Turmas, Frequência e Meu Horário diretamente por aqui.', target: '#sidebar-horario, a[href="selecionar.html"].sidebar-item' },
-        { title: 'Central de Notificações', content: 'Fique por dentro de avisos importantes. O badge vermelho indica mensagens não lidas.', target: '#notif-btn, .notif-wrapper' },
-        { title: 'Voz & Acessibilidade', content: 'Configure narração, velocidade da voz, tamanho da fonte e modo leitura.', target: '#btn-voice-settings' },
-        { title: 'Mural da Comunidade', content: 'Canal oficial de comunicados da escola com interações em tempo real.', target: '#muralSection, #announcement-feed-container' },
-        { title: 'Avaliar Sistema', content: 'Sua opinião é fundamental! Avalie a plataforma e ajude-nos a evoluir.', target: '#reviewSection, .review-section' },
-        { title: 'Privacidade LGPD', content: 'Gerencie seus dados pessoais e entenda seus direitos de privacidade.', target: 'a[href="meus-dados.html"].sidebar-item, a[href="meus-dados.html"]' },
-        { title: 'Tour Guiado', content: 'A qualquer momento, clique neste botão para rever este tour.', target: '#btn-restart-tour' },
-        { title: 'Pronto!', content: 'Tour concluído! Explore o sistema com confiança. Bom trabalho!', target: null }
+        {
+            title: 'Boas-vindas',
+            content:
+                'Bem-vindo ao Sistema Escolar! Este tour mostra os principais recursos da sua dashboard com o novo layout.',
+            target: null,
+        },
+        {
+            title: 'Área Principal',
+            content:
+                'Aqui você vê a mensagem de boas-vindas e um resumo rápido da sua rotina docente.',
+            target: '.pn-hero, .welcome-section',
+        },
+        {
+            title: 'Menu Lateral',
+            content:
+                'O menu lateral concentra todas as áreas do sistema. No celular, use o botão ☰ no topo para abrir e fechar.',
+            target: '#mainSidebar',
+        },
+        {
+            title: 'Seu Perfil',
+            content:
+                'Veja sua foto, nome e função. Clique em "Meu Perfil" no menu para editar seus dados.',
+            target: '.sidebar-profile',
+        },
+        {
+            title: 'Área do Professor',
+            content: 'Acesse Minhas Turmas, Frequência e Meu Horário diretamente por aqui.',
+            target: '#sidebar-horario, a[href="selecionar.html"].sidebar-item',
+        },
+        {
+            title: 'Central de Notificações',
+            content:
+                'Fique por dentro de avisos importantes. O badge vermelho indica mensagens não lidas.',
+            target: '#notif-btn, .notif-wrapper',
+        },
+        {
+            title: 'Voz & Acessibilidade',
+            content: 'Configure narração, velocidade da voz, tamanho da fonte e modo leitura.',
+            target: '#btn-voice-settings',
+        },
+        {
+            title: 'Mural da Comunidade',
+            content: 'Canal oficial de comunicados da escola com interações em tempo real.',
+            target: '#muralSection, #announcement-feed-container',
+        },
+        {
+            title: 'Avaliar Sistema',
+            content: 'Sua opinião é fundamental! Avalie a plataforma e ajude-nos a evoluir.',
+            target: '#reviewSection, .review-section',
+        },
+        {
+            title: 'Privacidade LGPD',
+            content: 'Gerencie seus dados pessoais e entenda seus direitos de privacidade.',
+            target: 'a[href="meus-dados.html"].sidebar-item, a[href="meus-dados.html"]',
+        },
+        {
+            title: 'Tour Guiado',
+            content: 'A qualquer momento, clique neste botão para rever este tour.',
+            target: '#btn-restart-tour',
+        },
+        {
+            title: 'Pronto!',
+            content: 'Tour concluído! Explore o sistema com confiança. Bom trabalho!',
+            target: null,
+        },
     ];
 
     const DIRECTOR_STEPS = [
-        { title: 'Painel da Direção', content: 'Boas-vindas ao seu painel administrativo. Visão global da escola em um só lugar.', target: null },
-        { title: 'Resumo da Escola', content: 'Indicadores em tempo real: total de alunos, professores e turmas ativas.', target: '#directorDashboardSummary' },
-        { title: 'Código Secreto', content: 'Código diário para novos professores se cadastrarem. Renova automaticamente para maior segurança.', target: '#securityPanel, #dashboardDailyCode' },
-        { title: 'Atividade e Avisos', content: 'Acompanhe a atividade recente e os últimos comunicados enviados pela escola.', target: '#directorActivityGrid' },
-        { title: 'Menu Administrativo', content: 'Gerencie alunos, professores, salas, horários e códigos secretos pelo menu lateral.', target: '#mainSidebar .director-only, #mainSidebar' },
-        { title: 'Central de Notificações', content: 'Receba alertas internos e avisos do sistema. Clique no sino para abrir o painel.', target: '#notif-btn, .notif-wrapper' },
-        { title: 'Voz & Acessibilidade', content: 'Personalize narração, velocidade e preferências visuais do sistema.', target: '#btn-voice-settings' },
-        { title: 'Mural da Comunidade', content: 'Visualize e gerencie comunicados publicados para toda a comunidade escolar.', target: '#muralSection' },
-        { title: 'Privacidade LGPD', content: 'Portal de privacidade conforme a legislação vigente.', target: 'a[href="meus-dados.html"]' },
-        { title: 'Tour Guiado', content: 'Clique aqui sempre que quiser rever este tour.', target: '#btn-restart-tour' },
-        { title: 'Pronto!', content: 'Você está pronto para administrar a escola com eficiência!', target: null }
+        {
+            title: 'Painel da Direção',
+            content:
+                'Boas-vindas ao seu painel administrativo. Visão global da escola em um só lugar.',
+            target: null,
+        },
+        {
+            title: 'Resumo da Escola',
+            content: 'Indicadores em tempo real: total de alunos, professores e turmas ativas.',
+            target: '#directorDashboardSummary',
+        },
+        {
+            title: 'Código Secreto',
+            content:
+                'Código diário para novos professores se cadastrarem. Renova automaticamente para maior segurança.',
+            target: '#securityPanel, #dashboardDailyCode',
+        },
+        {
+            title: 'Atividade e Avisos',
+            content: 'Acompanhe a atividade recente e os últimos comunicados enviados pela escola.',
+            target: '#directorActivityGrid',
+        },
+        {
+            title: 'Menu Administrativo',
+            content:
+                'Gerencie alunos, professores, salas, horários e códigos secretos pelo menu lateral.',
+            target: '#mainSidebar .director-only, #mainSidebar',
+        },
+        {
+            title: 'Central de Notificações',
+            content:
+                'Receba alertas internos e avisos do sistema. Clique no sino para abrir o painel.',
+            target: '#notif-btn, .notif-wrapper',
+        },
+        {
+            title: 'Voz & Acessibilidade',
+            content: 'Personalize narração, velocidade e preferências visuais do sistema.',
+            target: '#btn-voice-settings',
+        },
+        {
+            title: 'Mural da Comunidade',
+            content: 'Visualize e gerencie comunicados publicados para toda a comunidade escolar.',
+            target: '#muralSection',
+        },
+        {
+            title: 'Privacidade LGPD',
+            content: 'Portal de privacidade conforme a legislação vigente.',
+            target: 'a[href="meus-dados.html"]',
+        },
+        {
+            title: 'Tour Guiado',
+            content: 'Clique aqui sempre que quiser rever este tour.',
+            target: '#btn-restart-tour',
+        },
+        {
+            title: 'Pronto!',
+            content: 'Você está pronto para administrar a escola com eficiência!',
+            target: null,
+        },
     ];
 
     const RESPONSAVEL_STEPS = [
-        { title: 'Portal do Responsável', content: 'Seja bem-vindo! Aqui você pode acompanhar de perto o desenvolvimento escolar do seu filho.', target: null },
-        { title: 'Resumo Pedagógico', content: 'Veja rapidamente as médias e o desempenho atual do aluno com insights gerados por IA.', target: '#widget-ia-insights' },
-        { title: 'Conquistas e Badges', content: 'Acompanhe as insígnias e o progresso do aluno no sistema de gamificação.', target: '#widget-badges' },
-        { title: 'Avisos aos Pais', content: 'Receba comunicados oficiais e informações importantes diretamente da escola.', target: '#muralSection' },
-        { title: 'Voz & Acessibilidade', content: 'Configure como a assistente deve falar com você e ajuste o tamanho da fonte.', target: '#btn-voice-settings' },
-        { title: 'Dados e Privacidade', content: 'Gerencie suas informações de contato e preferências de privacidade.', target: 'a[href="meus-dados.html"]' },
-        { title: 'Pronto!', content: 'Obrigado por usar nosso sistema! Sua participação faz toda a diferença.', target: null }
+        {
+            title: 'Portal do Responsável',
+            content:
+                'Seja bem-vindo! Aqui você pode acompanhar de perto o desenvolvimento escolar do seu filho.',
+            target: null,
+        },
+        {
+            title: 'Resumo Pedagógico',
+            content:
+                'Veja rapidamente as médias e o desempenho atual do aluno com insights gerados por IA.',
+            target: '#widget-ia-insights',
+        },
+        {
+            title: 'Conquistas e Badges',
+            content: 'Acompanhe as insígnias e o progresso do aluno no sistema de gamificação.',
+            target: '#widget-badges',
+        },
+        {
+            title: 'Avisos aos Pais',
+            content: 'Receba comunicados oficiais e informações importantes diretamente da escola.',
+            target: '#muralSection',
+        },
+        {
+            title: 'Voz & Acessibilidade',
+            content: 'Configure como a assistente deve falar com você e ajuste o tamanho da fonte.',
+            target: '#btn-voice-settings',
+        },
+        {
+            title: 'Dados e Privacidade',
+            content: 'Gerencie suas informações de contato e preferências de privacidade.',
+            target: 'a[href="meus-dados.html"]',
+        },
+        {
+            title: 'Pronto!',
+            content: 'Obrigado por usar nosso sistema! Sua participação faz toda a diferença.',
+            target: null,
+        },
     ];
 
     let currentStep = 0;
@@ -206,11 +339,14 @@
         if (!document.getElementById('tour-orb-fab')) {
             const tourOrb = document.createElement('div');
             tourOrb.id = 'tour-orb-fab';
-            tourOrb.style.cssText = 'position: fixed; bottom: 24px; right: 24px; z-index: 100010; pointer-events: none;';
+            tourOrb.style.cssText =
+                'position: fixed; bottom: 24px; right: 24px; z-index: 100010; pointer-events: none;';
             document.body.appendChild(tourOrb);
         }
 
-        requestAnimationFrame(() => { overlay.style.opacity = '1'; });
+        requestAnimationFrame(() => {
+            overlay.style.opacity = '1';
+        });
         tourActive = true;
 
         window.addEventListener('resize', onTourLayoutChange);
@@ -226,14 +362,15 @@
     function isVisible(el) {
         if (!el) return false;
         const style = window.getComputedStyle(el);
-        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false;
+        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0')
+            return false;
         const rect = el.getBoundingClientRect();
         return rect.width > 0 && rect.height > 0;
     }
 
     function findTarget(selector) {
         if (!selector) return null;
-        const parts = selector.split(',').map(s => s.trim());
+        const parts = selector.split(',').map((s) => s.trim());
         for (const sel of parts) {
             const nodes = document.querySelectorAll(sel);
             for (const el of nodes) {
@@ -272,7 +409,7 @@
         spotlight.style.height = Math.min(window.innerHeight - 8, rect.height + pad * 2) + 'px';
 
         indicator.style.display = 'block';
-        indicator.style.left = (rect.left + rect.width / 2 - 12) + 'px';
+        indicator.style.left = rect.left + rect.width / 2 - 12 + 'px';
         indicator.style.top = Math.max(8, rect.top - 36) + 'px';
     }
 
@@ -299,7 +436,7 @@
         if (isMobile()) {
             // Mobile: Try to center horizontally, place above/below with safety margin
             left = Math.max(margin, (window.innerWidth - popupW) / 2);
-            
+
             if (spaceBelow > popupH + 60) {
                 top = rect.bottom + 20;
             } else if (spaceAbove > popupH + 60) {
@@ -311,12 +448,12 @@
         } else {
             // Desktop: Try to align with target, but stay within viewport
             left = Math.min(Math.max(rect.left, margin), window.innerWidth - popupW - margin);
-            
+
             if (spaceBelow > popupH + 40) {
                 top = rect.bottom + 32;
                 arrow.style.display = 'block';
-                arrow.style.left = (rect.left + rect.width / 2 - 10) + 'px';
-                arrow.style.top = (rect.bottom + 22) + 'px';
+                arrow.style.left = rect.left + rect.width / 2 - 10 + 'px';
+                arrow.style.top = rect.bottom + 22 + 'px';
             } else if (spaceAbove > popupH + 40) {
                 top = rect.top - popupH - 32;
                 arrow.style.display = 'none'; // Or implement top arrow
@@ -343,7 +480,7 @@
 
     function scrollTargetIntoView(target) {
         if (!target) return Promise.resolve();
-        return new Promise(resolve => {
+        return new Promise((resolve) => {
             target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
             setTimeout(resolve, isMobile() ? 550 : 450);
         });
@@ -412,7 +549,7 @@
                 <div style="flex: 1"></div>
                 ${currentStep > 0 ? '<button type="button" id="tour-back" class="tour-glass-btn btn-back-tour">Voltar</button>' : ''}
                 <button type="button" id="tour-next" class="tour-glass-btn btn-next-tour">
-                    ${saving ? 'Salvando...' : (isLast ? 'Finalizar' : 'Próximo')}
+                    ${saving ? 'Salvando...' : isLast ? 'Finalizar' : 'Próximo'}
                 </button>
             </div>`;
 
@@ -534,16 +671,20 @@
             try {
                 const apiBase = (window.API_BASE_URL || '/api').replace(/\/$/, '');
                 const user = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
-                const updateBody = user.perfil === 'responsavel' 
-                    ? { tutorialResponsavelConcluido: true }
-                    : { tutorialProfessorConcluido: true };
+                const updateBody =
+                    user.perfil === 'responsavel'
+                        ? { tutorialResponsavelConcluido: true }
+                        : { tutorialProfessorConcluido: true };
 
                 await fetch(`${apiBase}/auth/tutorial`, {
-                    method: 'PUT', credentials: 'include',
+                    method: 'PUT',
+                    credentials: 'include',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(updateBody)
+                    body: JSON.stringify(updateBody),
                 });
-            } catch (e) { console.error('Erro ao salvar tour:', e); }
+            } catch (e) {
+                console.error('Erro ao salvar tour:', e);
+            }
         }
         destroyUI();
     }
@@ -558,10 +699,14 @@
         window.removeEventListener('scroll', onTourLayoutChange, true);
         if (scrollRaf) cancelAnimationFrame(scrollRaf);
         if (window.stopTtsAudio) window.stopTtsAudio();
-        if (window.VoiceOrbManager) { window.VoiceOrbManager.destroy(); }
+        if (window.VoiceOrbManager) {
+            window.VoiceOrbManager.destroy();
+        }
         const tourOrb = document.getElementById('tour-orb-fab');
         if (tourOrb) tourOrb.remove();
-        [overlay, spotlight, indicator, arrow, popup].forEach(el => el?.remove());
+        [overlay, spotlight, indicator, arrow, popup].forEach((el) => {
+            el?.remove();
+        });
         overlay = spotlight = indicator = arrow = popup = null;
         tourActive = false;
         saving = false;
@@ -575,9 +720,10 @@
             const res = await fetch(`${apiBase}/auth/me`, { credentials: 'include' });
             const data = await res.json();
             if (data.success && data.user) {
-                const isCompleted = data.user.perfil === 'responsavel' 
-                    ? data.user.tutorialResponsavelConcluido 
-                    : data.user.tutorialProfessorConcluido;
+                const isCompleted =
+                    data.user.perfil === 'responsavel'
+                        ? data.user.tutorialResponsavelConcluido
+                        : data.user.tutorialProfessorConcluido;
 
                 if (!force && isCompleted) return;
 
@@ -592,17 +738,21 @@
                 createUI();
                 renderStep();
             }
-        } catch (e) { console.error('Erro ao iniciar tour:', e); }
+        } catch (e) {
+            console.error('Erro ao iniciar tour:', e);
+        }
     }
 
     window.OnboardingTour = {
         start: startTour,
         restart: () => startTour(true),
-        finish: () => finishTour(true)
+        finish: () => finishTour(true),
     };
 
     document.addEventListener('DOMContentLoaded', () => {
-        const isDash = window.location.pathname.includes('dashboard.html') || window.location.pathname.endsWith('/');
+        const isDash =
+            window.location.pathname.includes('dashboard.html') ||
+            window.location.pathname.endsWith('/');
         if (isDash) setTimeout(() => startTour(false), 2500);
     });
 })();

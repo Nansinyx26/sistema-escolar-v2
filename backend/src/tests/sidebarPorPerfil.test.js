@@ -34,7 +34,9 @@ const DASHBOARD = path.join(RAIZ, 'js', 'dashboard.js');
 
 function corpoDaPagina() {
     const html = fs.readFileSync(PAGINA, 'utf8');
-    const corpo = html.slice(html.indexOf('<body>') + '<body>'.length, html.indexOf('</body>'));
+    // `<body class="…">` desde o painel novo (#367): o recorte aceita atributos.
+    const abertura = html.match(/<body[^>]*>/);
+    const corpo = html.slice(abertura.index + abertura[0].length, html.indexOf('</body>'));
     return corpo.replace(/<script[\s\S]*?<\/script>/g, '');
 }
 
