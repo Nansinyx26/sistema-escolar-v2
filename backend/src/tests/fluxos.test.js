@@ -43,35 +43,25 @@ beforeEach(async () => {
 // Cadastro → autenticação automática + redirect por perfil
 // ─────────────────────────────────────────────────────────
 describe('Cadastro com auto-login e redirect por perfil', () => {
-    it('diretor: emite cookie JWT e redirect para o dashboard', async () => {
-        const res = await request(app).post('/api/auth/register-diretor').send({
-            nome: 'Diretora Teste',
-            email: 'dir@escola.test',
-            senha: SENHA_TESTE,
-            telefone: '(19) 99999-0001',
-            codigoEscola: CODIGO_GLOBAL,
-            consentimentoLgpd: ACEITE_LGPD,
-        });
-        expect(res.status).toBe(201);
-        expect(res.body.redirect_to).toBe('/html/dashboard.html');
-        const cookies = res.headers['set-cookie'] || [];
-        expect(cookies.some((c) => c.startsWith('escola_jwt'))).toBe(true);
-    });
-
-    it('secretaria: emite cookie JWT e redirect para o painel da secretaria', async () => {
-        const res = await request(app).post('/api/auth/register-secretaria').send({
-            nome: 'Secretária Teste',
-            email: 'sec@escola.test',
-            senha: SENHA_TESTE,
-            telefone: '(19) 99999-0002',
-            codigoEscola: CODIGO_GLOBAL,
-            consentimentoLgpd: ACEITE_LGPD,
-        });
-        expect(res.status).toBe(201);
-        expect(res.body.redirect_to).toBe('/html/secretaria/painel.html');
-        const cookies = res.headers['set-cookie'] || [];
-        expect(cookies.some((c) => c.startsWith('escola_jwt'))).toBe(true);
-    });
+    it.each([
+        ['register-diretor', 'dir@escola.test'],
+        ['register-secretaria', 'sec@escola.test'],
+    ])(
+        '%s: recusado — equipe de gestão não se cadastra pelo código da escola',
+        async (rota, email) => {
+            const res = await request(app).post(`/api/auth/${rota}`).send({
+                nome: 'Gestão Teste',
+                email,
+                senha: SENHA_TESTE,
+                telefone: '(19) 99999-0001',
+                codigoEscola: CODIGO_GLOBAL,
+                consentimentoLgpd: ACEITE_LGPD,
+            });
+            expect(res.status).toBe(403);
+            const cookies = res.headers['set-cookie'] || [];
+            expect(cookies.some((c) => c.startsWith('escola_jwt'))).toBe(false);
+        }
+    );
 
     it('docente: emite cookie JWT e redirect para o dashboard', async () => {
         const res = await request(app).post('/api/auth/register-docente').send({
@@ -92,10 +82,13 @@ describe('Cadastro com auto-login e redirect por perfil', () => {
     });
 
     it('nenhum redirect_to de cadastro aponta para landing ou login', async () => {
-        const res = await request(app).post('/api/auth/register-diretor').send({
-            nome: 'Dir2',
-            email: 'dir2@escola.test',
+        const res = await request(app).post('/api/auth/register-docente').send({
+            nome: 'Doc2',
+            email: 'doc2@escola.test',
             senha: SENHA_TESTE,
+            disciplina: 'História',
+            turma: '2B',
+            matricula: 'M43',
             telefone: '(19) 99999-0004',
             codigoEscola: CODIGO_GLOBAL,
             consentimentoLgpd: ACEITE_LGPD,

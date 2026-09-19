@@ -1137,6 +1137,28 @@ exports.googleLogin = async (req, res) => {
                 // `lgpdHistory` (ver `newLgpdRecords` em updateProfile).
             });
         } else {
+            // O login com Google é a porta da FAMÍLIA. Conta de equipe entra
+            // pelo portal da escola, com senha e segundo fator; aceitá-la aqui
+            // emitiria sessão sem a política de 2FA. A recusa vem antes de
+            // qualquer escrita, para a tentativa não alterar a conta.
+            if (user.perfil !== 'responsavel') {
+                await logAction(req, 'LOGIN_GOOGLE_RECUSADO', 'Segurança', {
+                    recursoId: user._id,
+                    descricao: `Login com Google recusado para conta de perfil ${user.perfil}.`,
+                });
+                return res.status(403).json({
+                    success: false,
+                    codigo: 'LOGIN_GOOGLE_SO_RESPONSAVEL',
+                    error: 'A equipe escolar entra com e-mail e senha no portal da escola.',
+                });
+            }
+            if (user.ativo === false) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'Conta desativada. Procure a secretaria da escola.',
+                });
+            }
+
             // Usuário existente: sincronizar foto do Google se houver mudança
             const updateFields = { loginGoogle: true, ultimoLogin: new Date() };
             if (picture && picture !== user.fotoGoogle) {
@@ -2831,6 +2853,22 @@ exports.registerDiretor = async (req, res) => {
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
+};
+
+/**
+ * Cadastro público de direção e secretaria — desativado.
+ *
+ * O código da escola é entregue aos professores para o cadastro docente; ele
+ * não prova que alguém ocupa um cargo de gestão. Contas de direção e secretaria
+ * passam a ser criadas pela administração (`POST /api/usuarios`) até o fluxo de
+ * convite de uso único entrar. Nada é criado e nenhuma sessão é emitida.
+ */
+exports.cadastroEquipeSomentePorConvite = (_req, res) => {
+    res.status(403).json({
+        success: false,
+        codigo: 'CADASTRO_EQUIPE_POR_CONVITE',
+        error: 'Contas de direção e secretaria são criadas pela administração do sistema. Procure a Secretaria de Educação.',
+    });
 };
 
 /**

@@ -14,8 +14,10 @@
  * AS ROTAS VIVAS, E NÃO O SERVIÇO
  * -------------------------------
  * O `RegistrationService` só é chamado pelo `UserController-REFATORADO`, que não
- * está em nenhuma rota. Os testes aqui sobem o `app` e fazem POST nas cinco
- * rotas que os formulários de verdade usam.
+ * está em nenhuma rota. Os testes aqui sobem o `app` e fazem POST nas rotas
+ * públicas de cadastro que os formulários de verdade usam. Direção e secretaria
+ * deixaram de ter cadastro público (Issue #378) e são testadas em
+ * `contencaoAcesso.regressao.test.js`.
  *
  * A TRAVA ESTÁTICA
  * ----------------
@@ -77,20 +79,6 @@ const ROTAS = {
         turma: '2B',
         matricula: 'M42',
         telefone: '(19) 99999-0002',
-        codigoEscola: CODIGO_ESCOLA_TESTE,
-    }),
-    'register-diretor': (email) => ({
-        nome: 'Diretora Fixture',
-        email,
-        senha: SENHA_TESTE,
-        telefone: '(19) 99999-0003',
-        codigoEscola: CODIGO_ESCOLA_TESTE,
-    }),
-    'register-secretaria': (email) => ({
-        nome: 'Secretaria Fixture',
-        email,
-        senha: SENHA_TESTE,
-        telefone: '(19) 99999-0004',
         codigoEscola: CODIGO_ESCOLA_TESTE,
     }),
     'register-code': (email) => ({
