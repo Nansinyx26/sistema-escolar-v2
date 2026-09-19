@@ -325,13 +325,14 @@ describe('trava: nenhum caminho de criação de conta grava consentimento sozinh
         expect(infratores).toEqual([]);
     });
 
-    it('as cinco rotas validam antes do create e gravam pelo módulo', () => {
+    it('toda rota de cadastro valida antes do create e grava pelo módulo', () => {
         const fonte = fs.readFileSync(path.join(SRC, 'controllers/UserController.js'), 'utf8');
+        // Direção e secretaria passaram a entrar por convite (Issue #386):
+        // `aceitarConviteEquipe` ocupa o lugar de registerDiretor/registerSecretaria.
         const handlers = [
             'registerResponsavel',
             'registerDocente',
-            'registerDiretor',
-            'registerSecretaria',
+            'aceitarConviteEquipe',
             'registerWithCode',
         ];
         for (const nome of handlers) {

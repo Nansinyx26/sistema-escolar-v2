@@ -2,16 +2,16 @@ const crypto = require('crypto');
 
 /**
  * Middleware de Proteção CSRF usando padrão Double Submit Cookie.
- * 
+ *
  * COMO FUNCIONA:
  * 1. O servidor gera um token CSRF aleatório e o envia como cookie (NÍO HttpOnly)
  * 2. O frontend lê esse cookie e o envia de volta no header `X-CSRF-Token`
  * 3. O servidor compara: se cookie === header, a requisição é legítima
- * 
+ *
  * POR QUE FUNCIONA:
  * - Um site malicioso pode ENVIAR cookies (via credentials), mas NÍO pode LER cookies de outro domínio
  * - Portanto, o site malicioso não consegue copiar o token do cookie para o header
- * 
+ *
  * ISENÇÕES:
  * - Rotas GET/HEAD/OPTIONS são seguras (não mudam estado)
  * - Rotas de autenticação pública (login, register, forgot-password) são isentas
@@ -30,8 +30,10 @@ const EXEMPT_ROUTES = [
     '/api/auth/google-login',
     '/api/auth/register-responsavel',
     '/api/auth/register-docente',
+    '/api/auth/convite-equipe/consultar',
+    '/api/auth/convite-equipe/aceitar',
     '/api/auth/turmas-publicas',
-    '/api/ping'
+    '/api/ping',
 ];
 
 /**
@@ -43,10 +45,10 @@ function csrfCookieSetter(req, res, next) {
     if (!req.cookies.csrf_token) {
         const token = crypto.randomBytes(32).toString('hex');
         res.cookie('csrf_token', token, {
-            httpOnly: false,    // Frontend PRECISA ler este cookie
+            httpOnly: false, // Frontend PRECISA ler este cookie
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'Strict',
-            maxAge: 8 * 60 * 60 * 1000 // 8h (mesmo tempo do JWT)
+            maxAge: 8 * 60 * 60 * 1000, // 8h (mesmo tempo do JWT)
         });
     }
     next();
@@ -65,14 +67,13 @@ function csrfValidator(req, res, next) {
     // qualquer rota futura começando por um prefixo isento (ex.: /auth/login…)
     // herdar a isenção silenciosamente.
     const path = (req.path || req.url).split('?')[0].replace(/\/+$/, '') || '/';
-    const isento = EXEMPT_ROUTES.some(route => {
+    const isento = EXEMPT_ROUTES.some((route) => {
         const semApi = route.replace('/api', '');
         return path === route || path === semApi;
     });
     if (isento) {
         return next();
     }
-
 
     // ============================================
     // BYPASS DE TESTE — exige opt-in EXPLÍCITO, não basta NODE_ENV
@@ -95,10 +96,12 @@ function csrfValidator(req, res, next) {
     const headerToken = req.headers['x-csrf-token'];
 
     if (!cookieToken || !headerToken || cookieToken !== headerToken) {
-        console.warn(`⚠️ [CSRF] Bloqueado: ${req.method} ${path} | Cookie: ${cookieToken ? 'presente' : 'ausente'} | Header: ${headerToken ? 'presente' : 'ausente'}`);
+        console.warn(
+            `⚠️ [CSRF] Bloqueado: ${req.method} ${path} | Cookie: ${cookieToken ? 'presente' : 'ausente'} | Header: ${headerToken ? 'presente' : 'ausente'}`
+        );
         return res.status(403).json({
             success: false,
-            error: 'Requisição bloqueada por proteção CSRF. Recarregue a página e tente novamente.'
+            error: 'Requisição bloqueada por proteção CSRF. Recarregue a página e tente novamente.',
         });
     }
 
@@ -106,6 +109,3 @@ function csrfValidator(req, res, next) {
 }
 
 module.exports = { csrfCookieSetter, csrfValidator };
-
-
-

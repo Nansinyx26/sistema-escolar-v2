@@ -17,6 +17,10 @@ router.post('/register-responsavel', UserController.registerResponsavel);
 router.post('/register-docente', UserController.registerDocente);
 router.post('/register-diretor', UserController.cadastroEquipeSomentePorConvite);
 router.post('/register-secretaria', UserController.cadastroEquipeSomentePorConvite);
+// Convite de uso único para direção e secretaria (Issue #386). Públicas: quem
+// chega aqui ainda não tem conta; o token do convite é a credencial.
+router.post('/convite-equipe/consultar', UserController.consultarConviteEquipe);
+router.post('/convite-equipe/aceitar', UserController.aceitarConviteEquipe);
 // Só os NOMES das turmas: a rota é anônima e alimenta um <select> de cadastro.
 // `list` devolvia o professor populado junto — ver ClassController.listPublicNames.
 router.get('/turmas-publicas', ClassController.listPublicNames);
