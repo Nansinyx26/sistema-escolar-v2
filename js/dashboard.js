@@ -240,7 +240,8 @@ function atualizarWelcome(user, perfil) {
     } else if (user.perfil === 'secretaria') {
         welcomeMessage.textContent = 'Gerencie matrículas, documentos e comunicados da escola.';
     } else {
-        welcomeMessage.textContent = 'Acesse todas as ferramentas administrativas da escola.';
+        welcomeMessage.textContent =
+            'Aqui estão os indicadores da escola, as pendências e a agenda da direção.';
     }
 }
 
@@ -354,6 +355,9 @@ async function atualizarCards(user, perfil) {
         if (cardFerramentas) cardFerramentas.style.display = 'none';
         if (cardIaAssistant) cardIaAssistant.style.display = 'flex';
 
+        // Indicadores, frequência, desempenho, pendências e agenda (js/painel-direcao.js)
+        if (window.PainelDirecao) window.PainelDirecao.iniciar();
+
         // Carregar dados reais para o resumo do diretor
         await carregarResumoDiretor();
     }
@@ -377,6 +381,9 @@ async function carregarResumoDiretor() {
             animateValue('stat-total-alunos', 0, data.totalAlunos || 0, 1000);
             animateValue('stat-total-professores', 0, data.totalProfessores || 0, 1000);
             animateValue('stat-total-turmas', 0, data.totalTurmas || 0, 1000);
+            if (window.PainelDirecao) window.PainelDirecao.receberResumo(data);
+        } else {
+            marcarResumoIndisponivel();
         }
 
         // Carregar últimos avisos
@@ -422,7 +429,16 @@ async function carregarResumoDiretor() {
         }
     } catch (error) {
         console.warn('Erro ao carregar resumo do diretor:', error);
+        marcarResumoIndisponivel();
     }
+}
+
+// Sem resumo, o skeleton dos três números não pode ficar girando para sempre.
+function marcarResumoIndisponivel() {
+    ['stat-total-alunos', 'stat-total-professores', 'stat-total-turmas'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el && el.querySelector('.skeleton')) el.textContent = '—';
+    });
 }
 
 function atualizarVisibilidadeSidebar(perfil) {
@@ -576,7 +592,7 @@ async function setupSecurityPanel(user) {
 
     // Apenas Admin e Diretor vêem o painel
     if (user.perfil === 'admin' || user.perfil === 'diretor') {
-        securityPanel.style.display = 'block';
+        securityPanel.style.display = 'flex';
 
         // Admin vê botão de auditoria, Diretor não
         if (user.perfil === 'admin' && btnAuditoria) {
