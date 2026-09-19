@@ -30,7 +30,6 @@ function toGmailUser(u: AuthUser, googleProfile?: GmailUser | null): GmailUser {
     email: u.email,
     name: u.nome,
     picture: u.foto || googleProfile?.picture || u.fotoGoogle || '',
-    accessToken: googleProfile?.accessToken || '',
   };
 }
 

@@ -96,7 +96,7 @@ describe('cadastro público de direção e secretaria', () => {
 
 describe('login com Google', () => {
     function loginGoogle(payload) {
-        global.__GOOGLE_PAYLOAD__ = payload;
+        global.__GOOGLE_PAYLOAD__ = { email_verified: true, ...payload };
         return request(app).post('/api/auth/google-login').send({ token: ID_TOKEN_FALSO });
     }
 

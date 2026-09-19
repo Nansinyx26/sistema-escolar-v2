@@ -16,6 +16,7 @@
         "seed:escolas": "node scripts/seedEscolas.js",
         "seed:dev": "node scripts/seedDesenvolvimento.js",
         "migrate:multiescola": "node scripts/migrarParaMultiEscola.js",
+    "sessoes:encerrar-equipe": "node scripts/encerrar-sessoes-equipe.js",
         "migrate:webp": "node scripts/migrate-with-webp.js",
         "migrate:voice": "node scripts/migrate_voice_preferences.js",
         "test:api": "node scripts/test_endpoints.js",

@@ -113,11 +113,14 @@ export async function login(payload: LoginPayload): Promise<AuthUser> {
   });
 }
 
-/** Login via Google OAuth access token – sets JWT cookie on the browser. */
-export async function googleLogin(accessToken: string): Promise<AuthUser> {
+/**
+ * Login com Google — envia o ID token (`credential` do botão oficial).
+ * O servidor confere assinatura, client ID e e-mail verificado (Issue #387).
+ */
+export async function googleLogin(idToken: string): Promise<AuthUser> {
   return apiFetch<AuthUser>('/auth/google-login', {
     method: 'POST',
-    body: JSON.stringify({ token: accessToken }),
+    body: JSON.stringify({ token: idToken }),
   });
 }
 

@@ -1094,36 +1094,46 @@ exports.googleLogin = async (req, res) => {
             ? process.env.GOOGLE_CLIENT_ID.trim()
             : DEFAULT_CLIENT_ID;
 
-        // Se o token for um ID Token (JWT), ele começa com "eyJ" (cabeçalho padrão de JWT)
-        if (token.startsWith('eyJ')) {
+        // SÓ ID TOKEN (Issue #387). O ID token é assinado pelo Google e declara
+        // para qual client ID foi emitido; `verifyIdToken` confere assinatura,
+        // emissor, validade e `audience`. Um access token não diz a que
+        // aplicativo pertence — aceitar um significaria aceitar credencial
+        // emitida para qualquer outro site — e por isso é recusado.
+        if (typeof token !== 'string' || !/^eyJ[\w-]*\.[\w-]+\.[\w-]+$/.test(token)) {
+            return res.status(401).json({
+                success: false,
+                codigo: 'CREDENCIAL_GOOGLE_INVALIDA',
+                error: 'Credencial do Google inválida. Atualize a página e tente novamente.',
+            });
+        }
+
+        let googlePayload;
+        try {
             const { OAuth2Client } = require('google-auth-library');
             const client = new OAuth2Client(clientId);
-
-            const ticket = await client.verifyIdToken({
-                idToken: token,
-                audience: clientId,
+            const ticket = await client.verifyIdToken({ idToken: token, audience: clientId });
+            googlePayload = ticket.getPayload();
+        } catch (_erroVerificacao) {
+            return res.status(401).json({
+                success: false,
+                codigo: 'CREDENCIAL_GOOGLE_INVALIDA',
+                error: 'Credencial do Google inválida. Atualize a página e tente novamente.',
             });
-            const googlePayload = ticket.getPayload();
-
-            email = googlePayload.email.toLowerCase();
-            nome = googlePayload.name;
-            picture = googlePayload.picture || '';
-        } else {
-            // Caso contrário, é um Access Token (fluxo popup de botão customizado)
-            // Buscamos as informações do usuário diretamente na API oficial do Google
-            const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-
-            if (!response.ok) {
-                throw new Error('Falha ao validar o Access Token do Google.');
-            }
-
-            const googlePayload = await response.json();
-            email = googlePayload.email.toLowerCase();
-            nome = googlePayload.name || googlePayload.given_name || email.split('@')[0];
-            picture = googlePayload.picture || '';
         }
+
+        // E-mail não verificado pelo Google não prova posse do endereço — e é
+        // pelo e-mail que a conta do responsável é localizada.
+        if (!googlePayload?.email || googlePayload.email_verified !== true) {
+            return res.status(401).json({
+                success: false,
+                codigo: 'EMAIL_GOOGLE_NAO_VERIFICADO',
+                error: 'O e-mail desta conta Google não está verificado.',
+            });
+        }
+
+        email = String(googlePayload.email).toLowerCase();
+        nome = googlePayload.name;
+        picture = googlePayload.picture || '';
 
         // ============================================
         // SANITIZAÇÃO DE DADOS DE TERCEIRO (Google)

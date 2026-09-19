@@ -45,7 +45,7 @@ export function useAuth({ cleanApiUrl, onToast }: UseAuthOptions) {
 
   const {
     user: gmailUser,
-    loginWithGmail,
+    registrarCredencial,
     logout: gmailLogout,
     error: gmailAuthError,
   } = useGmailAuth();
@@ -241,22 +241,25 @@ export function useAuth({ cleanApiUrl, onToast }: UseAuthOptions) {
     resetForgotModal,
   ]);
 
-  const handleGoogleLogin = useCallback(async () => {
-    setLoginLoading(true);
-    setAuthError(null);
-    try {
-      const googleProfile = await loginWithGmail();
-      const user = await googleLogin(googleProfile.accessToken);
-      setAuthUser(user);
-      onToast({ message: 'Login Google realizado com sucesso!', type: 'success' });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Falha na autenticação Google';
-      setAuthError(message);
-      onToast({ message, type: 'error' });
-    } finally {
-      setLoginLoading(false);
-    }
-  }, [loginWithGmail, onToast]);
+  const handleGoogleLogin = useCallback(
+    async (credential: string) => {
+      setLoginLoading(true);
+      setAuthError(null);
+      try {
+        registrarCredencial(credential);
+        const user = await googleLogin(credential);
+        setAuthUser(user);
+        onToast({ message: 'Login Google realizado com sucesso!', type: 'success' });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Falha na autenticação Google';
+        setAuthError(message);
+        onToast({ message, type: 'error' });
+      } finally {
+        setLoginLoading(false);
+      }
+    },
+    [registrarCredencial, onToast]
+  );
 
   const handleLogin = useCallback(
     async (event: React.FormEvent) => {
