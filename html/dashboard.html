@@ -121,9 +121,20 @@
                 <span>Início</span>
             </a>
 
-            <!-- Ensino: professor, direção e secretaria. O backend autoriza os
-                 três no Assistente; `director-teacher-shared` é a classe que
-                 atualizarVisibilidadeSidebar() exibe para esses perfis. -->
+            <!-- A ordem serve aos dois menus: o professor vê Turmas, Avaliações,
+                 Frequência, Planilha, Meu Horário; a direção vê Alunos,
+                 Professores, Turmas, Avaliações, Frequência, Relatórios,
+                 Comunicados, Agenda. `director-teacher-shared` é a classe que
+                 atualizarVisibilidadeSidebar() exibe para professor, direção e
+                 secretaria; o backend autoriza os três no Assistente. -->
+            <a href="../detalhes/alunos.html" class="sidebar-item director-only" style="display: none;">
+                <i class="bi bi-mortarboard"></i>
+                <span>Alunos</span>
+            </a>
+            <a href="lista-professores.html" class="sidebar-item director-only" style="display: none;">
+                <i class="bi bi-person-video3"></i>
+                <span>Professores</span>
+            </a>
             <a href="selecionar.html" class="sidebar-item director-teacher-shared" id="sidebar-turmas-btn">
                 <i class="bi bi-people"></i>
                 <span>Turmas</span>
@@ -136,6 +147,11 @@
                 <i class="bi bi-calendar-check"></i>
                 <span>Frequência</span>
             </a>
+            <!-- Frequência e Agenda da direção são blocos deste painel (#368). -->
+            <a href="#pnFrequenciaTurmas" class="sidebar-item director-only" style="display: none;">
+                <i class="bi bi-calendar-check"></i>
+                <span>Frequência</span>
+            </a>
             <a href="planilha-faltas.html" class="sidebar-item director-teacher-shared" id="sidebar-planilha-faltas">
                 <i class="bi bi-journal-check"></i>
                 <span>Planilha de Faltas</span>
@@ -143,6 +159,18 @@
             <a href="meu-horario.html" class="sidebar-item teacher-only" id="sidebar-horario" style="display: none;">
                 <i class="bi bi-clock"></i>
                 <span>Meu Horário</span>
+            </a>
+            <a href="direcao/bi-pedagogico.html" class="sidebar-item director-only" style="display: none;">
+                <i class="bi bi-graph-up"></i>
+                <span>Relatórios</span>
+            </a>
+            <a href="../direcao/direcao-notificacoes.html" class="sidebar-item director-only" style="display: none;">
+                <i class="bi bi-megaphone"></i>
+                <span>Comunicados</span>
+            </a>
+            <a href="#pnAgendaDirecao" class="sidebar-item director-only" style="display: none;">
+                <i class="bi bi-calendar-event"></i>
+                <span>Agenda</span>
             </a>
             <!-- Sem classe `-only`: professor, diretor e admin conversam; quem
                  cada um alcança é decidido no servidor (GET /chat-direto/contatos). -->
@@ -156,19 +184,11 @@
                 <span class="pn-tag ui-tint">IA</span>
             </a>
 
-            <!-- GRUPO: ADMINISTRAÇÃO ESCOLAR (Diretor/Admin Only) -->
-            <div class="sidebar-group-label director-only" style="display: none;">Administração escolar</div>
-            <a href="../detalhes/alunos.html" class="sidebar-item director-only" style="display: none;">
-                <i class="bi bi-people"></i>
-                <span>Lista de Alunos</span>
-            </a>
+            <!-- GRUPO: GESTÃO (Diretor/Admin Only) — as demais telas da direção -->
+            <div class="sidebar-group-label director-only" style="display: none;">Gestão</div>
             <a href="../detalhes/autorizacoes-pais.html" class="sidebar-item director-only" style="display: none;" data-page="autorizacoes-pais">
                 <i class="bi bi-file-earmark-check"></i>
                 <span>Autorizações dos Pais</span>
-            </a>
-            <a href="lista-professores.html" class="sidebar-item director-only" style="display: none;">
-                <i class="bi bi-person-lines-fill"></i>
-                <span>Lista de Professores</span>
             </a>
             <a href="gerenciar-salas.html" class="sidebar-item director-only" style="display: none;">
                 <i class="bi bi-door-open"></i>
@@ -182,24 +202,9 @@
                 <i class="bi bi-key"></i>
                 <span>Códigos Secretos</span>
             </a>
-
-            <!-- GRUPO: COMUNICAÇÃO E GESTÃO (Diretor/Admin Only) -->
-            <div class="sidebar-group-label director-only" style="display: none;">Comunicação e gestão</div>
-            <a href="../direcao/direcao-notificacoes.html" class="sidebar-item director-only" style="display: none;">
-                <i class="bi bi-megaphone"></i>
-                <span>Avisos aos Pais</span>
-            </a>
             <a href="direcao/gerenciar-secretaria.html" class="sidebar-item director-only" style="display: none;">
                 <i class="bi bi-person-gear"></i>
                 <span>Gerenciar Secretaria</span>
-            </a>
-            <a href="direcao/bi-pedagogico.html" class="sidebar-item director-only" style="display: none;">
-                <i class="bi bi-bar-chart-line"></i>
-                <span>BI Pedagógico</span>
-            </a>
-            <a href="direcao/bi-pedagogico.html" class="sidebar-item director-only" style="display: none;">
-                <i class="bi bi-graph-up"></i>
-                <span>Relatórios</span>
             </a>
 
             <!-- GRUPO: SECRETARIA (Secretaria Only) -->
@@ -382,80 +387,56 @@
                 </a>
             </section>
 
-            <!-- ============ DIREÇÃO E ADMINISTRAÇÃO (js/dashboard.js) ============ -->
-            <!-- Resumo do diretor -->
-            <div id="directorDashboardSummary" class="pn-kpis" style="display: none;">
-                <div class="pn-kpi" style="--pn-cor: var(--ui-blue)">
-                    <span class="pn-kpi-ico ui-on-color"><i class="bi bi-people"></i></span>
+            <!-- ============ PAINEL DA DIREÇÃO (js/painel-direcao.js, #368) ============ -->
+            <!-- Os três primeiros números vêm de js/dashboard.js (GET /dashboard/summary). -->
+            <section id="directorDashboardSummary" class="pn-kpis pn-kpis--seis" style="display: none;" aria-label="Indicadores da escola">
+                <a class="pn-kpi" href="../detalhes/alunos.html" style="--pn-cor: var(--ui-blue)">
+                    <span class="pn-kpi-ico ui-on-color"><i class="bi bi-mortarboard"></i></span>
                     <span class="pn-kpi-txt">
                         <span class="pn-kpi-rot">Total de alunos</span>
-                        <span class="pn-kpi-valor ui-num" id="stat-total-alunos">…</span>
+                        <span class="pn-kpi-valor ui-num" id="stat-total-alunos"><span class="skeleton pn-skel pn-skel-num"></span></span>
+                        <span class="pn-kpi-sub" data-kpi-sub="dir-alunos"></span>
                     </span>
-                </div>
-                <div class="pn-kpi" style="--pn-cor: var(--ui-violet)">
-                    <span class="pn-kpi-ico ui-on-color"><i class="bi bi-person-badge"></i></span>
+                </a>
+                <a class="pn-kpi" href="lista-professores.html" style="--pn-cor: var(--ui-violet)">
+                    <span class="pn-kpi-ico ui-on-color"><i class="bi bi-person-video3"></i></span>
                     <span class="pn-kpi-txt">
                         <span class="pn-kpi-rot">Professores</span>
-                        <span class="pn-kpi-valor ui-num" id="stat-total-professores">…</span>
+                        <span class="pn-kpi-valor ui-num" id="stat-total-professores"><span class="skeleton pn-skel pn-skel-num"></span></span>
                     </span>
-                </div>
-                <div class="pn-kpi" style="--pn-cor: var(--ui-accent)">
+                </a>
+                <a class="pn-kpi" href="selecionar.html" style="--pn-cor: var(--ui-accent)">
                     <span class="pn-kpi-ico ui-on-color"><i class="bi bi-door-open"></i></span>
                     <span class="pn-kpi-txt">
                         <span class="pn-kpi-rot">Turmas ativas</span>
-                        <span class="pn-kpi-valor ui-num" id="stat-total-turmas">…</span>
+                        <span class="pn-kpi-valor ui-num" id="stat-total-turmas"><span class="skeleton pn-skel pn-skel-num"></span></span>
                     </span>
-                </div>
-            </div>
-
-            <!-- Atividade recente e avisos da direção -->
-            <div id="directorActivityGrid" class="pn-duas" style="display: none;">
-                <article class="pn-card">
-                    <header class="pn-card-topo">
-                        <span class="pn-card-ico ui-tint"><i class="bi bi-activity"></i></span>
-                        <h2 class="pn-card-titulo">Atividade recente</h2>
-                    </header>
-                    <div id="recentActivityList" class="activity-list pn-lista-mini">
-                        <div class="activity-placeholder"><span class="skeleton pn-skel"></span></div>
-                    </div>
-                </article>
-                <article class="pn-card">
-                    <header class="pn-card-topo">
-                        <span class="pn-card-ico ui-tint"><i class="bi bi-megaphone"></i></span>
-                        <h2 class="pn-card-titulo">Últimos avisos</h2>
-                    </header>
-                    <div id="latestNoticesList" class="notices-mini-list pn-lista-mini">
-                        <div class="activity-placeholder"><span class="skeleton pn-skel"></span></div>
-                    </div>
-                </article>
-            </div>
-
-            <!-- Código secreto da escola (Direção/Admin) -->
-            <article id="securityPanel" class="pn-card pn-seguranca" style="display: none;">
-                <header class="pn-card-topo">
-                    <span class="pn-card-ico ui-tint"><i class="bi bi-shield-lock"></i></span>
-                    <div class="pn-card-cab">
-                        <h2 class="pn-card-titulo">Código secreto da escola</h2>
-                        <p class="pn-card-desc">Válido só para hoje. Entregue aos novos professores.</p>
-                    </div>
-                </header>
-                <div class="pn-seguranca-corpo">
-                    <div class="pn-codigo">
-                        <span id="dashboardDailyCode" data-code="------" class="ui-num">••••••</span>
-                        <button type="button" id="btn-toggle-secret" class="ui-icon-btn" aria-label="Mostrar código">
-                            <i class="bi bi-eye"></i>
-                        </button>
-                    </div>
-                    <div class="pn-seguranca-acoes">
-                        <button class="ui-btn" data-rota="admin.usuarios">
-                            <i class="bi bi-people"></i> Usuários
-                        </button>
-                        <button class="ui-btn" data-rota="admin.auditoria" id="btnAuditoriaDash" style="display: none;">
-                            <i class="bi bi-shield-shaded"></i> Auditoria
-                        </button>
-                    </div>
-                </div>
-            </article>
+                </a>
+                <a class="pn-kpi" href="#pnFrequenciaTurmas" style="--pn-cor: var(--ui-cyan)">
+                    <span class="pn-kpi-ico ui-on-color"><i class="bi bi-calendar-check"></i></span>
+                    <span class="pn-kpi-txt">
+                        <span class="pn-kpi-rot">Frequência geral</span>
+                        <span class="pn-kpi-valor ui-num" data-kpi="dir-frequencia"><span class="skeleton pn-skel pn-skel-num"></span></span>
+                        <span class="pn-kpi-sub" data-kpi-sub="dir-frequencia"></span>
+                    </span>
+                </a>
+                <a class="pn-kpi" href="../detalhes/avaliacoes.html" style="--pn-cor: var(--ui-amber)">
+                    <span class="pn-kpi-ico ui-on-color"><i class="bi bi-clipboard-check"></i></span>
+                    <span class="pn-kpi-txt">
+                        <span class="pn-kpi-rot">Avaliações sem nota</span>
+                        <span class="pn-kpi-valor ui-num" data-kpi="dir-avaliacoes"><span class="skeleton pn-skel pn-skel-num"></span></span>
+                        <span class="pn-kpi-sub" data-kpi-sub="dir-avaliacoes"></span>
+                    </span>
+                </a>
+                <a class="pn-kpi" href="../direcao/direcao-notificacoes.html" style="--pn-cor: var(--ui-pink)">
+                    <span class="pn-kpi-ico ui-on-color"><i class="bi bi-megaphone"></i></span>
+                    <span class="pn-kpi-txt">
+                        <span class="pn-kpi-rot">Comunicados</span>
+                        <span class="pn-kpi-valor ui-num" data-kpi="dir-comunicados"><span class="skeleton pn-skel pn-skel-num"></span></span>
+                        <span class="pn-kpi-sub" data-kpi-sub="dir-comunicados"></span>
+                    </span>
+                </a>
+            </section>
 
             <div class="pn-grade">
                 <div class="pn-col pn-col--1">
@@ -477,6 +458,51 @@
                         </footer>
                     </article>
 
+                    <!-- Frequência por turma (direção): GET /secretaria/frequencia/consolidada -->
+                    <article class="pn-card pn-freq" id="pnFrequenciaTurmas" data-perfil-bloco="direcao" hidden aria-labelledby="pnFreqTitulo">
+                        <header class="pn-card-topo">
+                            <span class="pn-card-ico ui-tint" style="--ui-tint: var(--ui-cyan)"><i class="bi bi-calendar-check"></i></span>
+                            <div class="pn-card-cab">
+                                <h2 class="pn-card-titulo" id="pnFreqTitulo">Frequência por turma</h2>
+                                <p class="pn-card-desc">Presença no ano letivo. Abaixo de 75% a turma pede atenção (LDB).</p>
+                            </div>
+                        </header>
+                        <ul class="pn-barras" id="pnFreqLista" aria-busy="true">
+                            <li><span class="skeleton pn-skel"></span></li>
+                            <li><span class="skeleton pn-skel"></span></li>
+                            <li><span class="skeleton pn-skel"></span></li>
+                        </ul>
+                    </article>
+
+                    <!-- Desempenho acadêmico (direção): GET /dashboard/chart-data -->
+                    <article class="pn-card pn-desempenho" id="pnDesempenho" data-perfil-bloco="direcao" hidden aria-labelledby="pnDesTitulo">
+                        <header class="pn-card-topo">
+                            <span class="pn-card-ico ui-tint" style="--ui-tint: var(--ui-violet)"><i class="bi bi-bar-chart-line"></i></span>
+                            <div class="pn-card-cab">
+                                <h2 class="pn-card-titulo" id="pnDesTitulo">Desempenho acadêmico</h2>
+                                <p class="pn-card-desc" id="pnDesResumo">Média das notas lançadas, por turma (0 a 10).</p>
+                            </div>
+                        </header>
+                        <ul class="pn-barras" id="pnDesLista" aria-busy="true">
+                            <li><span class="skeleton pn-skel"></span></li>
+                            <li><span class="skeleton pn-skel"></span></li>
+                            <li><span class="skeleton pn-skel"></span></li>
+                        </ul>
+                        <footer class="pn-card-rodape">
+                            <a class="ui-link ui-tint" href="direcao/bi-pedagogico.html">Abrir relatórios <i class="bi bi-chevron-right"></i></a>
+                        </footer>
+                    </article>
+
+                    <!-- Atividade recente (direção) — js/dashboard.js, Issue #331 -->
+                    <article class="pn-card pn-atividade" data-perfil-bloco="direcao" hidden aria-labelledby="pnAtivTitulo">
+                        <header class="pn-card-topo">
+                            <span class="pn-card-ico ui-tint"><i class="bi bi-activity"></i></span>
+                            <h2 class="pn-card-titulo" id="pnAtivTitulo">Atividade recente</h2>
+                        </header>
+                        <div id="recentActivityList" class="activity-list pn-lista-mini">
+                            <div class="activity-placeholder"><span class="skeleton pn-skel"></span></div>
+                        </div>
+                    </article>
                     <!-- Assistente da Escola (IA) -->
                     <a class="pn-card pn-ia" id="cardIaAssistant" href="direcao/ia-assistant.html" style="display: none;">
                         <span class="pn-ia-ico ui-tint"><i class="bi bi-stars"></i></span>
@@ -521,6 +547,40 @@
                         </div>
                     </article>
 
+                    <!-- Ações rápidas da direção -->
+                    <article class="pn-card pn-acoes-card" data-perfil-bloco="direcao" hidden aria-labelledby="pnAcoesDirTitulo">
+                        <header class="pn-card-topo">
+                            <span class="pn-card-ico ui-tint"><i class="bi bi-lightning-charge"></i></span>
+                            <h2 class="pn-card-titulo" id="pnAcoesDirTitulo">Ações rápidas</h2>
+                        </header>
+                        <div class="pn-acoes">
+                            <a class="pn-acao ui-on-color" href="../direcao/direcao-notificacoes.html" style="--pn-cor: var(--ui-accent)">
+                                <i class="bi bi-megaphone"></i><span>Novo comunicado</span>
+                            </a>
+                            <a class="pn-acao ui-on-color" href="../detalhes/alunos.html" style="--pn-cor: var(--ui-blue)">
+                                <i class="bi bi-mortarboard"></i><span>Alunos</span>
+                            </a>
+                            <a class="pn-acao ui-on-color" href="lista-professores.html" style="--pn-cor: var(--ui-violet)">
+                                <i class="bi bi-person-video3"></i><span>Professores</span>
+                            </a>
+                            <a class="pn-acao ui-on-color" href="direcao/bi-pedagogico.html" style="--pn-cor: var(--ui-pink)">
+                                <i class="bi bi-graph-up"></i><span>Relatórios</span>
+                            </a>
+                        </div>
+                    </article>
+
+                    <!-- Pendências administrativas (direção) -->
+                    <article class="pn-card pn-pendencias" id="pnPendencias" data-perfil-bloco="direcao" hidden aria-labelledby="pnPendTitulo">
+                        <header class="pn-card-topo">
+                            <span class="pn-card-ico ui-tint" style="--ui-tint: var(--ui-amber)"><i class="bi bi-list-check"></i></span>
+                            <h2 class="pn-card-titulo" id="pnPendTitulo">Pendências</h2>
+                        </header>
+                        <ul class="pn-pend-lista" id="pnPendLista" aria-busy="true">
+                            <li><span class="skeleton pn-skel"></span></li>
+                            <li><span class="skeleton pn-skel"></span></li>
+                            <li><span class="skeleton pn-skel"></span></li>
+                        </ul>
+                    </article>
                     <!-- Professores da escola (tempo real) — js/professores-online.js.
                          O mesmo conteúdo aparece no painel do botão flutuante. -->
                     <article class="pn-card profs-online-card" id="profsOnlineCard" aria-labelledby="pnEquipeTitulo">
@@ -539,6 +599,32 @@
                         </div>
                     </article>
 
+                    <!-- Código secreto da escola (Direção/Admin) — js/dashboard.js -->
+                    <article id="securityPanel" class="pn-card pn-seguranca" style="display: none;">
+                        <header class="pn-card-topo">
+                            <span class="pn-card-ico ui-tint"><i class="bi bi-shield-lock"></i></span>
+                            <div class="pn-card-cab">
+                                <h2 class="pn-card-titulo">Código secreto da escola</h2>
+                                <p class="pn-card-desc">Válido só para hoje. Entregue aos novos professores.</p>
+                            </div>
+                        </header>
+                        <div class="pn-seguranca-corpo">
+                            <div class="pn-codigo">
+                                <span id="dashboardDailyCode" data-code="------" class="ui-num">••••••</span>
+                                <button type="button" id="btn-toggle-secret" class="ui-icon-btn" aria-label="Mostrar código">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            <div class="pn-seguranca-acoes">
+                                <button class="ui-btn" data-rota="admin.usuarios">
+                                    <i class="bi bi-people"></i> Usuários
+                                </button>
+                                <button class="ui-btn" data-rota="admin.auditoria" id="btnAuditoriaDash" style="display: none;">
+                                    <i class="bi bi-shield-shaded"></i> Auditoria
+                                </button>
+                            </div>
+                        </div>
+                    </article>
                     <!-- Avaliar o sistema (js/realtime.js monta o formulário) -->
                     <article class="pn-card pn-avaliar review-section" id="reviewSection" aria-labelledby="pnAvaliarTitulo">
                         <header class="pn-card-topo">
@@ -588,6 +674,29 @@
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+                    </article>
+
+                    <!-- Agenda da direção: próximos eventos do calendário escolar -->
+                    <article class="pn-card pn-eventos" id="pnAgendaDirecao" data-perfil-bloco="direcao" hidden aria-labelledby="pnEvTitulo">
+                        <header class="pn-card-topo">
+                            <span class="pn-card-ico ui-tint" style="--ui-tint: var(--ui-blue)"><i class="bi bi-calendar-event"></i></span>
+                            <h2 class="pn-card-titulo" id="pnEvTitulo">Agenda da direção</h2>
+                        </header>
+                        <ul class="pn-ev-lista" id="pnEvLista" aria-busy="true">
+                            <li><span class="skeleton pn-skel"></span></li>
+                            <li><span class="skeleton pn-skel"></span></li>
+                        </ul>
+                    </article>
+
+                    <!-- Últimos avisos (direção) — js/dashboard.js, Issue #331 -->
+                    <article class="pn-card pn-avisos" data-perfil-bloco="direcao" hidden aria-labelledby="pnAvisosTitulo">
+                        <header class="pn-card-topo">
+                            <span class="pn-card-ico ui-tint" style="--ui-tint: var(--ui-pink)"><i class="bi bi-bell"></i></span>
+                            <h2 class="pn-card-titulo" id="pnAvisosTitulo">Últimos avisos</h2>
+                        </header>
+                        <div id="latestNoticesList" class="notices-mini-list pn-lista-mini">
+                            <div class="activity-placeholder"><span class="skeleton pn-skel"></span></div>
                         </div>
                     </article>
 
@@ -731,7 +840,8 @@
     <script src="../js/sidebar-voice.js?v=5.0"></script>
     <script defer src="../js/ui-painel.js?v=1.0"></script>
     <script defer src="../js/painel-professor.js?v=1.0"></script>
-    <script defer src="../js/dashboard.js?v=6"></script>
+    <script defer src="../js/painel-direcao.js?v=1.0"></script>
+    <script defer src="../js/dashboard.js?v=7"></script>
     <script defer src="../js/professores-online.js?v=2.0"></script>
     <!-- Sons de enviar/receber mensagem e de aviso do mural. Precisa vir antes
          do chat e do realtime.js, que são quem os dispara. -->
