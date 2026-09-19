@@ -74,6 +74,7 @@ guarda, documentos ou o código de vínculo.
 
 | Exigência | Situação | Onde |
 |---|---|---|
+| Documento assinado com versões e trilha | **Pronto** | cada arquivo guarda hash SHA-256, autor e data; substituir cria versão nova e **preserva** a anterior, acessível em `/api/documentos-responsaveis/:id/versoes`; só quem enviou substitui (a escola muda status e registra parecer separado); envio, visualização, download, substituição e status vão ao `AuditLog`; a ficha só aceita arquivo enviado pelo próprio usuário; autorizações guardam histórico de respostas; aviso de finalidade nas telas de envio — [`documentoVersoes.regressao.test.js`](../backend/src/tests/documentoVersoes.regressao.test.js) (Issue #399) |
 | Log de quem acessou, quando e o que alterou | **Pronto** | [`models/AuditLog.js`](../backend/src/models/AuditLog.js) — guarda perfil, ação, recurso, `valorAnterior`/`valorNovo`, IP, user-agent |
 | Log em toda exportação de dado de aluno | **Pronto** | `ConformidadeController` grava `EXPORTAR_FICHA_CONSELHO_TUTELAR`, `EXPORTAR_EDUCACENSO` e `EXPORTAR_DADOS_ABERTOS` |
 | Guarda mínima de 6 meses | **Pronto** | TTL de 365 dias (§1) |

@@ -47,6 +47,41 @@ const DocumentoResponsavelSchema = new mongoose.Schema(
             storageId: { type: String, required: true },
             mimeType: { type: String, required: true },
             tamanho: { type: Number, required: true },
+            // SHA-256 do conteúdo (Issue #399): é o que permite dizer, depois,
+            // que o arquivo guardado é o mesmo que o responsável assinou.
+            hash: { type: String },
+            enviadoPor: { type: String },
+            enviadoEm: { type: Date },
+        },
+
+        // Versões ANTERIORES do documento. Substituir acrescenta aqui; nada é
+        // apagado. O documento assinado é prova da manifestação do responsável:
+        // apagar a versão anterior destrói a prova de uma autorização que
+        // valeu por algum tempo.
+        versoes: {
+            type: [
+                {
+                    nomeOriginal: String,
+                    storageId: String,
+                    mimeType: String,
+                    tamanho: Number,
+                    hash: String,
+                    enviadoPor: String,
+                    enviadoEm: Date,
+                    substituidoEm: Date,
+                    _id: false,
+                },
+            ],
+            default: undefined,
+        },
+
+        // Parecer da gestão: fica SEPARADO do arquivo da família. A escola
+        // comenta e decide o status; o arquivo continua sendo o que o
+        // responsável enviou.
+        parecerGestao: {
+            texto: String,
+            autorId: String,
+            em: Date,
         },
         status: {
             type: String,

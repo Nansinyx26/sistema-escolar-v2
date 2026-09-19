@@ -1,4 +1,9 @@
 const crypto = require('node:crypto');
+
+/** SHA-256 do conteúdo: identidade do arquivo guardado (Issue #399). */
+function hashDoArquivo(buffer) {
+    return crypto.createHash('sha256').update(buffer).digest('hex');
+}
 const mongoose = require('mongoose');
 const DocumentoResponsavel = require('../models/DocumentoResponsavel');
 const Aluno = require('../models/Aluno');
@@ -9,6 +14,7 @@ const { emitirParaPerfis, emitirParaUsuario } = require('../utils/realtime');
 const assertAcessoAoAluno = require('../middleware/assertAcessoAoAluno');
 const escapeRegex = require('../utils/escapeRegex');
 const logger = require('../utils/logger');
+const { logAction } = require('../utils/auditHelper');
 
 const PERFIS_GESTAO = ['admin', 'diretor', 'secretaria'];
 
@@ -136,10 +142,19 @@ exports.uploadDocumento = async (req, res) => {
                 storageId: String(storageId),
                 mimeType: file.mimetype,
                 tamanho: file.size || file.buffer.length,
+                hash: hashDoArquivo(file.buffer),
+                enviadoPor: usuarioId,
+                enviadoEm: new Date(),
             },
         });
 
         await novoDoc.save();
+
+        await logAction(req, 'DOCUMENTO_RESPONSAVEL_ENVIADO', 'Documentos', {
+            recursoId: String(novoDoc._id),
+            valorNovo: { alunoId: String(aluno._id), hash: novoDoc.arquivo.hash },
+            descricao: `Documento ${novoDoc._id} enviado para o aluno ${aluno._id}.`,
+        });
 
         // Emite atualização em tempo real para Secretaria e Direção
         emitirParaPerfis(
@@ -194,11 +209,14 @@ exports.substituirDocumento = async (req, res) => {
             return res.status(acesso.status).json({ success: false, error: acesso.error });
         }
 
-        // Segurança: apenas o próprio responsável que enviou ou equipe gestora
-        if (perfil === 'responsavel' && String(doc.responsavelId) !== usuarioId) {
+        // Só quem enviou substitui o próprio arquivo (Issue #399). A gestão
+        // muda status e registra parecer; trocar o arquivo da família faria o
+        // registro continuar no nome do responsável com outro conteúdo.
+        if (String(doc.responsavelId) !== usuarioId) {
             return res.status(403).json({
                 success: false,
-                error: 'Apenas o responsável que enviou o documento pode substituí-lo.',
+                codigo: 'SUBSTITUICAO_SO_DE_QUEM_ENVIOU',
+                error: 'Apenas quem enviou o documento pode substituí-lo. A escola pode registrar parecer e mudar o status.',
             });
         }
 
@@ -223,14 +241,19 @@ exports.substituirDocumento = async (req, res) => {
                 .json({ success: false, error: `Arquivo rejeitado: ${veredito.motivo}` });
         }
 
-        // Deleta arquivo anterior do GridFS se existir
-        if (doc.arquivo?.storageId) {
-            deleteFile(doc.arquivo.storageId).catch((err) => {
-                logger.warn(
-                    `[DocumentoResponsavel.substituir] Falha ao deletar arquivo antigo: ${err.message}`
-                );
-            });
-        }
+        // A versão anterior NÃO é apagada (Issue #399): ela vira histórico.
+        const versaoAnterior = doc.arquivo
+            ? {
+                  nomeOriginal: doc.arquivo.nomeOriginal,
+                  storageId: doc.arquivo.storageId,
+                  mimeType: doc.arquivo.mimeType,
+                  tamanho: doc.arquivo.tamanho,
+                  hash: doc.arquivo.hash,
+                  enviadoPor: doc.arquivo.enviadoPor,
+                  enviadoEm: doc.arquivo.enviadoEm || doc.dataEnvio,
+                  substituidoEm: new Date(),
+              }
+            : null;
 
         // Salva novo arquivo no GridFS
         const ext =
@@ -248,12 +271,16 @@ exports.substituirDocumento = async (req, res) => {
         });
 
         // Atualiza campos mantendo o vínculo com o aluno e responsável
+        if (versaoAnterior) doc.versoes = [...(doc.versoes || []), versaoAnterior];
         doc.arquivo = {
             nomeOriginal: file.originalname,
             url: `/api/documentos-responsaveis/${storageId}/visualizar`,
             storageId: String(storageId),
             mimeType: file.mimetype,
             tamanho: file.size || file.buffer.length,
+            hash: hashDoArquivo(file.buffer),
+            enviadoPor: usuarioId,
+            enviadoEm: new Date(),
         };
         doc.ultimaAtualizacao = new Date();
         doc.status = 'Enviado';
@@ -262,6 +289,13 @@ exports.substituirDocumento = async (req, res) => {
         }
 
         await doc.save();
+
+        await logAction(req, 'DOCUMENTO_RESPONSAVEL_SUBSTITUIDO', 'Documentos', {
+            recursoId: String(doc._id),
+            valorAnterior: { hash: versaoAnterior?.hash, versoes: (doc.versoes || []).length - 1 },
+            valorNovo: { hash: doc.arquivo.hash, versoes: (doc.versoes || []).length },
+            descricao: `Documento ${doc._id} substituído; versão anterior preservada.`,
+        });
 
         // Emite atualização em tempo real
         emitirParaPerfis(
@@ -449,9 +483,20 @@ async function localizarEAutorizar(req, idOuStorageId) {
         return { ok: false, status: 403, error: 'Professores não possuem permissão.' };
     }
 
+    // A busca alcança também as VERSÕES anteriores (Issue #399): a versão
+    // substituída continua existindo e precisa continuar acessível a quem
+    // pode ver o documento.
     const query = mongoose.Types.ObjectId.isValid(idOuStorageId)
-        ? { $or: [{ _id: idOuStorageId }, { 'arquivo.storageId': idOuStorageId }] }
-        : { 'arquivo.storageId': idOuStorageId };
+        ? {
+              $or: [
+                  { _id: idOuStorageId },
+                  { 'arquivo.storageId': idOuStorageId },
+                  { 'versoes.storageId': idOuStorageId },
+              ],
+          }
+        : {
+              $or: [{ 'arquivo.storageId': idOuStorageId }, { 'versoes.storageId': idOuStorageId }],
+          };
 
     const doc = await DocumentoResponsavel.findOne(query).lean();
     if (!doc) {
@@ -474,7 +519,9 @@ async function localizarEAutorizar(req, idOuStorageId) {
         }
     }
 
-    return { ok: true, doc };
+    // Qual arquivo servir: o atual, ou a versão pedida pelo storageId.
+    const versao = (doc.versoes || []).find((v) => String(v.storageId) === String(idOuStorageId));
+    return { ok: true, doc, arquivo: versao || doc.arquivo, ehVersaoAnterior: !!versao };
 }
 
 /**
@@ -498,9 +545,55 @@ function permitirEnquadramentoNaMesmaOrigem(res) {
 }
 
 /**
+ * GET /api/documentos-responsaveis/:id/versoes
+ * Histórico do documento: a versão atual e as anteriores, com hash e datas.
+ * Serve para a escola conferir o que valia em cada momento (Issue #399).
+ */
+exports.listarVersoes = async (req, res) => {
+    try {
+        const auth = await localizarEAutorizar(req, req.params.id);
+        if (!auth.ok) {
+            return res.status(auth.status).json({ success: false, error: auth.error });
+        }
+        const { doc } = auth;
+        const descrever = (a, atual) => ({
+            atual,
+            nomeOriginal: a?.nomeOriginal,
+            storageId: a?.storageId,
+            hash: a?.hash || null,
+            tamanho: a?.tamanho,
+            enviadoEm: a?.enviadoEm || doc.dataEnvio,
+            substituidoEm: a?.substituidoEm || null,
+        });
+        return res.json({
+            success: true,
+            data: [
+                descrever(doc.arquivo, true),
+                ...(doc.versoes || [])
+                    .slice()
+                    .reverse()
+                    .map((v) => descrever(v, false)),
+            ],
+        });
+    } catch (error) {
+        logger.error(`[DocumentoResponsavel.listarVersoes] ${error.message}`);
+        return res.status(500).json({ success: false, error: 'Erro ao listar versões.' });
+    }
+};
+
+/**
  * GET /api/documentos-responsaveis/:id/visualizar
  * Serve o arquivo em modo inline (preview sem forçar download).
  */
+/** Quem abriu o documento assinado, e quando (Issue #399). */
+async function registrarLeitura(req, doc, acao) {
+    await logAction(req, acao, 'Documentos', {
+        recursoId: String(doc._id),
+        valorNovo: { alunoId: String(doc.alunoId) },
+        descricao: `Documento ${doc._id} acessado (${acao}).`,
+    });
+}
+
 exports.visualizarArquivo = async (req, res) => {
     // Antes de tudo: o erro (403/404) também precisa abrir no iframe, para a
     // tela ler a mensagem em vez de receber a página de bloqueio do navegador.
@@ -512,10 +605,11 @@ exports.visualizarArquivo = async (req, res) => {
             return res.status(auth.status).json({ success: false, error: auth.error });
         }
 
-        const { doc } = auth;
-        const storageId = doc.arquivo.storageId;
-        const mimeType = doc.arquivo.mimeType || 'application/pdf';
-        const nomeOriginal = doc.arquivo.nomeOriginal || 'documento.pdf';
+        const { doc, arquivo } = auth;
+        const storageId = arquivo.storageId;
+        const mimeType = arquivo.mimeType || 'application/pdf';
+        const nomeOriginal = arquivo.nomeOriginal || 'documento.pdf';
+        await registrarLeitura(req, doc, 'DOCUMENTO_RESPONSAVEL_VISUALIZADO');
 
         res.set('Content-Type', mimeType);
         res.set('Content-Disposition', `inline; filename="${encodeURIComponent(nomeOriginal)}"`);
@@ -552,10 +646,11 @@ exports.baixarArquivo = async (req, res) => {
             return res.status(auth.status).json({ success: false, error: auth.error });
         }
 
-        const { doc } = auth;
-        const storageId = doc.arquivo.storageId;
-        const mimeType = doc.arquivo.mimeType || 'application/pdf';
-        const nomeOriginal = doc.arquivo.nomeOriginal || 'documento.pdf';
+        const { doc, arquivo } = auth;
+        const storageId = arquivo.storageId;
+        const mimeType = arquivo.mimeType || 'application/pdf';
+        const nomeOriginal = arquivo.nomeOriginal || 'documento.pdf';
+        await registrarLeitura(req, doc, 'DOCUMENTO_RESPONSAVEL_BAIXADO');
 
         res.set('Content-Type', mimeType);
         res.set(
@@ -611,11 +706,22 @@ exports.atualizarStatus = async (req, res) => {
         if (status && ['Enviado', 'Em Análise', 'Conferido', 'Substituído'].includes(status)) {
             doc.status = status;
         }
+        // O parecer da gestão fica separado do que a família escreveu.
         if (observacoes !== undefined) {
-            doc.observacoes = String(observacoes).trim();
+            doc.parecerGestao = {
+                texto: String(observacoes).trim(),
+                autorId: String(req.user?.id || req.user?._id || ''),
+                em: new Date(),
+            };
         }
         doc.ultimaAtualizacao = new Date();
         await doc.save();
+
+        await logAction(req, 'DOCUMENTO_RESPONSAVEL_STATUS', 'Documentos', {
+            recursoId: String(doc._id),
+            valorNovo: { status: doc.status, parecer: observacoes !== undefined },
+            descricao: `Documento ${doc._id}: status ${doc.status}.`,
+        });
 
         // Notifica o responsável e as equipes
         emitirParaUsuario(doc.responsavelId, 'documento_responsavel:status', doc);

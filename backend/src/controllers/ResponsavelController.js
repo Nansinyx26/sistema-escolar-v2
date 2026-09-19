@@ -1031,6 +1031,7 @@ exports.updateAlunoDados = async (req, res) => {
 
                     const meta = Autorizacao.METADADOS_AUTORIZACOES[tipo] || {};
 
+                    const respostaNova = valor === true ? true : valor === false ? false : null;
                     await Autorizacao.findOneAndUpdate(
                         {
                             escolaId: aluno.escolaId,
@@ -1038,6 +1039,15 @@ exports.updateAlunoDados = async (req, res) => {
                             tipoAutorizacao: tipo,
                         },
                         {
+                            // Cada resposta entra no histórico; a anterior fica.
+                            $push: {
+                                historico: {
+                                    aceita: respostaNova,
+                                    detalhes,
+                                    respondidoPor: String(respId || ''),
+                                    em: agora,
+                                },
+                            },
                             $set: {
                                 escolaId: aluno.escolaId,
                                 alunoId: aluno._id,
@@ -1047,7 +1057,7 @@ exports.updateAlunoDados = async (req, res) => {
                                 tipoAutorizacao: tipo,
                                 titulo: meta.titulo,
                                 descricao: meta.descricao,
-                                aceita: valor === true ? true : valor === false ? false : null,
+                                aceita: respostaNova,
                                 detalhes,
                                 dataResposta: agora,
                                 atualizadoEm: agora,
@@ -1115,6 +1125,25 @@ exports.uploadDocumentos = async (req, res) => {
         const { arquivos } = req.body;
         if (!arquivos || !Array.isArray(arquivos) || arquivos.length === 0) {
             return res.status(400).json({ success: false, error: 'Nenhum arquivo informado.' });
+        }
+
+        // Só entra na ficha o arquivo que ESTE usuário acabou de enviar
+        // (Issue #399). Antes, o corpo trazia um identificador qualquer do
+        // bucket, e dava para pendurar na ficha da criança um arquivo de
+        // outra conversa.
+        const { findFileDoc } = require('./FileController');
+        const meuId = String(req.user?.id || req.user?._id || '');
+        for (const a of arquivos) {
+            const referencia = a?.gridfsId || a?.id;
+            const noBucket = referencia ? await findFileDoc(String(referencia)) : null;
+            const dono = String(noBucket?.metadata?.usuarioId || '');
+            if (!noBucket || dono !== meuId) {
+                return res.status(403).json({
+                    success: false,
+                    codigo: 'ARQUIVO_NAO_E_SEU',
+                    error: 'Envie o arquivo pelo próprio formulário antes de registrá-lo na ficha.',
+                });
+            }
         }
 
         const novosArquivos = arquivos.map((a) => ({

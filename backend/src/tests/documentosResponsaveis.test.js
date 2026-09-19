@@ -240,7 +240,12 @@ describe('Documentos Assinados dos Responsáveis (/api/documentos-responsaveis)'
 
         const docAtualizado = await DocumentoResponsavel.findById(doc._id);
         expect(docAtualizado.status).toBe('Conferido');
-        expect(docAtualizado.observacoes).toBe('Documento assinado verificado com sucesso.');
+        // Desde a Issue #399 o comentário da escola fica em `parecerGestao`,
+        // separado do que a família escreveu no envio.
+        expect(docAtualizado.parecerGestao.texto).toBe(
+            'Documento assinado verificado com sucesso.'
+        );
+        expect(docAtualizado.observacoes).toBe('');
     });
 
     it('responsável pode substituir documento mantendo vínculo com o aluno', async () => {
