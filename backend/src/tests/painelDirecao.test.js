@@ -21,6 +21,7 @@ const path = require('node:path');
 
 const RAIZ = path.resolve(__dirname, '../../..');
 const PAGINA = path.join(RAIZ, 'html', 'dashboard.html');
+const DADOS = path.join(RAIZ, 'js', 'painel-dados.js');
 const PAINEL = path.join(RAIZ, 'js', 'painel-direcao.js');
 
 function corpoDaPagina() {
@@ -59,6 +60,7 @@ function abrir(rotas) {
         return chave ? rotas[chave]() : falha();
     });
     window.fetch = global.fetch;
+    require(DADOS);
     require(PAINEL);
 }
 
@@ -73,6 +75,7 @@ beforeEach(() => {
 afterEach(() => {
     delete global.fetch;
     delete window.PainelDirecao;
+    delete window.PainelDados;
 });
 
 describe('painel da direção (Issue #368)', () => {
