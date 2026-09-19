@@ -167,7 +167,6 @@ export interface GmailUser {
   email: string;
   name: string;
   picture: string;
-  accessToken: string;
 }
 
 export interface UseGmailAuthReturn {
@@ -175,7 +174,8 @@ export interface UseGmailAuthReturn {
   isAuthenticated: boolean;
   loading: boolean;
   error: string | null;
-  loginWithGmail: () => Promise<GmailUser>;
+  /** Guarda o perfil de exibição a partir do ID token do botão oficial. */
+  registrarCredencial: (credential: string) => GmailUser | null;
   logout: () => void;
 }
 

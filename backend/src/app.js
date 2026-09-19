@@ -662,6 +662,8 @@ app.use('/api/auth/2fa/verify', limitarCodigo);
 app.use('/api/auth/2fa/send', limitarCodigo);
 app.use('/api/auth/validate-code', limitarCodigo);
 app.use('/api/auth/verify-recovery-code', limitarCodigo);
+// Token de convite: mesmo freio dos outros códigos de uso único (Issue #386).
+app.use('/api/auth/convite-equipe', limitarCodigo);
 app.use('/api/responsavel/vincular', limitarCodigo);
 app.use('/api/responsavel/buscar-aluno', limitarCodigo);
 

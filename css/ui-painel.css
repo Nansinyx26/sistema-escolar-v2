@@ -2211,3 +2211,204 @@ body.ui3.ui-painel .pn-grade > :nth-child(n + 4) {
 body.ui3.ui-painel.sidebar-open .nandev-watermark {
     display: none;
 }
+
+/* ═══════════════════════════ Painel da direção (#368) ═══════════════════════ */
+
+/* Seis cartões: três por linha até telas bem largas, seis lado a lado acima. */
+body.ui3.ui-painel .pn-kpis--seis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (min-width: 1700px) {
+    body.ui3.ui-painel .pn-kpis--seis {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+}
+
+/* Barras (frequência e desempenho por turma) */
+body.ui3.ui-painel .pn-barras {
+    display: grid;
+    gap: 0.55rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+body.ui3.ui-painel .pn-barras > li > .pn-skel {
+    height: 1.3rem;
+}
+
+body.ui3.ui-painel .pn-barra {
+    display: grid;
+    grid-template-columns: 4.5rem minmax(0, 1fr) 3rem;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.86rem;
+}
+
+body.ui3.ui-painel .pn-barra-rot {
+    overflow: hidden;
+    color: var(--ui-text-2);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+body.ui3.ui-painel .pn-barra-trilho {
+    position: relative;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--ui-surface-3);
+}
+
+/* Linha dos 75% de presença (LDB) na frequência */
+body.ui3.ui-painel .pn-freq .pn-barra-trilho::after {
+    content: '';
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    left: 75%;
+    width: 2px;
+    border-radius: 2px;
+    background: var(--ui-text-3);
+}
+
+body.ui3.ui-painel .pn-barra-valor {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--ui-tint, var(--ui-accent));
+}
+
+body.ui3.ui-painel .pn-freq {
+    --ui-tint: var(--ui-cyan);
+}
+
+body.ui3.ui-painel .pn-desempenho {
+    --ui-tint: var(--ui-violet);
+}
+
+body.ui3.ui-painel .pn-barra--alerta .pn-barra-valor {
+    background: var(--ui-red);
+}
+
+body.ui3.ui-painel .pn-barra-num {
+    color: var(--ui-text);
+    font-size: 0.86rem;
+    text-align: right;
+}
+
+body.ui3.ui-painel .pn-barra--alerta .pn-barra-num {
+    color: var(--ui-red);
+}
+
+:root[data-theme='light']:not(.high-contrast) body.ui3.ui-painel .pn-barra--alerta .pn-barra-num {
+    color: var(--ui-red) !important;
+    -webkit-text-fill-color: var(--ui-red) !important;
+}
+
+/* Pendências */
+body.ui3.ui-painel .pn-pend-lista,
+body.ui3.ui-painel .pn-ev-lista {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+body.ui3.ui-painel .pn-pend-lista > li + li,
+body.ui3.ui-painel .pn-ev-lista > li + li {
+    border-top: 1px solid var(--ui-line);
+}
+
+body.ui3.ui-painel :is(.pn-pend-lista, .pn-ev-lista) > li > .pn-skel {
+    height: 2rem;
+    margin: 0.4rem 0;
+}
+
+body.ui3.ui-painel .pn-pend {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-height: 48px;
+    padding: 0.35rem 0.25rem;
+    border-radius: var(--ui-r-sm);
+    color: var(--ui-text);
+    font-size: 0.88rem;
+    text-decoration: none;
+    transition: background-color var(--ui-fast) var(--ui-ease-out);
+}
+
+body.ui3.ui-painel .pn-pend:hover {
+    background: color-mix(in srgb, var(--ui-surface-3) 60%, transparent);
+}
+
+body.ui3.ui-painel .pn-pill-alerta {
+    background: color-mix(in srgb, var(--ui-amber) 18%, transparent);
+    color: var(--ui-amber);
+}
+
+:root[data-theme='light']:not(.high-contrast) body.ui3.ui-painel .pn-pill-alerta {
+    color: var(--ui-amber) !important;
+    -webkit-text-fill-color: var(--ui-amber) !important;
+}
+
+/* Agenda da direção */
+body.ui3.ui-painel .pn-ev {
+    display: grid;
+    grid-template-columns: 5.2rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0;
+}
+
+body.ui3.ui-painel .pn-ev-data {
+    padding: 0.35rem 0.4rem;
+    border-radius: var(--ui-r-sm);
+    background: color-mix(in srgb, var(--ui-blue) 14%, transparent);
+    color: var(--ui-blue);
+    font-size: 0.78rem;
+    text-align: center;
+}
+
+:root[data-theme='light']:not(.high-contrast) body.ui3.ui-painel .pn-ev-data {
+    color: var(--ui-blue) !important;
+    -webkit-text-fill-color: var(--ui-blue) !important;
+}
+
+body.ui3.ui-painel .pn-ev-txt strong {
+    display: block;
+    font-size: 0.9rem;
+}
+
+body.ui3.ui-painel .pn-ev-txt span {
+    color: var(--ui-text-3);
+    font-size: 0.76rem;
+}
+
+/* Âncoras do menu (Frequência, Agenda) não somem sob o cabeçalho fixo */
+body.ui3.ui-painel :is(#pnFrequenciaTurmas, #pnAgendaDirecao) {
+    scroll-margin-top: calc(var(--pn-topo-h) + 1rem);
+}
+
+@media (max-width: 1279px) {
+    body.ui3.ui-painel .pn-kpis--seis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 1023px) {
+    body.ui3.ui-painel .pn-freq { order: 1; }
+    body.ui3.ui-painel .pn-pendencias { order: 2; }
+    body.ui3.ui-painel .pn-eventos { order: 3; }
+    body.ui3.ui-painel .pn-desempenho { order: 4; }
+    body.ui3.ui-painel .pn-atividade { order: 5; }
+    body.ui3.ui-painel .pn-avisos { order: 5; }
+    body.ui3.ui-painel .pn-seguranca { order: 6; }
+}
+
+@media (max-width: 768px) {
+    body.ui3.ui-painel .pn-kpis--seis {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

@@ -1113,7 +1113,7 @@ exports.getPresenca = async (req, res) => {
 
         const presence = require('../realtime/presence');
         const info = req.escolaId
-            ? presence.infoDe(req.escolaId, outroUsuarioId)
+            ? (await presence.consultar(req.escolaId, outroUsuarioId)).infoDe(outroUsuarioId)
             : { status: 'offline', online: false, onlineDesde: null, ultimoAcesso: null };
 
         res.json({ success: true, data: info });
@@ -1327,13 +1327,14 @@ exports.listarContatos = async (req, res) => {
             naoLidas.map((linha) => [String(linha._id), linha.total])
         );
 
-        const presence = require('../realtime/presence');
+        // Uma consulta de presença para a escola inteira, não uma por contato.
+        const retrato = await require('../realtime/presence').consultar(escolaId);
         const agora = new Date();
 
         const contatos = candidatos
             .map((usuario) => {
                 const id = String(usuario._id);
-                const info = presence.infoDe(escolaId, id);
+                const info = retrato.infoDe(id);
                 return {
                     id,
                     nome: usuario.nome,

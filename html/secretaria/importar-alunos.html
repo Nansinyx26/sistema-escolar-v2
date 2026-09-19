@@ -114,16 +114,16 @@
             <div class="sec-form-card">
                 <h3><i class="bi bi-1-circle" style="color:#10b981;"></i> Envie o documento com os dados dos alunos</h3>
                 <p class="step-hint">
-                    Aceita <strong>CSV / planilha</strong> (mais confiável) ou <strong>PDF / DOCX</strong> (os dados são lidos por IA e ficam para você conferir antes de salvar).
+                    Aceita <strong>CSV / planilha</strong>. Para o <strong>PDF da SEDUC</strong>, use a importação na <a href="turma-alunos.html" style="color:#10b981;">tela da turma</a>, que lê o arquivo no próprio servidor.
                     Colunas reconhecidas: nome, sobrenome, matricula, turma, nascimento, responsavel, telefone, cpfAluno.
                     <a href="#" onclick="baixarModeloCSV(event)" style="color:#10b981;">Baixar modelo CSV</a>.
                 </p>
                 <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Selecionar arquivo">
                     <i class="bi bi-file-earmark-arrow-up"></i>
                     <p>Clique aqui ou arraste um arquivo</p>
-                    <small>.csv, .txt, .pdf, .docx — até 8 MB</small>
+                    <small>.csv, .txt — até 8 MB</small>
                 </div>
-                <input type="file" id="fileInput" accept=".csv,.txt,.pdf,.docx" style="display:none;">
+                <input type="file" id="fileInput" accept=".csv,.txt" style="display:none;">
                 <div id="fileStatus" style="margin-top:1rem;"></div>
             </div>
 
@@ -224,16 +224,12 @@ async function processarArquivo(file) {
             if (!parsed.length) return toast('Nenhuma linha encontrada no arquivo.', 'error');
             carregarRevisao(parsed);
             toast(`${parsed.length} aluno(s) lidos do arquivo.`);
-        } else if (nome.endsWith('.pdf')) {
-            status.innerHTML += ' <span class="spinner"></span> extraindo texto do PDF…';
-            const texto = await extrairTextoPDF(file);
-            await estruturarComIA(texto);
-        } else if (nome.endsWith('.docx')) {
-            status.innerHTML += ' <span class="spinner"></span> extraindo texto do DOCX…';
-            const texto = await extrairTextoDOCX(file);
-            await estruturarComIA(texto);
+        } else if (nome.endsWith('.pdf') || nome.endsWith('.docx')) {
+            // PDF e DOCX não são mais lidos aqui: o texto ia para um serviço
+            // externo. O PDF da SEDUC é importado na tela da turma, localmente.
+            toast('PDF e DOCX são importados na tela da turma (PDF da SEDUC). Aqui, use CSV.', 'error');
         } else {
-            toast('Formato não suportado. Use CSV, PDF ou DOCX.', 'error');
+            toast('Formato não suportado. Use CSV.', 'error');
         }
     } catch (err) {
         console.error(err);
@@ -285,56 +281,6 @@ function normalizarChave(h) {
         turma:'turma', nascimento:'nascimento', datanascimento:'nascimento', dtnascimento:'nascimento',
         responsavel:'responsavel', telefone:'telefone', celular:'telefone', cpf:'cpfAluno', cpfaluno:'cpfAluno' };
     return mapa[k] || k;
-}
-
-// ─── Extração de PDF (pdf.js sob demanda) ────────────────────────────────────
-function carregarScript(src) {
-    return new Promise((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src = src; s.onload = resolve; s.onerror = () => reject(new Error('Falha ao carregar biblioteca de leitura.'));
-        document.head.appendChild(s);
-    });
-}
-
-async function extrairTextoPDF(file) {
-    if (!window.pdfjsLib) {
-        await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    }
-    const buf = await file.arrayBuffer();
-    const pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
-    let texto = '';
-    for (let p = 1; p <= pdf.numPages; p++) {
-        const page = await pdf.getPage(p);
-        const content = await page.getTextContent();
-        texto += content.items.map(it => it.str).join(' ') + '\n';
-    }
-    if (!texto.trim()) throw new Error('PDF sem texto legível (pode ser digitalizado/imagem).');
-    return texto;
-}
-
-async function extrairTextoDOCX(file) {
-    if (!window.mammoth) {
-        await carregarScript('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js');
-    }
-    const buf = await file.arrayBuffer();
-    const result = await window.mammoth.extractRawText({ arrayBuffer: buf });
-    if (!result.value.trim()) throw new Error('DOCX sem texto legível.');
-    return result.value;
-}
-
-// ─── IA estrutura o texto para revisão ───────────────────────────────────────
-async function estruturarComIA(texto) {
-    const res = await fetch(`${API()}/secretaria/alunos/importar/estruturar`, {
-        method: 'POST', credentials: 'include',
-        headers: window.csrfHeaders(true),
-        body: JSON.stringify({ texto })
-    });
-    const json = await res.json();
-    if (!json.success) throw new Error(json.error || 'Não foi possível ler o documento.');
-    if (!json.data.alunos.length) return toast('Nenhum aluno identificado no documento. Revise ou use CSV.', 'error');
-    carregarRevisao(json.data.alunos);
-    toast(`${json.data.alunos.length} aluno(s) identificados. Confira antes de salvar.`);
 }
 
 // ─── Tabela de revisão ───────────────────────────────────────────────────────

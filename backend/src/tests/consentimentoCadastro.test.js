@@ -14,8 +14,10 @@
  * AS ROTAS VIVAS, E NÃO O SERVIÇO
  * -------------------------------
  * O `RegistrationService` só é chamado pelo `UserController-REFATORADO`, que não
- * está em nenhuma rota. Os testes aqui sobem o `app` e fazem POST nas cinco
- * rotas que os formulários de verdade usam.
+ * está em nenhuma rota. Os testes aqui sobem o `app` e fazem POST nas rotas
+ * públicas de cadastro que os formulários de verdade usam. Direção e secretaria
+ * deixaram de ter cadastro público (Issue #378) e são testadas em
+ * `contencaoAcesso.regressao.test.js`.
  *
  * A TRAVA ESTÁTICA
  * ----------------
@@ -77,20 +79,6 @@ const ROTAS = {
         turma: '2B',
         matricula: 'M42',
         telefone: '(19) 99999-0002',
-        codigoEscola: CODIGO_ESCOLA_TESTE,
-    }),
-    'register-diretor': (email) => ({
-        nome: 'Diretora Fixture',
-        email,
-        senha: SENHA_TESTE,
-        telefone: '(19) 99999-0003',
-        codigoEscola: CODIGO_ESCOLA_TESTE,
-    }),
-    'register-secretaria': (email) => ({
-        nome: 'Secretaria Fixture',
-        email,
-        senha: SENHA_TESTE,
-        telefone: '(19) 99999-0004',
         codigoEscola: CODIGO_ESCOLA_TESTE,
     }),
     'register-code': (email) => ({
@@ -337,13 +325,14 @@ describe('trava: nenhum caminho de criação de conta grava consentimento sozinh
         expect(infratores).toEqual([]);
     });
 
-    it('as cinco rotas validam antes do create e gravam pelo módulo', () => {
+    it('toda rota de cadastro valida antes do create e grava pelo módulo', () => {
         const fonte = fs.readFileSync(path.join(SRC, 'controllers/UserController.js'), 'utf8');
+        // Direção e secretaria passaram a entrar por convite (Issue #386):
+        // `aceitarConviteEquipe` ocupa o lugar de registerDiretor/registerSecretaria.
         const handlers = [
             'registerResponsavel',
             'registerDocente',
-            'registerDiretor',
-            'registerSecretaria',
+            'aceitarConviteEquipe',
             'registerWithCode',
         ];
         for (const nome of handlers) {

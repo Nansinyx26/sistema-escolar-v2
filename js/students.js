@@ -323,7 +323,8 @@ class StudentManager {
             return {
                 total: alunos.length,
                 porTurma: countByTurma,
-                comDeficiencia: alunos.filter((a) => a.deficiencia).length,
+                // `necessitaApoio` é o que o professor recebe no lugar do detalhe (Issue #388).
+                comDeficiencia: alunos.filter((a) => a.deficiencia || a.necessitaApoio).length,
                 turmasAtivas: Object.keys(countByTurma).length,
             };
         } catch (error) {

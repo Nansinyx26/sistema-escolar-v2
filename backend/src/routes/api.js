@@ -241,6 +241,8 @@ router.use('/notificacoes', authJWT, filtrarPorEscola, require('./notificacoes')
 // Bloqueios de IP e diagnóstico do IP do cliente (docs/RATE-LIMIT.md). Vem
 // antes de '/admin' para o caminho mais específico responder primeiro.
 router.use('/admin/seguranca', authJWT, authorize('admin'), require('./adminSeguranca'));
+// Convites de direção e secretaria (Issue #386) — só o admin convida.
+router.use('/admin/convites-equipe', authJWT, authorize('admin'), require('./convitesEquipe'));
 router.use('/admin', authJWT, authorize('admin'), require('./admin'));
 router.use('/security', authJWT, filtrarPorEscola, require('./security'));
 router.use('/audit', authJWT, filtrarPorEscola, require('./audit'));

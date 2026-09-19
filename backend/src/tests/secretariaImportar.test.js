@@ -8,7 +8,7 @@
  *   - Linha sem nome entra em "erros" (não é criada)
  *   - Matrícula (RA) duplicada é ignorada, não duplica no banco
  *   - Validação de payload vazio
- *   - estruturar: rejeita texto vazio
+ *   - estruturar: desativada (410), sem chamar o provedor de IA
  */
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
@@ -16,12 +16,21 @@ const app = require('../app');
 const Aluno = require('../models/Aluno');
 const { conectarBanco, limparBanco, desconectarBanco, criarUsuario } = require('./helpers');
 
-beforeAll(async () => { await conectarBanco(); });
-afterEach(async () => { await limparBanco(); });
-afterAll(async () => { await desconectarBanco(); });
+beforeAll(async () => {
+    await conectarBanco();
+});
+afterEach(async () => {
+    await limparBanco();
+});
+afterAll(async () => {
+    await desconectarBanco();
+});
 
 async function cookieSecretaria() {
-    const sec = await criarUsuario({ perfil: 'secretaria', email: `sec_${Date.now()}@escola.test` });
+    const sec = await criarUsuario({
+        perfil: 'secretaria',
+        email: `sec_${Date.now()}@escola.test`,
+    });
     const token = jwt.sign(
         { id: sec._id, perfil: sec.perfil, email: sec.email, nome: sec.nome },
         process.env.JWT_SECRET,
@@ -31,7 +40,6 @@ async function cookieSecretaria() {
 }
 
 describe('POST /api/secretaria/alunos/importar', () => {
-
     it('deve retornar 401 sem cookie JWT', async () => {
         const res = await request(app)
             .post('/api/secretaria/alunos/importar')
@@ -59,9 +67,15 @@ describe('POST /api/secretaria/alunos/importar', () => {
             .set('X-CSRF-Token', 'test')
             .send({
                 alunos: [
-                    { nome: 'Ana', sobrenome: 'Souza', matricula: 'RA001', turma: '5A', nascimento: '10/03/2015' },
+                    {
+                        nome: 'Ana',
+                        sobrenome: 'Souza',
+                        matricula: 'RA001',
+                        turma: '5A',
+                        nascimento: '10/03/2015',
+                    },
                     { nome: 'Bruno', sobrenome: 'Lima', matricula: 'RA002', turma: '5A' },
-                ]
+                ],
             });
 
         expect(res.status).toBe(201);
@@ -72,7 +86,7 @@ describe('POST /api/secretaria/alunos/importar', () => {
         const total = await Aluno.countDocuments({});
         expect(total).toBe(2);
 
-        const ana = await Aluno.findOne({ nome: 'Ana' });
+        const ana = await Aluno.findOne({ nome: 'Ana' }).select('+codigoSecreto');
         expect(ana.ativo).toBe(true);
         expect(ana.matricula).toBe('RA001');
         expect(ana.nascimento).toBeInstanceOf(Date);
@@ -89,7 +103,7 @@ describe('POST /api/secretaria/alunos/importar', () => {
                 alunos: [
                     { nome: '', turma: '5A' },
                     { nome: 'Carla', turma: '5B' },
-                ]
+                ],
             });
 
         expect(res.status).toBe(201);
@@ -116,14 +130,18 @@ describe('POST /api/secretaria/alunos/importar', () => {
 });
 
 describe('POST /api/secretaria/alunos/importar/estruturar', () => {
-    it('deve rejeitar texto vazio', async () => {
+    it('responde 410 e não envia o documento ao provedor de IA', async () => {
+        const voiceService = require('../services/voiceService');
+        const espiao = jest.spyOn(voiceService, 'generateInsightText');
         const cookie = await cookieSecretaria();
         const res = await request(app)
             .post('/api/secretaria/alunos/importar/estruturar')
             .set('Cookie', cookie)
             .set('X-CSRF-Token', 'test')
-            .send({ texto: '' });
-        expect(res.status).toBe(400);
-        expect(res.body.success).toBe(false);
+            .send({ texto: 'Fulano de Tal, RA 123, 3A, nascido em 01/01/2018' });
+        expect(res.status).toBe(410);
+        expect(res.body.codigo).toBe('IMPORTACAO_POR_IA_DESATIVADA');
+        expect(espiao).not.toHaveBeenCalled();
+        espiao.mockRestore();
     });
 });

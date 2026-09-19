@@ -88,6 +88,44 @@ async function criarPerfilSecretaria(user, nomeEscola) {
     });
 }
 
+/**
+ * Perfil de direção + VÍNCULO da escola — o par de `criarPerfilSecretaria`.
+ * Sem o vínculo, o login não resolve a escola da conta.
+ */
+async function criarPerfilDiretor(user, nomeEscola) {
+    const mongoose = require('mongoose');
+    const Diretor = require('../models/Diretor');
+    const escolaId = user.escolaId ? String(user.escolaId) : null;
+    const email = String(user.email).toLowerCase();
+
+    const existente = await Diretor.findOne({
+        $or: [{ idUsuario: String(user._id) }, { email }],
+    });
+    if (existente) {
+        const jaVinculado =
+            !escolaId || (existente.vinculos || []).some((v) => String(v.escolaId) === escolaId);
+        if (!jaVinculado) {
+            existente.vinculos = [...(existente.vinculos || []), { escolaId, cargo: 'diretor' }];
+            existente.escolaId = escolaId;
+            await existente.save();
+        }
+        return existente;
+    }
+
+    return Diretor.create({
+        _id: new mongoose.Types.ObjectId().toString(),
+        idUsuario: String(user._id),
+        nome: user.nome,
+        email,
+        telefone: user.telefone,
+        escola: nomeEscola || user.escola || 'default',
+        role: 'director',
+        ativo: user.ativo !== false,
+        vinculos: escolaId ? [{ escolaId, cargo: 'diretor' }] : [],
+        escolaId: escolaId || undefined,
+    });
+}
+
 // O transporte de e-mail vive em services/EnvioEmail.js. Este bloco era a
 // primeira das cinco cópias de `createTransport` espalhadas pelo projeto; com o
 // último `sendMail` daqui migrado, ele ficou sem nenhum uso.
@@ -942,8 +980,8 @@ exports.login = async (req, res) => {
                 perfilRotulo: require('../utils/perfilRotulo').rotuloDoPerfil(user.perfil),
                 email: user.email,
                 deveMudarSenha: user.deveMudarSenha,
-                cpf: user.cpf,
-                telefone: user.telefone,
+                // CPF e telefone não saem no login (Issue #388): quem precisa
+                // deles lê `/api/auth/me`, que devolve os dados da própria conta.
                 consentimentoAceiteEm: user.consentimentoAceiteEm,
                 perfilDefinidoEm: user.perfilDefinidoEm || null,
                 tutorialProfessorConcluido: !!user.tutorialProfessorConcluido,
@@ -1056,36 +1094,46 @@ exports.googleLogin = async (req, res) => {
             ? process.env.GOOGLE_CLIENT_ID.trim()
             : DEFAULT_CLIENT_ID;
 
-        // Se o token for um ID Token (JWT), ele começa com "eyJ" (cabeçalho padrão de JWT)
-        if (token.startsWith('eyJ')) {
+        // SÓ ID TOKEN (Issue #387). O ID token é assinado pelo Google e declara
+        // para qual client ID foi emitido; `verifyIdToken` confere assinatura,
+        // emissor, validade e `audience`. Um access token não diz a que
+        // aplicativo pertence — aceitar um significaria aceitar credencial
+        // emitida para qualquer outro site — e por isso é recusado.
+        if (typeof token !== 'string' || !/^eyJ[\w-]*\.[\w-]+\.[\w-]+$/.test(token)) {
+            return res.status(401).json({
+                success: false,
+                codigo: 'CREDENCIAL_GOOGLE_INVALIDA',
+                error: 'Credencial do Google inválida. Atualize a página e tente novamente.',
+            });
+        }
+
+        let googlePayload;
+        try {
             const { OAuth2Client } = require('google-auth-library');
             const client = new OAuth2Client(clientId);
-
-            const ticket = await client.verifyIdToken({
-                idToken: token,
-                audience: clientId,
+            const ticket = await client.verifyIdToken({ idToken: token, audience: clientId });
+            googlePayload = ticket.getPayload();
+        } catch (_erroVerificacao) {
+            return res.status(401).json({
+                success: false,
+                codigo: 'CREDENCIAL_GOOGLE_INVALIDA',
+                error: 'Credencial do Google inválida. Atualize a página e tente novamente.',
             });
-            const googlePayload = ticket.getPayload();
-
-            email = googlePayload.email.toLowerCase();
-            nome = googlePayload.name;
-            picture = googlePayload.picture || '';
-        } else {
-            // Caso contrário, é um Access Token (fluxo popup de botão customizado)
-            // Buscamos as informações do usuário diretamente na API oficial do Google
-            const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-
-            if (!response.ok) {
-                throw new Error('Falha ao validar o Access Token do Google.');
-            }
-
-            const googlePayload = await response.json();
-            email = googlePayload.email.toLowerCase();
-            nome = googlePayload.name || googlePayload.given_name || email.split('@')[0];
-            picture = googlePayload.picture || '';
         }
+
+        // E-mail não verificado pelo Google não prova posse do endereço — e é
+        // pelo e-mail que a conta do responsável é localizada.
+        if (!googlePayload?.email || googlePayload.email_verified !== true) {
+            return res.status(401).json({
+                success: false,
+                codigo: 'EMAIL_GOOGLE_NAO_VERIFICADO',
+                error: 'O e-mail desta conta Google não está verificado.',
+            });
+        }
+
+        email = String(googlePayload.email).toLowerCase();
+        nome = googlePayload.name;
+        picture = googlePayload.picture || '';
 
         // ============================================
         // SANITIZAÇÃO DE DADOS DE TERCEIRO (Google)
@@ -1137,6 +1185,28 @@ exports.googleLogin = async (req, res) => {
                 // `lgpdHistory` (ver `newLgpdRecords` em updateProfile).
             });
         } else {
+            // O login com Google é a porta da FAMÍLIA. Conta de equipe entra
+            // pelo portal da escola, com senha e segundo fator; aceitá-la aqui
+            // emitiria sessão sem a política de 2FA. A recusa vem antes de
+            // qualquer escrita, para a tentativa não alterar a conta.
+            if (user.perfil !== 'responsavel') {
+                await logAction(req, 'LOGIN_GOOGLE_RECUSADO', 'Segurança', {
+                    recursoId: user._id,
+                    descricao: `Login com Google recusado para conta de perfil ${user.perfil}.`,
+                });
+                return res.status(403).json({
+                    success: false,
+                    codigo: 'LOGIN_GOOGLE_SO_RESPONSAVEL',
+                    error: 'A equipe escolar entra com e-mail e senha no portal da escola.',
+                });
+            }
+            if (user.ativo === false) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'Conta desativada. Procure a secretaria da escola.',
+                });
+            }
+
             // Usuário existente: sincronizar foto do Google se houver mudança
             const updateFields = { loginGoogle: true, ultimoLogin: new Date() };
             if (picture && picture !== user.fotoGoogle) {
@@ -2686,289 +2756,177 @@ exports.updateTTSSettings = async (req, res) => {
 };
 
 /**
- * Cadastro público de Diretor
- * Requer Código Secreto da Escola (validação diária)
+ * Cadastro público de direção e secretaria — desativado (Issue #378).
+ *
+ * O código da escola é entregue aos professores para o cadastro docente; ele
+ * não prova que alguém ocupa um cargo de gestão. Contas de direção e secretaria
+ * nascem por convite de uso único do admin (`aceitarConviteEquipe`, abaixo).
+ * As rotas antigas continuam respondendo, para uma página em cache receber a
+ * orientação em vez de um 404.
  */
-exports.registerDiretor = async (req, res) => {
-    const { nome, email, senha, telefone, escola, codigoEscola, escolaId } = req.body;
+exports.cadastroEquipeSomentePorConvite = (_req, res) => {
+    res.status(403).json({
+        success: false,
+        codigo: 'CADASTRO_EQUIPE_POR_CONVITE',
+        error: 'Contas de direção e secretaria são criadas por convite da administração do sistema. Procure a Secretaria de Educação.',
+    });
+};
 
+// Mesma resposta para convite inexistente, usado, revogado, expirado ou de
+// outro e-mail: o aceite não conta a quem tenta o que aconteceu com o convite.
+const RESPOSTA_CONVITE_INVALIDO = {
+    success: false,
+    codigo: 'CONVITE_INVALIDO',
+    error: 'Convite inválido, expirado ou já utilizado. Peça um novo convite à administração.',
+};
+
+const LOGIN_DO_PERFIL = {
+    diretor: '/html/login-diretor.html',
+    secretaria: '/html/login-secretaria.html',
+};
+
+/**
+ * POST /api/auth/convite-equipe/consultar — público, por token.
+ * Devolve o suficiente para a página mostrar "convite de X na escola Y", com o
+ * e-mail mascarado: um link vazado não entrega o endereço inteiro.
+ */
+exports.consultarConviteEquipe = async (req, res) => {
     try {
-        if (!nome || !email || !senha || !telefone || !codigoEscola) {
-            return res.status(400).json({
-                success: false,
-                error: 'Todos os campos são obrigatórios, incluindo o Código Secreto da Escola.',
-            });
+        const convites = require('../services/convitesEquipe');
+        const convite = await convites.buscarPorToken(req.body?.token);
+        if (convites.situacao(convite) !== 'ativo') {
+            return res.status(403).json(RESPOSTA_CONVITE_INVALIDO);
         }
-
-        // Criar a conta exige o aceite da Política de Privacidade (Issue #295).
-        // Antes de qualquer consulta ao banco: sem aceite, nada é criado.
-        const recusaConsentimento = validarConsentimentoDoCadastro(req.body);
-        if (recusaConsentimento) return res.status(400).json(recusaConsentimento);
-
-        // 1. Valida o código secreto (por escola quando escolaId presente)
-        const SecurityController = require('./SecurityController');
-        const codeResult = await SecurityController.validateCode(codigoEscola, escolaId || null);
-        if (!codeResult) {
-            console.log(
-                `⚠️ [REGISTER-DIRETOR] Código inválido para escolaId=${escolaId || '(auto)'}`
-            );
-            return res.status(403).json({
-                success: false,
-                error: 'Código Secreto da Escola inválido ou expirado. Solicite o código atual à direção da escola.',
-            });
-        }
-        const escolaResolvida = codeResult.escola || null;
-        const escolaIdFinal = escolaResolvida ? String(escolaResolvida._id) : null;
-
-        // 2. Validações básicas
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            return res.status(400).json({ success: false, error: 'E-mail inválido.' });
-        }
-
-        if (
-            senha.length < 8 ||
-            !/[A-Z]/.test(senha) ||
-            !/[0-9]/.test(senha) ||
-            !/[^A-Za-z0-9]/.test(senha)
-        ) {
-            return res.status(400).json({
-                success: false,
-                error: 'A senha deve ter no mínimo 8 caracteres, uma letra maiúscula, um número e um caractere especial.',
-            });
-        }
-
-        const Usuario = require('../models/Usuario');
-        const Notificacao = require('../models/Notificacao');
-
-        const existingUser = await Usuario.findOne({ email: email.toLowerCase() });
-        if (existingUser) {
-            return res.status(400).json({ success: false, error: 'Este e-mail já está em uso.' });
-        }
-
-        // 3. Cria a conta
-        const bcrypt = require('bcryptjs');
-        const senhaHash = await bcrypt.hash(senha, SALT_ROUNDS);
-
-        const now = new Date();
-        const user = await Usuario.create({
-            nome,
-            email: email.toLowerCase(),
-            senha: senhaHash,
-            telefone,
-            escola: escola || undefined,
-            perfil: 'diretor',
-            ativo: true,
-            ultimoLogin: now,
-            lastLogin: now,
-            // O aceite que a pessoa marcou no formulário, com IP e navegador —
-            // conferido acima por validarConsentimentoDoCadastro (Issue #295).
-            ...assinaturasDoCadastro(req),
-        });
-
-        // 4. Auto-criação do registro na coleção 'diretores'
-        const mongoose = require('mongoose');
-        const Diretor = require('../models/Diretor');
-
-        await Diretor.create({
-            _id: new mongoose.Types.ObjectId().toString(),
-            idUsuario: user._id.toString(),
-            nome: user.nome,
-            email: user.email.toLowerCase(),
-            telefone: user.telefone || telefone,
-            escola: escolaResolvida ? escolaResolvida.nome : escola || 'default',
-            role: 'director',
-            ativo: true,
-            vinculos: escolaIdFinal ? [{ escolaId: escolaIdFinal, cargo: 'diretor' }] : [],
-            escolaId: escolaIdFinal || undefined,
-        });
-
-        // 5. Notificação persistente
-        const hourStr = now.toLocaleTimeString('pt-BR', {
-            hour: '2-digit',
-            minute: '2-digit',
-            timeZone: 'America/Sao_Paulo',
-        });
-        const dateStr = now.toLocaleDateString('pt-BR', {
-            day: '2-digit',
-            month: '2-digit',
-            timeZone: 'America/Sao_Paulo',
-        });
-        const notifMsg = `Novo diretor cadastrado às ${hourStr}`;
-
-        await Notificacao.create({
-            id: 'notif_reg_' + Date.now(),
-            tipo: 'cadastro',
-            titulo: notifMsg,
-            mensagem: `${nome} se cadastrou como Diretor${escola ? ` (${escola})` : ''} no dia ${dateStr} às ${hourStr}.`,
-            destinatarios: 'diretores',
-            status: 'enviado',
-            escolaId: escolaIdFinal || undefined,
-        });
-
-        // 6. WebSocket — só a direção da escola
-        emitirParaPerfis(escolaIdFinal, ['diretor', 'admin'], 'new-registration', {
-            nome: user.nome,
-            perfil: 'Diretor',
-            data: dateStr,
-            horario: hourStr,
-        });
-
-        // 7. JWT auto-login
-        emitirTokenSessao(res, user);
-
-        // Sessão multi-escola
-        if (req.session && escolaIdFinal) {
-            req.session.escolaAtivaId = escolaIdFinal;
-            req.session.usuarioId = String(user._id);
-        }
-
-        res.status(201).json({
+        const Escola = require('../models/Escola');
+        const escola = await Escola.findById(convite.escolaId).select('nome').lean();
+        return res.json({
             success: true,
-            message: 'Conta de diretor criada com sucesso!',
-            user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email },
-            redirect_to: getRedirectPath(user),
+            data: {
+                perfil: convite.perfil,
+                escolaNome: escola?.nome || null,
+                emailMascarado: mascararEmail(convite.email),
+                expiraEm: convite.expiraEm,
+            },
         });
     } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
+        logger.error('[Convite] Falha ao consultar convite', {
+            err: e,
+            action: 'convite.consultar',
+        });
+        return res.status(500).json({ success: false, error: 'Erro ao consultar o convite.' });
     }
 };
 
 /**
- * Cadastro público de Secretaria
- * Requer Código Secreto da Escola (validação diária)
+ * POST /api/auth/convite-equipe/aceitar — público, por token.
+ *
+ * Cria a conta de direção ou secretaria descrita no convite:
+ *   - o e-mail digitado precisa ser o do convite;
+ *   - o convite é consumido de forma atômica antes de a conta existir, e
+ *     devolvido se a criação falhar;
+ *   - a conta nasce vinculada à escola do convite;
+ *   - NENHUMA sessão é emitida: a pessoa entra depois pelo login, com senha e
+ *     segundo fator, como qualquer conta de gestão.
  */
-exports.registerSecretaria = async (req, res) => {
-    const { nome, email, senha, telefone, escola, codigoEscola, escolaId } = req.body;
-
+exports.aceitarConviteEquipe = async (req, res) => {
+    const { token, nome, email, senha, telefone } = req.body || {};
     try {
-        if (!nome || !email || !senha || !telefone || !codigoEscola) {
+        if (!token || !nome || !email || !senha || !telefone) {
             return res.status(400).json({
                 success: false,
-                error: 'Todos os campos são obrigatórios, incluindo o Código Secreto da Escola.',
+                error: 'Preencha nome, e-mail, telefone e senha.',
             });
         }
-
-        // Criar a conta exige o aceite da Política de Privacidade (Issue #295).
-        // Antes de qualquer consulta ao banco: sem aceite, nada é criado.
         const recusaConsentimento = validarConsentimentoDoCadastro(req.body);
         if (recusaConsentimento) return res.status(400).json(recusaConsentimento);
-
-        // 1. Valida o código secreto (por escola quando escolaId presente)
-        const SecurityController = require('./SecurityController');
-        const codeResult = await SecurityController.validateCode(codigoEscola, escolaId || null);
-        if (!codeResult) {
-            console.log(
-                `⚠️ [REGISTER-SECRETARIA] Código inválido para escolaId=${escolaId || '(auto)'}`
-            );
-            return res.status(403).json({
-                success: false,
-                error: 'Código Secreto da Escola inválido ou expirado. Solicite o código atual à direção da escola.',
-            });
-        }
-        const escolaResolvida = codeResult.escola || null;
-        const escolaIdFinal = escolaResolvida ? String(escolaResolvida._id) : null;
-
-        // 2. Validações básicas
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        if (!validateEmail(email)) {
             return res.status(400).json({ success: false, error: 'E-mail inválido.' });
         }
-
-        if (
-            senha.length < 8 ||
-            !/[A-Z]/.test(senha) ||
-            !/[0-9]/.test(senha) ||
-            !/[^A-Za-z0-9]/.test(senha)
-        ) {
+        if (!validatePasswordStrength(senha)) {
             return res.status(400).json({
                 success: false,
                 error: 'A senha deve ter no mínimo 8 caracteres, uma letra maiúscula, um número e um caractere especial.',
             });
         }
 
-        const Usuario = require('../models/Usuario');
-        const Notificacao = require('../models/Notificacao');
+        const convites = require('../services/convitesEquipe');
+        const convite = await convites.buscarPorToken(token);
+        const estado = convites.situacao(convite);
+        const emailConfere = !!convite && convite.email === String(email).trim().toLowerCase();
 
-        const existingUser = await Usuario.findOne({ email: email.toLowerCase() });
-        if (existingUser) {
-            return res.status(400).json({ success: false, error: 'Este e-mail já está em uso.' });
+        if (estado !== 'ativo' || !emailConfere) {
+            if (convite) {
+                await logAction(req, 'CONVITE_EQUIPE_RECUSADO', 'Segurança', {
+                    recursoId: String(convite._id),
+                    descricao: `Aceite recusado: convite ${estado}${emailConfere ? '' : ', e-mail diferente do convidado'}.`,
+                });
+            }
+            return res.status(403).json(RESPOSTA_CONVITE_INVALIDO);
         }
 
-        // 3. Cria a conta
-        const bcrypt = require('bcryptjs');
-        const senhaHash = await bcrypt.hash(senha, SALT_ROUNDS);
-
-        const now = new Date();
-        // `escolaId` é OBRIGATÓRIO aqui: UserController.list filtra a coleção
-        // `usuarios` por escolaMatch(req.escolaId). Sem o carimbo, a conta
-        // existia mas ficava invisível em "Gerenciar Secretaria" — o diretor
-        // via a lista vazia mesmo com secretarias cadastradas na escola dele.
-        const user = await Usuario.create({
-            nome,
-            email: email.toLowerCase(),
-            senha: senhaHash,
-            telefone,
-            escola: escolaResolvida ? escolaResolvida.nome : escola || undefined,
-            escolaId: escolaIdFinal || undefined,
-            perfil: 'secretaria',
-            ativo: true,
-            ultimoLogin: now,
-            lastLogin: now,
-            // O aceite que a pessoa marcou no formulário, com IP e navegador —
-            // conferido acima por validarConsentimentoDoCadastro (Issue #295).
-            ...assinaturasDoCadastro(req),
-        });
-
-        // 4. Auto-criação do registro na coleção 'secretarias' (com o vínculo
-        //    da escola — é por ele que o login resolve o tenant da conta)
-        await criarPerfilSecretaria(user, escolaResolvida ? escolaResolvida.nome : escola);
-
-        // 5. Notificação persistente
-        const hourStr = now.toLocaleTimeString('pt-BR', {
-            hour: '2-digit',
-            minute: '2-digit',
-            timeZone: 'America/Sao_Paulo',
-        });
-        const dateStr = now.toLocaleDateString('pt-BR', {
-            day: '2-digit',
-            month: '2-digit',
-            timeZone: 'America/Sao_Paulo',
-        });
-        const notifMsg = `Nova secretaria cadastrada às ${hourStr}`;
-
-        await Notificacao.create({
-            id: 'notif_reg_' + Date.now(),
-            tipo: 'cadastro',
-            titulo: notifMsg,
-            mensagem: `${nome} se cadastrou como Secretaria${escola ? ` (${escola})` : ''} no dia ${dateStr} às ${hourStr}.`,
-            destinatarios: 'diretores',
-            status: 'enviado',
-            escolaId: escolaIdFinal || undefined,
-        });
-
-        // 6. WebSocket — só a direção da escola
-        emitirParaPerfis(escolaIdFinal, ['diretor', 'admin'], 'new-registration', {
-            nome: user.nome,
-            perfil: 'Secretaria',
-            data: dateStr,
-            horario: hourStr,
-        });
-
-        // 7. JWT auto-login
-        emitirTokenSessao(res, user);
-
-        // Sessão multi-escola
-        if (req.session && escolaIdFinal) {
-            req.session.escolaAtivaId = escolaIdFinal;
-            req.session.usuarioId = String(user._id);
+        if (await Usuario.exists({ email: convite.email })) {
+            return res.status(409).json({
+                success: false,
+                error: 'Já existe conta com este e-mail. Entre pelo login ou procure a administração.',
+            });
         }
 
-        res.status(201).json({
+        const consumido = await convites.consumir(convite._id);
+        if (!consumido) return res.status(403).json(RESPOSTA_CONVITE_INVALIDO);
+
+        let user = null;
+        try {
+            const Escola = require('../models/Escola');
+            const escola = await Escola.findById(convite.escolaId).select('nome').lean();
+            const senhaHash = await bcrypt.hash(senha, SALT_ROUNDS);
+
+            user = await Usuario.create({
+                nome,
+                email: convite.email,
+                senha: senhaHash,
+                telefone,
+                perfil: convite.perfil,
+                escola: escola?.nome || undefined,
+                escolaId: convite.escolaId,
+                ativo: true,
+                // O convite chegou por este e-mail e o aceite exigiu digitá-lo.
+                emailVerificado: true,
+                ...assinaturasDoCadastro(req),
+            });
+
+            if (convite.perfil === 'diretor') {
+                await criarPerfilDiretor(user, escola?.nome);
+            } else {
+                await criarPerfilSecretaria(user, escola?.nome);
+            }
+        } catch (erroCriacao) {
+            // Sem conta pela metade e sem convite queimado por falha nossa.
+            if (user) await Usuario.deleteOne({ _id: user._id });
+            await convites.devolver(convite._id);
+            throw erroCriacao;
+        }
+
+        await convites.registrarConta(convite._id, user._id);
+        await logAction(req, 'CONVITE_EQUIPE_USADO', 'Segurança', {
+            recursoId: String(convite._id),
+            valorNovo: {
+                usuarioId: String(user._id),
+                perfil: convite.perfil,
+                escolaId: convite.escolaId,
+            },
+            descricao: `Convite ${convite._id} aceito; conta ${user._id} criada.`,
+        });
+        emitirParaPerfis(convite.escolaId, ['diretor', 'admin'], 'new-registration', {
+            perfil: convite.perfil === 'diretor' ? 'Diretor' : 'Secretaria',
+        });
+
+        return res.status(201).json({
             success: true,
-            message: 'Conta de secretaria criada com sucesso!',
-            user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email },
-            redirect_to: getRedirectPath(user),
+            message: 'Conta criada. Entre com seu e-mail e senha.',
+            redirect_to: LOGIN_DO_PERFIL[convite.perfil],
         });
     } catch (e) {
-        res.status(500).json({ success: false, error: e.message });
+        logger.error('[Convite] Falha ao aceitar convite', { err: e, action: 'convite.aceitar' });
+        return res.status(500).json({ success: false, error: 'Erro ao criar a conta.' });
     }
 };

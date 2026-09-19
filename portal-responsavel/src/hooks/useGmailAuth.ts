@@ -1,95 +1,53 @@
 /**
  * hooks/useGmailAuth.ts
- * Gerencia autenticação Google OAuth 2.0 via Google Identity Services.
+ * Perfil de exibição da conta Google do responsável.
  * Requer GoogleOAuthProvider no componente pai (main.tsx).
+ *
+ * O LOGIN usa o botão oficial do Google (`<GoogleLogin>`), que entrega um
+ * ID token (`credential`). É ESSE token que vai ao backend: ele é assinado pelo
+ * Google e diz para qual client ID foi emitido, e o servidor confere as duas
+ * coisas (Issue #387). O fluxo antigo trocava um access token, que não diz a
+ * que aplicativo pertence — não é usado mais.
+ *
+ * Aqui só se guarda o perfil de EXIBIÇÃO (nome, e-mail, foto), lido do próprio
+ * ID token. Nada neste hook autoriza coisa alguma: a sessão real é o cookie
+ * HttpOnly emitido pelo backend.
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useGoogleLogin, googleLogout } from '@react-oauth/google';
+import { googleLogout } from '@react-oauth/google';
+import { useCallback, useEffect, useState } from 'react';
 import type { GmailUser, UseGmailAuthReturn } from '../types';
 
 const STORAGE_KEY = 'gmailUser';
 
-/**
- * SEGURANÇA: o access_token do Google NUNCA é persistido.
- * localStorage é legível por qualquer script da origem — um XSS levaria um
- * token OAuth válido embora. O token só existe em memória (state), o tempo
- * necessário para trocá-lo pelo cookie JWT HttpOnly em /auth/google-login.
- * O que fica no storage é apenas o perfil de exibição (nome/e-mail/foto).
- */
-type PerfilPersistido = Omit<GmailUser, 'accessToken'>;
-
 function persistirPerfil(user: GmailUser): void {
-  const perfil: PerfilPersistido = {
-    email: user.email,
-    name: user.name,
-    picture: user.picture,
-  };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(perfil));
-}
-
-const PLACEHOLDER_CLIENT_IDS = new Set([
-  'seu_client_id.apps.googleusercontent.com',
-  '',
-]);
-
-function resolveClientId(): string | undefined {
-  const envVars = [
-    import.meta.env.VITE_GMAIL_CLIENT_ID,
-    import.meta.env.VITE_GMAIL_ID,
-    import.meta.env.VITE_GOOGLE_CLIENT_ID,
-  ];
-
-  const validId = envVars.find(
-    (id) => id && id.trim() !== '' && !PLACEHOLDER_CLIENT_IDS.has(id.trim())
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({ email: user.email, name: user.name, picture: user.picture })
   );
-
-  if (validId) return validId.trim();
-
-  // Fallback seguro
-  return '372860477730-co8eq29vbsafmffmfm2v2ot5givurar1.apps.googleusercontent.com';
 }
 
-function isValidGoogleEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.includes('@');
-}
-
-async function fetchGoogleProfile(accessToken: string): Promise<GmailUser> {
-  const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-
-  if (!response.ok) {
-    throw new Error('Não foi possível obter os dados da sua conta Google.');
-  }
-
-  const profile = (await response.json()) as {
-    email?: string;
-    name?: string;
-    given_name?: string;
-    picture?: string;
-  };
-
-  if (!profile.email || !isValidGoogleEmail(profile.email)) {
-    throw new Error('E-mail Google inválido. Verifique sua conta e tente novamente.');
-  }
-
-  return {
-    email: profile.email,
-    name: profile.name || profile.given_name || profile.email.split('@')[0],
-    picture: profile.picture || '',
-    accessToken,
-  };
-}
-
-async function revokeGoogleToken(accessToken: string): Promise<void> {
+/** Lê o payload do ID token só para exibição (a validação é do servidor). */
+function perfilDoCredential(credential: string): GmailUser | null {
   try {
-    await fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(accessToken)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    });
+    const payload = credential.split('.')[1];
+    if (!payload) return null;
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const json = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => `%${c.charCodeAt(0).toString(16).padStart(2, '0')}`)
+        .join('')
+    );
+    const dados = JSON.parse(json) as { email?: string; name?: string; picture?: string };
+    if (!dados.email) return null;
+    return {
+      email: dados.email,
+      name: dados.name || dados.email.split('@')[0],
+      picture: dados.picture || '',
+    };
   } catch {
-    // Revogação é best-effort; a sessão local já foi encerrada.
+    return null;
   }
 }
 
@@ -98,26 +56,20 @@ export function useGmailAuth(): UseGmailAuthReturn {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loginResolveRef = useRef<((user: GmailUser) => void) | null>(null);
-  const loginRejectRef = useRef<((err: Error) => void) | null>(null);
-
-  // ── Restaurar sessão ao montar ────────────────────────────────────────────
+  // ── Restaurar perfil de exibição ao montar ────────────────────────────────
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        const parsed = JSON.parse(stored) as PerfilPersistido & { accessToken?: string };
+        const parsed = JSON.parse(stored) as Partial<GmailUser> & { accessToken?: string };
         if (parsed.email) {
-          // accessToken sempre vazio ao restaurar: a sessão real é o cookie
-          // HttpOnly, validado pelo useAuth via /auth/me.
           const restaurado: GmailUser = {
             email: parsed.email,
-            name: parsed.name,
-            picture: parsed.picture,
-            accessToken: '',
+            name: parsed.name || parsed.email.split('@')[0],
+            picture: parsed.picture || '',
           };
           setUser(restaurado);
-          // Migração: apaga o token que versões anteriores gravaram aqui.
+          // Migração: versões antigas gravavam um access token aqui.
           if (parsed.accessToken) persistirPerfil(restaurado);
         } else {
           localStorage.removeItem(STORAGE_KEY);
@@ -130,95 +82,31 @@ export function useGmailAuth(): UseGmailAuthReturn {
     }
   }, []);
 
-  const handleOAuthSuccess = useCallback(async (tokenResponse: { access_token: string }) => {
-    try {
-      const authenticatedUser = await fetchGoogleProfile(tokenResponse.access_token);
-      setUser(authenticatedUser);
-      persistirPerfil(authenticatedUser);
-      setError(null);
-      loginResolveRef.current?.(authenticatedUser);
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Erro ao autenticar com o Google.';
-      setError(message);
-      loginRejectRef.current?.(err instanceof Error ? err : new Error(message));
-    } finally {
-      setLoading(false);
-      loginResolveRef.current = null;
-      loginRejectRef.current = null;
+  const registrarCredencial = useCallback((credential: string): GmailUser | null => {
+    const perfil = perfilDoCredential(credential);
+    if (!perfil) {
+      setError('Não foi possível ler a resposta do Google. Tente novamente.');
+      return null;
     }
+    setUser(perfil);
+    persistirPerfil(perfil);
+    setError(null);
+    return perfil;
   }, []);
 
-  const handleOAuthError = useCallback(() => {
-    const message = 'O login com Google foi cancelado ou falhou. Tente novamente.';
-    setError(message);
-    setLoading(false);
-    loginRejectRef.current?.(new Error(message));
-    loginResolveRef.current = null;
-    loginRejectRef.current = null;
-  }, []);
-
-  const triggerGoogleLogin = useGoogleLogin({
-    scope: 'openid profile email',
-    onSuccess: handleOAuthSuccess,
-    onError: handleOAuthError,
-  });
-
-  // ── Login ─────────────────────────────────────────────────────────────────
-  const loginWithGmail = useCallback((): Promise<GmailUser> => {
-    const clientId = resolveClientId();
-    if (!clientId) {
-      const message =
-        'Login com Google não configurado. Defina VITE_GMAIL_CLIENT_ID no arquivo .env.';
-      setError(message);
-      return Promise.reject(new Error(message));
-    }
-
-    return new Promise<GmailUser>((resolve, reject) => {
-      setError(null);
-
-      const timeoutId = window.setTimeout(() => {
-        loginResolveRef.current = null;
-        loginRejectRef.current = null;
-        const message =
-          'O login com Google demorou demais. Feche o popup, recarregue a página e tente novamente.';
-        setError(message);
-        setLoading(false);
-        reject(new Error(message));
-      }, 90_000);
-
-      const finish = (fn: () => void) => {
-        window.clearTimeout(timeoutId);
-        fn();
-      };
-
-      loginResolveRef.current = (user) => finish(() => resolve(user));
-      loginRejectRef.current = (err) => finish(() => reject(err));
-      triggerGoogleLogin();
-    });
-  }, [triggerGoogleLogin]);
-
-  // ── Logout ────────────────────────────────────────────────────────────────
   const logout = useCallback((): void => {
-    const token = user?.accessToken;
-
     setUser(null);
     setError(null);
     localStorage.removeItem(STORAGE_KEY);
-
     googleLogout();
-
-    if (token) {
-      void revokeGoogleToken(token);
-    }
-  }, [user]);
+  }, []);
 
   return {
     user,
     isAuthenticated: user !== null,
     loading,
     error,
-    loginWithGmail,
+    registrarCredencial,
     logout,
   };
 }
