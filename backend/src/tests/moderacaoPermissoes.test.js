@@ -55,6 +55,18 @@ beforeEach(async () => {
     });
 });
 
+/**
+ * Escola na conta dos perfis de equipe. Desde a Issue #396, equipe sem escola
+ * resolvida recebe 403 — e este arquivo tem duas escolas ativas, então nada
+ * resolve sozinho. Admin fica de fora de propósito: a conta dele é da rede, e
+ * há teste aqui que depende disso.
+ */
+function escolaDaEquipe(perfil) {
+    return ['diretor', 'secretaria', 'professor'].includes(perfil)
+        ? { escolaId: String(escolaA._id) }
+        : {};
+}
+
 /** Diretor tem 2FA obrigatório — login em duas etapas, com código fixo. */
 async function agentDiretor(email, escola) {
     const user = await criarUsuario({
@@ -84,7 +96,7 @@ async function agentDiretor(email, escola) {
 }
 
 async function agentSimples(perfil, email) {
-    await criarUsuario({ email, perfil });
+    await criarUsuario({ email, perfil, ...escolaDaEquipe(perfil) });
     const agent = request.agent(app);
     const login = await agent.post('/api/auth/login').send({ email, senha: SENHA_TESTE });
     expect(login.status).toBe(200);
@@ -111,6 +123,7 @@ async function agentCom2FA(perfil, email) {
     await criarUsuario({
         email,
         perfil,
+        ...escolaDaEquipe(perfil),
         twoFactorFixedCode: await require('../utils/codigosBackup').hashSegredo(CODIGO_FIXO),
     });
 
