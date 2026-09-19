@@ -11,6 +11,7 @@
  * acesso?" leva à ativação com o código secreto do aluno, que só a secretaria
  * entrega, e é o backend que valida o código e o vínculo.
  */
+import { GoogleLogin } from '@react-oauth/google';
 import type React from 'react';
 import { useEffect, useState } from 'react';
 import '../../../css/ui-base.css';
@@ -255,9 +256,6 @@ const IcoSol = () => (
     <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
   </Svg>
 );
-
-const LOGO_GOOGLE =
-  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="%23fbc02d" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12s5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/><path fill="%23e53935" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/><path fill="%234caf50" d="M24,44c5.166,0,9.86-1.977,13.422-5.189l-6.19-5.158C29.255,34.908,26.74,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/><path fill="%231565c0" d="M43.611,20.083L43.611,20.083L42,20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.158C36.914,39.112,44,34.429,44,24C44,22.659,43.862,21.35,43.611,20.083z"/></svg>';
 
 /* ───────────────────────────── Ilustração ───────────────────────────────── */
 
@@ -1025,15 +1023,24 @@ const LoginResponsavel: React.FC<LoginResponsavelProps> = ({ auth, toast, onClos
               <p className="lg-divisor">ou</p>
 
               <div className="lg-secundarios">
-                <button
-                  type="button"
-                  className="ui-btn ui-btn--block lr-google"
-                  onClick={() => void handleGoogleLogin()}
-                  disabled={loginLoading}
-                >
-                  <img src={LOGO_GOOGLE} alt="" width={18} height={18} />
-                  {loginLoading ? 'Conectando…' : 'Entrar com o Google'}
-                </button>
+                {/* Botão oficial do Google: devolve o ID token (`credential`), que o
+                    servidor valida contra o client ID do portal (Issue #387). */}
+                <div className="lr-google" aria-busy={loginLoading}>
+                  <GoogleLogin
+                    onSuccess={(resposta) => {
+                      if (resposta.credential) void handleGoogleLogin(resposta.credential);
+                      else setAuthError('O Google não devolveu a credencial. Tente novamente.');
+                    }}
+                    onError={() =>
+                      setAuthError('O login com Google foi cancelado ou falhou. Tente novamente.')
+                    }
+                    text="continue_with"
+                    shape="pill"
+                    size="large"
+                    width="320"
+                    theme={tema === 'light' ? 'outline' : 'filled_black'}
+                  />
+                </div>
 
                 <button
                   type="button"

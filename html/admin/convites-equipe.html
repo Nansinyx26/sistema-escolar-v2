@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+
+<head>
+    <!-- Trava de acesso por perfil. SEM defer e antes de tudo: a decisao
+         precisa acontecer antes do primeiro pixel. Ver js/guarda-acesso.js. -->
+    <script src="/js/guarda-acesso.js?v=1.0"></script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Convites de Equipe - Admin</title>
+    <!-- CSS -->
+    <link rel="stylesheet" href="../../css/variables.css">
+    <link rel="stylesheet" href="../../css/base.css">
+    <link rel="stylesheet" href="../../css/components-new.css">
+    <link rel="stylesheet" href="../../css/dashboard.css">
+    <!-- Preload da fonte: sem ele o .woff2 só é descoberto depois do CSS. -->
+    <link rel="preload" href="../../js/libs/fonts/bootstrap-icons.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="../../js/libs/bootstrap-icons.min.css">
+    <style>
+        .container {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .table-card {
+            background: var(--surface-card);
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 0.9rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        th {
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+
+        .codigo-cell {
+            font-family: monospace;
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: var(--text-primary);
+        }
+
+        .code-actions {
+            display: flex;
+            gap: 0.4rem;
+            align-items: center;
+        }
+
+        .badge-inativa {
+            background: rgba(148, 163, 184, 0.15);
+            color: #94a3b8;
+        }
+        .convite-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.8rem;
+            align-items: end;
+            margin-bottom: 1.5rem;
+        }
+
+        .convite-form label {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .link-gerado {
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+    </style>
+    <link rel="stylesheet" href="../../css/parallax-glass.css">
+    <link rel="stylesheet" href="../../css/neo-brutal.css">
+    <link rel="stylesheet" href="../../css/tailwind-built.css">
+    <link rel="stylesheet" href="../../css/responsive-global.css?v=1.2">
+    <link rel="stylesheet" href="../../css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="../../css/reactions.css?v=1.0">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/img/icons/apple-touch-icon-180.png">
+    <meta name="theme-color" content="#09090b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Escola">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="stylesheet" href="../../css/system-global.css?v=1.0">
+    <!-- Rolagem e performance mobile — deve ser o ÚLTIMO stylesheet -->
+    <link rel="stylesheet" href="../../css/mobile-scroll.css?v=1.0">
+    <link rel="stylesheet" href="../../css/motion.css">
+    <script src="../../js/scroll-lock.js?v=1.0"></script>
+    <!-- Acessibilidade (LBI/eMAG) — ver docs/CONFORMIDADE-LEGAL.md -->
+    <link rel="stylesheet" href="../../css/acessibilidade.css">
+    <link rel="stylesheet" href="/css/botao-voltar.css">
+</head>
+
+<body>
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Sistema Escolar</h2>
+            <p class="splash-subtitle">Convites de Equipe</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="../../js/splash-screen.js"></script>
+
+    <div class="dashboard-page">
+        <header class="dashboard-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <button type="button" class="btn-voltar-global" data-fallback="/html/dashboard.html" aria-label="Voltar para a página anterior">
+                        <i class="bi bi-arrow-left"></i>
+                        <span>Voltar</span>
+                    </button>
+                    <div class="header-logo">
+                        <i class="bi bi-envelope-plus"></i>
+                        <span>Convites de Equipe</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="container">
+            <div class="glass-strong" style="margin-bottom: 2rem; padding: 1.2rem; border-radius: var(--radius-lg); border-left: 5px solid var(--primary-color);">
+                <h3 style="margin: 0; font-size: 1.1rem; color: var(--primary-color); display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="bi bi-shield-lock"></i> Contas de direção e secretaria
+                </h3>
+                <p class="text-secondary text-sm" style="margin: 0.4rem 0 0;">
+                    Direção e secretaria não se cadastram sozinhas: a conta nasce de um convite de uso único,
+                    enviado ao e-mail da pessoa e válido por tempo limitado. A pessoa define a própria senha e
+                    entra depois com o código de verificação.
+                </p>
+            </div>
+
+            <form id="formConvite" class="convite-form table-card" novalidate>
+                <label for="conviteEmail">E-mail da pessoa
+                    <input type="email" id="conviteEmail" class="form-input" required autocomplete="off">
+                </label>
+                <label for="convitePerfil">Perfil
+                    <select id="convitePerfil" class="form-input" required>
+                        <option value="diretor">Direção</option>
+                        <option value="secretaria">Secretaria</option>
+                    </select>
+                </label>
+                <label for="conviteEscola">Escola
+                    <select id="conviteEscola" class="form-input" required>
+                        <option value="">Carregando…</option>
+                    </select>
+                </label>
+                <button type="submit" class="btn btn-primary" id="btnCriarConvite">
+                    <i class="bi bi-send"></i> Enviar convite
+                </button>
+            </form>
+
+            <div id="resultadoConvite" class="table-card" role="status" aria-live="polite" hidden style="margin-bottom: 1.5rem;"></div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; gap: 1rem; flex-wrap: wrap;">
+                <h2 style="margin: 0; font-size: 1.25rem;">Convites</h2>
+                <button type="button" class="btn btn-secondary btn-sm" id="btnAtualizarConvites">
+                    <i class="bi bi-arrow-clockwise"></i> Atualizar
+                </button>
+            </div>
+
+            <div class="table-card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>E-mail</th>
+                            <th>Perfil</th>
+                            <th>Situação</th>
+                            <th>Validade</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaConvites">
+                        <tr>
+                            <td colspan="5" class="text-center">Carregando...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+    <script src="../../js/api-config.js"></script>
+    <!-- csrfHeaders(): sem o header X-CSRF-Token o backend recusa criar e revogar. -->
+    <script src="../../js/csrf-helper.js"></script>
+    <script defer src="../../js/auth.js"></script>
+    <script defer src="../../js/utils.js"></script>
+    <script defer src="../../js/admin-convites-equipe.js"></script>
+    <script src="../../js/vendor.js"></script>
+    <script defer src="../../js/reactions.js"></script>
+    <script defer src="../../js/push-notifications.js"></script>
+    <script defer src="../../js/pwa-install.js"></script>
+    <script defer src="../../js/settings-drawer.js"></script>
+    <!-- Lucide line icons (padronização) + shim de compatibilidade Bootstrap Icons -->
+    <script src="../../js/libs/lucide.min.js"></script>
+    <script src="../../js/libs/lucide-init.js"></script>
+    <script defer src="../../js/observability.js"></script>
+    <script defer src="../../js/motion.js"></script>
+    <script defer src="../../js/acessibilidade.js"></script>
+    <script defer src="/js/botao-voltar.js"></script>
+</body>
+
+</html>

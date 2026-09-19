@@ -259,7 +259,9 @@ describe('migração 1771286400000 — alunos por turma / importação', () => {
         const resultado = await migracao.down();
         expect(resultado.alunosAfetados).toBeGreaterThan(0);
 
-        const depois = await Aluno.findOne({ matricula: '900000000002' }).lean();
+        const depois = await Aluno.findOne({ matricula: '900000000002' })
+            .select('+codigoSecreto')
+            .lean();
         // Campos da migração: removidos.
         expect(depois.nomeNormalizado).toBeUndefined();
         expect(depois.raUf).toBeUndefined();

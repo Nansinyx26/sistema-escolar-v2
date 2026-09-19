@@ -406,7 +406,7 @@ describe('Fluxo B — importação em lote', () => {
         expect(confirmacao.body.data.vinculados).toBe(5);
         expect(confirmacao.body.data.falhas).toHaveLength(0);
 
-        const alunos = await Aluno.find({}).lean();
+        const alunos = await Aluno.find({}).select('+codigoSecreto').lean();
         expect(alunos).toHaveLength(5);
         alunos.forEach((aluno) => {
             expect(aluno.escolaId).toBe(String(escolaA._id));

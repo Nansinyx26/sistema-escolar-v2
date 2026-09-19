@@ -259,6 +259,7 @@ async function atualizarCards(user, perfil) {
 
     const cardSecretCodes = document.getElementById('cardSecretCodes');
     const cardCodigosEscolas = document.getElementById('cardCodigosEscolas');
+    const cardConvitesEquipe = document.getElementById('cardConvitesEquipe');
     const cardIaAssistant = document.getElementById('cardIaAssistant');
 
     if (user.perfil === 'admin') {
@@ -276,6 +277,7 @@ async function atualizarCards(user, perfil) {
         if (cardNotificacoesResp) cardNotificacoesResp.style.display = 'flex';
         if (cardSecretCodes) cardSecretCodes.style.display = 'flex';
         if (cardCodigosEscolas) cardCodigosEscolas.style.display = 'flex';
+        if (cardConvitesEquipe) cardConvitesEquipe.style.display = 'flex';
         if (cardIaAssistant) cardIaAssistant.style.display = 'flex';
     } else if (user.perfil === 'professor' && perfil) {
         // ... (existing teacher logic) ...

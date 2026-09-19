@@ -159,13 +159,12 @@ body.ui3 .lr-page .ui-btn--primary .lr-seta {
   }
 }
 
+// Contêiner do botão oficial do Google (renderizado pelo próprio Google, em
+// iframe): só centraliza e reserva a altura para a tela não pular.
 body.ui3 .lr-google {
-  background: var(--ui-surface-2);
-
-  img {
-    width: 18px;
-    height: 18px;
-  }
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
 }
 
 body.ui3 .lr-primeiro-acesso {

@@ -18,6 +18,7 @@ const FrequenciaProfessor = require('../models/FrequenciaProfessor');
 const escapeRegex = require('../utils/escapeRegex');
 const logger = require('../utils/logger');
 const urlFotoAluno = require('../utils/urlFotoAluno');
+const { projetarAluno } = require('../utils/projecaoAluno');
 
 // Trava por conta contra varredura do código secreto do aluno
 const MAX_TENTATIVAS_VINCULO = 5;
@@ -195,7 +196,9 @@ exports.getAlunos = async (req, res) => {
         // Retorna todos os dados para o frontend usar (dados pessoais, médicos, etc)
         const safeAlunos = alunos.map((aluno) => {
             const safe = {
-                ...aluno,
+                // Ficha do próprio filho, pela lista fechada do perfil responsável
+                // (utils/projecaoAluno.js) — nunca o documento cru do banco.
+                ...projetarAluno(aluno, 'responsavel'),
                 id: aluno._id,
                 nome: aluno.nome,
                 sobrenome: aluno.sobrenome || '',
@@ -1018,7 +1021,7 @@ exports.updateAlunoDados = async (req, res) => {
         }
 
         if (!aluno) return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
-        res.json({ success: true, data: aluno });
+        res.json({ success: true, data: projetarAluno(aluno, 'responsavel') });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
@@ -1103,7 +1106,7 @@ exports.updateDocumentoStatus = async (req, res) => {
         ).lean();
 
         if (!aluno) return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
-        res.json({ success: true, data: aluno });
+        res.json({ success: true, data: projetarAluno(aluno, perfil) });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }

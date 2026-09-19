@@ -39,6 +39,7 @@ const PAGINAS_ADMIN = {
     configuracoes: 'configuracoes.html',
     usuarios: 'usuarios.html',
     codigosEscolas: 'codigos-escolas.html',
+    convitesEquipe: 'convites-equipe.html',
     auditoria: 'auditoria.html',
     cadastroSecretaria: 'cadastro-secretaria.html',
     diagnostico: 'diagnostico.html',

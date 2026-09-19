@@ -229,7 +229,9 @@ exports.getRanking = async (req, res) => {
         const students = await Aluno.find({
             ...ef,
             $or: [{ _id: { $in: ids } }, { id: { $in: ids } }],
-        }).lean();
+        })
+            .select('id nome turma turmaId')
+            .lean();
 
         const studentInfoMap = {};
         students.forEach((s) => {
