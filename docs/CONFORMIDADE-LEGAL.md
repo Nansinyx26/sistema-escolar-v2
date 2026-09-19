@@ -39,10 +39,10 @@ alterações do ECA Digital), **Marco Civil da Internet** (12.965/2014), **LBI**
 | Validação por SMS ou Gov.br | **Pendente** | os dois dependem de contrato/credenciamento do município — o campo `metodoValidacao` já existe para recebê-los; ver §7 |
 | Privacidade por padrão (perfil de aluno nunca público) | **Pronto** | nenhuma rota pública devolve aluno; `FileController.servePublicImage` é **allowlist fechada por omissão** — sem sessão só sai imagem cujo `metadata.type` está liberado (hoje só `avatar`); documento, anexo de conversa e foto de aluno exigem `authJWT` (Issue #216) |
 | Foto de aluno só para quem tem vínculo | **Pronto** | a foto carrega `metadata.alunoId`/`escolaId`, e o download passa por [`middleware/assertAcessoAoAluno.js`](../backend/src/middleware/assertAcessoAoAluno.js): professor só da própria turma, responsável só do próprio filho, gestão só da escola ativa. Antes da Issue #228 a foto era gravada sem `metadata` e a autorização caía na regra de legado, que liberava qualquer `image/*` a qualquer autenticado da rede |
-| Segregação de acesso por perfil e por turma | **Pronto** | [`middleware/authorize.js`](../backend/src/middleware/authorize.js), [`middleware/horizontalFilter.js`](../backend/src/middleware/horizontalFilter.js), [`utils/matrizAcesso.js`](../backend/src/utils/matrizAcesso.js) |
+| Segregação de acesso por perfil e por turma | **Parcial** | o recorte por **turma** está pronto e testado (`conformidadeRotas.test.js`); o recorte por **campo** — cada perfil receber só os campos da sua função — entra com a projeção por perfil (Issue #388). Hoje: [`middleware/authorize.js`](../backend/src/middleware/authorize.js), [`middleware/horizontalFilter.js`](../backend/src/middleware/horizontalFilter.js), [`utils/matrizAcesso.js`](../backend/src/utils/matrizAcesso.js) |
 | Separação das portas de login (escola x família) | **Parcial** | o login com Google é só da família: conta de equipe recebe 403 antes de qualquer escrita e a recusa fica no `AuditLog` (`LOGIN_GOOGLE_RECUSADO`) — teste em [`contencaoAcesso.regressao.test.js`](../backend/src/tests/contencaoAcesso.regressao.test.js) (Issue #378). Versões anteriores deste mapa citavam um `utils/portaisDeLogin.js` que não existe no repositório; a recusa por porta no login com senha ainda não está implementada |
 | Cadastro de direção e secretaria só pela administração | **Pronto** | `register-diretor` e `register-secretaria` respondem 403 sem criar conta nem sessão; o código da escola vale só para o cadastro docente (Issue #378, mesmo teste) |
-| Isolamento entre escolas da rede | **Pronto** | [`middleware/filtrarPorEscola.js`](../backend/src/middleware/filtrarPorEscola.js) — falha **fechada**: sem escola resolvida, responde 503 em vez de varrer a rede |
+| Isolamento entre escolas da rede | **Parcial** | [`middleware/filtrarPorEscola.js`](../backend/src/middleware/filtrarPorEscola.js) responde 503 quando a resolução da escola **falha com erro**. A recusa para perfil de equipe sem escola resolvida, e a guarda de escola em todas as rotas que recebem id de aluno ou documento, estão previstas para antes da ativação da segunda escola (Fase 2 do plano de conformidade) |
 | Anonimização / direito ao esquecimento | **Pronto** | usuário inativo há 12 meses em [`utils/anonimizacaoAutomatica.js`](../backend/src/utils/anonimizacaoAutomatica.js); **aluno que saiu da rede** em [`services/conformidade/anonimizacaoAluno.js`](../backend/src/services/conformidade/anonimizacaoAluno.js) — apaga identificador e dado de saúde, preserva notas, faltas, turma e situação |
 | Canal de denúncia visível (ECA Digital) | **Pronto** | `POST /api/moderacao/denunciar` aceita denúncia sem mensagem vinculada; botão no cabeçalho do perfil, do dashboard e do portal do responsável ([`js/canal-denuncia.js`](../js/canal-denuncia.js), `portal-responsavel/src/components/CanalDenuncia.tsx`) |
 | Retenção de log com prazo | **Pronto** | TTL de 365 dias em `AuditLog` — acima do mínimo de 6 meses do Marco Civil |
@@ -55,12 +55,17 @@ alterações do ECA Digital), **Marco Civil da Internet** (12.965/2014), **LBI**
 |---|---|---|---|---|
 | Admin/TI | sim | não | não | sim |
 | Secretaria/Direção | todos da escola | sim | sim | sim |
-| Professor | **só as turmas dele** | só as turmas dele | alertas básicos (alergias) | não |
+| Professor | **só as turmas dele** | só as turmas dele | alertas básicos (alergias) — *alvo; garantido pela projeção por perfil da Issue #388* | não |
 | Responsável/Aluno | só os próprios | não | só os próprios | não |
 
 A coluna "Professor" é a que o código protege de forma mais visível: veja o
 teste `conformidadeRotas.test.js`, caso *"professor enxerga apenas os alunos das
 turmas que leciona"*, e a recusa 403 ao pedir aluno de outra turma.
+
+A tabela descreve o **alvo**. O recorte por turma está garantido; o recorte por
+campo (o professor não receber CPF, endereço ou dados de saúde além dos alertas)
+só passa a ser garantido com a projeção por perfil (Issue #388). Até lá, esta
+tabela não deve ser citada como estado atual em termo de conformidade.
 
 ---
 
@@ -210,9 +215,9 @@ dele, e o teste cobre esse 403.
 
 ## 7. O que falta — lista de trabalho
 
-Tudo que dependia **só de código** foi implementado. O que resta depende de
-laudo, de contrato ou de configuração de infraestrutura — e continua aqui
-justamente para não sumir.
+Esta lista reúne o que depende de laudo, de contrato ou de configuração de
+infraestrutura. O trabalho de **código** em andamento está nas Issues do plano
+de conformidade (#378 e seguintes) e nos itens marcados **Parcial** acima.
 
 1. **Permissão do banco para o log de auditoria** (`tipo:melhoria`, infra). A
    aplicação já recusa update e delete em `audit_logs`, mas middleware só vale
