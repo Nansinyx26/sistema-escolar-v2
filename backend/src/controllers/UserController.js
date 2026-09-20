@@ -322,7 +322,7 @@ exports.firstAccess = async (req, res) => {
 
         await logAction(req, 'FIRST_ACCESS_ACTIVATE', 'Usuarios', {
             recursoId: user._id,
-            descricao: `Professor ${prof.nome} ativou sua conta via Primeiro Acesso.`,
+            descricao: `Professor ${prof._id} ativou sua conta via Primeiro Acesso.`,
         });
 
         // Logar automaticamente gerando cookie JWT (mesmo padrão dos demais cadastros)

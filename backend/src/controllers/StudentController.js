@@ -339,12 +339,12 @@ exports.create = async (req, res) => {
         // agregadores de log (Render) o exporiam a quem tem acesso à esteira.
         const { logAction } = require('../utils/auditHelper');
         await logAction(req, 'CREATE_STUDENT', 'Alunos', {
-            recursoId: student._id,
-            valorNovo: { nome: student.nome },
-            descricao: `Aluno ${student.nome} cadastrado (código secreto gerado).`,
+            recursoId: String(student._id),
+            valorNovo: { turma: student.turma || student.turmaId || null },
+            descricao: `Aluno ${student._id} cadastrado (código secreto gerado).`,
         });
 
-        console.log(`✅ [STUDENT-CREATE] Aluno ${student.nome} criado com sucesso.`);
+        console.log(`✅ [STUDENT-CREATE] Aluno ${student._id} criado com sucesso.`);
         res.status(201).json({
             success: true,
             data: projetarAluno(student, req.user?.perfil),
@@ -712,7 +712,7 @@ exports.regenerateSecretCode = async (req, res) => {
         const { logAction } = require('../utils/auditHelper');
         await logAction(req, 'REGENERATE_STUDENT_CODE', 'Aluno', {
             recursoId: aluno._id,
-            descricao: `Código secreto do aluno "${aluno.nome}" regenerado (anterior invalidado).`,
+            descricao: `Código secreto do aluno ${aluno._id} regenerado (anterior invalidado).`,
         });
 
         res.json({

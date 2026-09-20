@@ -23,6 +23,7 @@ const assertAcessoAoAluno = require('../middleware/assertAcessoAoAluno');
 const vinculos = require('../services/vinculosResponsavel');
 const { logAction } = require('../utils/auditHelper');
 const { limparCamposSemFinalidade } = require('../utils/camposSemFinalidade');
+const { mascarar } = require('../services/vinculosResponsavel');
 
 // Trava por conta contra varredura do código secreto do aluno
 const MAX_TENTATIVAS_VINCULO = 5;
@@ -360,7 +361,7 @@ exports.vincularAluno = async (req, res) => {
             await Usuario.updateOne({ _id: usuarioId }, { $set: update });
 
             await logAction(req, 'LINK_STUDENT_FAILED', 'Alunos', {
-                descricao: `Tentativa de vínculo com código inválido por ${email} (${tentativas}/${MAX_TENTATIVAS_VINCULO}).`,
+                descricao: `Tentativa de vínculo com código inválido por ${mascarar(email)} (${tentativas}/${MAX_TENTATIVAS_VINCULO}).`,
             });
 
             console.warn(`❌ [LINK-STUDENT] Código inválido informado por ${email}.`);
@@ -379,7 +380,7 @@ exports.vincularAluno = async (req, res) => {
         if (aluno.responsavel && String(aluno.responsavel).toLowerCase() !== targetEmail) {
             await logAction(req, 'LINK_STUDENT_BLOCKED', 'Alunos', {
                 recursoId: aluno._id,
-                descricao: `Tentativa de vínculo por ${targetEmail} em aluno já vinculado a outro responsável.`,
+                descricao: `Tentativa de vínculo por ${mascarar(targetEmail)} em aluno já vinculado a outro responsável.`,
             });
             return res.status(409).json({
                 success: false,
@@ -420,7 +421,7 @@ exports.vincularAluno = async (req, res) => {
         await logAction(req, 'LINK_STUDENT_VIA_CODE', 'Alunos', {
             recursoId: aluno._id,
             valorNovo: { email: targetEmail },
-            descricao: `Vínculo realizado: Responsável ${targetEmail} vinculou o aluno ${aluno.nome} via código secreto.`,
+            descricao: `Vínculo realizado: ${mascarar(targetEmail)} vinculou o aluno ${aluno._id} via código secreto.`,
         });
 
         console.log(`✅ [LINK-STUDENT] Sucesso: Aluno ${aluno.nome} vinculado a ${targetEmail}`);

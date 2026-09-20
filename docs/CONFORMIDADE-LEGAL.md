@@ -85,7 +85,7 @@ guarda, documentos ou o código de vínculo.
 | 2FA para perfis administrativos | **Pronto** | [`utils/politica2FA.js`](../backend/src/utils/politica2FA.js), [`docs/2FA-OBRIGATORIO.md`](2FA-OBRIGATORIO.md) — padrão `diretor,secretaria` |
 | Senha com hash forte | **Pronto** | bcrypt em `AuthenticationService`; códigos de backup em scrypt ([`utils/codigosBackup.js`](../backend/src/utils/codigosBackup.js)) |
 | HTTPS ponta a ponta | **Infra** | terminação TLS no Render; `helmet` com HSTS no `app.js` |
-| Nunca logar PII | **Pronto** | [`utils/logSanitizer.js`](../backend/src/utils/logSanitizer.js) e a regra do `CLAUDE.md` |
+| Nunca logar PII | **Pronto** | [`utils/logSanitizer.js`](../backend/src/utils/logSanitizer.js) mascara por **nome de chave** (`{ nome: 'Maria Silva' }` vira `M. S.`) e varre segredo em texto livre — mas nome dentro de mensagem ele não tem como mascarar. Por isso nenhuma chamada de log interpola nome de pessoa: descrição de auditoria e mensagem de logger citam **id**, e `UPDATE_STUDENT` guarda a lista de campos alterados em vez da ficha inteira dos dois lados. Uma varredura do código-fonte reprova quem voltar a interpolar — [`logSemNome.regressao.test.js`](../backend/src/tests/logSemNome.regressao.test.js) (Issue #410) |
 
 ---
 
