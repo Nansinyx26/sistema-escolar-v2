@@ -6,7 +6,39 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
-    <title>Sistema Escolar — Portal Educacional</title>
+    <title>Sistema Escolar | Gestão Escolar Conectada</title>
+    <meta
+      name="description"
+      content="Plataforma de gestão escolar para conectar escola, professores, responsáveis e toda a comunidade escolar. Frequência, notas, grade horária e comunicação em um só lugar."
+    />
+    <link rel="canonical" href="https://sistema-escolar-bfty.onrender.com/" />
+
+    <!-- Open Graph / redes sociais -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Sistema Escolar" />
+    <meta property="og:title" content="Sistema Escolar | Gestão Escolar Conectada" />
+    <meta
+      property="og:description"
+      content="Plataforma de gestão escolar para conectar escola, professores, responsáveis e toda a comunidade escolar."
+    />
+    <meta property="og:url" content="https://sistema-escolar-bfty.onrender.com/" />
+    <meta
+      property="og:image"
+      content="https://sistema-escolar-bfty.onrender.com/img/hero-escola.jpg"
+    />
+    <meta property="og:image:alt" content="Alunos chegando à entrada da escola" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Sistema Escolar | Gestão Escolar Conectada" />
+    <meta
+      name="twitter:description"
+      content="Plataforma de gestão escolar para conectar escola, professores, responsáveis e toda a comunidade escolar."
+    />
+    <meta
+      name="twitter:image"
+      content="https://sistema-escolar-bfty.onrender.com/img/hero-escola.jpg"
+    />
+
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -17,25 +49,36 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <link rel="icon" type="image/png" href="img/logo-jaguari.png" />
     <link rel="apple-touch-icon" href="img/logo-jaguari.png" />
+    <meta name="theme-color" content="#020b0d" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Fraunces:ital,opsz,wght@0,9..144,450..650;1,9..144,450..650&family=JetBrains+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
     <!-- Preload da fonte: sem ele o .woff2 só é descoberto depois do CSS. -->
     <link rel="preload" href="js/libs/fonts/bootstrap-icons.woff2" as="font" type="font/woff2" crossorigin>
+    <!-- A foto do hero é o LCP. Ela declara loading="lazy" (contrato do
+         e2e/motion.a11y.spec.ts: só as duas primeiras imagens são eager),
+         então o preload é o que garante o download cedo. -->
+    <link
+      rel="preload"
+      as="image"
+      href="img/hero-escola.jpg"
+      imagesrcset="img/hero-escola-800.jpg 800w, img/hero-escola.jpg 1440w"
+      imagesizes="(max-width: 980px) 100vw, 58vw"
+    />
     <link
       rel="stylesheet"
       href="js/libs/bootstrap-icons.min.css"
     />
     <link rel="stylesheet" href="css/splash-screen.css?v=1.0" />
     <link rel="stylesheet" href="css/easings.css" />
-    <link rel="stylesheet" href="css/index-landing.css" />
+    <link rel="stylesheet" href="css/index-landing.css?v=2.0" />
     <link rel="stylesheet" href="css/responsive-global.css?v=1.2" />
     <link rel="stylesheet" href="css/reactions.css?v=1.0" />
     <link rel="stylesheet" href="css/portal-responsavel-modern.css?v=1.0" />
-      <meta name="theme-color" content="#09090b">
     <link rel="stylesheet" href="css/system-global.css?v=1.0">
     <!-- Rolagem e performance mobile — deve ser o ÚLTIMO stylesheet -->
     <link rel="stylesheet" href="css/mobile-scroll.css?v=1.0">
@@ -68,10 +111,16 @@
     </div>
     <script src="js/splash-screen.js"></script>
 
-    <canvas id="bg-canvas"></canvas>
+    <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
 
     <!-- Mobile Nav Overlay -->
-    <div class="mobile-nav-overlay" id="mobileNav">
+    <div
+      class="mobile-nav-overlay"
+      id="mobileNav"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Menu de navegação"
+    >
       <button
         class="mobile-nav-close"
         id="mobileNavClose"
@@ -80,60 +129,60 @@
         <i class="bi bi-x-lg" aria-hidden="true"></i>
         <span class="sr-only">Fechar menu</span>
       </button>
+      <a href="#topo" data-mobile-link>Início</a>
+      <a href="#funcionalidades" data-mobile-link>Funcionalidades</a>
+      <a href="#portais" data-mobile-link>Portais</a>
+      <a href="#sobre" data-mobile-link>Sobre</a>
+      <a href="#depoimentos" data-mobile-link>Depoimentos</a>
+      <a href="#contato" data-mobile-link>Contato</a>
       <a
-        href="#funcionalidades"
-        onclick="document.getElementById('mobileNav').classList.remove('open')"
-        >Funcionalidades</a
+        href="html/login.html"
+        class="mobile-nav-cta"
+        data-modal-open="modalAcesso"
+        >Acessar o sistema</a
       >
-      <a
-        href="#portais"
-        onclick="document.getElementById('mobileNav').classList.remove('open')"
-        >Portais</a
-      >
-      <a
-        href="#como-funciona"
-        onclick="document.getElementById('mobileNav').classList.remove('open')"
-        >Como funciona</a
-      >
-      <a
-        href="#depoimentos"
-        onclick="document.getElementById('mobileNav').classList.remove('open')"
-        >Depoimentos</a
-      >
-      <a href="html/login-professor.html" class="mobile-nav-cta">Sou Docente</a>
-      <a href="/portal-responsavel/dist/index.html" class="btn-g btn-g-alt"
-        >Sou Responsável</a
+      <a href="/portal-responsavel/dist/index.html" class="mobile-nav-alt"
+        >Portal do Responsável</a
       >
     </div>
 
     <!-- NAV -->
-    <nav id="nav">
-      <a href="#" class="nav-brand">
-        <div class="nav-logo">
-          <img src="img/logo-jaguari.png" alt="Logo"  decoding="async" loading="eager" fetchpriority="high"/>
-        </div>
-        <span id="navBrandNome">ESCOLA JAGUARI</span>
+    <nav id="nav" aria-label="Navegação principal">
+      <a href="#topo" class="nav-brand">
+        <span class="nav-logo">
+          <img src="img/logo-jaguari-light.svg" alt="Logo do Sistema Escolar" width="38" height="38" decoding="async" loading="eager" fetchpriority="high"/>
+        </span>
+        <span class="nav-brand-text">
+          <span class="nav-name" id="navBrandNome">Sistema <em>Escolar</em></span>
+          <span class="nav-tagline">Conectando escola, família e futuro.</span>
+        </span>
       </a>
-      <div class="nav-links">
+      <div class="nav-links" id="navLinks">
+        <a href="#topo" class="is-active">Início</a>
         <a href="#funcionalidades">Funcionalidades</a>
         <a href="#portais">Portais</a>
-        <a href="#como-funciona">Como funciona</a>
+        <a href="#sobre">Sobre</a>
         <a href="#depoimentos">Depoimentos</a>
+        <a href="#contato">Contato</a>
       </div>
       <div class="nav-actions">
         <button
           class="nav-mobile-toggle"
           id="mobileNavToggle"
-          aria-label="Menu"
+          aria-label="Abrir menu"
+          aria-expanded="false"
+          aria-controls="mobileNav"
         >
-          <i class="bi bi-list"></i>
+          <i class="bi bi-list" aria-hidden="true"></i>
         </button>
-        <a href="/portal-responsavel/dist/index.html" class="btn-g"
-          ><i class="bi bi-house-heart"></i>
-          <span class="btn-text-hide">Sou Responsável</span></a
-        >
-        <a href="html/login-professor.html" class="btn-p"
-          ><i class="bi bi-person-workspace"></i> Sou Docente</a
+        <a
+          href="html/login.html"
+          class="nav-cta"
+          data-modal-open="modalAcesso"
+          aria-label="Acessar o sistema"
+          ><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>
+          <span class="nav-cta-full">Acessar o sistema</span>
+          <span class="nav-cta-short" aria-hidden="true">Entrar</span></a
         >
       </div>
     </nav>
@@ -176,7 +225,7 @@
       <div class="school-switcher-panel">
         <div class="school-switcher-header">
           <span>Escolas em Americana</span>
-          <i class="bi bi-lock-fill lock-icon"></i>
+          <i class="bi bi-lock-fill lock-icon" aria-hidden="true"></i>
         </div>
         <div class="school-switcher-tabs">
           <label for="filter-all" class="school-tab">Todas</label>
@@ -238,455 +287,258 @@
       </div>
     </div>
 
+    <main id="conteudo">
     <!-- HERO -->
-    <div class="hero-shell">
-      <div class="hero-bg">
+    <div class="hero-shell" id="topo">
+      <div class="hero-bg" aria-hidden="true">
         <div class="hero-bg-glow"></div>
         <div class="hero-grid"></div>
       </div>
+
+      <div class="hero-media">
+        <img
+          src="img/hero-escola.jpg"
+          srcset="img/hero-escola-800.jpg 800w, img/hero-escola.jpg 1440w"
+          sizes="(max-width: 980px) 100vw, 58vw"
+          width="1440"
+          height="809"
+          alt="Alunos com mochilas caminhando até a entrada da escola em uma manhã de sol"
+          decoding="async"
+          loading="lazy"
+          fetchpriority="high"
+        />
+      </div>
+
+      <p class="hero-quote">Juntos por uma<br />educação melhor</p>
+
       <div class="hero">
         <div class="hero-left">
           <div class="hero-badges-group">
-            <div class="hero-badge">
-              <span class="badge-pulse"></span>
-              <span id="heroBadgeNome">Rede municipal de Americana</span>
-              &nbsp;·&nbsp; <span id="heroBadgeSufixo">SP</span>
-            </div>
+            <span class="hero-badge">
+              <span class="badge-pulse" aria-hidden="true"></span>
+              <span id="heroBadgeNome">Portal Escolar</span>
+              &nbsp;·&nbsp; <span id="heroBadgeSufixo">Americana/SP</span>
+            </span>
             <button
               type="button"
               class="hero-badge-ai"
               id="btnSeloIA"
-              onclick="
-                document.getElementById('modalSeloIA').classList.add('open');
-                window.ScrollLock && window.ScrollLock.lock('modal-selo-ia');
-              "
-              title="Clique para saber mais sobre o Selo de IA do Sistema Escolar"
+              data-modal-open="modalSeloIA"
+              title="Saiba mais sobre o Selo de IA do Sistema Escolar"
             >
-              <span class="badge-ai-sparkle"><i class="bi bi-stars"></i></span>
+              <span class="badge-ai-sparkle" aria-hidden="true"
+                ><i class="bi bi-stars"></i
+              ></span>
               <span>Selo IA Ativa</span>
               <span class="badge-ai-sub">· Auxílio Docente &amp; Áudio</span>
             </button>
           </div>
+
           <h1 class="hero-h1">
-            A rotina da escola,<br />
-            <em>em um só lugar</em>
+            Uma escola mais<br />
+            <em>conectada e organizada</em>
           </h1>
+
           <p class="hero-p">
-            Chamada, notas, horários, atas e comunicação com as famílias no
-            mesmo portal — usado todos os dias pela equipe da Escola Jaguari,
-            em Americana.
+            O Sistema Escolar é uma plataforma completa que facilita a gestão
+            escolar, aproxima a família da escola e oferece mais praticidade no
+            dia a dia de toda a comunidade.
           </p>
-          <div class="hero-ctas">
-            <a href="html/login-professor.html" class="btn-hero btn-h-p"
-              ><i class="bi bi-person-workspace"></i> Portal do Docente</a
-            >
-            <a
-              href="/portal-responsavel/dist/index.html"
-              class="btn-hero btn-h-p"
-              ><i class="bi bi-house-heart"></i> Portal do Responsável</a
-            >
+
+          <div class="hero-highlights">
+            <div class="hero-hl">
+              <span class="hero-hl-icon" aria-hidden="true"
+                ><i class="bi bi-clipboard-check"></i
+              ></span>
+              <span class="hero-hl-title">Mais organização</span>
+              <span class="hero-hl-desc">para a equipe escolar</span>
+            </div>
+            <div class="hero-hl">
+              <span class="hero-hl-icon" aria-hidden="true"
+                ><i class="bi bi-people"></i
+              ></span>
+              <span class="hero-hl-title">Comunicação direta</span>
+              <span class="hero-hl-desc">com as famílias</span>
+            </div>
+            <div class="hero-hl">
+              <span class="hero-hl-icon" aria-hidden="true"
+                ><i class="bi bi-shield-check"></i
+              ></span>
+              <span class="hero-hl-title">Segurança e privacidade</span>
+              <span class="hero-hl-desc">dos dados</span>
+            </div>
           </div>
+
+          <div class="hero-ctas">
+            <a
+              href="html/login.html"
+              class="btn-hero btn-h-p"
+              data-modal-open="modalAcesso"
+              ><i class="bi bi-arrow-right" aria-hidden="true"></i> Acessar o
+              sistema</a
+            >
+            <a href="#funcionalidades" class="btn-hero btn-h-o"
+              >Saiba mais <i class="bi bi-arrow-down" aria-hidden="true"></i
+            ></a>
+          </div>
+
           <div class="hero-ctas spaced">
             <button
               type="button"
-              class="btn-hero btn-h-o"
+              class="hero-link"
               id="btn-primeiro-acesso"
-              onclick="
-                document
-                  .getElementById('modalPrimeiroAcesso')
-                  .classList.add('open');
-                window.ScrollLock && window.ScrollLock.lock('modal-primeiro-acesso');
-              "
+              data-modal-open="modalPrimeiroAcesso"
             >
-              <i class="bi bi-person-plus"></i> Criar Conta
+              <i class="bi bi-person-plus" aria-hidden="true"></i>
+              Primeiro acesso? <strong>Crie a sua conta</strong>
             </button>
           </div>
 
-          <!-- Modal Primeiro Acesso -->
-          <div class="pa-modal-overlay" id="modalPrimeiroAcesso">
-            <div class="pa-modal-card">
-              <button
-                class="pa-modal-close"
-                onclick="
-                  document
-                    .getElementById('modalPrimeiroAcesso')
-                    .classList.remove('open');
-                  window.ScrollLock && window.ScrollLock.unlock('modal-primeiro-acesso');
-                "
-                aria-label="Fechar"
-              >
-                &times;
-              </button>
-              <div class="pa-modal-header">
-                <i class="bi bi-shield-lock-fill pa-modal-icon"></i>
-                <h2>Primeiro Acesso</h2>
-                <p>Escolha o seu perfil para criar sua conta.</p>
-              </div>
-              <div class="pa-modal-options">
-                <a
-                  href="html/pages/primeiro-acesso.html"
-                  class="pa-option"
-                  onclick="
-                    try {
-                      sessionStorage.setItem(
-                        'primeiroAcessoTipo',
-                        'responsavel',
-                      );
-                    } catch (e) {}
-                  "
-                >
-                  <div
-                    class="pa-option-icon"
-                    style="background: rgba(59, 130, 246, 0.15); color: #3b82f6"
-                  >
-                    <i class="bi bi-people-fill"></i>
-                  </div>
-                  <div class="pa-option-text">
-                    <span class="pa-option-title">Responsável / Pai</span
-                    ><span class="pa-option-desc"
-                      >Para pais, mães ou responsáveis legais.</span
-                    >
-                  </div>
-                  <i class="bi bi-chevron-right pa-arrow"></i>
-                </a>
-                <a
-                  href="html/pages/primeiro-acesso.html"
-                  class="pa-option"
-                  onclick="
-                    try {
-                      sessionStorage.setItem('primeiroAcessoTipo', 'docente');
-                    } catch (e) {}
-                  "
-                >
-                  <div
-                    class="pa-option-icon"
-                    style="background: rgba(139, 92, 246, 0.15); color: #8b5cf6"
-                  >
-                    <i class="bi bi-person-workspace"></i>
-                  </div>
-                  <div class="pa-option-text">
-                    <span class="pa-option-title">Docente</span
-                    ><span class="pa-option-desc"
-                      >Para professores e equipe pedagógica.</span
-                    >
-                  </div>
-                  <i class="bi bi-chevron-right pa-arrow"></i>
-                </a>
-                <a
-                  href="html/pages/cadastro-diretor-publico.html"
-                  class="pa-option"
-                >
-                  <div
-                    class="pa-option-icon"
-                    style="background: rgba(16, 185, 129, 0.15); color: #10b981"
-                  >
-                    <i class="bi bi-briefcase-fill"></i>
-                  </div>
-                  <div class="pa-option-text">
-                    <span class="pa-option-title">Diretor</span
-                    ><span class="pa-option-desc"
-                      >Gestão e administração escolar.</span
-                    >
-                  </div>
-                  <i class="bi bi-chevron-right pa-arrow"></i>
-                </a>
-                <a
-                  href="html/pages/cadastro-secretaria-publico.html"
-                  class="pa-option"
-                >
-                  <div
-                    class="pa-option-icon"
-                    style="background: rgba(236, 72, 153, 0.15); color: #ec4899"
-                  >
-                    <i class="bi bi-person-badge-fill"></i>
-                  </div>
-                  <div class="pa-option-text">
-                    <span class="pa-option-title">Secretaria</span
-                    ><span class="pa-option-desc"
-                      >Atendimento e gestão administrativa.</span
-                    >
-                  </div>
-                  <i class="bi bi-chevron-right pa-arrow"></i>
-                </a>
-              </div>
-              <div class="pa-modal-footer">
-                <a href="html/login-professor.html"
-                  ><i class="bi bi-arrow-left"></i> Já possui conta? Ir para o
-                  Login</a
-                >
-              </div>
-            </div>
-          </div>
-          <!-- Modal Selo de IA -->
-          <div class="pa-modal-overlay" id="modalSeloIA" role="dialog" aria-modal="true" aria-labelledby="modalSeloIATitle" onclick="if (event.target === this) { this.classList.remove('open'); window.ScrollLock && window.ScrollLock.unlock('modal-selo-ia'); }">
-            <div class="pa-modal-card">
-              <button
-                class="pa-modal-close"
-                onclick="
-                  document
-                    .getElementById('modalSeloIA')
-                    .classList.remove('open');
-                  window.ScrollLock && window.ScrollLock.unlock('modal-selo-ia');
-                "
-                aria-label="Fechar modal do Selo de IA"
-              >
-                &times;
-              </button>
-              <div class="pa-modal-header">
-                <i class="bi bi-stars pa-modal-icon" style="color: #c084fc;"></i>
-                <h2 id="modalSeloIATitle">Selo IA Ativa &amp; Tecnologia Assistiva</h2>
-                <p>Uso ético de Inteligência Artificial e Áudio para a comunidade escolar.</p>
-              </div>
-              <div class="pa-modal-options">
-                <div class="pa-option" style="cursor: default;">
-                  <div
-                    class="pa-option-icon"
-                    style="background: rgba(160, 101, 255, 0.15); color: #c084fc"
-                  >
-                    <i class="bi bi-robot"></i>
-                  </div>
-                  <div class="pa-option-text">
-                    <span class="pa-option-title">Auxílio ao Professor</span>
-                    <span class="pa-option-desc">
-                      Apoio inteligente na formulação de planos de aula, atividades pedagógicas e organização de conteúdos, sempre com supervisão e validação humana docente.
-                    </span>
-                  </div>
-                </div>
-
-                <div class="pa-option" style="cursor: default;">
-                  <div
-                    class="pa-option-icon"
-                    style="background: rgba(33, 255, 204, 0.15); color: #21ffcc"
-                  >
-                    <i class="bi bi-volume-up-fill"></i>
-                  </div>
-                  <div class="pa-option-text">
-                    <span class="pa-option-title">Recursos de Áudio para Usuários</span>
-                    <span class="pa-option-desc">
-                      Síntese de voz e reprodução de avisos por áudio para garantir acessibilidade universal e inclusão de alunos, pais e responsáveis.
-                    </span>
-                  </div>
-                </div>
-
-                <div class="pa-option" style="cursor: default;">
-                  <div
-                    class="pa-option-icon"
-                    style="background: rgba(59, 130, 246, 0.15); color: #3b82f6"
-                  >
-                    <i class="bi bi-shield-check"></i>
-                  </div>
-                  <div class="pa-option-text">
-                    <span class="pa-option-title">Conformidade e Sigilo LGPD</span>
-                    <span class="pa-option-desc">
-                      Nenhum dado pessoal sensível de alunos é compartilhado para treino de modelos públicos. Toda interação respeita os direitos dos titulares e a legislação educacional.
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div class="pa-modal-footer">
-                <a href="html/politica-privacidade.html#ia-privacidade">
-                  <i class="bi bi-file-earmark-text"></i> Ler diretrizes completas na Política de Privacidade &rarr;
-                </a>
-                <button
-                  type="button"
-                  class="pa-modal-btn-fechar"
-                  onclick="
-                    document.getElementById('modalSeloIA').classList.remove('open');
-                    window.ScrollLock && window.ScrollLock.unlock('modal-selo-ia');
-                  "
-                  aria-label="Fechar modal do Selo de IA"
-                >
-                  Entendi e Fechar
-                </button>
-              </div>
-            </div>
-          </div>
-
           <div class="hero-trust">
-            <span class="hero-trust-item hero-trust-ai"
-              ><i class="bi bi-stars"></i> Selo IA &amp; Áudio</span
+            <span class="hero-trust-item"
+              ><i class="bi bi-stars" aria-hidden="true"></i> Selo IA &amp;
+              Áudio</span
             >
             <span class="hero-trust-item"
-              ><i class="bi bi-shield-check"></i> LGPD</span
-            >
-            <span class="hero-trust-item"><i class="bi bi-lock"></i> 2FA</span>
-            <span class="hero-trust-item"
-              ><i class="bi bi-cloud-check"></i> Nuvem</span
+              ><i class="bi bi-shield-check" aria-hidden="true"></i> LGPD</span
             >
             <span class="hero-trust-item"
-              ><i class="bi bi-phone"></i> Responsivo</span
+              ><i class="bi bi-lock" aria-hidden="true"></i> 2FA</span
+            >
+            <span class="hero-trust-item"
+              ><i class="bi bi-cloud-check" aria-hidden="true"></i> Nuvem</span
+            >
+            <span class="hero-trust-item"
+              ><i class="bi bi-laptop" aria-hidden="true"></i> Responsivo</span
             >
           </div>
         </div>
       </div>
     </div>
 
-    <!-- MARQUEE -->
-    <div class="marquee-wrap">
+    <!-- MARQUEE — nomes reais das escolas da rede (js/escolas-modal.js) -->
+    <div class="marquee-wrap" aria-hidden="true">
       <div class="marquee-inner">
-        <span class="marquee-item"
-          ><span class="mdot"></span>Selo IA: Auxílio Docente &amp; Síntese de Áudio</span
-        >
-        <span class="marquee-item"
-          ><span class="mdot"></span>Gestão de Turmas</span
-        >
-        <span class="marquee-item"
-          ><span class="mdot"></span>Frequência Digital</span
-        >
-        <span class="marquee-item"
-          ><span class="mdot"></span>Avaliações e Notas</span
-        >
-        <span class="marquee-item"
-          ><span class="mdot"></span>Grade Horária</span
-        >
-        <span class="marquee-item"
-          ><span class="mdot"></span>Notificações em Tempo Real</span
-        >
-        <span class="marquee-item"
-          ><span class="mdot"></span>Portal do Responsável</span
-        >
-        <span class="marquee-item"
-          ><span class="mdot"></span>Conformidade LGPD</span
-        >
+        <span class="marquee-item"><span class="mdot"></span>Gestão de Turmas</span>
+        <span class="marquee-item"><span class="mdot"></span>Frequência Digital</span>
+        <span class="marquee-item"><span class="mdot"></span>Avaliações e Notas</span>
+        <span class="marquee-item"><span class="mdot"></span>Grade Horária</span>
+        <span class="marquee-item"><span class="mdot"></span>Notificações em Tempo Real</span>
+        <span class="marquee-item"><span class="mdot"></span>Portal do Responsável</span>
+        <span class="marquee-item"><span class="mdot"></span>Conformidade LGPD</span>
+        <span class="marquee-item"><span class="mdot"></span>Selo IA: Auxílio Docente &amp; Áudio</span>
 
-        <span class="marquee-item"
-          ><span class="mdot"></span>Selo IA: Auxílio Docente &amp; Síntese de Áudio</span
-        >
-        <span class="marquee-item"
-          ><span class="mdot"></span>Gestão de Turmas</span
-        >
-        <span class="marquee-item"
-          ><span class="mdot"></span>Frequência Digital</span
-        >
-        <span class="marquee-item"
-          ><span class="mdot"></span>Avaliações e Notas</span
-        >
-        <span class="marquee-item"
-          ><span class="mdot"></span>Grade Horária</span
-        >
-        <span class="marquee-item"
-          ><span class="mdot"></span>Notificações em Tempo Real</span
-        >
-        <span class="marquee-item"
-          ><span class="mdot"></span>Portal do Responsável</span
-        >
-        <span class="marquee-item"
-          ><span class="mdot"></span>Conformidade LGPD</span
-        >
-
+        <span class="marquee-item"><span class="mdot"></span>Gestão de Turmas</span>
+        <span class="marquee-item"><span class="mdot"></span>Frequência Digital</span>
+        <span class="marquee-item"><span class="mdot"></span>Avaliações e Notas</span>
+        <span class="marquee-item"><span class="mdot"></span>Grade Horária</span>
+        <span class="marquee-item"><span class="mdot"></span>Notificações em Tempo Real</span>
+        <span class="marquee-item"><span class="mdot"></span>Portal do Responsável</span>
+        <span class="marquee-item"><span class="mdot"></span>Conformidade LGPD</span>
+        <span class="marquee-item"><span class="mdot"></span>Selo IA: Auxílio Docente &amp; Áudio</span>
       </div>
     </div>
 
-    <!-- STATS -->
-    <div class="stats-wrap">
-      <div class="stats-inner">
-        <div class="stat-cell">
-          <div class="stat-n">
-            <span data-target="0">0</span>
-          </div>
-          <div class="stat-l">Alunos cadastrados</div>
-        </div>
-        <div class="stat-cell">
-          <div class="stat-n">
-            <span data-target="0">0</span>
-          </div>
-          <div class="stat-l">Professores ativos</div>
-        </div>
-        <div class="stat-cell">
-          <div class="stat-n">
-            <span data-target="0">0</span>
-          </div>
-          <div class="stat-l">Turmas gerenciadas</div>
-        </div>
-        <div class="stat-cell">
-          <div class="stat-n">
-            <span data-target="0">0</span>
-          </div>
-          <div class="stat-l">Escolas na rede</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- FEATURES -->
+    <!-- FUNCIONALIDADES -->
     <section class="sec feat-section" id="funcionalidades">
-      <div class="section-inner">
+      <div class="section-inner feat-layout">
         <div class="sc reveal">
           <span class="stag">Funcionalidades</span>
-          <h2 class="sh">O dia a dia da escola, sem papelada</h2>
+          <h2 class="sh">
+            Tudo o que sua <em>escola</em><br />precisa em um <em>só lugar</em>
+          </h2>
           <p class="sp">
-            Da chamada da manhã à ata do conselho: as ferramentas que a
-            equipe já usa em sala, na secretaria e na direção.
+            Nossas ferramentas foram pensadas para tornar a rotina escolar mais
+            simples, segura e eficiente, conectando alunos, responsáveis e
+            equipe pedagógica.
           </p>
+          <div class="sc-rule" aria-hidden="true"></div>
         </div>
+
         <div class="feat-grid">
           <div class="feat-card">
-            <div class="fi fi-t"><i class="bi bi-people-fill"></i></div>
-            <div class="ft">Gestão de Turmas</div>
+            <span class="fi" aria-hidden="true"><i class="bi bi-people"></i></span>
+            <h3 class="ft">Gestão de Turmas</h3>
             <p class="fd">
-              Crie e organize turmas, vincule alunos, professores e disciplinas
-              de forma simples e centralizada.
+              Organize turmas, alunos e responsáveis de forma prática e
+              intuitiva.
             </p>
           </div>
           <div class="feat-card">
-            <div class="fi fi-b"><i class="bi bi-check2-all"></i></div>
-            <div class="ft">Frequência Digital</div>
+            <span class="fi" aria-hidden="true"
+              ><i class="bi bi-calendar-check"></i
+            ></span>
+            <h3 class="ft">Frequência Digital</h3>
             <p class="fd">
-              Registro de presença em tempo real, relatórios automáticos e
-              alertas para responsáveis via portal.
+              Registre a presença, acompanhe o histórico e tenha mais controle
+              da rotina escolar.
             </p>
           </div>
           <div class="feat-card">
-            <div class="fi fi-g"><i class="bi bi-clipboard2-data"></i></div>
-            <div class="ft">Avaliações e Notas</div>
+            <span class="fi" aria-hidden="true"
+              ><i class="bi bi-clipboard2-data"></i
+            ></span>
+            <h3 class="ft">Avaliações e Notas</h3>
             <p class="fd">
-              Lance, edite e acompanhe notas por bimestre. Boletins gerados e
-              disponibilizados automaticamente.
+              Acompanhe o desempenho dos alunos e emita relatórios com
+              facilidade.
             </p>
           </div>
           <div class="feat-card">
-            <div class="fi fi-p"><i class="bi bi-calendar3"></i></div>
-            <div class="ft">Grade Horária</div>
+            <span class="fi" aria-hidden="true"><i class="bi bi-clock"></i></span>
+            <h3 class="ft">Grade Horária</h3>
             <p class="fd">
-              Monte horários sem conflitos com o editor inteligente, exportável
-              para professores e turmas.
+              Visualize e gerencie os horários de aulas e atividades.
             </p>
           </div>
           <div class="feat-card">
-            <div class="fi fi-r"><i class="bi bi-bell"></i></div>
-            <div class="ft">Notificações</div>
+            <span class="fi" aria-hidden="true"><i class="bi bi-bell"></i></span>
+            <h3 class="ft">Notificações</h3>
             <p class="fd">
-              Comunicados, alertas de falta e avisos institucionais chegam em
-              tempo real para todos os perfis.
+              Comunique-se com famílias e equipe escolar em tempo real.
             </p>
           </div>
-          <div class="feat-card feat-card-ai">
-            <div class="fi fi-ai"><i class="bi bi-stars"></i></div>
-            <div class="ft">Inteligência Artificial &amp; Áudio</div>
+          <!-- Card clicável: abre o modal do Selo de IA. O href é o destino
+               real quando o JS não roda — nunca um link morto. -->
+          <a
+            class="feat-card feat-card-ai"
+            href="html/politica-privacidade.html#ia-privacidade"
+            data-modal-open="modalSeloIA"
+          >
+            <span class="fi" aria-hidden="true"><i class="bi bi-robot"></i></span>
+            <h3 class="ft">Inteligência Artificial</h3>
             <p class="fd">
-              Auxílio inteligente ao professor no planejamento pedagógico e síntese de voz para leitura acessível de comunicados e conteúdos.
+              Recursos modernos para apoiar o ensino e facilitar a comunicação.
             </p>
-            <div class="feat-ai-badge">
-              <i class="bi bi-shield-check"></i> Selo IA Responsável
-            </div>
-          </div>
+            <span class="feat-ai-badge"
+              ><i class="bi bi-shield-check" aria-hidden="true"></i> Selo IA
+              responsável</span
+            >
+          </a>
+          <a class="feat-card" href="html/politica-privacidade.html">
+            <span class="fi" aria-hidden="true"
+              ><i class="bi bi-shield-check"></i
+            ></span>
+            <h3 class="ft">Segurança e LGPD</h3>
+            <p class="fd">
+              Seus dados protegidos com as melhores práticas de segurança.
+            </p>
+          </a>
           <div class="feat-card">
-            <div class="fi fi-s"><i class="bi bi-shield-lock"></i></div>
-            <div class="ft">Segurança LGPD</div>
-            <p class="fd">
-              Autenticação com 2FA, auditoria completa de ações e conformidade
-              total com a legislação vigente.
-            </p>
+            <span class="fi" aria-hidden="true"><i class="bi bi-laptop"></i></span>
+            <h3 class="ft">Acesso Multi-dispositivo</h3>
+            <p class="fd">Use em computadores, tablets e celulares.</p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- PORTALS -->
+    <!-- PORTAIS -->
     <section class="sec portals-section" id="portais">
       <div class="section-inner">
         <div class="sc reveal">
           <span class="stag">Portais de acesso</span>
-          <h2 class="sh">Um sistema, cada perfil no seu portal</h2>
+          <h2 class="sh">Um sistema, cada perfil no <em>seu portal</em></h2>
           <p class="sp">
             Cada perfil tem uma experiência dedicada, com as ferramentas certas
             para o seu papel na escola.
@@ -695,41 +547,47 @@
         <div class="portals-grid">
           <a href="html/login-professor.html" class="portal-card pc-t">
             <span class="portal-num">01</span>
-            <div class="pi-wrap"><i class="bi bi-person-workspace"></i></div>
-            <div class="p-badge">Acesso rápido</div>
-            <div class="pt">Portal do Docente</div>
+            <span class="pi-wrap" aria-hidden="true"
+              ><i class="bi bi-person-workspace"></i
+            ></span>
+            <span class="p-badge">Acesso rápido</span>
+            <h3 class="pt">Portal do Docente</h3>
             <p class="pd">
               Registre frequência, lance notas, consulte sua grade horária e
               acesse atas de aula a qualquer momento.
             </p>
             <span class="pl"
-              >Entrar no portal <i class="bi bi-arrow-right"></i
+              >Entrar no portal <i class="bi bi-arrow-right" aria-hidden="true"></i
             ></span>
           </a>
           <a href="html/login-diretor.html" class="portal-card pc-d">
             <span class="portal-num">02</span>
-            <div class="pi-wrap"><i class="bi bi-briefcase"></i></div>
-            <div class="p-badge">Gestão escolar</div>
-            <div class="pt">Portal do Diretor</div>
+            <span class="pi-wrap" aria-hidden="true"
+              ><i class="bi bi-briefcase"></i
+            ></span>
+            <span class="p-badge">Gestão escolar</span>
+            <h3 class="pt">Portal do Diretor</h3>
             <p class="pd">
               Acompanhe os indicadores da escola, aprove cadastros da equipe e
               gerencie a rotina pedagógica e administrativa.
             </p>
             <span class="pl"
-              >Entrar no portal <i class="bi bi-arrow-right"></i
+              >Entrar no portal <i class="bi bi-arrow-right" aria-hidden="true"></i
             ></span>
           </a>
           <a href="html/login-secretaria.html" class="portal-card pc-s">
             <span class="portal-num">03</span>
-            <div class="pi-wrap"><i class="bi bi-person-badge"></i></div>
-            <div class="p-badge">Administrativo</div>
-            <div class="pt">Portal da Secretaria</div>
+            <span class="pi-wrap" aria-hidden="true"
+              ><i class="bi bi-person-badge"></i
+            ></span>
+            <span class="p-badge">Administrativo</span>
+            <h3 class="pt">Portal da Secretaria</h3>
             <p class="pd">
               Realize matrículas, emita documentos e organize o atendimento e os
               registros administrativos dos alunos.
             </p>
             <span class="pl"
-              >Entrar no portal <i class="bi bi-arrow-right"></i
+              >Entrar no portal <i class="bi bi-arrow-right" aria-hidden="true"></i
             ></span>
           </a>
           <a
@@ -737,170 +595,253 @@
             class="portal-card pc-b"
           >
             <span class="portal-num">04</span>
-            <div class="pi-wrap"><i class="bi bi-house-heart"></i></div>
-            <div class="p-badge">Para famílias</div>
-            <div class="pt">Portal do Responsável</div>
+            <span class="pi-wrap" aria-hidden="true"
+              ><i class="bi bi-house-heart"></i
+            ></span>
+            <span class="p-badge">Para famílias</span>
+            <h3 class="pt">Portal do Responsável</h3>
             <p class="pd">
               Acompanhe as notas, frequência e comunicados do seu filho em tempo
               real, de qualquer dispositivo.
             </p>
             <span class="pl"
-              >Acessar portal <i class="bi bi-arrow-right"></i
+              >Acessar portal <i class="bi bi-arrow-right" aria-hidden="true"></i
             ></span>
           </a>
-
         </div>
       </div>
     </section>
 
-    <!-- HOW -->
-    <section class="sec how-section" id="como-funciona">
-      <div class="how-grid">
-        <div>
-          <span class="stag reveal">Como funciona</span>
-          <h2 class="sh reveal delay-08">
-            Do código secreto<br />à sala de aula
-          </h2>
-          <p class="sp reveal delay-16">
+    <!-- SOBRE / COMO FUNCIONA -->
+    <section class="sec how-section" id="sobre">
+      <div class="section-inner how-grid">
+        <div class="sc reveal">
+          <span class="stag">Sobre o sistema</span>
+          <h2 class="sh">Do código secreto<br />à <em>sala de aula</em></h2>
+          <p class="sp">
             O acesso é liberado pela direção da escola — ninguém entra sem
             vínculo. Depois disso, quatro passos e a turma está na tela.
           </p>
-          <div class="steps">
-            <div class="step">
-              <div class="step-n">1</div>
-              <div>
-                <div class="step-title">Ative sua conta</div>
-                <p class="step-desc">
-                  Professores recebem convite da direção e ativam o acesso com o
-                  código secreto institucional e dados pessoais.
-                </p>
-              </div>
+          <div class="sc-rule" aria-hidden="true"></div>
+        </div>
+        <div class="steps">
+          <div class="step">
+            <span class="step-n">1</span>
+            <div>
+              <h3 class="step-title">Ative sua conta</h3>
+              <p class="step-desc">
+                Professores recebem convite da direção e ativam o acesso com o
+                código secreto institucional e dados pessoais.
+              </p>
             </div>
-            <div class="step">
-              <div class="step-n">2</div>
-              <div>
-                <div class="step-title">Acesse seu painel</div>
-                <p class="step-desc">
-                  Após login com verificação em dois fatores, o dashboard exibe
-                  turmas, horários e avisos pendentes.
-                </p>
-              </div>
+          </div>
+          <div class="step">
+            <span class="step-n">2</span>
+            <div>
+              <h3 class="step-title">Acesse seu painel</h3>
+              <p class="step-desc">
+                Após login com verificação em dois fatores, o dashboard exibe
+                turmas, horários e avisos pendentes.
+              </p>
             </div>
-            <div class="step">
-              <div class="step-n">3</div>
-              <div>
-                <div class="step-title">Registre as aulas</div>
-                <p class="step-desc">
-                  Marque presença, lance notas e preencha atas digitalmente —
-                  dados salvos em tempo real na nuvem.
-                </p>
-              </div>
+          </div>
+          <div class="step">
+            <span class="step-n">3</span>
+            <div>
+              <h3 class="step-title">Registre as aulas</h3>
+              <p class="step-desc">
+                Marque presença, lance notas e preencha atas digitalmente —
+                dados salvos em tempo real na nuvem.
+              </p>
             </div>
-            <div class="step">
-              <div class="step-n">4</div>
-              <div>
-                <div class="step-title">Responsáveis acompanham</div>
-                <p class="step-desc">
-                  Pais recebem notificações e acessam o portal dedicado para
-                  acompanhar o desempenho dos filhos.
-                </p>
-              </div>
+          </div>
+          <div class="step">
+            <span class="step-n">4</span>
+            <div>
+              <h3 class="step-title">Responsáveis acompanham</h3>
+              <p class="step-desc">
+                Pais recebem notificações e acessam o portal dedicado para
+                acompanhar o desempenho dos filhos.
+              </p>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- TESTIMONIALS -->
+    <!-- IMPACTO + CTA -->
+    <section class="impact-section" id="impacto">
+      <div class="section-inner impact-grid">
+        <div class="impact-head reveal">
+          <span class="stag">Nosso impacto</span>
+          <h2 class="sh">Mais de uma escola<br />conectada por <em>nós</em></h2>
+        </div>
+
+        <!-- Números REAIS de GET /api/dashboard/public-summary.
+             A ordem das células é contrato com o script no fim da página
+             (setStat resolve por :nth-child). -->
+        <div class="stats-wrap">
+          <div class="stats-inner">
+            <div class="stat-cell">
+              <span class="stat-icon" aria-hidden="true"
+                ><i class="bi bi-people"></i
+              ></span>
+              <div class="stat-n"><span data-target="0">0</span></div>
+              <div class="stat-l">Alunos cadastrados</div>
+            </div>
+            <div class="stat-cell">
+              <span class="stat-icon" aria-hidden="true"
+                ><i class="bi bi-person-workspace"></i
+              ></span>
+              <div class="stat-n"><span data-target="0">0</span></div>
+              <div class="stat-l">Professores e equipe</div>
+            </div>
+            <div class="stat-cell">
+              <span class="stat-icon" aria-hidden="true"
+                ><i class="bi bi-mortarboard"></i
+              ></span>
+              <div class="stat-n"><span data-target="0">0</span></div>
+              <div class="stat-l">Turmas gerenciadas</div>
+            </div>
+            <div class="stat-cell">
+              <span class="stat-icon" aria-hidden="true"
+                ><i class="bi bi-building"></i
+              ></span>
+              <div class="stat-n"><span data-target="0">0</span></div>
+              <div class="stat-l">Escolas atendidas</div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="impact-cta reveal">
+          <h2>Pronto para transformar<br />a gestão da sua escola?</h2>
+          <p>
+            Acesse o sistema e descubra como é simples conectar toda a
+            comunidade escolar.
+          </p>
+          <a
+            href="html/login.html"
+            class="btn-hero btn-h-p"
+            data-modal-open="modalAcesso"
+            >Acessar o sistema
+            <i class="bi bi-arrow-right" aria-hidden="true"></i
+          ></a>
+          <button type="button" class="impact-cta-alt" data-modal-open="modalPrimeiroAcesso">
+            <i class="bi bi-person-plus" aria-hidden="true"></i> Primeiro acesso
+          </button>
+        </aside>
+      </div>
+    </section>
+
+    <!-- DEPOIMENTOS -->
     <section class="sec test-section" id="depoimentos">
       <div class="section-inner">
         <div class="sc reveal">
           <span class="stag">Depoimentos</span>
-          <h2 class="sh">Avaliações de quem usa</h2>
+          <h2 class="sh">Avaliações de <em>quem usa</em></h2>
           <p class="sp">
             Depoimentos enviados dentro do próprio sistema por professores,
             secretaria e direção.
           </p>
         </div>
-        <div class="test-grid" id="avaliacoesContainer">
-          <!-- Loading placeholder -->
-          <div class="test-loading-row">
-            <div class="loading-spinner"></div>
-            <p class="loading-text">Carregando depoimentos...</p>
+        <div class="test-grid" id="avaliacoesContainer" aria-busy="true">
+          <!-- Skeleton (AGENTS.md secao 8: estado de carregamento nunca é
+               spinner solto). Substituído pelos dados reais da API. -->
+          <div class="test-skeleton" aria-hidden="true">
+            <div class="skeleton skeleton-line"></div>
+            <div class="skeleton skeleton-line"></div>
+            <div class="skeleton skeleton-line"></div>
+          </div>
+          <div class="test-skeleton" aria-hidden="true">
+            <div class="skeleton skeleton-line"></div>
+            <div class="skeleton skeleton-line"></div>
+            <div class="skeleton skeleton-line"></div>
+          </div>
+          <div class="test-skeleton" aria-hidden="true">
+            <div class="skeleton skeleton-line"></div>
+            <div class="skeleton skeleton-line"></div>
+            <div class="skeleton skeleton-line"></div>
           </div>
         </div>
       </div>
     </section>
-
-    <!-- CTA -->
-    <section class="sec cta-section">
-      <div class="cta-inner reveal">
-        <div class="cta-deco">→</div>
-        <div class="cta-eyebrow">Pronto para começar?</div>
-        <h2 class="cta-h">Sua escola pode<br />ser a próxima</h2>
-        <p class="cta-p">
-          O sistema já atende a Escola Jaguari e está preparado para receber
-          as demais EMEFs e CIEPs da rede municipal de Americana.
-        </p>
-        <div class="cta-btns">
-          <a href="html/login-professor.html" class="btn-hero btn-h-p"
-            ><i class="bi bi-box-arrow-in-right"></i> Acessar Portal do
-            Docente</a
-          >
-          <a href="html/pages/primeiro-acesso.html" class="btn-hero btn-h-o"
-            ><i class="bi bi-person-plus"></i> Primeiro Acesso</a
-          >
-        </div>
-      </div>
-    </section>
+    </main>
 
     <!-- FOOTER -->
-    <footer>
+    <footer id="contato">
       <div class="footer-grid">
-        <div>
-          <div class="footer-brand">SISTEMA ESCOLAR</div>
-          <p class="footer-tagline">
-            Plataforma de gestão educacional desenvolvida com atenção à
-            experiência de professores, gestores e famílias.
-          </p>
+        <div class="footer-brand-block">
+          <a href="#topo" class="footer-brand">
+            <span class="footer-logo"
+              ><img
+                src="img/logo-jaguari-light.svg"
+                alt="Logo do Sistema Escolar"
+                width="34"
+                height="34"
+                decoding="async"
+                loading="lazy"
+            /></span><span>Sistema <em>Escolar</em></span>
+          </a>
+          <p class="footer-tagline">Conectando escola, família e futuro.</p>
           <div class="footer-social">
-            <a href="#" aria-label="Enviar e-mail"
-              ><i class="bi bi-envelope" aria-hidden="true"></i
-            ></a>
-            <a href="https://www.linkedin.com/in/renan-de-oliveira-farias-66a9b412b/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"
+            <a
+              href="https://www.linkedin.com/in/renan-de-oliveira-farias-66a9b412b/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="LinkedIn"
               ><i class="bi bi-linkedin" aria-hidden="true"></i
             ></a>
-            <a href="#" aria-label="GitHub"
-              ><i class="bi bi-github" aria-hidden="true"></i
-            ></a>
-            <a href="#" aria-label="Instagram"
-              ><i class="bi bi-instagram" aria-hidden="true"></i
+            <a href="mailto:contato@sistemaescolar.app" aria-label="Enviar e-mail"
+              ><i class="bi bi-envelope" aria-hidden="true"></i
             ></a>
           </div>
         </div>
-        <div class="footer-col">
-          <h4>Portais</h4>
-          <a href="html/login-professor.html">Portal do Docente</a>
-          <a href="/portal-responsavel/dist/index.html"
-            >Portal do Responsável</a
-          >
 
-          <a href="html/dashboard.html">Dashboard</a>
-        </div>
-        <div class="footer-col">
-          <h4>Sistema</h4>
-          <a href="html/primeiro-acesso.html">Primeiro Acesso</a>
-          <a href="html/politica-privacidade.html">Política de Privacidade</a>
-          <a href="html/mudar-senha.html">Alterar Senha</a>
-          <a href="html/perfil.html">Meu Perfil</a>
-        </div>
-        <div class="footer-col">
-          <h4>Suporte</h4>
-          <a href="https://www.linkedin.com/in/renan-de-oliveira-farias-66a9b412b/" target="_blank" rel="noopener noreferrer">Contato</a>
+        <nav class="footer-nav" aria-label="Rodapé">
+          <div class="footer-col">
+            <h4>Navegação</h4>
+            <a href="#topo">Início</a>
+            <a href="#funcionalidades">Funcionalidades</a>
+            <a href="#sobre">Sobre</a>
+            <a href="#depoimentos">Depoimentos</a>
+          </div>
+          <div class="footer-col">
+            <h4>Portais</h4>
+            <a href="html/login-professor.html">Portal do Docente</a>
+            <a href="html/login-diretor.html">Portal do Diretor</a>
+            <a href="html/login-secretaria.html">Portal da Secretaria</a>
+            <a href="/portal-responsavel/dist/index.html">Portal do Responsável</a>
+          </div>
+          <div class="footer-col">
+            <h4>Sistema</h4>
+            <a href="html/pages/primeiro-acesso.html">Primeiro Acesso</a>
+            <a href="html/dashboard.html">Dashboard</a>
+            <a href="html/mudar-senha.html">Alterar Senha</a>
+            <a href="html/perfil.html">Meu Perfil</a>
+          </div>
+        </nav>
+
+        <div class="footer-secure">
+          <i class="bi bi-shield-check" aria-hidden="true"></i>
+          <div>
+            <div class="footer-secure-title">Segurança e privacidade</div>
+            <p class="footer-secure-desc">Seus dados sempre protegidos.</p>
+          </div>
         </div>
       </div>
+
       <div class="footer-bottom">
-        <span>© 2025 Sistema Escolar — Todos os direitos reservados</span>
+        <span>© 2025 Sistema Escolar. Todos os direitos reservados.</span>
+        <div class="footer-legal">
+          <a href="html/politica-privacidade.html">Política de Privacidade</a>
+          <a href="html/termo-audio-imagem.html">Termo de Áudio e Imagem</a>
+          <a
+            href="https://www.linkedin.com/in/renan-de-oliveira-farias-66a9b412b/"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Contato</a
+          >
+        </div>
         <a
           href="https://www.linkedin.com/in/renan-de-oliveira-farias-66a9b412b/"
           target="_blank"
@@ -910,6 +851,271 @@
         >
       </div>
     </footer>
+
+    <!-- ============================================================
+         MODAIS
+         Ficam fora do hero de propósito: o .hero-shell usa
+         overflow: hidden e um dia pode ganhar transform, o que
+         passaria a recortar overlays position: fixed ali dentro.
+         ============================================================ -->
+
+    <!-- Modal Acessar o sistema
+         Um botão só no header (como na referência) não pode custar o
+         caminho do responsável: quem é pai/mãe entra por um portal
+         diferente do da equipe, e o login unificado só atende a equipe.
+         O modal abre os quatro caminhos; o href dos gatilhos continua
+         apontando para o login unificado se o JS não rodar. -->
+    <div
+      class="pa-modal-overlay"
+      id="modalAcesso"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modalAcessoTitle"
+    >
+      <div class="pa-modal-card">
+        <button class="pa-modal-close" data-modal-close aria-label="Fechar">
+          &times;
+        </button>
+        <div class="pa-modal-header">
+          <span class="pa-modal-icon" aria-hidden="true"
+            ><i class="bi bi-box-arrow-in-right"></i
+          ></span>
+          <h2 id="modalAcessoTitle">Acessar o sistema</h2>
+          <p>Escolha o seu perfil para entrar na sua conta.</p>
+        </div>
+        <div class="pa-modal-options">
+          <a href="/portal-responsavel/dist/index.html" class="pa-option">
+            <span class="pa-option-icon pa-icon-b" aria-hidden="true">
+              <i class="bi bi-house-heart"></i>
+            </span>
+            <span class="pa-option-text">
+              <span class="pa-option-title">Responsável / Pai</span>
+              <span class="pa-option-desc"
+                >Entrar no Portal do Responsável e acompanhar seu filho.</span
+              >
+            </span>
+            <i class="bi bi-chevron-right pa-arrow" aria-hidden="true"></i>
+          </a>
+          <a href="html/login-professor.html" class="pa-option">
+            <span class="pa-option-icon pa-icon-p" aria-hidden="true">
+              <i class="bi bi-person-workspace"></i>
+            </span>
+            <span class="pa-option-text">
+              <span class="pa-option-title">Docente</span>
+              <span class="pa-option-desc"
+                >Para professores e equipe pedagógica.</span
+              >
+            </span>
+            <i class="bi bi-chevron-right pa-arrow" aria-hidden="true"></i>
+          </a>
+          <a href="html/login-diretor.html" class="pa-option">
+            <span class="pa-option-icon pa-icon-g" aria-hidden="true">
+              <i class="bi bi-briefcase-fill"></i>
+            </span>
+            <span class="pa-option-text">
+              <span class="pa-option-title">Diretor</span>
+              <span class="pa-option-desc">Gestão e administração escolar.</span>
+            </span>
+            <i class="bi bi-chevron-right pa-arrow" aria-hidden="true"></i>
+          </a>
+          <a href="html/login-secretaria.html" class="pa-option">
+            <span class="pa-option-icon pa-icon-r" aria-hidden="true">
+              <i class="bi bi-person-badge-fill"></i>
+            </span>
+            <span class="pa-option-text">
+              <span class="pa-option-title">Secretaria</span>
+              <span class="pa-option-desc"
+                >Atendimento e gestão administrativa.</span
+              >
+            </span>
+            <i class="bi bi-chevron-right pa-arrow" aria-hidden="true"></i>
+          </a>
+        </div>
+        <div class="pa-modal-footer">
+          <a href="html/login.html"
+            ><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> Login
+            unificado da equipe</a
+          >
+          <button
+            type="button"
+            class="pa-modal-btn-fechar"
+            data-modal-open="modalPrimeiroAcesso"
+          >
+            Ainda não tenho conta
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Primeiro Acesso -->
+    <div
+      class="pa-modal-overlay"
+      id="modalPrimeiroAcesso"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modalPrimeiroAcessoTitle"
+    >
+      <div class="pa-modal-card">
+        <button class="pa-modal-close" data-modal-close aria-label="Fechar">
+          &times;
+        </button>
+        <div class="pa-modal-header">
+          <span class="pa-modal-icon" aria-hidden="true"
+            ><i class="bi bi-shield-lock"></i
+          ></span>
+          <h2 id="modalPrimeiroAcessoTitle">Primeiro Acesso</h2>
+          <p>Escolha o seu perfil para criar sua conta.</p>
+        </div>
+        <div class="pa-modal-options">
+          <a
+            href="html/pages/primeiro-acesso.html"
+            class="pa-option"
+            data-primeiro-acesso="responsavel"
+          >
+            <span class="pa-option-icon pa-icon-b" aria-hidden="true">
+              <i class="bi bi-people-fill"></i>
+            </span>
+            <span class="pa-option-text">
+              <span class="pa-option-title">Responsável / Pai</span>
+              <span class="pa-option-desc"
+                >Para pais, mães ou responsáveis legais.</span
+              >
+            </span>
+            <i class="bi bi-chevron-right pa-arrow" aria-hidden="true"></i>
+          </a>
+          <a
+            href="html/pages/primeiro-acesso.html"
+            class="pa-option"
+            data-primeiro-acesso="docente"
+          >
+            <span class="pa-option-icon pa-icon-p" aria-hidden="true">
+              <i class="bi bi-person-workspace"></i>
+            </span>
+            <span class="pa-option-text">
+              <span class="pa-option-title">Docente</span>
+              <span class="pa-option-desc"
+                >Para professores e equipe pedagógica.</span
+              >
+            </span>
+            <i class="bi bi-chevron-right pa-arrow" aria-hidden="true"></i>
+          </a>
+          <a href="html/pages/cadastro-diretor-publico.html" class="pa-option">
+            <span class="pa-option-icon pa-icon-g" aria-hidden="true">
+              <i class="bi bi-briefcase-fill"></i>
+            </span>
+            <span class="pa-option-text">
+              <span class="pa-option-title">Diretor</span>
+              <span class="pa-option-desc">Gestão e administração escolar.</span>
+            </span>
+            <i class="bi bi-chevron-right pa-arrow" aria-hidden="true"></i>
+          </a>
+          <a href="html/pages/cadastro-secretaria-publico.html" class="pa-option">
+            <span class="pa-option-icon pa-icon-r" aria-hidden="true">
+              <i class="bi bi-person-badge-fill"></i>
+            </span>
+            <span class="pa-option-text">
+              <span class="pa-option-title">Secretaria</span>
+              <span class="pa-option-desc"
+                >Atendimento e gestão administrativa.</span
+              >
+            </span>
+            <i class="bi bi-chevron-right pa-arrow" aria-hidden="true"></i>
+          </a>
+        </div>
+        <div class="pa-modal-footer">
+          <a href="html/login.html"
+            ><i class="bi bi-arrow-left" aria-hidden="true"></i> Já possui conta?
+            Ir para o Login</a
+          >
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Selo de IA -->
+    <div
+      class="pa-modal-overlay"
+      id="modalSeloIA"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modalSeloIATitle"
+    >
+      <div class="pa-modal-card">
+        <button
+          class="pa-modal-close"
+          data-modal-close
+          aria-label="Fechar modal do Selo de IA"
+        >
+          &times;
+        </button>
+        <div class="pa-modal-header">
+          <span class="pa-modal-icon" aria-hidden="true"
+            ><i class="bi bi-stars"></i
+          ></span>
+          <h2 id="modalSeloIATitle">Selo IA Ativa &amp; Tecnologia Assistiva</h2>
+          <p>
+            Uso ético de Inteligência Artificial e Áudio para a comunidade
+            escolar.
+          </p>
+        </div>
+        <div class="pa-modal-options">
+          <div class="pa-option">
+            <span class="pa-option-icon pa-icon-p" aria-hidden="true">
+              <i class="bi bi-robot"></i>
+            </span>
+            <span class="pa-option-text">
+              <span class="pa-option-title">Auxílio ao Professor</span>
+              <span class="pa-option-desc">
+                Apoio inteligente na formulação de planos de aula, atividades
+                pedagógicas e organização de conteúdos, sempre com supervisão e
+                validação humana docente.
+              </span>
+            </span>
+          </div>
+
+          <div class="pa-option">
+            <span class="pa-option-icon pa-icon-t" aria-hidden="true">
+              <i class="bi bi-volume-up-fill"></i>
+            </span>
+            <span class="pa-option-text">
+              <span class="pa-option-title">Recursos de Áudio para Usuários</span>
+              <span class="pa-option-desc">
+                Síntese de voz e reprodução de avisos por áudio para garantir
+                acessibilidade universal e inclusão de alunos, pais e
+                responsáveis.
+              </span>
+            </span>
+          </div>
+
+          <div class="pa-option">
+            <span class="pa-option-icon pa-icon-b" aria-hidden="true">
+              <i class="bi bi-shield-check"></i>
+            </span>
+            <span class="pa-option-text">
+              <span class="pa-option-title">Conformidade e Sigilo LGPD</span>
+              <span class="pa-option-desc">
+                Nenhum dado pessoal sensível de alunos é compartilhado para
+                treino de modelos públicos. Toda interação respeita os direitos
+                dos titulares e a legislação educacional.
+              </span>
+            </span>
+          </div>
+        </div>
+        <div class="pa-modal-footer">
+          <a href="html/politica-privacidade.html#ia-privacidade">
+            <i class="bi bi-file-earmark-text" aria-hidden="true"></i> Ler
+            diretrizes completas na Política de Privacidade &rarr;
+          </a>
+          <button
+            type="button"
+            class="pa-modal-btn-fechar"
+            data-modal-close
+            aria-label="Fechar modal do Selo de IA"
+          >
+            Entendi e Fechar
+          </button>
+        </div>
+      </div>
+    </div>
 
     <script>
       /* CONFIG E API */
@@ -954,94 +1160,42 @@
         }
       })();
 
-      /* PARTICLES */
-      (function () {
-        const c = document.getElementById("bg-canvas");
-        const ctx = c.getContext("2d");
-        let W,
-          H,
-          ps = [];
-        // Paleta reativa ao tema. As partículas guardam só um "papel" (0/1/2)
-        // e a cor real é resolvida por frame, então alternar o tema reflete na
-        // hora, sem recriar nada. Escuro = neon original; claro = tons legíveis.
-        const PALETTE = {
-          dark: { dots: ["#10b8a8", "#3d74c7", "#2d3d60"], line: "16,184,168", lf: 0.06 },
-          light: { dots: ["#0d9488", "#2563eb", "#94a3b8"], line: "100,116,139", lf: 0.1 },
-        };
-        function palette() {
-          return document.documentElement.getAttribute("data-theme") === "light"
-            ? PALETTE.light
-            : PALETTE.dark;
-        }
-        let pal = palette();
-        function resize() {
-          W = c.width = window.innerWidth;
-          H = c.height = window.innerHeight;
-        }
-        resize();
-        window.addEventListener("resize", resize);
-        class P {
-          constructor() {
-            this.reset();
-          }
-          reset() {
-            this.x = Math.random() * W;
-            this.y = Math.random() * H;
-            this.r = Math.random() * 0.9 + 0.2;
-            this.vx = (Math.random() - 0.5) * 0.22;
-            this.vy = (Math.random() - 0.5) * 0.22;
-            this.a = Math.random() * 0.35 + 0.05;
-            const roll = Math.random();
-            this.role = roll > 0.7 ? 0 : roll > 0.4 ? 1 : 2;
-          }
-          update() {
-            this.x += this.vx;
-            this.y += this.vy;
-            if (this.x < 0 || this.x > W || this.y < 0 || this.y > H)
-              this.reset();
-          }
-          draw() {
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
-            ctx.fillStyle = pal.dots[this.role];
-            ctx.globalAlpha = this.a;
-            ctx.fill();
-          }
-        }
-        for (let i = 0; i < 90; i++) ps.push(new P());
-        function loop() {
-          pal = palette();
-          ctx.clearRect(0, 0, W, H);
-          ps.forEach((p) => {
-            p.update();
-            p.draw();
-          });
-          ctx.globalAlpha = 1;
-          for (let i = 0; i < ps.length; i++)
-            for (let j = i + 1; j < ps.length; j++) {
-              const dx = ps[i].x - ps[j].x,
-                dy = ps[i].y - ps[j].y,
-                d = Math.sqrt(dx * dx + dy * dy);
-              if (d < 85) {
-                ctx.beginPath();
-                ctx.moveTo(ps[i].x, ps[i].y);
-                ctx.lineTo(ps[j].x, ps[j].y);
-                ctx.strokeStyle =
-                  "rgba(" + pal.line + "," + pal.lf * (1 - d / 85) + ")";
-                ctx.lineWidth = 0.5;
-                ctx.stroke();
-              }
-            }
-          requestAnimationFrame(loop);
-        }
-        loop();
-      })();
-
       /* NAV SCROLL */
       const nav = document.getElementById("nav");
-      window.addEventListener("scroll", () =>
-        nav.classList.toggle("scrolled", scrollY > 30),
+      window.addEventListener(
+        "scroll",
+        () => nav.classList.toggle("scrolled", window.scrollY > 30),
+        { passive: true },
       );
+
+      /* SCROLLSPY — marca o item do menu da seção visível.
+         Observer em vez de listener de scroll: não roda a cada pixel. */
+      (function () {
+        const links = Array.from(
+          document.querySelectorAll('.nav-links a[href^="#"]'),
+        );
+        const porId = new Map(
+          links.map((a) => [a.getAttribute("href").slice(1), a]),
+        );
+        const alvos = links
+          .map((a) => document.getElementById(a.getAttribute("href").slice(1)))
+          .filter(Boolean);
+        if (!alvos.length) return;
+
+        const spy = new IntersectionObserver(
+          (entries) => {
+            const visivel = entries
+              .filter((e) => e.isIntersecting)
+              .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+            if (!visivel) return;
+            links.forEach((a) => a.classList.remove("is-active"));
+            const ativo = porId.get(visivel.target.id);
+            if (ativo) ativo.classList.add("is-active");
+          },
+          { rootMargin: "-45% 0px -45% 0px", threshold: 0 },
+        );
+        alvos.forEach((el) => spy.observe(el));
+      })();
 
       /* STAGGER OBSERVER */
       const so = new IntersectionObserver(
@@ -1050,7 +1204,7 @@
             if (e.isIntersecting) {
               const siblings = Array.from(e.target.parentElement.children);
               const idx = siblings.indexOf(e.target);
-              setTimeout(() => e.target.classList.add("in"), idx * 80);
+              setTimeout(() => e.target.classList.add("in"), idx * 60);
               so.unobserve(e.target);
             }
           });
@@ -1058,9 +1212,7 @@
         { threshold: 0.07 },
       );
       document
-        .querySelectorAll(
-          ".feat-card,.portal-card,.step,.stat-cell,.test-card,.mod-item",
-        )
+        .querySelectorAll(".feat-card,.portal-card,.step,.stat-cell,.test-card")
         .forEach((el) => so.observe(el));
 
       /* REVEAL */
@@ -1112,53 +1264,114 @@
       const sb = document.querySelector(".stats-wrap");
       if (sb) co.observe(sb);
 
-      /* PROGRESS BARS animation */
-      const pbo = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((e) => {
-            if (e.isIntersecting) {
-              e.target.querySelectorAll(".m-prog-fill[style]").forEach((b) => {
-                const w = b.style.width;
-                b.style.width = "0";
-                setTimeout(() => (b.style.width = w), 100);
-              });
-              pbo.unobserve(e.target);
+      /* MENU MOBILE */
+      (function () {
+        const toggle = document.getElementById("mobileNavToggle");
+        const overlay = document.getElementById("mobileNav");
+        const fechar = document.getElementById("mobileNavClose");
+        if (!toggle || !overlay) return;
+
+        function abrir() {
+          overlay.classList.add("open");
+          toggle.setAttribute("aria-expanded", "true");
+          if (window.ScrollLock) window.ScrollLock.lock("mobile-nav");
+          if (fechar) fechar.focus();
+        }
+        function fecha() {
+          overlay.classList.remove("open");
+          toggle.setAttribute("aria-expanded", "false");
+          if (window.ScrollLock) window.ScrollLock.unlock("mobile-nav");
+        }
+
+        toggle.addEventListener("click", abrir);
+        if (fechar) fechar.addEventListener("click", fecha);
+        overlay
+          .querySelectorAll("a")
+          .forEach((a) => a.addEventListener("click", fecha));
+        overlay.addEventListener("click", (ev) => {
+          if (ev.target === overlay) fecha();
+        });
+        document.addEventListener("keydown", (ev) => {
+          if (ev.key === "Escape" && overlay.classList.contains("open")) {
+            fecha();
+            toggle.focus();
+          }
+        });
+      })();
+
+      /* MODAIS — Primeiro Acesso e Selo de IA */
+      (function () {
+        let ultimoGatilho = null;
+
+        function chaveDe(modal) {
+          return "modal-" + modal.id;
+        }
+
+        function abrirModal(modal, gatilho) {
+          if (!modal) return;
+          ultimoGatilho = gatilho || null;
+          modal.classList.add("open");
+          if (window.ScrollLock) window.ScrollLock.lock(chaveDe(modal));
+          const primeiro = modal.querySelector("[data-modal-close]");
+          if (primeiro) primeiro.focus();
+        }
+
+        function fecharModal(modal) {
+          if (!modal) return;
+          modal.classList.remove("open");
+          if (window.ScrollLock) window.ScrollLock.unlock(chaveDe(modal));
+          // Só devolve o foco se o gatilho ainda estiver na tela: quando
+          // um modal abre outro, o gatilho fica escondido junto com ele.
+          if (ultimoGatilho && ultimoGatilho.offsetParent !== null) {
+            ultimoGatilho.focus();
+          }
+          ultimoGatilho = null;
+        }
+
+        document.querySelectorAll("[data-modal-open]").forEach((gatilho) => {
+          gatilho.addEventListener("click", (ev) => {
+            const modal = document.getElementById(
+              gatilho.getAttribute("data-modal-open"),
+            );
+            if (!modal) return; // link segue para o href
+            ev.preventDefault();
+            // Gatilho dentro de outro modal (ex.: "Ainda nao tenho conta"):
+            // fecha o atual antes, senao as duas camadas ficam abertas.
+            const aberto = document.querySelector(".pa-modal-overlay.open");
+            if (aberto && aberto !== modal) fecharModal(aberto);
+            abrirModal(modal, gatilho);
+          });
+        });
+
+        document.querySelectorAll(".pa-modal-overlay").forEach((modal) => {
+          modal
+            .querySelectorAll("[data-modal-close]")
+            .forEach((b) => b.addEventListener("click", () => fecharModal(modal)));
+          modal.addEventListener("click", (ev) => {
+            if (ev.target === modal) fecharModal(modal);
+          });
+        });
+
+        document.addEventListener("keydown", (ev) => {
+          if (ev.key !== "Escape") return;
+          const aberto = document.querySelector(".pa-modal-overlay.open");
+          if (aberto) fecharModal(aberto);
+        });
+
+        // O perfil escolhido é lido pela página de primeiro acesso.
+        document.querySelectorAll("[data-primeiro-acesso]").forEach((a) => {
+          a.addEventListener("click", () => {
+            try {
+              sessionStorage.setItem(
+                "primeiroAcessoTipo",
+                a.getAttribute("data-primeiro-acesso"),
+              );
+            } catch (e) {
+              // sessionStorage bloqueado: a página pergunta o perfil.
             }
           });
-        },
-        { threshold: 0.2 },
-      );
-      const mshell = document.querySelector(".mockup-shell");
-      if (mshell) pbo.observe(mshell);
-
-      /* MOBILE NAV TOGGLE */
-      const mobileToggle = document.getElementById("mobileNavToggle");
-      const mobileNavOverlay = document.getElementById("mobileNav");
-      const mobileNavClose = document.getElementById("mobileNavClose");
-      function checkMobileNav() {
-        if (mobileToggle)
-          mobileToggle.style.display =
-            window.innerWidth <= 768 ? "flex" : "none";
-      }
-      checkMobileNav();
-      window.addEventListener("resize", checkMobileNav);
-      if (mobileToggle)
-        mobileToggle.addEventListener("click", () =>
-          mobileNavOverlay.classList.add("open"),
-        );
-      if (mobileNavClose)
-        mobileNavClose.addEventListener("click", () =>
-          mobileNavOverlay.classList.remove("open"),
-        );
-
-      /* SPIN ANIMATION for loading spinner */
-      if (!document.getElementById("spinKeyframe")) {
-        const style = document.createElement("style");
-        style.id = "spinKeyframe";
-        style.textContent =
-          "@keyframes spin { to { transform: rotate(360deg); } }";
-        document.head.appendChild(style);
-      }
+        });
+      })();
     </script>
     <script>
       async function carregarAvaliacoesPublicas() {
@@ -1177,6 +1390,11 @@
             .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#039;");
+        }
+
+        function encerrar(html) {
+          avaliacoesContainer.innerHTML = html;
+          avaliacoesContainer.setAttribute("aria-busy", "false");
         }
 
         try {
@@ -1204,7 +1422,7 @@
             Array.isArray(data.data) &&
             data.data.length > 0
           ) {
-            avaliacoesContainer.innerHTML = "";
+            encerrar("");
 
             data.data.forEach((av, index) => {
               const name = av.nome || "Usuário";
@@ -1256,8 +1474,8 @@
               // markup quando a foto era um SVG data-URI com aspas.
               const card = `
                 <div class="test-card">
-                  <div class="test-stars">${starsHtml}</div>
-                  <div class="test-quote">"</div>
+                  <div class="test-stars" aria-label="${estrelas} de 5 estrelas">${starsHtml}</div>
+                  <div class="test-quote" aria-hidden="true">"</div>
                   <p class="test-text">${cleanText}</p>
                   <div class="test-person">
                     <div class="test-avatar ${avatarClass}"></div>
@@ -1278,6 +1496,7 @@
                 const img = document.createElement("img");
                 img.alt = "";
                 img.loading = "lazy";
+                img.decoding = "async";
                 img.onerror = () => {
                   img.remove();
                   avatarEl.textContent = initials;
@@ -1293,12 +1512,14 @@
               .querySelectorAll(".test-card")
               .forEach((el) => so.observe(el));
           } else {
-            avaliacoesContainer.innerHTML =
-              '<p class="empty-message">Nenhuma avaliação encontrada ainda. Seja o primeiro a avaliar no seu perfil!</p>';
+            encerrar(
+              '<p class="empty-message">Nenhuma avaliação encontrada ainda. Seja o primeiro a avaliar no seu perfil!</p>',
+            );
           }
         } catch (error) {
-          avaliacoesContainer.innerHTML =
-            '<p class="empty-message">Depoimentos indisponíveis no momento. Tente novamente mais tarde.</p>';
+          encerrar(
+            '<p class="empty-message">Depoimentos indisponíveis no momento. Tente novamente mais tarde.</p>',
+          );
         }
       }
 
@@ -1313,8 +1534,7 @@
     </script>
     <script defer src="js/reactions.js"></script>
     <script defer src="js/escolas-modal.js"></script>
-  
-<script src="js/click-sound.js" defer></script>
+    <script src="js/click-sound.js" defer></script>
     <script defer src="js/push-notifications.js"></script>
     <script defer src="js/pwa-install.js"></script>
     <script defer src="js/settings-drawer.js"></script>
