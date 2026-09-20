@@ -1366,10 +1366,14 @@ exports.update = async (req, res) => {
         // com prova e assinatura gravadas via `updateProfile` (Issue #280/#289).
         // Um gestor não consente por terceiros, e o titular não grava carimbo
         // legado sem assinatura no lgpdHistory.
+        // SEGURANÇA (Issue #411): `senha` NÍO está aqui. Gravar a senha de
+        // outra pessoa é poder entrar como ela — e, a partir daí, o `AuditLog`
+        // atribui a ela tudo o que for feito. Quem redefine a senha é o
+        // titular, pelo e-mail; a direção dispara o convite de redefinição em
+        // `POST /api/usuarios/:id/redefinir-senha`.
         const CAMPOS_PROPRIOS = [
             'nome',
             'telefone',
-            'senha',
             'foto',
             'disciplina',
             'whatsApp',
@@ -1394,15 +1398,37 @@ exports.update = async (req, res) => {
         // são alteradas por admin.
         const podeDefinirPerfilInicial = isSelfEdit && !oldData.perfil;
 
+        // A senha só entra na lista quando a conta é a de quem está pedindo —
+        // inclusive para o admin.
         const userWhitelist = isAdmin
-            ? [...CAMPOS_PROPRIOS, ...CAMPOS_PRIVILEGIO, 'perfilDefinidoEm']
+            ? [
+                  ...CAMPOS_PROPRIOS,
+                  ...CAMPOS_PRIVILEGIO,
+                  'perfilDefinidoEm',
+                  ...(isSelfEdit ? ['senha'] : []),
+              ]
             : isSelfEdit
               ? [
                     ...CAMPOS_PROPRIOS,
+                    'senha',
                     ...(podeDefinirPerfilInicial ? ['perfil', 'perfilDefinidoEm'] : []),
                 ]
               : // Diretor gerenciando secretaria/professor: pode ativar/desativar, não muda perfil.
                 [...CAMPOS_PROPRIOS, 'ativo'];
+
+        // Recusa explícita: ignorar em silêncio faria a tela dizer "senha
+        // alterada" sem nada ter mudado, e ninguém saberia da tentativa.
+        if (req.body.senha !== undefined && !isSelfEdit) {
+            await logAction(req, 'SENHA_DE_TERCEIRO_RECUSADA', 'Usuarios', {
+                recursoId: String(targetId),
+                descricao: `Tentativa de definir a senha da conta ${targetId} por outra pessoa.`,
+            });
+            return res.status(403).json({
+                success: false,
+                error: 'A senha é definida pelo próprio titular. Envie uma redefinição por e-mail.',
+                codigo: 'SENHA_SO_DO_TITULAR',
+            });
+        }
 
         const filteredBody = {};
         userWhitelist.forEach((field) => {
@@ -1526,6 +1552,58 @@ exports.delete = async (req, res) => {
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+/**
+ * POST /api/usuarios/:id/redefinir-senha — a direção PEDE a redefinição
+ * (Issue #411).
+ *
+ * O que a gestão precisa resolver é "esta pessoa não consegue entrar". Isso
+ * não exige que alguém escolha a senha dela: o código de redefinição vai para
+ * o e-mail do titular, pelo mesmo fluxo do "esqueci minha senha". Quem opera
+ * nunca chega a conhecer a senha — e não pode entrar como a pessoa.
+ */
+exports.pedirRedefinicaoDeSenha = async (req, res) => {
+    try {
+        const alvo = await Usuario.findById(req.params.id).lean();
+        if (!alvo) return res.status(404).json({ success: false, error: 'Conta não encontrada.' });
+
+        // Mesmo recorte do update: admin em qualquer conta da rede; diretor só
+        // em secretaria/professor da escola dele.
+        const ehAdmin = req.user.perfil === 'admin';
+        const diretorDaEquipe =
+            req.user.perfil === 'diretor' && ['secretaria', 'professor'].includes(alvo.perfil);
+        if (!ehAdmin && !(diretorDaEquipe && mesmoTenant(req, alvo))) {
+            return res.status(403).json({
+                success: false,
+                error: 'Acesso negado. Sem permissão para esta conta.',
+            });
+        }
+        if (!alvo.email) {
+            return res
+                .status(400)
+                .json({ success: false, error: 'A conta não tem e-mail para receber o código.' });
+        }
+
+        const PasswordRecoveryService = require('../services/PasswordRecoveryService');
+        await PasswordRecoveryService.forgotPassword(alvo.email);
+
+        await logAction(req, 'SENHA_REDEFINICAO_SOLICITADA', 'Usuarios', {
+            recursoId: String(alvo._id),
+            descricao: `Redefinição de senha da conta ${alvo._id} enviada para o e-mail do titular.`,
+        });
+
+        return res.json({
+            success: true,
+            message: 'Enviamos um código de redefinição para o e-mail da conta.',
+        });
+    } catch (e) {
+        logger.error('[Usuarios] Falha ao pedir redefinição de senha', {
+            err: e,
+            action: 'usuarios.redefinirSenha',
+        });
+        return res.status(500).json({ success: false, error: 'Erro ao enviar a redefinição.' });
     }
 };
 

@@ -42,7 +42,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const senhaUserIdInput = document.getElementById('senhaUserId');
     const emailSenhaInput = document.getElementById('emailSenha');
-    const novaSenhaInput = document.getElementById('novaSenha');
 
     const escolaBadge = document.getElementById('escolaAtivaBadge');
     const escolaBadgeTexto = document.getElementById('escolaAtivaNomeTexto');
@@ -411,32 +410,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         e.preventDefault();
 
         const id = senhaUserIdInput.value;
-        const novaSenha = novaSenhaInput.value;
 
-        if (novaSenha.length < 8) {
-            showToast('A nova senha deve ter no mínimo 8 caracteres.', 'error');
-            return;
-        }
-
+        // A direção PEDE a redefinição; quem escolhe a senha é o titular, pelo
+        // e-mail. Gravar a senha de outra pessoa é poder entrar como ela.
         try {
-            const res = await fetch(`${BASE_URL}/usuarios/${id}`, {
-                method: 'PUT',
+            const res = await fetch(`${BASE_URL}/usuarios/${id}/redefinir-senha`, {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ senha: novaSenha })
+                credentials: 'include'
             });
 
             const resData = await res.json();
             if (!resData.success) {
-                throw new Error(resData.error || 'Erro ao atualizar senha.');
+                throw new Error(resData.error || 'Erro ao enviar a redefinição.');
             }
 
-            showToast('Senha redefinida com sucesso!', 'success');
+            showToast(resData.message || 'Redefinição enviada para o e-mail da conta.', 'success');
             fecharModalSenha();
 
         } catch (err) {
             console.error(err);
-            showToast(err.message || 'Erro ao atualizar senha.', 'error');
+            showToast(err.message || 'Erro ao enviar a redefinição.', 'error');
         }
     });
 
