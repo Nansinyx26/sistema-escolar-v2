@@ -20,6 +20,8 @@
  *       das pessoas autorizadas à retirada (nunca o documento); padrão: nada.
  */
 
+const { CAMPOS_SEM_FINALIDADE } = require('./camposSemFinalidade');
+
 const IDENTIFICACAO = [
     '_id',
     'id',
@@ -68,7 +70,6 @@ const FICHA = [
     'sexo',
     'nacionalidade',
     'etnia',
-    'religiao',
     'codigoInep',
     'cpfAluno',
     'telefone',
@@ -160,7 +161,23 @@ function projetarAluno(aluno, perfil) {
         }
     }
 
+    if (saida.responsavelDados)
+        saida.responsavelDados = semCamposSemFinalidade(saida.responsavelDados);
+    if (Array.isArray(saida.responsaveis))
+        saida.responsaveis = saida.responsaveis.map(semCamposSemFinalidade);
+
     return saida;
+}
+
+/**
+ * Campos sem finalidade (#408): o schema não os aceita mais, mas cadastro
+ * antigo ainda pode ter o valor gravado — e ele não sai na resposta.
+ */
+function semCamposSemFinalidade(obj) {
+    if (!obj || typeof obj !== 'object') return obj;
+    const copia = { ...obj };
+    for (const campo of CAMPOS_SEM_FINALIDADE) delete copia[campo];
+    return copia;
 }
 
 /** Atalho para listas. */

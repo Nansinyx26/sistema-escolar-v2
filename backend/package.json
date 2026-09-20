@@ -18,6 +18,7 @@
         "migrate:multiescola": "node scripts/migrarParaMultiEscola.js",
     "codigos:regenerar-alunos": "node scripts/regenerar-codigos-alunos.js",
     "sessoes:encerrar-equipe": "node scripts/encerrar-sessoes-equipe.js",
+    "campos:limpar-sem-finalidade": "node scripts/limpar-campos-sem-finalidade.js",
         "migrate:webp": "node scripts/migrate-with-webp.js",
         "migrate:voice": "node scripts/migrate_voice_preferences.js",
         "test:api": "node scripts/test_endpoints.js",
