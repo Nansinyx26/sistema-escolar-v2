@@ -14,7 +14,7 @@ const OPCOES_OFFLINE = [
     { label: 'Ver dados brutos', action: 'dados' },
 ];
 
-exports.analisarDesempenho = async(req, res) => {
+exports.analisarDesempenho = async (req, res) => {
     try {
         const { alunoId } = req.params;
         const al = await Aluno.findById(alunoId).lean();
@@ -22,10 +22,10 @@ exports.analisarDesempenho = async(req, res) => {
 
         const [notas, faltas] = await Promise.all([
             Nota.find({ alunoId }).sort({ data: 1 }).lean(),
-            Falta.find({ aluno: alunoId }).lean()
+            Falta.find({ aluno: alunoId }).lean(),
         ]);
 
-        const notasNumericas = notas.map(n => parseFloat(n.nota)).filter(v => !isNaN(v));
+        const notasNumericas = notas.map((n) => parseFloat(n.nota)).filter((v) => !isNaN(v));
         let tendencia = 'estavel';
         let status = 'verde';
         let insight = 'Desempenho dentro do esperado.';
@@ -34,7 +34,10 @@ exports.analisarDesempenho = async(req, res) => {
             const recentes = notasNumericas.slice(-2);
             const anteriores = notasNumericas.slice(0, -2);
             const mediaRecente = recentes.reduce((a, b) => a + b, 0) / recentes.length;
-            const mediaAnterior = anteriores.length > 0 ? (anteriores.reduce((a, b) => a + b, 0) / anteriores.length) : mediaRecente;
+            const mediaAnterior =
+                anteriores.length > 0
+                    ? anteriores.reduce((a, b) => a + b, 0) / anteriores.length
+                    : mediaRecente;
 
             if (mediaRecente < mediaAnterior - 1.5) {
                 tendencia = 'queda';
@@ -51,7 +54,7 @@ exports.analisarDesempenho = async(req, res) => {
         }
 
         const totalAulas = faltas.length;
-        const totalFaltas = faltas.filter(f => !f.presente).length;
+        const totalFaltas = faltas.filter((f) => !f.presente).length;
         const frequencia = totalAulas > 0 ? ((totalAulas - totalFaltas) / totalAulas) * 100 : 100;
 
         if (frequencia < 75) {
@@ -71,20 +74,28 @@ exports.analisarDesempenho = async(req, res) => {
                 status,
                 tendencia,
                 metrics: {
-                    mediaGeral: notasNumericas.length > 0 ? (notasNumericas.reduce((a, b) => a + b, 0) / notasNumericas.length).toFixed(1) : '-',
+                    mediaGeral:
+                        notasNumericas.length > 0
+                            ? (
+                                  notasNumericas.reduce((a, b) => a + b, 0) / notasNumericas.length
+                              ).toFixed(1)
+                            : '-',
                     frequencia: `${frequencia.toFixed(1)}%`,
-                    prediction: prediction.prediction
+                    prediction: prediction.prediction,
                 },
                 analise: insight,
-                sugestao: status === 'vermelho' ? 'Reunião com responsáveis e reforço.' : 'Monitoramento contínuo.'
-            }
+                sugestao:
+                    status === 'vermelho'
+                        ? 'Reunião com responsáveis e reforço.'
+                        : 'Monitoramento contínuo.',
+            },
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 };
 
-exports.getGlobalInsights = async(req, res) => {
+exports.getGlobalInsights = async (req, res) => {
     try {
         const insights = await PedagogicoService.getGlobalInsights(req.escolaId);
         res.json({ success: true, data: insights });
@@ -94,12 +105,14 @@ exports.getGlobalInsights = async(req, res) => {
     }
 };
 
-exports.gerarPlanoAula = async(req, res) => {
+exports.gerarPlanoAula = async (req, res) => {
     try {
         const { tema, materia, ano, objetivos } = req.body;
-        if (!tema || !materia || !ano) return res.status(400).json({ success: false, error: 'Campos obrigatórios ausentes.' });
+        if (!tema || !materia || !ano)
+            return res.status(400).json({ success: false, error: 'Campos obrigatórios ausentes.' });
 
-        const prompt = withPersona(`Crie um plano de aula COMPLETO e pronto para usar, em HTML simples (apenas h3, h4, p, ul, li, strong; sem body/html/style), para uma escola pública municipal brasileira.
+        const prompt =
+            withPersona(`Crie um plano de aula COMPLETO e pronto para usar, em HTML simples (apenas h3, h4, p, ul, li, strong; sem body/html/style), para uma escola pública municipal brasileira.
 
 DADOS DA AULA:
 - Disciplina: ${materia}
@@ -118,10 +131,14 @@ ESTRUTURA OBRIGATÓRIA (nesta ordem, com h3 em cada seção):
 Tom: prático e direto, escrito PARA o professor. Português-BR.`);
 
         try {
-            const planoHtml = await voiceService.generateInsightText(prompt, { maxOutputTokens: 1400 });
+            const planoHtml = await voiceService.generateInsightText(prompt, {
+                maxOutputTokens: 1400,
+            });
             return res.json({ success: true, data: { planoHtml } });
         } catch (iaError) {
-            logger.warn(`[PedagogicoController] IA indisponível em gerarPlanoAula: ${iaError.message} — usando resposta offline.`);
+            logger.warn(
+                `[PedagogicoController] IA indisponível em gerarPlanoAula: ${iaError.message} — usando resposta offline.`
+            );
             const planoHtml = offlineResponseService.buildOfflineResponse({
                 tipo: 'plano_aula',
                 contexto: { materia, ano, tema },
@@ -140,7 +157,7 @@ Tom: prático e direto, escrito PARA o professor. Português-BR.`);
     }
 };
 
-exports.gerarPlanoEstudo = async(req, res) => {
+exports.gerarPlanoEstudo = async (req, res) => {
     try {
         const { alunoId, objetivos } = req.body;
         const al = await Aluno.findById(alunoId).lean();
@@ -164,13 +181,24 @@ exports.gerarPlanoEstudo = async(req, res) => {
         const mediasMaterias = Object.entries(porMateria)
             .map(([mat, agg]) => ({ mat, media: agg.soma / agg.qtd }))
             .sort((a, b) => a.media - b.media);
-        const fracas = mediasMaterias.filter(m => m.media < 6).map(m => `${m.mat} (média ${m.media.toFixed(1)})`);
-        const fortes = mediasMaterias.filter(m => m.media >= 7).map(m => `${m.mat} (média ${m.media.toFixed(1)})`);
+        const fracas = mediasMaterias
+            .filter((m) => m.media < 6)
+            .map((m) => `${m.mat} (média ${m.media.toFixed(1)})`);
+        const fortes = mediasMaterias
+            .filter((m) => m.media >= 7)
+            .map((m) => `${m.mat} (média ${m.media.toFixed(1)})`);
 
-        const prompt = withPersona(`Crie um Plano de Estudos Individualizado (PEI) prático, em HTML simples (apenas h3, h4, p, ul, li, strong; sem body/html/style), para o aluno abaixo.
+        // O nome da criança não vai para o provedor (Issue #401): o plano é
+        // escrito para um rótulo, e o nome volta aqui, no servidor.
+        const { criarMapa } = require('../services/ia/pseudonimizar');
+        const mapaIA = criarMapa();
+        const rotulo = mapaIA.registrarAluno({ id: String(al._id), nome: al.nome });
+
+        const prompt =
+            withPersona(`Crie um Plano de Estudos Individualizado (PEI) prático, em HTML simples (apenas h3, h4, p, ul, li, strong; sem body/html/style), para o aluno abaixo.
 
 DADOS REAIS DO ALUNO (use somente estes; nunca invente notas):
-- Nome: ${al.nome} | Turma: ${al.turma || '-'}
+- Nome: ${rotulo} | Turma: ${al.turma || '-'}
 - Matérias com dificuldade: ${fracas.length ? fracas.join(', ') : 'nenhuma abaixo de 6 registrada'}
 - Pontos fortes: ${fortes.length ? fortes.join(', ') : 'sem médias acima de 7 registradas'}
 - Tendência prevista de nota: ${prediction.prediction || 'sem dados suficientes'} (${prediction.trend})
@@ -186,10 +214,15 @@ ESTRUTURA OBRIGATÓRIA (h3 em cada seção):
 Tom: encorajador e realista. Português-BR.`);
 
         try {
-            const planoHtml = await voiceService.generateInsightText(prompt, { maxOutputTokens: 1400 });
+            const bruto = await voiceService.generateInsightText(prompt, {
+                maxOutputTokens: 1400,
+            });
+            const planoHtml = mapaIA.reidentificar(bruto);
             return res.json({ success: true, data: { planoHtml } });
         } catch (iaError) {
-            logger.warn(`[PedagogicoController] IA indisponível em gerarPlanoEstudo: ${iaError.message} — usando resposta offline.`);
+            logger.warn(
+                `[PedagogicoController] IA indisponível em gerarPlanoEstudo: ${iaError.message} — usando resposta offline.`
+            );
             const planoHtml = offlineResponseService.buildOfflineResponse({
                 tipo: 'plano_estudo',
                 contexto: {
@@ -212,30 +245,36 @@ Tom: encorajador e realista. Português-BR.`);
     }
 };
 
-exports.analisarTurma = async(req, res) => {
+exports.analisarTurma = async (req, res) => {
     try {
         const { turmaId } = req.params;
         const alunos = await Aluno.find({ turmaId }).select('_id nome').lean();
-        if (alunos.length === 0) return res.status(404).json({ success: false, error: 'Nenhum aluno encontrado nesta turma.' });
+        if (alunos.length === 0)
+            return res
+                .status(404)
+                .json({ success: false, error: 'Nenhum aluno encontrado nesta turma.' });
 
-        const alunoIds = alunos.map(a => String(a._id));
+        const alunoIds = alunos.map((a) => String(a._id));
 
         const [notas, faltas] = await Promise.all([
             Nota.find({ alunoId: { $in: alunoIds } }).lean(),
-            Falta.find({ aluno: { $in: alunoIds } }).lean()
+            Falta.find({ aluno: { $in: alunoIds } }).lean(),
         ]);
 
         const totalNotas = notas.length;
-        const mediaGeral = totalNotas > 0 ? (notas.reduce((acc, n) => acc + (parseFloat(n.nota) || 0), 0) / totalNotas) : 0;
+        const mediaGeral =
+            totalNotas > 0
+                ? notas.reduce((acc, n) => acc + (parseFloat(n.nota) || 0), 0) / totalNotas
+                : 0;
 
         const totalAulas = faltas.length;
-        const totalFaltas = faltas.filter(f => !f.presente).length;
-        const frequencia = totalAulas > 0 ? (((totalAulas - totalFaltas) / totalAulas) * 100) : 100;
+        const totalFaltas = faltas.filter((f) => !f.presente).length;
+        const frequencia = totalAulas > 0 ? ((totalAulas - totalFaltas) / totalAulas) * 100 : 100;
 
         const metrics = {
             mediaGeral: mediaGeral.toFixed(1),
             frequencia: `${frequencia.toFixed(1)}%`,
-            totalAlunos: alunos.length
+            totalAlunos: alunos.length,
         };
 
         // Enriquecimento em memória (as notas já foram buscadas):
@@ -254,12 +293,14 @@ exports.analisarTurma = async(req, res) => {
             porAluno[aid].soma += val;
             porAluno[aid].qtd += 1;
         }
-        const materiasTurma = Object.entries(porMateriaTurma)
-            .map(([mat, agg]) => `${mat}: ${(agg.soma / agg.qtd).toFixed(1)}`)
-            .join(', ') || 'sem notas lançadas';
-        const alunosAbaixo6 = Object.values(porAluno).filter(a => (a.soma / a.qtd) < 6).length;
+        const materiasTurma =
+            Object.entries(porMateriaTurma)
+                .map(([mat, agg]) => `${mat}: ${(agg.soma / agg.qtd).toFixed(1)}`)
+                .join(', ') || 'sem notas lançadas';
+        const alunosAbaixo6 = Object.values(porAluno).filter((a) => a.soma / a.qtd < 6).length;
 
-        const prompt = withPersona(`Você escreve o insight pedagógico da turma no painel de BI da direção. Nunca mencione Gemini, Google ou IA.
+        const prompt =
+            withPersona(`Você escreve o insight pedagógico da turma no painel de BI da direção. Nunca mencione Gemini, Google ou IA.
 
 DADOS REAIS DA TURMA ${turmaId} (use somente estes números):
 - Alunos: ${alunos.length} | Média geral: ${mediaGeral.toFixed(1)} | Frequência: ${frequencia.toFixed(1)}%
@@ -272,10 +313,15 @@ Escreva em Português-BR, texto puro, em NO MÁXIMO 4 frases:
 3-4. Duas ações práticas e específicas para esta turma nesta semana.`);
 
         try {
-            const insight = await voiceService.generateInsightText(prompt, { maxOutputTokens: 400, temperature: 0.5 });
+            const insight = await voiceService.generateInsightText(prompt, {
+                maxOutputTokens: 400,
+                temperature: 0.5,
+            });
             return res.json({ success: true, data: { turmaId, metrics, insight } });
         } catch (iaError) {
-            logger.warn(`[PedagogicoController] IA indisponível em analisarTurma: ${iaError.message} — usando resposta offline.`);
+            logger.warn(
+                `[PedagogicoController] IA indisponível em analisarTurma: ${iaError.message} — usando resposta offline.`
+            );
             const insight = offlineResponseService.buildOfflineResponse({
                 tipo: 'analise_turma',
                 contexto: {

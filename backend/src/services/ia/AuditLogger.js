@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * AuditLogger.js — trilha de auditoria das ações executadas pelo copiloto.
  *
@@ -46,9 +44,8 @@ function resumirParametros(parametros) {
             continue;
         }
         if (typeof valor === 'string') {
-            saida[chave] = valor.length > MAX_CHARS_VALOR
-                ? valor.slice(0, MAX_CHARS_VALOR) + '...'
-                : valor;
+            saida[chave] =
+                valor.length > MAX_CHARS_VALOR ? valor.slice(0, MAX_CHARS_VALOR) + '...' : valor;
         } else if (Array.isArray(valor)) {
             saida[chave] = valor.slice(0, 20);
         } else {
@@ -85,15 +82,17 @@ async function registrarAcao(ctx, { ferramenta, parametros, resumo, sucesso, rec
                 resumo,
                 sucesso,
                 erro: erro || undefined,
-                parametros: resumirParametros(parametros)
+                parametros: resumirParametros(parametros),
             },
-            escolaId: ctx.escolaId || undefined
+            escolaId: ctx.escolaId || undefined,
         });
     } catch (e) {
         // A auditoria não pode derrubar a ação que ela registra — mas a falha
         // precisa aparecer, porque um log que some é um controle que não existe.
         logger.error('[IA] Falha ao gravar a auditoria de uma ação do assistente', {
-            err: e, action: 'ia.auditoria', ferramenta
+            err: e,
+            action: 'ia.auditoria',
+            ferramenta,
         });
     }
 }

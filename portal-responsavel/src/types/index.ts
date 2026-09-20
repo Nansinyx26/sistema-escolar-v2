@@ -19,7 +19,6 @@ export interface ResponsavelDados {
   telefone?: string;
   whatsapp?: string;
   email?: string;
-  responsabilidadeFinanceira?: 'Sim' | 'Não' | 'Parcial';
   autorizadoBusca?: boolean;
 }
 
@@ -103,7 +102,6 @@ export interface Student {
   endereco?: Record<string, string>;
   nacionalidade?: string;
   etnia?: string;
-  religiao?: string;
   responsavelDados?: ResponsavelDados;
   responsaveis?: ResponsavelDados[];
   guardaLegal?: string;

@@ -194,7 +194,6 @@ interface RawAluno {
   endereco?: any;
   nacionalidade?: string;
   etnia?: string;
-  religiao?: string;
   responsavelDados?: any;
   alergiasAlimentos?: string;
   alergiasRemedio?: string;
@@ -228,7 +227,6 @@ export async function getAlunosDoResponsavel(): Promise<Student[]> {
     endereco: r.endereco,
     nacionalidade: r.nacionalidade,
     etnia: r.etnia,
-    religiao: r.religiao,
     responsavelDados: r.responsavelDados,
     alergiasAlimentos: r.alergiasAlimentos,
     alergiasRemedio: r.alergiasRemedio,

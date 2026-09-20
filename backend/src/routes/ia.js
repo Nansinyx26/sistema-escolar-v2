@@ -14,25 +14,63 @@ const { iaChatUsuarioLimiter, iaChatIpLimiter } = require('../middleware/rateLim
 const acessoAluno = requireAcessoAoAluno('alunoId');
 
 // Rota de análise preditiva do aluno (Refatorado para AnalyticsController)
-router.get('/analise/:alunoId', authorize(['diretor', 'professor', 'admin']), acessoAluno, IAController.AnalyticsController.desempenhoAluno);
+// Interruptor por escola (Issue #401): a IA só recebe dado de aluno onde a
+// escola decidiu usá-la. O copiloto confere dentro do próprio controller,
+// porque a resposta dele é um fluxo (SSE).
+const { iaLiberada, RESPOSTA_DESLIGADA } = require('../services/ia/interruptor');
+async function exigirIaLigada(req, res, next) {
+    if (await iaLiberada(req.escolaId)) return next();
+    return res.status(403).json(RESPOSTA_DESLIGADA);
+}
+
+router.get(
+    '/analise/:alunoId',
+    authorize(['diretor', 'professor', 'admin']),
+    acessoAluno,
+    IAController.AnalyticsController.desempenhoAluno
+);
 
 // Rota de análise frequência do aluno (Novo endpoint no AnalyticsController)
-router.get('/frequencia/:alunoId', authorize(['diretor', 'professor', 'admin']), acessoAluno, IAController.AnalyticsController.frequenciaAluno);
+router.get(
+    '/frequencia/:alunoId',
+    authorize(['diretor', 'professor', 'admin']),
+    acessoAluno,
+    IAController.AnalyticsController.frequenciaAluno
+);
 
 // Rota de dashboard completo do aluno (AnalyticsController)
-router.get('/dashboard/:alunoId', authorize(['diretor', 'professor', 'admin', 'responsavel']), acessoAluno, IAController.AnalyticsController.dashboardAluno);
+router.get(
+    '/dashboard/:alunoId',
+    authorize(['diretor', 'professor', 'admin', 'responsavel']),
+    acessoAluno,
+    IAController.AnalyticsController.dashboardAluno
+);
 
 // Rota de análise global da turma (Refatorado para AnalyticsController)
-router.get('/turma/:turmaId', authorize(['diretor', 'admin']), IAController.AnalyticsController.relatorioTurma);
+router.get(
+    '/turma/:turmaId',
+    authorize(['diretor', 'admin']),
+    IAController.AnalyticsController.relatorioTurma
+);
 
 // Rota de Mapa de Calor (Matriz Disciplina x Turma - Legado/Mantido)
 router.get('/mapa-calor', authorize(['diretor', 'admin']), IAController.gerarMapaCalor);
 
 // Rota de Relatório BI (PDF global - Legado/Mantido)
-router.get('/relatorio-bi', authorize(['diretor', 'admin']), RelatorioController.gerarRelatorioBI);
+router.get(
+    '/relatorio-bi',
+    exigirIaLigada,
+    authorize(['diretor', 'admin']),
+    RelatorioController.gerarRelatorioBI
+);
 
 // Rota de Insights Globais (Sumário Narrativo - Legado/Mantido)
-router.get('/insights-global', authorize(['diretor', 'admin']), IAController.getGlobalInsights);
+router.get(
+    '/insights-global',
+    exigirIaLigada,
+    authorize(['diretor', 'admin']),
+    IAController.getGlobalInsights
+);
 
 // ============================================
 // COPILOTO — conversa em streaming (SSE)
@@ -50,68 +88,80 @@ router.get('/insights-global', authorize(['diretor', 'admin']), IAController.get
 // não autorizadas também gasta CPU, e o teto por IP precisa valer para ela.
 const PERFIS_COPILOTO = ['diretor', 'professor', 'secretaria', 'responsavel', 'admin'];
 
-router.post('/chat',
+router.post(
+    '/chat',
     iaChatIpLimiter,
     iaChatUsuarioLimiter,
     authorize(PERFIS_COPILOTO),
-    IaCopilotoController.chat);
+    IaCopilotoController.chat
+);
 
 // Execução de ação confirmada. Mantém o limiter por IP: é o único endpoint do
 // copiloto que ESCREVE, e um laço de tentativas com tokens forjados não deve
 // sair de graça. O teto por usuário fica de fora porque uma sessão legítima
 // pode confirmar várias ações seguidas sem gastar cota do modelo.
-router.post('/confirmar',
+router.post(
+    '/confirmar',
     iaChatIpLimiter,
     authorize(PERFIS_COPILOTO),
-    IaCopilotoController.confirmar);
+    IaCopilotoController.confirmar
+);
 
-router.post('/cancelar',
-    authorize(PERFIS_COPILOTO),
-    IaCopilotoController.cancelar);
+router.post('/cancelar', authorize(PERFIS_COPILOTO), IaCopilotoController.cancelar);
 
 // Histórico de conversas. Sem limiter de IA: são leituras baratas no Mongo, já
 // cobertas pelo globalLimiter — o teto de 20/min existe para a cota do modelo,
 // e aplicá-lo aqui faria a sidebar travar durante um uso normal.
-router.get('/conversas',
-    authorize(PERFIS_COPILOTO),
-    IaCopilotoController.listarConversas);
+router.get('/conversas', authorize(PERFIS_COPILOTO), IaCopilotoController.listarConversas);
 
-router.get('/conversas/:id',
-    authorize(PERFIS_COPILOTO),
-    IaCopilotoController.obterConversa);
+router.get('/conversas/:id', authorize(PERFIS_COPILOTO), IaCopilotoController.obterConversa);
 
-router.delete('/conversas/:id',
-    authorize(PERFIS_COPILOTO),
-    IaCopilotoController.removerConversa);
+router.delete('/conversas/:id', authorize(PERFIS_COPILOTO), IaCopilotoController.removerConversa);
 
 // Paleta de comandos rápidos — a lista é filtrada por cargo no servidor.
-router.get('/comandos',
-    authorize(PERFIS_COPILOTO),
-    IaCopilotoController.listarComandos);
+router.get('/comandos', authorize(PERFIS_COPILOTO), IaCopilotoController.listarComandos);
 
 // Exportação da conversa (PDF/TXT/DOCX). O escopo dono+escola é o mesmo da
 // leitura, então não há como exportar o histórico de outra pessoa.
-router.post('/exportar/:id',
-    authorize(PERFIS_COPILOTO),
-    IaCopilotoController.exportarConversa);
+router.post('/exportar/:id', authorize(PERFIS_COPILOTO), IaCopilotoController.exportarConversa);
 
 // Rota de Chatbot (ChatbotController / Refatorado)
-router.post('/chatbot', authorize(['diretor', 'professor', 'responsavel', 'admin', 'coordenador', 'secretaria']), IAController.ChatbotController.sendMessage);
+router.post(
+    '/chatbot',
+    exigirIaLigada,
+    authorize(['diretor', 'professor', 'responsavel', 'admin', 'coordenador', 'secretaria']),
+    IAController.ChatbotController.sendMessage
+);
 
 // Autocomplete de aluno do campo de mensagem do chatbot. Mesmos perfis do POST
 // acima e o MESMO recorte de acesso (`ChatbotService.enforceRBAC`): quem não
 // pode perguntar sobre um aluno também não o vê sugerido enquanto digita.
-router.get('/chatbot/alunos', authorize(['diretor', 'professor', 'responsavel', 'admin', 'coordenador', 'secretaria']), IAController.ChatbotController.sugerirAlunos);
+router.get(
+    '/chatbot/alunos',
+    authorize(['diretor', 'professor', 'responsavel', 'admin', 'coordenador', 'secretaria']),
+    IAController.ChatbotController.sugerirAlunos
+);
 
 // Rota de Plano de Aula (Diretor, Professor, Admin - Legado/Mantido)
-router.post('/plano-aula', authorize(['diretor', 'professor', 'admin']), IAController.gerarPlanoAula);
+router.post(
+    '/plano-aula',
+    exigirIaLigada,
+    authorize(['diretor', 'professor', 'admin']),
+    IAController.gerarPlanoAula
+);
 
 // Rota de Plano de Estudos Personalizado (Todos os perfis autorizados - Legado/Mantido)
 // SEGURANÇA: recebe alunoId no body e monta o PEI com notas/turma/previsão reais
 // do aluno. Sem este guard, um responsável/professor iterava IDs e extraía o
 // perfil de qualquer criança de qualquer escola. `acessoAluno` valida escola +
 // turma + vínculo (mesmo padrão de /analise, /frequencia e /dashboard).
-router.post('/plano-estudo', authorize(['diretor', 'professor', 'responsavel', 'admin']), acessoAluno, IAController.gerarPlanoEstudo);
+router.post(
+    '/plano-estudo',
+    exigirIaLigada,
+    authorize(['diretor', 'professor', 'responsavel', 'admin']),
+    acessoAluno,
+    IAController.gerarPlanoEstudo
+);
 
 // Rota de Health Check de IA
 router.get('/health', IAController.AnalyticsController.health);

@@ -581,6 +581,14 @@ const FichaAluno: React.FC<Props> = ({ student, onUpdate }) => {
         />
       </label>
 
+      {/* Aviso de finalidade (Issue #399): quem envia precisa saber para que o
+          documento é usado, quem vê e por quanto tempo fica guardado. */}
+      <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.55)', marginTop: '0.5rem' }}>
+        Os documentos enviados são usados apenas para conferência da matrícula e das autorizações do
+        seu filho. Ficam visíveis para a secretaria e a direção da escola, e guardados enquanto
+        durar o vínculo escolar. Cada envio fica registrado, e a versão anterior é preservada.
+      </p>
+
       {msg && (
         <p
           style={{

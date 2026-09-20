@@ -298,7 +298,9 @@ router.use('/relatorios', authJWT, horizontalFilter, filtrarPorEscola, require('
 // exportação é por ESCOLA — as duas barreiras se somam, não se substituem.
 router.use('/conformidade', authJWT, horizontalFilter, filtrarPorEscola, require('./conformidade'));
 router.use('/audio', require('./audio'));
-router.use('/tts', authJWT, require('./tts'));
+// `filtrarPorEscola`: a narração confere o texto contra os alunos da escola
+// antes de mandá-lo ao provedor de voz (Issue #401).
+router.use('/tts', authJWT, filtrarPorEscola, require('./tts'));
 router.use('/ia', authJWT, horizontalFilter, filtrarPorEscola, require('./ia'));
 router.use('/chatbot', authJWT, filtrarPorEscola, require('./chatbot'));
 router.use('/secretaria', authJWT, require('./secretaria'));

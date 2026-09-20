@@ -24,10 +24,12 @@ async function carregarTurmas() {
         if (data.success && data.data) {
             data.data
                 .sort((a, b) => (a.id || a._id).localeCompare(b.id || b._id))
-                .forEach(t => {
+                .forEach((t) => {
                     const opt = document.createElement('option');
                     opt.value = t._id || t.id;
-                    opt.textContent = `${t.id || t._id} — ${t.periodo || ''}`.trim().replace(/\s*—\s*$/, '');
+                    opt.textContent = `${t.id || t._id} — ${t.periodo || ''}`
+                        .trim()
+                        .replace(/\s*—\s*$/, '');
                     sel.appendChild(opt);
                 });
         }
@@ -39,14 +41,10 @@ async function carregarTurmas() {
 // ─── Progresso ────────────────────────────────────────────────────────────────
 
 function updateProgress() {
-    const allConsents = ['c1','c2','c3','c4'].every(id => document.getElementById(id)?.checked);
-    const steps = [
-        isStep1Done(),
-        isStep2Done(),
-        isStep3Done(),
-        isStep4Done(),
-        allConsents
-    ];
+    const allConsents = ['c1', 'c2', 'c3', 'c4'].every(
+        (id) => document.getElementById(id)?.checked
+    );
+    const steps = [isStep1Done(), isStep2Done(), isStep3Done(), isStep4Done(), allConsents];
 
     const done = steps.filter(Boolean).length;
     const pct = Math.round((done / 5) * 100);
@@ -67,7 +65,10 @@ function updateProgress() {
     });
 
     // Garante pelo menos um ativo
-    if (!document.querySelector('.ca-step.active') && !document.querySelector('.ca-step:not(.done)')) {
+    if (
+        !document.querySelector('.ca-step.active') &&
+        !document.querySelector('.ca-step:not(.done)')
+    ) {
         document.getElementById('step1').classList.add('active');
     }
 }
@@ -116,7 +117,7 @@ function toggleConsent(checkId, itemId) {
 }
 
 function checkConsents() {
-    const allOk = ['c1','c2','c3','c4'].every(id => document.getElementById(id)?.checked);
+    const allOk = ['c1', 'c2', 'c3', 'c4'].every((id) => document.getElementById(id)?.checked);
     document.getElementById('btnSave').disabled = !allOk;
     updateProgress();
 }
@@ -133,7 +134,7 @@ function togglePcd(val) {
 
 function addDocs(files) {
     const list = document.getElementById('docList');
-    Array.from(files).forEach(file => {
+    Array.from(files).forEach((file) => {
         if (file.size > 10 * 1024 * 1024) {
             showToast(`Arquivo "${file.name}" excede 10 MB e foi ignorado.`, 'error');
             return;
@@ -160,7 +161,7 @@ function addDocs(files) {
 }
 
 function removeDoc(id) {
-    _docs = _docs.filter(d => d.id !== id);
+    _docs = _docs.filter((d) => d.id !== id);
     const el = document.getElementById('doc_' + id);
     if (el) el.remove();
     addAudit('documento removido', 'documentos', id, 'audit-action-edit');
@@ -168,11 +169,16 @@ function removeDoc(id) {
 
 // ─── Pessoas autorizadas a retirar ───────────────────────────────────────────
 
-let _pessoasAutorizadas = [];
+const _pessoasAutorizadas = [];
 
 function addPessoaAutorizada(data = {}) {
     const idx = _pessoasAutorizadas.length;
-    _pessoasAutorizadas.push({ nome: data.nome || '', parentesco: data.parentesco || '', telefone: data.telefone || '', documento: data.documento || '' });
+    _pessoasAutorizadas.push({
+        nome: data.nome || '',
+        parentesco: data.parentesco || '',
+        telefone: data.telefone || '',
+        documento: data.documento || '',
+    });
     renderPessoasAutorizadas();
 }
 
@@ -184,7 +190,9 @@ function removePessoaAutorizada(idx) {
 function renderPessoasAutorizadas() {
     const container = document.getElementById('listaAutorizadosRetirada');
     if (!container) return;
-    container.innerHTML = _pessoasAutorizadas.map((p, i) => `
+    container.innerHTML = _pessoasAutorizadas
+        .map(
+            (p, i) => `
         <div class="ca-grid ca-grid-4" style="margin-bottom:.5rem;align-items:end">
             <div class="ca-field"><label>Nome</label>
                 <input type="text" value="${p.nome}" onchange="_pessoasAutorizadas[${i}].nome=this.value"></div>
@@ -197,7 +205,9 @@ function renderPessoasAutorizadas() {
                     <input type="text" value="${p.documento}" onchange="_pessoasAutorizadas[${i}].documento=this.value" style="flex:1">
                     <button type="button" class="doc-item-remove" onclick="removePessoaAutorizada(${i})"><i class="bi bi-x"></i></button>
                 </div></div>
-        </div>`).join('');
+        </div>`
+        )
+        .join('');
 }
 
 function toggleConducaoFields() {
@@ -219,7 +229,9 @@ function authToBool(val) {
 async function uploadDocumentos(alunoId) {
     if (_docs.length === 0) return;
     const formData = new FormData();
-    _docs.forEach(d => formData.append('documentos', d.file));
+    _docs.forEach((d) => {
+        formData.append('documentos', d.file);
+    });
     const apiBase = (window.API_BASE_URL || '/api').replace(/\/$/, '');
     // SEGURANÇA: sem Bearer de localStorage — a autenticação vai no cookie
     // HttpOnly enviado por credentials: 'include'. O X-CSRF-Token é obrigatório
@@ -230,13 +242,13 @@ async function uploadDocumentos(alunoId) {
         method: 'POST',
         headers: csrf ? { 'X-CSRF-Token': csrf } : {},
         credentials: 'include',
-        body: formData
+        body: formData,
     });
     const json = await res.json();
     if (!json.success) throw new Error(json.error || 'Erro no upload de documentos');
     await apiFetch(`/responsavel/aluno/${alunoId}/documentos`, {
         method: 'POST',
-        body: JSON.stringify({ arquivos: json.data })
+        body: JSON.stringify({ arquivos: json.data }),
     });
 }
 
@@ -249,8 +261,7 @@ function buildResponsaveis() {
         telefone: v('respTelefone'),
         whatsapp: v('respWhatsapp') || v('respTelefone'),
         email: v('respEmail'),
-        responsabilidadeFinanceira: v('respFinanceiro') || 'Não',
-        autorizadoBusca: v('respBusca') === 'Sim'
+        autorizadoBusca: v('respBusca') === 'Sim',
     };
     const responsaveis = [resp1];
     if (v('resp2Nome')) {
@@ -262,8 +273,7 @@ function buildResponsaveis() {
             telefone: v('resp2Telefone'),
             whatsapp: v('resp2Whatsapp') || v('resp2Telefone'),
             email: v('resp2Email'),
-            responsabilidadeFinanceira: v('resp2Financeiro') || 'Não',
-            autorizadoBusca: true
+            autorizadoBusca: true,
         });
     }
     return responsaveis;
@@ -281,7 +291,7 @@ function buildAutorizacoes() {
         motoristaTelefone: v('authConducao') === 'sim' ? v('motoristaTelefone') : undefined,
         antitermico: authToBool(v('authAntitermico')),
         medicamentoNome: v('authAntitermico') === 'sim' ? v('medicamentoNome') : undefined,
-        medicamentoDose: v('authAntitermico') === 'sim' ? v('medicamentoDose') : undefined
+        medicamentoDose: v('authAntitermico') === 'sim' ? v('medicamentoDose') : undefined,
     };
 }
 
@@ -308,7 +318,6 @@ async function salvarAluno() {
         cpfAluno: v('cpfAluno') || undefined,
         nacionalidade: v('nacionalidade') || undefined,
         etnia: v('etnia') || undefined,
-        religiao: v('religiao') || undefined,
 
         endereco: {
             cep: v('cep'),
@@ -317,7 +326,7 @@ async function salvarAluno() {
             complemento: v('complemento'),
             bairro: v('bairro'),
             cidade: v('cidade'),
-            estado: v('estado')
+            estado: v('estado'),
         },
 
         responsavel: v('respEmail') || v('respNome'),
@@ -328,16 +337,15 @@ async function salvarAluno() {
             telefone: v('respTelefone'),
             whatsapp: v('respWhatsapp') || v('respTelefone'),
             email: v('respEmail'),
-            responsabilidadeFinanceira: v('respFinanceiro') || 'Não',
-            autorizadoBusca: v('respBusca') === 'Sim'
+            autorizadoBusca: v('respBusca') === 'Sim',
         },
         responsaveis: buildResponsaveis(),
         guardaLegal: v('guardaLegal') || undefined,
-        pessoasAutorizadasRetirada: _pessoasAutorizadas.filter(p => p.nome),
+        pessoasAutorizadasRetirada: _pessoasAutorizadas.filter((p) => p.nome),
         autorizacoesEscolares: buildAutorizacoes(),
         fichaDocumentoStatus: _docs.length > 0 ? 'enviado' : 'pendente',
 
-        deficiencia: v('pcd') === 'Sim' ? (v('pcdTipo') || 'Não especificada') : undefined,
+        deficiencia: v('pcd') === 'Sim' ? v('pcdTipo') || 'Não especificada' : undefined,
         pcd: v('pcd') === 'Sim',
         alergiasAlimentos: v('alergiasAlimentos') || undefined,
         alergiasRemedio: v('alergiasRemedio') || undefined,
@@ -350,15 +358,17 @@ async function salvarAluno() {
             dadosSensiveis: document.getElementById('c2').checked,
             comunicacoes: document.getElementById('c3').checked,
             politicaPrivacidade: document.getElementById('c4').checked,
-            dataConsentimento: new Date().toISOString()
+            dataConsentimento: new Date().toISOString(),
         },
 
         ativo: true,
-        criadoEm: new Date().toISOString()
+        criadoEm: new Date().toISOString(),
     };
 
     // Remove campos undefined
-    Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
+    Object.keys(payload).forEach((k) => {
+        if (payload[k] === undefined) delete payload[k];
+    });
 
     btn.disabled = true;
     btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Salvando...';
@@ -368,7 +378,7 @@ async function salvarAluno() {
 
         const result = await apiFetch('/alunos', {
             method: 'POST',
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
         });
 
         if (result.success) {
@@ -405,14 +415,19 @@ async function salvarAluno() {
 
 function addAudit(acao, secao, campo, cssClass) {
     _auditCount++;
-    document.getElementById('auditCount').textContent = `${_auditCount} registro${_auditCount !== 1 ? 's' : ''}`;
+    document.getElementById('auditCount').textContent =
+        `${_auditCount} registro${_auditCount !== 1 ? 's' : ''}`;
 
     const tbody = document.getElementById('auditBody');
     const row = document.createElement('tr');
     row.className = 'audit-new';
 
     const now = new Date();
-    const hora = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const hora = now.toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+    });
     const ip = '189.44.xx.xx'; // Mascarado por privacidade
 
     row.innerHTML = `
@@ -438,7 +453,11 @@ function showToast(msg, type = 'info') {
     const icon = document.getElementById('caToastIcon');
     const msgEl = document.getElementById('caToastMsg');
 
-    const icons = { success: 'bi-check-circle-fill', error: 'bi-x-circle-fill', info: 'bi-info-circle-fill' };
+    const icons = {
+        success: 'bi-check-circle-fill',
+        error: 'bi-x-circle-fill',
+        info: 'bi-info-circle-fill',
+    };
     icon.className = `bi ${icons[type] || icons.info}`;
     msgEl.textContent = msg;
     toast.className = `ca-toast ${type} show`;
@@ -484,7 +503,12 @@ async function buscarCEP(cep) {
         document.getElementById('bairro').value = d.bairro || '';
         document.getElementById('cidade').value = d.localidade || '';
         document.getElementById('estado').value = d.uf || '';
-        addAudit('CEP preenchido automaticamente', 'endereco', d.localidade || '', 'audit-action-nav');
+        addAudit(
+            'CEP preenchido automaticamente',
+            'endereco',
+            d.localidade || '',
+            'audit-action-nav'
+        );
         updateProgress();
     } catch (e) {
         // ViaCEP indisponível — usuário preenche manualmente

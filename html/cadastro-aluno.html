@@ -199,21 +199,13 @@
                         <option value="Indígena">Indígena</option>
                     </select>
                 </div>
-                <div class="ca-field">
-                    <label>
-                        Religião
-                        <span class="sensitive-tag"><i class="bi bi-lock-fill"></i> Sensível</span>
-                    </label>
-                    <input type="text" id="religiao" placeholder="Opcional"
-                        oninput="onFieldEdit('dados-basicos','religiao')">
-                </div>
             </div>
             <div class="lgpd-box">
                 <i class="bi bi-info-circle-fill"></i>
                 <span>
-                    Cor/etnia e religião são dados sensíveis conforme
+                    Cor/raça é dado sensível conforme
                     <strong>Art. 11 da LGPD</strong>. Seu fornecimento é <em>voluntário</em> e
-                    será usado exclusivamente para fins de políticas inclusivas.
+                    será usado no Censo Escolar e em políticas de inclusão.
                     <a href="#">Ver base legal →</a>
                 </span>
             </div>
@@ -327,14 +319,6 @@
             </div>
             <div class="ca-grid ca-grid-2">
                 <div class="ca-field">
-                    <label>Responsabilidade Financeira</label>
-                    <select id="respFinanceiro" onchange="onFieldEdit('responsavel','financeiro')">
-                        <option value="Sim">Sim</option>
-                        <option value="Não">Não</option>
-                        <option value="Parcial">Parcial</option>
-                    </select>
-                </div>
-                <div class="ca-field">
                     <label>Autorizado a Buscar</label>
                     <select id="respBusca" onchange="onFieldEdit('responsavel','busca')">
                         <option value="Sim">Sim</option>
@@ -388,14 +372,6 @@
                 <div class="ca-field">
                     <label>E-mail</label>
                     <input type="email" id="resp2Email" placeholder="email@exemplo.com">
-                </div>
-                <div class="ca-field">
-                    <label>Responsabilidade Financeira</label>
-                    <select id="resp2Financeiro">
-                        <option value="Não">Não</option>
-                        <option value="Sim">Sim</option>
-                        <option value="Parcial">Parcial</option>
-                    </select>
                 </div>
             </div>
         </div>
@@ -571,7 +547,9 @@
             <div class="info-box">
                 <i class="bi bi-info-circle-fill"></i>
                 <span>Formatos aceitos: PDF, JPG, PNG. Tamanho máximo: 10 MB por arquivo.
-                    Os documentos são armazenados com criptografia e acesso restrito.</span>
+                    Finalidade: conferência da matrícula e das autorizações do aluno. Ficam
+                    visíveis para a secretaria e a direção, guardados enquanto durar o vínculo
+                    escolar; cada envio é registrado e a versão anterior é preservada.</span>
             </div>
 
             <div class="doc-upload-zone" onclick="document.getElementById('docInput').click()">
@@ -673,7 +651,7 @@
                         <span class="consent-art">Art. 11 LGPD</span>
                     </div>
                     <div class="consent-item-desc">
-                        Autoriza o tratamento de dados de saúde, deficiência (PCD), cor/etnia e religião
+                        Autoriza o tratamento de dados de saúde, deficiência (PCD) e cor/raça
                         exclusivamente para políticas de inclusão, atendimento pedagógico especializado
                         e obrigações legais junto ao MEC/INEP.
                     </div>

@@ -1,5 +1,21 @@
 const Falta = require('../models/Falta');
+const Aluno = require('../models/Aluno');
+const assertAcessoAoAluno = require('../middleware/assertAcessoAoAluno');
 const { projetarAluno } = require('../utils/projecaoAluno');
+
+// O que o cliente pode gravar num registro de chamada (Issue #397). `escolaId`
+// não está aqui de propósito: ele vem do contexto da sessão, nunca do corpo —
+// senão uma chamada pode nascer dentro do tenant de outra escola.
+const CAMPOS_FALTA = [
+    'aluno',
+    'matriculaId',
+    'turma',
+    'data',
+    'materia',
+    'presente',
+    'justificada',
+    'motivo',
+];
 
 /**
  * O `populate('aluno')` traria o cadastro inteiro da criança em cada registro
@@ -51,6 +67,10 @@ exports.list = async (req, res) => {
 exports.create = async (req, res) => {
     try {
         const { turma } = req.body;
+        const corpo = {};
+        for (const campo of CAMPOS_FALTA) {
+            if (req.body[campo] !== undefined) corpo[campo] = req.body[campo];
+        }
         // --- SEGURANÇA: Verificação Horizontal para Professor (Prevenção IDOR) ---
         if (req.user && req.user.perfil === 'professor') {
             const allowed = req.allowedTurmas || [];
@@ -63,8 +83,17 @@ exports.create = async (req, res) => {
         }
         // -------------------------------------------------------------------------
 
-        if (req.escolaId && !req.body.escolaId) req.body.escolaId = req.escolaId;
-        const doc = await Falta.create(req.body);
+        // O aluno da chamada passa pela mesma guarda das rotas de aluno: sem
+        // ela, dava para lançar falta no nome de criança de outra turma.
+        if (corpo.aluno) {
+            const acesso = await assertAcessoAoAluno(req, String(corpo.aluno));
+            if (!acesso.ok) {
+                return res.status(acesso.status).json({ success: false, error: acesso.error });
+            }
+        }
+
+        if (req.escolaId) corpo.escolaId = req.escolaId;
+        const doc = await Falta.create(corpo);
         res.status(201).json({ success: true, data: doc });
     } catch (e) {
         res.status(400).json({ success: false, error: e.message });
@@ -203,6 +232,35 @@ exports.sync = async (req, res) => {
             : { $in: [null, ''] };
 
         await Falta.deleteMany(filtroLimpeza);
+
+        // Todo aluno da lista precisa ser da turma (e da escola) da chamada.
+        // Sem esta conferência, uma sincronização podia gravar presença e falta
+        // no nome de criança de outra turma — dado escolar de terceiro.
+        const idsInformados = [...new Set(presencas.map((p) => String(p.alunoId)).filter(Boolean))];
+        if (idsInformados.length > 0) {
+            const grafias = [turma, String(turma).replace('º', '')];
+            const daTurma = await Aluno.find({
+                $and: [
+                    { $or: [{ _id: { $in: idsInformados } }, { id: { $in: idsInformados } }] },
+                    { $or: [{ turma: { $in: grafias } }, { turmaId: { $in: grafias } }] },
+                    ...(req.escolaId ? [{ escolaId: String(req.escolaId) }] : []),
+                ],
+            })
+                .select('_id id')
+                .lean();
+
+            const conhecidos = new Set(
+                daTurma.flatMap((a) => [String(a._id), a.id ? String(a.id) : null].filter(Boolean))
+            );
+            const forasteiros = idsInformados.filter((id) => !conhecidos.has(id));
+            if (forasteiros.length > 0) {
+                return res.status(403).json({
+                    success: false,
+                    codigo: 'ALUNO_FORA_DA_TURMA',
+                    error: `A lista tem ${forasteiros.length} aluno(s) que não pertencem à turma ${turma}.`,
+                });
+            }
+        }
 
         // 2. Prepara novos documentos
         const docs = presencas.map((p) => ({

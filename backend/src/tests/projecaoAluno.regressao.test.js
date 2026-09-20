@@ -119,7 +119,6 @@ beforeEach(async () => {
         turma: '1A',
         matricula: 'RA-1',
         cpfAluno: '00000000191',
-        religiao: 'Fixture',
         etnia: 'Parda',
         nascimento: new Date('2017-03-01'),
         telefone: '19999990000',

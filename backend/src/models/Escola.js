@@ -14,6 +14,11 @@ const EscolaSchema = new mongoose.Schema(
         municipio: { type: String, default: 'Americana' },
         codigoSecreto: { type: String, select: false },
 
+        // Decisão da escola sobre usar o assistente de IA (Issue #401).
+        // `undefined` = sem decisão registrada: vale o padrão da rede
+        // (`IA_ESCOLAS_PADRAO`, que nasce desligado).
+        iaHabilitada: { type: Boolean },
+
         // ─── Identificação no Censo Escolar (INEP) ──────────────────────────────
         // Sem o código INEP da unidade não existe declaração: o Educacenso identifica
         // a escola por ele, não pelo nome. Fica opcional no schema porque a escola é
