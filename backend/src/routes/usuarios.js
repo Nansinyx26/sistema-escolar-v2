@@ -12,6 +12,11 @@ router.delete('/foto', UserController.removeFoto);
 
 router.put('/:id', UserController.update);
 router.delete('/:id', authorize('admin', 'diretor'), UserController.delete);
+router.post(
+    '/:id/redefinir-senha',
+    authorize('admin', 'diretor'),
+    UserController.pedirRedefinicaoDeSenha
+);
 router.put('/:id/anonymize', authorize('admin'), UserController.anonymize);
 
 module.exports = router;
