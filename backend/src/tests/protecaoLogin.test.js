@@ -33,7 +33,16 @@ afterAll(async () => {
  * tentativas chegaram de fato ao login.
  */
 function cenario(sobrescrever = {}) {
-    let agora = new Date('2026-09-14T10:00:00Z');
+    // A data começa no FUTURO de propósito, e isso não é detalhe de estilo.
+    // `BloqueioIp` tem índice TTL em `expiraEm` (`expireAfterSeconds: 0`), e o
+    // Mongo decide o que expirou pelo relógio REAL — não por este relógio. Com
+    // uma data fixa no passado, o `expiraEm` gravado já nascia vencido: a
+    // varredura de TTL (a cada 60 s) apagava o bloqueio no meio de um teste que
+    // faz 30 tentativas, e a seguinte voltava 401 em vez de 429. Passava na
+    // máquina rápida e reprovava o CI de vez em quando (Issue #416, vista no
+    // run 35479197456). Quando o teste nasceu, em #333, `2026-09-14` era o dia
+    // corrente e o campo caía no futuro; a armadilha só apareceu com o tempo.
+    let agora = new Date('2099-09-14T10:00:00Z');
     const pendentes = [];
     const estado = { chegaramAoLogin: 0 };
     const config = {
@@ -173,6 +182,20 @@ describe('POST /api/auth/login — proteção por IP', () => {
         // Depois do prazo o IP tem as 5 tentativas de novo, não um bloqueio imediato.
         const depois = await errar(c, 5);
         expect(depois.map((r) => r.status)).toEqual([401, 401, 401, 401, 401]);
+    });
+
+    it('o bloqueio gravado não nasce vencido para o TTL real do Mongo', async () => {
+        // Guarda da armadilha descrita em `cenario()`: se o relógio do teste
+        // voltar para o passado, `expiraEm` nasce vencido, o TTL do Mongo apaga
+        // o bloqueio no meio da suíte e a falha aparece longe daqui, de forma
+        // intermitente. Esta asserção faz esse erro aparecer na hora.
+        const c = cenario();
+        await errar(c, 5);
+        expect((await c.login('errada')).status).toBe(429);
+
+        const registro = await BloqueioIp.findOne({}).lean();
+        expect(registro.expiraEm.getTime()).toBeGreaterThan(Date.now());
+        expect(registro.bloqueadoAte.getTime()).toBeGreaterThan(Date.now());
     });
 
     it('o bloqueio expira sozinho no prazo', async () => {
