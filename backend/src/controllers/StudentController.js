@@ -8,6 +8,7 @@ const logger = require('../utils/logger');
 const assertAcessoAoAluno = require('../middleware/assertAcessoAoAluno');
 const urlFotoAluno = require('../utils/urlFotoAluno');
 const { projetarAluno } = require('../utils/projecaoAluno');
+const { limparCamposSemFinalidade } = require('../utils/camposSemFinalidade');
 
 // Whitelist de campos permitidos para o Aluno (Prevenção de Injeção de Parâmetros)
 const studentWhitelist = [
@@ -39,7 +40,6 @@ const studentWhitelist = [
     'cpfAluno',
     'nacionalidade',
     'etnia',
-    'religiao',
     'responsavelDados',
     'responsaveis',
     'guardaLegal',
@@ -279,6 +279,9 @@ exports.create = async (req, res) => {
         studentWhitelist.forEach((field) => {
             if (req.body[field] !== undefined) filteredBody[field] = req.body[field];
         });
+        // Campos sem finalidade (#408): o schema já os descarta; aqui some também
+        // de `responsavelDados`, que é Mixed e aceitaria qualquer chave.
+        limparCamposSemFinalidade(filteredBody);
         const camposIgnorados = restringirAoProfessor(req, filteredBody);
 
         // Sincronização Obrigatória
@@ -374,6 +377,9 @@ exports.update = async (req, res) => {
         studentWhitelist.forEach((field) => {
             if (req.body[field] !== undefined) filteredBody[field] = req.body[field];
         });
+        // Campos sem finalidade (#408): o schema já os descarta; aqui some também
+        // de `responsavelDados`, que é Mixed e aceitaria qualquer chave.
+        limparCamposSemFinalidade(filteredBody);
 
         // Sincronização Obrigatória no Update
         if (filteredBody.turmaId) filteredBody.turma = filteredBody.turmaId;

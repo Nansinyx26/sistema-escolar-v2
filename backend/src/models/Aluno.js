@@ -33,7 +33,6 @@ const ResponsavelSchema = new mongoose.Schema(
         telefone: String,
         whatsapp: String,
         email: String,
-        responsabilidadeFinanceira: { type: String, enum: ['Sim', 'Não', 'Parcial'] },
         autorizadoBusca: { type: Boolean, default: true },
     },
     { _id: false }
@@ -62,17 +61,6 @@ const AutorizacoesEscolaresSchema = new mongoose.Schema(
         antitermico: { type: Boolean, default: null },
         medicamentoNome: String,
         medicamentoDose: String,
-    },
-    { _id: false }
-);
-
-const DocumentoArquivoSchema = new mongoose.Schema(
-    {
-        id: String,
-        nome: String,
-        tipo: String,
-        gridfsId: String,
-        enviadoEm: { type: Date, default: Date.now },
     },
     { _id: false }
 );
@@ -119,7 +107,6 @@ const AlunoSchema = new mongoose.Schema(
         // é o que o cadastro e a importação de planilha já produzem — a tradução
         // para o código do INEP mora em services/conformidade/educacenso.js.
         sexo: String,
-        religiao: String,
         responsavelDados: mongoose.Schema.Types.Mixed,
         responsaveis: { type: [ResponsavelSchema], default: undefined },
         guardaLegal: {

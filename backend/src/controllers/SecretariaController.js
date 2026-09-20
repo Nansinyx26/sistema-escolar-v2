@@ -116,7 +116,6 @@ const CAMPOS_EDICAO_ALUNO = [
     'cpfAluno',
     'nacionalidade',
     'etnia',
-    'religiao',
     'responsavelDados',
     'responsaveis',
     'guardaLegal',
@@ -176,7 +175,6 @@ const CAMPOS_IMPORT_ALUNO = [
     'cpfAluno',
     'nacionalidade',
     'etnia',
-    'religiao',
     'endereco',
     'observacoes',
 ];

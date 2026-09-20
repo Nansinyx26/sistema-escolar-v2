@@ -22,6 +22,7 @@ const { projetarAluno } = require('../utils/projecaoAluno');
 const assertAcessoAoAluno = require('../middleware/assertAcessoAoAluno');
 const vinculos = require('../services/vinculosResponsavel');
 const { logAction } = require('../utils/auditHelper');
+const { limparCamposSemFinalidade } = require('../utils/camposSemFinalidade');
 
 // Trava por conta contra varredura do código secreto do aluno
 const MAX_TENTATIVAS_VINCULO = 5;
@@ -215,7 +216,6 @@ exports.getAlunos = async (req, res) => {
                 endereco: aluno.endereco || null,
                 nacionalidade: aluno.nacionalidade || '',
                 etnia: aluno.etnia || '',
-                religiao: aluno.religiao || '',
                 responsavelDados: aluno.responsavelDados || null,
                 responsaveis: aluno.responsaveis || [],
                 guardaLegal: aluno.guardaLegal || '',
@@ -882,6 +882,7 @@ exports.updateAlunoDados = async (req, res) => {
         allowed.forEach((k) => {
             if (req.body[k] !== undefined) update[k] = req.body[k];
         });
+        limparCamposSemFinalidade(update);
 
         if (update.responsaveis && update.responsaveis.length > 2) {
             return res

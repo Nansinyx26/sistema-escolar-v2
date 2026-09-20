@@ -30,6 +30,7 @@
 | Professor ver **detalhe de deficiência e transtornos** | Direção + equipe pedagógica | Não vê; recebe indicador de necessidade de apoio (`PROFESSOR_VE_DETALHE_DEFICIENCIA`) |
 | Professor ver a **lista de pessoas autorizadas à retirada** | Direção | Não vê (`PROFESSOR_VE_RETIRADA`); onde o professor entrega a criança na saída, pode ser ligado sem o documento |
 | Manter **CPF do aluno** e **plano de saúde** no cadastro | Secretaria + jurídico | Campos existem e são aceitos |
+| Rodar a limpeza dos campos removidos na #408 nos cadastros antigos | Secretaria | Script pronto, em modo de simulação (`campos:limpar-sem-finalidade`) |
 | **Anonimização automática** de contas inativas | Mantenedora | 12 meses sem acesso |
 | **Regenerar os códigos de vínculo** dos alunos e como avisar as famílias | Direção | Script pronto, em modo de simulação |
 
