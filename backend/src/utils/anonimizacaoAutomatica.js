@@ -17,14 +17,92 @@
 
 const cron = require('node-cron');
 const Usuario = require('../models/Usuario');
+const Aluno = require('../models/Aluno');
+const escapeRegex = require('./escapeRegex');
 const { logAction } = require('./auditHelper');
 const { enviarEmail } = require('../services/EnvioEmail');
 const { executarComTravaJanela, formatarJanelaMes } = require('./travaDistribuida');
 
-// Threshold: 12 meses = 365 dias
+// Threshold padrão: 12 meses = 365 dias (o aviso sai 30 dias antes)
 const THRESHOLD_ANONIMIZACAO_DIAS = 365;
-// Aviso: 30 dias antes da anonimização (11 meses)
-const THRESHOLD_AVISO_DIAS = 335;
+
+/**
+ * QUEM A ROTINA NÍO ANONIMIZA (Issue #409)
+ * ----------------------------------------
+ * A inatividade de 12 meses era o único critério, e isso alcançava gente que
+ * a escola ainda precisa identificar:
+ *
+ *  - **Responsável de aluno com vínculo ativo.** O pai que não entra no portal
+ *    continua sendo o responsável legal da criança matriculada; anonimizar a
+ *    conta dele apaga o contato de emergência e quebra a autorização de
+ *    retirada. A escola tem dever de guarda e de contato enquanto durar a
+ *    matrícula — o prazo de inatividade não vale contra isso.
+ *  - **Conta de equipe.** Nota, chamada e ocorrência ficam amarradas a quem as
+ *    lançou; trocar o nome por "Usuário Anonimizado" apaga a autoria de um
+ *    registro escolar que tem guarda obrigatória. A conta é **desativada** —
+ *    perde o acesso, mantém a autoria.
+ *
+ * Tudo configurável, com o padrão mais protetivo:
+ *   ANONIMIZACAO_INATIVIDADE_DIAS=365   prazo de inatividade
+ *   ANONIMIZACAO_EQUIPE=desativar       'anonimizar' só por decisão da escola
+ */
+const PERFIS_DE_EQUIPE = ['admin', 'diretor', 'professor', 'secretaria'];
+
+/**
+ * Requisição fictícia para o `logAction` — a rotina roda no cron, sem HTTP.
+ *
+ * O objeto anterior tinha só `ip` e `user`, e `logAction` lê `req.headers`:
+ * a leitura estourava TypeError dentro do try/catch do helper e **todo** o
+ * registro de anonimização automática era perdido em silêncio. `id` fica de
+ * fora de propósito — o helper cai no `recursoId`, que é um ObjectId de
+ * verdade, em vez de tentar gravar a string 'SISTEMA' num campo ObjectId.
+ */
+function requisicaoDoSistema() {
+    return {
+        ip: '0.0.0.0',
+        headers: {},
+        socket: {},
+        user: { email: 'cron@sistema', perfil: 'sistema' },
+    };
+}
+
+function prazoDeInatividade() {
+    const bruto = Number.parseInt(process.env.ANONIMIZACAO_INATIVIDADE_DIAS || '', 10);
+    return Number.isFinite(bruto) && bruto > 0 ? bruto : THRESHOLD_ANONIMIZACAO_DIAS;
+}
+
+function equipeEhAnonimizada() {
+    return String(process.env.ANONIMIZACAO_EQUIPE || '').toLowerCase() === 'anonimizar';
+}
+
+/**
+ * Conta com aluno ativo apontando para ela — por qualquer um dos três campos
+ * em que a ficha guarda o e-mail do responsável.
+ */
+async function temVinculoAtivoComAluno(email) {
+    const alvo = String(email || '').trim();
+    if (!alvo) return false;
+    const exato = new RegExp(`^${escapeRegex(alvo)}$`, 'i');
+    const achado = await Aluno.exists({
+        ativo: { $ne: false },
+        anonimizadoEm: null,
+        $or: [
+            { responsavel: exato },
+            { 'responsavelDados.email': exato },
+            { 'responsaveis.email': exato },
+        ],
+    });
+    return Boolean(achado);
+}
+
+/** Decide o que fazer com uma conta inativa. */
+async function destinoDaConta(usuario) {
+    if (PERFIS_DE_EQUIPE.includes(String(usuario.perfil || '').toLowerCase())) {
+        return equipeEhAnonimizada() ? 'anonimizar' : 'desativar';
+    }
+    if (await temVinculoAtivoComAluno(usuario.email)) return 'preservar';
+    return 'anonimizar';
+}
 
 // --------------------------------------------------
 // Utilitário: Calcula a data X dias atrás
@@ -94,12 +172,15 @@ async function executarAnonimizacao(opcoesTrava = {}) {
             console.log('🔄 [LGPD] Iniciando rotina de anonimização automática...');
 
             let anonimizados = 0;
+            let desativados = 0;
+            let preservados = 0;
             let avisoEnviados = 0;
+            const prazo = prazoDeInatividade();
 
             try {
                 // --- FASE 1: Enviar aviso para usuários próximos ao threshold ---
-                const dataAviso = diasAtras(THRESHOLD_AVISO_DIAS);
-                const dataAnonimizacao = diasAtras(THRESHOLD_ANONIMIZACAO_DIAS);
+                const dataAviso = diasAtras(Math.max(prazo - 30, 1));
+                const dataAnonimizacao = diasAtras(prazo);
 
                 const usuariosParaAviso = await Usuario.find({
                     ativo: true,
@@ -109,10 +190,13 @@ async function executarAnonimizacao(opcoesTrava = {}) {
                         $gt: dataAnonimizacao, // Mas menos de 12 meses (ainda não será anonimizado)
                     },
                 })
-                    .select('_id email nome ultimoLogin')
+                    .select('_id email nome perfil ultimoLogin')
                     .lean();
 
                 for (const usuario of usuariosParaAviso) {
+                    // Avisar quem não será anonimizado é assustar a família à
+                    // toa — e desmentir o próprio aviso 30 dias depois.
+                    if ((await destinoDaConta(usuario)) !== 'anonimizar') continue;
                     await enviarAvisoAnonimizacao(usuario);
                     avisoEnviados++;
                 }
@@ -123,10 +207,36 @@ async function executarAnonimizacao(opcoesTrava = {}) {
                     anonimizadoEm: null,
                     ultimoLogin: { $lte: dataAnonimizacao },
                 })
-                    .select('_id email nome ultimoLogin')
+                    .select('_id email nome perfil ultimoLogin')
                     .lean();
 
                 for (const usuario of usuariosParaAnonimizar) {
+                    const destino = await destinoDaConta(usuario);
+
+                    if (destino === 'preservar') {
+                        preservados++;
+                        continue;
+                    }
+
+                    if (destino === 'desativar') {
+                        await Usuario.findByIdAndUpdate(usuario._id, {
+                            $set: { ativo: false },
+                        });
+                        await logAction(
+                            requisicaoDoSistema(),
+                            'AUTO_DESATIVAR_EQUIPE',
+                            'Usuarios',
+                            {
+                                recursoId: String(usuario._id),
+                                valorAnterior: { ativo: true },
+                                valorNovo: { ativo: false },
+                                descricao: `Conta de equipe ${usuario._id} desativada por inatividade (>${prazo} dias). A autoria dos lançamentos é preservada.`,
+                            }
+                        );
+                        desativados++;
+                        continue;
+                    }
+
                     const idAnonimo = `anon_${usuario._id}_${Date.now()}`;
 
                     await Usuario.findByIdAndUpdate(usuario._id, {
@@ -145,31 +255,25 @@ async function executarAnonimizacao(opcoesTrava = {}) {
                     });
 
                     // Registra no audit log (sem req, é uma ação do sistema)
-                    await logAction(
-                        {
-                            ip: 'SISTEMA-CRON',
-                            user: { id: 'SISTEMA', email: 'cron@sistema', perfil: 'sistema' },
-                        },
-                        'AUTO_ANONYMIZE_USER',
-                        'Usuarios',
-                        {
-                            recursoId: usuario._id,
-                            descricao: `Usuário ${usuario.email} anonimizado automaticamente por inatividade (>${THRESHOLD_ANONIMIZACAO_DIAS} dias). Último login: ${usuario.ultimoLogin?.toISOString() || 'nunca'}`,
-                        }
-                    );
+                    await logAction(requisicaoDoSistema(), 'AUTO_ANONYMIZE_USER', 'Usuarios', {
+                        recursoId: String(usuario._id),
+                        descricao: `Conta ${usuario._id} anonimizada por inatividade (>${prazo} dias). Último login: ${usuario.ultimoLogin?.toISOString() || 'nunca'}`,
+                    });
 
                     console.log(
-                        `✅ [LGPD] Anonimizado: ${usuario.email} (último login: ${usuario.ultimoLogin?.toLocaleDateString('pt-BR') || 'nunca'})`
+                        `✅ [LGPD] Conta ${usuario._id} anonimizada (último login: ${usuario.ultimoLogin?.toISOString() || 'nunca'})`
                     );
                     anonimizados++;
                 }
 
                 console.log(
-                    `✅ [LGPD] Rotina concluída — Anonimizados: ${anonimizados} | Avisos enviados: ${avisoEnviados}`
+                    `✅ [LGPD] Rotina concluída — Anonimizados: ${anonimizados} | Desativados: ${desativados} | Preservados: ${preservados} | Avisos enviados: ${avisoEnviados}`
                 );
             } catch (err) {
                 console.error('❌ [LGPD] Erro na rotina de anonimização:', err.message);
             }
+
+            return { anonimizados, desativados, preservados, avisoEnviados };
         },
         { ttlSegundos: 35 * 24 * 3600, ...opcoesTrava }
     );
@@ -201,4 +305,10 @@ function startAnonimizacaoAutomatica() {
     );
 }
 
-module.exports = { startAnonimizacaoAutomatica, executarAnonimizacao };
+module.exports = {
+    startAnonimizacaoAutomatica,
+    executarAnonimizacao,
+    temVinculoAtivoComAluno,
+    destinoDaConta,
+    PERFIS_DE_EQUIPE,
+};
