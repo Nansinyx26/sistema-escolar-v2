@@ -9,6 +9,16 @@ const assertAcessoAoAluno = require('../middleware/assertAcessoAoAluno');
 const urlFotoAluno = require('../utils/urlFotoAluno');
 const { projetarAluno } = require('../utils/projecaoAluno');
 const { limparCamposSemFinalidade } = require('../utils/camposSemFinalidade');
+const {
+    podeAnonimizar,
+    planoDeAnonimizacao,
+} = require('../services/conformidade/anonimizacaoAluno');
+
+// Encerramento do cadastro (#409): 'inativar' (padrão) ou 'anonimizar'.
+// A escola decide; o padrão é o que preserva mais.
+function modoPadraoDeEncerramento() {
+    return (process.env.ENCERRAMENTO_ALUNO_PADRAO || 'inativar').trim().toLowerCase();
+}
 
 // Whitelist de campos permitidos para o Aluno (Prevenção de Injeção de Parâmetros)
 const studentWhitelist = [
@@ -498,15 +508,57 @@ exports.delete = async (req, res) => {
             return res.status(acesso.status).json({ success: false, error: acesso.error });
         // -------------------------------------------------------------------------
 
-        // Soft delete preferido via 'ativo: false', mas implementando delete real conforme pedido ou soft se 'ativo' existir
-        // O pedido diz "DELETE", mas o schema tem 'ativo'. Vou fazer soft delete se não for especificado hard.
-        // Na verdade, DELETE verb usually means delete/archive.
-        const student = await Aluno.findOneAndDelete({
-            $or: [{ _id: req.params.id }, { id: req.params.id }],
+        // ─── O DELETE não apaga o cadastro (Issue #409) ──────────────────
+        // Notas, faltas e escrituração têm guarda obrigatória (LDB, art. 24);
+        // apagar o documento levava junto o registro escolar da criança e não
+        // deixava trilha nenhuma. O encerramento tem dois modos, e o padrão é
+        // o mais conservador: inativar. `modo=anonimizar` chama o serviço que
+        // já existe, que preserva notas, faltas, turma e situação.
+        const { logAction } = require('../utils/auditHelper');
+        const aluno = acesso.aluno;
+        const modo = String(req.query.modo || modoPadraoDeEncerramento()).toLowerCase();
+
+        if (modo === 'anonimizar') {
+            const permissao = podeAnonimizar(aluno);
+            if (!permissao.permitido) {
+                return res.status(409).json({
+                    success: false,
+                    error: permissao.motivo,
+                    codigo: 'ANONIMIZACAO_NAO_PERMITIDA',
+                });
+            }
+            const plano = planoDeAnonimizacao(aluno, { executadoPor: req.user?.id || null });
+            await Aluno.updateOne({ _id: aluno._id }, { $set: plano.$set, $unset: plano.$unset });
+            await logAction(req, 'ALUNO_ANONIMIZADO', 'Alunos', {
+                recursoId: String(aluno._id),
+                valorAnterior: { ativo: aluno.ativo !== false, situacao: aluno.situacao },
+                valorNovo: { anonimizado: true, camposRemovidos: plano.camposRemovidos.length },
+                descricao: `Cadastro do aluno ${aluno._id} anonimizado pelo encerramento.`,
+            });
+            return res.json({
+                success: true,
+                data: {
+                    message: 'Cadastro anonimizado',
+                    modo: 'anonimizar',
+                    id: String(aluno._id),
+                },
+            });
+        }
+
+        await Aluno.updateOne(
+            { _id: aluno._id },
+            { $set: { ativo: false, dataMovimentacao: new Date() } }
+        );
+        await logAction(req, 'ALUNO_INATIVADO', 'Alunos', {
+            recursoId: String(aluno._id),
+            valorAnterior: { ativo: aluno.ativo !== false },
+            valorNovo: { ativo: false },
+            descricao: `Cadastro do aluno ${aluno._id} inativado; registro escolar preservado.`,
         });
-        if (!student)
-            return res.status(404).json({ success: false, error: 'Aluno não encontrado' });
-        res.json({ success: true, data: { message: 'Aluno removido' } });
+        res.json({
+            success: true,
+            data: { message: 'Cadastro inativado', modo: 'inativar', id: String(aluno._id) },
+        });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
