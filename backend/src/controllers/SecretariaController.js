@@ -152,7 +152,7 @@ exports.criarAluno = async (req, res) => {
         await aluno.save();
 
         await audit(req, 'CREATE_STUDENT', 'Alunos', aluno._id, {
-            descricao: `Aluno ${aluno.nome} cadastrado pela secretaria`,
+            descricao: `Aluno ${aluno._id} cadastrado pela secretaria`,
         });
 
         res.status(201).json({ success: true, data: aluno });
@@ -342,16 +342,20 @@ exports.editarAluno = async (req, res) => {
         const aluno = await Aluno.findOne(escopo(req, { _id: String(req.params.id) }));
         if (!aluno) return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
 
-        const anterior = aluno.toObject();
-        CAMPOS_EDICAO_ALUNO.forEach((campo) => {
-            if (req.body[campo] !== undefined) aluno[campo] = req.body[campo];
+        // O log guarda QUAIS campos mudaram, não o conteúdo deles: gravar a
+        // ficha inteira dos dois lados duplicava nome, CPF e dado de saúde da
+        // criança dentro do `AuditLog`, que tem outro prazo de guarda e é lido
+        // por outra gente.
+        const alterados = CAMPOS_EDICAO_ALUNO.filter((campo) => req.body[campo] !== undefined);
+        alterados.forEach((campo) => {
+            aluno[campo] = req.body[campo];
         });
         await aluno.save();
 
         await audit(req, 'UPDATE_STUDENT', 'Alunos', aluno._id, {
-            descricao: `Aluno ${aluno.nome} atualizado`,
-            anterior,
-            novo: aluno.toObject(),
+            descricao: `Aluno ${aluno._id} atualizado: ${alterados.length} campo(s).`,
+            anterior: { camposAlterados: alterados },
+            novo: { camposAlterados: alterados },
         });
 
         res.json({ success: true, data: aluno });
@@ -401,7 +405,7 @@ exports.criarMatricula = async (req, res) => {
         await aluno.save();
 
         await audit(req, 'CREATE_ENROLLMENT', 'Matriculas', matricula._id, {
-            descricao: `Matrícula ${matriculaNumero} criada para ${aluno.nome}`,
+            descricao: `Matrícula ${matriculaNumero} criada para o aluno ${aluno._id}`,
         });
 
         res.status(201).json({ success: true, data: matricula });
@@ -530,7 +534,7 @@ exports.criarResponsavel = async (req, res) => {
         }
 
         await audit(req, 'CREATE_GUARDIAN', 'Usuarios', usuario._id, {
-            descricao: `Responsável ${nome} cadastrado${alunoId ? ` e vinculado ao aluno ${alunoId}` : ''}`,
+            descricao: `Responsável ${usuario._id} cadastrado${alunoId ? ` e vinculado ao aluno ${alunoId}` : ''}`,
         });
 
         res.status(201).json({ success: true, data: usuario });
@@ -635,7 +639,7 @@ exports.gerarDeclaracaoMatricula = async (req, res) => {
         await doc.save();
 
         await audit(req, 'GENERATE_DOCUMENT', 'Documentos', doc._id, {
-            descricao: `Declaração de matrícula gerada para ${aluno.nome}`,
+            descricao: `Declaração de matrícula gerada para o aluno ${aluno._id}`,
         });
 
         res.status(201).json({ success: true, data: { documento: doc, conteudoHTML } });
@@ -694,7 +698,7 @@ exports.gerarDeclaracaoFrequencia = async (req, res) => {
         await doc.save();
 
         await audit(req, 'GENERATE_DOCUMENT', 'Documentos', doc._id, {
-            descricao: `Declaração de frequência gerada para ${aluno.nome}`,
+            descricao: `Declaração de frequência gerada para o aluno ${aluno._id}`,
         });
 
         res.status(201).json({ success: true, data: { documento: doc, conteudoHTML } });
@@ -754,7 +758,7 @@ exports.gerarHistoricoEscolar = async (req, res) => {
         await doc.save();
 
         await audit(req, 'GENERATE_DOCUMENT', 'Documentos', doc._id, {
-            descricao: `Histórico escolar gerado para ${aluno.nome}`,
+            descricao: `Histórico escolar gerado para o aluno ${aluno._id}`,
         });
 
         res.status(201).json({ success: true, data: { documento: doc, conteudoHTML } });
@@ -813,7 +817,7 @@ exports.uploadDocumentoAluno = async (req, res) => {
         await aluno.save();
 
         await audit(req, 'UPLOAD_DOCUMENT', 'Alunos', aluno._id, {
-            descricao: `Documento '${nomeArquivo}' enviado para ${aluno.nome}`,
+            descricao: `Documento ${docEntry.id} enviado para o aluno ${aluno._id}`,
         });
 
         res.status(201).json({ success: true, data: docEntry });
@@ -1039,7 +1043,7 @@ exports.criarJustificativa = async (req, res) => {
         });
 
         await audit(req, 'CREATE_JUSTIFICATION', 'Justificativas', justificativa._id, {
-            descricao: `Justificativa registrada para ${justificativa.alunoNome} (${inicio.toLocaleDateString('pt-BR')} a ${fim.toLocaleDateString('pt-BR')})`,
+            descricao: `Justificativa registrada para o aluno ${justificativa.alunoId} (${inicio.toLocaleDateString('pt-BR')} a ${fim.toLocaleDateString('pt-BR')})`,
         });
 
         res.status(201).json({ success: true, data: justificativa });
@@ -1103,7 +1107,7 @@ exports.analisarJustificativa = async (req, res) => {
         }
 
         await audit(req, 'REVIEW_JUSTIFICATION', 'Justificativas', justificativa._id, {
-            descricao: `Justificativa ${status} para ${justificativa.alunoNome}`,
+            descricao: `Justificativa ${status} para o aluno ${justificativa.alunoId}`,
         });
 
         res.json({ success: true, data: justificativa });
