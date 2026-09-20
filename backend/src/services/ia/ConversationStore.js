@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * ConversationStore.js — persistência e janela de memória das conversas.
  *
@@ -36,7 +34,9 @@ const MAX_CONVERSAS_LISTA = 40;
  * Corta em palavra inteira para não gerar "Como faço para regis...".
  */
 function tituloAPartirDe(texto) {
-    const limpo = String(texto || '').replace(/\s+/g, ' ').trim();
+    const limpo = String(texto || '')
+        .replace(/\s+/g, ' ')
+        .trim();
     if (!limpo) return 'Nova conversa';
     if (limpo.length <= 48) return limpo;
 
@@ -55,7 +55,7 @@ function tituloAPartirDe(texto) {
 function escopo(ctx, id) {
     const filtro = {
         usuarioId: String(ctx.usuarioId),
-        escolaId: ctx.escolaId ? String(ctx.escolaId) : null
+        escolaId: ctx.escolaId ? String(ctx.escolaId) : null,
     };
     if (id) filtro._id = String(id);
     return filtro;
@@ -80,7 +80,7 @@ async function abrir(ctx, conversaId) {
         usuarioId: String(ctx.usuarioId),
         escolaId: ctx.escolaId ? String(ctx.escolaId) : null,
         titulo: 'Nova conversa',
-        mensagens: []
+        mensagens: [],
     });
 }
 
@@ -99,11 +99,11 @@ function historicoParaModelo(conversa) {
         // derivado do que o usuário escreveu.
         mensagens.push({
             papel: 'usuario',
-            texto: `[Resumo do que já conversamos antes, para contexto]\n${conversa.resumo}`
+            texto: `[Resumo do que já conversamos antes, para contexto]\n${conversa.resumo}`,
         });
         mensagens.push({
             papel: 'assistente',
-            texto: 'Entendido, tenho o contexto anterior.'
+            texto: 'Entendido, tenho o contexto anterior.',
         });
     }
 
@@ -131,7 +131,7 @@ async function registrarTurno(conversa, { pergunta, resposta, ferramentas = [] }
             papel: 'assistente',
             texto: resposta,
             ferramentas: ferramentas.length > 0 ? [...new Set(ferramentas)] : undefined,
-            em: new Date()
+            em: new Date(),
         });
     }
 
@@ -160,7 +160,7 @@ async function comprimirSeNecessario(conversa, resumir) {
 
     const aResumir = conversa.mensagens.slice(0, fora);
     const texto = aResumir
-        .map(m => `${m.papel === 'usuario' ? 'Pessoa' : 'Assistente'}: ${m.texto}`)
+        .map((m) => `${m.papel === 'usuario' ? 'Pessoa' : 'Assistente'}: ${m.texto}`)
         .join('\n');
 
     try {
@@ -182,7 +182,8 @@ async function comprimirSeNecessario(conversa, resumir) {
         // Falhar a compressão não pode derrubar a conversa: sem resumo o
         // histórico só fica mais longo, e a janela continua limitando o envio.
         logger.warn('[IA] Não foi possível comprimir o histórico da conversa', {
-            err: e, action: 'ia.resumo'
+            err: e,
+            action: 'ia.resumo',
         });
     }
 }
@@ -195,12 +196,12 @@ async function listar(ctx) {
         .limit(MAX_CONVERSAS_LISTA)
         .lean();
 
-    return conversas.map(c => ({
+    return conversas.map((c) => ({
         id: String(c._id),
         titulo: c.titulo,
         mensagens: (c.mensagens || []).length,
         criadoEm: c.criadoEm,
-        atualizadoEm: c.atualizadoEm
+        atualizadoEm: c.atualizadoEm,
     }));
 }
 
@@ -216,12 +217,12 @@ async function obter(ctx, conversaId) {
         atualizadoEm: conversa.atualizadoEm,
         temResumoAnterior: Boolean(conversa.resumo),
         mensagensResumidas: conversa.mensagensResumidas || 0,
-        mensagens: (conversa.mensagens || []).map(m => ({
+        mensagens: (conversa.mensagens || []).map((m) => ({
             papel: m.papel,
             texto: m.texto,
             ferramentas: m.ferramentas,
-            em: m.em
-        }))
+            em: m.em,
+        })),
     };
 }
 
@@ -240,5 +241,5 @@ module.exports = {
     remover,
     tituloAPartirDe,
     JANELA_MENSAGENS,
-    LOTE_RESUMO
+    LOTE_RESUMO,
 };

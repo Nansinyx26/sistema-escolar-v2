@@ -29,6 +29,8 @@ router.get('/', DocumentoResponsavelController.listarTodos);
 router.get('/:id/visualizar', DocumentoResponsavelController.visualizarArquivo);
 router.get('/:id/preview', DocumentoResponsavelController.visualizarArquivo);
 router.get('/:id/download', DocumentoResponsavelController.baixarArquivo);
+// Histórico de versões (Issue #399): substituir não apaga a anterior.
+router.get('/:id/versoes', DocumentoResponsavelController.listarVersoes);
 
 // 4. Status (Secretaria / Direção)
 router.patch('/:id/status', DocumentoResponsavelController.atualizarStatus);

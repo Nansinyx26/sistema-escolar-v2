@@ -24,6 +24,10 @@ const CARGO_MODEL = {
 };
 
 // Cache leve do estado global de escolas (evita 1 query por request)
+// Quem opera DENTRO de uma escola. Sem escola resolvida, a requisição destes
+// perfis é recusada (Issue #396).
+const PERFIS_DE_EQUIPE = ['diretor', 'secretaria', 'professor'];
+
 let escolasCache = { at: 0, total: 0, ativaUnicaId: null };
 async function estadoEscolas() {
     if (Date.now() - escolasCache.at < 60_000) return escolasCache;
@@ -37,7 +41,9 @@ async function estadoEscolas() {
     return escolasCache;
 }
 // Permite invalidar o cache (ex.: ao ativar uma escola)
-function invalidarCacheEscolas() { escolasCache.at = 0; }
+function invalidarCacheEscolas() {
+    escolasCache.at = 0;
+}
 
 async function vinculosDoUsuario(user) {
     if (!user) return [];
@@ -45,8 +51,10 @@ async function vinculosDoUsuario(user) {
     if (!loader) return []; // responsavel/aluno/admin não usam vinculos de equipe
     const Model = loader();
     const doc = await Model.findOne({
-        $or: [{ idUsuario: String(user.id || user._id) }, { email: user.email }]
-    }).select('vinculos').lean();
+        $or: [{ idUsuario: String(user.id || user._id) }, { email: user.email }],
+    })
+        .select('vinculos')
+        .lean();
     return (doc && doc.vinculos) || [];
 }
 
@@ -55,6 +63,23 @@ async function vinculosDoUsuario(user) {
  * diante carrega `escolaId`, o que torna auditável — pelo próprio log — se uma
  * requisição tocou dados de outra escola.
  */
+/**
+ * Escola gravada no próprio cadastro do usuário. É o que salva as contas
+ * criadas antes do documento de vínculo existir — sem isso elas cairiam na
+ * recusa do passo 5. `npm run migrate:multiescola` preenche os vínculos.
+ */
+async function escolaIdDaConta(user) {
+    const id = user?.id || user?._id;
+    if (!id) return null;
+    try {
+        const Usuario = require('../models/Usuario');
+        const conta = await Usuario.findById(String(id)).select('escolaId').lean();
+        return conta?.escolaId ? String(conta.escolaId) : null;
+    } catch (_e) {
+        return null;
+    }
+}
+
 function definirEscola(req, escolaId) {
     req.escolaId = escolaId;
     logContext.set({ escolaId: escolaId ? String(escolaId) : undefined });
@@ -85,22 +110,59 @@ module.exports = async function filtrarPorEscola(req, res, next) {
                 success: false,
                 requiresEscolha: true,
                 error: 'Selecione a escola em que deseja trabalhar.',
-                escolas: vinculos.map(v => v.escolaId)
+                escolas: vinculos.map((v) => v.escolaId),
             });
         }
 
-        // 3. Perfis sem vínculo (admin, responsavel, aluno) — escola ativa única
+        // 3. Escola do próprio cadastro (contas anteriores ao multi-escola,
+        //    criadas antes de existir o documento de vínculo).
+        const escolaDaConta = await escolaIdDaConta(req.user);
+        if (escolaDaConta) {
+            definirEscola(req, escolaDaConta);
+            if (req.session) req.session.escolaAtivaId = req.escolaId;
+            return next();
+        }
+
+        // 4. Rede com uma única escola ativa: é ela, para qualquer perfil.
         if (estado.ativaUnicaId) {
             definirEscola(req, estado.ativaUnicaId);
             if (req.session) req.session.escolaAtivaId = req.escolaId;
+            return next();
         }
+
+        // 5. Nada resolveu a escola.
+        //
+        // Para PERFIL DE EQUIPE isso é motivo de recusa (Issue #396). Seguir
+        // adiante sem `req.escolaId` faz cada controller — que filtra no
+        // padrão `if (req.escolaId) query.escolaId = ...` — abandonar o recorte
+        // e responder com a rede inteira. Enquanto houver uma escola ativa só,
+        // o passo 4 resolve e este caminho nem é alcançado; ele existe para o
+        // dia em que a segunda escola for ativada.
+        //
+        // O admin é a exceção explícita: a conta dele é da rede, não de uma
+        // escola, e é por ela que se administra uma escola ainda sem equipe.
+        // O responsável também segue: o acesso dele é decidido pelo vínculo com
+        // o próprio filho, não pela escola da sessão.
+        if (PERFIS_DE_EQUIPE.includes(String(req.user?.perfil || '').toLowerCase())) {
+            logger.warn('[filtrarPorEscola] perfil de equipe sem escola resolvida', {
+                perfil: req.user?.perfil,
+                action: 'tenant.semEscola',
+            });
+            return res.status(403).json({
+                success: false,
+                codigo: 'ESCOLA_NAO_RESOLVIDA',
+                error: 'Sua conta não está vinculada a uma escola. Procure a administração do sistema.',
+            });
+        }
+
         return next();
     } catch (e) {
         // SEGURANÇA: falha FECHADA. Seguir sem req.escolaId fazia todos os
         // controllers (padrão `if (req.escolaId) query.escolaId = ...`)
         // simplesmente abandonarem o filtro e varrerem a rede inteira.
         logger.error('[filtrarPorEscola] não foi possível resolver a escola da sessão', {
-            err: e, action: 'tenant.resolver',
+            err: e,
+            action: 'tenant.resolver',
         });
         try {
             const estado = await estadoEscolas();
@@ -108,13 +170,17 @@ module.exports = async function filtrarPorEscola(req, res, next) {
         } catch (e2) {
             // Estado indisponível → trata como multi-tenant ativo (falha fechada).
             // Precisa aparecer: é o caminho que devolve 503 ao usuário.
-            logger.warn('[filtrarPorEscola] estado de escolas indisponível — assumindo multi-tenant ativo', {
-                err: e2, action: 'tenant.resolver',
-            });
+            logger.warn(
+                '[filtrarPorEscola] estado de escolas indisponível — assumindo multi-tenant ativo',
+                {
+                    err: e2,
+                    action: 'tenant.resolver',
+                }
+            );
         }
         return res.status(503).json({
             success: false,
-            error: 'Não foi possível determinar a escola desta sessão. Faça login novamente.'
+            error: 'Não foi possível determinar a escola desta sessão. Faça login novamente.',
         });
     }
 };

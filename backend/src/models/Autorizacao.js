@@ -63,6 +63,22 @@ const AutorizacaoSchema = new mongoose.Schema(
         titulo: { type: String },
         descricao: { type: String },
         aceita: { type: Boolean, default: null },
+
+        // Histórico das respostas (Issue #399). A autorização é manifestação
+        // do responsável: sobrescrever apagava a resposta anterior, e com ela
+        // a prova do que valia no dia do passeio, da medicação, da saída.
+        historico: {
+            type: [
+                {
+                    aceita: { type: Boolean, default: null },
+                    detalhes: mongoose.Schema.Types.Mixed,
+                    respondidoPor: String,
+                    em: { type: Date, default: Date.now },
+                    _id: false,
+                },
+            ],
+            default: undefined,
+        },
         detalhes: { type: mongoose.Schema.Types.Mixed, default: undefined },
         dataResposta: { type: Date },
         atualizadoEm: { type: Date, default: Date.now },

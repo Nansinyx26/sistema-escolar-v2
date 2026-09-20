@@ -13,6 +13,7 @@ const { conectarBanco, limparBanco, desconectarBanco } = require('./helpers');
 const AttendanceController = require('../controllers/AttendanceController');
 const TeacherAssignmentController = require('../controllers/TeacherAssignmentController');
 const Falta = require('../models/Falta');
+const Aluno = require('../models/Aluno');
 const AtribuicaoProfessor = require('../models/AtribuicaoProfessor');
 
 const ESCOLA_A = new mongoose.Types.ObjectId().toString();
@@ -37,6 +38,18 @@ function fakeRes() {
 
 beforeAll(async () => {
     await conectarBanco();
+});
+
+/**
+ * Alunos de verdade na turma 1A da escola A. Desde a Issue #397 a
+ * sincronização recusa lista com aluno de fora da turma, então a fixture
+ * precisa existir — como existe na vida real.
+ */
+beforeEach(async () => {
+    await Aluno.create([
+        { _id: 'aluno-da-A', nome: 'Aluno A', turma: '1A', escolaId: ESCOLA_A, ativo: true },
+        { _id: 'aluno-1', nome: 'Aluno 1', turma: '1A', escolaId: ESCOLA_A, ativo: true },
+    ]);
 });
 afterEach(async () => {
     await limparBanco();

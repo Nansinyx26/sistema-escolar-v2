@@ -35,6 +35,23 @@ function textoDentroDoLimite(res, texto) {
  * POST /api/tts/speak — Gera texto via Gemini e Áudio via ElevenLabs
  * Se 'prompt' for enviado, gera o texto antes. Se 'text' for enviado, sintetiza direto.
  */
+/**
+ * A narração manda o texto para um provedor externo. Texto que cita o nome de
+ * um aluno da escola não é narrado (Issue #401): a leitura em voz alta de um
+ * boletim levaria o nome da criança junto. A tela mostra o texto do mesmo
+ * jeito — só não fala.
+ */
+async function recusarSeCitaAluno(req, res, texto) {
+    const { textoTemNomeDeAluno } = require('../services/ia/escopoAlunos');
+    if (!(await textoTemNomeDeAluno(texto, { escolaId: req.escolaId }))) return false;
+    res.status(403).json({
+        success: false,
+        codigo: 'NARRACAO_COM_DADO_DE_ALUNO',
+        error: 'Este texto cita um aluno e não é narrado. Leia na tela.',
+    });
+    return true;
+}
+
 router.post('/speak', authJWT, limitarTTS, async (req, res) => {
     let { text, prompt, voiceId } = req.body;
 
@@ -42,6 +59,10 @@ router.post('/speak', authJWT, limitarTTS, async (req, res) => {
         // Valida ANTES de chamar o Gemini: o prompt também é entrada paga.
         if (typeof prompt === 'string' && !textoDentroDoLimite(res, prompt)) return;
         if (typeof text === 'string' && !textoDentroDoLimite(res, text)) return;
+
+        // Antes de qualquer envio externo: nem o prompt nem o texto podem
+        // citar aluno (Issue #401).
+        if (await recusarSeCitaAluno(req, res, `${text || ''} ${prompt || ''}`)) return;
 
         // 1. Gerar texto via Gemini se houver prompt
         if (prompt && !text) {
@@ -97,6 +118,7 @@ router.post('/speak', authJWT, limitarTTS, async (req, res) => {
  */
 router.post('/', authJWT, limitarTTS, async (req, res) => {
     const { text } = req.body;
+    if (await recusarSeCitaAluno(req, res, text)) return;
     if (!text) return res.status(400).json({ success: false, error: 'Texto obrigatório' });
     if (!textoDentroDoLimite(res, text)) return;
 

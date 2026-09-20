@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * AIProvider.js — abstração do provedor de modelo de linguagem.
  *
@@ -41,7 +39,7 @@
 
 const fetch =
     globalThis.fetch ||
-    (function () {
+    (() => {
         try {
             return require('node-fetch');
         } catch {

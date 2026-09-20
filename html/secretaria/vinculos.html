@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <!-- Trava de acesso por perfil. SEM defer e antes de tudo: a decisao
+         precisa acontecer antes do primeiro pixel. Ver js/guarda-acesso.js. -->
+    <script src="/js/guarda-acesso.js?v=1.0"></script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Pedidos de Responsável - Secretaria</title>
+    <link rel="icon" type="image/png" href="../../favicon/favicon.png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/variables.css?v=2.0">
+    <link rel="stylesheet" href="../../css/base.css?v=2.0">
+    <link rel="stylesheet" href="../../css/components-new.css?v=2.0">
+    <link rel="stylesheet" href="../../css/dashboard.css?v=2.1">
+    <link rel="stylesheet" href="../../css/responsive-global.css?v=1.2">
+    <link rel="stylesheet" href="../../css/dashboard-premium.css?v=1.0">
+    <link rel="stylesheet" href="../../css/botao-voltar.css">
+    <!-- Preload da fonte: sem ele o .woff2 só é descoberto depois do CSS. -->
+    <link rel="preload" href="../../js/libs/fonts/bootstrap-icons.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="../../js/libs/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../../css/tailwind-built.css">
+    <style>
+        .sec-page { max-width:1100px; margin:0 auto; padding:2rem 1.5rem; }
+        .sec-header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:2rem; }
+        .sec-header h1 { font-size:1.5rem; font-weight:700; color:#fff; margin:0; display:flex; align-items:center; gap:0.75rem; }
+        .sec-form-card { background:rgba(30,41,59,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:1.5rem; margin-bottom:1.5rem; }
+        .sec-input,.sec-select { width:100%; padding:0.6rem 0.8rem; background:rgba(15,23,42,0.8); border:1px solid rgba(255,255,255,0.12); border-radius:10px; color:#fff; font-size:0.85rem; }
+        .sec-input:focus { outline:none; border-color:#10b981; }
+        .sec-btn { padding:0.6rem 1.2rem; border-radius:10px; font-size:0.85rem; font-weight:600; cursor:pointer; border:none; transition:all 0.2s; }
+        .sec-btn-primary { background:#10b981; color:#fff; }
+        .sec-btn-danger { background:#ef4444; color:#fff; }
+        .sec-btn-outline { background:transparent; color:#10b981; border:1px solid rgba(16,185,129,0.3); text-decoration:none; }
+        .sec-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+        .sec-table th { padding:0.75rem; text-align:left; color:#94a3b8; font-weight:600; font-size:0.75rem; text-transform:uppercase; border-bottom:1px solid rgba(255,255,255,0.06); }
+        .sec-table td { padding:0.75rem; color:#cbd5e1; border-bottom:1px solid rgba(255,255,255,0.04); }
+        .sec-table tr:hover { background:rgba(255,255,255,0.02); }
+        .sec-badge { padding:3px 10px; border-radius:20px; font-size:0.7rem; font-weight:600; }
+        .sec-badge-yellow { background:rgba(251,191,36,0.15); color:#fbbf24; }
+        .sec-badge-green { background:rgba(16,185,129,0.15); color:#10b981; }
+        .sec-badge-red { background:rgba(239,68,68,0.15); color:#ef4444; }
+        .sec-filter-bar { display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap; }
+        .sec-filter-btn { padding:0.4rem 1rem; border-radius:20px; font-size:0.8rem; cursor:pointer; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); color:#94a3b8; transition:all 0.2s; }
+        .sec-filter-btn.active { background:rgba(16,185,129,0.15); color:#10b981; border-color:rgba(16,185,129,0.3); }
+        .sec-toast { position:fixed; bottom:20px; right:20px; padding:1rem 1.5rem; border-radius:12px; font-size:0.85rem; z-index:9999; animation:slideUp .3s; }
+        .sec-toast-success { background:#10b981; color:#fff; }
+        .sec-toast-error { background:#ef4444; color:#fff; }
+        @keyframes slideUp { from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1} }
+    </style>
+    <link rel="stylesheet" href="../../css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="../../css/reactions.css?v=1.0">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/img/icons/apple-touch-icon-180.png">
+    <meta name="theme-color" content="#09090b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Escola">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="stylesheet" href="../../css/system-global.css?v=1.0">
+    <!-- Orb de voz do chatbot. Sem estes dois arquivos o chatbot-ia.js
+         abaixo procura window.VoiceOrbManager, não acha, e a secretaria é
+         o único perfil que ouve a resposta sem ver nada acontecer. -->
+    <link rel="stylesheet" href="../../css/voice-orb.css?v=2.0">
+    <!-- Rolagem e performance mobile — deve ser o ÚLTIMO stylesheet -->
+    <link rel="stylesheet" href="../../css/mobile-scroll.css?v=1.0">
+    <link rel="stylesheet" href="../../css/motion.css">
+    <script src="../../js/scroll-lock.js?v=1.0"></script>
+    <!-- Acessibilidade (LBI/eMAG) — ver docs/CONFORMIDADE-LEGAL.md -->
+    <link rel="stylesheet" href="../../css/acessibilidade.css">
+</head>
+<body>
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <i class="bi bi-mortarboard-fill"></i>
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Sistema Escolar</h2>
+            <p class="splash-subtitle">Pedidos de Responsável</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="../../js/splash-screen.js"></script>
+
+<div class="dashboard-page" id="pageWrapper">
+    <div class="dashboard-bg"><div class="orb orb-primary"></div><div class="orb orb-secondary"></div></div>
+    <main class="dashboard-main">
+        <div class="sec-page">
+            <div class="sec-header">
+                <button type="button" class="btn-voltar-global" aria-label="Voltar para a página anterior">
+                    <i class="bi bi-arrow-left"></i>
+                    <span>Voltar</span>
+                </button>
+                <h1><i class="bi bi-person-plus" style="color:#fbbf24;"></i> Pedidos de inclusão de responsável</h1>
+            </div>
+
+            <div class="sec-form-card">
+                <p style="margin:0 0 1rem;color:#94a3b8;font-size:0.85rem;">
+                    Quando um responsável pede para incluir outra pessoa na ficha do filho, o pedido aparece
+                    aqui. O acesso aos dados da criança só começa depois da aprovação da escola. Confira com
+                    quem pediu antes de aprovar.
+                </p>
+                <div class="sec-filter-bar">
+                    <button type="button" class="sec-filter-btn active" data-status="pendente">⏳ Pendentes</button>
+                    <button type="button" class="sec-filter-btn" data-status="aprovada">✅ Aprovados</button>
+                    <button type="button" class="sec-filter-btn" data-status="recusada">❌ Recusados</button>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table class="sec-table">
+                        <thead>
+                            <tr>
+                                <th>Aluno</th><th>Turma</th><th>Quem entra</th><th>Quem pediu</th>
+                                <th>Data</th><th>Situação</th><th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="vinculosBody">
+                            <tr><td colspan="7" style="text-align:center;color:#94a3b8;">Carregando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+    <script defer src="../../js/botao-voltar.js"></script>
+    <script src="../../js/api-config.js"></script>
+    <script src="../../js/csrf-helper.js"></script>
+<script defer src="../../js/database.js?v=3"></script>
+<script defer src="../../js/auth.js?v=3"></script>
+<script defer src="../../js/utils.js?v=3"></script>
+<script defer src="../../js/secretaria-vinculos.js"></script>
+<script src="../../js/sidebar-voice.js?v=5.0"></script>
+<script src="../../js/voice-orb.js?v=2.0"></script>
+<script src="../../js/chatbot-ia.js?v=5.0"></script>
+
+<script src="../../js/click-sound.js" defer></script>
+    <script defer src="../../js/reactions.js"></script>
+    <script defer src="../../js/push-notifications.js"></script>
+    <script defer src="../../js/pwa-install.js"></script>
+    <script defer src="../../js/settings-drawer.js"></script>
+    <!-- Lucide line icons (padronização) + shim de compatibilidade Bootstrap Icons -->
+    <script src="../../js/libs/lucide.min.js"></script>
+    <script src="../../js/libs/lucide-init.js"></script>
+    <script defer src="../../js/observability.js"></script>
+    <script defer src="../../js/motion.js"></script>
+    <script defer src="../../js/acessibilidade.js"></script>
+</body>
+</html>

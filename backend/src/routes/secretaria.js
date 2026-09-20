@@ -75,6 +75,13 @@ router.post(
 );
 
 // ─── T3c: Autorizações dos Alunos ───────────────────────────────────────────
+// Pedidos de inclusão de responsável na ficha do aluno (Issue #398): quem
+// decide quem passa a ver os dados da criança é a escola, não a família.
+const VinculoResponsavelController = require('../controllers/VinculoResponsavelController');
+router.get('/vinculos', auth, VinculoResponsavelController.listar);
+router.post('/vinculos/:id/aprovar', auth, VinculoResponsavelController.aprovar);
+router.post('/vinculos/:id/recusar', auth, VinculoResponsavelController.recusar);
+
 router.get('/autorizacoes', auth, SecretariaAutorizacoesController.listarAutorizacoes);
 router.get(
     '/autorizacoes/aluno/:id',

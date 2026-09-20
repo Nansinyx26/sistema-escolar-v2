@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * ContextBuilder.js — monta o contexto do usuário logado para o copiloto.
  *
@@ -35,11 +33,47 @@ const { PERSONA_PROMPT_PREFIX } = require('../assistantPersona');
  * `PermissionGuard` dentro de cada ferramenta.
  */
 const MODULOS_POR_PERFIL = {
-    admin: ['alunos', 'professores', 'turmas', 'notas', 'frequência', 'comunicados', 'calendário', 'relatórios', 'auditoria', 'configurações'],
-    diretor: ['alunos', 'professores', 'turmas', 'notas', 'frequência', 'comunicados', 'calendário', 'relatórios', 'auditoria'],
-    secretaria: ['alunos', 'professores', 'turmas', 'frequência', 'comunicados', 'calendário', 'relatórios'],
-    professor: ['minhas turmas', 'notas', 'frequência', 'comunicados', 'calendário', 'grade horária'],
-    responsavel: ['boletim do meu filho', 'frequência do meu filho', 'comunicados', 'calendário']
+    admin: [
+        'alunos',
+        'professores',
+        'turmas',
+        'notas',
+        'frequência',
+        'comunicados',
+        'calendário',
+        'relatórios',
+        'auditoria',
+        'configurações',
+    ],
+    diretor: [
+        'alunos',
+        'professores',
+        'turmas',
+        'notas',
+        'frequência',
+        'comunicados',
+        'calendário',
+        'relatórios',
+        'auditoria',
+    ],
+    secretaria: [
+        'alunos',
+        'professores',
+        'turmas',
+        'frequência',
+        'comunicados',
+        'calendário',
+        'relatórios',
+    ],
+    professor: [
+        'minhas turmas',
+        'notas',
+        'frequência',
+        'comunicados',
+        'calendário',
+        'grade horária',
+    ],
+    responsavel: ['boletim do meu filho', 'frequência do meu filho', 'comunicados', 'calendário'],
 };
 
 /** Como o assistente se dirige a cada perfil. */
@@ -48,13 +82,13 @@ const TRATAMENTO = {
     diretor: 'diretor(a) da escola',
     secretaria: 'profissional da secretaria',
     professor: 'professor(a)',
-    responsavel: 'responsável por aluno(s) da escola'
+    responsavel: 'responsável por aluno(s) da escola',
 };
 
 const MODELOS_POR_PERFIL = {
     professor: () => require('../../models/Professor'),
     diretor: () => require('../../models/Diretor'),
-    secretaria: () => require('../../models/Secretaria')
+    secretaria: () => require('../../models/Secretaria'),
 };
 
 /**
@@ -68,13 +102,14 @@ async function documentoDaEquipe(user) {
     try {
         const Model = carregar();
         return await Model.findOne({
-            $or: [{ idUsuario: String(user.id || user._id) }, { email: user.email }]
+            $or: [{ idUsuario: String(user.id || user._id) }, { email: user.email }],
         }).lean();
     } catch (e) {
         // Contexto enriquecido é conveniência, não requisito: sem ele o copiloto
         // ainda responde, só com menos detalhe. Nunca derruba a conversa.
         logger.warn('[IA] Não foi possível carregar o vínculo do usuário para o contexto', {
-            err: e, action: 'ia.contexto'
+            err: e,
+            action: 'ia.contexto',
         });
         return null;
     }
@@ -90,11 +125,12 @@ async function dadosDaEscola(escolaId) {
             id: String(escola._id),
             nome: escola.nome,
             tipo: escola.tipo,
-            municipio: escola.municipio
+            municipio: escola.municipio,
         };
     } catch (e) {
         logger.warn('[IA] Não foi possível carregar a escola do contexto', {
-            err: e, action: 'ia.contexto'
+            err: e,
+            action: 'ia.contexto',
         });
         return null;
     }
@@ -103,17 +139,20 @@ async function dadosDaEscola(escolaId) {
 /** Ano letivo e matérias configuradas — dão precisão às respostas pedagógicas. */
 async function configuracaoAcademica() {
     try {
-        const cfg = await Config.findOne().select('anoLetivo materias mediaAprovacao frequenciaMinima').lean();
+        const cfg = await Config.findOne()
+            .select('anoLetivo materias mediaAprovacao frequenciaMinima')
+            .lean();
         if (!cfg) return null;
         return {
             anoLetivo: cfg.anoLetivo,
-            materias: (cfg.materias || []).map(m => m.nome).filter(Boolean),
+            materias: (cfg.materias || []).map((m) => m.nome).filter(Boolean),
             mediaAprovacao: cfg.mediaAprovacao,
-            frequenciaMinima: cfg.frequenciaMinima
+            frequenciaMinima: cfg.frequenciaMinima,
         };
     } catch (e) {
         logger.warn('[IA] Não foi possível carregar a configuração acadêmica', {
-            err: e, action: 'ia.contexto'
+            err: e,
+            action: 'ia.contexto',
         });
         return null;
     }
@@ -136,7 +175,7 @@ async function construirContexto(req) {
     const [escola, equipe, academico] = await Promise.all([
         dadosDaEscola(escolaId),
         documentoDaEquipe({ ...user, perfil }),
-        configuracaoAcademica()
+        configuracaoAcademica(),
     ]);
 
     // Turmas do professor: `turmas` é o campo unificado; salaPrincipal +
@@ -147,8 +186,10 @@ async function construirContexto(req) {
         const brutas = [
             ...(equipe.turmas || []),
             equipe.salaPrincipal,
-            ...(equipe.salasAdicionais || [])
-        ].filter(Boolean).map(String);
+            ...(equipe.salasAdicionais || []),
+        ]
+            .filter(Boolean)
+            .map(String);
         turmas = [...new Set(brutas)];
         disciplinas = [...new Set([...(equipe.materias || []), equipe.disciplina].filter(Boolean))];
     }
@@ -159,7 +200,7 @@ async function construirContexto(req) {
             nome: user.nome || 'usuário',
             email: user.email || null,
             perfil,
-            tratamento: TRATAMENTO[perfil] || 'usuário do sistema'
+            tratamento: TRATAMENTO[perfil] || 'usuário do sistema',
         },
         escola,
         escolaId,
@@ -170,14 +211,26 @@ async function construirContexto(req) {
         agora: new Date().toISOString(),
         // Preenchido pelo controller: muda as instruções entre "consulte os
         // dados" e "você não tem acesso a dados".
-        temFerramentas: false
+        temFerramentas: false,
     };
 }
 
 /** "2026-07-28" → "28 de julho de 2026" */
 function dataPorExtenso(iso) {
-    const meses = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
-        'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+    const meses = [
+        'janeiro',
+        'fevereiro',
+        'março',
+        'abril',
+        'maio',
+        'junho',
+        'julho',
+        'agosto',
+        'setembro',
+        'outubro',
+        'novembro',
+        'dezembro',
+    ];
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return '';
     return `${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
@@ -205,9 +258,13 @@ function montarSystemPrompt(ctx) {
 
     if (ctx.escola) {
         const local = ctx.escola.municipio ? `, em ${ctx.escola.municipio}` : '';
-        linhas.push(`- Escola: ${ctx.escola.nome}${ctx.escola.tipo ? ` (${ctx.escola.tipo})` : ''}${local}.`);
+        linhas.push(
+            `- Escola: ${ctx.escola.nome}${ctx.escola.tipo ? ` (${ctx.escola.tipo})` : ''}${local}.`
+        );
     } else {
-        linhas.push('- A escola desta sessão ainda não está definida. Se a pergunta depender de dados da escola, peça que a pessoa selecione a escola no sistema.');
+        linhas.push(
+            '- A escola desta sessão ainda não está definida. Se a pergunta depender de dados da escola, peça que a pessoa selecione a escola no sistema.'
+        );
     }
 
     linhas.push(`- Data de hoje: ${dataPorExtenso(ctx.agora)}.`);
@@ -216,7 +273,9 @@ function montarSystemPrompt(ctx) {
         linhas.push(`- Ano letivo em curso: ${ctx.academico.anoLetivo}.`);
     }
     if (ctx.academico?.mediaAprovacao != null) {
-        linhas.push(`- Média para aprovação: ${ctx.academico.mediaAprovacao}. Frequência mínima: ${ctx.academico.frequenciaMinima ?? '—'}%.`);
+        linhas.push(
+            `- Média para aprovação: ${ctx.academico.mediaAprovacao}. Frequência mínima: ${ctx.academico.frequenciaMinima ?? '—'}%.`
+        );
     }
     if (ctx.turmas.length > 0) {
         linhas.push(`- Turmas sob responsabilidade desta pessoa: ${ctx.turmas.join(', ')}.`);
@@ -225,39 +284,65 @@ function montarSystemPrompt(ctx) {
         linhas.push(`- Disciplinas que leciona: ${ctx.disciplinas.join(', ')}.`);
     }
     if (ctx.modulos.length > 0) {
-        linhas.push(`- Módulos do sistema disponíveis para este perfil: ${ctx.modulos.join(', ')}.`);
+        linhas.push(
+            `- Módulos do sistema disponíveis para este perfil: ${ctx.modulos.join(', ')}.`
+        );
     }
 
     linhas.push('');
     linhas.push('COMO RESPONDER:');
-    linhas.push('- Trate a pessoa pelo primeiro nome quando fizer sentido; você já sabe quem ela é, não pergunte.');
-    linhas.push('- Use Markdown: títulos, listas, tabelas e blocos de código quando ajudarem a leitura. Prefira uma tabela a um parágrafo com muitos números.');
+    linhas.push(
+        '- Trate a pessoa pelo primeiro nome quando fizer sentido; você já sabe quem ela é, não pergunte.'
+    );
+    linhas.push(
+        '- Use Markdown: títulos, listas, tabelas e blocos de código quando ajudarem a leitura. Prefira uma tabela a um parágrafo com muitos números.'
+    );
     linhas.push('- Respostas objetivas. Sem introduções longas nem repetir a pergunta.');
-    linhas.push('- Você também responde perguntas gerais de educação, pedagogia e tecnologia, mesmo que não sejam sobre esta escola.');
+    linhas.push(
+        '- Você também responde perguntas gerais de educação, pedagogia e tecnologia, mesmo que não sejam sobre esta escola.'
+    );
     linhas.push('');
 
     if (ctx.temFerramentas) {
         linhas.push('CONSULTA DE DADOS (ferramentas):');
-        linhas.push('- Você tem ferramentas para consultar os dados REAIS desta escola. Sempre que a pergunta envolver um número, nome, data ou lista concreta, CHAME a ferramenta correspondente em vez de responder de memória.');
-        linhas.push('- Para qualquer consulta sobre um aluno citado pelo nome, chame `buscarAluno` primeiro para obter o `alunoId`, e só então a ferramenta de notas ou frequência.');
-        linhas.push('- Se uma ferramenta devolver `ok: false`, o campo `erro` explica o motivo. Repasse esse motivo à pessoa com cordialidade e NÃO tente contornar a recusa por outro caminho.');
-        linhas.push('- Responda usando SOMENTE o que a ferramenta devolveu. Se o dado não veio, diga que não encontrou — nunca preencha a lacuna com uma estimativa.');
-        linhas.push('- Dados estruturados (listas de alunos, turmas, notas) ficam melhor como tabela Markdown.');
+        linhas.push(
+            '- Você tem ferramentas para consultar os dados REAIS desta escola. Sempre que a pergunta envolver um número, nome, data ou lista concreta, CHAME a ferramenta correspondente em vez de responder de memória.'
+        );
+        linhas.push(
+            '- Para qualquer consulta sobre um aluno citado pelo nome, chame `buscarAluno` primeiro para obter o `alunoId`, e só então a ferramenta de notas ou frequência.'
+        );
+        linhas.push(
+            '- Se uma ferramenta devolver `ok: false`, o campo `erro` explica o motivo. Repasse esse motivo à pessoa com cordialidade e NÃO tente contornar a recusa por outro caminho.'
+        );
+        linhas.push(
+            '- Responda usando SOMENTE o que a ferramenta devolveu. Se o dado não veio, diga que não encontrou — nunca preencha a lacuna com uma estimativa.'
+        );
+        linhas.push(
+            '- Dados estruturados (listas de alunos, turmas, notas) ficam melhor como tabela Markdown.'
+        );
     } else {
         linhas.push('LIMITE DE DADOS:');
-        linhas.push('- Você NÃO tem acesso aos dados do banco desta escola neste momento. Se pedirem números concretos, diga com franqueza que essa consulta não está disponível e oriente o caminho no sistema. NUNCA invente um número, nome ou data.');
+        linhas.push(
+            '- Você NÃO tem acesso aos dados do banco desta escola neste momento. Se pedirem números concretos, diga com franqueza que essa consulta não está disponível e oriente o caminho no sistema. NUNCA invente um número, nome ou data.'
+        );
     }
 
     linhas.push('');
     linhas.push('LIMITES (obrigatórios):');
-    linhas.push(`- Fale apenas da escola desta sessão${ctx.escola ? ` (${ctx.escola.nome})` : ''}. Se pedirem dados de outra escola, recuse com cordialidade.`);
+    linhas.push(
+        `- Fale apenas da escola desta sessão${ctx.escola ? ` (${ctx.escola.nome})` : ''}. Se pedirem dados de outra escola, recuse com cordialidade.`
+    );
     linhas.push('- Nunca invente nomes, notas, faltas, datas ou turmas.');
 
     if (ctx.usuario.perfil === 'responsavel') {
-        linhas.push('- Esta pessoa é responsável por aluno(s). Ela pode falar apenas sobre os próprios filhos — nunca sobre outros alunos, turmas inteiras, professores ou gestão da escola.');
+        linhas.push(
+            '- Esta pessoa é responsável por aluno(s). Ela pode falar apenas sobre os próprios filhos — nunca sobre outros alunos, turmas inteiras, professores ou gestão da escola.'
+        );
     }
     if (ctx.usuario.perfil === 'professor') {
-        linhas.push('- Esta pessoa é docente. Ela acessa as próprias turmas e disciplinas — nunca dados administrativos da rede nem de turmas de outros professores.');
+        linhas.push(
+            '- Esta pessoa é docente. Ela acessa as próprias turmas e disciplinas — nunca dados administrativos da rede nem de turmas de outros professores.'
+        );
     }
 
     return linhas.join('\n');
@@ -268,5 +353,5 @@ module.exports = {
     montarSystemPrompt,
     MODULOS_POR_PERFIL,
     // exportados para teste
-    dataPorExtenso
+    dataPorExtenso,
 };

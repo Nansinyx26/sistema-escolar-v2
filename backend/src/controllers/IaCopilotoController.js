@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * IaCopilotoController.js — endpoint de conversa do copiloto (streaming SSE).
  *
@@ -24,6 +22,9 @@
 const { obterProvider, ErroProvedorIA } = require('../services/ia/AIProvider');
 const { construirContexto, montarSystemPrompt } = require('../services/ia/ContextBuilder');
 const ToolRegistry = require('../services/ia/ToolRegistry');
+const { criarMapa } = require('../services/ia/pseudonimizar');
+const { mascararTexto } = require('../services/ia/escopoAlunos');
+const { iaLiberada, RESPOSTA_DESLIGADA } = require('../services/ia/interruptor');
 const ConversationStore = require('../services/ia/ConversationStore');
 const ConfirmationStore = require('../services/ia/ConfirmationStore');
 const ExportadorConversa = require('../services/ia/ExportadorConversa');
@@ -118,6 +119,12 @@ async function chat(req, res) {
         });
     }
 
+    // Interruptor por escola (Issue #401): mandar dado de aluno para um
+    // provedor externo é decisão da escola, e o padrão da rede é não mandar.
+    if (!(await iaLiberada(req.escolaId))) {
+        return res.status(403).json(RESPOSTA_DESLIGADA);
+    }
+
     const provider = obterProvider();
     if (!provider.configurado()) {
         // 503 e não 500: é indisponibilidade de configuração, não defeito.
@@ -192,10 +199,26 @@ async function chat(req, res) {
         conversa: { id: String(conversa._id), titulo: conversa.titulo },
     });
 
+    // ── Pseudonimização (Issue #401) ────────────────────────────────────────
+    //
+    // Daqui para o provedor, nenhuma criança tem nome: cada uma vira "Aluno A".
+    // O mapa vive nesta requisição, em memória, e serve para traduzir de volta
+    // o que o modelo responde e para entender o rótulo quando ele pede uma
+    // ferramenta. O texto que a PESSOA digitou passa pelo mesmo filtro — é ali
+    // que o nome costuma entrar.
+    const mapaIA = criarMapa();
+    const mascarar = (texto) => mascararTexto(texto, contexto, mapaIA);
+
+    const historico = ConversationStore.historicoParaModelo(conversa);
+    const historicoMascarado = [];
+    for (const item of historico) {
+        historicoMascarado.push({ ...item, texto: await mascarar(item.texto) });
+    }
+
     const mensagens = [
         { papel: 'sistema', texto: montarSystemPrompt(contexto) },
-        ...ConversationStore.historicoParaModelo(conversa),
-        { papel: 'usuario', texto: mensagem },
+        ...historicoMascarado,
+        { papel: 'usuario', texto: await mascarar(mensagem) },
     ];
 
     // Acumuladores do turno: alimentam a persistência ao final.
@@ -212,17 +235,21 @@ async function chat(req, res) {
     // na virada.
     const filtroEmoji = criarFiltroEmoji();
 
-    /** Acumula e streama um pedaço de texto já sem emojis. */
+    // Traduz os rótulos de volta antes de a resposta chegar à tela: quem está
+    // logado pode ver o nome; o provedor é que não pode.
+    const tradutor = mapaIA.criarTradutorDeFluxo();
+
+    /** Acumula e streama um pedaço de texto já sem emojis e reidentificado. */
     const emitirTexto = (bruto) => {
-        const limpo = filtroEmoji.escrever(bruto);
+        const limpo = tradutor.traduzir(filtroEmoji.escrever(bruto));
         if (!limpo) return;
         respostaCompleta += limpo;
         enviar(res, { tipo: 'delta', texto: limpo });
     };
 
-    /** Libera a cauda que o filtro reteve. Idempotente. */
+    /** Libera a cauda que o filtro e o tradutor retiveram. Idempotente. */
     const drenarTexto = () => {
-        const resto = filtroEmoji.finalizar();
+        const resto = tradutor.traduzir(filtroEmoji.finalizar()) + tradutor.finalizar();
         if (!resto) return;
         respostaCompleta += resto;
         if (!res.writableEnded) enviar(res, { tipo: 'delta', texto: resto });
@@ -270,9 +297,17 @@ async function chat(req, res) {
                 enviar(res, { tipo: 'ferramenta', nome: chamada.nome });
                 ferramentasUsadas.push(chamada.nome);
 
+                // O modelo fala em rótulos ("Aluno A"); a ferramenta precisa do
+                // identificador real para consultar.
+                const argumentosReais = {};
+                for (const [chave, valor] of Object.entries(chamada.argumentos || {})) {
+                    argumentosReais[chave] =
+                        typeof valor === 'string' ? mapaIA.idDoRotulo(valor) || valor : valor;
+                }
+
                 const resultado = await ToolRegistry.executar(
                     chamada.nome,
-                    chamada.argumentos,
+                    argumentosReais,
                     ctxFerramenta
                 );
 
@@ -296,9 +331,13 @@ async function chat(req, res) {
                     // O token NÃO vai ao modelo: ele não precisa dele para
                     // redigir a resposta, e um segredo repetido no texto gerado
                     // acabaria persistido no histórico da conversa.
-                    resultado: resultado.dados?.requerConfirmacao
-                        ? { ok: true, dados: { ...resultado.dados, confirmToken: undefined } }
-                        : resultado,
+                    // MASCARADO: o resultado da ferramenta é dado de aluno,
+                    // e é isto que vai para o provedor (Issue #401).
+                    resultado: mapaIA.mascarar(
+                        resultado.dados?.requerConfirmacao
+                            ? { ok: true, dados: { ...resultado.dados, confirmToken: undefined } }
+                            : resultado
+                    ),
                 });
             }
 
