@@ -29,7 +29,9 @@ const BASE_URL = import.meta.env.DEV
 export class ApiError extends Error {
   constructor(
     message: string,
-    public readonly status: number
+    public readonly status: number,
+    /** Codigo estavel devolvido pelo servidor (ex.: EMAIL_NAO_VERIFICADO). */
+    public readonly codigo?: string
   ) {
     super(message);
     this.name = 'ApiError';
@@ -79,13 +81,19 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
     headers,
   });
 
-  const body = (await res.json()) as { success: boolean; data?: T; user?: T; error?: string };
+  const body = (await res.json()) as {
+    success: boolean;
+    data?: T;
+    user?: T;
+    error?: string;
+    codigo?: string;
+  };
 
   if (!res.ok || !body.success) {
     if (res.status === 401 && !path.includes('/auth/')) {
       window.location.href = '/login.html?expired=true';
     }
-    throw new ApiError(body.error ?? `HTTP ${res.status}`, res.status);
+    throw new ApiError(body.error ?? `HTTP ${res.status}`, res.status, body.codigo);
   }
 
   return (body.data !== undefined ? body.data : body.user) as T;
@@ -125,6 +133,10 @@ export async function googleLogin(idToken: string): Promise<AuthUser> {
 }
 
 /** Logout – clears the JWT cookie. */
+export async function reenviarVerificacaoEmail(): Promise<void> {
+  await apiFetch<void>('/auth/reenviar-verificacao', { method: 'POST' });
+}
+
 export async function logout(): Promise<void> {
   await apiFetch<void>('/auth/logout', { method: 'POST' });
 }

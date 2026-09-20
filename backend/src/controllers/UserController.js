@@ -4,6 +4,7 @@ const Turma = require('../models/Turma');
 const SecurityController = require('./SecurityController');
 const { logAction } = require('../utils/auditHelper');
 const { notificarVerificacaoEmail, notificarBruteForce } = require('../utils/emailNotifications');
+const { enviarVerificacao, invalidarCacheDeVerificacao } = require('../services/verificacaoEmail');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const ImageProcessor = require('../utils/imageProcessor');
@@ -1178,6 +1179,10 @@ exports.googleLogin = async (req, res) => {
                 loginGoogle: true,
                 fotoGoogle: picture,
                 ativo: true,
+                // O ID token do Google só é aceito com `email_verified` (#387),
+                // ou seja, o provedor já atestou a posse da caixa postal —
+                // é a mesma prova que a confirmação por link daria (#412).
+                emailVerificado: true,
                 // Sem consentimento: criar a conta não é consentir (Issue #236).
                 // Este é um LOGIN, não um formulário — não há caixa para marcar.
                 // A conta nasce com `profileCompleted: false`, e o portal só abre
@@ -1208,7 +1213,12 @@ exports.googleLogin = async (req, res) => {
             }
 
             // Usuário existente: sincronizar foto do Google se houver mudança
-            const updateFields = { loginGoogle: true, ultimoLogin: new Date() };
+            const updateFields = {
+                loginGoogle: true,
+                ultimoLogin: new Date(),
+                // Entrar por ID token do Google prova a posse do e-mail (#412).
+                emailVerificado: true,
+            };
             if (picture && picture !== user.fotoGoogle) {
                 updateFields.fotoGoogle = picture;
             }
@@ -1217,6 +1227,7 @@ exports.googleLogin = async (req, res) => {
                 updateFields.nome = nome;
             }
             user = await Usuario.findByIdAndUpdate(user._id, { $set: updateFields }, { new: true });
+            invalidarCacheDeVerificacao(user._id);
         }
 
         // O TOKEN carrega só o mínimo para autorizar (ver montarPayload).
@@ -1526,6 +1537,39 @@ exports.delete = async (req, res) => {
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+/**
+ * POST /api/auth/reenviar-verificacao — manda de novo o link de confirmação
+ * (Issue #412). Responde igual para conta já confirmada, para não virar um
+ * oráculo sobre o estado de uma conta alheia.
+ */
+exports.reenviarVerificacao = async (req, res) => {
+    try {
+        const conta = await Usuario.findById(req.user.id || req.user._id).select(
+            'email nome emailVerificado'
+        );
+        if (!conta) return res.status(404).json({ success: false, error: 'Conta não encontrada.' });
+
+        if (!conta.emailVerificado) {
+            await enviarVerificacao(conta);
+            await logAction(req, 'EMAIL_VERIFICACAO_REENVIADA', 'Usuarios', {
+                recursoId: String(conta._id),
+                descricao: `Link de confirmação reenviado para a conta ${conta._id}.`,
+            });
+        }
+
+        return res.json({
+            success: true,
+            message: 'Se a conta ainda não estiver confirmada, o link acabou de ser enviado.',
+        });
+    } catch (e) {
+        logger.error('[verificacao] Falha ao reenviar confirmação', {
+            err: e,
+            action: 'verificacao.reenvio',
+        });
+        return res.status(500).json({ success: false, error: 'Erro ao reenviar a confirmação.' });
     }
 };
 
@@ -1948,6 +1992,7 @@ exports.verifyEmail = async (req, res) => {
         user.emailVerificacaoToken = undefined;
         user.emailVerificacaoExpiry = undefined;
         await user.save();
+        invalidarCacheDeVerificacao(user._id);
 
         res.send(
             HTML_BASE(

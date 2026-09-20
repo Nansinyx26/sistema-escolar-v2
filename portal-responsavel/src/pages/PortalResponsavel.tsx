@@ -2,6 +2,7 @@ import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import ChatbotIA from '../components/ChatbotIA';
 import CompletarCadastro from '../components/CompletarCadastro';
+import ConfirmeSeuEmail from '../components/ConfirmeSeuEmail';
 import Header from '../components/Header';
 import LgpdConsentWidget from '../components/LgpdConsentWidget';
 import LoginResponsavel from '../components/LoginResponsavel';
@@ -54,6 +55,7 @@ const PortalResponsavel: React.FC = () => {
   const [dataLoading, setDataLoading] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [dataError, setDataError] = useState<string | null>(null);
+  const [emailNaoConfirmado, setEmailNaoConfirmado] = useState(false);
 
   const {
     notifications,
@@ -72,6 +74,7 @@ const PortalResponsavel: React.FC = () => {
   const loadData = useCallback(async () => {
     setDataLoading(true);
     setDataError(null);
+    setEmailNaoConfirmado(false);
     try {
       const alunos = await getAlunosDoResponsavel();
       setStudents(alunos);
@@ -85,6 +88,15 @@ const PortalResponsavel: React.FC = () => {
         return alunos[0].id;
       });
     } catch (err) {
+      // Issue #412: enquanto o e-mail do cadastro não for confirmado, o
+      // servidor não entrega dado de aluno — e a tela explica o porquê em vez
+      // de mostrar "erro ao carregar".
+      if (err instanceof ApiError && err.codigo === 'EMAIL_NAO_VERIFICADO') {
+        setEmailNaoConfirmado(true);
+        setStudents([]);
+        setDataError(null);
+        return;
+      }
       const message = err instanceof ApiError ? err.message : 'Erro ao carregar lista de alunos.';
       setDataError(message);
     } finally {
@@ -319,45 +331,49 @@ const PortalResponsavel: React.FC = () => {
         </aside>
 
         <main className={styles.container} id="main-content" style={{ flex: 1, padding: '24px' }}>
-          <div key={currentTab} className={styles.tabFade}>
-            <PortalTabContent
-              currentTab={currentTab}
-              authUser={authUser}
-              activeStudent={activeStudent}
-              students={students}
-              activeId={activeId}
-              lgpdAccepted={lgpdAccepted}
-              notifications={notifications}
-              showNotifications={showNotifications}
-              dataLoading={dataLoading}
-              detailsLoading={detailsLoading}
-              dataError={dataError}
-              grades={grades}
-              attendance={attendance}
-              onUserUpdate={(updated) => {
-                setAuthUser(updated);
-                void loadData();
-              }}
-              onLinkingSuccess={() => {
-                void loadData();
-                setCurrentTab('dashboard');
-              }}
-              onLinkingCancel={() => setCurrentTab('dashboard')}
-              onNavigate={setCurrentTab}
-              onSelectStudent={setActiveId}
-              onRetry={() => void loadData()}
-              onShowAllNotifications={() => setShowNotifications(true)}
-              onMarkAsRead={(id) => void handleMarkAsRead(id)}
-              onDeleteNotification={(id) => void handleDeleteNotification(id)}
-              onStudentUpdate={(studentId, partial) => {
-                setStudents((prev) =>
-                  prev.map((student) =>
-                    student.id === studentId ? { ...student, ...partial } : student
-                  )
-                );
-              }}
-            />
-          </div>
+          {emailNaoConfirmado ? (
+            <ConfirmeSeuEmail email={authUser?.email} onTentarNovamente={() => void loadData()} />
+          ) : (
+            <div key={currentTab} className={styles.tabFade}>
+              <PortalTabContent
+                currentTab={currentTab}
+                authUser={authUser}
+                activeStudent={activeStudent}
+                students={students}
+                activeId={activeId}
+                lgpdAccepted={lgpdAccepted}
+                notifications={notifications}
+                showNotifications={showNotifications}
+                dataLoading={dataLoading}
+                detailsLoading={detailsLoading}
+                dataError={dataError}
+                grades={grades}
+                attendance={attendance}
+                onUserUpdate={(updated) => {
+                  setAuthUser(updated);
+                  void loadData();
+                }}
+                onLinkingSuccess={() => {
+                  void loadData();
+                  setCurrentTab('dashboard');
+                }}
+                onLinkingCancel={() => setCurrentTab('dashboard')}
+                onNavigate={setCurrentTab}
+                onSelectStudent={setActiveId}
+                onRetry={() => void loadData()}
+                onShowAllNotifications={() => setShowNotifications(true)}
+                onMarkAsRead={(id) => void handleMarkAsRead(id)}
+                onDeleteNotification={(id) => void handleDeleteNotification(id)}
+                onStudentUpdate={(studentId, partial) => {
+                  setStudents((prev) =>
+                    prev.map((student) =>
+                      student.id === studentId ? { ...student, ...partial } : student
+                    )
+                  );
+                }}
+              />
+            </div>
+          )}
         </main>
       </div>
 
