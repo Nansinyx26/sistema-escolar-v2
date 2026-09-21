@@ -441,7 +441,8 @@ jobs:
         with:
           status: ${{ job.status }}
           text: "Dev deployment completed"
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
         if: always() && env.HAS_SLACK == 'true'
 
   # ================================
@@ -511,7 +512,8 @@ jobs:
         with:
           status: ${{ job.status }}
           text: "Production deployment completed"
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
         if: always() && env.HAS_SLACK == 'true'
 
       - name: 📝 Create Release
@@ -676,7 +678,8 @@ jobs:
         with:
           status: ${{ job.status }}
           text: "Database migrations completed"
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
         if: always() && env.HAS_SLACK == 'true'
 
   # ================================

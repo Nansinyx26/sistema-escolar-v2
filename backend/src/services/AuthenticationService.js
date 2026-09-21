@@ -17,6 +17,7 @@ const crypto = require('crypto');
 const ACTUAL_JWT_SECRET = require('../utils/jwtConfig');
 const { logAction } = require('../utils/auditHelper');
 const logger = require('../utils/logger');
+const { portalConfere, recusaDePortal } = require('../utils/portalDeLogin');
 
 const SALT_ROUNDS = 12;
 
@@ -91,19 +92,10 @@ class AuthenticationService {
       }
 
       // 4. Validação de portal (só para quem já provou saber a senha)
-      if (portal === 'responsavel' && user.perfil !== 'responsavel') {
+      if (!portalConfere(user.perfil, portal)) {
         return {
           success: false,
-          error: 'Esta conta não é de responsável. Use a página de login do docente.',
-          code: 'INVALID_PORTAL'
-        };
-      }
-
-      if (portal === 'docente' && user.perfil === 'responsavel') {
-        return {
-          success: false,
-          error: 'Contas de responsável não podem acessar o sistema escolar. Use o Portal do Responsável.',
-          code: 'INVALID_PORTAL'
+          ...recusaDePortal(user.perfil)
         };
       }
 
