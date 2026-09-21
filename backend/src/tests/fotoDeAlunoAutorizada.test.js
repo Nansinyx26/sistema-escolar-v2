@@ -122,7 +122,7 @@ async function agentProfessor(email, escola, sala) {
 async function agentResponsavel(email, escola) {
     await criarUsuario({ email, perfil: 'responsavel', escolaId: String(escola._id) });
     const agent = request.agent(app);
-    const login = await agent.post('/api/auth/login').send({ email, senha: SENHA_TESTE });
+    const login = await agent.post('/api/auth/login').send({ email, senha: SENHA_TESTE, portal: 'responsavel' });
     expect(login.status).toBe(200);
     return agent;
 }

@@ -83,7 +83,7 @@ describe('Chatbot do responsável — contexto do aluno vinculado', () => {
         const { pai } = await cenarioResponsavelComFilho();
         await Usuario.updateOne({ _id: pai._id }, { $set: { senha: pai.senha } });
         const agent = request.agent(app);
-        const login = await agent.post('/api/auth/login').send({ email: 'resp@escola.test', senha: SENHA_TESTE });
+        const login = await agent.post('/api/auth/login').send({ email: 'resp@escola.test', senha: SENHA_TESTE, portal: 'responsavel' });
         expect(login.status).toBe(200);
         const csrf = decodeURIComponent(((login.headers['set-cookie'] || []).join(';').match(/csrf_token=([^;]+)/) || [])[1] || '');
         const res = await agent.post('/api/ia/chatbot').set('X-CSRF-Token', csrf).send({ message: 'notas do meu filho' });

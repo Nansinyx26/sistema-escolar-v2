@@ -211,7 +211,7 @@ describe('POST /api/upload/photo carimba o tipo no upload novo', () => {
         await criarUsuario({ email, perfil: 'responsavel', escolaId: String(escola._id) });
 
         const agent = request.agent(app);
-        const login = await agent.post('/api/auth/login').send({ email, senha: SENHA_TESTE });
+        const login = await agent.post('/api/auth/login').send({ email, senha: SENHA_TESTE, portal: 'responsavel' });
         expect(login.status).toBe(200);
 
         // PNG 1x1 de verdade: a rota reencoda com sharp antes de gravar.

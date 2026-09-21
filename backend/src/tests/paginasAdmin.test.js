@@ -52,7 +52,9 @@ async function sessaoDe(perfil, email) {
 
 async function loginComo(perfil, email) {
     await criarUsuario({ email, perfil, nome: `Teste ${perfil}` });
-    const res = await request(app).post('/api/auth/login').send({ email, senha: SENHA_TESTE });
+    const loginBody = { email, senha: SENHA_TESTE };
+    if (perfil === 'responsavel') loginBody.portal = 'responsavel';
+    const res = await request(app).post('/api/auth/login').send(loginBody);
     return (res.headers['set-cookie'] || []).filter((c) => c.startsWith('escola_jwt'));
 }
 
