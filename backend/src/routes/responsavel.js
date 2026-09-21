@@ -9,6 +9,12 @@ const filtrarPorEscola = require('../middleware/filtrarPorEscola');
 // enumeração do código secreto dos alunos.
 const soResponsavel = authorize('responsavel');
 
+// Issue #412: conta de responsável criada a partir do marco só passa daqui
+// depois de confirmar o e-mail — é ele que a ficha do aluno usa como chave.
+// Conta anterior segue como estava; `/reenviar-verificacao` fica de fora, ou a
+// pessoa não teria como pedir o link de novo.
+router.use(require('../middleware/exigirEmailVerificado'));
+
 router.get('/alunos', ResponsavelController.getAlunos);
 router.get('/buscar-aluno', soResponsavel, ResponsavelController.buscarAluno);
 router.get('/buscar-aluno/:codigo', soResponsavel, ResponsavelController.buscarAluno);

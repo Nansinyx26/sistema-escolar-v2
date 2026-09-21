@@ -21,6 +21,7 @@ const mongoose = require('mongoose');
 const ACTUAL_JWT_SECRET = require('../utils/jwtConfig');
 const { logAction } = require('../utils/auditHelper');
 const logger = require('../utils/logger');
+const { enviarVerificacao } = require('./verificacaoEmail');
 const { emitirParaPerfis } = require('../utils/realtime');
 // A validação do código secreto mora em um service, não no SecurityController:
 // `services/` não pode importar `controllers/` (regra `service-nao-sobe` do
@@ -142,6 +143,11 @@ class RegistrationService {
                 lastLogin: now,
                 // Sem consentimentoAceiteEm: criar a conta não é consentir (Issue #236).
             });
+
+            // Confirmação do e-mail (Issue #412): é o endereço da ficha que
+            // decide quem vê a criança, então a posse dele precisa ser provada.
+            // O envio não bloqueia o cadastro — a pessoa pode pedir o reenvio.
+            await enviarVerificacao(user);
 
             // Vincular aluno ao responsável
             aluno.responsavel = email.toLowerCase();

@@ -16,6 +16,7 @@
 const mongoose = require('mongoose');
 const Aluno = require('../models/Aluno');
 const escapeRegex = require('../utils/escapeRegex');
+const { contaPrecisaConfirmar } = require('../services/verificacaoEmail');
 
 const PERFIS_GESTAO = ['admin', 'diretor', 'secretaria'];
 
@@ -29,7 +30,9 @@ function buildAlunoQuery(alunoId) {
 
 /** Normaliza a turma do aluno para comparação com req.allowedTurmas. */
 function normalizarTurma(t) {
-    return String(t || '').replace('º', '').toUpperCase();
+    return String(t || '')
+        .replace('º', '')
+        .toUpperCase();
 }
 
 /** true se o e-mail informado consta como responsável do aluno. */
@@ -39,7 +42,7 @@ function ehResponsavelDoAluno(aluno, email) {
     if (String(aluno.responsavel || '').toLowerCase() === alvo) return true;
     if (String(aluno.responsavelDados?.email || '').toLowerCase() === alvo) return true;
     if (Array.isArray(aluno.responsaveis)) {
-        return aluno.responsaveis.some(r => String(r?.email || '').toLowerCase() === alvo);
+        return aluno.responsaveis.some((r) => String(r?.email || '').toLowerCase() === alvo);
     }
     return false;
 }
@@ -58,7 +61,7 @@ async function assertAcessoAoAluno(req, alunoId, opts = {}) {
     if (!user) return { ok: false, status: 401, error: 'Usuário não autenticado.' };
     if (!alunoId) return { ok: false, status: 400, error: 'Identificador do aluno é obrigatório.' };
 
-    const aluno = opts.aluno || await Aluno.findOne(buildAlunoQuery(alunoId)).lean();
+    const aluno = opts.aluno || (await Aluno.findOne(buildAlunoQuery(alunoId)).lean());
     if (!aluno) return { ok: false, status: 404, error: 'Aluno não encontrado.' };
 
     const perfil = String(user.perfil || '').toLowerCase();
@@ -84,7 +87,22 @@ async function assertAcessoAoAluno(req, alunoId, opts = {}) {
 
     if (perfil === 'responsavel') {
         if (!ehResponsavelDoAluno(aluno, user.email)) {
-            return { ok: false, status: 403, error: 'Acesso negado. Aluno não vinculado à sua conta.' };
+            return {
+                ok: false,
+                status: 403,
+                error: 'Acesso negado. Aluno não vinculado à sua conta.',
+            };
+        }
+        // O vínculo é decidido pelo e-mail da ficha; confirmar o e-mail é o
+        // que prova posse daquela caixa postal (Issue #412). Conta anterior
+        // ao marco não é afetada.
+        if (await contaPrecisaConfirmar(user.id || user._id)) {
+            return {
+                ok: false,
+                status: 403,
+                codigo: 'EMAIL_NAO_VERIFICADO',
+                error: 'Confirme seu e-mail para ver os dados do aluno. Enviamos um link no seu cadastro.',
+            };
         }
         return { ok: true, aluno };
     }
@@ -93,7 +111,10 @@ async function assertAcessoAoAluno(req, alunoId, opts = {}) {
         const proprio = [aluno._id, aluno.id].filter(Boolean).map(String);
         const meuId = String(user.alunoId || user.id || user._id || '');
         const meuEmail = String(user.email || '').toLowerCase();
-        if (proprio.includes(meuId) || (meuEmail && String(aluno.email || '').toLowerCase() === meuEmail)) {
+        if (
+            proprio.includes(meuId) ||
+            (meuEmail && String(aluno.email || '').toLowerCase() === meuEmail)
+        ) {
             return { ok: true, aluno };
         }
         return { ok: false, status: 403, error: 'Acesso negado.' };
@@ -112,13 +133,20 @@ function requireAcessoAoAluno(param = 'alunoId') {
             const alunoId = req.params[param] || req.body?.[param];
             const resultado = await assertAcessoAoAluno(req, alunoId);
             if (!resultado.ok) {
-                return res.status(resultado.status).json({ success: false, error: resultado.error });
+                return res.status(resultado.status).json({
+                    success: false,
+                    error: resultado.error,
+                    ...(resultado.codigo ? { codigo: resultado.codigo } : {}),
+                });
             }
             req.alunoAutorizado = resultado.aluno;
             next();
         } catch (e) {
             console.error('[assertAcessoAoAluno] erro:', e.message);
-            res.status(500).json({ success: false, error: 'Erro na verificação de acesso ao aluno.' });
+            res.status(500).json({
+                success: false,
+                error: 'Erro na verificação de acesso ao aluno.',
+            });
         }
     };
 }

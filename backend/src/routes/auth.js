@@ -173,5 +173,8 @@ router.post('/first-access', UserController.firstAccess);
 router.post('/register-code', UserController.registerWithCode);
 router.post('/update-password-force', authJWT, UserController.updatePasswordForce);
 router.get('/verify-email/:token', UserController.verifyEmail);
+// Issue #412: quem ainda não confirmou pede o link de novo (sem ele, a
+// conta ficaria presa fora do portal se o primeiro e-mail não chegasse).
+router.post('/reenviar-verificacao', authJWT, UserController.reenviarVerificacao);
 
 module.exports = router;
