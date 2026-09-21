@@ -22,6 +22,8 @@ const { painelDoPerfil } = require('../utils/painelPorPerfil');
 // Emissão de sessão centralizada: garante `jti` em todo token (pré-requisito
 // para o logout conseguir revogar) e opções de cookie idênticas em todo lugar.
 const { emitirTokenSessao } = require('../utils/sessionToken');
+// Validação de porta de entrada: separa o portal da família do portal da escola.
+const { portalConfere, recusaDePortal } = require('../utils/portalDeLogin');
 // Cadastro exige e registra o consentimento LGPD (Issue #295).
 const {
     validarConsentimentoDoCadastro,
@@ -710,6 +712,20 @@ exports.login = async (req, res) => {
                 $unset: { lockUntil: '' },
             }
         );
+
+        // ============================================
+        // VALIDAÇÃO DE PORTAL — verificado DEPOIS da prova de senha.
+        // Conta de responsável entra pelo Portal do Responsável; conta de
+        // equipe (professor, diretor, secretaria, admin) entra pela escola.
+        // ============================================
+        if (!portalConfere(user.perfil, req.body.portal)) {
+            const recusa = recusaDePortal(user.perfil);
+            return res.status(403).json({
+                success: false,
+                ok: false,
+                ...recusa,
+            });
+        }
 
         // ============================================
         // MULTI-ESCOLA: resolve a escola ativa ANTES do redirect.
