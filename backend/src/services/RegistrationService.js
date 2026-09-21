@@ -153,7 +153,7 @@ class RegistrationService {
             aluno.responsavel = email.toLowerCase();
             await aluno.save();
 
-            logger.info(`🔗 [RESPONSAVEL] Aluno "${aluno.nome}" vinculado a "${nome}" (${email})`);
+            logger.info(`🔗 [RESPONSAVEL] Aluno ${aluno._id} vinculado à conta ${user._id}`);
 
             // Criar notificação para direção
             await Notificacao.create({
@@ -464,7 +464,7 @@ class RegistrationService {
                 });
             }
 
-            logger.info(`✅ [FIRST_ACCESS] Professor "${prof.nome}" ativou sua conta`);
+            logger.info(`✅ [FIRST_ACCESS] Professor ${prof._id} ativou sua conta`);
 
             return {
                 success: true,

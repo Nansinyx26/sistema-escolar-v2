@@ -371,7 +371,7 @@ const startServer = async () => {
                 }
             }
 
-            logger.debug(`🔌 [Socket.IO] ${user.nome || 'Usuário'} conectado`, {
+            logger.debug(`🔌 [Socket.IO] conta ${user.id || user._id} conectada`, {
                 perfil: user.perfil,
                 room: `user:${user.id || user._id}`,
                 escola: socket.escolaId || 'n/d',
@@ -437,7 +437,7 @@ const startServer = async () => {
             });
 
             socket.on('disconnect', async () => {
-                logger.debug(`❌ [Socket.IO] ${user.nome || 'Usuário'} desconectado`);
+                logger.debug(`❌ [Socket.IO] conta ${user.id || user._id} desconectada`);
                 if (socket.escolaId) {
                     const ficouOffline = presence.removeUser(socket.escolaId, uid, socket.id);
                     if (ficouOffline) {

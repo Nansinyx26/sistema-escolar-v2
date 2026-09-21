@@ -135,15 +135,17 @@ function nomesPara(perfil, opcoes) {
  *
  * @returns {Promise<{ok: boolean, dados?: any, erro?: string}>}
  */
-async function executar(nome, parametros, ctx) {
-    const ferramenta = carregar().get(nome);
+async function executar(ferramentaNome, parametros, ctx) {
+    const ferramenta = carregar().get(ferramentaNome);
 
     if (!ferramenta) {
         // Modelo alucinou um nome de ferramenta.
-        logger.warn(`[IA] Modelo pediu ferramenta inexistente: "${nome}"`, { action: 'ia.tool' });
+        logger.warn(`[IA] Modelo pediu ferramenta inexistente: "${ferramentaNome}"`, {
+            action: 'ia.tool',
+        });
         return {
             ok: false,
-            erro: `A ferramenta "${nome}" não existe. Responda usando apenas o que você já sabe.`,
+            erro: `A ferramenta "${ferramentaNome}" não existe. Responda usando apenas o que você já sabe.`,
         };
     }
 
@@ -161,14 +163,14 @@ async function executar(nome, parametros, ctx) {
         // acontece em POST /api/ia/confirmar.
         if (ferramenta.mutates) {
             const { confirmToken, expiraEm } = await ConfirmationStore.emitir(ctx, {
-                ferramenta: nome,
+                ferramenta: ferramentaNome,
                 parametros: dados.parametros,
                 resumo: dados.resumo,
             });
 
-            logger.info(`[IA] Ação "${nome}" aguardando confirmação.`, {
+            logger.info(`[IA] Ação "${ferramentaNome}" aguardando confirmação.`, {
                 action: 'ia.tool',
-                ferramenta: nome,
+                ferramenta: ferramentaNome,
                 perfil: ctx.perfil,
             });
 
@@ -177,7 +179,7 @@ async function executar(nome, parametros, ctx) {
                 dados: {
                     requerConfirmacao: true,
                     confirmToken,
-                    acao: nome,
+                    acao: ferramentaNome,
                     resumo: dados.resumo,
                     // O modelo recebe os dados para poder DESCREVER a ação em
                     // texto. Não são eles que serão executados — o servidor usa
@@ -188,28 +190,28 @@ async function executar(nome, parametros, ctx) {
             };
         }
 
-        logger.info(`[IA] Ferramenta "${nome}" executada.`, {
+        logger.info(`[IA] Ferramenta "${ferramentaNome}" executada.`, {
             action: 'ia.tool',
-            ferramenta: nome,
+            ferramenta: ferramentaNome,
             perfil: ctx.perfil,
         });
 
         return { ok: true, dados };
     } catch (e) {
         if (e instanceof ErroPermissao || e.permissao) {
-            logger.warn(`[IA] Ferramenta "${nome}" recusada por permissão.`, {
+            logger.warn(`[IA] Ferramenta "${ferramentaNome}" recusada por permissão.`, {
                 action: 'ia.tool',
-                ferramenta: nome,
+                ferramenta: ferramentaNome,
                 perfil: ctx.perfil,
             });
             return { ok: false, erro: e.message };
         }
 
         // Falha real: o detalhe fica no log, o modelo recebe algo genérico.
-        logger.error(`[IA] Falha ao executar a ferramenta "${nome}"`, {
+        logger.error(`[IA] Falha ao executar a ferramenta "${ferramentaNome}"`, {
             err: e,
             action: 'ia.tool',
-            ferramenta: nome,
+            ferramenta: ferramentaNome,
         });
         return {
             ok: false,
