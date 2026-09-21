@@ -27,10 +27,28 @@ const { escolaMatch } = require('../middleware/filtrarPorEscola');
 const { logAction } = require('../utils/auditHelper');
 
 const MESES = [
-    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    'Janeiro',
+    'Fevereiro',
+    'Março',
+    'Abril',
+    'Maio',
+    'Junho',
+    'Julho',
+    'Agosto',
+    'Setembro',
+    'Outubro',
+    'Novembro',
+    'Dezembro',
 ];
-const DIAS_SEMANA = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+const DIAS_SEMANA = [
+    'Domingo',
+    'Segunda-feira',
+    'Terça-feira',
+    'Quarta-feira',
+    'Quinta-feira',
+    'Sexta-feira',
+    'Sábado',
+];
 const DIAS_SEMANA_CURTO = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 const PERFIS_FUNCIONARIO = ['professor', 'diretor', 'secretaria'];
@@ -42,7 +60,7 @@ const PERFIS_GESTAO = ['admin', 'diretor', 'secretaria'];
  */
 const VIGENCIA = {
     ano: Number(process.env.PLANILHA_FALTAS_ANO_INICIO) || 2026,
-    mes: Number(process.env.PLANILHA_FALTAS_MES_INICIO) || 7
+    mes: Number(process.env.PLANILHA_FALTAS_MES_INICIO) || 7,
 };
 
 function ehGestao(perfil) {
@@ -97,7 +115,9 @@ async function buscarFuncionarios(escolaId) {
         const [profs, dirs, secs] = await Promise.all([
             Professor.find({ 'vinculos.escolaId': alvo }).select('idUsuario').lean(),
             Diretor.find({ 'vinculos.escolaId': alvo }).select('idUsuario').lean(),
-            Secretaria.find({ $or: [{ 'vinculos.escolaId': alvo }, { escolaId: alvo }] }).select('idUsuario').lean()
+            Secretaria.find({ $or: [{ 'vinculos.escolaId': alvo }, { escolaId: alvo }] })
+                .select('idUsuario')
+                .lean(),
         ]);
 
         const idsPorVinculo = [];
@@ -114,11 +134,11 @@ async function buscarFuncionarios(escolaId) {
         .sort({ nome: 1 })
         .lean();
 
-    return usuarios.map(u => ({
+    return usuarios.map((u) => ({
         id: String(u._id),
         nome: u.nome,
         email: u.email,
-        cargo: u.perfil
+        cargo: u.perfil,
     }));
 }
 
@@ -134,15 +154,23 @@ async function resolverFuncionarioAlvo(req, funcionarioIdSolicitado) {
     if (!solicitado || solicitado === meuId) {
         const eu = await Usuario.findById(meuId).select('nome email perfil').lean();
         if (!eu) return { erro: { status: 401, mensagem: 'Usuário da sessão não encontrado.' } };
-        return { funcionario: { id: meuId, nome: eu.nome, email: eu.email, cargo: eu.perfil }, proprio: true };
+        return {
+            funcionario: { id: meuId, nome: eu.nome, email: eu.email, cargo: eu.perfil },
+            proprio: true,
+        };
     }
 
     if (!ehGestao(req.user.perfil)) {
-        return { erro: { status: 403, mensagem: 'Você só pode acessar a sua própria planilha de faltas.' } };
+        return {
+            erro: {
+                status: 403,
+                mensagem: 'Você só pode acessar a sua própria planilha de faltas.',
+            },
+        };
     }
 
     const funcionarios = await buscarFuncionarios(req.escolaId);
-    const alvo = funcionarios.find(f => f.id === solicitado);
+    const alvo = funcionarios.find((f) => f.id === solicitado);
     if (!alvo) {
         return { erro: { status: 404, mensagem: 'Funcionário não encontrado nesta escola.' } };
     }
@@ -163,7 +191,7 @@ const TIPO_CALENDARIO = {
     evento: { rotulo: 'Evento', letivo: true, prioridade: 7 },
     matricula: { rotulo: 'Matrícula', letivo: true, prioridade: 8 },
     aula: { rotulo: 'Dia letivo', letivo: true, prioridade: 9 },
-    outro: { rotulo: 'Outro', letivo: true, prioridade: 10 }
+    outro: { rotulo: 'Outro', letivo: true, prioridade: 10 },
 };
 
 /** Eventos da escola que tocam qualquer dia do mês (abrangência de escola). */
@@ -176,8 +204,10 @@ async function eventosDoMes(escolaId, ano, mes) {
         abrangencia: { $ne: 'turma' }, // planilha é de funcionário, não de turma
         dataInicio: { $lte: fimMes },
         dataFim: { $gte: inicioMes },
-        ...escolaMatch(escolaId)
-    }).select('titulo tipo dataInicio dataFim').lean();
+        ...escolaMatch(escolaId),
+    })
+        .select('titulo tipo dataInicio dataFim')
+        .lean();
 }
 
 /**
@@ -187,7 +217,7 @@ async function eventosDoMes(escolaId, ano, mes) {
  */
 function montarDias(ano, mes, eventos, lancamentos) {
     const diasNoMes = new Date(ano, mes, 0).getDate();
-    const porDia = new Map((lancamentos || []).map(d => [Number(d.dia), d]));
+    const porDia = new Map((lancamentos || []).map((d) => [Number(d.dia), d]));
     const linhas = [];
 
     for (let dia = 1; dia <= diasNoMes; dia++) {
@@ -198,8 +228,10 @@ function montarDias(ano, mes, eventos, lancamentos) {
         // Evento de maior prioridade que cobre este dia (feriado ganha de evento)
         let calendario = null;
         for (const ev of eventos) {
-            const inicio = new Date(ev.dataInicio); inicio.setHours(0, 0, 0, 0);
-            const fim = new Date(ev.dataFim); fim.setHours(23, 59, 59, 999);
+            const inicio = new Date(ev.dataInicio);
+            inicio.setHours(0, 0, 0, 0);
+            const fim = new Date(ev.dataFim);
+            fim.setHours(23, 59, 59, 999);
             if (data < inicio || data > fim) continue;
 
             const meta = TIPO_CALENDARIO[ev.tipo] || TIPO_CALENDARIO.outro;
@@ -208,7 +240,7 @@ function montarDias(ano, mes, eventos, lancamentos) {
                     tipo: ev.tipo,
                     rotulo: ev.titulo || meta.rotulo,
                     letivo: meta.letivo && !fimDeSemana,
-                    prioridade: meta.prioridade
+                    prioridade: meta.prioridade,
                 };
             }
         }
@@ -232,7 +264,7 @@ function montarDias(ano, mes, eventos, lancamentos) {
             descontoHoras: Number(registro.descontoHoras) || 0,
             tre: !!registro.tre,
             injustificadas: !!registro.injustificadas,
-            observacoes: registro.observacoes || ''
+            observacoes: registro.observacoes || '',
         });
     }
 
@@ -244,8 +276,14 @@ function montarDias(ano, mes, eventos, lancamentos) {
 // ─────────────────────────────────────────────────────────
 
 function linhaVazia(d) {
-    return !d.abonadas && !d.atestado && !d.tre && !d.injustificadas
-        && d.descontoHoras === 0 && !d.observacoes;
+    return (
+        !d.abonadas &&
+        !d.atestado &&
+        !d.tre &&
+        !d.injustificadas &&
+        d.descontoHoras === 0 &&
+        !d.observacoes
+    );
 }
 
 /** Aceita o mês inteiro vindo da tela e devolve só os dias com marcação. */
@@ -262,10 +300,14 @@ function sanitizarDias(dias, diasNoMes) {
             dia,
             abonadas: !!bruto?.abonadas,
             atestado: !!bruto?.atestado,
-            descontoHoras: Number.isFinite(horas) ? Math.round(Math.min(24, Math.max(0, horas)) * 100) / 100 : 0,
+            descontoHoras: Number.isFinite(horas)
+                ? Math.round(Math.min(24, Math.max(0, horas)) * 100) / 100
+                : 0,
             tre: !!bruto?.tre,
             injustificadas: !!bruto?.injustificadas,
-            observacoes: String(bruto?.observacoes ?? '').trim().slice(0, 300)
+            observacoes: String(bruto?.observacoes ?? '')
+                .trim()
+                .slice(0, 300),
         };
 
         if (linhaVazia(registro)) continue;
@@ -276,19 +318,35 @@ function sanitizarDias(dias, diasNoMes) {
 }
 
 function calcularTotais(dias) {
-    const totais = (dias || []).reduce((acc, d) => ({
-        abonadas: acc.abonadas + (d.abonadas ? 1 : 0),
-        atestado: acc.atestado + (d.atestado ? 1 : 0),
-        descontoHoras: acc.descontoHoras + (Number(d.descontoHoras) || 0),
-        tre: acc.tre + (d.tre ? 1 : 0),
-        injustificadas: acc.injustificadas + (d.injustificadas ? 1 : 0),
-        diasComRegistro: acc.diasComRegistro + (linhaVazia({
-            abonadas: !!d.abonadas, atestado: !!d.atestado, tre: !!d.tre,
-            injustificadas: !!d.injustificadas,
-            descontoHoras: Number(d.descontoHoras) || 0,
-            observacoes: d.observacoes || ''
-        }) ? 0 : 1)
-    }), { abonadas: 0, atestado: 0, descontoHoras: 0, tre: 0, injustificadas: 0, diasComRegistro: 0 });
+    const totais = (dias || []).reduce(
+        (acc, d) => ({
+            abonadas: acc.abonadas + (d.abonadas ? 1 : 0),
+            atestado: acc.atestado + (d.atestado ? 1 : 0),
+            descontoHoras: acc.descontoHoras + (Number(d.descontoHoras) || 0),
+            tre: acc.tre + (d.tre ? 1 : 0),
+            injustificadas: acc.injustificadas + (d.injustificadas ? 1 : 0),
+            diasComRegistro:
+                acc.diasComRegistro +
+                (linhaVazia({
+                    abonadas: !!d.abonadas,
+                    atestado: !!d.atestado,
+                    tre: !!d.tre,
+                    injustificadas: !!d.injustificadas,
+                    descontoHoras: Number(d.descontoHoras) || 0,
+                    observacoes: d.observacoes || '',
+                })
+                    ? 0
+                    : 1),
+        }),
+        {
+            abonadas: 0,
+            atestado: 0,
+            descontoHoras: 0,
+            tre: 0,
+            injustificadas: 0,
+            diasComRegistro: 0,
+        }
+    );
 
     totais.descontoHoras = Math.round(totais.descontoHoras * 100) / 100;
     return totais;
@@ -305,7 +363,7 @@ async function resolverEscola(req) {
         nome: escola.nome,
         tipo: escola.tipo || null,
         bairro: escola.bairro || '',
-        municipio: escola.municipio || ''
+        municipio: escola.municipio || '',
     };
 }
 
@@ -325,10 +383,14 @@ exports.contexto = async (req, res) => {
         const hoje = new Date();
 
         const anos = anosDisponiveis();
-        const anoCorrente = Math.min(Math.max(hoje.getFullYear(), VIGENCIA.ano), anos[anos.length - 1]);
-        const mesCorrente = hoje.getFullYear() === VIGENCIA.ano
-            ? Math.max(hoje.getMonth() + 1, VIGENCIA.mes)
-            : hoje.getMonth() + 1;
+        const anoCorrente = Math.min(
+            Math.max(hoje.getFullYear(), VIGENCIA.ano),
+            anos[anos.length - 1]
+        );
+        const mesCorrente =
+            hoje.getFullYear() === VIGENCIA.ano
+                ? Math.max(hoje.getMonth() + 1, VIGENCIA.mes)
+                : hoje.getMonth() + 1;
 
         res.json({
             success: true,
@@ -338,18 +400,18 @@ exports.contexto = async (req, res) => {
                     id: String(req.user.id || req.user._id),
                     nome: req.user.nome,
                     cargo: req.user.perfil,
-                    ehGestao: gestao
+                    ehGestao: gestao,
                 },
                 vigencia: {
                     ano: VIGENCIA.ano,
                     mes: VIGENCIA.mes,
-                    rotulo: rotuloMes(VIGENCIA.ano, VIGENCIA.mes)
+                    rotulo: rotuloMes(VIGENCIA.ano, VIGENCIA.mes),
                 },
                 anos,
                 meses: MESES.map((nome, i) => ({ mes: i + 1, nome })),
                 // Mês que a tela deve abrir por padrão
-                atual: { ano: anoCorrente, mes: mesCorrente }
-            }
+                atual: { ano: anoCorrente, mes: mesCorrente },
+            },
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -363,7 +425,9 @@ exports.contexto = async (req, res) => {
 exports.funcionarios = async (req, res) => {
     try {
         if (!ehGestao(req.user.perfil)) {
-            return res.status(403).json({ success: false, error: 'Apenas a gestão pode listar funcionários.' });
+            return res
+                .status(403)
+                .json({ success: false, error: 'Apenas a gestão pode listar funcionários.' });
         }
         const data = await buscarFuncionarios(req.escolaId);
         res.json({ success: true, data });
@@ -387,21 +451,23 @@ exports.getPlanilha = async (req, res) => {
         if (!mesDisponivel(ano, mes)) {
             return res.status(400).json({
                 success: false,
-                error: `A planilha de faltas começa em ${rotuloMes(VIGENCIA.ano, VIGENCIA.mes)}.`
+                error: `A planilha de faltas começa em ${rotuloMes(VIGENCIA.ano, VIGENCIA.mes)}.`,
             });
         }
 
         const alvo = await resolverFuncionarioAlvo(req, req.query.funcionarioId);
-        if (alvo.erro) return res.status(alvo.erro.status).json({ success: false, error: alvo.erro.mensagem });
+        if (alvo.erro)
+            return res.status(alvo.erro.status).json({ success: false, error: alvo.erro.mensagem });
 
         const [escola, doc, eventos] = await Promise.all([
             resolverEscola(req),
             FaltaFuncionario.findOne({
                 funcionarioId: alvo.funcionario.id,
-                ano, mes,
-                ...escolaMatch(req.escolaId)
+                ano,
+                mes,
+                ...escolaMatch(req.escolaId),
             }).lean(),
-            eventosDoMes(req.escolaId, ano, mes)
+            eventosDoMes(req.escolaId, ano, mes),
         ]);
 
         const dias = montarDias(ano, mes, eventos, doc?.dias);
@@ -420,8 +486,8 @@ exports.getPlanilha = async (req, res) => {
                 totais: calcularTotais(dias),
                 podeEditar: alvo.proprio || ehGestao(req.user.perfil),
                 atualizadoEm: doc?.updatedAt || null,
-                atualizadoPorNome: doc?.atualizadoPorNome || null
-            }
+                atualizadoPorNome: doc?.atualizadoPorNome || null,
+            },
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -447,20 +513,22 @@ exports.salvarPlanilha = async (req, res) => {
         if (!mesDisponivel(ano, mes)) {
             return res.status(400).json({
                 success: false,
-                error: `A planilha de faltas começa em ${rotuloMes(VIGENCIA.ano, VIGENCIA.mes)}.`
+                error: `A planilha de faltas começa em ${rotuloMes(VIGENCIA.ano, VIGENCIA.mes)}.`,
             });
         }
 
         const alvo = await resolverFuncionarioAlvo(req, req.body.funcionarioId);
-        if (alvo.erro) return res.status(alvo.erro.status).json({ success: false, error: alvo.erro.mensagem });
+        if (alvo.erro)
+            return res.status(alvo.erro.status).json({ success: false, error: alvo.erro.mensagem });
 
         const diasNoMes = new Date(ano, mes, 0).getDate();
         const dias = sanitizarDias(req.body.dias, diasNoMes);
 
         const filtro = {
             funcionarioId: alvo.funcionario.id,
-            ano, mes,
-            escolaId: req.escolaId ? String(req.escolaId) : null
+            ano,
+            mes,
+            escolaId: req.escolaId ? String(req.escolaId) : null,
         };
 
         const doc = await FaltaFuncionario.findOneAndUpdate(
@@ -473,8 +541,8 @@ exports.salvarPlanilha = async (req, res) => {
                     cargo: alvo.funcionario.cargo,
                     dias,
                     atualizadoPor: String(req.user.id || req.user._id),
-                    atualizadoPorNome: req.user.nome
-                }
+                    atualizadoPorNome: req.user.nome,
+                },
             },
             { new: true, upsert: true, setDefaultsOnInsert: true }
         ).lean();
@@ -483,9 +551,10 @@ exports.salvarPlanilha = async (req, res) => {
 
         await logAction(req, 'UPDATE_FALTAS_FUNCIONARIO', 'FaltasFuncionarios', {
             recursoId: String(doc._id),
-            descricao: `Planilha de faltas de ${alvo.funcionario.nome} — ${rotuloMes(ano, mes)}: `
-                + `${totais.diasComRegistro} dia(s) com lançamento.`,
-            valorNovo: totais
+            descricao:
+                `Planilha de faltas do funcionário ${alvo.funcionario.id} — ${rotuloMes(ano, mes)}: ` +
+                `${totais.diasComRegistro} dia(s) com lançamento.`,
+            valorNovo: totais,
         });
 
         const eventos = await eventosDoMes(req.escolaId, ano, mes);
@@ -494,12 +563,13 @@ exports.salvarPlanilha = async (req, res) => {
             success: true,
             message: `Planilha de ${rotuloMes(ano, mes)} salva com sucesso!`,
             data: {
-                ano, mes,
+                ano,
+                mes,
                 dias: montarDias(ano, mes, eventos, dias),
                 totais,
                 atualizadoEm: doc.updatedAt,
-                atualizadoPorNome: doc.atualizadoPorNome
-            }
+                atualizadoPorNome: doc.atualizadoPorNome,
+            },
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -513,7 +583,9 @@ exports.salvarPlanilha = async (req, res) => {
 exports.resumo = async (req, res) => {
     try {
         if (!ehGestao(req.user.perfil)) {
-            return res.status(403).json({ success: false, error: 'Apenas a gestão pode ver o consolidado.' });
+            return res
+                .status(403)
+                .json({ success: false, error: 'Apenas a gestão pode ver o consolidado.' });
         }
 
         const competencia = lerCompetencia(req.query);
@@ -525,33 +597,35 @@ exports.resumo = async (req, res) => {
         if (!mesDisponivel(ano, mes)) {
             return res.status(400).json({
                 success: false,
-                error: `A planilha de faltas começa em ${rotuloMes(VIGENCIA.ano, VIGENCIA.mes)}.`
+                error: `A planilha de faltas começa em ${rotuloMes(VIGENCIA.ano, VIGENCIA.mes)}.`,
             });
         }
 
         const funcionarios = await buscarFuncionarios(req.escolaId);
         const planilhas = await FaltaFuncionario.find({
-            ano, mes,
-            funcionarioId: { $in: funcionarios.map(f => f.id) },
-            ...escolaMatch(req.escolaId)
+            ano,
+            mes,
+            funcionarioId: { $in: funcionarios.map((f) => f.id) },
+            ...escolaMatch(req.escolaId),
         }).lean();
 
-        const porFuncionario = new Map(planilhas.map(p => [String(p.funcionarioId), p]));
+        const porFuncionario = new Map(planilhas.map((p) => [String(p.funcionarioId), p]));
 
-        const data = funcionarios.map(f => {
+        const data = funcionarios.map((f) => {
             const doc = porFuncionario.get(f.id);
             return {
                 ...f,
                 totais: calcularTotais(doc?.dias || []),
-                atualizadoEm: doc?.updatedAt || null
+                atualizadoEm: doc?.updatedAt || null,
             };
         });
 
         res.json({
             success: true,
             data,
-            ano, mes,
-            rotulo: rotuloMes(ano, mes)
+            ano,
+            mes,
+            rotulo: rotuloMes(ano, mes),
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });

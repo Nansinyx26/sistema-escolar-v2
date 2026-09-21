@@ -216,7 +216,7 @@ exports.exportarMeusDados = async (req, res) => {
         // Registra a exportação no audit log
         await logAction(req, 'LGPD_EXPORT_DADOS', 'MeusDados', {
             recursoId: userId,
-            descricao: `Titular ${usuario.email} exportou seus dados pessoais (LGPD Art. 18).`,
+            descricao: `Titular ${usuario._id} exportou seus dados pessoais (LGPD Art. 18).`,
         });
 
         // Retorna como JSON com header de download (portabilidade)
