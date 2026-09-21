@@ -7,31 +7,38 @@ function comAssinatura(bytes, tamanho = 64) {
     return buf;
 }
 
-const PNG = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
-const JPEG = [0xFF, 0xD8, 0xFF];
+const PNG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+const JPEG = [0xff, 0xd8, 0xff];
 const PDF = Array.from('%PDF-1.7', (c) => c.charCodeAt(0));
-const ZIP = [0x50, 0x4B, 0x03, 0x04];
-const OLE2 = [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1];
-const EXE_MZ = [0x4D, 0x5A, 0x90, 0x00];
-const ELF = [0x7F, 0x45, 0x4C, 0x46];
+const ZIP = [0x50, 0x4b, 0x03, 0x04];
+const OLE2 = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
+const EXE_MZ = [0x4d, 0x5a, 0x90, 0x00];
+const ELF = [0x7f, 0x45, 0x4c, 0x46];
 
 describe('validarAssinatura — o conteúdo tem que bater com o tipo declarado', () => {
     it('aceita arquivos legítimos de cada família', () => {
         expect(validarAssinatura(comAssinatura(PNG), 'image/png').ok).toBe(true);
         expect(validarAssinatura(comAssinatura(JPEG), 'image/jpeg').ok).toBe(true);
         expect(validarAssinatura(comAssinatura(PDF), 'application/pdf').ok).toBe(true);
-        expect(validarAssinatura(comAssinatura(OLE2), 'application/msword').ok).toBe(true);
     });
 
-    it('aceita docx/xlsx/pptx, que são ZIP por dentro', () => {
+    // docx/xlsx/pptx são ZIP por dentro, e desde a #415 não basta a assinatura:
+    // o índice do pacote é lido para separar documento de compactado e para
+    // achar macro. Os casos com ZIP montado de verdade estão em
+    // `anexoCompactadoMacro.test.js`.
+    it('recusa Office antigo (OLE2), que carrega macro no próprio arquivo', () => {
+        const veredito = validarAssinatura(comAssinatura(OLE2), 'application/msword');
+        expect(veredito.ok).toBe(false);
+        expect(veredito.motivo).toMatch(/macro/i);
+    });
+
+    it('recusa ZIP sem índice legível declarado como docx', () => {
         const docx = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-        const xlsx = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-        expect(validarAssinatura(comAssinatura(ZIP), docx).ok).toBe(true);
-        expect(validarAssinatura(comAssinatura(ZIP), xlsx).ok).toBe(true);
+        expect(validarAssinatura(comAssinatura(ZIP), docx).ok).toBe(false);
     });
 
     it('aceita webm da gravação de voz e mp4 do Safari', () => {
-        const webm = comAssinatura([0x1A, 0x45, 0xDF, 0xA3]);
+        const webm = comAssinatura([0x1a, 0x45, 0xdf, 0xa3]);
         expect(validarAssinatura(webm, 'audio/webm').ok).toBe(true);
 
         // ISO-BMFF: 4 bytes de tamanho e depois 'ftyp'
