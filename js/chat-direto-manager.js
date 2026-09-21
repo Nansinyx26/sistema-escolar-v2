@@ -203,6 +203,60 @@
               : `visto em ${d.toLocaleDateString('pt-BR')} às ${hora}`;
     }
 
+    /*
+     * Compactado e documento com macro não são aceitos no envio (Issue #415):
+     * o compactado esconde o conteúdo do único filtro que existe, e a macro
+     * executa na máquina de quem abre — do outro lado está uma família ou
+     * alguém da escola. O servidor é quem decide de fato (ele abre o arquivo e
+     * confere os bytes); aqui a recusa é só para a pessoa saber na hora, sem
+     * esperar o upload de um arquivo que vai voltar recusado. Vale também para
+     * arrastar-e-soltar, que ignora o `accept` do input.
+     */
+    const EXT_RECUSADAS = {
+        zip: 'compactado',
+        rar: 'compactado',
+        '7z': 'compactado',
+        tar: 'compactado',
+        gz: 'compactado',
+        tgz: 'compactado',
+        bz2: 'compactado',
+        xz: 'compactado',
+        rar5: 'compactado',
+        doc: 'office-antigo',
+        xls: 'office-antigo',
+        ppt: 'office-antigo',
+        dot: 'office-antigo',
+        xlt: 'office-antigo',
+        pot: 'office-antigo',
+        docm: 'macro',
+        dotm: 'macro',
+        xlsm: 'macro',
+        xltm: 'macro',
+        xlam: 'macro',
+        xlsb: 'macro',
+        pptm: 'macro',
+        potm: 'macro',
+        ppsm: 'macro',
+    };
+
+    const RECUSA_TEXTO = {
+        compactado:
+            'arquivo compactado não é aceito. Envie cada arquivo separadamente — PDF, imagem ou documento do Office sem macro.',
+        'office-antigo':
+            'documento do Office antigo pode conter macro. Salve como .docx, .xlsx ou .pptx, ou envie em PDF.',
+        macro: 'documento com macro não é aceito. Salve como .docx, .xlsx ou .pptx, ou envie em PDF.',
+    };
+
+    /** Texto da recusa, ou `null` quando o arquivo pode seguir. */
+    function motivoDeRecusa(file) {
+        const ext = String(file?.name || '')
+            .split('.')
+            .pop()
+            .toLowerCase();
+        const motivo = EXT_RECUSADAS[ext];
+        return motivo ? RECUSA_TEXTO[motivo] : null;
+    }
+
     /** Ícone do Bootstrap Icons conforme a extensão/mimetype do anexo. */
     function iconePorArquivo(nome, tipo) {
         const t = String(tipo || '').toLowerCase();
@@ -708,7 +762,7 @@
           </div>
 
           <input type="file" id="fileInput_${this.targetUserId}" hidden multiple
-                 accept="image/*,video/*,audio/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.7z">
+                 accept="image/*,video/*,audio/*,application/pdf,.docx,.xlsx,.pptx,.txt,.csv,.rtf">
         </div>
       `;
 
@@ -1826,6 +1880,11 @@
             if (lista.length === 0) return;
 
             for (const original of lista) {
+                const recusa = motivoDeRecusa(original);
+                if (recusa) {
+                    this.manager.toast(`"${original.name}": ${recusa}`);
+                    continue;
+                }
                 if (original.size > MAX_UPLOAD_MB * 1024 * 1024) {
                     this.manager.toast(`"${original.name}" excede ${MAX_UPLOAD_MB} MB.`);
                     continue;
