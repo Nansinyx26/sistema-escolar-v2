@@ -1,13 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import type { Student } from '../types';
-import styles from '../styles/portal.module.scss';
-import { getBoletimPdf, getIAAnalysis } from '../services/apiService';
+/**
+ * components/StudentCard.tsx
+ * Card de identificação e status do aluno ativo.
+ * Apresenta dados essenciais (nome, turma, matrícula, status ATIVO)
+ * e ações contextuais rápidas sem poluir a navegação global.
+ */
+
+import type React from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
+import { getBoletimPdf, getIAAnalysis } from '../services/apiService';
+import styles from '../styles/portal.module.scss';
+import type { Student } from '../types';
 import Icon from './ui/Icon';
 
 interface StudentCardProps {
   student: Student;
   lgpdAccepted?: boolean;
+  onViewFicha?: () => void;
 }
 
 interface IAAnalysis {
@@ -23,36 +32,38 @@ function getInitials(nome: string, sobrenome: string): string {
   return `${n[0] ?? ''}${s[0] ?? ''}`.toUpperCase();
 }
 
-
-const StudentCard: React.FC<StudentCardProps> = ({ student, lgpdAccepted = true }) => {
+const StudentCard: React.FC<StudentCardProps> = ({ student, lgpdAccepted = true, onViewFicha }) => {
   const [imgError, setImgError] = useState(false);
   const [iaData, setIaData] = useState<IAAnalysis | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
-  const showFoto = student.foto &&
+  const showFoto =
+    student.foto &&
     student.foto !== 'null' &&
     student.foto !== 'undefined' &&
     !imgError &&
     lgpdAccepted;
-  
-  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     const fetchIA = async () => {
       try {
-        const res = await getIAAnalysis(student.id || student._id);
+        const studentId = student.id || student._id;
+        if (!studentId) return;
+        const res = await getIAAnalysis(studentId);
         if (res.success) setIaData(res.data);
       } catch (err) {
         console.error('Erro IA:', err);
       }
     };
-    if (student.id || student._id) fetchIA();
+    fetchIA();
   }, [student.id, student._id]);
 
   const handleDownloadBoletim = async () => {
     if (downloading) return;
     setDownloading(true);
     try {
-      const blob = await getBoletimPdf(student.id || student._id);
+      const studentId = student.id || student._id;
+      const blob = await getBoletimPdf(studentId);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -62,8 +73,9 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, lgpdAccepted = true 
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       toast.success('Boletim baixado com sucesso!');
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao baixar boletim');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erro ao baixar boletim';
+      toast.error(message);
     } finally {
       setDownloading(false);
     }
@@ -78,79 +90,96 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, lgpdAccepted = true 
         </div>
       )}
 
-      {/* Status badge */}
-      <span className={styles.statusBadge} aria-label="Status: Ativo">
-        <Icon name="circle-check-filled" aria-hidden="true" />
-        Ativo
-      </span>
+      {/* Top badges bar */}
+      <div className={styles.studentCardTopBar}>
+        <span className={styles.statusBadge} role="status" aria-label="Status: Ativo na escola">
+          <Icon name="circle-check-filled" aria-hidden="true" />
+          Ativo
+        </span>
 
-      {/* IA Semaphore */}
-      {iaData && (
-        <div className={`${styles.iaSemaphore} ${styles[iaData.status]}`} title={iaData.insight}>
-          <div className={styles.semaphoreLight} />
-          <span className={styles.iaLabel}>IA: {iaData.status.toUpperCase()}</span>
-        </div>
-      )}
-
-      {/* Avatar */}
-      <div className={styles.studentAvatar} aria-hidden="true">
-        {showFoto ? (
-          <img
-            loading="lazy"
-            src={student.foto}
-            alt={`${student.nome} ${student.sobrenome}`}
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <span>
-            {!lgpdAccepted ? <Icon name="lock" /> : getInitials(student.nome, student.sobrenome)}
-          </span>
+        {iaData && (
+          <div className={`${styles.iaSemaphore} ${styles[iaData.status]}`} title={iaData.insight}>
+            <span className={styles.semaphoreLight} />
+            <span className={styles.iaLabel}>IA: {iaData.status.toUpperCase()}</span>
+          </div>
         )}
       </div>
 
-      {/* Name */}
-      <div className={styles.studentInfo}>
-        <h2 className={styles.studentName}>
-          {student.nome} {student.sobrenome}
-        </h2>
+      <div className={styles.studentMainLayout}>
+        {/* Avatar */}
+        <div className={styles.studentAvatar} aria-hidden="true">
+          {showFoto ? (
+            <img
+              loading="lazy"
+              src={student.foto}
+              alt={`${student.nome} ${student.sobrenome}`}
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <span>
+              {!lgpdAccepted ? <Icon name="lock" /> : getInitials(student.nome, student.sobrenome)}
+            </span>
+          )}
+        </div>
 
-        {/* IA Insight Text */}
-        {iaData && (
-          <p className={styles.iaInsightText}>
-            <Icon name="robot" /> {iaData.insight}
-          </p>
-        )}
+        {/* Informações centrais */}
+        <div className={styles.studentInfo}>
+          <h2 className={styles.studentName}>
+            {student.nome} {student.sobrenome}
+          </h2>
 
-        {/* Info grid */}
-        <dl className={styles.infoGrid}>
-          <div className={styles.infoItem}>
-            <dt className={styles.infoLabel}>
-              <Icon name="users" aria-hidden="true" /> Turma
-            </dt>
-            <dd className={styles.infoValue}>{student.turma || 'Não enturmado'}</dd>
-          </div>
+          {iaData && (
+            <p className={styles.iaInsightText}>
+              <Icon name="robot" aria-hidden="true" /> {iaData.insight}
+            </p>
+          )}
 
+          <dl className={styles.infoGrid}>
+            <div className={styles.infoItem}>
+              <dt className={styles.infoLabel}>
+                <Icon name="users" aria-hidden="true" /> Turma
+              </dt>
+              <dd className={styles.infoValue}>{student.turma || 'Não enturmado'}</dd>
+            </div>
 
-          <div className={styles.infoItem}>
-            <dt className={styles.infoLabel}>
-              <Icon name="id-badge" aria-hidden="true" /> Matrícula
-            </dt>
-            <dd className={styles.infoValue}>{student.matricula || 'N/A'}</dd>
-          </div>
-        </dl>
+            <div className={styles.infoItem}>
+              <dt className={styles.infoLabel}>
+                <Icon name="id-badge" aria-hidden="true" /> Matrícula
+              </dt>
+              <dd className={styles.infoValue}>{student.matricula || 'N/A'}</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
 
-        {/* Action Buttons */}
-        <div className={styles.studentActions}>
+      {/* Ações contextuais do aluno */}
+      <div className={styles.studentActionsGroup}>
+        <button
+          type="button"
+          className={styles.boletimButton}
+          onClick={handleDownloadBoletim}
+          disabled={downloading}
+          aria-label="Baixar boletim escolar em PDF"
+        >
+          <Icon
+            name={downloading ? 'loader' : 'file-download'}
+            spin={downloading}
+            aria-hidden="true"
+          />
+          <span>{downloading ? 'Gerando…' : 'Baixar boletim (PDF)'}</span>
+        </button>
+
+        {onViewFicha && (
           <button
             type="button"
-            className={styles.boletimButton}
-            onClick={handleDownloadBoletim}
-            disabled={downloading}
+            className={styles.secondaryCardActionBtn}
+            onClick={onViewFicha}
+            aria-label="Ver ficha completa e autorizações do aluno"
           >
-            <Icon name={downloading ? 'loader' : 'file-download'} spin={downloading} aria-hidden="true" />
-            {downloading ? 'Gerando…' : 'Baixar boletim (PDF)'}
+            <Icon name="clipboard-list" aria-hidden="true" />
+            <span>Ver Ficha e Autorizações</span>
           </button>
-        </div>
+        )}
       </div>
     </article>
   );
