@@ -377,6 +377,58 @@ const PortalResponsavel: React.FC = () => {
         </main>
       </div>
 
+      {/* Barra de navegação inferior (Mobile Bottom Navigation Bar) */}
+      <nav className={styles.mobileBottomNav} aria-label="Navegação móvel">
+        <button
+          type="button"
+          className={`${styles.bottomNavItem} ${currentTab === 'dashboard' ? styles.active : ''}`}
+          onClick={() => setCurrentTab('dashboard')}
+          aria-label="Ir para o Painel Geral"
+        >
+          <Icon name="home" aria-hidden="true" />
+          <span>Início</span>
+        </button>
+
+        <button
+          type="button"
+          className={`${styles.bottomNavItem} ${currentTab === 'ficha' ? styles.active : ''}`}
+          onClick={() => setCurrentTab('ficha')}
+          aria-label="Ir para Ficha e Autorizações"
+        >
+          <Icon name="clipboard-list" aria-hidden="true" />
+          <span>Ficha</span>
+        </button>
+
+        <button
+          type="button"
+          className={styles.bottomNavItem}
+          onClick={() => setShowNotificationsModal(true)}
+          aria-label="Ver avisos e comunicados"
+        >
+          <div className={styles.bottomNavIconWrapper}>
+            <Icon name="bell-filled" aria-hidden="true" />
+            {notifications.filter((n) => !n.lido).length > 0 && (
+              <span className={styles.bottomNavBadge} aria-hidden="true">
+                {notifications.filter((n) => !n.lido).length > 9
+                  ? '9+'
+                  : notifications.filter((n) => !n.lido).length}
+              </span>
+            )}
+          </div>
+          <span>Avisos</span>
+        </button>
+
+        <button
+          type="button"
+          className={`${styles.bottomNavItem} ${showSidebar ? styles.active : ''}`}
+          onClick={() => setShowSidebar(true)}
+          aria-label="Abrir menu de opções e perfil"
+        >
+          <Icon name="menu" aria-hidden="true" />
+          <span>Mais</span>
+        </button>
+      </nav>
+
       <footer className={styles.footer}>
         <p>
           © {new Date().getFullYear()} Escola Jaguari — Portal do Responsável |{' '}
