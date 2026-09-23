@@ -12,7 +12,13 @@
  */
 const request = require('supertest');
 const app = require('../app');
-const { conectarBanco, limparBanco, desconectarBanco, criarUsuario, SENHA_TESTE } = require('./helpers');
+const {
+    conectarBanco,
+    limparBanco,
+    desconectarBanco,
+    criarUsuario,
+    SENHA_TESTE,
+} = require('./helpers');
 
 const Escola = require('../models/Escola');
 const Professor = require('../models/Professor');
@@ -23,24 +29,43 @@ const SecurityConfig = require('../models/SecurityConfig');
 
 let escolaA, escolaB;
 
-beforeAll(async () => { await conectarBanco(); });
-afterAll(async () => { await desconectarBanco(); });
+beforeAll(async () => {
+    await conectarBanco();
+});
+afterAll(async () => {
+    await desconectarBanco();
+});
 
 beforeEach(async () => {
     await limparBanco();
-    escolaA = await Escola.create({ nome: 'CIEP A', tipo: 'CIEP', codigoSecreto: 'COD-A-1', ativo: true });
-    escolaB = await Escola.create({ nome: 'EMEF B', tipo: 'EMEF', codigoSecreto: 'COD-B-2', ativo: true });
+    escolaA = await Escola.create({
+        nome: 'CIEP A',
+        tipo: 'CIEP',
+        codigoSecreto: 'COD-A-1',
+        ativo: true,
+    });
+    escolaB = await Escola.create({
+        nome: 'EMEF B',
+        tipo: 'EMEF',
+        codigoSecreto: 'COD-B-2',
+        ativo: true,
+    });
 });
 
 // e-mails sempre minúsculos: o login normaliza com toLowerCase(), o cadastro não.
 async function agentProfessor(email, escola) {
     const user = await criarUsuario({ email, perfil: 'professor', escolaId: String(escola._id) });
     await Professor.create({
-        idUsuario: String(user._id), nome: user.nome, email, salaPrincipal: '1A',
-        vinculos: [{ escolaId: String(escola._id), cargo: 'professor' }], ativo: true
+        idUsuario: String(user._id),
+        nome: user.nome,
+        email,
+        salaPrincipal: '1A',
+        vinculos: [{ escolaId: String(escola._id), cargo: 'professor' }],
+        ativo: true,
     });
     const agent = request.agent(app);
-    const login = await agent.post('/api/auth/login')
+    const login = await agent
+        .post('/api/auth/login')
         .send({ email, senha: SENHA_TESTE, escolaId: String(escola._id) });
     expect(login.status).toBe(200);
     return { agent, user };
@@ -49,7 +74,9 @@ async function agentProfessor(email, escola) {
 async function agentResponsavel(email, escola) {
     const user = await criarUsuario({ email, perfil: 'responsavel', escolaId: String(escola._id) });
     const agent = request.agent(app);
-    const login = await agent.post('/api/auth/login').send({ email, senha: SENHA_TESTE });
+    const login = await agent
+        .post('/api/auth/login')
+        .send({ email, senha: SENHA_TESTE, portal: 'responsavel' });
     expect(login.status).toBe(200);
     return { agent, user };
 }
@@ -57,17 +84,23 @@ async function agentResponsavel(email, escola) {
 async function agentDiretor(email, escola) {
     const CODIGO_FIXO = '424242';
     const user = await criarUsuario({
-        email, perfil: 'diretor', escolaId: String(escola._id),
+        email,
+        perfil: 'diretor',
+        escolaId: String(escola._id),
         // O campo guarda HASH scrypt (utils/codigosBackup). Texto puro e
         // recusado de proposito — ver o commit que migrou o codigo fixo.
-        twoFactorFixedCode: await require('../utils/codigosBackup').hashSegredo(CODIGO_FIXO)
+        twoFactorFixedCode: await require('../utils/codigosBackup').hashSegredo(CODIGO_FIXO),
     });
     await Diretor.create({
-        idUsuario: String(user._id), nome: user.nome, email,
-        vinculos: [{ escolaId: String(escola._id), cargo: 'diretor' }], ativo: true
+        idUsuario: String(user._id),
+        nome: user.nome,
+        email,
+        vinculos: [{ escolaId: String(escola._id), cargo: 'diretor' }],
+        ativo: true,
     });
     const agent = request.agent(app);
-    const login = await agent.post('/api/auth/login')
+    const login = await agent
+        .post('/api/auth/login')
         .send({ email, senha: SENHA_TESTE, escolaId: String(escola._id) });
     expect(login.status).toBe(200);
     const verify = await agent.post('/api/auth/2fa/verify').send({ codigo: CODIGO_FIXO });
@@ -81,7 +114,7 @@ function criarComunicado(escola, destinatarios) {
         titulo: 'Comunicado interno',
         conteudo: 'CONTEUDO-SIGILOSO',
         destinatarios,
-        ativo: true
+        ativo: true,
     });
 }
 
@@ -92,8 +125,11 @@ describe('GET /api/comentarios/comunicado/:id — escopo da thread', () => {
     it('NÃO devolve comentários de comunicado de OUTRA escola', async () => {
         const comunicadoB = await criarComunicado(escolaB, ['todos']);
         await Comentario.create({
-            comunicadoId: comunicadoB._id, usuarioId: (await criarUsuario({}))._id,
-            usuarioNome: 'Alguém', texto: 'COMENTARIO-DA-ESCOLA-B', ativo: true
+            comunicadoId: comunicadoB._id,
+            usuarioId: (await criarUsuario({}))._id,
+            usuarioNome: 'Alguém',
+            texto: 'COMENTARIO-DA-ESCOLA-B',
+            ativo: true,
         });
 
         const { agent } = await agentProfessor('espiao@escola.test', escolaA);
@@ -107,8 +143,11 @@ describe('GET /api/comentarios/comunicado/:id — escopo da thread', () => {
         // Comunicado só para professores; quem consulta é responsável.
         const comunicado = await criarComunicado(escolaA, ['professores']);
         await Comentario.create({
-            comunicadoId: comunicado._id, usuarioId: (await criarUsuario({}))._id,
-            usuarioNome: 'Prof', texto: 'CONVERSA-INTERNA-DOCENTE', ativo: true
+            comunicadoId: comunicado._id,
+            usuarioId: (await criarUsuario({}))._id,
+            usuarioNome: 'Prof',
+            texto: 'CONVERSA-INTERNA-DOCENTE',
+            ativo: true,
         });
 
         const { agent } = await agentResponsavel('curioso@escola.test', escolaA);
@@ -121,8 +160,11 @@ describe('GET /api/comentarios/comunicado/:id — escopo da thread', () => {
     it('DEVOLVE os comentários para quem é destinatário (recurso segue funcionando)', async () => {
         const comunicado = await criarComunicado(escolaA, ['todos']);
         await Comentario.create({
-            comunicadoId: comunicado._id, usuarioId: (await criarUsuario({}))._id,
-            usuarioNome: 'Prof', texto: 'comentario-visivel', ativo: true
+            comunicadoId: comunicado._id,
+            usuarioId: (await criarUsuario({}))._id,
+            usuarioNome: 'Prof',
+            texto: 'comentario-visivel',
+            ativo: true,
         });
 
         const { agent } = await agentProfessor('legitimo@escola.test', escolaA);
@@ -139,7 +181,8 @@ describe('POST /api/comentarios — só comenta quem enxerga a mensagem', () => 
         const comunicadoB = await criarComunicado(escolaB, ['todos']);
         const { agent } = await agentProfessor('intruso@escola.test', escolaA);
 
-        const res = await agent.post('/api/comentarios')
+        const res = await agent
+            .post('/api/comentarios')
             .send({ comunicadoId: String(comunicadoB._id), texto: 'invadindo' });
 
         expect(res.status).toBe(404);
@@ -150,7 +193,8 @@ describe('POST /api/comentarios — só comenta quem enxerga a mensagem', () => 
         const comunicado = await criarComunicado(escolaA, ['professores']);
         const { agent } = await agentResponsavel('naodestinatario@escola.test', escolaA);
 
-        const res = await agent.post('/api/comentarios')
+        const res = await agent
+            .post('/api/comentarios')
             .send({ comunicadoId: String(comunicado._id), texto: 'me intrometendo' });
 
         expect(res.status).toBe(403);
@@ -161,7 +205,8 @@ describe('POST /api/comentarios — só comenta quem enxerga a mensagem', () => 
         const comunicado = await criarComunicado(escolaA, ['todos']);
         const { agent } = await agentProfessor('participante@escola.test', escolaA);
 
-        const res = await agent.post('/api/comentarios')
+        const res = await agent
+            .post('/api/comentarios')
             .send({ comunicadoId: String(comunicado._id), texto: 'comentario legitimo' });
 
         expect(res.status).toBe(201);
@@ -177,14 +222,14 @@ describe('/api/security — código de cadastro é da escola, não da rede', () 
         await SecurityConfig.create({
             codigoSecretoEscola: 'CODIGO-GLOBAL-SECRETO',
             dataUltimaRotacao: new Date(),
-            rotacaoAutomatica: false
+            rotacaoAutomatica: false,
         });
 
         const { agent } = await agentDiretor('diretora@escola.test', escolaA);
         const res = await agent.get('/api/security/status');
 
         expect(res.status).toBe(200);
-        expect(res.body.data.codigo).toBe('COD-A-1');       // código da escola A
+        expect(res.body.data.codigo).toBe('COD-A-1'); // código da escola A
         expect(res.body.data.codigo).not.toBe('CODIGO-GLOBAL-SECRETO');
         expect(res.body.data.escopo).toBe('escola');
     });
@@ -193,7 +238,7 @@ describe('/api/security — código de cadastro é da escola, não da rede', () 
         await SecurityConfig.create({
             codigoSecretoEscola: 'CODIGO-GLOBAL-SECRETO',
             dataUltimaRotacao: new Date(),
-            rotacaoAutomatica: false
+            rotacaoAutomatica: false,
         });
 
         const { agent } = await agentDiretor('rotaciona@escola.test', escolaA);
@@ -241,7 +286,8 @@ describe('/api/security — código de cadastro é da escola, não da rede', () 
         const novoCodigo = rotate.body.data.codigo;
 
         // validate-code é público — confirma que o novo código resolve a escola A
-        const res = await request(app).post('/api/auth/validate-code')
+        const res = await request(app)
+            .post('/api/auth/validate-code')
             .send({ codigo: novoCodigo, escolaId: String(escolaA._id) });
 
         expect(res.status).toBe(200);
@@ -253,7 +299,7 @@ describe('/api/security — código de cadastro é da escola, não da rede', () 
         await SecurityConfig.create({
             codigoSecretoEscola: 'CODIGO-GLOBAL-SECRETO',
             dataUltimaRotacao: new Date(),
-            rotacaoAutomatica: false
+            rotacaoAutomatica: false,
         });
 
         const { agent } = await agentDiretor('alias@escola.test', escolaA);

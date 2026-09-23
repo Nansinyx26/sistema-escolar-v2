@@ -25,6 +25,7 @@ const Escola = require('../models/Escola');
 const Professor = require('../models/Professor');
 const ChatDireto = require('../models/ChatDireto');
 const Usuario = require('../models/Usuario');
+const { docxSemMacro, docxComMacro, zipComum } = require('./fixturas/zip');
 
 let escolaA, escolaB;
 
@@ -91,13 +92,18 @@ const ASSINATURAS = {
     'video/webm': [0x1a, 0x45, 0xdf, 0xa3],
     'application/zip': [0x50, 0x4b, 0x03, 0x04],
     'application/msword': [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1],
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': [
-        0x50, 0x4b, 0x03, 0x04,
-    ],
+};
+
+// `.docx` é ZIP por dentro, e desde a #415 o índice do pacote é lido para
+// separar documento do Office de compactado comum: a fixture precisa ser um
+// ZIP inteiro, não quatro bytes de assinatura.
+const PACOTES = {
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': docxSemMacro,
 };
 
 /** Buffer com a assinatura correta do tipo, preenchido até `tamanho`. */
 function arquivoValido(tipo, tamanho = 64) {
+    if (PACOTES[tipo]) return PACOTES[tipo]();
     const assinatura = ASSINATURAS[tipo];
     // Tipos de texto não têm assinatura: basta conteúdo textual de verdade.
     if (!assinatura) return Buffer.from('conteudo de texto para teste\n');
@@ -250,7 +256,7 @@ describe('Anexo do chat — o cliente não dita os metadados', () => {
         expect(res.status).toBe(400);
     });
 
-    it('aceita os formatos que o documento comum rejeitava (áudio, Word, ZIP)', async () => {
+    it('aceita os formatos que o documento comum rejeitava (áudio, Word)', async () => {
         const ana = await professorLogado('ana8@escola.test', escolaA);
         const bruno = await professorLogado('bruno8@escola.test', escolaA);
 
@@ -265,12 +271,42 @@ describe('Anexo do chat — o cliente não dita os metadados', () => {
             tipo: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         });
         expect(word.nome).toBe('plano.docx');
+    });
 
-        const zip = await subirAnexo(ana.agent, bruno.id, {
-            nome: 'fotos.zip',
-            tipo: 'application/zip',
-        });
-        expect(zip.nome).toBe('fotos.zip');
+    // Issue #415: o compactado passava por aqui e chegava inteiro à mão de quem
+    // baixa, sem nenhum filtro ver o que ia dentro.
+    it('recusa arquivo compactado, e a mensagem diz o que enviar no lugar', async () => {
+        const ana = await professorLogado('ana8zip@escola.test', escolaA);
+        const bruno = await professorLogado('bruno8zip@escola.test', escolaA);
+
+        const res = await ana.agent
+            .post('/api/chat-direto/upload')
+            .field('destinatarioId', bruno.id)
+            .attach('arquivos', zipComum(), {
+                filename: 'fotos.zip',
+                contentType: 'application/zip',
+            });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toMatch(/compactado/i);
+        expect(res.body.error).toMatch(/separadamente/i);
+    });
+
+    it('recusa documento com macro disfarçado de .docx', async () => {
+        const ana = await professorLogado('ana8macro@escola.test', escolaA);
+        const bruno = await professorLogado('bruno8macro@escola.test', escolaA);
+
+        const res = await ana.agent
+            .post('/api/chat-direto/upload')
+            .field('destinatarioId', bruno.id)
+            .attach('arquivos', docxComMacro(), {
+                filename: 'planilha.docx',
+                contentType:
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toMatch(/macro/i);
     });
 });
 

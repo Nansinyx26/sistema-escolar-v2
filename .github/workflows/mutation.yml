@@ -46,7 +46,7 @@ jobs:
       - name: 📦 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION || '22' }}
+          node-version: '22'
           cache: "npm"
 
       # As duas instalações são necessárias: o Stryker roda da RAIZ (é de lá que

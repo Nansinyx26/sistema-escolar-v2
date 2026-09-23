@@ -81,6 +81,12 @@ async function criarUsuario(overrides = {}) {
         telefone: '(11) 91234-5678',
         perfil: 'professor',
         ativo: true,
+        // Fixture nasce com o e-mail já confirmado (Issue #412): ela representa
+        // quem usa o sistema normalmente, e confirmar o endereço é o que o guard
+        // de acesso ao aluno passou a exigir de conta de responsável criada a
+        // partir do marco. Quem quiser exercitar a recusa passa
+        // `emailVerificado: false` — o override vem depois dos defaults.
+        emailVerificado: true,
     };
     return Usuario.create({ ...defaults, ...overrides });
 }

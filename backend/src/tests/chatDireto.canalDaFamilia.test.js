@@ -107,7 +107,9 @@ async function conta(email, perfil, { escolaDoCargo, ...dadosDoCargo } = {}) {
     }
 
     const agent = request.agent(app);
-    const login = await agent.post('/api/auth/login').send({ email, senha: SENHA_TESTE });
+    const loginBody = { email, senha: SENHA_TESTE };
+    if (perfil === 'responsavel') loginBody.portal = 'responsavel';
+    const login = await agent.post('/api/auth/login').send(loginBody);
     expect(login.status).toBe(200);
     return { agent, user, id: String(user._id), email, perfil };
 }

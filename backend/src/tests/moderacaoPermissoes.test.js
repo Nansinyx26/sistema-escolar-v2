@@ -98,7 +98,8 @@ async function agentDiretor(email, escola) {
 async function agentSimples(perfil, email) {
     await criarUsuario({ email, perfil, ...escolaDaEquipe(perfil) });
     const agent = request.agent(app);
-    const login = await agent.post('/api/auth/login').send({ email, senha: SENHA_TESTE });
+    const portal = perfil === 'responsavel' ? 'responsavel' : 'escola';
+    const login = await agent.post('/api/auth/login').send({ email, senha: SENHA_TESTE, portal });
     expect(login.status).toBe(200);
     return agent;
 }
@@ -374,7 +375,7 @@ describe('Contestação — cláusula 9 do Termo', () => {
         const agent = request.agent(app);
         const login = await agent
             .post('/api/auth/login')
-            .send({ email: 'autor@escola.test', senha: SENHA_TESTE });
+            .send({ email: 'autor@escola.test', senha: SENHA_TESTE, portal: 'responsavel' });
         expect(login.status).toBe(200);
 
         const res = await agent
