@@ -1,5 +1,9 @@
-const API = () => window.API_BASE_URL ||
-    ((location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname === '' || location.protocol === 'file:')
+const API = () =>
+    window.API_BASE_URL ||
+    (location.hostname === 'localhost' ||
+    location.hostname === '127.0.0.1' ||
+    location.hostname === '' ||
+    location.protocol === 'file:'
         ? `http://${location.hostname || 'localhost'}:3001/api`
         : 'https://sistema-escolar-bfty.onrender.com/api');
 
@@ -12,8 +16,8 @@ if (user && user.perfil === 'professor') {
     document.addEventListener('DOMContentLoaded', () => {
         const port = document.getElementById('lgpd-portabilidade');
         const exc = document.getElementById('lgpd-exclusao');
-        if(port) port.style.display = 'none';
-        if(exc) exc.style.display = 'none';
+        if (port) port.style.display = 'none';
+        if (exc) exc.style.display = 'none';
     });
 }
 
@@ -49,7 +53,10 @@ async function loadStatus() {
     try {
         const ctrl = new AbortController();
         setTimeout(() => ctrl.abort(), 8000);
-        const r = await fetch(`${API()}/meus-dados/status-consentimento`, { credentials: 'include', signal: ctrl.signal });
+        const r = await fetch(`${API()}/meus-dados/status-consentimento`, {
+            credentials: 'include',
+            signal: ctrl.signal,
+        });
         const d = await r.json();
         const c = d.consentimento || {};
         document.getElementById('statusBody').innerHTML = `
@@ -82,7 +89,8 @@ async function loadStatus() {
             </div>
         `;
     } catch {
-        document.getElementById('statusBody').innerHTML = '<p style="color:var(--text-secondary)">Erro ao carregar status.</p>';
+        document.getElementById('statusBody').innerHTML =
+            '<p style="color:var(--text-secondary)">Erro ao carregar status.</p>';
     }
 }
 
@@ -101,7 +109,8 @@ function loadDados() {
             <div class="info-item"><label>Último Login</label><span>${fmtDate(u.ultimoLogin)}</span></div>
         `;
     } catch {
-        document.getElementById('dadosGrid').innerHTML = '<p style="color:var(--text-secondary)">Erro ao carregar dados.</p>';
+        document.getElementById('dadosGrid').innerHTML =
+            '<p style="color:var(--text-secondary)">Erro ao carregar dados.</p>';
     }
 }
 
@@ -123,14 +132,18 @@ async function loadAudit() {
             return;
         }
 
-        document.getElementById('auditBody').innerHTML = acoes.map(act => `
+        document.getElementById('auditBody').innerHTML = acoes
+            .map(
+                (act) => `
             <tr>
                 <td><span class="badge badge-blue">${act.acao || '—'}</span></td>
                 <td>${act.recurso || '—'}</td>
                 <td>${act.descricao || '—'}</td>
                 <td>${fmtDate(act.data)}</td>
             </tr>
-        `).join('');
+        `
+            )
+            .join('');
     } catch {
         document.getElementById('auditBody').innerHTML = `
             <tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-secondary);">
@@ -157,7 +170,7 @@ document.getElementById('btnExportar').addEventListener('click', async () => {
         a.click();
         URL.revokeObjectURL(url);
         toast('Arquivo baixado com sucesso!');
-    } catch (e) {
+    } catch (_e) {
         toast('Erro ao exportar dados.', 'error');
     } finally {
         btn.disabled = false;
@@ -187,12 +200,13 @@ document.getElementById('btnConfirmarExclusao').addEventListener('click', async 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ motivo })
+            body: JSON.stringify({ motivo }),
         });
         const d = await r.json();
         if (!d.success) throw new Error(d.error);
         document.getElementById('modalExclusao').classList.remove('active');
         toast(`Solicitação enviada! Protocolo: ${d.protocolo}`);
+        loadPedidos();
     } catch (e) {
         toast(e.message || 'Erro ao enviar solicitação.', 'error');
     } finally {
@@ -201,7 +215,75 @@ document.getElementById('btnConfirmarExclusao').addEventListener('click', async 
     }
 });
 
+// --- Load Pedidos LGPD ---
+async function loadPedidos() {
+    const el = document.getElementById('pedidosBody');
+    if (!el) return;
+    try {
+        const r = await fetch(`${API()}/meus-dados/pedidos`, { credentials: 'include' });
+        if (!r.ok) throw new Error();
+        const d = await r.json();
+        const pedidos = d.data || [];
+
+        if (pedidos.length === 0) {
+            el.innerHTML = `
+                <tr><td colspan="5" style="text-align:center; padding:1.5rem; color:var(--text-secondary);">
+                    <i class="bi bi-check2-circle" style="font-size:1.2rem; display:block; margin-bottom:0.25rem;"></i>
+                    Nenhuma solicitação de dados registrada.
+                </td></tr>
+            `;
+            return;
+        }
+
+        const badgeStatus = (st) => {
+            switch (st) {
+                case 'pendente':
+                    return '<span class="badge badge-yellow"><i class="bi bi-clock"></i> Pendente</span>';
+                case 'em_analise':
+                    return '<span class="badge badge-blue"><i class="bi bi-search"></i> Em análise</span>';
+                case 'concluido':
+                    return '<span class="badge badge-green"><i class="bi bi-check-circle"></i> Concluído</span>';
+                case 'rejeitado':
+                    return '<span class="badge badge-red"><i class="bi bi-x-circle"></i> Rejeitado</span>';
+                default:
+                    return `<span class="badge badge-blue">${st}</span>`;
+            }
+        };
+
+        const tipoNome = (tp) => {
+            const map = {
+                exclusao: 'Exclusão de Dados',
+                exportacao: 'Portabilidade',
+                retificacao: 'Retificação',
+                informacao: 'Informação',
+            };
+            return map[tp] || tp;
+        };
+
+        el.innerHTML = pedidos
+            .map(
+                (p) => `
+            <tr>
+                <td><strong>${p.protocolo || '—'}</strong></td>
+                <td>${tipoNome(p.tipo)}</td>
+                <td>${badgeStatus(p.status)}</td>
+                <td>${fmtDate(p.prazoAtendimento)}</td>
+                <td>${fmtDate(p.criadoEm)}</td>
+            </tr>
+        `
+            )
+            .join('');
+    } catch {
+        el.innerHTML = `
+            <tr><td colspan="5" style="text-align:center; padding:1.5rem; color:var(--text-secondary);">
+                Não foi possível carregar os pedidos no momento.
+            </td></tr>
+        `;
+    }
+}
+
 // --- Boot ---
 loadStatus();
 loadDados();
 loadAudit();
+loadPedidos();

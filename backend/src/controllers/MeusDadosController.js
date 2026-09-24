@@ -24,6 +24,12 @@ const Aluno = require('../models/Aluno');
 const AuditLog = require('../models/AuditLog');
 const ChatDireto = require('../models/ChatDireto');
 const IaConversa = require('../models/IaConversa');
+const PedidoTitular = require('../models/PedidoTitular');
+const Nota = require('../models/Nota');
+const Falta = require('../models/Falta');
+const DocumentoResponsavel = require('../models/DocumentoResponsavel');
+const JustificativaFalta = require('../models/JustificativaFalta');
+const escapeRegex = require('../utils/escapeRegex');
 const { logAction } = require('../utils/auditHelper');
 
 // A identidade e a vigência dos dois consentimentos moram nos utils, e não
@@ -93,11 +99,8 @@ async function montarHistoricoChat(userId) {
                 direcao: souRemetente ? 'enviada' : 'recebida',
                 interlocutor: nomePorId.get(outroId) || 'Usuário removido',
                 conteudo: m.apagadaParaTodos ? '[mensagem apagada]' : m.mensagem || '',
-                anexo: m.anexo && m.anexo.nome ? m.anexo.nome : undefined,
-                audio:
-                    m.audio && m.audio.url
-                        ? `mensagem de voz (${m.audio.duracao || 0}s)`
-                        : undefined,
+                anexo: m.anexo?.nome ? m.anexo.nome : undefined,
+                audio: m.audio?.url ? `mensagem de voz (${m.audio.duracao || 0}s)` : undefined,
                 editada: m.editada || false,
             };
         }),
@@ -137,6 +140,90 @@ async function montarConversasCopiloto(userId) {
             })),
         })),
     };
+}
+
+/**
+ * Coleta os dados pessoais e escolares dos alunos sob responsabilidade do titular.
+ * (LGPD Art. 14 — Melhores interesses da criança/adolescente e direito de acesso dos pais/responsáveis).
+ */
+async function montarDadosDependentes(usuario) {
+    if (!usuario?.email) return [];
+    const emailLimpo = String(usuario.email).trim().toLowerCase();
+    const emailRegex = new RegExp(`^${escapeRegex(emailLimpo)}$`, 'i');
+
+    const alunos = await Aluno.find({
+        $or: [
+            { responsavel: emailRegex },
+            { 'responsavelDados.email': emailRegex },
+            { 'responsaveis.email': emailRegex },
+        ],
+    }).lean();
+
+    if (!alunos || alunos.length === 0) return [];
+
+    const dependentes = [];
+    for (const aluno of alunos) {
+        const alunoIds = [String(aluno._id), aluno.id].filter(Boolean);
+        const [notas, faltas, documentos, justificativas] = await Promise.all([
+            Nota.find({ alunoId: { $in: alunoIds } }).lean(),
+            Falta.find({
+                $or: [{ alunoId: { $in: alunoIds } }, { aluno: { $in: alunoIds } }],
+            }).lean(),
+            DocumentoResponsavel.find({ alunoId: { $in: alunoIds } }).lean(),
+            JustificativaFalta.find({ alunoId: { $in: alunoIds } }).lean(),
+        ]);
+
+        dependentes.push({
+            id: aluno._id,
+            nome: aluno.nome,
+            sobrenome: aluno.sobrenome || '',
+            matricula: aluno.matricula || '',
+            raDigito: aluno.raDigito || '',
+            raUf: aluno.raUf || 'SP',
+            turma: aluno.turma || aluno.turmaId || '',
+            nascimento: aluno.nascimento,
+            situacao: aluno.situacao || 'ativo',
+            codigoInep: aluno.codigoInep || '',
+            pcd: aluno.pcd || false,
+            deficiencia: aluno.deficiencia || '',
+            transtornos: aluno.transtornos || [],
+            guardaLegal: aluno.guardaLegal || '',
+            autorizacoesEscolares: aluno.autorizacoesEscolares || null,
+            pessoasAutorizadasRetirada: aluno.pessoasAutorizadasRetirada || [],
+            alergiasAlimentos: aluno.alergiasAlimentos || '',
+            alergiasRemedio: aluno.alergiasRemedio || '',
+            planoSaude: aluno.planoSaude || '',
+            observacoes: aluno.observacoes || '',
+            notas: (notas || []).map((n) => ({
+                materia: n.materia || n.materiaId || n.descricao || '',
+                valor: n.valor != null ? n.valor : n.nota,
+                bimestre: n.bimestre,
+                tipo: n.tipo,
+                anoLetivo: n.anoLetivo,
+            })),
+            faltas: (faltas || []).map((f) => ({
+                data: f.data,
+                motivo: f.motivo,
+                presente: f.presente,
+                materia: f.materia,
+                justificada: f.justificada,
+            })),
+            documentos: (documentos || []).map((d) => ({
+                tipo: d.tipo,
+                nomeArquivo: d.nomeArquivo,
+                status: d.status,
+                criadoEm: d.createdAt,
+            })),
+            justificativasFalta: (justificativas || []).map((j) => ({
+                dataInicio: j.dataInicio,
+                dataFim: j.dataFim,
+                motivo: j.motivo,
+                status: j.status,
+            })),
+        });
+    }
+
+    return dependentes;
 }
 
 // --------------------------------------------------
@@ -213,10 +300,18 @@ exports.exportarMeusDados = async (req, res) => {
             assistenteEscola: await montarConversasCopiloto(userId),
         };
 
+        // Se o titular for responsável por alunos, inclui os dados do(s) filho(s)
+        const dependentes = await montarDadosDependentes(usuario);
+        if (dependentes.length > 0) {
+            pacoteDados.dependentes = dependentes;
+            pacoteDados.referencia =
+                'LGPD — Lei 13.709/2018, Art. 18 (Direitos do Titular) e Art. 14 (Tratamento de Dados de Crianças e Adolescentes)';
+        }
+
         // Registra a exportação no audit log
         await logAction(req, 'LGPD_EXPORT_DADOS', 'MeusDados', {
             recursoId: userId,
-            descricao: `Titular ${usuario._id} exportou seus dados pessoais (LGPD Art. 18).`,
+            descricao: `Titular ${usuario._id} exportou seus dados pessoais (LGPD Art. 18).${dependentes.length ? ` Inclui ${dependentes.length} dependente(s).` : ''}`,
         });
 
         // Retorna como JSON com header de download (portabilidade)
@@ -244,7 +339,7 @@ exports.solicitarExclusao = async (req, res) => {
         const userId = req.user.id;
         const { motivo } = req.body;
 
-        const usuario = await Usuario.findById(userId).select('email nome perfil');
+        const usuario = await Usuario.findById(userId).select('email nome perfil escola');
         if (!usuario) {
             return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
         }
@@ -257,23 +352,57 @@ exports.solicitarExclusao = async (req, res) => {
         });
         const conversasDoTitular = await IaConversa.countDocuments({ usuarioId: String(userId) });
 
+        const protocolo = `LGPD-${Date.now()}-${userId.toString().slice(-6).toUpperCase()}`;
+        const prazoAtendimento = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000); // 15 dias corridos (LGPD Art. 19, II)
+
+        // Registra formalmente na coleção de pedidos do titular (Issue #413)
+        const pedido = await PedidoTitular.create({
+            protocolo,
+            usuarioId: String(userId),
+            usuarioEmail: usuario.email.toLowerCase(),
+            usuarioNome: usuario.nome,
+            perfil: usuario.perfil,
+            escolaId: usuario.escola ? String(usuario.escola) : undefined,
+            tipo: 'exclusao',
+            motivo: motivo ? String(motivo).trim() : '',
+            status: 'pendente',
+            prazoAtendimento,
+            detalhes: {
+                mensagensDoChat: mensagensDoTitular,
+                conversasAssistente: conversasDoTitular,
+            },
+            historico: [
+                {
+                    status: 'pendente',
+                    alteradoEm: new Date(),
+                    alteradoPor: String(userId),
+                    observacao: 'Solicitação registrada pelo titular no Portal de Privacidade.',
+                },
+            ],
+        });
+
         // Registra a solicitação no audit log para o admin processar
         await logAction(req, 'LGPD_SOLICITAR_EXCLUSAO', 'MeusDados', {
             recursoId: userId,
+            protocolo,
             descricao:
-                `SOLICITAÇÃO DE EXCLUSÃO LGPD — Titular: ${usuario.email}${motivo ? ` | Motivo: ${motivo}` : ''}. ` +
+                `SOLICITAÇÃO DE EXCLUSÃO LGPD [${protocolo}] — Titular: ${usuario.email}${motivo ? ` | Motivo: ${motivo}` : ''}. ` +
                 `Inclui ${mensagensDoTitular} mensagem(ns) do chat interno ` +
                 `e ${conversasDoTitular} conversa(s) com o assistente (estas serão excluídas). ` +
-                `Admin deve processar manualmente em /api/usuarios/${userId}/anonymize.`,
+                `Registrado na coleção pedidos_titular para despacho pela administração.`,
         });
 
-        console.log(`⚠️  [LGPD] Solicitação de exclusão recebida de: ${usuario.email}`);
+        console.log(
+            `⚠️  [LGPD] Solicitação de exclusão recebida de: ${usuario.email} [${protocolo}]`
+        );
 
         return res.json({
             success: true,
             message:
-                'Sua solicitação foi recebida e será processada em até 15 dias úteis, conforme previsto na LGPD.',
-            protocolo: `LGPD-${Date.now()}-${userId.toString().slice(-6)}`,
+                'Sua solicitação foi recebida e será processada em até 15 dias, conforme previsto na LGPD.',
+            protocolo,
+            status: pedido.status,
+            prazo: prazoAtendimento,
             abrangencia: {
                 mensagensDoChat: mensagensDoTitular,
                 observacao:
@@ -284,6 +413,38 @@ exports.solicitarExclusao = async (req, res) => {
     } catch (err) {
         console.error('[MeusDados] Erro na solicitação:', err);
         return res.status(500).json({ success: false, error: 'Erro ao processar solicitação.' });
+    }
+};
+
+// --------------------------------------------------
+// GET /api/meus-dados/pedidos
+// Retorna a lista de pedidos LGPD protocolados pelo titular autenticado.
+// --------------------------------------------------
+exports.listarMeusPedidos = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const pedidos = await PedidoTitular.find({ usuarioId: String(userId) })
+            .sort({ createdAt: -1 })
+            .lean();
+
+        return res.json({
+            success: true,
+            data: pedidos.map((p) => ({
+                id: String(p._id),
+                protocolo: p.protocolo,
+                tipo: p.tipo,
+                status: p.status,
+                prazoAtendimento: p.prazoAtendimento,
+                criadoEm: p.createdAt,
+                decididoEm: p.decididoEm,
+                respostaAdmin: p.respostaAdmin,
+                motivo: p.motivo,
+                historico: p.historico,
+            })),
+        });
+    } catch (err) {
+        console.error('[MeusDados] Erro ao listar pedidos do titular:', err);
+        return res.status(500).json({ success: false, error: 'Erro ao consultar pedidos.' });
     }
 };
 
@@ -319,7 +480,7 @@ exports.statusConsentimento = async (req, res) => {
                     : null,
             },
         });
-    } catch (err) {
+    } catch (_err) {
         return res.status(500).json({ success: false, error: 'Erro ao consultar consentimento.' });
     }
 };
