@@ -593,10 +593,10 @@ function setupRegisterForm() {
             return;
         }
 
-        // A caixa "Li e aceito" sempre esteve na tela, mas o aceite nunca era
-        // enviado — a pessoa consentia e nada ficava registrado (Issue #295).
+        // Ciência da Política de Privacidade (Issue #414): obrigatória;
+        // consentimentos específicos (opcionais) vão em conjunto no payload.
         if (!window.ConsentimentoCadastro?.marcado('registerConsent')) {
-            showToast('Para criar a conta, leia e aceite a Política de Privacidade.', 'error');
+            showToast('Para criar a conta, tome ciência da Política de Privacidade.', 'error');
             return;
         }
 
@@ -613,7 +613,10 @@ function setupRegisterForm() {
                 codigoEscola,
                 cpf,
                 telefone,
-                window.ConsentimentoCadastro.payload('registerConsent')
+                window.ConsentimentoCadastro.payload(
+                    'registerConsent',
+                    'registerConsentEducacional'
+                )
             );
 
             showToast('Conta criada com sucesso! Redirecionando...', 'success');

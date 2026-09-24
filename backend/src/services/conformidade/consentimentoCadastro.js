@@ -80,8 +80,8 @@ function validarConsentimentoDoCadastro(body) {
         code: CODIGO_RECUSA,
         error: versaoVelha
             ? `A Política de Privacidade foi atualizada (versão ${CONSENTIMENTO_VERSAO}). ` +
-              'Recarregue a página, leia a versão atual e aceite novamente.'
-            : 'Para criar a conta é preciso ler e aceitar a Política de Privacidade.',
+              'Recarregue a página, leia a versão atual e confirme a ciência.'
+            : 'Para criar a conta é preciso tomar ciência da Política de Privacidade.',
     };
 }
 
@@ -94,10 +94,14 @@ function validarConsentimentoDoCadastro(body) {
  * dizendo "não assinado" com a assinatura registrada ao lado. As duas datas são
  * a MESMA, para que nunca pareçam dois atos diferentes.
  *
+ * Se consentimentos opcionais por finalidade foram marcados (Issue #414),
+ * registra também em `lgpdConsents`. Se recusados ou omitidos, não impede o
+ * cadastro.
+ *
  * Só chame depois de `validarConsentimentoDoCadastro()` devolver `null`.
  *
  * @param {object} req requisição do cadastro, para IP e navegador.
- * @returns {{lgpdHistory: object[], consentimentoAceiteEm: Date, consentimentoVersao: string}}
+ * @returns {{lgpdHistory: object[], consentimentoAceiteEm: Date, consentimentoVersao: string, lgpdConsents?: object}}
  */
 function assinaturasDoCadastro(req) {
     const registro = registroDeConsentimento({
@@ -109,11 +113,27 @@ function assinaturasDoCadastro(req) {
     // Mesmo rótulo que o `newLgpdRecords` e o `consentimentoDoPerfil` gravam.
     registro.loginType = 'Conta Local';
 
-    return {
+    const retorno = {
         lgpdHistory: [registro],
         consentimentoAceiteEm: registro.aceitoEm,
         consentimentoVersao: CONSENTIMENTO_VERSAO,
     };
+
+    // Issue #414: Se consentimentos específicos opcionais vieram no cadastro, registra
+    // em lgpdConsents sem bloquear cadastro quando ausente ou recusado.
+    const consentimentos = req?.body?.consentimentoLgpd?.consentimentos;
+    if (consentimentos && typeof consentimentos === 'object') {
+        const lgpdConsents = {};
+        if (consentimentos.educacional === true) {
+            lgpdConsents.perfilDadosCadastrais = true;
+            lgpdConsents.perfilNotasDesempenho = true;
+        }
+        if (Object.keys(lgpdConsents).length > 0) {
+            retorno.lgpdConsents = lgpdConsents;
+        }
+    }
+
+    return retorno;
 }
 
 module.exports = { CODIGO_RECUSA, validarConsentimentoDoCadastro, assinaturasDoCadastro };

@@ -23,8 +23,10 @@ export interface FormularioCadastro {
   senha: string;
   telefone: string;
   codigoSecreto: string;
-  /** Caixa da Política de Privacidade: nasce desmarcada e é obrigatória (Issue #295). */
+  /** Caixa da Política de Privacidade: ciência obrigatória, não afirma autorização (Issues #295 e #414). */
   aceitePolitica: boolean;
+  /** Consentimento específico educacional: opcional — recusar não impede cadastro (Issue #414). */
+  consentimentoEducacional?: boolean;
 }
 
 export interface CorpoCadastroResponsavel {
@@ -33,7 +35,13 @@ export interface CorpoCadastroResponsavel {
   senha: string;
   telefone: string;
   codigoSecreto: string;
-  consentimentoLgpd?: { aceito: true; versao: string };
+  consentimentoLgpd?: {
+    aceito: true;
+    versao: string;
+    consentimentos?: {
+      educacional: boolean;
+    };
+  };
 }
 
 /** Máscara `(00) 00000-0000` enquanto a pessoa digita — a mesma do EditarPerfil. */
@@ -54,11 +62,18 @@ export function montarCorpoCadastro(formulario: FormularioCadastro): CorpoCadast
     codigoSecreto: formulario.codigoSecreto.trim().toUpperCase(),
   };
 
-  // Só vai consentimento quando a pessoa marcou a caixa. Criar a conta não é
+  // Só vai consentimento quando a pessoa tomou ciência da política. Criar a conta não é
   // consentir (Issue #236), então o portal nunca manda um aceite que ninguém
   // deu — e sem ele, desde a #295, o servidor recusa o cadastro.
+  // A Issue #414 separa a ciência obrigatória dos consentimentos específicos opcionais.
   if (formulario.aceitePolitica) {
-    corpo.consentimentoLgpd = { aceito: true, versao: VERSAO_POLITICA_PRIVACIDADE };
+    corpo.consentimentoLgpd = {
+      aceito: true,
+      versao: VERSAO_POLITICA_PRIVACIDADE,
+      consentimentos: {
+        educacional: Boolean(formulario.consentimentoEducacional),
+      },
+    };
   }
 
   return corpo;
