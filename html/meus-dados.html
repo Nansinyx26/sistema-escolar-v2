@@ -263,6 +263,28 @@
         </div>
     </div>
 
+    <!-- Minhas Solicitações LGPD -->
+    <div class="section" id="lgpd-pedidos">
+        <div class="section-header">
+            <div class="section-icon icon-blue"><i class="bi bi-card-checklist"></i></div>
+            <div>
+                <div class="section-title">Minhas Solicitações LGPD</div>
+                <div class="section-subtitle">Acompanhe o protocolo, prazo legal e status dos seus pedidos</div>
+            </div>
+        </div>
+        <div class="section-body" style="padding:0; overflow-x:auto;">
+            <table class="audit-table" id="pedidosTable">
+                <thead><tr><th>Protocolo</th><th>Tipo</th><th>Status</th><th>Prazo Legal</th><th>Data</th></tr></thead>
+                <tbody id="pedidosBody">
+                    <tr><td colspan="5" style="text-align:center; padding:1.5rem; color:var(--text-secondary);">
+                        <i class="bi bi-hourglass-split" style="font-size:1.2rem; display:block; margin-bottom:0.5rem;"></i>
+                        Carregando solicitações...
+                    </td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <!-- Ações LGPD -->
     <div class="section" id="lgpd-portabilidade">
         <div class="section-header">
@@ -275,7 +297,7 @@
         <div class="section-body">
             <div class="alert alert-info" style="margin-bottom:1.25rem;">
                 <i class="bi bi-info-circle" style="flex-shrink:0; margin-top:2px;"></i>
-                O arquivo exportado contém todos os seus dados cadastrais e histórico de ações no sistema, em formato JSON padronizado.
+                O arquivo exportado contém todos os seus dados cadastrais, histórico de ações e dados dos dependentes/filhos vinculados, em formato JSON padronizado.
             </div>
             <button class="btn btn-primary" id="btnExportar">
                 <i class="bi bi-cloud-download"></i> Baixar Meus Dados (JSON)
@@ -295,7 +317,7 @@
         <div class="section-body">
             <div class="alert alert-warning" style="margin-bottom:1.25rem;">
                 <i class="bi bi-exclamation-triangle" style="flex-shrink:0; margin-top:2px;"></i>
-                A solicitação será analisada pela equipe administrativa em até <strong>15 dias úteis</strong>. Dados vinculados a turmas ativas podem ser anonimizados em vez de excluídos.
+                A solicitação receberá um protocolo e será analisada pela equipe administrativa em até <strong>15 dias</strong>, conforme previsto no Art. 19 da LGPD. Dados vinculados a registros escolares obrigatórios podem ser anonimizados em vez de excluídos.
             </div>
             <button class="btn btn-danger" id="btnSolicitarExclusao">
                 <i class="bi bi-send"></i> Solicitar Exclusão dos Meus Dados
