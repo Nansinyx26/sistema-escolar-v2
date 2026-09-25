@@ -26,6 +26,13 @@
     pointer-events: none;
 }
 
+/* Nas páginas restritas, js/guarda-acesso.js esconde o <html> inteiro enquanto
+   confere a sessão — e a splash sumia junto (Issue #442). Ela é opaca e cobre
+   a viewport, então fica visível sem expor nada da página que o guard segura. */
+html[data-guarda-acesso="verificando"] #splashScreen:not(.splash-hidden) {
+    visibility: visible;
+}
+
 /* Noise overlay for premium texture */
 #splashScreen::before {
     content: '';
