@@ -17,7 +17,7 @@
         'Carregando módulos...',
         'Preparando interface...',
         'Conectando serviços...',
-        'Quase pronto...'
+        'Quase pronto...',
     ];
 
     let progress = 0;
@@ -36,7 +36,7 @@
     }
 
     // Simulate progress
-    let interval = setInterval(function () {
+    const interval = setInterval(function () {
         if (progress < 70) {
             updateProgress(progress + Math.random() * 12 + 3);
         } else if (progress < 90) {
@@ -61,17 +61,42 @@
         }, 400);
     }
 
+    // Nas páginas restritas, js/guarda-acesso.js mantém o documento escondido
+    // até o veredito da sessão. Sair antes disso deixava a pessoa numa tela
+    // vazia (Issue #442). Se o guard redirecionar, o atributo não sai de
+    // "verificando" e a splash fica na tela até a navegação.
+    function aposGuardaAcesso(callback) {
+        var raiz = document.documentElement;
+        var verificando = function () {
+            return raiz.getAttribute('data-guarda-acesso') === 'verificando';
+        };
+        if (!verificando() || !window.MutationObserver) {
+            callback();
+            return;
+        }
+        var observador = new MutationObserver(function () {
+            if (verificando()) return;
+            observador.disconnect();
+            callback();
+        });
+        observador.observe(raiz, { attributes: true, attributeFilter: ['data-guarda-acesso'] });
+    }
+
     // Hide when page is fully loaded
     if (document.readyState === 'complete') {
         // Page already loaded
-        setTimeout(hideSplash, 300);
+        setTimeout(function () {
+            aposGuardaAcesso(hideSplash);
+        }, 300);
     } else {
         window.addEventListener('load', function () {
             // Give a minimum display time of 1.2s for the splash to feel premium
             var elapsed = performance.now();
             var minTime = 1200;
             var remaining = Math.max(0, minTime - elapsed);
-            setTimeout(hideSplash, remaining);
+            setTimeout(function () {
+                aposGuardaAcesso(hideSplash);
+            }, remaining);
         });
     }
 
