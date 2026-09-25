@@ -3,28 +3,30 @@
  * Design tokens – all SCSS variables for the Portal do Responsável.
  * Import this file first in any SCSS that needs design tokens.
  *
- * Palette: Dark premium com cyan neon como cor primária (Issue #434).
+ * As cores são tokens CSS definidos em global.scss (temas Dark e Light, Issue #436).
  */
 
-// ─── Color Palette (CSS Custom Properties - Dark por padrão, Light opcional) ──
-$bg-primary:    var(--bg-primary, #02080D);
-$bg-secondary:  var(--bg-secondary, #06131B);
-$bg-tertiary:   var(--bg-tertiary, #071923);
+// ─── Color Palette (apontam para os tokens de tema) ──────────────────────────
+$bg-primary:   var(--bg-primary);
+$bg-secondary:  var(--bg-secondary);
+$bg-tertiary:   var(--bg-tertiary);
 
-$text-primary:   var(--text-primary, #e8f0f2);
-$text-secondary: var(--text-secondary, #8ba3b0);
-$text-tertiary:  var(--text-tertiary, #5a7585);
+$text-primary:   var(--text-primary);
+$text-secondary: var(--text-secondary);
+$text-tertiary:  var(--text-tertiary);
 
-$border-color: var(--border-color, rgba(0, 212, 255, 0.08));
+$border-color: var(--border-color);
 
-// Marca: cyan neon como cor primária, roxo/lilás como secundária.
-$accent-cyan:   #00d4ff;
-$accent-purple: #7c3aed;
+// Destaque do tema: turquesa no escuro, esmeralda no claro. O nome
+// `$accent-cyan` ficou por compatibilidade; o valor vem do token.
+// Para transparência use rgba(var(--accent-rgb), a), não rgba($accent-cyan, a).
+$accent-cyan:   var(--accent);
+$accent-purple: var(--accent-2);
 
-// Semânticas em tom de semáforo.
-$success: #10b981;
-$warning: #f59e0b;
-$danger:  #ef4444;
+// Semânticas em tom de semáforo (ajustadas por tema para manter contraste).
+$success: var(--success);
+$warning: var(--warning);
+$danger:  var(--danger);
 
 // ─── Breakpoints ──────────────────────────────────────────────────────────────
 $bp-sm: 640px;
@@ -46,6 +48,6 @@ $radius-lg: 14px;
 $radius-xl: 20px;
 
 // ─── Shadows ──────────────────────────────────────────────────────────────────
-$shadow-card: 0 4px 16px rgba(0, 0, 0, 0.4);
-$shadow-glow-cyan:   0 0 20px rgba(0, 212, 255, 0.12);
-$shadow-glow-purple: 0 0 20px rgba(124, 58, 237, 0.12);
+$shadow-card: var(--shadow-card);
+$shadow-glow-cyan:   var(--shadow-glow);
+$shadow-glow-purple: var(--shadow-glow);

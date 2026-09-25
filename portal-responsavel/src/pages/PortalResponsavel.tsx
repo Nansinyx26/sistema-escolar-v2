@@ -24,7 +24,6 @@ import {
 } from '../services/apiService';
 import styles from '../styles/portal.module.scss';
 import type { Attendance, AuthUser, GmailUser, Grade, Student } from '../types';
-import { getPhotoUrl } from '../utils/photoUtils';
 
 function toGmailUser(u: AuthUser, googleProfile?: GmailUser | null): GmailUser {
   return {
@@ -35,6 +34,13 @@ function toGmailUser(u: AuthUser, googleProfile?: GmailUser | null): GmailUser {
 }
 
 type PortalTab = 'dashboard' | 'ficha' | 'linking' | 'profile' | 'privacidade';
+
+/** Itens da sidebar, na ordem da referência visual (Issue #436). */
+const NAV_ITEMS: { tab: PortalTab; label: string; icon: string }[] = [
+  { tab: 'dashboard', label: 'Painel Geral', icon: 'home' },
+  { tab: 'ficha', label: 'Ficha e Autorizações', icon: 'clipboard-list' },
+  { tab: 'linking', label: 'Vincular meu Filho', icon: 'link' },
+];
 
 const PortalResponsavel: React.FC = () => {
   const rawApiUrl = import.meta.env.DEV
@@ -50,6 +56,8 @@ const PortalResponsavel: React.FC = () => {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [currentTab, setCurrentTab] = useState<PortalTab>('dashboard');
   const [showSidebar, setShowSidebar] = useState(false);
+  // Gaveta de navegação no celular (no desktop a sidebar fica sempre visível)
+  const [showNav, setShowNav] = useState(false);
   const [grades, setGrades] = useState<Grade[]>([]);
   const [attendance, setAttendance] = useState<Attendance | null>(null);
   const [dataLoading, setDataLoading] = useState(false);
@@ -70,6 +78,21 @@ const PortalResponsavel: React.FC = () => {
   } = useNotifications({ authUser, activeId });
 
   const activeStudent = students.find((student) => student.id === activeId) || null;
+
+  const goTo = (tab: PortalTab) => {
+    setCurrentTab(tab);
+    setShowNav(false);
+  };
+
+  // Esc fecha a gaveta de navegação do celular
+  useEffect(() => {
+    if (!showNav) return;
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowNav(false);
+    };
+    window.addEventListener('keydown', aoTeclar);
+    return () => window.removeEventListener('keydown', aoTeclar);
+  }, [showNav]);
 
   const loadData = useCallback(async () => {
     setDataLoading(true);
@@ -197,16 +220,6 @@ const PortalResponsavel: React.FC = () => {
     }
   };
 
-  const getInitials = (name: string) => {
-    if (!name) return 'U';
-    return name
-      .split(' ')
-      .slice(0, 2)
-      .map((word) => word[0])
-      .join('')
-      .toUpperCase();
-  };
-
   return (
     <div className={styles.portal}>
       <Toast toast={toast} onClose={() => setToast(null)} />
@@ -217,120 +230,50 @@ const PortalResponsavel: React.FC = () => {
         onLogout={handleLogout}
         onBellClick={() => setShowNotificationsModal(true)}
         onProfileClick={() => setShowSidebar(true)}
+        onMenuClick={() => setShowNav((aberto) => !aberto)}
         activeTab={currentTab}
       />
 
       <div className={styles.portalBody}>
-        <aside className={styles.desktopSidebar} data-tour="sidebar">
-          <div className={styles.desktopSidebarUserCard} data-tour="profile">
-            <div className={styles.desktopSidebarAvatar}>
-              {(() => {
-                const photoUrl = getPhotoUrl(authUser.foto || authUser.fotoGoogle || '');
-                const hasPhoto = photoUrl !== '/img/default-avatar.png';
-                return hasPhoto ? (
-                  <img
-                    src={photoUrl}
-                    alt={authUser.nome}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      borderRadius: 'inherit',
-                    }}
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                  />
-                ) : (
-                  <span>{getInitials(authUser.nome)}</span>
-                );
-              })()}
-            </div>
-            <h4>{authUser.nome}</h4>
-            <p>{authUser.email}</p>
-          </div>
-
-          {students.length > 0 && (
-            <section
-              className={styles.desktopSidebarSchoolCard}
-              aria-label="Escola dos filhos vinculados"
-            >
-              <span className={styles.desktopSidebarSchoolTitle}>
-                <Icon name="school" aria-hidden="true" />{' '}
-                {students.length > 1 ? 'Escolas dos filhos' : 'Escola do filho'}
-              </span>
-              <ul className={styles.desktopSidebarSchoolList}>
-                {students.map((student) => (
-                  <li key={student.id}>
-                    <span className={styles.schoolChildName}>
-                      {student.nome} {student.sobrenome}
-                    </span>
-                    <span className={styles.schoolName}>
-                      <Icon name="building" aria-hidden="true" />{' '}
-                      {student.escolaNome || 'Escola Jaguari'}
-                      {student.turma ? (
-                        <span className={styles.schoolTurma}> · {student.turma}</span>
-                      ) : null}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          <LgpdConsentWidget accepted={lgpdAccepted} onSign={handleSignLgpd} />
-
-          <nav className={styles.desktopSidebarNav} aria-label="Menu principal">
-            <button
-              type="button"
-              onClick={() => setCurrentTab('dashboard')}
-              className={`${styles.desktopSidebarNavLink} ${currentTab === 'dashboard' ? styles.active : ''}`}
-            >
-              <Icon name="home" /> Painel Geral
-            </button>
-            <button
-              type="button"
-              onClick={() => setCurrentTab('ficha')}
-              className={`${styles.desktopSidebarNavLink} ${currentTab === 'ficha' ? styles.active : ''}`}
-            >
-              <Icon name="clipboard-list" /> Ficha &amp; Autorizações
-            </button>
-            <button
-              type="button"
-              onClick={() => setCurrentTab('linking')}
-              className={`${styles.desktopSidebarNavLink} ${currentTab === 'linking' ? styles.active : ''}`}
-            >
-              <Icon name="user-plus" /> Vincular meu Filho
-            </button>
-            <button
-              type="button"
-              onClick={() => setCurrentTab('profile')}
-              className={`${styles.desktopSidebarNavLink} ${currentTab === 'profile' ? styles.active : ''}`}
-            >
-              <Icon name="signature" />{' '}
-              {authUser?.consentimentoAceiteEm
-                ? 'Alterar Cadastro / Termo LGPD'
-                : 'Assinar Termo LGPD e Cadastro'}
-            </button>
-            <button
-              type="button"
-              onClick={() => void handlePasswordRecoveryShortcut()}
-              className={styles.desktopSidebarNavLink}
-            >
-              <Icon name="lock" /> Alterar Senha
-            </button>
-          </nav>
-
+        {/* Fundo da gaveta no celular: fecha ao tocar fora */}
+        {showNav && (
           <button
             type="button"
-            className={styles.desktopSidebarLogoutBtn}
-            onClick={() => void handleLogout()}
-          >
-            <Icon name="logout" /> Sair da Conta
-          </button>
+            className={styles.sidebarBackdrop}
+            onClick={() => setShowNav(false)}
+            aria-label="Fechar menu de navegação"
+            tabIndex={-1}
+          />
+        )}
+
+        <aside
+          id="portal-sidebar"
+          className={`${styles.desktopSidebar} ${showNav ? styles.sidebarOpen : ''}`}
+          data-tour="sidebar"
+          aria-label="Navegação do portal"
+        >
+          <nav className={styles.desktopSidebarNav} aria-label="Menu principal">
+            {NAV_ITEMS.map((item) => (
+              <button
+                key={item.tab}
+                type="button"
+                onClick={() => goTo(item.tab)}
+                aria-current={currentTab === item.tab ? 'page' : undefined}
+                className={`${styles.desktopSidebarNavLink} ${currentTab === item.tab ? styles.active : ''}`}
+              >
+                <Icon name={item.icon} aria-hidden="true" /> {item.label}
+              </button>
+            ))}
+          </nav>
+
+          <LgpdConsentWidget
+            accepted={lgpdAccepted}
+            onSign={handleSignLgpd}
+            onOpen={() => goTo(lgpdAccepted ? 'privacidade' : 'profile')}
+          />
         </aside>
 
-        <main className={styles.container} id="main-content" style={{ flex: 1, padding: '24px' }}>
+        <main className={`${styles.container} ${styles.portalMain}`} id="main-content">
           {emailNaoConfirmado ? (
             <ConfirmeSeuEmail email={authUser?.email} onTentarNovamente={() => void loadData()} />
           ) : (

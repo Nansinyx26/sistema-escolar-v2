@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause } from 'lucide-react';
+import { Pause, Play } from 'lucide-react';
+import type React from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface AudioPlayerProps {
   src: string;
@@ -13,13 +14,20 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, compact = false }) => {
   const [loading, setLoading] = useState(true);
   const audioRef = useRef<HTMLAudioElement>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: religa os ouvintes quando o áudio (src) muda
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const onLoaded = () => { setDuration(audio.duration || 0); setLoading(false); };
+    const onLoaded = () => {
+      setDuration(audio.duration || 0);
+      setLoading(false);
+    };
     const onTime = () => setCurrentTime(audio.currentTime);
-    const onEnded = () => { setPlaying(false); setCurrentTime(0); };
+    const onEnded = () => {
+      setPlaying(false);
+      setCurrentTime(0);
+    };
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
 
@@ -67,17 +75,20 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, compact = false }) => {
   const iconSize = compact ? 12 : 14;
 
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: compact ? '8px' : '10px',
-      background: 'linear-gradient(135deg, rgba(16, 185, 129,0.08), rgba(124,58,237,0.08))',
-      border: '1px solid rgba(16, 185, 129,0.15)',
-      borderRadius: '999px',
-      padding: compact ? '5px 10px 5px 5px' : '7px 14px 7px 7px',
-      minWidth: 0,
-      width: '100%',
-    }}>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: compact ? '8px' : '10px',
+        background: 'linear-gradient(135deg, rgba(16, 185, 129,0.08), rgba(124,58,237,0.08))',
+        border: '1px solid rgba(16, 185, 129,0.15)',
+        borderRadius: '999px',
+        padding: compact ? '5px 10px 5px 5px' : '7px 14px 7px 7px',
+        minWidth: 0,
+        width: '100%',
+      }}
+    >
+      {/* biome-ignore lint/a11y/useMediaCaption: mensagem de voz sem legenda; o texto do comunicado fica visível ao lado */}
       <audio ref={audioRef} src={src} preload="metadata" style={{ display: 'none' }} />
 
       {/* Play/Pause button */}
@@ -101,53 +112,73 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, compact = false }) => {
           opacity: loading ? 0.5 : 1,
           flexShrink: 0,
           transition: 'transform 0.15s, background 0.2s',
-          boxShadow: playing
-            ? '0 0 12px rgba(124,58,237,0.4)'
-            : '0 0 12px rgba(16, 185, 129,0.3)',
+          boxShadow: playing ? '0 0 12px rgba(124,58,237,0.4)' : '0 0 12px rgba(16, 185, 129,0.3)',
         }}
-        onMouseEnter={e => { if (!loading) (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.1)'; }}
-        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)'; }}
+        onMouseEnter={(e) => {
+          if (!loading) (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.1)';
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)';
+        }}
         aria-label={playing ? 'Pausar' : 'Reproduzir'}
       >
-        {playing
-          ? <Pause size={iconSize} fill="currentColor" />
-          : <Play size={iconSize} fill="currentColor" style={{ marginLeft: '2px' }} />
-        }
+        {playing ? (
+          <Pause size={iconSize} fill="currentColor" />
+        ) : (
+          <Play size={iconSize} fill="currentColor" style={{ marginLeft: '2px' }} />
+        )}
       </button>
 
       {/* Waveform-style bars (decorative, animated when playing) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
         {[3, 6, 9, 6, 4, 8, 5, 7, 4, 6].map((h, i) => (
-          <div key={i} style={{
-            width: compact ? '2px' : '3px',
-            height: `${compact ? h * 0.8 : h}px`,
-            borderRadius: '2px',
-            background: playing ? '#10b981' : 'rgba(16, 185, 129,0.35)',
-            transition: 'background 0.3s',
-            animation: playing ? `barPulse 0.8s ease-in-out infinite alternate` : 'none',
-            animationDelay: `${i * 0.08}s`,
-          }} />
+          <div
+            // biome-ignore lint/suspicious/noArrayIndexKey: barras decorativas fixas, a lista nunca muda
+            key={i}
+            style={{
+              width: compact ? '2px' : '3px',
+              height: `${compact ? h * 0.8 : h}px`,
+              borderRadius: '2px',
+              background: playing ? '#10b981' : 'rgba(16, 185, 129,0.35)',
+              transition: 'background 0.3s',
+              animation: playing ? `barPulse 0.8s ease-in-out infinite alternate` : 'none',
+              animationDelay: `${i * 0.08}s`,
+            }}
+          />
         ))}
       </div>
 
       {/* Seek bar */}
-      <div style={{ flex: 1, minWidth: 0, position: 'relative', display: 'flex', alignItems: 'center' }}>
-        <div style={{
-          position: 'absolute',
-          left: 0, right: 0,
-          height: compact ? '3px' : '4px',
-          borderRadius: '99px',
-          background: 'rgba(255,255,255,0.1)',
-          overflow: 'hidden',
-          pointerEvents: 'none',
-        }}>
-          <div style={{
-            height: '100%',
-            width: `${progress}%`,
-            background: 'linear-gradient(90deg,#10b981,#7c3aed)',
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            height: compact ? '3px' : '4px',
             borderRadius: '99px',
-            transition: 'width 0.1s linear',
-          }} />
+            background: 'rgba(var(--tint-rgb), 0.1)',
+            overflow: 'hidden',
+            pointerEvents: 'none',
+          }}
+        >
+          <div
+            style={{
+              height: '100%',
+              width: `${progress}%`,
+              background: 'linear-gradient(90deg,#10b981,#7c3aed)',
+              borderRadius: '99px',
+              transition: 'width 0.1s linear',
+            }}
+          />
         </div>
         <input
           type="range"
@@ -171,19 +202,24 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, compact = false }) => {
       </div>
 
       {/* Time */}
-      <span style={{
-        fontSize: compact ? '0.65rem' : '0.7rem',
-        fontWeight: 600,
-        color: playing ? '#10b981' : '#71717a',
-        whiteSpace: 'nowrap',
-        fontVariantNumeric: 'tabular-nums',
-        minWidth: '32px',
-        textAlign: 'right',
-        transition: 'color 0.3s',
-      }}>
+      <span
+        style={{
+          fontSize: compact ? '0.65rem' : '0.7rem',
+          fontWeight: 600,
+          color: playing ? '#10b981' : 'var(--text-tertiary)',
+          whiteSpace: 'nowrap',
+          fontVariantNumeric: 'tabular-nums',
+          minWidth: '32px',
+          textAlign: 'right',
+          transition: 'color 0.3s',
+        }}
+      >
         {duration > 0 ? fmt(currentTime) : fmt(0)}
         {!compact && duration > 0 && (
-          <span style={{ color: 'rgba(255,255,255,0.2)', fontWeight: 400 }}> / {fmt(duration)}</span>
+          <span style={{ color: 'rgba(var(--tint-rgb), 0.2)', fontWeight: 400 }}>
+            {' '}
+            / {fmt(duration)}
+          </span>
         )}
       </span>
 

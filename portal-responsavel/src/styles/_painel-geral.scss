@@ -1,0 +1,2130 @@
+/**
+ * styles/_painel-geral.scss
+ * Casca do portal (cabeçalho, sidebar) e Painel Geral do responsável,
+ * conforme as referências visuais Dark e Light (Issue #436).
+ *
+ * Regra desta folha: nenhuma cor crua. Tudo vem dos tokens de
+ * `global.scss`, então os dois temas usam exatamente as mesmas regras de
+ * layout, e trocar o tema muda só os valores das variáveis.
+ *
+ * Importada no FIM de portal.module.scss: redefine algumas classes base
+ * (.card, .gradesTable, .legend, .progressBar) com a aparência nova.
+ */
+
+$sidebar-w: 268px;
+$right-col-w: 292px;
+$header-h: 84px;
+$ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+
+@mixin focus-ring {
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+  }
+}
+
+@mixin surface {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
+}
+
+// ─── Layout geral ─────────────────────────────────────────────────────────────
+.portal {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.portalBody {
+  display: flex;
+  flex: 1;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+}
+
+.portalMain {
+  flex: 1;
+  min-width: 0;
+  max-width: none;
+  margin: 0;
+  padding: 20px 24px 32px;
+
+  @media (max-width: 640px) {
+    padding: 16px 16px 24px;
+  }
+}
+
+// ─── Cabeçalho ────────────────────────────────────────────────────────────────
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  background: var(--header-bg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.headerContent {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: $header-h;
+  padding: 0 20px 0 28px;
+
+  @media (max-width: 640px) {
+    height: 64px;
+    gap: 10px;
+    padding: 0 12px;
+  }
+}
+
+.headerMenuBtn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 1.3rem;
+  @include focus-ring;
+
+  @media (max-width: 1023px) {
+    display: inline-flex;
+  }
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  margin-right: auto;
+}
+
+.logoIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  flex-shrink: 0;
+  border-radius: 16px;
+  background: linear-gradient(145deg, var(--brand), var(--accent-2));
+  color: var(--text-on-accent);
+  font-size: 1.9rem;
+  box-shadow: 0 6px 18px rgba(var(--accent-rgb), 0.28);
+
+  @media (max-width: 640px) {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    font-size: 1.4rem;
+  }
+}
+
+.logoTextGroup {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  line-height: 1.15;
+}
+
+.logoText {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+
+  @media (max-width: 640px) {
+    font-size: 1.2rem;
+  }
+}
+
+.logoTextWhite {
+  color: var(--text-primary);
+}
+
+.logoTextCyan {
+  color: var(--brand);
+}
+
+.logoSub {
+  margin-top: 2px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+
+  @media (max-width: 640px) {
+    font-size: 0.75rem;
+  }
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.headerUtilityGroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+
+  @media (max-width: 1279px) {
+    display: none;
+  }
+}
+
+.headerDivider {
+  display: none;
+}
+
+.notificationBell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 1.25rem;
+  transition: background-color 150ms ease, color 150ms ease;
+  @include focus-ring;
+
+  &:hover {
+    background: rgba(var(--tint-rgb), 0.06);
+    color: var(--text-primary);
+  }
+
+  @media (max-width: 640px) {
+    width: 38px;
+    height: 38px;
+  }
+}
+
+// No celular, avisos ficam na barra inferior (com o mesmo contador)
+.headerBell {
+  @media (max-width: 1023px) {
+    display: none;
+  }
+}
+
+.bellRinging {
+  animation: ring 2.5s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+.notificationBadge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 99px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  border: 2px solid var(--bg-secondary);
+}
+
+// Alternador de tema (lua | sol)
+.themeToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  margin: 0;
+  min-width: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--bg-tertiary);
+}
+
+.themeToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 1.05rem;
+  transition: background-color 180ms $ease-out, color 180ms $ease-out, box-shadow 180ms $ease-out;
+  @include focus-ring;
+
+  &:hover {
+    color: var(--text-primary);
+  }
+
+  &:active {
+    transform: scale(0.94);
+  }
+
+  &.active {
+    background: var(--bg-secondary);
+    color: var(--accent-text);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18), 0 0 0 1px var(--border-color);
+  }
+}
+
+.headerThemeToggle {
+  @media (max-width: 640px) {
+    display: none;
+  }
+}
+
+.userProfile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 60px;
+  padding: 0 14px 0 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  text-align: left;
+  transition: border-color 150ms ease, background-color 150ms ease;
+  @include focus-ring;
+
+  &:hover {
+    border-color: var(--border-strong);
+  }
+
+  @media (max-width: 767px) {
+    height: 44px;
+    padding: 0 6px;
+    border-radius: 12px;
+  }
+}
+
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-size: 1.5rem;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  @media (max-width: 767px) {
+    width: 32px;
+    height: 32px;
+    font-size: 1.1rem;
+  }
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: 200px;
+  line-height: 1.3;
+
+  @media (max-width: 767px) {
+    display: none;
+  }
+}
+
+.userName {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userEmail {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.headerDropdownArrow {
+  margin-left: 6px;
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+
+  @media (max-width: 767px) {
+    display: none;
+  }
+}
+
+.logoutBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 50px;
+  padding: 0 18px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: border-color 150ms ease, color 150ms ease, background-color 150ms ease;
+  @include focus-ring;
+
+  svg {
+    font-size: 1.15rem;
+  }
+
+  &:hover {
+    border-color: rgba(239, 68, 68, 0.45);
+    color: var(--danger);
+  }
+
+  @media (max-width: 640px) {
+    height: 38px;
+    width: 38px;
+    padding: 0;
+    justify-content: center;
+
+    span {
+      display: none;
+    }
+  }
+}
+
+// ─── Sidebar ──────────────────────────────────────────────────────────────────
+.desktopSidebar {
+  position: sticky;
+  top: $header-h;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: $sidebar-w;
+  flex-shrink: 0;
+  height: calc(100vh - #{$header-h});
+  padding: 24px 14px 20px;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border-color);
+  overflow-y: auto;
+
+  // Celular e tablet: vira gaveta recolhível aberta pelo botão de menu
+  @media (max-width: 1023px) {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 1100;
+    height: 100dvh;
+    width: min(86vw, 300px);
+    padding-top: 28px;
+    box-shadow: var(--shadow-pop);
+    transform: translateX(-105%);
+    visibility: hidden;
+    transition: transform 280ms $ease-out, visibility 0s linear 280ms;
+
+    &.sidebarOpen {
+      transform: translateX(0);
+      visibility: visible;
+      transition: transform 280ms $ease-out, visibility 0s;
+    }
+  }
+}
+
+.sidebarBackdrop {
+  display: none;
+
+  @media (max-width: 1023px) {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1090;
+    border: none;
+    background: var(--bg-overlay);
+    animation: fadeIn 200ms ease;
+  }
+}
+
+.desktopSidebarNav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.desktopSidebarNavLink {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 500;
+  text-align: left;
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+  @include focus-ring;
+
+  svg {
+    flex-shrink: 0;
+    font-size: 1.35rem;
+    color: var(--accent-text);
+  }
+
+  &:hover {
+    background: rgba(var(--tint-rgb), 0.05);
+  }
+
+  &.active {
+    background: var(--accent-soft);
+    border-color: rgba(var(--accent-rgb), 0.28);
+    color: var(--accent-text);
+    font-weight: 600;
+    box-shadow: inset 0 0 18px rgba(var(--accent-rgb), 0.08);
+  }
+}
+
+// Card de Políticas de Privacidade (rodapé da sidebar)
+.lgpdConsentBox {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: auto;
+  padding: 16px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--bg-secondary);
+  box-shadow: var(--shadow-card);
+
+  &:not(.accepted) {
+    border-color: rgba(245, 158, 11, 0.45);
+  }
+}
+
+.lgpdConsentIcon {
+  flex-shrink: 0;
+  font-size: 1.7rem;
+  color: var(--accent);
+
+  .lgpdConsentBox:not(.accepted) & {
+    color: var(--warning);
+  }
+}
+
+.lgpdConsentText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.lgpdConsentTitle {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-align: left;
+  border-radius: 4px;
+  @include focus-ring;
+
+  &:is(button):hover {
+    color: var(--accent-text);
+    text-decoration: underline;
+  }
+}
+
+.lgpdConsentDesc {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.btnSignLgpd {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-size: 0.78rem;
+  font-weight: 700;
+  @include focus-ring;
+}
+
+// Escolha de tema no menu do perfil
+.sidebarThemeChoice {
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sidebarThemeLegend {
+  margin-bottom: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.sidebarThemeOptions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.sidebarThemeOption {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+  @include focus-ring;
+
+  &.active {
+    background: var(--accent-soft);
+    border-color: rgba(var(--accent-rgb), 0.4);
+    color: var(--accent-text);
+  }
+}
+
+// ─── Estrutura do Painel Geral ────────────────────────────────────────────────
+.dashboardWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+}
+
+.dashboardLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) $right-col-w;
+  gap: 18px;
+  align-items: start;
+
+  @media (max-width: 1279px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.dashboardMainContent {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+  container-type: inline-size;
+  container-name: painel;
+}
+
+.errorAlert {
+  margin: 0;
+}
+
+// Seletor de aluno (só com mais de um filho)
+.studentSelectorSection {
+  overflow: hidden;
+}
+
+.studentTabsList {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 2px 2px 6px;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.studentPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  min-height: 52px;
+  padding: 6px 14px 6px 6px;
+  border: 1px solid var(--border-color);
+  border-radius: 99px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease;
+  @include focus-ring;
+
+  &:hover {
+    border-color: var(--border-strong);
+    color: var(--text-primary);
+  }
+
+  &.active {
+    border-color: rgba(var(--accent-rgb), 0.5);
+    background: var(--accent-soft);
+    color: var(--text-primary);
+  }
+}
+
+.studentPillAvatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(var(--accent-rgb), 0.16);
+  color: var(--accent-text);
+  font-weight: 700;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.studentPillText {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  line-height: 1.25;
+}
+
+.studentPillName {
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.studentPillTurma {
+  font-size: 0.74rem;
+  color: var(--text-tertiary);
+}
+
+.studentPillIndicator {
+  color: var(--accent-text);
+  font-size: 1.05rem;
+}
+
+// ─── Banner de boas-vindas ────────────────────────────────────────────────────
+.schoolBanner {
+  position: relative;
+  min-height: 176px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  box-shadow: var(--shadow-card);
+
+  @container painel (max-width: 560px) {
+    min-height: 150px;
+  }
+}
+
+// A foto é dimensionada pela altura e ancorada à direita, para o texto do
+// quadro-negro e o globo ficarem ao lado da saudação, não atrás dela. A
+// máscara dissolve a borda esquerda da foto no fundo do card.
+.schoolBannerBg {
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  background-size: auto 150%;
+  background-position: right 18%;
+  filter: var(--banner-img-filter);
+  -webkit-mask-image: linear-gradient(90deg, transparent 40%, #000 68%);
+  mask-image: linear-gradient(90deg, transparent 40%, #000 68%);
+
+  @container painel (max-width: 1000px) {
+    background-size: auto 122%;
+    background-position: right 12%;
+  }
+
+  @container painel (max-width: 700px) {
+    background-size: cover;
+    background-position: 60% 30%;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}
+
+.schoolBannerOverlay {
+  position: absolute;
+  inset: 0;
+  background: var(--banner-fade);
+
+  @container painel (max-width: 560px) {
+    background: linear-gradient(90deg, var(--bg-secondary) 0%, color-mix(in srgb, var(--bg-secondary) 80%, transparent) 70%, color-mix(in srgb, var(--bg-secondary) 55%, transparent) 100%);
+  }
+}
+
+.schoolBannerContent {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  min-height: 176px;
+  padding: 24px 28px;
+
+  @container painel (max-width: 560px) {
+    min-height: 150px;
+    gap: 14px;
+    padding: 18px;
+  }
+}
+
+.schoolBannerAvatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 92px;
+  height: 92px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 4px solid var(--accent);
+  background: var(--bg-secondary);
+  color: var(--accent);
+  font-size: 3rem;
+  overflow: hidden;
+  box-shadow: 0 0 0 6px rgba(var(--accent-rgb), 0.12), var(--shadow-glow);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  @container painel (max-width: 560px) {
+    width: 60px;
+    height: 60px;
+    border-width: 3px;
+    font-size: 2rem;
+  }
+}
+
+.schoolBannerText {
+  min-width: 0;
+}
+
+.schoolBannerTitle {
+  margin: 0;
+  font-size: clamp(1.4rem, 2.6vw, 2.25rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--banner-title);
+}
+
+.schoolBannerSubtitle {
+  margin-top: 10px;
+  font-size: 1rem;
+  color: var(--banner-text);
+
+  @container painel (max-width: 560px) {
+    font-size: 0.88rem;
+    margin-top: 6px;
+  }
+}
+
+.schoolBannerLine {
+  width: 64px;
+  height: 4px;
+  margin-top: 16px;
+  border-radius: 99px;
+  background: var(--accent);
+}
+
+// Aviso de comunicados não lidos
+.unreadNoticeBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.unreadNoticeLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.unreadNoticeIcon {
+  color: var(--accent-text);
+  font-size: 1.15rem;
+}
+
+.unreadNoticeActionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid rgba(var(--accent-rgb), 0.4);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--accent-text);
+  font-size: 0.82rem;
+  font-weight: 600;
+  @include focus-ring;
+
+  &:hover {
+    background: rgba(var(--accent-rgb), 0.1);
+  }
+}
+
+// ─── Card do aluno + indicadores ──────────────────────────────────────────────
+.topSummaryGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+
+  @container painel (min-width: 760px) {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr);
+  }
+}
+
+.compactStudentCard {
+  @include surface;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 168px;
+  padding: 20px 22px;
+  cursor: pointer;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+  @include focus-ring;
+
+  &:hover {
+    border-color: var(--border-strong);
+  }
+}
+
+.compactStudentLeft {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-width: 0;
+}
+
+.compactStudentAvatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 78px;
+  height: 78px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 4px solid var(--accent);
+  background: var(--bg-secondary);
+  color: var(--accent);
+  font-size: 2.6rem;
+  overflow: hidden;
+  box-shadow: var(--shadow-glow);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  span {
+    display: flex;
+  }
+
+  @media (max-width: 480px) {
+    width: 60px;
+    height: 60px;
+    font-size: 2rem;
+  }
+}
+
+.compactStudentInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.compactStudentHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.compactStudentName {
+  margin: 0;
+  font-size: 1.55rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+
+  @media (max-width: 480px) {
+    font-size: 1.2rem;
+  }
+}
+
+.activeBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 12px;
+  border: 1.5px solid var(--accent);
+  border-radius: 99px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.iaMiniBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 99px;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+
+  &.bom .iaMiniDot {
+    background: var(--grade-good);
+  }
+  &.alerta .iaMiniDot {
+    background: var(--grade-regular);
+  }
+  &.critico .iaMiniDot {
+    background: var(--grade-bad);
+  }
+}
+
+.iaMiniDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+}
+
+.compactStudentMeta {
+  display: flex;
+  align-items: stretch;
+  gap: 28px;
+}
+
+.compactMetaItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.compactMetaLabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
+.compactMetaValue {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.compactMetaDivider {
+  width: 1px;
+  background: var(--border-color);
+}
+
+.compactStudentArrow {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  font-size: 1.4rem;
+  transition: transform 180ms $ease-out, color 150ms ease;
+
+  .compactStudentCard:hover & {
+    color: var(--accent-text);
+    transform: translateX(3px);
+  }
+}
+
+// Indicadores de frequência
+.frequencyInlineSection {
+  @include surface;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 168px;
+  padding: 12px 14px 14px;
+}
+
+.frequencyIndicatorsRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.7fr;
+  gap: 12px;
+
+  @media (max-width: 380px) {
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+}
+
+.frequencyMetricCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 108px;
+  padding: 12px 8px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  text-align: center;
+}
+
+.frequencyMetricIcon {
+  display: flex;
+  font-size: 1.9rem;
+}
+
+.frequencyMetricValue {
+  font-size: 1.55rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--tile-number);
+  font-variant-numeric: tabular-nums;
+}
+
+.frequencyMetricLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.metricCardPresencas {
+  background: var(--tile-ok-bg);
+  border-color: var(--tile-ok-border);
+
+  .frequencyMetricIcon { color: var(--tile-ok-icon); }
+  .frequencyMetricLabel { color: var(--tile-ok-label); }
+}
+
+.metricCardAusencias {
+  background: var(--tile-miss-bg);
+  border-color: var(--tile-miss-border);
+
+  .frequencyMetricIcon { color: var(--tile-miss-icon); }
+  .frequencyMetricLabel { color: var(--tile-miss-label); }
+}
+
+.metricCardFrequencia {
+  background: var(--tile-freq-bg);
+  border-color: var(--tile-freq-border);
+
+  .frequencyMetricIcon { color: var(--tile-freq-icon); }
+  .frequencyMetricLabel { color: var(--tile-freq-label); }
+}
+
+.frequencyProgressWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 10px;
+  border: 1px solid rgba(var(--accent-rgb), 0.25);
+  border-radius: 10px;
+  background: var(--accent-soft);
+
+  &.statusAlert {
+    border-color: rgba(245, 158, 11, 0.4);
+    background: rgba(245, 158, 11, 0.08);
+  }
+}
+
+.progressStatusTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent-text);
+  text-align: center;
+
+  .statusAlert & {
+    color: var(--warning);
+  }
+}
+
+.progressBar {
+  width: 100%;
+  height: 8px;
+  margin: 0;
+  border-radius: 99px;
+  overflow: hidden;
+  background: rgba(var(--tint-rgb), 0.1);
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--accent-2), var(--accent));
+  box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.45);
+  transition: width 700ms $ease-out;
+}
+
+.progressFillLow {
+  background: linear-gradient(90deg, var(--warning), var(--danger)) !important;
+  box-shadow: none;
+}
+
+.atrasosBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--warning);
+}
+
+.skeletonFrequency {
+  height: 168px;
+  border-radius: 14px;
+}
+
+// ─── Área acadêmica + Comunicados Recentes ────────────────────────────────────
+.dashboardContentGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+
+  @container painel (min-width: 900px) {
+    grid-template-columns: minmax(0, 1.28fr) minmax(0, 1fr);
+  }
+}
+
+.innerTabsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.innerTabsList {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-secondary);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+
+.innerTabButton {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 0 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.98rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background-color 150ms ease, color 150ms ease;
+  @include focus-ring;
+
+  svg {
+    flex-shrink: 0;
+    font-size: 1.3rem;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    border-radius: 3px 3px 0 0;
+    background: var(--accent);
+    transform: scaleX(0);
+    transition: transform 200ms $ease-out;
+  }
+
+  &:hover {
+    color: var(--text-primary);
+    background: rgba(var(--tint-rgb), 0.03);
+  }
+
+  &.active {
+    background: var(--accent-soft);
+    color: var(--accent-text);
+    font-weight: 600;
+
+    &::after {
+      transform: scaleX(1);
+      box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.6);
+    }
+  }
+
+  @media (max-width: 480px) {
+    flex-direction: column;
+    gap: 2px;
+    min-height: 60px;
+    font-size: 0.78rem;
+  }
+}
+
+.innerTabBadge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 99px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+
+  @media (max-width: 480px) {
+    position: absolute;
+    top: 6px;
+    right: 14%;
+  }
+}
+
+// Card base (notas, frequência detalhada e demais cards do portal)
+.card {
+  @include surface;
+  padding: 18px 20px;
+  transform: none;
+
+  &:hover {
+    transform: none;
+    border-color: var(--border-color);
+    box-shadow: var(--shadow-card);
+  }
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.cardHeaderIcon {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--accent-text);
+  font-size: 2.1rem;
+}
+
+.cardHeaderText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  margin-right: auto;
+}
+
+.cardTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+
+  svg {
+    color: var(--accent-text);
+  }
+}
+
+.cardSubtitle {
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.cardHeaderAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 1.15rem;
+  transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease;
+  @include focus-ring;
+
+  &:hover:not(:disabled) {
+    color: var(--accent-text);
+    border-color: rgba(var(--accent-rgb), 0.45);
+    background: var(--accent-soft);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: progress;
+  }
+}
+
+// Tabela de notas
+.tableWrapper {
+  overflow-x: auto;
+  margin: 0 0 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+}
+
+.gradesTable {
+  width: 100%;
+  min-width: 0;
+  border-collapse: collapse;
+
+  thead {
+    background: var(--bg-tertiary);
+
+    th {
+      padding: 13px 12px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      text-align: center;
+      white-space: nowrap;
+      color: var(--text-secondary);
+
+      &:first-child {
+        padding-left: 18px;
+        text-align: left;
+      }
+    }
+  }
+
+  tbody {
+    tr {
+      border-top: 1px solid var(--border-color);
+      transition: background-color 150ms ease;
+
+      &:hover {
+        background: rgba(var(--accent-rgb), 0.04);
+      }
+    }
+
+    td {
+      padding: 14px 12px;
+      text-align: center;
+      font-size: 0.98rem;
+      color: var(--text-primary);
+
+      &:first-child {
+        padding-left: 18px;
+      }
+    }
+  }
+}
+
+.disciplinaName {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.professorName {
+  color: var(--text-tertiary);
+}
+
+.thMedia {
+  color: var(--accent-text) !important;
+}
+
+.gradeValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: var(--text-primary);
+
+  &.gradeEmpty {
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+  }
+}
+
+.gradeValueStrong {
+  font-weight: 700;
+}
+
+.gradeDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+
+  .excellent > & { background: var(--grade-good); }
+  .good > & { background: var(--grade-regular); }
+  .warning > & { background: var(--grade-bad); }
+  .gradeEmpty > & { display: none; }
+}
+
+// Legenda (≥7.5 Bom · ≥7.0 Regular · <7.0 Atenção)
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  margin: 0;
+  padding: 12px 18px;
+  list-style: none;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-tertiary);
+
+  .legendItem {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0;
+    background: none;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--text-primary);
+
+    &.excellent,
+    &.good,
+    &.warning {
+      background: none;
+      color: var(--text-primary);
+    }
+  }
+}
+
+.legendDot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+
+  .excellent > & { background: var(--grade-good); }
+  .good > & { background: var(--grade-regular); }
+  .warning > & { background: var(--grade-bad); }
+}
+
+// Tabela no desktop, acordeão no celular
+.desktopNotesWrapper {
+  @media (max-width: 640px) {
+    display: none;
+  }
+}
+
+.mobileNotesAccordion {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+
+  @media (max-width: 640px) {
+    display: flex;
+  }
+}
+
+// Frequência detalhada
+.freqDetailContent {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.freqDetailCardsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.freqMetricBox {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-tertiary);
+}
+
+.freqMetricNumber {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.freqMetricTitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.freqMetricDesc {
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+}
+
+.freqDanger { color: var(--danger); }
+.freqWarning { color: var(--warning); }
+.freqAccent { color: var(--accent-text); }
+
+.freqLdbNote {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(var(--accent-rgb), 0.25);
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+
+  > svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+    font-size: 1.2rem;
+    color: var(--accent-text);
+  }
+
+  strong {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--text-primary);
+  }
+}
+
+// Comunicados Recentes
+.recentAnnouncementsCard {
+  @include surface;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 16px 16px;
+  min-width: 0;
+}
+
+.recentAnnouncementsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 4px;
+}
+
+.recentAnnouncementsTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  > svg {
+    font-size: 1.7rem;
+    color: var(--accent-text);
+  }
+}
+
+.recentAnnouncementsTitle {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.viewAllAnnouncementsBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--accent-text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  @include focus-ring;
+
+  svg {
+    transition: transform 180ms $ease-out;
+  }
+
+  &:hover svg {
+    transform: translateX(3px);
+  }
+}
+
+.recentAnnouncementsList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.recentAnnouncementItem {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 68px;
+  padding: 10px 14px 10px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  text-align: left;
+  transition: border-color 150ms ease, background-color 150ms ease;
+  @include focus-ring;
+
+  &:hover {
+    border-color: var(--border-strong);
+  }
+
+  &.unread {
+    border-color: rgba(var(--accent-rgb), 0.4);
+  }
+}
+
+.recentAnnouncementIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  font-size: 1.45rem;
+  background: rgba(var(--accent-rgb), 0.14);
+  color: var(--accent-text);
+
+  &.toneEvento {
+    background: rgba(168, 85, 247, 0.16);
+    color: var(--tile-freq-icon);
+  }
+
+  &.toneAviso {
+    background: rgba(245, 158, 11, 0.16);
+    color: var(--warning);
+  }
+
+  &.toneSaude {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--danger);
+  }
+}
+
+.recentAnnouncementContent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.recentAnnouncementTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.recentAnnouncementItemTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recentAnnouncementDate {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.recentAnnouncementSnippet {
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.emptyAnnouncementsBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 32px 12px;
+  color: var(--text-tertiary);
+  font-size: 0.9rem;
+
+  svg {
+    font-size: 1.8rem;
+  }
+}
+
+// ─── Coluna direita ───────────────────────────────────────────────────────────
+.dashboardRightColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+
+  // Tablet: a coluna desce e os cards ficam lado a lado
+  @media (max-width: 1279px) and (min-width: 700px) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+.quickActionsCard {
+  @include surface;
+  padding: 18px 12px 12px;
+}
+
+.quickActionsTitle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 14px 10px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+
+  svg {
+    font-size: 1.6rem;
+    color: var(--accent-text);
+    fill: currentColor;
+  }
+}
+
+.quickActionsList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.quickActionItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 76px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  text-align: left;
+  transition: border-color 150ms ease, background-color 150ms ease;
+  @include focus-ring;
+
+  &:hover {
+    border-color: rgba(var(--accent-rgb), 0.45);
+  }
+
+  &:active {
+    transform: scale(0.99);
+  }
+}
+
+.quickActionIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(var(--accent-rgb), 0.14);
+  color: var(--accent-text);
+  font-size: 1.45rem;
+}
+
+.quickActionText {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.quickActionLabel {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.quickActionSub {
+  font-size: 0.74rem;
+  line-height: 1.35;
+  color: var(--text-secondary);
+}
+
+.quickActionArrow {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  font-size: 1.15rem;
+  transition: transform 180ms $ease-out;
+
+  .quickActionItem:hover & {
+    transform: translateX(3px);
+    color: var(--accent-text);
+  }
+}
+
+.supportCard {
+  @include surface;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 18px;
+}
+
+.supportHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.supportIconWrapper {
+  display: flex;
+  flex-shrink: 0;
+  font-size: 2.2rem;
+  color: var(--accent-text);
+}
+
+.supportDesc {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.supportContactBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 50px;
+  padding: 0 24px;
+  border: 1.5px solid var(--accent);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 150ms ease, color 150ms ease;
+  @include focus-ring;
+
+  svg {
+    font-size: 1.2rem;
+  }
+
+  &:hover {
+    background: var(--accent-soft);
+    color: var(--accent-text);
+  }
+}
+
+.mottoWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 40px 28px 8px;
+
+  @media (max-width: 1279px) {
+    grid-column: 1 / -1;
+    align-items: center;
+    padding: 12px;
+    text-align: center;
+  }
+}
+
+.mottoText {
+  font-size: 1.45rem;
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.35;
+  color: var(--text-primary);
+}
+
+.mottoUnderline {
+  width: 46px;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--accent);
+}
+
+// ─── Barra inferior (celular) ─────────────────────────────────────────────────
+.mobileBottomNav {
+  display: none;
+
+  @media (max-width: 1023px) {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    padding: 6px 12px max(10px, env(safe-area-inset-bottom));
+    background: var(--header-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border-color);
+    box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.12);
+  }
+}
+
+.bottomNavItem {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 48px;
+  padding: 4px 0;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  @include focus-ring;
+
+  svg {
+    font-size: 1.35rem;
+  }
+
+  &.active {
+    color: var(--accent-text);
+  }
+
+  &:hover {
+    color: var(--text-primary);
+  }
+}
+
+.bottomNavIconWrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.bottomNavBadge {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+  min-width: 16px;
+  height: 16px;
+  padding: 1px 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 99px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+@media (max-width: 1023px) {
+  .portalMain {
+    padding-bottom: 96px;
+  }
+
+  .footer {
+    padding-bottom: 84px !important;
+  }
+}
+
+// ─── Movimento reduzido ───────────────────────────────────────────────────────
+@media (prefers-reduced-motion: reduce) {
+  .desktopSidebar,
+  .progressFill,
+  .innerTabButton::after,
+  .compactStudentArrow,
+  .quickActionArrow,
+  .viewAllAnnouncementsBtn svg {
+    transition: none !important;
+  }
+
+  .bellRinging {
+    animation: none;
+  }
+}

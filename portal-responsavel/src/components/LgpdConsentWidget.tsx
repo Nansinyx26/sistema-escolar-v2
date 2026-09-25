@@ -4,25 +4,40 @@ import Icon from './ui/Icon';
 interface LgpdConsentWidgetProps {
   accepted: boolean;
   onSign: () => void;
+  /** Abre a política de privacidade (ou o termo, se ainda não assinado). */
+  onOpen?: () => void;
 }
 
-export default function LgpdConsentWidget({ accepted, onSign }: LgpdConsentWidgetProps) {
+/** Card de Políticas de Privacidade/LGPD no rodapé da sidebar. */
+export default function LgpdConsentWidget({ accepted, onSign, onOpen }: LgpdConsentWidgetProps) {
   return (
     <div className={`${styles.lgpdConsentBox} ${accepted ? styles.accepted : ''}`}>
-      <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-        <Icon name={accepted ? 'shield-check' : 'shield-alert'} style={{ fontSize: '1.1rem' }} />
-        Políticas de Privacidade
+      <span className={styles.lgpdConsentIcon} aria-hidden="true">
+        <Icon name={accepted ? 'shield-check' : 'shield-alert'} />
       </span>
-      {accepted ? (
-        <span style={{ fontSize: '0.75rem' }}>✓ Termo LGPD assinado. Seus dados estão protegidos.</span>
-      ) : (
-        <>
-          <span style={{ fontSize: '0.75rem' }}>Você ainda não assinou o consentimento de privacidade.</span>
-          <button className={styles.btnSignLgpd} onClick={onSign}>
-            Assinar LGPD
+      <div className={styles.lgpdConsentText}>
+        {onOpen ? (
+          <button type="button" className={styles.lgpdConsentTitle} onClick={onOpen}>
+            Políticas de Privacidade
           </button>
-        </>
-      )}
+        ) : (
+          <span className={styles.lgpdConsentTitle}>Políticas de Privacidade</span>
+        )}
+        {accepted ? (
+          <span className={styles.lgpdConsentDesc}>
+            Termos LGPD assinados. Seus dados estão protegidos.
+          </span>
+        ) : (
+          <>
+            <span className={styles.lgpdConsentDesc}>
+              Você ainda não assinou o consentimento de privacidade.
+            </span>
+            <button type="button" className={styles.btnSignLgpd} onClick={onSign}>
+              Assinar LGPD
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,8 +1,9 @@
 /**
  * components/StudentCard.tsx
  * Card compacto de identificação do aluno ativo.
- * Reproduz o design de referência: avatar circular com cyan, status ATIVO,
- * dados essenciais (turma, matrícula) e link direto para a ficha.
+ * Reproduz a referência visual (Issue #436): avatar em anel na cor de destaque,
+ * status ATIVO, turma, matrícula e seta para a ficha. Mesma marcação nos temas
+ * Dark e Light.
  */
 
 import type React from 'react';
@@ -81,8 +82,8 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, lgpdAccepted = true,
               onError={() => setImgError(true)}
             />
           ) : (
-            <span>
-              {!lgpdAccepted ? <Icon name="lock" /> : getInitials(student.nome, student.sobrenome)}
+            <span title={getInitials(student.nome, student.sobrenome)}>
+              <Icon name={lgpdAccepted ? 'user-round' : 'lock'} />
             </span>
           )}
         </div>
@@ -93,9 +94,8 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, lgpdAccepted = true,
             <h2 className={styles.compactStudentName}>
               {student.nome} {student.sobrenome}
             </h2>
-            <span className={styles.activeBadge} role="status" aria-label="Status: Ativo">
-              <Icon name="circle-check-filled" aria-hidden="true" />
-              ATIVO
+            <span className={styles.activeBadge}>
+              <span className="sr-only">Status: </span>ATIVO
             </span>
 
             {iaData && (
