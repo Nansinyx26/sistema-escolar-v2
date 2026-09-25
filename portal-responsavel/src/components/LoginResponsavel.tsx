@@ -1060,9 +1060,9 @@ const LoginResponsavel: React.FC<LoginResponsavelProps> = ({ auth, toast, onClos
                       setAuthError('O login com Google foi cancelado ou falhou. Tente novamente.')
                     }
                     text="continue_with"
-                    shape="pill"
+                    shape="rectangular"
                     size="large"
-                    width="320"
+                    width="380"
                     theme={tema === 'light' ? 'outline' : 'filled_black'}
                   />
                 </div>
