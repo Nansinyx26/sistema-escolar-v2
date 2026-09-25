@@ -189,6 +189,45 @@ describe.each(Object.keys(ROTAS))('POST /api/auth/%s — com o aceite', (rota) =
         expect(usuario.consentimentoAceiteEm).toBeInstanceOf(Date);
         expect(consentimentoVigente(usuario).aceito).toBe(true);
     });
+
+    it('consentimento opcional recusado (ou ausente) não impede o cadastro (Issue #414)', async () => {
+        const emailRecusado = `recusado-${rota}@escola.test`;
+        const res = await cadastrar(
+            rota,
+            corpo({
+                email: emailRecusado,
+                consentimentoLgpd: {
+                    ...ACEITE,
+                    consentimentos: { educacional: false },
+                },
+            })
+        );
+        expect(res.status).toBe(201);
+
+        const usuario = await Usuario.findOne({ email: emailRecusado }).lean();
+        expect(usuario.consentimentoAceiteEm).toBeInstanceOf(Date);
+        expect(usuario.lgpdConsents?.perfilDadosCadastrais).toBeFalsy();
+    });
+
+    it('consentimento opcional aceito registra em lgpdConsents (Issue #414)', async () => {
+        const emailAceito = `aceito-opcional-${rota}@escola.test`;
+        const res = await cadastrar(
+            rota,
+            corpo({
+                email: emailAceito,
+                consentimentoLgpd: {
+                    ...ACEITE,
+                    consentimentos: { educacional: true },
+                },
+            })
+        );
+        expect(res.status).toBe(201);
+
+        const usuario = await Usuario.findOne({ email: emailAceito }).lean();
+        expect(usuario.consentimentoAceiteEm).toBeInstanceOf(Date);
+        expect(usuario.lgpdConsents?.perfilDadosCadastrais).toBe(true);
+        expect(usuario.lgpdConsents?.perfilNotasDesempenho).toBe(true);
+    });
 });
 
 describe('POST /api/usuarios (conta criada por gestor)', () => {
@@ -249,14 +288,24 @@ describe('POST /api/usuarios (conta criada por gestor)', () => {
 
 describe('frontend: a caixa e a versão', () => {
     const PAGINAS = [
-        ['html/pages/cadastro-responsavel.html', 'aceiteLgpdCadastro', true],
-        ['html/pages/cadastro-docente.html', 'aceiteLgpdCadastro', true],
-        ['html/pages/cadastro-diretor-publico.html', 'aceiteLgpdCadastro', true],
-        ['html/pages/cadastro-secretaria-publico.html', 'aceiteLgpdCadastro', true],
-        ['html/login.html', 'registerConsent', true],
-        ['html/login-professor.html', 'registerConsent', true],
-        ['html/login-diretor.html', 'registerConsent', true],
-        ['html/login-secretaria.html', 'registerConsent', true],
+        ['html/pages/cadastro-responsavel.html', 'aceiteLgpdCadastro', 'consentEducacional', true],
+        ['html/pages/cadastro-docente.html', 'aceiteLgpdCadastro', 'consentEducacional', true],
+        [
+            'html/pages/cadastro-diretor-publico.html',
+            'aceiteLgpdCadastro',
+            'consentEducacional',
+            true,
+        ],
+        [
+            'html/pages/cadastro-secretaria-publico.html',
+            'aceiteLgpdCadastro',
+            'consentEducacional',
+            true,
+        ],
+        ['html/login.html', 'registerConsent', 'registerConsentEducacional', true],
+        ['html/login-professor.html', 'registerConsent', 'registerConsentEducacional', true],
+        ['html/login-diretor.html', 'registerConsent', 'registerConsentEducacional', true],
+        ['html/login-secretaria.html', 'registerConsent', 'registerConsentEducacional', true],
     ];
 
     it('a versão do js/consentimento-cadastro.js é a mesma do backend', () => {
@@ -267,17 +316,49 @@ describe('frontend: a caixa e a versão', () => {
         expect(versaoFront).toBe(CONSENTIMENTO_VERSAO);
     });
 
-    it.each(PAGINAS)('%s tem a caixa desmarcada e carrega o módulo', (pagina, id, obrigatoria) => {
-        const html = fs.readFileSync(path.join(RAIZ_REPO, pagina), 'utf8');
-        const caixa = html.match(new RegExp(`<input[^>]*id="${id}"[^>]*>`));
+    it.each(PAGINAS)(
+        '%s tem a caixa desmarcada e carrega o módulo',
+        (pagina, id, _idOpcional, obrigatoria) => {
+            const html = fs.readFileSync(path.join(RAIZ_REPO, pagina), 'utf8');
+            const caixa = html.match(new RegExp(`<input[^>]*id="${id}"[^>]*>`));
 
-        expect(caixa).not.toBeNull();
-        expect(caixa[0]).toContain('type="checkbox"');
-        expect(caixa[0]).not.toMatch(/\bchecked\b/);
-        // Obrigatória onde o servidor recusa sem ela — hoje, em todas (#295).
-        expect(/\brequired\b/.test(caixa[0])).toBe(obrigatoria);
-        expect(html).toMatch(/<script[^>]+src="[./]*js\/consentimento-cadastro\.js"/);
-    });
+            expect(caixa).not.toBeNull();
+            expect(caixa[0]).toContain('type="checkbox"');
+            expect(caixa[0]).not.toMatch(/\bchecked\b/);
+            // Obrigatória onde o servidor recusa sem ela — hoje, em todas (#295).
+            expect(/\brequired\b/.test(caixa[0])).toBe(obrigatoria);
+            expect(html).toMatch(/<script[^>]+src="[./]*js\/consentimento-cadastro\.js"/);
+        }
+    );
+
+    it.each(PAGINAS)(
+        '%s: a caixa obrigatória não afirma autorização de tratamento (Issue #414)',
+        (pagina, id) => {
+            const html = fs.readFileSync(path.join(RAIZ_REPO, pagina), 'utf8');
+            const labelMatch = html.match(
+                new RegExp(`<label[^>]*for="${id}"[^>]*>([\\s\\S]*?)<\\/label>`)
+            );
+            expect(labelMatch).not.toBeNull();
+            const labelText = labelMatch[1].replace(/<[^>]+>/g, '').toLowerCase();
+            // Critério de aceite: a caixa obrigatória não afirma autorização de tratamento
+            expect(labelText).not.toContain('autorizo o tratamento');
+            expect(labelText).not.toContain('autorizo o processamento');
+            expect(labelText).toMatch(/ciência|ciente/);
+        }
+    );
+
+    it.each(PAGINAS)(
+        '%s: tem a caixa opcional de consentimento educacional desmarcada e sem required (Issue #414)',
+        (pagina, _idObrig, idOpcional) => {
+            const html = fs.readFileSync(path.join(RAIZ_REPO, pagina), 'utf8');
+            const caixaOpcional = html.match(new RegExp(`<input[^>]*id="${idOpcional}"[^>]*>`));
+
+            expect(caixaOpcional).not.toBeNull();
+            expect(caixaOpcional[0]).toContain('type="checkbox"');
+            expect(caixaOpcional[0]).not.toMatch(/\bchecked\b/);
+            expect(caixaOpcional[0]).not.toMatch(/\brequired\b/);
+        }
+    );
 });
 
 describe('trava: nenhum caminho de criação de conta grava consentimento sozinho', () => {

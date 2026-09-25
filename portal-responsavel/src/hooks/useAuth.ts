@@ -28,6 +28,7 @@ export function useAuth({ cleanApiUrl, onToast }: UseAuthOptions) {
     telefone: '',
     codigoSecreto: '',
     aceitePolitica: false,
+    consentimentoEducacional: false,
   });
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
