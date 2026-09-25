@@ -500,7 +500,7 @@ function podeAbrir(perfil, caminho) {
     if (!chave) return false;
     // A negação vem ANTES da abertura: é ela que recorta o "basta estar
     // autenticado" do padrão do desconhecido. Ver PERFIS_SEM_PAGINAS_DA_ESCOLA.
-    if (veredito.negados && veredito.negados.includes(chave)) return false;
+    if (veredito.negados?.includes(chave)) return false;
     if (veredito.perfis === null) return true; // basta estar autenticado
     return veredito.perfis.includes(chave);
 }
