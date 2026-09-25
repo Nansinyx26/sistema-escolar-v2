@@ -33,6 +33,13 @@ const PAGINAS_SO_ADMIN = [
     '/html/admin/codigos-backup.html',
 ];
 
+/**
+ * Páginas que ficam em `/html` mas são DA PESSOA, e não da escola: a troca de
+ * senha obrigatória e o aceite do Termo de Áudio e Imagem. Declaradas na matriz
+ * para todos os perfis (Issue #444) — o motivo de cada uma está em `AREAS`.
+ */
+const PAGINAS_DA_PESSOA = ['/html/mudar-senha.html', '/html/termo-audio-imagem.html'];
+
 const { assinarTokenSessao } = require('../utils/sessionToken');
 
 /**
@@ -420,7 +427,7 @@ describe('Páginas da escola: sessão de responsável não entra', () => {
         const doModel = Usuario.schema.path('perfil').enumValues.slice().sort();
         const { AREAS } = require('../middleware/protegerPaginas');
 
-        for (const pagina of ['/html/mudar-senha.html', '/html/termo-audio-imagem.html']) {
+        for (const pagina of PAGINAS_DA_PESSOA) {
             expect(AREAS[pagina].perfis.slice().sort()).toEqual(doModel);
         }
     });
