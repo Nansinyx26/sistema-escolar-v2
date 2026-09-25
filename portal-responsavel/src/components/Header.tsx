@@ -1,12 +1,12 @@
 /**
  * components/Header.tsx
- * Sticky top navigation bar with school logo, notification bell,
- * user avatar and logout button. Fully responsive.
+ * Sticky top navigation bar with school logo (bicolor "Sistema Escolar"),
+ * notification bell, user avatar and logout button.
+ * Redesign Issue #434: visual identity dark/cyan premium.
  */
 
 import type React from 'react';
 import { useEffect, useState } from 'react';
-import schoolLogo from '../assets/logo-jaguari.png';
 import { definirVoz, normalizarVoz, VOZES, type VozNome, vozAtual } from '../constants/vozes';
 import { getChatNaoLidas } from '../services/apiService';
 import styles from '../styles/portal.module.scss';
@@ -50,18 +50,6 @@ function getInitials(name: string): string {
 }
 
 const VoiceSelector: React.FC = () => {
-  /*
-   * Este menu oferecia "Voz Masculina" e "Voz Desativada" — um liga/desliga
-   * fantasiado de escolha de voz. As quatro vozes masculinas do sistema já
-   * existiam no backend e no painel do chatbot, mas não aqui, que é justamente
-   * o controle global do portal.
-   *
-   * Duas coisas diferentes moram neste menu, e agora em chaves diferentes:
-   *   - QUAL voz  → `user_elevenlabs_voice`, o que `/api/tts/speak` recebe
-   *   - narração ligada ou não → `user_voice_preference` ('male' | 'off')
-   * Antes as duas dividiam a segunda chave, então escolher uma voz e desligar
-   * a narração eram a mesma gaveta.
-   */
   const [voice, setVoice] = useState<VozNome>(() => vozAtual());
   const [narracaoDesligada, setNarracaoDesligada] = useState(
     () => localStorage.getItem('user_voice_preference') === 'off'
@@ -69,7 +57,6 @@ const VoiceSelector: React.FC = () => {
   const [mode, setMode] = useState(localStorage.getItem('user_narration_mode') || 'texto_audio');
   const [isOpen, setIsOpen] = useState(false);
 
-  // Trocar a voz no painel do chatbot tem de refletir aqui, e vice-versa.
   useEffect(() => {
     const aoTrocar = (e: Event) => {
       const detalhe = (e as CustomEvent<{ voice?: string }>).detail;
@@ -107,7 +94,6 @@ const VoiceSelector: React.FC = () => {
   const handleVoiceSelect = (nome: VozNome) => {
     setVoice(nome);
     setNarracaoDesligada(false);
-    // `definirVoz` grava as duas chaves, avisa a página e persiste no servidor.
     void definirVoz(nome);
   };
 
@@ -124,7 +110,6 @@ const VoiceSelector: React.FC = () => {
     localStorage.setItem('user_preferencia_narracao', m);
     setMode(m);
     window.dispatchEvent(new CustomEvent('narrationModeChanged', { detail: m }));
-    // No JS legado, isso dispara classes no body
     document.body.classList.remove(
       'preference-texto',
       'preference-texto-audio',
@@ -150,10 +135,6 @@ const VoiceSelector: React.FC = () => {
       </button>
 
       {isOpen && (
-        // O onMouseLeave abaixo só fecha o painel por conveniência do
-        // ponteiro. Não existe gesto de teclado equivalente a "saiu com o
-        // mouse", e os botões de dentro já são alcançáveis por Tab — o painel
-        // nunca depende do hover para operar.
         // biome-ignore lint/a11y/noStaticElementInteractions: fechar no hover é gesto de ponteiro, sem equivalente de teclado
         <div
           style={{
@@ -161,8 +142,8 @@ const VoiceSelector: React.FC = () => {
             top: '100%',
             right: 0,
             marginTop: '8px',
-            background: '#1a211d',
-            border: '1px solid rgba(255,255,255,0.08)',
+            background: '#071923',
+            border: '1px solid rgba(0, 212, 255, 0.1)',
             borderRadius: '16px',
             padding: '12px',
             zIndex: 100,
@@ -175,7 +156,7 @@ const VoiceSelector: React.FC = () => {
             <p
               style={{
                 fontSize: '10px',
-                color: '#71717a',
+                color: '#5a7585',
                 padding: '0 8px 8px',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
@@ -200,8 +181,8 @@ const VoiceSelector: React.FC = () => {
                     borderRadius: '8px',
                     fontSize: '12px',
                     textAlign: 'left',
-                    background: ativa ? 'rgba(5, 150, 105, 0.1)' : 'transparent',
-                    color: ativa ? '#059669' : '#a1a1aa',
+                    background: ativa ? 'rgba(0, 212, 255, 0.1)' : 'transparent',
+                    color: ativa ? '#00d4ff' : '#8ba3b0',
                     border: 'none',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
@@ -210,8 +191,6 @@ const VoiceSelector: React.FC = () => {
                   <i className="ti ti-man" style={{ fontSize: '1.1rem' }} />
                   <span>
                     {v.rotulo}
-                    {/* A descrição é o que torna a lista escolhível: quatro
-                        nomes próprios sozinhos não dizem como a voz soa. */}
                     <span style={{ opacity: 0.6, fontWeight: 400 }}> · {v.descricao}</span>
                   </span>
                 </button>
@@ -229,8 +208,8 @@ const VoiceSelector: React.FC = () => {
                 borderRadius: '8px',
                 fontSize: '12px',
                 textAlign: 'left',
-                background: narracaoDesligada ? 'rgba(5, 150, 105, 0.1)' : 'transparent',
-                color: narracaoDesligada ? '#059669' : '#a1a1aa',
+                background: narracaoDesligada ? 'rgba(0, 212, 255, 0.1)' : 'transparent',
+                color: narracaoDesligada ? '#00d4ff' : '#8ba3b0',
                 border: 'none',
                 cursor: 'pointer',
                 transition: 'all 0.2s',
@@ -241,11 +220,11 @@ const VoiceSelector: React.FC = () => {
             </button>
           </div>
 
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px' }}>
+          <div style={{ borderTop: '1px solid rgba(0, 212, 255, 0.06)', paddingTop: '12px' }}>
             <p
               style={{
                 fontSize: '10px',
-                color: '#71717a',
+                color: '#5a7585',
                 padding: '0 8px 8px',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
@@ -268,8 +247,8 @@ const VoiceSelector: React.FC = () => {
                   borderRadius: '8px',
                   fontSize: '12px',
                   textAlign: 'left',
-                  background: mode === m.id ? 'rgba(5, 150, 105, 0.1)' : 'transparent',
-                  color: mode === m.id ? '#059669' : '#a1a1aa',
+                  background: mode === m.id ? 'rgba(0, 212, 255, 0.1)' : 'transparent',
+                  color: mode === m.id ? '#00d4ff' : '#8ba3b0',
                   border: 'none',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
@@ -312,7 +291,7 @@ const ThemeToggle: React.FC = () => {
       onClick={toggleTheme}
       title={theme === 'light' ? 'Modo Escuro' : 'Modo Claro'}
       aria-label={theme === 'light' ? 'Alternar para Modo Escuro' : 'Alternar para Modo Claro'}
-      style={{ color: theme === 'light' ? '#d97706' : '#10b981' }}
+      style={{ color: theme === 'light' ? '#d97706' : '#00d4ff' }}
     >
       <i
         className={`ti ${theme === 'light' ? 'ti-sun' : 'ti-moon'}`}
@@ -347,17 +326,13 @@ const ConversasButton: React.FC = () => {
     const buscar = async () => {
       try {
         const { total } = await getChatNaoLidas();
-        // O componente pode ter desmontado durante a requisição.
         if (ativo) setNaoLidas(Number(total) || 0);
       } catch {
-        // Selo que não carrega não pode derrubar o cabeçalho que o hospeda:
-        // fica no último valor conhecido e tenta de novo no próximo ciclo.
+        // Selo que não carrega não pode derrubar o cabeçalho que o hospeda.
       }
     };
 
     buscar();
-    // Sem socket neste componente: o portal não mantém a conexão do chat. Um
-    // minuto é o suficiente para um selo que só indica "há algo lá".
     const timer = setInterval(buscar, 60000);
 
     return () => {
@@ -396,27 +371,28 @@ const Header: React.FC<HeaderProps> = ({
   return (
     <header className={styles.header}>
       <div className={styles.headerContent}>
-        {/* Logo */}
+        {/* Logo bicolor: "Sistema" branco + "Escolar" cyan */}
         <div className={styles.logo}>
-          <img src={schoolLogo} alt="" aria-hidden="true" />
-          <span className={styles.logoText}>Escola Jaguari</span>
-          <span className={styles.logoSub}>Portal do Responsável</span>
+          <div className={styles.logoIcon} aria-hidden="true">
+            <Icon name="school" />
+          </div>
+          <div className={styles.logoTextGroup}>
+            <span className={styles.logoText}>
+              <span className={styles.logoTextWhite}>Sistema</span>{' '}
+              <span className={styles.logoTextCyan}>Escolar</span>
+            </span>
+            <span className={styles.logoSub}>Portal do Responsável</span>
+          </div>
         </div>
 
-        {/* Actions — agrupadas em clusters (utilidades | notificação+conta)
-            separados por um divisor, em vez de uma fileira única de ícones */}
+        {/* Actions — utilidades escondidas em telas menores + conta */}
         <div className={styles.headerActions}>
           <div className={styles.headerUtilityGroup}>
             <VoiceSelector />
             <ThemeToggle />
-
             <ConversasButton />
-
-            {/* Canal de denúncia (ECA Digital): fica no cabeçalho para estar
-                alcançável de qualquer aba do portal. */}
             <CanalDenuncia />
 
-            {/* Botão Ver Tour Guiado */}
             <button
               type="button"
               className={styles.notificationBell}
@@ -430,28 +406,7 @@ const Header: React.FC<HeaderProps> = ({
 
           <span className={styles.headerDivider} aria-hidden="true" />
 
-          {/* Notification bell */}
-          <button
-            type="button"
-            className={styles.notificationBell}
-            onClick={onBellClick}
-            aria-label={
-              unreadCount > 0 ? `${unreadCount} notificações não lidas` : 'Nenhuma notificação nova'
-            }
-          >
-            <Icon
-              name="bell-filled"
-              className={unreadCount > 0 ? styles.bellRinging : undefined}
-              aria-hidden="true"
-            />
-            {unreadCount > 0 && (
-              <span className={styles.notificationBadge} aria-hidden="true">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
-          </button>
-
-          {/* User profile (clickable to open sidebar) */}
+          {/* User profile */}
           <button
             type="button"
             className={styles.userProfile}
@@ -479,6 +434,29 @@ const Header: React.FC<HeaderProps> = ({
               <span className={styles.userName}>{user.name}</span>
               <span className={styles.userEmail}>{user.email}</span>
             </div>
+
+            <Icon name="chevron-down" className={styles.headerDropdownArrow} aria-hidden="true" />
+          </button>
+
+          {/* Notification bell */}
+          <button
+            type="button"
+            className={styles.notificationBell}
+            onClick={onBellClick}
+            aria-label={
+              unreadCount > 0 ? `${unreadCount} notificações não lidas` : 'Nenhuma notificação nova'
+            }
+          >
+            <Icon
+              name="bell-filled"
+              className={unreadCount > 0 ? styles.bellRinging : undefined}
+              aria-hidden="true"
+            />
+            {unreadCount > 0 && (
+              <span className={styles.notificationBadge} aria-hidden="true">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
           </button>
 
           {/* Logout */}

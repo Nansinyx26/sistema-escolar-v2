@@ -893,9 +893,7 @@ const LoginResponsavel: React.FC<LoginResponsavelProps> = ({ auth, toast, onClos
                   Fornecido pela secretaria da escola. É ele que vincula seu filho à sua conta.
                 </small>
               </div>
-              {/* Nasce desmarcada, porque criar a conta não é consentir (Issue
-                  #236), e é obrigatória: sem o aceite, o servidor recusa o
-                  cadastro (Issue #295), como nas páginas HTML. */}
+              {/* Ciência da Política de Privacidade (Issue #414): obrigatória, não afirma autorização */}
               <label htmlFor="campo-aceite-politica" className="ui-check lr-aceite">
                 <input
                   id="campo-aceite-politica"
@@ -907,15 +905,42 @@ const LoginResponsavel: React.FC<LoginResponsavelProps> = ({ auth, toast, onClos
                   required
                 />
                 <span>
-                  Li e aceito a{' '}
+                  Li e tomei ciência da{' '}
                   <a
                     href="/html/politica-privacidade.html"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
                     Política de Privacidade
-                  </a>{' '}
-                  e autorizo o tratamento dos meus dados para fins educacionais.
+                  </a>
+                  .{' '}
+                  <span style={{ color: 'var(--color-danger, #ef4444)', fontSize: '0.75rem' }}>
+                    (obrigatório)
+                  </span>
+                </span>
+              </label>
+              {/* Consentimento específico educacional (Issue #414): opcional — recusar não impede o cadastro */}
+              <label
+                htmlFor="campo-consent-educacional"
+                className="ui-check lr-aceite"
+                style={{ marginTop: '0.5rem' }}
+              >
+                <input
+                  id="campo-consent-educacional"
+                  type="checkbox"
+                  checked={Boolean(registerForm.consentimentoEducacional)}
+                  onChange={(e) =>
+                    setRegisterForm({
+                      ...registerForm,
+                      consentimentoEducacional: e.target.checked,
+                    })
+                  }
+                />
+                <span>
+                  Autorizo o tratamento dos meus dados para fins educacionais.{' '}
+                  <span style={{ color: 'var(--color-text-muted, #94a3b8)', fontSize: '0.75rem' }}>
+                    (opcional)
+                  </span>
                 </span>
               </label>
               <button
@@ -1035,9 +1060,9 @@ const LoginResponsavel: React.FC<LoginResponsavelProps> = ({ auth, toast, onClos
                       setAuthError('O login com Google foi cancelado ou falhou. Tente novamente.')
                     }
                     text="continue_with"
-                    shape="pill"
+                    shape="rectangular"
                     size="large"
-                    width="320"
+                    width="380"
                     theme={tema === 'light' ? 'outline' : 'filled_black'}
                   />
                 </div>

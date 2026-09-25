@@ -154,6 +154,41 @@ describe('POST /api/auth/register-responsavel com o corpo que o portal monta', (
         );
     });
 
+    it('consentimento opcional educacional do portal: recusado não impede o cadastro (Issue #414)', async () => {
+        const res = await cadastrar(
+            portal.montarCorpoCadastro(
+                formularioPreenchido({
+                    email: 'recusado.portal@escola.test',
+                    aceitePolitica: true,
+                    consentimentoEducacional: false,
+                })
+            )
+        );
+        expect(res.status).toBe(201);
+
+        const conta = await Usuario.findOne({ email: 'recusado.portal@escola.test' }).lean();
+        expect(conta.consentimentoAceiteEm).toBeInstanceOf(Date);
+        expect(conta.lgpdConsents?.perfilDadosCadastrais).toBeFalsy();
+    });
+
+    it('consentimento opcional educacional do portal: marcado registra em lgpdConsents (Issue #414)', async () => {
+        const res = await cadastrar(
+            portal.montarCorpoCadastro(
+                formularioPreenchido({
+                    email: 'aceito.portal@escola.test',
+                    aceitePolitica: true,
+                    consentimentoEducacional: true,
+                })
+            )
+        );
+        expect(res.status).toBe(201);
+
+        const conta = await Usuario.findOne({ email: 'aceito.portal@escola.test' }).lean();
+        expect(conta.consentimentoAceiteEm).toBeInstanceOf(Date);
+        expect(conta.lgpdConsents?.perfilDadosCadastrais).toBe(true);
+        expect(conta.lgpdConsents?.perfilNotasDesempenho).toBe(true);
+    });
+
     it.each(['nome', 'email', 'senha', 'telefone', 'codigoSecreto'])(
         'sem %s no corpo, o backend recusa — o contrato é esse mesmo',
         async (campo) => {

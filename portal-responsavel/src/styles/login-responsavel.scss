@@ -160,11 +160,47 @@ body.ui3 .lr-page .ui-btn--primary .lr-seta {
 }
 
 // Contêiner do botão oficial do Google (renderizado pelo próprio Google, em
-// iframe): só centraliza e reserva a altura para a tela não pular.
+// iframe): isola o color-scheme para impedir canvas branco no dark mode,
+// centraliza e harmoniza com a identidade visual do portal.
 body.ui3 .lr-google {
   display: flex;
   justify-content: center;
+  align-items: center;
+  width: 100%;
   min-height: 44px;
+  // O Chromium força canvas branco em iframes sem dark mode quando o pai tem
+  // color-scheme: dark. Forçar light neste container remove a moldura branca.
+  color-scheme: light;
+
+  > div {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    width: 100% !important;
+    max-width: 380px;
+    border-radius: var(--ui-r);
+    overflow: hidden;
+    border: 1px solid var(--ui-line-strong);
+    background: var(--ui-surface-2);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    transition:
+      border-color var(--ui-fast) var(--ui-ease-out),
+      box-shadow var(--ui-base) var(--ui-ease-out),
+      transform var(--ui-fast) var(--ui-ease-out);
+
+    &:hover {
+      border-color: var(--ui-accent-line);
+      box-shadow: 0 0 16px -4px var(--ui-accent-soft);
+      transform: translateY(-1px);
+    }
+  }
+
+  iframe {
+    color-scheme: light !important;
+    background: transparent !important;
+    border-radius: calc(var(--ui-r) - 1px) !important;
+    max-width: 100% !important;
+  }
 }
 
 body.ui3 .lr-primeiro-acesso {

@@ -10,9 +10,12 @@ const NotaSchema = new mongoose.Schema(
         avaliacaoId: { type: String, index: true }, // Referência opcional à Avaliação estruturada
         turmaId: String,
         materiaId: String,
+        materia: String,
         bimestre: Number,
+        anoLetivo: Number,
         tipo: String, // prova, trabalho
         nota: Number, // SEMPRE na escala 0–10: boletim, portal e médias leem este campo
+        valor: Number,
         // Nota de avaliação estruturada (Issue #330): os pontos que o professor lançou e o
         // valor da avaliação. Numa prova que vale 5, 4 pontos gravam `nota: 8`.
         pontos: Number,
