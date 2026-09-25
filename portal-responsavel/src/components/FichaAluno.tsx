@@ -49,7 +49,10 @@ function SimNaoSelect({
           marginBottom: '0.25rem',
         }}
       >
-        <label htmlFor={selectId} style={{ fontSize: '0.85rem', color: 'rgba(var(--tint-rgb), 0.7)' }}>
+        <label
+          htmlFor={selectId}
+          style={{ fontSize: '0.85rem', color: 'rgba(var(--tint-rgb), 0.7)' }}
+        >
           {label}
         </label>
         {description && (
@@ -210,7 +213,11 @@ const FichaAluno: React.FC<Props> = ({ student, onUpdate }) => {
       {(student.responsaveis?.length || student.responsavelDados) && (
         <div style={{ marginBottom: '1.25rem' }}>
           <h4
-            style={{ fontSize: '0.85rem', color: 'rgba(var(--tint-rgb), 0.6)', marginBottom: '0.5rem' }}
+            style={{
+              fontSize: '0.85rem',
+              color: 'rgba(var(--tint-rgb), 0.6)',
+              marginBottom: '0.5rem',
+            }}
           >
             Responsáveis
           </h4>
@@ -291,8 +298,8 @@ const FichaAluno: React.FC<Props> = ({ student, onUpdate }) => {
           lineHeight: 1.5,
         }}
       >
-        Toque em <strong style={{ color: 'var(--success-text)' }}>Exibir detalhes</strong> em cada item para
-        entender exatamente o que você está autorizando antes de escolher SIM ou NÃO.
+        Toque em <strong style={{ color: 'var(--success-text)' }}>Exibir detalhes</strong> em cada
+        item para entender exatamente o que você está autorizando antes de escolher SIM ou NÃO.
       </p>
       <SimNaoSelect
         label="Tratamento odontológico"

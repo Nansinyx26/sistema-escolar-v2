@@ -1,14 +1,22 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useTTS } from '../hooks/useTTS';
-import { Comentario } from '../types';
-import { getComentarios, addComentario, deleteComentario, updateComentario, getMe, uploadAudio } from '../services/apiService';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Send, Trash2, Reply, Pencil, Check, X, Mic } from 'lucide-react';
+import { Check, Mic, Pencil, Reply, Send, Trash2, X } from 'lucide-react';
+import type React from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTTS } from '../hooks/useTTS';
+import {
+  addComentario,
+  deleteComentario,
+  getComentarios,
+  getMe,
+  updateComentario,
+  uploadAudio,
+} from '../services/apiService';
 import { socket } from '../services/socket';
-import VoiceRecorder from './VoiceRecorder';
-import AudioPlayer from './AudioPlayer';
+import type { Comentario } from '../types';
 import { getPhotoUrl } from '../utils/photoUtils';
+import AudioPlayer from './AudioPlayer';
+import VoiceRecorder from './VoiceRecorder';
 
 interface Props {
   comunicadoId?: string;
@@ -26,7 +34,9 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(
+    null
+  );
   const [currentUserId, setCurrentUserId] = useState('');
   const [currentUserPhoto, setCurrentUserPhoto] = useState('');
   const [showRecorder, setShowRecorder] = useState(false);
@@ -37,6 +47,7 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
     window.setTimeout(() => setFeedback(null), 3500);
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: showFeedback só exibe aviso; incluí-lo recriaria a busca a cada render
   const loadComments = useCallback(async () => {
     try {
       setLoading(true);
@@ -62,15 +73,19 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
 
   useEffect(() => {
     const isTarget = (cId: unknown, nId: unknown) => {
-        if (comunicadoId && normalizeId(cId) === normalizeId(comunicadoId)) return true;
-        if (notificacaoId && normalizeId(nId) === normalizeId(notificacaoId)) return true;
-        return false;
+      if (comunicadoId && normalizeId(cId) === normalizeId(comunicadoId)) return true;
+      if (notificacaoId && normalizeId(nId) === normalizeId(notificacaoId)) return true;
+      return false;
     };
 
-    const handleNew = (data: { comunicadoId?: string; notificacaoId?: string; comentario: Comentario }) => {
+    const handleNew = (data: {
+      comunicadoId?: string;
+      notificacaoId?: string;
+      comentario: Comentario;
+    }) => {
       if (!isTarget(data.comunicadoId, data.notificacaoId)) return;
-      setComentarios(prev => {
-        if (prev.some(c => normalizeId(c._id) === normalizeId(data.comentario._id))) return prev;
+      setComentarios((prev) => {
+        if (prev.some((c) => normalizeId(c._id) === normalizeId(data.comentario._id))) return prev;
         onCountChange?.(1);
         return [...prev, data.comentario];
       });
@@ -78,14 +93,16 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
 
     const handleRemove = (data: { id: string; comunicadoId?: string; notificacaoId?: string }) => {
       if (!isTarget(data.comunicadoId, data.notificacaoId)) return;
-      setComentarios(prev => prev.filter(c => normalizeId(c._id) !== normalizeId(data.id)));
+      setComentarios((prev) => prev.filter((c) => normalizeId(c._id) !== normalizeId(data.id)));
       onCountChange?.(-1);
     };
 
     const handleUpdate = (data: { comentario: Comentario }) => {
       if (!isTarget(data.comentario.comunicadoId, data.comentario.notificacaoId)) return;
-      setComentarios(prev =>
-        prev.map(c => normalizeId(c._id) === normalizeId(data.comentario._id) ? data.comentario : c)
+      setComentarios((prev) =>
+        prev.map((c) =>
+          normalizeId(c._id) === normalizeId(data.comentario._id) ? data.comentario : c
+        )
       );
     };
 
@@ -106,9 +123,15 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
 
     setSubmitting(true);
     try {
-      const added = await addComentario(comunicadoId, newComment.trim(), replyTo, undefined, notificacaoId);
-      setComentarios(prev => {
-        if (prev.some(c => normalizeId(c._id) === normalizeId(added._id))) return prev;
+      const added = await addComentario(
+        comunicadoId,
+        newComment.trim(),
+        replyTo,
+        undefined,
+        notificacaoId
+      );
+      setComentarios((prev) => {
+        if (prev.some((c) => normalizeId(c._id) === normalizeId(added._id))) return prev;
         if (!socket.connected) onCountChange?.(1);
         return [...prev, added];
       });
@@ -126,14 +149,20 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
     setSubmitting(true);
     try {
       const audioData = await uploadAudio(blob);
-      const added = await addComentario(comunicadoId, undefined, replyTo, audioData.url, notificacaoId);
-      
-      setComentarios(prev => {
-        if (prev.some(c => normalizeId(c._id) === normalizeId(added._id))) return prev;
+      const added = await addComentario(
+        comunicadoId,
+        undefined,
+        replyTo,
+        audioData.url,
+        notificacaoId
+      );
+
+      setComentarios((prev) => {
+        if (prev.some((c) => normalizeId(c._id) === normalizeId(added._id))) return prev;
         if (!socket.connected) onCountChange?.(1);
         return [...prev, added];
       });
-      
+
       setShowRecorder(false);
       setReplyTo(null);
       showFeedback('success', 'Mensagem de voz enviada!');
@@ -149,7 +178,7 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
     if (!window.confirm('Excluir comentário?')) return;
     try {
       await deleteComentario(id);
-      setComentarios(prev => prev.filter(c => normalizeId(c._id) !== normalizeId(id)));
+      setComentarios((prev) => prev.filter((c) => normalizeId(c._id) !== normalizeId(id)));
       if (!socket.connected) onCountChange?.(-1);
       showFeedback('success', 'Comentário excluído.');
     } catch (error) {
@@ -161,7 +190,9 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
     if (!editText.trim()) return;
     try {
       const updated = await updateComentario(id, editText.trim());
-      setComentarios(prev => prev.map(c => normalizeId(c._id) === normalizeId(id) ? updated : c));
+      setComentarios((prev) =>
+        prev.map((c) => (normalizeId(c._id) === normalizeId(id) ? updated : c))
+      );
       setEditingId(null);
       setEditText('');
       showFeedback('success', 'Comentário atualizado!');
@@ -170,9 +201,9 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
     }
   };
 
-  const rootComments = comentarios.filter(c => !c.parentId);
+  const rootComments = comentarios.filter((c) => !c.parentId);
   const getReplies = (parentId: string) =>
-    comentarios.filter(c => normalizeId(c.parentId) === normalizeId(parentId));
+    comentarios.filter((c) => normalizeId(c.parentId) === normalizeId(parentId));
 
   const renderComment = (comment: Comentario, isReply = false) => {
     const isAuthor = currentUserId && normalizeId(comment.usuarioId) === currentUserId;
@@ -182,7 +213,10 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
     const avatarFontSize = isReply ? '10px' : '0.75rem';
 
     return (
-      <div key={comment._id} style={{ display: 'flex', gap: '12px', marginBottom: isReply ? '0' : '4px' }}>
+      <div
+        key={comment._id}
+        style={{ display: 'flex', gap: '12px', marginBottom: isReply ? '0' : '4px' }}
+      >
         {userPhoto && !userPhoto.includes('default-avatar.png') ? (
           <img
             src={userPhoto}
@@ -195,7 +229,9 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
               flexShrink: 0,
             }}
             alt={comment.usuarioNome}
-            onError={(e) => { (e.target as HTMLImageElement).src = '/img/default-avatar.png'; }}
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = '/img/default-avatar.png';
+            }}
           />
         ) : (
           <div
@@ -216,19 +252,50 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
               flexShrink: 0,
             }}
           >
-            {(comment.usuarioNome || '?').split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()}
+            {(comment.usuarioNome || '?')
+              .split(' ')
+              .map((n: string) => n[0])
+              .join('')
+              .substring(0, 2)
+              .toUpperCase()}
           </div>
         )}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{
-            background: isReply ? 'var(--bg-tertiary)' : 'var(--bg-tertiary)',
-            padding: isReply ? '10px' : '12px',
-            borderRadius: '0 16px 16px 16px',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '4px' }}>
-              <span style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{comment.usuarioNome}</span>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
-                {formatDistanceToNow(new Date(comment.dataCriacao), { locale: ptBR, addSuffix: true })}
+          <div
+            style={{
+              background: isReply ? 'var(--bg-tertiary)' : 'var(--bg-tertiary)',
+              padding: isReply ? '10px' : '12px',
+              borderRadius: '0 16px 16px 16px',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                gap: '8px',
+                marginBottom: '4px',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: '0.825rem',
+                  fontWeight: 700,
+                  color: 'var(--text-primary)',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {comment.usuarioNome}
+              </span>
+              <span
+                style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}
+              >
+                {formatDistanceToNow(new Date(comment.dataCriacao), {
+                  locale: ptBR,
+                  addSuffix: true,
+                })}
               </span>
             </div>
             {isEditing ? (
@@ -251,16 +318,38 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
                   rows={2}
                 />
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button type="button" onClick={() => handleEditSave(comment._id)} style={{
-                    fontSize: '0.75rem', fontWeight: 700, color: 'var(--success-text)', background: 'none', border: 'none', cursor: 'pointer',
-                    display: 'inline-flex', alignItems: 'center', gap: '4px',
-                  }}>
+                  <button
+                    type="button"
+                    onClick={() => handleEditSave(comment._id)}
+                    style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      color: 'var(--success-text)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
                     <Check size={12} /> Salvar
                   </button>
-                  <button type="button" onClick={() => setEditingId(null)} style={{
-                    fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-tertiary)', background: 'none', border: 'none', cursor: 'pointer',
-                    display: 'inline-flex', alignItems: 'center', gap: '4px',
-                  }}>
+                  <button
+                    type="button"
+                    onClick={() => setEditingId(null)}
+                    style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      color: 'var(--text-tertiary)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
                     <X size={12} /> Cancelar
                   </button>
                 </div>
@@ -268,14 +357,18 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
             ) : (
               <div>
                 {comment.texto && (
-                  <p style={{
-                    fontSize: isReply ? '0.875rem' : '1rem',
-                    color: 'var(--text-secondary)',
-                    wordBreak: 'break-word',
-                    whiteSpace: 'pre-wrap',
-                    margin: 0,
-                    lineHeight: 1.6,
-                  }}>{comment.texto}</p>
+                  <p
+                    style={{
+                      fontSize: isReply ? '0.875rem' : '1rem',
+                      color: 'var(--text-secondary)',
+                      wordBreak: 'break-word',
+                      whiteSpace: 'pre-wrap',
+                      margin: 0,
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    {comment.texto}
+                  </p>
                 )}
                 {comment.audioUrl && (
                   <div style={{ marginTop: '8px', width: '100%', minWidth: 0 }}>
@@ -287,12 +380,28 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
           </div>
 
           {!isEditing && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '4px', paddingLeft: '4px' }}>
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '12px',
+                marginTop: '4px',
+                paddingLeft: '4px',
+              }}
+            >
               <button
                 type="button"
-                onClick={() => { setReplyTo(comment._id); inputRef.current?.focus(); }}
+                onClick={() => {
+                  setReplyTo(comment._id);
+                  inputRef.current?.focus();
+                }}
                 style={{
-                  fontSize: '10px', fontWeight: 700, color: 'var(--text-tertiary)', background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  color: 'var(--text-tertiary)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
                 }}
               >
                 Responder
@@ -300,10 +409,20 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
               {isAuthor && comment.texto && (
                 <button
                   type="button"
-                  onClick={() => { setEditingId(comment._id); setEditText(comment.texto || ''); }}
+                  onClick={() => {
+                    setEditingId(comment._id);
+                    setEditText(comment.texto || '');
+                  }}
                   style={{
-                    fontSize: '10px', fontWeight: 700, color: 'var(--text-tertiary)', background: 'none', border: 'none', cursor: 'pointer',
-                    display: 'inline-flex', alignItems: 'center', gap: '4px',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    color: 'var(--text-tertiary)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
                   }}
                 >
                   <Pencil size={10} /> Editar
@@ -314,8 +433,15 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
                   type="button"
                   onClick={() => handleDelete(comment._id)}
                   style={{
-                    fontSize: '10px', fontWeight: 700, color: '#f87171', background: 'none', border: 'none', cursor: 'pointer',
-                    display: 'inline-flex', alignItems: 'center', gap: '4px',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    color: '#f87171',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
                   }}
                 >
                   <Trash2 size={10} /> Excluir
@@ -333,8 +459,8 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
   const readAllComments = () => {
     if (comentarios.length === 0) return;
     const textToRead = comentarios
-      .filter(c => !c.parentId)
-      .map(c => `${c.usuarioNome} comentou: ${c.texto}`)
+      .filter((c) => !c.parentId)
+      .map((c) => `${c.usuarioNome} comentou: ${c.texto}`)
       .join('. ');
     if (textToRead) {
       speak(`Lendo ${comentarios.length} comentários. ${textToRead}`);
@@ -343,10 +469,22 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-        <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Comentários</h4>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '12px',
+        }}
+      >
+        <h4
+          style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}
+        >
+          Comentários
+        </h4>
         {comentarios.length > 0 && (
           <button
+            type="button"
             onClick={readAllComments}
             style={{
               background: 'rgba(var(--tint-rgb), 0.05)',
@@ -366,31 +504,53 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
         )}
       </div>
       {feedback && (
-        <div style={{
-          borderRadius: '8px',
-          padding: '8px 12px',
-          fontSize: '0.75rem',
-          fontWeight: 600,
-          marginBottom: '16px',
-          background: feedback.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-          border: `1px solid ${feedback.type === 'success' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`,
-          color: feedback.type === 'success' ? '#6ee7b7' : '#fca5a5',
-        }}>
+        <div
+          style={{
+            borderRadius: '8px',
+            padding: '8px 12px',
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            marginBottom: '16px',
+            background:
+              feedback.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+            border: `1px solid ${feedback.type === 'success' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`,
+            color: feedback.type === 'success' ? '#6ee7b7' : '#fca5a5',
+          }}
+        >
           {feedback.text}
         </div>
       )}
 
       {showRecorder ? (
-        <VoiceRecorder 
-          onSend={handleVoiceSend} 
-          onCancel={() => setShowRecorder(false)} 
-        />
+        <VoiceRecorder onSend={handleVoiceSend} onCancel={() => setShowRecorder(false)} />
       ) : (
         <form onSubmit={handleSubmit} style={{ position: 'relative', marginBottom: '16px' }}>
           {replyTo && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px', color: 'var(--success-text)', marginBottom: '8px' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '10px',
+                color: 'var(--success-text)',
+                marginBottom: '8px',
+              }}
+            >
               <Reply size={10} /> Respondendo comentário...
-              <button type="button" onClick={() => setReplyTo(null)} style={{ textDecoration: 'underline', background: 'none', border: 'none', color: 'var(--success-text)', cursor: 'pointer', fontSize: '10px' }}>Cancelar</button>
+              <button
+                type="button"
+                onClick={() => setReplyTo(null)}
+                style={{
+                  textDecoration: 'underline',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--success-text)',
+                  cursor: 'pointer',
+                  fontSize: '10px',
+                }}
+              >
+                Cancelar
+              </button>
             </div>
           )}
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -425,7 +585,9 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
                     objectFit: 'cover',
                   }}
                   alt="Sua foto"
-                  onError={(e) => { (e.target as HTMLImageElement).src = '/img/default-avatar.png'; }}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/img/default-avatar.png';
+                  }}
                 />
               ) : (
                 <div
@@ -474,8 +636,8 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
                 padding: '10px 12px',
                 borderRadius: '12px',
                 border: 'none',
-                cursor: (!newComment.trim() || submitting) ? 'default' : 'pointer',
-                opacity: (!newComment.trim() || submitting) ? 0.5 : 1,
+                cursor: !newComment.trim() || submitting ? 'default' : 'pointer',
+                opacity: !newComment.trim() || submitting ? 0.5 : 1,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -491,15 +653,40 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
 
       <div style={{ marginTop: '8px' }}>
         {loading ? (
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textAlign: 'center', padding: '16px 0' }}>Carregando comentários...</p>
+          <p
+            style={{
+              fontSize: '0.75rem',
+              color: 'var(--text-tertiary)',
+              textAlign: 'center',
+              padding: '16px 0',
+            }}
+          >
+            Carregando comentários...
+          </p>
         ) : rootComments.length === 0 ? (
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textAlign: 'center', padding: '16px 0' }}>Seja o primeiro a comentar.</p>
+          <p
+            style={{
+              fontSize: '0.75rem',
+              color: 'var(--text-tertiary)',
+              textAlign: 'center',
+              padding: '16px 0',
+            }}
+          >
+            Seja o primeiro a comentar.
+          </p>
         ) : (
-          rootComments.map(comment => (
+          rootComments.map((comment) => (
             <div key={comment._id} style={{ marginBottom: '12px' }}>
               {renderComment(comment)}
-              <div style={{ marginLeft: '44px', borderLeft: '1px solid rgba(var(--tint-rgb), 0.05)', paddingLeft: '16px', marginTop: '12px' }}>
-                {getReplies(comment._id).map(reply => (
+              <div
+                style={{
+                  marginLeft: '44px',
+                  borderLeft: '1px solid rgba(var(--tint-rgb), 0.05)',
+                  paddingLeft: '16px',
+                  marginTop: '12px',
+                }}
+              >
+                {getReplies(comment._id).map((reply) => (
                   <div key={reply._id} style={{ marginBottom: '12px' }}>
                     {renderComment(reply, true)}
                   </div>

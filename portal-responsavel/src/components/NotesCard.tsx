@@ -135,7 +135,11 @@ const NotesCard: React.FC<NotesCardProps> = ({ grades, onDownload, downloading =
             title="Baixar boletim em PDF"
             aria-label={downloading ? 'Gerando boletim em PDF' : 'Baixar boletim em PDF'}
           >
-            <Icon name={downloading ? 'loader' : 'download'} spin={downloading} aria-hidden="true" />
+            <Icon
+              name={downloading ? 'loader' : 'download'}
+              spin={downloading}
+              aria-hidden="true"
+            />
           </button>
         )}
       </div>
@@ -207,9 +211,13 @@ const NotesCard: React.FC<NotesCardProps> = ({ grades, onDownload, downloading =
                             title={media !== null ? mediaMeta.label : 'Sem notas lançadas'}
                           >
                             <span className={styles.gradeDot} aria-hidden="true" />
-                            <span aria-hidden="true">{media !== null ? media.toFixed(1) : '—'}</span>
+                            <span aria-hidden="true">
+                              {media !== null ? media.toFixed(1) : '—'}
+                            </span>
                             <span className="sr-only">
-                              {media !== null ? `${media.toFixed(1)}, ${mediaMeta.label}` : 'sem média'}
+                              {media !== null
+                                ? `${media.toFixed(1)}, ${mediaMeta.label}`
+                                : 'sem média'}
                             </span>
                           </span>
                         </td>

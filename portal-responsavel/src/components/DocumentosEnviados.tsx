@@ -145,7 +145,13 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
   const alunoNomeCompleto = [student.nome, student.sobrenome].filter(Boolean).join(' ');
 
   return (
-    <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
+    <div
+      style={{
+        marginTop: '2rem',
+        borderTop: '1px solid var(--border-color)',
+        paddingTop: '1.5rem',
+      }}
+    >
       <div
         style={{
           display: 'flex',
@@ -256,8 +262,8 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
               gap: '0.5rem',
             }}
           >
-            <i className="bi bi-cloud-arrow-up" style={{ color: 'var(--success-text)' }} /> Enviar Documento
-            Assinado à Mão
+            <i className="bi bi-cloud-arrow-up" style={{ color: 'var(--success-text)' }} /> Enviar
+            Documento Assinado à Mão
           </h5>
 
           <div
@@ -451,7 +457,12 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
       {/* Tabela de Documentos Enviados */}
       {loading ? (
         <div
-          style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}
+          style={{
+            textAlign: 'center',
+            padding: '1.5rem',
+            color: 'var(--text-secondary)',
+            fontSize: '0.85rem',
+          }}
         >
           <i className="bi bi-hourglass-split" /> Carregando documentos enviados...
         </div>
@@ -488,7 +499,12 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
             }}
           >
             <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
+              <tr
+                style={{
+                  borderBottom: '1px solid var(--border-color)',
+                  color: 'var(--text-secondary)',
+                }}
+              >
                 <th style={{ padding: '0.6rem 0.5rem' }}>Nome do documento</th>
                 <th style={{ padding: '0.6rem 0.5rem' }}>Tipo</th>
                 <th style={{ padding: '0.6rem 0.5rem' }}>Aluno</th>
@@ -504,8 +520,17 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
                 const downloadUrl = `${apiBase}/documentos-responsaveis/${doc._id}/download`;
 
                 return (
-                  <tr key={doc._id} style={{ borderBottom: '1px solid rgba(var(--tint-rgb), 0.04)' }}>
-                    <td style={{ padding: '0.65rem 0.5rem', color: 'var(--text-primary)', fontWeight: 500 }}>
+                  <tr
+                    key={doc._id}
+                    style={{ borderBottom: '1px solid rgba(var(--tint-rgb), 0.04)' }}
+                  >
+                    <td
+                      style={{
+                        padding: '0.65rem 0.5rem',
+                        color: 'var(--text-primary)',
+                        fontWeight: 500,
+                      }}
+                    >
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
                         <i
                           className={`bi ${isPdf ? 'bi-file-earmark-pdf-fill' : 'bi-file-earmark-image-fill'}`}
@@ -550,7 +575,13 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
                     >
                       {new Date(doc.dataEnvio).toLocaleString('pt-BR')}
                       {doc.ultimaAtualizacao && doc.ultimaAtualizacao !== doc.dataEnvio && (
-                        <small style={{ display: 'block', color: 'var(--success-text)', fontSize: '0.68rem' }}>
+                        <small
+                          style={{
+                            display: 'block',
+                            color: 'var(--success-text)',
+                            fontSize: '0.68rem',
+                          }}
+                        >
                           Atualizado: {new Date(doc.ultimaAtualizacao).toLocaleDateString('pt-BR')}
                         </small>
                       )}

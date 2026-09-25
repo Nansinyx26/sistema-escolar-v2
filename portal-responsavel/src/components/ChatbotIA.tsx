@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { streamCopiloto } from '../services/apiService';
+import React, { useEffect, useRef, useState } from 'react';
+import { definirVoz, normalizarVoz, VOZES, type VozNome, vozAtual } from '../constants/vozes';
 import { useTTS } from '../hooks/useTTS';
-import { type VozNome, VOZES, definirVoz, normalizarVoz, vozAtual } from '../constants/vozes';
-import VoiceOrb from './VoiceOrb';
+import { streamCopiloto } from '../services/apiService';
 import styles from '../styles/portal.module.scss';
 import Icon from './ui/Icon';
+import VoiceOrb from './VoiceOrb';
 
 interface Message {
   text: string;
@@ -30,7 +30,11 @@ const ChatbotIA: React.FC<ChatbotIAProps> = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([
-    { text: 'Olá! Sou o seu Assistente Escolar IA. Como posso ajudar com informações sobre sua conta ou o desempenho do seu filho(a)?', isAi: true, timestamp: new Date() }
+    {
+      text: 'Olá! Sou o seu Assistente Escolar IA. Como posso ajudar com informações sobre sua conta ou o desempenho do seu filho(a)?',
+      isAi: true,
+      timestamp: new Date(),
+    },
   ]);
   const [loading, setLoading] = useState(false);
   const [activeMessageIndex, setActiveMessageIndex] = useState<number | null>(null);
@@ -59,11 +63,12 @@ const ChatbotIA: React.FC<ChatbotIAProps> = () => {
     () => localStorage.getItem('user_preferencia_narracao') !== 'texto'
   );
   const [showSettings, setShowSettings] = useState(false);
-  
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const { isPlaying, speak, stop } = useTTS();
 
   // Scroll to bottom on updates
+  // biome-ignore lint/correctness/useExhaustiveDependencies: rola para o fim sempre que chega mensagem, abre o chat ou muda o carregamento
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -77,31 +82,30 @@ const ChatbotIA: React.FC<ChatbotIAProps> = () => {
     const userMsg = input;
     setInput('');
     lastMessageRef.current = userMsg;
-    setMessages((prev: Message[]) => [...prev, { text: userMsg, isAi: false, timestamp: new Date() }]);
+    setMessages((prev: Message[]) => [
+      ...prev,
+      { text: userMsg, isAi: false, timestamp: new Date() },
+    ]);
     setLoading(true);
 
     // Bolha vazia do assistente: os pedaços do stream vão sendo escritos nela.
     const indiceResposta = messages.length + 1;
-    setMessages(prev => [...prev, { text: '', isAi: true, timestamp: new Date() }]);
+    setMessages((prev) => [...prev, { text: '', isAi: true, timestamp: new Date() }]);
 
     try {
       // Copiloto (`/ia/chat`) no lugar do `/ia/chatbot` legado: aqui valem o
       // filtro de ferramentas por cargo e o PermissionGuard, então a conversa
       // alcança só os dados dos próprios filhos.
-      const { texto, conversaId: novoId } = await streamCopiloto(
-        userMsg,
-        conversaId,
-        (pedaco) => {
-          setMessages(prev => {
-            const copia = [...prev];
-            const ultima = copia[copia.length - 1];
-            if (ultima && ultima.isAi) {
-              copia[copia.length - 1] = { ...ultima, text: ultima.text + pedaco };
-            }
-            return copia;
-          });
-        }
-      );
+      const { texto, conversaId: novoId } = await streamCopiloto(userMsg, conversaId, (pedaco) => {
+        setMessages((prev) => {
+          const copia = [...prev];
+          const ultima = copia[copia.length - 1];
+          if (ultima && ultima.isAi) {
+            copia[copia.length - 1] = { ...ultima, text: ultima.text + pedaco };
+          }
+          return copia;
+        });
+      });
 
       // O histórico agora é do servidor; o cliente guarda só o ponteiro.
       setConversaId(novoId);
@@ -110,12 +114,13 @@ const ChatbotIA: React.FC<ChatbotIAProps> = () => {
         setTimeout(() => handlePlayAudio(texto, indiceResposta), 100);
       }
     } catch (err) {
-      setMessages(prev => {
+      setMessages((prev) => {
         const copia = [...prev];
         const ultima = copia[copia.length - 1];
-        const aviso = err instanceof Error && err.message
-          ? err.message
-          : 'Desculpe, estou com dificuldades técnicas agora.';
+        const aviso =
+          err instanceof Error && err.message
+            ? err.message
+            : 'Desculpe, estou com dificuldades técnicas agora.';
         // Reaproveita a bolha vazia em vez de deixar um balão em branco na tela.
         if (ultima && ultima.isAi && !ultima.text) {
           copia[copia.length - 1] = { ...ultima, text: aviso };
@@ -139,34 +144,44 @@ const ChatbotIA: React.FC<ChatbotIAProps> = () => {
    */
   const handleOptionClick = async (option: { label: string; value?: string; alunoId?: string }) => {
     if (loading) return;
-    setMessages(prev => [...prev, { text: option.label, isAi: false, timestamp: new Date() }, { text: '', isAi: true, timestamp: new Date() }]);
+    setMessages((prev) => [
+      ...prev,
+      { text: option.label, isAi: false, timestamp: new Date() },
+      { text: '', isAi: true, timestamp: new Date() },
+    ]);
     setLoading(true);
 
     try {
-      const { conversaId: novoId } = await streamCopiloto(
-        option.label,
-        conversaId,
-        (pedaco) => {
-          setMessages(prev => {
-            const copia = [...prev];
-            const ultima = copia[copia.length - 1];
-            if (ultima && ultima.isAi) {
-              copia[copia.length - 1] = { ...ultima, text: ultima.text + pedaco };
-            }
-            return copia;
-          });
-        }
-      );
+      const { conversaId: novoId } = await streamCopiloto(option.label, conversaId, (pedaco) => {
+        setMessages((prev) => {
+          const copia = [...prev];
+          const ultima = copia[copia.length - 1];
+          if (ultima && ultima.isAi) {
+            copia[copia.length - 1] = { ...ultima, text: ultima.text + pedaco };
+          }
+          return copia;
+        });
+      });
       setConversaId(novoId);
     } catch {
-      setMessages(prev => {
+      setMessages((prev) => {
         const copia = [...prev];
         const ultima = copia[copia.length - 1];
         if (ultima && ultima.isAi && !ultima.text) {
-          copia[copia.length - 1] = { ...ultima, text: 'Desculpe, estou com dificuldades técnicas agora.' };
+          copia[copia.length - 1] = {
+            ...ultima,
+            text: 'Desculpe, estou com dificuldades técnicas agora.',
+          };
           return copia;
         }
-        return [...prev, { text: 'Desculpe, estou com dificuldades técnicas agora.', isAi: true, timestamp: new Date() }];
+        return [
+          ...prev,
+          {
+            text: 'Desculpe, estou com dificuldades técnicas agora.',
+            isAi: true,
+            timestamp: new Date(),
+          },
+        ];
       });
     } finally {
       setLoading(false);
@@ -195,8 +210,9 @@ const ChatbotIA: React.FC<ChatbotIAProps> = () => {
     <div className={styles.chatbotContainer}>
       {/* Botão de Abrir */}
       {!isOpen && (
-        <button 
-          className={styles.chatbotFab} 
+        <button
+          type="button"
+          className={styles.chatbotFab}
           onClick={() => setIsOpen(true)}
           aria-label="Abrir Chatbot IA"
         >
@@ -216,14 +232,22 @@ const ChatbotIA: React.FC<ChatbotIAProps> = () => {
               </div>
             </div>
             <div className={styles.chatbotHeaderActions}>
-              <button 
-                onClick={() => setShowSettings(!showSettings)} 
-                className={styles.settingsBtn} 
+              <button
+                type="button"
+                onClick={() => setShowSettings(!showSettings)}
+                className={styles.settingsBtn}
                 title="Configurações de Voz"
               >
                 <Icon name="settings" />
               </button>
-              <button onClick={() => { stop(); setIsOpen(false); }} className={styles.closeBtn}>
+              <button
+                type="button"
+                onClick={() => {
+                  stop();
+                  setIsOpen(false);
+                }}
+                className={styles.closeBtn}
+              >
                 <Icon name="x" />
               </button>
             </div>
@@ -233,18 +257,31 @@ const ChatbotIA: React.FC<ChatbotIAProps> = () => {
             <div className={styles.audioSettingsPanel}>
               {/* Seletor de voz ElevenLabs — sempre masculino */}
               <div className={styles.settingItem}>
-                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '8px' }}>
+                <span
+                  style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    color: 'var(--text-secondary)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    display: 'block',
+                    marginBottom: '8px',
+                  }}
+                >
                   🎙️ Voz do Assistente
-                </label>
+                </span>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                  {VOZES.map(v => (
+                  {VOZES.map((v) => (
                     <button
                       key={v.nome}
                       type="button"
                       // `definirVoz` grava as duas chaves do navegador, avisa o
                       // cabeçalho e persiste no servidor — antes a escolha
                       // ficava só neste navegador.
-                      onClick={() => { setSelectedVoice(v.nome); void definirVoz(v.nome); }}
+                      onClick={() => {
+                        setSelectedVoice(v.nome);
+                        void definirVoz(v.nome);
+                      }}
                       style={{
                         padding: '8px 10px',
                         borderRadius: '8px',
@@ -252,32 +289,51 @@ const ChatbotIA: React.FC<ChatbotIAProps> = () => {
                         fontWeight: 600,
                         cursor: 'pointer',
                         transition: 'all 0.15s',
-                        border: selectedVoice === v.nome
-                          ? '2px solid #10b981'
-                          : '1px solid rgba(var(--tint-rgb), 0.1)',
-                        background: selectedVoice === v.nome
-                          ? 'rgba(16, 185, 129, 0.15)'
-                          : 'rgba(var(--tint-rgb), 0.04)',
+                        border:
+                          selectedVoice === v.nome
+                            ? '2px solid #10b981'
+                            : '1px solid rgba(var(--tint-rgb), 0.1)',
+                        background:
+                          selectedVoice === v.nome
+                            ? 'rgba(16, 185, 129, 0.15)'
+                            : 'rgba(var(--tint-rgb), 0.04)',
                         color: selectedVoice === v.nome ? '#10b981' : 'var(--text-secondary)',
                         textAlign: 'left' as const,
                       }}
                     >
                       <div>{v.rotulo}</div>
-                      <div style={{ fontSize: '0.68rem', opacity: 0.6, fontWeight: 400 }}>{v.descricao}</div>
+                      <div style={{ fontSize: '0.68rem', opacity: 0.6, fontWeight: 400 }}>
+                        {v.descricao}
+                      </div>
                     </button>
                   ))}
                 </div>
               </div>
 
               {/* Autoplay */}
-              <div className={styles.settingItem} style={{ borderTop: '1px solid rgba(var(--tint-rgb), 0.06)', paddingTop: '10px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+              <div
+                className={styles.settingItem}
+                style={{ borderTop: '1px solid rgba(var(--tint-rgb), 0.06)', paddingTop: '10px' }}
+              >
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    cursor: 'pointer',
+                    fontSize: '0.82rem',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
                   <input
                     type="checkbox"
                     checked={autoPlay}
                     onChange={(e) => {
                       setAutoPlay(e.target.checked);
-                      localStorage.setItem('user_preferencia_narracao', e.target.checked ? 'audio' : 'texto');
+                      localStorage.setItem(
+                        'user_preferencia_narracao',
+                        e.target.checked ? 'audio' : 'texto'
+                      );
                     }}
                     style={{ accentColor: '#10b981' }}
                   />
@@ -289,25 +345,38 @@ const ChatbotIA: React.FC<ChatbotIAProps> = () => {
 
           <div className={styles.chatBody} ref={scrollRef}>
             {messages.map((m, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: histórico só cresce no fim, a posição é estável
               <div className={`${styles.chatMsg} ${m.isAi ? styles.ai : styles.user}`} key={i}>
                 <div className={styles.msgText}>
                   {m.text}
                   {m.isAi && (
                     <div className={styles.audioControls}>
-                      <button 
-                        onClick={() => handlePlayAudio(m.text, i)} 
+                      <button
+                        type="button"
+                        onClick={() => handlePlayAudio(m.text, i)}
                         className={styles.audioBtn}
-                        title={isPlaying && activeMessageIndex === i ? "Pausar" : "Ouvir resposta"}
+                        title={isPlaying && activeMessageIndex === i ? 'Pausar' : 'Ouvir resposta'}
                       >
-                        <Icon name={isPlaying && activeMessageIndex === i ? "player-pause" : "volume"} />
+                        <Icon
+                          name={isPlaying && activeMessageIndex === i ? 'player-pause' : 'volume'}
+                        />
                       </button>
                     </div>
                   )}
                   {/* Botões de opção — aparecem quando o backend retorna múltiplos alunos */}
                   {m.isAi && m.options && m.options.length > 0 && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '10px' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                        marginTop: '10px',
+                      }}
+                    >
                       {m.options.map((opt, oi) => (
                         <button
+                          type="button"
+                          // biome-ignore lint/suspicious/noArrayIndexKey: opções fixas de uma mensagem já enviada
                           key={oi}
                           onClick={() => handleOptionClick(opt)}
                           disabled={loading}
@@ -323,8 +392,15 @@ const ChatbotIA: React.FC<ChatbotIAProps> = () => {
                             textAlign: 'left',
                             transition: 'all 0.15s',
                           }}
-                          onMouseEnter={e => { if (!loading) (e.currentTarget as HTMLButtonElement).style.background = 'rgba(16,185,129,0.22)'; }}
-                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(16,185,129,0.12)'; }}
+                          onMouseEnter={(e) => {
+                            if (!loading)
+                              (e.currentTarget as HTMLButtonElement).style.background =
+                                'rgba(16,185,129,0.22)';
+                          }}
+                          onMouseLeave={(e) => {
+                            (e.currentTarget as HTMLButtonElement).style.background =
+                              'rgba(16,185,129,0.12)';
+                          }}
                         >
                           {opt.label}
                         </button>
@@ -332,18 +408,16 @@ const ChatbotIA: React.FC<ChatbotIAProps> = () => {
                     </div>
                   )}
                 </div>
-                <div className={styles.msgTime}>{m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                <div className={styles.msgTime}>
+                  {m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
               </div>
             ))}
-            
+
             {/* Modo 1 - Orbe Grande no Chat */}
             {isPlaying && (
               <div className={styles.voiceStage}>
-                <VoiceOrb 
-                  size="large" 
-                  isPlaying={true}
-                  onClick={() => stop()}
-                />
+                <VoiceOrb size="large" isPlaying={true} onClick={() => stop()} />
               </div>
             )}
 
@@ -357,12 +431,13 @@ const ChatbotIA: React.FC<ChatbotIAProps> = () => {
           </div>
 
           <form className={styles.chatInput} onSubmit={handleSend}>
-            <input 
-              type="text" 
-              placeholder="Pergunte sobre notas, faltas..." 
+            <input
+              type="text"
+              placeholder="Pergunte sobre notas, faltas..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
               disabled={loading}
+              // biome-ignore lint/a11y/noAutofocus: o chat acabou de ser aberto pela pessoa; o foco vai para a caixa de mensagem
               autoFocus
             />
             <button type="submit" disabled={!input.trim() || loading}>

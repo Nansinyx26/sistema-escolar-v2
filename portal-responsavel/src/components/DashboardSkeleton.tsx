@@ -8,6 +8,7 @@ import styles from '../styles/portal.module.scss';
  */
 const DashboardSkeleton: React.FC = () => (
   <div
+    role="status"
     aria-busy="true"
     aria-label="Carregando dados do aluno…"
     style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}

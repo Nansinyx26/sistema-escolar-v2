@@ -1,5 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Mic, Square, Trash2, Send, Play, Pause } from 'lucide-react';
+import { Mic, Pause, Play, Send, Square, Trash2 } from 'lucide-react';
+import type React from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface VoiceRecorderProps {
   onSend: (audioBlob: Blob) => void;
@@ -42,7 +43,9 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onSend, onCancel }) => {
         setAudioBlob(blob);
         const url = URL.createObjectURL(blob);
         setAudioUrl(url);
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach((track) => {
+          track.stop();
+        });
       };
 
       recorder.start();
@@ -92,31 +95,46 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onSend, onCancel }) => {
   };
 
   return (
-    <div style={{
-      background: 'var(--bg-tertiary)',
-      border: '1px solid rgba(var(--tint-rgb), 0.1)',
-      borderRadius: '16px',
-      padding: '16px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: '16px',
-      animation: 'slideUp 0.2s ease',
-    }}>
+    <div
+      style={{
+        background: 'var(--bg-tertiary)',
+        border: '1px solid rgba(var(--tint-rgb), 0.1)',
+        borderRadius: '16px',
+        padding: '16px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '16px',
+        animation: 'slideUp 0.2s ease',
+      }}
+    >
       {/* Status area */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
         {!audioUrl && isRecording && (
           <>
-            <div style={{
-              width: '10px', height: '10px',
-              background: '#ef4444',
-              borderRadius: '50%',
-              animation: 'pulse 1s ease infinite',
-              flexShrink: 0,
-            }} />
-            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>{formatTime(recordingTime)}</span>
-            <div style={{ flex: 1, display: 'flex', gap: '3px', alignItems: 'center', padding: '0 8px' }}>
-              {[1, 2, 3, 4, 5, 6].map(i => (
+            <div
+              style={{
+                width: '10px',
+                height: '10px',
+                background: '#ef4444',
+                borderRadius: '50%',
+                animation: 'pulse 1s ease infinite',
+                flexShrink: 0,
+              }}
+            />
+            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+              {formatTime(recordingTime)}
+            </span>
+            <div
+              style={{
+                flex: 1,
+                display: 'flex',
+                gap: '3px',
+                alignItems: 'center',
+                padding: '0 8px',
+              }}
+            >
+              {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div
                   key={i}
                   style={{
@@ -136,7 +154,9 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onSend, onCancel }) => {
         {!audioUrl && !isRecording && (
           <>
             <Mic size={18} color="var(--text-tertiary)" />
-            <span style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>Clique no microfone para gravar...</span>
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>
+              Clique no microfone para gravar...
+            </span>
             {error && <span style={{ fontSize: '0.75rem', color: '#f87171' }}>{error}</span>}
           </>
         )}
@@ -147,11 +167,14 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onSend, onCancel }) => {
               type="button"
               onClick={togglePlayback}
               style={{
-                width: '32px', height: '32px',
+                width: '32px',
+                height: '32px',
                 borderRadius: '50%',
                 background: '#10b981',
                 border: 'none',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 color: '#000',
                 cursor: 'pointer',
                 flexShrink: 0,
@@ -159,16 +182,29 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onSend, onCancel }) => {
             >
               {isPlaying ? <Pause size={14} /> : <Play size={14} />}
             </button>
-            <div style={{ flex: 1, height: '6px', background: 'rgba(var(--tint-rgb), 0.1)', borderRadius: '9999px', overflow: 'hidden' }}>
-              <div style={{
-                height: '100%',
-                background: '#10b981',
+            <div
+              style={{
+                flex: 1,
+                height: '6px',
+                background: 'rgba(var(--tint-rgb), 0.1)',
                 borderRadius: '9999px',
-                width: isPlaying ? '100%' : '0%',
-                transition: 'width 0.3s',
-              }} />
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  height: '100%',
+                  background: '#10b981',
+                  borderRadius: '9999px',
+                  width: isPlaying ? '100%' : '0%',
+                  transition: 'width 0.3s',
+                }}
+              />
             </div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{formatTime(recordingTime)}</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+              {formatTime(recordingTime)}
+            </span>
+            {/* biome-ignore lint/a11y/useMediaCaption: prévia da gravação da própria pessoa, não há legenda */}
             <audio
               ref={audioPlayerRef}
               src={audioUrl}
@@ -194,7 +230,9 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onSend, onCancel }) => {
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 borderRadius: '8px',
               }}
             >
@@ -204,17 +242,20 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onSend, onCancel }) => {
               type="button"
               onClick={startRecording}
               style={{
-                width: '40px', height: '40px',
+                width: '40px',
+                height: '40px',
                 borderRadius: '50%',
                 background: '#10b981',
                 border: 'none',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 color: '#000',
                 cursor: 'pointer',
                 transition: 'transform 0.2s',
               }}
-              onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.1)')}
-              onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+              onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.1)')}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
             >
               <Mic size={20} />
             </button>
@@ -226,17 +267,20 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onSend, onCancel }) => {
             type="button"
             onClick={stopRecording}
             style={{
-              width: '40px', height: '40px',
+              width: '40px',
+              height: '40px',
               borderRadius: '50%',
               background: '#ef4444',
               border: 'none',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               color: '#fff',
               cursor: 'pointer',
               transition: 'transform 0.2s',
             }}
-            onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.1)')}
-            onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.1)')}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
           >
             <Square size={18} />
           </button>
@@ -253,7 +297,9 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onSend, onCancel }) => {
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 borderRadius: '8px',
               }}
             >
@@ -263,17 +309,20 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onSend, onCancel }) => {
               type="button"
               onClick={() => audioBlob && onSend(audioBlob)}
               style={{
-                width: '40px', height: '40px',
+                width: '40px',
+                height: '40px',
                 borderRadius: '50%',
                 background: '#10b981',
                 border: 'none',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 color: '#fff',
                 cursor: 'pointer',
                 transition: 'transform 0.2s',
               }}
-              onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.1)')}
-              onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+              onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.1)')}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
             >
               <Send size={16} />
             </button>

@@ -459,8 +459,8 @@ export default function EditarPerfil({ user, onSuccess }: EditarPerfilProps) {
               className={styles.profileSectionTitle}
               style={{ borderColor: 'rgba(16, 185, 129,0.3)' }}
             >
-              <Icon name="shield-lock" style={{ color: 'var(--success-text)' }} /> Termos de Consentimento
-              Ativos
+              <Icon name="shield-lock" style={{ color: 'var(--success-text)' }} /> Termos de
+              Consentimento Ativos
             </h3>
             <p
               style={{
@@ -548,7 +548,14 @@ export default function EditarPerfil({ user, onSuccess }: EditarPerfilProps) {
               >
                 Período de Retenção de Dados
               </h4>
-              <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.8rem', lineHeight: '1.5' }}>
+              <p
+                style={{
+                  margin: 0,
+                  color: 'var(--text-secondary)',
+                  fontSize: '0.8rem',
+                  lineHeight: '1.5',
+                }}
+              >
                 Conforme obrigatoriedades legais do MEC, o histórico acadêmico é de retenção
                 definitiva. Os dados cadastrais do responsável são mantidos enquanto o aluno possuir
                 matrícula ativa.

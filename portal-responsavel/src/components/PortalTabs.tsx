@@ -346,6 +346,7 @@ export function DashboardTabSection({
                 {detailsLoading && !attendance ? (
                   <div
                     className={`${styles.skeleton} ${styles.skeletonFrequency}`}
+                    role="status"
                     aria-busy="true"
                     aria-label="Carregando frequência"
                   />
@@ -397,11 +398,9 @@ export function DashboardTabSection({
                           <Icon name={tab.icon} aria-hidden="true" />
                           <span>{tab.label}</span>
                           {tab.id === 'comunicados' && unreadCount > 0 && (
-                            <span
-                              className={styles.innerTabBadge}
-                              aria-label={`${unreadCount} não lidos`}
-                            >
+                            <span className={styles.innerTabBadge}>
                               {unreadCount}
+                              <span className="sr-only"> não lidos</span>
                             </span>
                           )}
                         </button>
@@ -419,6 +418,7 @@ export function DashboardTabSection({
                       {detailsLoading ? (
                         <div
                           className={`${styles.skeleton} ${styles.skeletonCardMd}`}
+                          role="status"
                           aria-busy="true"
                           aria-label="Carregando notas"
                         />
@@ -457,6 +457,7 @@ export function DashboardTabSection({
                         {detailsLoading ? (
                           <div
                             className={`${styles.skeleton} ${styles.skeletonCardMd}`}
+                            role="status"
                             aria-busy="true"
                             aria-label="Carregando frequência"
                           />
@@ -644,9 +645,7 @@ export function DashboardTabSection({
                 </span>
                 <span className={styles.quickActionText}>
                   <span className={styles.quickActionLabel}>Autorizações</span>
-                  <span className={styles.quickActionSub}>
-                    Veja as autorizações e documentos
-                  </span>
+                  <span className={styles.quickActionSub}>Veja as autorizações e documentos</span>
                 </span>
                 <Icon name="chevron-right" className={styles.quickActionArrow} aria-hidden="true" />
               </button>
