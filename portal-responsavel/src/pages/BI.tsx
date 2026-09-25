@@ -113,7 +113,7 @@ const BI: React.FC = () => {
                 const entry = heatmapData.find(d => d.materia === m && d.turma === tCode);
                 const media = entry ? parseFloat(entry.media) : 0;
                 
-                let bgColor = 'rgba(255,255,255,0.03)';
+                let bgColor = 'rgba(var(--tint-rgb), 0.03)';
                 if (media > 0) {
                   if (media < 5.0) bgColor = 'rgba(239, 68, 68, 0.4)';
                   else if (media < 7.5) bgColor = 'rgba(245, 158, 11, 0.4)';

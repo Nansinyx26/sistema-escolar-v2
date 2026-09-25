@@ -190,7 +190,7 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
               width: avatarSize,
               height: avatarSize,
               borderRadius: '50%',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(var(--tint-rgb), 0.1)',
               objectFit: 'cover',
               flexShrink: 0,
             }}
@@ -205,11 +205,11 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
               minWidth: avatarSize,
               minHeight: avatarSize,
               borderRadius: '50%',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(var(--tint-rgb), 0.1)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#fff',
+              color: 'var(--text-primary)',
               fontWeight: 700,
               fontSize: avatarFontSize,
               background: 'linear-gradient(135deg, #6366f1, #a855f7)',
@@ -221,13 +221,13 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
         )}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
-            background: isReply ? 'rgba(39, 39, 42, 0.5)' : 'rgba(39, 39, 42, 0.8)',
+            background: isReply ? 'var(--bg-tertiary)' : 'var(--bg-tertiary)',
             padding: isReply ? '10px' : '12px',
             borderRadius: '0 16px 16px 16px',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '4px' }}>
-              <span style={{ fontSize: '0.825rem', fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{comment.usuarioNome}</span>
-              <span style={{ fontSize: '0.75rem', color: '#71717a', whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{comment.usuarioNome}</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
                 {formatDistanceToNow(new Date(comment.dataCriacao), { locale: ptBR, addSuffix: true })}
               </span>
             </div>
@@ -238,12 +238,12 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
                   onChange={(e) => setEditText(e.target.value)}
                   style={{
                     width: '100%',
-                    background: '#18181b',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid rgba(var(--tint-rgb), 0.1)',
                     borderRadius: '8px',
                     padding: '8px 12px',
                     fontSize: '0.875rem',
-                    color: '#fff',
+                    color: 'var(--text-primary)',
                     outline: 'none',
                     resize: 'vertical',
                     marginBottom: '8px',
@@ -252,13 +252,13 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
                 />
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button type="button" onClick={() => handleEditSave(comment._id)} style={{
-                    fontSize: '0.75rem', fontWeight: 700, color: '#10b981', background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: '0.75rem', fontWeight: 700, color: 'var(--success-text)', background: 'none', border: 'none', cursor: 'pointer',
                     display: 'inline-flex', alignItems: 'center', gap: '4px',
                   }}>
                     <Check size={12} /> Salvar
                   </button>
                   <button type="button" onClick={() => setEditingId(null)} style={{
-                    fontSize: '0.75rem', fontWeight: 700, color: '#71717a', background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-tertiary)', background: 'none', border: 'none', cursor: 'pointer',
                     display: 'inline-flex', alignItems: 'center', gap: '4px',
                   }}>
                     <X size={12} /> Cancelar
@@ -270,7 +270,7 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
                 {comment.texto && (
                   <p style={{
                     fontSize: isReply ? '0.875rem' : '1rem',
-                    color: '#d4d4d8',
+                    color: 'var(--text-secondary)',
                     wordBreak: 'break-word',
                     whiteSpace: 'pre-wrap',
                     margin: 0,
@@ -292,7 +292,7 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
                 type="button"
                 onClick={() => { setReplyTo(comment._id); inputRef.current?.focus(); }}
                 style={{
-                  fontSize: '10px', fontWeight: 700, color: '#71717a', background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: '10px', fontWeight: 700, color: 'var(--text-tertiary)', background: 'none', border: 'none', cursor: 'pointer',
                 }}
               >
                 Responder
@@ -302,7 +302,7 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
                   type="button"
                   onClick={() => { setEditingId(comment._id); setEditText(comment.texto || ''); }}
                   style={{
-                    fontSize: '10px', fontWeight: 700, color: '#71717a', background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: '10px', fontWeight: 700, color: 'var(--text-tertiary)', background: 'none', border: 'none', cursor: 'pointer',
                     display: 'inline-flex', alignItems: 'center', gap: '4px',
                   }}
                 >
@@ -344,17 +344,17 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-        <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#fff', margin: 0 }}>Comentários</h4>
+        <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Comentários</h4>
         {comentarios.length > 0 && (
           <button
             onClick={readAllComments}
             style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              background: 'rgba(var(--tint-rgb), 0.05)',
+              border: '1px solid rgba(var(--tint-rgb), 0.1)',
               borderRadius: '8px',
               padding: '4px 12px',
               fontSize: '0.75rem',
-              color: '#d4d4d8',
+              color: 'var(--text-secondary)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -388,9 +388,9 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
       ) : (
         <form onSubmit={handleSubmit} style={{ position: 'relative', marginBottom: '16px' }}>
           {replyTo && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px', color: '#10b981', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px', color: 'var(--success-text)', marginBottom: '8px' }}>
               <Reply size={10} /> Respondendo comentário...
-              <button type="button" onClick={() => setReplyTo(null)} style={{ textDecoration: 'underline', background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', fontSize: '10px' }}>Cancelar</button>
+              <button type="button" onClick={() => setReplyTo(null)} style={{ textDecoration: 'underline', background: 'none', border: 'none', color: 'var(--success-text)', cursor: 'pointer', fontSize: '10px' }}>Cancelar</button>
             </div>
           )}
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -398,11 +398,11 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
               type="button"
               onClick={() => setShowRecorder(true)}
               style={{
-                background: 'rgba(255, 255, 255, 0.05)',
-                color: '#a1a1aa',
+                background: 'rgba(var(--tint-rgb), 0.05)',
+                color: 'var(--text-secondary)',
                 padding: '10px',
                 borderRadius: '12px',
-                border: '1px solid rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(var(--tint-rgb), 0.05)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -421,7 +421,7 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
                     width: '36px',
                     height: '36px',
                     borderRadius: '50%',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    border: '1px solid rgba(var(--tint-rgb), 0.1)',
                     objectFit: 'cover',
                   }}
                   alt="Sua foto"
@@ -433,11 +433,11 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
                     width: '36px',
                     height: '36px',
                     borderRadius: '50%',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    border: '1px solid rgba(var(--tint-rgb), 0.1)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#fff',
+                    color: 'var(--text-primary)',
                     fontWeight: 700,
                     fontSize: '0.75rem',
                     background: 'linear-gradient(135deg, #6366f1, #a855f7)',
@@ -455,12 +455,12 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
               placeholder={replyTo ? 'Escreva sua resposta...' : 'Escreva um comentário...'}
               style={{
                 flex: 1,
-                background: '#27272a',
-                border: '1px solid rgba(255, 255, 255, 0.05)',
+                background: 'var(--bg-tertiary)',
+                border: '1px solid rgba(var(--tint-rgb), 0.05)',
                 borderRadius: '12px',
                 padding: '10px 12px',
                 fontSize: '1rem',
-                color: '#fff',
+                color: 'var(--text-primary)',
                 outline: 'none',
                 minWidth: '120px',
               }}
@@ -491,14 +491,14 @@ const CommentSection: React.FC<Props> = ({ comunicadoId, notificacaoId, onCountC
 
       <div style={{ marginTop: '8px' }}>
         {loading ? (
-          <p style={{ fontSize: '0.75rem', color: '#71717a', textAlign: 'center', padding: '16px 0' }}>Carregando comentários...</p>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textAlign: 'center', padding: '16px 0' }}>Carregando comentários...</p>
         ) : rootComments.length === 0 ? (
-          <p style={{ fontSize: '0.75rem', color: '#71717a', textAlign: 'center', padding: '16px 0' }}>Seja o primeiro a comentar.</p>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', textAlign: 'center', padding: '16px 0' }}>Seja o primeiro a comentar.</p>
         ) : (
           rootComments.map(comment => (
             <div key={comment._id} style={{ marginBottom: '12px' }}>
               {renderComment(comment)}
-              <div style={{ marginLeft: '44px', borderLeft: '1px solid rgba(255, 255, 255, 0.05)', paddingLeft: '16px', marginTop: '12px' }}>
+              <div style={{ marginLeft: '44px', borderLeft: '1px solid rgba(var(--tint-rgb), 0.05)', paddingLeft: '16px', marginTop: '12px' }}>
                 {getReplies(comment._id).map(reply => (
                   <div key={reply._id} style={{ marginBottom: '12px' }}>
                     {renderComment(reply, true)}

@@ -93,8 +93,8 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onSend, onCancel }) => {
 
   return (
     <div style={{
-      background: 'rgba(39, 39, 42, 0.8)',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
+      background: 'var(--bg-tertiary)',
+      border: '1px solid rgba(var(--tint-rgb), 0.1)',
       borderRadius: '16px',
       padding: '16px',
       display: 'flex',
@@ -114,7 +114,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onSend, onCancel }) => {
               animation: 'pulse 1s ease infinite',
               flexShrink: 0,
             }} />
-            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#f5f5f5' }}>{formatTime(recordingTime)}</span>
+            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>{formatTime(recordingTime)}</span>
             <div style={{ flex: 1, display: 'flex', gap: '3px', alignItems: 'center', padding: '0 8px' }}>
               {[1, 2, 3, 4, 5, 6].map(i => (
                 <div
@@ -135,8 +135,8 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onSend, onCancel }) => {
 
         {!audioUrl && !isRecording && (
           <>
-            <Mic size={18} color="#71717a" />
-            <span style={{ fontSize: '0.875rem', color: '#71717a' }}>Clique no microfone para gravar...</span>
+            <Mic size={18} color="var(--text-tertiary)" />
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-tertiary)' }}>Clique no microfone para gravar...</span>
             {error && <span style={{ fontSize: '0.75rem', color: '#f87171' }}>{error}</span>}
           </>
         )}
@@ -159,7 +159,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onSend, onCancel }) => {
             >
               {isPlaying ? <Pause size={14} /> : <Play size={14} />}
             </button>
-            <div style={{ flex: 1, height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '9999px', overflow: 'hidden' }}>
+            <div style={{ flex: 1, height: '6px', background: 'rgba(var(--tint-rgb), 0.1)', borderRadius: '9999px', overflow: 'hidden' }}>
               <div style={{
                 height: '100%',
                 background: '#10b981',
@@ -168,7 +168,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onSend, onCancel }) => {
                 transition: 'width 0.3s',
               }} />
             </div>
-            <span style={{ fontSize: '0.75rem', color: '#a0a0a0' }}>{formatTime(recordingTime)}</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{formatTime(recordingTime)}</span>
             <audio
               ref={audioPlayerRef}
               src={audioUrl}
@@ -190,7 +190,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onSend, onCancel }) => {
               onClick={onCancel}
               style={{
                 padding: '8px',
-                color: '#71717a',
+                color: 'var(--text-tertiary)',
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
@@ -249,7 +249,7 @@ const VoiceRecorder: React.FC<VoiceRecorderProps> = ({ onSend, onCancel }) => {
               onClick={deleteRecording}
               style={{
                 padding: '8px',
-                color: '#71717a',
+                color: 'var(--text-tertiary)',
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',

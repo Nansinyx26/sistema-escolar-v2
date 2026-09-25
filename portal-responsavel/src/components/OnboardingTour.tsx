@@ -88,7 +88,7 @@ const OnboardingTour: React.FC<Props> = ({ steps, onComplete, onSkip }) => {
     const base: React.CSSProperties = {
       position: 'fixed',
       zIndex: 10002,
-      background: '#18181b',
+      background: 'var(--bg-secondary)',
       border: '1px solid rgba(16, 185, 129, 0.3)',
       borderRadius: '16px',
       padding: '1.5rem',
@@ -147,14 +147,14 @@ const OnboardingTour: React.FC<Props> = ({ steps, onComplete, onSkip }) => {
 
       <div style={getPopupStyle()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: '99px' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--success-text)', background: 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: '99px' }}>
             Etapa {step + 1} de {steps.length}
           </div>
-          <button onClick={skip} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: '1.2rem' }}>&times;</button>
+          <button onClick={skip} style={{ background: 'none', border: 'none', color: 'rgba(var(--tint-rgb), 0.4)', cursor: 'pointer', fontSize: '1.2rem' }}>&times;</button>
         </div>
 
-        <h3 style={{ color: '#fff', marginBottom: '0.75rem', fontSize: '1.1rem', fontWeight: 700 }}>{current.title}</h3>
-        <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.5rem' }}>{current.content}</p>
+        <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.75rem', fontSize: '1.1rem', fontWeight: 700 }}>{current.title}</h3>
+        <p style={{ color: 'rgba(var(--tint-rgb), 0.6)', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.5rem' }}>{current.content}</p>
         
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
           {step > 0 && (
@@ -179,8 +179,8 @@ const btnPrimary: React.CSSProperties = {
 };
 
 const btnSecondary: React.CSSProperties = {
-  padding: '0.6rem 1rem', background: 'rgba(255,255,255,0.05)', color: '#fff',
-  border: '1px solid #27272a', borderRadius: '10px', cursor: 'pointer', fontSize: '0.85rem',
+  padding: '0.6rem 1rem', background: 'rgba(var(--tint-rgb), 0.05)', color: 'var(--text-primary)',
+  border: '1px solid var(--border-color)', borderRadius: '10px', cursor: 'pointer', fontSize: '0.85rem',
 };
 
 export const RESPONSAVEL_TOUR_STEPS: TourStep[] = [

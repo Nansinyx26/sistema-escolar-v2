@@ -96,7 +96,7 @@
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(var(--tint-rgb), 0.1);
   animation: rotateClockwise 20s linear infinite;
   
   .dotsSvg {
@@ -115,7 +115,7 @@
   position: absolute;
   top: 25px; left: 25px; right: 25px; bottom: 25px;
   border-radius: 50%;
-  border: 1.5px dotted rgba(255, 255, 255, 0.2);
+  border: 1.5px dotted rgba(var(--tint-rgb), 0.2);
   animation: rotateCounterClockwise 15s linear infinite;
 }
 
@@ -149,9 +149,9 @@
 
 /* Voice Label Pill */
 .voiceLabel {
-  background: rgba(255, 255, 255, 0.08); /* Exact prompt value */
+  background: rgba(var(--tint-rgb), 0.08); /* Exact prompt value */
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(var(--tint-rgb), 0.1);
   padding: 8px 16px;
   border-radius: 100px;
   display: flex;
@@ -193,7 +193,7 @@
   .spinner {
     width: 24px;
     height: 24px;
-    border: 2px solid rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(var(--tint-rgb), 0.1);
     border-top-color: #fff;
     border-radius: 50%;
     animation: rotateClockwise 0.8s linear infinite;

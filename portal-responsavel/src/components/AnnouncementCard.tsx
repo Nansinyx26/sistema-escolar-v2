@@ -65,7 +65,7 @@ const AnnouncementCard: React.FC<Props> = ({ comunicado }) => {
               height: '40px',
               borderRadius: '50%',
               objectFit: 'cover',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(var(--tint-rgb), 0.1)',
               flexShrink: 0,
             }}
             onError={(e) => { (e.target as HTMLImageElement).src = '/img/default-avatar.png'; }}
@@ -76,11 +76,11 @@ const AnnouncementCard: React.FC<Props> = ({ comunicado }) => {
               width: '40px',
               height: '40px',
               borderRadius: '50%',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(var(--tint-rgb), 0.1)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#fff',
+              color: 'var(--text-primary)',
               fontWeight: 700,
               fontSize: '0.85rem',
               background: 'linear-gradient(135deg, #10b981, #0ea5e9)',
@@ -91,8 +91,8 @@ const AnnouncementCard: React.FC<Props> = ({ comunicado }) => {
           </div>
         )}
         <div>
-          <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: '#fff', margin: 0 }}>{comunicado.diretorNome}</h3>
-          <p style={{ fontSize: '0.75rem', color: '#a1a1aa', margin: 0 }}>
+          <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>{comunicado.diretorNome}</h3>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
             {format(new Date(comunicado.dataCriacao), "d 'de' MMMM 'às' HH:mm", { locale: ptBR })}
           </p>
         </div>
@@ -100,9 +100,9 @@ const AnnouncementCard: React.FC<Props> = ({ comunicado }) => {
 
       {/* Content */}
       <div style={{ padding: '0 16px 16px' }}>
-        <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>{comunicado.titulo}</h2>
+        <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>{comunicado.titulo}</h2>
         <div
-          style={{ color: '#d4d4d8', fontSize: '0.875rem', lineHeight: 1.625 }}
+          style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', lineHeight: 1.625 }}
           dangerouslySetInnerHTML={{ __html: sanitizedContent }}
         />
       </div>
@@ -122,8 +122,8 @@ const AnnouncementCard: React.FC<Props> = ({ comunicado }) => {
               aspectRatio: '1',
               borderRadius: '8px',
               overflow: 'hidden',
-              border: '1px solid rgba(255, 255, 255, 0.05)',
-              background: '#27272a',
+              border: '1px solid rgba(var(--tint-rgb), 0.05)',
+              background: 'var(--bg-tertiary)',
             }}>
               <img src={img} alt="Anexo" loading="lazy" style={{
                 width: '100%',
@@ -144,7 +144,7 @@ const AnnouncementCard: React.FC<Props> = ({ comunicado }) => {
             <div key={idx} style={{
               borderRadius: '8px',
               overflow: 'hidden',
-              border: '1px solid rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(var(--tint-rgb), 0.05)',
               background: '#000',
               aspectRatio: '16/9',
               marginBottom: '8px',
@@ -158,7 +158,7 @@ const AnnouncementCard: React.FC<Props> = ({ comunicado }) => {
       {/* Audios */}
       {comunicado.audios && comunicado.audios.length > 0 && (
         <div style={{ padding: '0 16px', marginBottom: '16px' }}>
-          <p style={{ fontSize: '10px', fontWeight: 700, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+          <p style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
             Mensagens de Voz
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -172,7 +172,7 @@ const AnnouncementCard: React.FC<Props> = ({ comunicado }) => {
       {/* Documents */}
       {comunicado.documentos && comunicado.documentos.length > 0 && (
         <div style={{ padding: '0 16px', marginBottom: '16px' }}>
-          <p style={{ fontSize: '10px', fontWeight: 700, color: '#71717a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Documentos em Anexo</p>
+          <p style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Documentos em Anexo</p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             {comunicado.documentos.map((doc, idx) => (
               <a
@@ -184,12 +184,12 @@ const AnnouncementCard: React.FC<Props> = ({ comunicado }) => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
-                  background: 'rgba(39, 39, 42, 0.5)',
-                  border: '1px solid rgba(255, 255, 255, 0.05)',
+                  background: 'var(--bg-tertiary)',
+                  border: '1px solid rgba(var(--tint-rgb), 0.05)',
                   borderRadius: '8px',
                   padding: '8px 12px',
                   fontSize: '0.75rem',
-                  color: '#d4d4d8',
+                  color: 'var(--text-secondary)',
                   transition: 'background 0.2s',
                   textDecoration: 'none',
                 }}
@@ -203,7 +203,7 @@ const AnnouncementCard: React.FC<Props> = ({ comunicado }) => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#10b981',
+                  color: 'var(--success-text)',
                 }}>
                   <span style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' }}>{doc.tipo || 'PDF'}</span>
                 </div>
@@ -217,7 +217,7 @@ const AnnouncementCard: React.FC<Props> = ({ comunicado }) => {
       {/* Action bar */}
       <div style={{
         padding: '12px 16px',
-        borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+        borderTop: '1px solid rgba(var(--tint-rgb), 0.05)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -245,15 +245,15 @@ const AnnouncementCard: React.FC<Props> = ({ comunicado }) => {
             borderRadius: '9999px',
             padding: '6px 12px',
             border: showComments ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid transparent',
-            background: showComments ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-            color: showComments ? '#10b981' : '#a1a1aa',
+            background: showComments ? 'rgba(16, 185, 129, 0.15)' : 'rgba(var(--tint-rgb), 0.05)',
+            color: showComments ? '#10b981' : 'var(--text-secondary)',
             cursor: 'pointer',
             transition: 'all 0.2s',
           }}
         >
           <MessageCircle size={14} />
           <span style={{
-            background: 'rgba(255, 255, 255, 0.1)',
+            background: 'rgba(var(--tint-rgb), 0.1)',
             padding: '2px 8px',
             borderRadius: '9999px',
             minWidth: '1.5rem',
@@ -266,7 +266,7 @@ const AnnouncementCard: React.FC<Props> = ({ comunicado }) => {
       {/* Comments section */}
       {showComments && (
         <div style={{
-          borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+          borderTop: '1px solid rgba(var(--tint-rgb), 0.05)',
           background: 'rgba(0, 0, 0, 0.2)',
           padding: '16px',
         }}>

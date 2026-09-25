@@ -102,13 +102,13 @@ export default function VincularFilho({ onSuccess, onCancel, canCancel = false }
           <h2 style={{ color: '#22c55e', justifyContent: 'center', marginBottom: '12px' }}>
             Vínculo Realizado!
           </h2>
-          <p style={{ color: '#94a3b8', fontSize: '0.95rem', marginBottom: '24px' }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '24px' }}>
             O estudante foi vinculado com sucesso à sua conta de responsável.
           </p>
 
           <div style={{
-            background: 'rgba(255, 255, 255, 0.02)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
+            background: 'rgba(var(--tint-rgb), 0.02)',
+            border: '1px solid rgba(var(--tint-rgb), 0.08)',
             borderRadius: '12px',
             padding: '20px',
             marginBottom: '28px',
@@ -129,18 +129,18 @@ export default function VincularFilho({ onSuccess, onCancel, canCancel = false }
                 {foundStudent.nome.charAt(0)}
               </div>
               <div>
-                <h4 style={{ margin: 0, fontSize: '1.05rem', color: '#fff' }}>{foundStudent.nome}</h4>
-                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>Estudante Cadastrado</p>
+                <h4 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-primary)' }}>{foundStudent.nome}</h4>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>Estudante Cadastrado</p>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '24px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '12px', fontSize: '0.85rem' }}>
+            <div style={{ display: 'flex', gap: '24px', borderTop: '1px solid rgba(var(--tint-rgb), 0.06)', paddingTop: '12px', fontSize: '0.85rem' }}>
               <div>
-                <span style={{ color: '#64748b', display: 'block', marginBottom: '2px' }}>Turma</span>
-                <strong style={{ color: '#fff' }}>{foundStudent.turma}</strong>
+                <span style={{ color: 'var(--text-tertiary)', display: 'block', marginBottom: '2px' }}>Turma</span>
+                <strong style={{ color: 'var(--text-primary)' }}>{foundStudent.turma}</strong>
               </div>
               <div>
-                <span style={{ color: '#64748b', display: 'block', marginBottom: '2px' }}>Matrícula (RA)</span>
-                <strong style={{ color: '#fff' }}>{foundStudent.matricula}</strong>
+                <span style={{ color: 'var(--text-tertiary)', display: 'block', marginBottom: '2px' }}>Matrícula (RA)</span>
+                <strong style={{ color: 'var(--text-primary)' }}>{foundStudent.matricula}</strong>
               </div>
             </div>
           </div>
@@ -175,7 +175,7 @@ export default function VincularFilho({ onSuccess, onCancel, canCancel = false }
             gap: '6px',
             background: 'rgba(16, 185, 129, 0.1)',
             border: '1px solid rgba(16, 185, 129, 0.3)',
-            color: '#10b981',
+            color: 'var(--success-text)',
             padding: '6px 12px',
             borderRadius: '20px',
             fontSize: '0.75rem',
@@ -226,10 +226,10 @@ export default function VincularFilho({ onSuccess, onCancel, canCancel = false }
                     style={{
                       width: '100%',
                       height: '56px',
-                      background: 'rgba(255, 255, 255, 0.03)',
-                      border: '2px solid rgba(255, 255, 255, 0.08)',
+                      background: 'rgba(var(--tint-rgb), 0.03)',
+                      border: '2px solid rgba(var(--tint-rgb), 0.08)',
                       borderRadius: '12px',
-                      color: '#fff',
+                      color: 'var(--text-primary)',
                       fontSize: '1.8rem',
                       fontWeight: 700,
                       letterSpacing: '8px',
@@ -245,7 +245,7 @@ export default function VincularFilho({ onSuccess, onCancel, canCancel = false }
                   />
                 </div>
                 
-                <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '6px' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: '6px' }}>
                   O código diferencia letras maiúsculas e minúsculas.
                 </span>
               </div>
@@ -270,7 +270,7 @@ export default function VincularFilho({ onSuccess, onCancel, canCancel = false }
                     flex: 2,
                     height: '48px',
                     margin: 0,
-                    background: (loading || codigoSecreto.length < 4) ? 'rgba(255, 255, 255, 0.08)' : 'linear-gradient(135deg, #10b981, #8b5cf6)',
+                    background: (loading || codigoSecreto.length < 4) ? 'rgba(var(--tint-rgb), 0.08)' : 'linear-gradient(135deg, #10b981, #8b5cf6)',
                     border: 'none',
                     fontWeight: 700
                   }}
@@ -322,13 +322,13 @@ export default function VincularFilho({ onSuccess, onCancel, canCancel = false }
                 {foundStudent?.nome.charAt(0)}
               </div>
               
-              <h3 style={{ fontSize: '1.4rem', color: '#fff', margin: '0 0 8px' }}>
+              <h3 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', margin: '0 0 8px' }}>
                 {foundStudent?.nome}
               </h3>
               
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', color: '#94a3b8', fontSize: '0.9rem' }}>
-                <span>Turma: <strong style={{ color: '#fff' }}>{foundStudent?.turma}</strong></span>
-                <span>Matrícula: <strong style={{ color: '#fff' }}>{foundStudent?.matricula}</strong></span>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                <span>Turma: <strong style={{ color: 'var(--text-primary)' }}>{foundStudent?.turma}</strong></span>
+                <span>Matrícula: <strong style={{ color: 'var(--text-primary)' }}>{foundStudent?.matricula}</strong></span>
               </div>
 
               {foundStudent?.jaVinculado && (

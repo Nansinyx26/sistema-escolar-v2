@@ -2,12 +2,13 @@
  * components/Header.tsx
  * Sticky top navigation bar with school logo (bicolor "Sistema Escolar"),
  * notification bell, user avatar and logout button.
- * Redesign Issue #434: visual identity dark/cyan premium.
+ * Redesign Issue #434; temas Dark/Light com alternador sol/lua na Issue #436.
  */
 
 import type React from 'react';
 import { useEffect, useState } from 'react';
 import { definirVoz, normalizarVoz, VOZES, type VozNome, vozAtual } from '../constants/vozes';
+import { useTheme } from '../hooks/useTheme';
 import { getChatNaoLidas } from '../services/apiService';
 import styles from '../styles/portal.module.scss';
 import type { GmailUser, Notification } from '../types';
@@ -37,16 +38,9 @@ interface HeaderProps {
   onBellClick: () => void;
   onProfileClick: () => void;
   onBiClick?: () => void;
+  /** Abre o menu recolhível de navegação no celular. */
+  onMenuClick?: () => void;
   activeTab?: string;
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase();
 }
 
 const VoiceSelector: React.FC = () => {
@@ -126,7 +120,7 @@ const VoiceSelector: React.FC = () => {
         onClick={() => setIsOpen(!isOpen)}
         className={styles.notificationBell}
         title="Configurações de Voz e Leitura"
-        style={{ color: narracaoDesligada ? '' : '#059669' }}
+        style={{ color: narracaoDesligada ? '' : 'var(--accent-text)' }}
       >
         <i
           className={`ti ${narracaoDesligada ? 'ti-volume-off' : 'ti-volume-2'}`}
@@ -142,8 +136,8 @@ const VoiceSelector: React.FC = () => {
             top: '100%',
             right: 0,
             marginTop: '8px',
-            background: '#071923',
-            border: '1px solid rgba(0, 212, 255, 0.1)',
+            background: 'var(--bg-elevated)',
+            border: '1px solid rgba(var(--accent-rgb), 0.1)',
             borderRadius: '16px',
             padding: '12px',
             zIndex: 100,
@@ -156,7 +150,7 @@ const VoiceSelector: React.FC = () => {
             <p
               style={{
                 fontSize: '10px',
-                color: '#5a7585',
+                color: 'var(--text-tertiary)',
                 padding: '0 8px 8px',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
@@ -181,8 +175,8 @@ const VoiceSelector: React.FC = () => {
                     borderRadius: '8px',
                     fontSize: '12px',
                     textAlign: 'left',
-                    background: ativa ? 'rgba(0, 212, 255, 0.1)' : 'transparent',
-                    color: ativa ? '#00d4ff' : '#8ba3b0',
+                    background: ativa ? 'rgba(var(--accent-rgb), 0.1)' : 'transparent',
+                    color: ativa ? 'var(--accent)' : 'var(--text-secondary)',
                     border: 'none',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
@@ -208,8 +202,8 @@ const VoiceSelector: React.FC = () => {
                 borderRadius: '8px',
                 fontSize: '12px',
                 textAlign: 'left',
-                background: narracaoDesligada ? 'rgba(0, 212, 255, 0.1)' : 'transparent',
-                color: narracaoDesligada ? '#00d4ff' : '#8ba3b0',
+                background: narracaoDesligada ? 'rgba(var(--accent-rgb), 0.1)' : 'transparent',
+                color: narracaoDesligada ? 'var(--accent)' : 'var(--text-secondary)',
                 border: 'none',
                 cursor: 'pointer',
                 transition: 'all 0.2s',
@@ -220,11 +214,11 @@ const VoiceSelector: React.FC = () => {
             </button>
           </div>
 
-          <div style={{ borderTop: '1px solid rgba(0, 212, 255, 0.06)', paddingTop: '12px' }}>
+          <div style={{ borderTop: '1px solid rgba(var(--accent-rgb), 0.06)', paddingTop: '12px' }}>
             <p
               style={{
                 fontSize: '10px',
-                color: '#5a7585',
+                color: 'var(--text-tertiary)',
                 padding: '0 8px 8px',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
@@ -247,8 +241,8 @@ const VoiceSelector: React.FC = () => {
                   borderRadius: '8px',
                   fontSize: '12px',
                   textAlign: 'left',
-                  background: mode === m.id ? 'rgba(0, 212, 255, 0.1)' : 'transparent',
-                  color: mode === m.id ? '#00d4ff' : '#8ba3b0',
+                  background: mode === m.id ? 'rgba(var(--accent-rgb), 0.1)' : 'transparent',
+                  color: mode === m.id ? 'var(--accent)' : 'var(--text-secondary)',
                   border: 'none',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
@@ -265,39 +259,37 @@ const VoiceSelector: React.FC = () => {
   );
 };
 
-const ThemeToggle: React.FC = () => {
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    return (localStorage.getItem('theme') as 'dark' | 'light') || 'dark';
-  });
-
-  useEffect(() => {
-    const saved = (localStorage.getItem('theme') as 'dark' | 'light') || 'dark';
-    document.documentElement.setAttribute('data-theme', saved);
-    setTheme(saved);
-  }, []);
-
-  const toggleTheme = () => {
-    const next = theme === 'light' ? 'dark' : 'light';
-    setTheme(next);
-    localStorage.setItem('theme', next);
-    document.documentElement.setAttribute('data-theme', next);
-    window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: next } }));
-  };
+/**
+ * Alternador Dark/Light: dois botões (lua e sol) num controle segmentado, com
+ * o tema ativo marcado. A troca é instantânea e fica salva (hooks/useTheme).
+ */
+export const ThemeToggle: React.FC<{ className?: string }> = ({ className }) => {
+  const { tema, setTema } = useTheme();
 
   return (
-    <button
-      type="button"
-      className={styles.notificationBell}
-      onClick={toggleTheme}
-      title={theme === 'light' ? 'Modo Escuro' : 'Modo Claro'}
-      aria-label={theme === 'light' ? 'Alternar para Modo Escuro' : 'Alternar para Modo Claro'}
-      style={{ color: theme === 'light' ? '#d97706' : '#00d4ff' }}
-    >
-      <i
-        className={`ti ${theme === 'light' ? 'ti-sun' : 'ti-moon'}`}
-        style={{ fontSize: '1.4rem' }}
-      />
-    </button>
+    <fieldset className={`${styles.themeToggle} ${className ?? ''}`}>
+      <legend className="sr-only">Tema da interface</legend>
+      <button
+        type="button"
+        className={`${styles.themeToggleBtn} ${tema === 'dark' ? styles.active : ''}`}
+        onClick={() => setTema('dark')}
+        aria-pressed={tema === 'dark'}
+        title="Tema escuro"
+      >
+        <Icon name="moon" aria-hidden="true" />
+        <span className="sr-only">Tema escuro</span>
+      </button>
+      <button
+        type="button"
+        className={`${styles.themeToggleBtn} ${tema === 'light' ? styles.active : ''}`}
+        onClick={() => setTema('light')}
+        aria-pressed={tema === 'light'}
+        title="Tema claro"
+      >
+        <Icon name="sun" aria-hidden="true" />
+        <span className="sr-only">Tema claro</span>
+      </button>
+    </fieldset>
   );
 };
 
@@ -364,6 +356,7 @@ const Header: React.FC<HeaderProps> = ({
   onLogout,
   onBellClick,
   onProfileClick,
+  onMenuClick,
 }) => {
   const unreadCount = notifications.filter((n) => !n.lido).length;
   const userPhoto = getPhotoUrl(user.picture);
@@ -371,7 +364,18 @@ const Header: React.FC<HeaderProps> = ({
   return (
     <header className={styles.header}>
       <div className={styles.headerContent}>
-        {/* Logo bicolor: "Sistema" branco + "Escolar" cyan */}
+        {onMenuClick && (
+          <button
+            type="button"
+            className={styles.headerMenuBtn}
+            onClick={onMenuClick}
+            aria-label="Abrir menu de navegação"
+          >
+            <Icon name="menu" aria-hidden="true" />
+          </button>
+        )}
+
+        {/* Logo bicolor: "Sistema" na cor do texto + "Escolar" na cor da marca */}
         <div className={styles.logo}>
           <div className={styles.logoIcon} aria-hidden="true">
             <Icon name="school" />
@@ -385,14 +389,12 @@ const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Actions — utilidades escondidas em telas menores + conta */}
         <div className={styles.headerActions}>
+          {/* Utilidades: somem em telas menores e seguem no menu do perfil */}
           <div className={styles.headerUtilityGroup}>
             <VoiceSelector />
-            <ThemeToggle />
             <ConversasButton />
             <CanalDenuncia />
-
             <button
               type="button"
               className={styles.notificationBell}
@@ -400,48 +402,14 @@ const Header: React.FC<HeaderProps> = ({
               title="Ver Tour Guiado"
               aria-label="Ver Tour Guiado"
             >
-              <Icon name="help" aria-hidden="true" style={{ fontSize: '1.4rem' }} />
+              <Icon name="help" aria-hidden="true" />
             </button>
           </div>
 
-          <span className={styles.headerDivider} aria-hidden="true" />
-
-          {/* User profile */}
+          {/* Notificações */}
           <button
             type="button"
-            className={styles.userProfile}
-            onClick={onProfileClick}
-            aria-label="Opções do perfil"
-            title="Clique para ver as opções do perfil"
-          >
-            <div className={styles.avatar} aria-hidden="true">
-              {userPhoto !== '/img/default-avatar.png' ? (
-                <img
-                  src={userPhoto}
-                  alt={user.name}
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = '/img/default-avatar.png';
-                  }}
-                />
-              ) : (
-                <span>{getInitials(user.name)}</span>
-              )}
-            </div>
-
-            <div className={styles.userInfo}>
-              <span className={styles.userName}>{user.name}</span>
-              <span className={styles.userEmail}>{user.email}</span>
-            </div>
-
-            <Icon name="chevron-down" className={styles.headerDropdownArrow} aria-hidden="true" />
-          </button>
-
-          {/* Notification bell */}
-          <button
-            type="button"
-            className={styles.notificationBell}
+            className={`${styles.notificationBell} ${styles.headerBell}`}
             onClick={onBellClick}
             aria-label={
               unreadCount > 0 ? `${unreadCount} notificações não lidas` : 'Nenhuma notificação nova'
@@ -459,7 +427,41 @@ const Header: React.FC<HeaderProps> = ({
             )}
           </button>
 
-          {/* Logout */}
+          <ThemeToggle className={styles.headerThemeToggle} />
+
+          {/* Perfil do responsável: abre o menu do perfil */}
+          <button
+            type="button"
+            className={styles.userProfile}
+            onClick={onProfileClick}
+            aria-label="Opções do perfil"
+            aria-haspopup="dialog"
+            title="Opções do perfil"
+          >
+            <div className={styles.avatar} aria-hidden="true">
+              {userPhoto !== '/img/default-avatar.png' ? (
+                <img
+                  src={userPhoto}
+                  alt=""
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/img/default-avatar.png';
+                  }}
+                />
+              ) : (
+                <Icon name="user-round" />
+              )}
+            </div>
+
+            <div className={styles.userInfo}>
+              <span className={styles.userName}>{user.name}</span>
+              <span className={styles.userEmail}>{user.email}</span>
+            </div>
+
+            <Icon name="chevron-down" className={styles.headerDropdownArrow} aria-hidden="true" />
+          </button>
+
           <button
             type="button"
             className={styles.logoutBtn}

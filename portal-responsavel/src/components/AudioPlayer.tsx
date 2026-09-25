@@ -137,7 +137,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, compact = false }) => {
           left: 0, right: 0,
           height: compact ? '3px' : '4px',
           borderRadius: '99px',
-          background: 'rgba(255,255,255,0.1)',
+          background: 'rgba(var(--tint-rgb), 0.1)',
           overflow: 'hidden',
           pointerEvents: 'none',
         }}>
@@ -174,7 +174,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, compact = false }) => {
       <span style={{
         fontSize: compact ? '0.65rem' : '0.7rem',
         fontWeight: 600,
-        color: playing ? '#10b981' : '#71717a',
+        color: playing ? '#10b981' : 'var(--text-tertiary)',
         whiteSpace: 'nowrap',
         fontVariantNumeric: 'tabular-nums',
         minWidth: '32px',
@@ -183,7 +183,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, compact = false }) => {
       }}>
         {duration > 0 ? fmt(currentTime) : fmt(0)}
         {!compact && duration > 0 && (
-          <span style={{ color: 'rgba(255,255,255,0.2)', fontWeight: 400 }}> / {fmt(duration)}</span>
+          <span style={{ color: 'rgba(var(--tint-rgb), 0.2)', fontWeight: 400 }}> / {fmt(duration)}</span>
         )}
       </span>
 

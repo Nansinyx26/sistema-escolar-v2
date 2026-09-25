@@ -3,7 +3,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(4, 10, 8, 0.62);
+  background: var(--bg-overlay);
   backdrop-filter: blur(4px);
   animation: overlayIn 160ms ease-out;
   z-index: 1000;

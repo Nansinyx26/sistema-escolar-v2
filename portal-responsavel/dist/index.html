@@ -4,7 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="Portal do Responsável da Escola Jaguari – acompanhe notas, frequência e notificações do seu filho(a)." />
-    <meta name="theme-color" content="#09090b" />
+    <meta name="theme-color" content="#030a0e" />
+    <!-- Tema antes da primeira pintura (Issue #436): sem isto a página abre no
+         escuro e pisca para o claro quando o React monta. Mesma chave `theme`
+         de src/hooks/useTheme.ts. -->
+    <script>
+      (function () {
+        var tema = 'dark';
+        try { if (localStorage.getItem('theme') === 'light') tema = 'light'; } catch (e) {}
+        document.documentElement.setAttribute('data-theme', tema);
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', tema === 'light' ? '#ffffff' : '#030a0e');
+      })();
+    </script>
     <title>Portal do Responsável – Escola Jaguari</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.30.0/dist/tabler-icons.min.css" crossorigin="anonymous" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -18,8 +30,8 @@
          As cópias são atualizadas por `node inject-mobile-scroll.js`. -->
     <link rel="stylesheet" href="./mobile-scroll.css?v=1.0" />
     <script src="./scroll-lock.js?v=1.0"></script>
-    <script type="module" crossorigin src="./assets/index-i4bNaWL8.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-Cm1X6Qer.css">
+    <script type="module" crossorigin src="./assets/index-DmX_yiFY.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-6coBZeqk.css">
   </head>
   <body>
     <div id="root"></div>

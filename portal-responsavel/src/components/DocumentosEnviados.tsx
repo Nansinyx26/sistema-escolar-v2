@@ -145,7 +145,7 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
   const alunoNomeCompleto = [student.nome, student.sobrenome].filter(Boolean).join(' ');
 
   return (
-    <div style={{ marginTop: '2rem', borderTop: '1px solid #27272a', paddingTop: '1.5rem' }}>
+    <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
       <div
         style={{
           display: 'flex',
@@ -160,7 +160,7 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
           <h4
             style={{
               fontSize: '1rem',
-              color: '#10b981',
+              color: 'var(--success-text)',
               margin: '0 0 0.25rem',
               display: 'flex',
               alignItems: 'center',
@@ -169,7 +169,7 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
           >
             <i className="bi bi-file-earmark-lock" /> Documentos Enviados
           </h4>
-          <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.6)', margin: 0 }}>
+          <p style={{ fontSize: '0.78rem', color: 'rgba(var(--tint-rgb), 0.6)', margin: 0 }}>
             Documentos assinados à mão e autorizações enviados para{' '}
             <strong>{alunoNomeCompleto}</strong>.
           </p>
@@ -182,8 +182,8 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
             alignItems: 'center',
             gap: '0.4rem',
             padding: '0.5rem 0.9rem',
-            background: showNovoForm ? '#3f3f46' : '#10b981',
-            color: '#fff',
+            background: showNovoForm ? 'var(--bg-tertiary)' : '#10b981',
+            color: showNovoForm ? 'var(--text-primary)' : '#fff',
             border: 'none',
             borderRadius: '8px',
             fontSize: '0.82rem',
@@ -239,8 +239,8 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
         <form
           onSubmit={handleNovoEnvio}
           style={{
-            background: '#18181b',
-            border: '1px solid #27272a',
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border-color)',
             borderRadius: '10px',
             padding: '1.25rem',
             marginBottom: '1.5rem',
@@ -249,14 +249,14 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
           <h5
             style={{
               margin: '0 0 1rem',
-              color: '#fff',
+              color: 'var(--text-primary)',
               fontSize: '0.9rem',
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem',
             }}
           >
-            <i className="bi bi-cloud-arrow-up" style={{ color: '#10b981' }} /> Enviar Documento
+            <i className="bi bi-cloud-arrow-up" style={{ color: 'var(--success-text)' }} /> Enviar Documento
             Assinado à Mão
           </h5>
 
@@ -274,7 +274,7 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
                 style={{
                   display: 'block',
                   fontSize: '0.78rem',
-                  color: 'rgba(255,255,255,0.7)',
+                  color: 'rgba(var(--tint-rgb), 0.7)',
                   marginBottom: '0.3rem',
                 }}
               >
@@ -288,9 +288,9 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
                   width: '100%',
                   padding: '0.55rem',
                   borderRadius: '8px',
-                  background: '#09090b',
-                  border: '1px solid #27272a',
-                  color: '#fff',
+                  background: 'var(--bg-primary)',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-primary)',
                   fontSize: '0.85rem',
                 }}
                 required
@@ -309,7 +309,7 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
                 style={{
                   display: 'block',
                   fontSize: '0.78rem',
-                  color: 'rgba(255,255,255,0.7)',
+                  color: 'rgba(var(--tint-rgb), 0.7)',
                   marginBottom: '0.3rem',
                 }}
               >
@@ -325,9 +325,9 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
                   width: '100%',
                   padding: '0.55rem',
                   borderRadius: '8px',
-                  background: '#09090b',
-                  border: '1px solid #27272a',
-                  color: '#fff',
+                  background: 'var(--bg-primary)',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-primary)',
                   fontSize: '0.85rem',
                 }}
                 required
@@ -341,7 +341,7 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
               style={{
                 display: 'block',
                 fontSize: '0.78rem',
-                color: 'rgba(255,255,255,0.7)',
+                color: 'rgba(var(--tint-rgb), 0.7)',
                 marginBottom: '0.3rem',
               }}
             >
@@ -357,9 +357,9 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
                 width: '100%',
                 padding: '0.55rem',
                 borderRadius: '8px',
-                background: '#09090b',
-                border: '1px solid #27272a',
-                color: '#fff',
+                background: 'var(--bg-primary)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-primary)',
                 fontSize: '0.85rem',
               }}
             />
@@ -371,7 +371,7 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
               style={{
                 display: 'block',
                 fontSize: '0.78rem',
-                color: 'rgba(255,255,255,0.7)',
+                color: 'rgba(var(--tint-rgb), 0.7)',
                 marginBottom: '0.3rem',
               }}
             >
@@ -387,9 +387,9 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
                 width: '100%',
                 padding: '0.5rem',
                 borderRadius: '8px',
-                background: '#09090b',
-                border: '1px dashed #3f3f46',
-                color: '#a1a1aa',
+                background: 'var(--bg-primary)',
+                border: '1px dashed var(--border-strong)',
+                color: 'var(--text-secondary)',
                 fontSize: '0.85rem',
               }}
             />
@@ -402,8 +402,8 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
               style={{
                 padding: '0.5rem 1rem',
                 background: 'transparent',
-                border: '1px solid #3f3f46',
-                color: '#cbd5e1',
+                border: '1px solid var(--border-strong)',
+                color: 'var(--text-secondary)',
                 borderRadius: '8px',
                 fontSize: '0.82rem',
                 cursor: 'pointer',
@@ -451,7 +451,7 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
       {/* Tabela de Documentos Enviados */}
       {loading ? (
         <div
-          style={{ textAlign: 'center', padding: '1.5rem', color: '#94a3b8', fontSize: '0.85rem' }}
+          style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}
         >
           <i className="bi bi-hourglass-split" /> Carregando documentos enviados...
         </div>
@@ -460,9 +460,9 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
           style={{
             textAlign: 'center',
             padding: '1.5rem',
-            background: '#18181b',
+            background: 'var(--bg-secondary)',
             borderRadius: '8px',
-            color: '#94a3b8',
+            color: 'var(--text-secondary)',
             fontSize: '0.82rem',
           }}
         >
@@ -472,7 +472,7 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
               fontSize: '1.5rem',
               display: 'block',
               marginBottom: '0.5rem',
-              color: '#52525b',
+              color: 'var(--text-tertiary)',
             }}
           />
           Nenhum documento assinado enviado para este aluno ainda.
@@ -488,7 +488,7 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
             }}
           >
             <thead>
-              <tr style={{ borderBottom: '1px solid #27272a', color: '#94a3b8' }}>
+              <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
                 <th style={{ padding: '0.6rem 0.5rem' }}>Nome do documento</th>
                 <th style={{ padding: '0.6rem 0.5rem' }}>Tipo</th>
                 <th style={{ padding: '0.6rem 0.5rem' }}>Aluno</th>
@@ -504,8 +504,8 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
                 const downloadUrl = `${apiBase}/documentos-responsaveis/${doc._id}/download`;
 
                 return (
-                  <tr key={doc._id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                    <td style={{ padding: '0.65rem 0.5rem', color: '#fff', fontWeight: 500 }}>
+                  <tr key={doc._id} style={{ borderBottom: '1px solid rgba(var(--tint-rgb), 0.04)' }}>
+                    <td style={{ padding: '0.65rem 0.5rem', color: 'var(--text-primary)', fontWeight: 500 }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
                         <i
                           className={`bi ${isPdf ? 'bi-file-earmark-pdf-fill' : 'bi-file-earmark-image-fill'}`}
@@ -517,7 +517,7 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
                         <small
                           style={{
                             display: 'block',
-                            color: 'rgba(255,255,255,0.4)',
+                            color: 'rgba(var(--tint-rgb), 0.4)',
                             fontSize: '0.72rem',
                           }}
                         >
@@ -525,11 +525,11 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
                         </small>
                       )}
                     </td>
-                    <td style={{ padding: '0.65rem 0.5rem', color: '#cbd5e1' }}>
+                    <td style={{ padding: '0.65rem 0.5rem', color: 'var(--text-secondary)' }}>
                       <span
                         style={{
                           padding: '0.15rem 0.5rem',
-                          background: 'rgba(255,255,255,0.06)',
+                          background: 'rgba(var(--tint-rgb), 0.06)',
                           borderRadius: '4px',
                           fontSize: '0.75rem',
                         }}
@@ -537,20 +537,20 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
                         {doc.tipoDocumento}
                       </span>
                     </td>
-                    <td style={{ padding: '0.65rem 0.5rem', color: '#cbd5e1' }}>
+                    <td style={{ padding: '0.65rem 0.5rem', color: 'var(--text-secondary)' }}>
                       {doc.alunoNome || alunoNomeCompleto}
                     </td>
                     <td
                       style={{
                         padding: '0.65rem 0.5rem',
-                        color: '#94a3b8',
+                        color: 'var(--text-secondary)',
                         fontSize: '0.75rem',
                         whiteSpace: 'nowrap',
                       }}
                     >
                       {new Date(doc.dataEnvio).toLocaleString('pt-BR')}
                       {doc.ultimaAtualizacao && doc.ultimaAtualizacao !== doc.dataEnvio && (
-                        <small style={{ display: 'block', color: '#10b981', fontSize: '0.68rem' }}>
+                        <small style={{ display: 'block', color: 'var(--success-text)', fontSize: '0.68rem' }}>
                           Atualizado: {new Date(doc.ultimaAtualizacao).toLocaleDateString('pt-BR')}
                         </small>
                       )}
@@ -672,8 +672,8 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
         >
           <div
             style={{
-              background: '#09090b',
-              border: '1px solid #27272a',
+              background: 'var(--bg-primary)',
+              border: '1px solid var(--border-color)',
               borderRadius: '12px',
               width: 'min(900px, 95vw)',
               maxHeight: '90vh',
@@ -685,21 +685,21 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
             <div
               style={{
                 padding: '0.85rem 1.25rem',
-                borderBottom: '1px solid #27272a',
+                borderBottom: '1px solid var(--border-color)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
               }}
             >
               <div>
-                <h5 style={{ margin: 0, color: '#fff', fontSize: '0.95rem' }}>
+                <h5 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '0.95rem' }}>
                   <i
                     className="bi bi-file-earmark-text"
-                    style={{ color: '#10b981', marginRight: '0.4rem' }}
+                    style={{ color: 'var(--success-text)', marginRight: '0.4rem' }}
                   />
                   {docVisualizando.nomeDocumento}
                 </h5>
-                <small style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
+                <small style={{ color: 'var(--text-secondary)', fontSize: '0.72rem' }}>
                   {docVisualizando.tipoDocumento} • {docVisualizando.arquivo?.nomeOriginal}
                 </small>
               </div>
@@ -709,8 +709,8 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
                   download={docVisualizando.arquivo?.nomeOriginal}
                   style={{
                     padding: '0.35rem 0.7rem',
-                    background: '#27272a',
-                    color: '#fff',
+                    background: 'var(--bg-tertiary)',
+                    color: 'var(--text-primary)',
                     borderRadius: '6px',
                     fontSize: '0.75rem',
                     textDecoration: 'none',
@@ -727,7 +727,7 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
                   style={{
                     background: 'transparent',
                     border: 'none',
-                    color: '#a1a1aa',
+                    color: 'var(--text-secondary)',
                     fontSize: '1.2rem',
                     cursor: 'pointer',
                     padding: '0 0.3rem',
@@ -791,8 +791,8 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
         >
           <div
             style={{
-              background: '#18181b',
-              border: '1px solid #27272a',
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-color)',
               borderRadius: '12px',
               width: 'min(480px, 95vw)',
               padding: '1.5rem',
@@ -801,7 +801,7 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
             <h5
               style={{
                 margin: '0 0 0.5rem',
-                color: '#fff',
+                color: 'var(--text-primary)',
                 fontSize: '1rem',
                 display: 'flex',
                 alignItems: 'center',
@@ -810,7 +810,7 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
             >
               <i className="bi bi-arrow-repeat" style={{ color: '#8b5cf6' }} /> Substituir Documento
             </h5>
-            <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: '0 0 1rem' }}>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0 0 1rem' }}>
               Você está substituindo o arquivo de <strong>{docSubstituindo.nomeDocumento}</strong>.
               O vínculo com o aluno <strong>{alunoNomeCompleto}</strong> será mantido e a data será
               atualizada.
@@ -823,7 +823,7 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
                   style={{
                     display: 'block',
                     fontSize: '0.78rem',
-                    color: 'rgba(255,255,255,0.7)',
+                    color: 'rgba(var(--tint-rgb), 0.7)',
                     marginBottom: '0.4rem',
                   }}
                 >
@@ -839,9 +839,9 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
                     width: '100%',
                     padding: '0.5rem',
                     borderRadius: '8px',
-                    background: '#09090b',
-                    border: '1px dashed #3f3f46',
-                    color: '#a1a1aa',
+                    background: 'var(--bg-primary)',
+                    border: '1px dashed var(--border-strong)',
+                    color: 'var(--text-secondary)',
                     fontSize: '0.85rem',
                   }}
                 />
@@ -854,8 +854,8 @@ export const DocumentosEnviados: React.FC<Props> = ({ student }) => {
                   style={{
                     padding: '0.5rem 1rem',
                     background: 'transparent',
-                    border: '1px solid #3f3f46',
-                    color: '#cbd5e1',
+                    border: '1px solid var(--border-strong)',
+                    color: 'var(--text-secondary)',
                     borderRadius: '8px',
                     fontSize: '0.82rem',
                     cursor: 'pointer',

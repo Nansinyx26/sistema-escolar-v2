@@ -233,7 +233,7 @@ const ChatbotIA: React.FC<ChatbotIAProps> = () => {
             <div className={styles.audioSettingsPanel}>
               {/* Seletor de voz ElevenLabs — sempre masculino */}
               <div className={styles.settingItem}>
-                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '8px' }}>
+                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '8px' }}>
                   🎙️ Voz do Assistente
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
@@ -254,11 +254,11 @@ const ChatbotIA: React.FC<ChatbotIAProps> = () => {
                         transition: 'all 0.15s',
                         border: selectedVoice === v.nome
                           ? '2px solid #10b981'
-                          : '1px solid rgba(255,255,255,0.1)',
+                          : '1px solid rgba(var(--tint-rgb), 0.1)',
                         background: selectedVoice === v.nome
                           ? 'rgba(16, 185, 129, 0.15)'
-                          : 'rgba(255,255,255,0.04)',
-                        color: selectedVoice === v.nome ? '#10b981' : '#cbd5e1',
+                          : 'rgba(var(--tint-rgb), 0.04)',
+                        color: selectedVoice === v.nome ? '#10b981' : 'var(--text-secondary)',
                         textAlign: 'left' as const,
                       }}
                     >
@@ -270,8 +270,8 @@ const ChatbotIA: React.FC<ChatbotIAProps> = () => {
               </div>
 
               {/* Autoplay */}
-              <div className={styles.settingItem} style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '10px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.82rem', color: '#cbd5e1' }}>
+              <div className={styles.settingItem} style={{ borderTop: '1px solid rgba(var(--tint-rgb), 0.06)', paddingTop: '10px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                   <input
                     type="checkbox"
                     checked={autoPlay}
@@ -318,7 +318,7 @@ const ChatbotIA: React.FC<ChatbotIAProps> = () => {
                             fontWeight: 600,
                             cursor: loading ? 'default' : 'pointer',
                             background: 'rgba(16, 185, 129, 0.12)',
-                            color: '#10b981',
+                            color: 'var(--success-text)',
                             border: '1px solid rgba(16, 185, 129, 0.35)',
                             textAlign: 'left',
                             transition: 'all 0.15s',

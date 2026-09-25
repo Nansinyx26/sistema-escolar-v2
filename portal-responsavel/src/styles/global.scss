@@ -9,36 +9,162 @@
 
 // @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap');
 
-// ─── CSS Custom Properties ────────────────────────────────────────────────────
-:root {
-  --bg-primary:    #0a0e0d;
-  --bg-secondary:  #121815;
-  --bg-tertiary:   #1a211d;
-  --text-primary:  #f4f6f5;
-  --text-secondary:#cdd4d1;
-  --text-tertiary: #97a29d;
-  --border-color:  rgba(255, 255, 255, 0.08);
-  --accent-cyan:   #059669;
-  --accent-purple: #0d9488;
-  --success:       #16a34a;
-  --warning:       #d97706;
-  --danger:        #dc2626;
+// ─── Tokens de tema (Issue #436) ─────────────────────────────────────────────
+// Fonte única das cores do portal. O tema escuro é o padrão (`:root`); o claro
+// sobrescreve só os valores. SCSS e componentes consomem os tokens, nunca a
+// cor crua, para que os dois temas tenham exatamente a mesma estrutura.
+//
+// `--*-rgb` guarda os canais para transparências: rgba(var(--accent-rgb), .1).
+// `--tint-rgb` é a cor das películas neutras (hover, divisórias, fundos
+// aninhados): branco no escuro, azul-marinho no claro.
+//
+// O `data-theme` do <html> é aplicado por um script no <head> do index.html,
+// antes da primeira pintura. Ver src/hooks/useTheme.ts.
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  // Superfícies: preto com nuance de azul-petróleo
+  --bg-primary:    #030a0e;
+  --bg-secondary:  #06121a;
+  --bg-tertiary:   #0a1b24;
+  --bg-elevated:   #0b1f29;
+  --bg-overlay:    rgba(2, 8, 12, 0.72);
+  --header-bg:     rgba(3, 10, 14, 0.9);
+  --sidebar-bg:    #040d12;
+
+  // Texto
+  --text-primary:   #eef8fa;
+  --text-secondary: #a3bcc5;
+  --text-tertiary:  #7390a0;
+  --text-on-accent: #02181e;
+
+  // Bordas: ciano discreto
+  --border-color:   rgba(34, 211, 238, 0.14);
+  --border-strong:  rgba(34, 211, 238, 0.32);
+
+  // Destaque: turquesa luminoso
+  --accent:         #22d3ee;
+  --accent-rgb:     34, 211, 238;
+  --accent-hover:   #67e8f9;
+  --accent-text:    #22d3ee;
+  --accent-soft:    rgba(34, 211, 238, 0.1);
+  --accent-2:       #14b8a6;
+  --accent-2-rgb:   20, 184, 166;
+  --brand:          #22d3ee;
+
+  --tint-rgb:       255, 255, 255;
+
+  // Semânticas
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger:  #ef4444;
+  --info:    #38bdf8;
+  --success-text: #34d399;
+
+  // Indicadores de frequência
+  --tile-ok-bg:       linear-gradient(180deg, rgba(20, 184, 166, 0.16), rgba(20, 184, 166, 0.05));
+  --tile-ok-border:   rgba(45, 212, 191, 0.4);
+  --tile-ok-icon:     #2dd4bf;
+  --tile-ok-label:    #5eead4;
+  --tile-miss-bg:     linear-gradient(180deg, rgba(56, 189, 248, 0.14), rgba(56, 189, 248, 0.04));
+  --tile-miss-border: rgba(56, 189, 248, 0.4);
+  --tile-miss-icon:   #38bdf8;
+  --tile-miss-label:  #7dd3fc;
+  --tile-freq-bg:     linear-gradient(180deg, rgba(139, 92, 246, 0.24), rgba(88, 28, 135, 0.12));
+  --tile-freq-border: rgba(167, 139, 250, 0.42);
+  --tile-freq-icon:   #c084fc;
+  --tile-freq-label:  #d8b4fe;
+  --tile-number:      #ffffff;
+
+  // Legenda de notas
+  --grade-good:    #10b981;
+  --grade-regular: #eab308;
+  --grade-bad:     #ef4444;
+
+  // Profundidade
+  --shadow-card:  0 10px 30px rgba(0, 0, 0, 0.35);
+  --shadow-pop:   0 20px 40px rgba(0, 0, 0, 0.55);
+  --shadow-glow:  0 0 22px rgba(34, 211, 238, 0.16);
+  --focus-ring:   0 0 0 3px rgba(34, 211, 238, 0.45);
+
+  // Banner
+  --banner-fade:  linear-gradient(90deg, rgba(3, 10, 14, 0.95) 0%, rgba(3, 10, 14, 0.84) 36%, rgba(3, 10, 14, 0.3) 66%, rgba(3, 10, 14, 0.05) 100%);
+  --banner-title: #ffffff;
+  --banner-text:  #cfe3e8;
+  --banner-img-filter: none;
+
   --transition:    300ms ease;
   --radius-sm:     6px;
   --radius-md:     12px;
   --radius-lg:     16px;
 }
 
-:root[data-theme="light"],
-html[data-theme="light"],
-body[data-theme="light"] {
-  --bg-primary:    #f8faf9;
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --bg-primary:    #f6f9fa;
   --bg-secondary:  #ffffff;
-  --bg-tertiary:   #eef3f0;
-  --text-primary:  #0f172a;
-  --text-secondary:#334155;
-  --text-tertiary: #64748b;
-  --border-color:  rgba(15, 23, 42, 0.12);
+  --bg-tertiary:   #f2f6f8;
+  --bg-elevated:   #ffffff;
+  --bg-overlay:    rgba(15, 42, 58, 0.38);
+  --header-bg:     rgba(255, 255, 255, 0.94);
+  --sidebar-bg:    #ffffff;
+
+  --text-primary:   #0f2a3a;
+  --text-secondary: #4a5f6d;
+  --text-tertiary:  #627684;
+  --text-on-accent: #ffffff;
+
+  --border-color:   #e2eaee;
+  --border-strong:  #c9d8df;
+
+  // Esmeralda para preenchimentos; texto usa o tom escuro (contraste AA)
+  --accent:         #10b981;
+  --accent-rgb:     16, 185, 129;
+  --accent-hover:   #059669;
+  --accent-text:    #0f766e;
+  --accent-soft:    #e3f6ef;
+  --accent-2:       #14b8a6;
+  --accent-2-rgb:   20, 184, 166;
+  --brand:          #10b981;
+
+  --tint-rgb:       15, 42, 58;
+
+  --success: #059669;
+  --warning: #b45309;
+  --danger:  #dc2626;
+  --info:    #2563eb;
+  --success-text: #047857;
+
+  --tile-ok-bg:       #e4f7ef;
+  --tile-ok-border:   #c3ebdb;
+  --tile-ok-icon:     #0f9f7a;
+  --tile-ok-label:    #0f766e;
+  --tile-miss-bg:     #e6f0fd;
+  --tile-miss-border: #c9dcf6;
+  --tile-miss-icon:   #2563eb;
+  --tile-miss-label:  #1d4ed8;
+  --tile-freq-bg:     #f0e9fd;
+  --tile-freq-border: #dccdf8;
+  --tile-freq-icon:   #7c3aed;
+  --tile-freq-label:  #6d28d9;
+  --tile-number:      #0f2a3a;
+
+  --grade-good:    #16a34a;
+  --grade-regular: #eab308;
+  --grade-bad:     #ef4444;
+
+  --shadow-card:  0 1px 2px rgba(15, 42, 58, 0.04), 0 6px 18px rgba(15, 42, 58, 0.06);
+  --shadow-pop:   0 18px 40px rgba(15, 42, 58, 0.16);
+  --shadow-glow:  0 4px 16px rgba(16, 185, 129, 0.14);
+  --focus-ring:   0 0 0 3px rgba(16, 185, 129, 0.35);
+
+  --banner-fade:  linear-gradient(90deg, rgba(255, 255, 255, 0.97) 0%, rgba(255, 255, 255, 0.9) 36%, rgba(255, 255, 255, 0.4) 64%, rgba(255, 255, 255, 0) 100%);
+  --banner-title: #0f2a3a;
+  --banner-text:  #33495a;
+  // Clareia a foto (que é noturna) para ela conversar com o fundo branco
+  --banner-img-filter: brightness(1.35) saturate(0.9) contrast(0.95);
 }
 
 // ─── Reset ────────────────────────────────────────────────────────────────────
@@ -58,8 +184,8 @@ html {
 
 body {
   font-family: $font-sans;
-  background-color: var(--bg-primary, #0a0e0d);
-  color: var(--text-primary, #f4f6f5);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
   line-height: 1.6;
   min-height: 100vh;
   overflow-x: hidden;
@@ -104,7 +230,7 @@ a {
   text-decoration: none;
   transition: color $transition-smooth;
 
-  &:hover { color: #33ddff; }
+  &:hover { color: var(--accent-hover); }
 }
 
 ul,
@@ -114,11 +240,7 @@ button { cursor: pointer; }
 
 // ─── Custom Scrollbar ─────────────────────────────────────────────────────────
 html {
-  scrollbar-color: #10b981 #09090b;
-}
-
-:root[data-theme="light"] {
-  scrollbar-color: #000000 #ffffff;
+  scrollbar-color: rgba(var(--accent-rgb), 0.55) var(--bg-primary);
 }
 
 ::-webkit-scrollbar {
@@ -127,30 +249,19 @@ html {
 }
 
 ::-webkit-scrollbar-track {
-  background: #09090b;
+  background: var(--bg-primary);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #10b981;
+  background: rgba(var(--accent-rgb), 0.55);
   border-radius: 99px;
 
-  &:hover { background: #34d399; }
-}
-
-:root[data-theme="light"] ::-webkit-scrollbar-track {
-  background: #ffffff;
-}
-
-:root[data-theme="light"] ::-webkit-scrollbar-thumb {
-  background: #000000;
-  border-radius: 99px;
-
-  &:hover { background: #18181b; }
+  &:hover { background: var(--accent); }
 }
 
 // ─── Text Selection ───────────────────────────────────────────────────────────
 ::selection {
-  background: rgba(16, 185, 129, 0.25);
+  background: rgba(var(--accent-rgb), 0.25);
   color: $text-primary;
 }
 

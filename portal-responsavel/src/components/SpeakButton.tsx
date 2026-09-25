@@ -100,9 +100,9 @@ let globalAudio: HTMLAudioElement | null = null;
         fontWeight: 500,
         transition: 'all 0.2s',
         cursor: loading ? 'default' : 'pointer',
-        background: playing ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-        color: playing ? '#a78bfa' : '#a1a1aa',
-        border: playing ? '1px solid rgba(139, 92, 246, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)',
+        background: playing ? 'rgba(139, 92, 246, 0.2)' : 'rgba(var(--tint-rgb), 0.05)',
+        color: playing ? '#a78bfa' : 'var(--text-secondary)',
+        border: playing ? '1px solid rgba(139, 92, 246, 0.3)' : '1px solid rgba(var(--tint-rgb), 0.1)',
       }}
     >
       {loading ? (

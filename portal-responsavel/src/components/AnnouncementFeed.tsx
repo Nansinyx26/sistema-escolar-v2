@@ -49,8 +49,8 @@ const AnnouncementFeed: React.FC = () => {
   if (loading && comunicados.length === 0) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 0', gap: '16px' }}>
-        <RefreshCw style={{ animation: 'spin 1s linear infinite', color: '#10b981' }} size={32} />
-        <p style={{ color: '#71717a', fontSize: '0.875rem' }}>Buscando comunicados importantes...</p>
+        <RefreshCw style={{ animation: 'spin 1s linear infinite', color: 'var(--success-text)' }} size={32} />
+        <p style={{ color: 'var(--text-tertiary)', fontSize: '0.875rem' }}>Buscando comunicados importantes...</p>
       </div>
     );
   }
@@ -75,13 +75,13 @@ const AnnouncementFeed: React.FC = () => {
             <h1 style={{
               fontSize: '1.25rem',
               fontWeight: 700,
-              color: '#f5f5f5',
+              color: 'var(--text-primary)',
               margin: 0,
               lineHeight: 1.3,
             }}>
               Comunicados Oficiais
             </h1>
-            <p style={{ fontSize: '0.75rem', color: '#a0a0a0', margin: 0, marginTop: '2px' }}>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0, marginTop: '2px' }}>
               Acompanhe as novidades e avisos da escola
             </p>
           </div>
@@ -92,9 +92,9 @@ const AnnouncementFeed: React.FC = () => {
           style={{
             padding: '8px',
             borderRadius: '50%',
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            color: '#a0a0a0',
+            background: 'rgba(var(--tint-rgb), 0.05)',
+            border: '1px solid rgba(var(--tint-rgb), 0.08)',
+            color: 'var(--text-secondary)',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -102,7 +102,7 @@ const AnnouncementFeed: React.FC = () => {
             transition: 'background 0.2s, color 0.2s',
           }}
           onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(16, 185, 129,0.1)'; (e.currentTarget as HTMLButtonElement).style.color = '#10b981'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.05)'; (e.currentTarget as HTMLButtonElement).style.color = '#a0a0a0'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(var(--tint-rgb), 0.05)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)'; }}
           title="Recarregar"
         >
           <RefreshCw size={18} />
@@ -126,14 +126,14 @@ const AnnouncementFeed: React.FC = () => {
         </div>
       ) : comunicados.length === 0 ? (
         <div style={{
-          background: 'rgba(24, 24, 27, 0.5)',
-          border: '1px solid rgba(255,255,255,0.05)',
+          background: 'var(--bg-tertiary)',
+          border: '1px solid rgba(var(--tint-rgb), 0.05)',
           borderRadius: '16px',
           padding: '48px',
           textAlign: 'center',
         }}>
           <div style={{
-            background: 'rgba(39, 39, 42, 0.8)',
+            background: 'var(--bg-tertiary)',
             width: '64px',
             height: '64px',
             borderRadius: '50%',
@@ -142,10 +142,10 @@ const AnnouncementFeed: React.FC = () => {
             justifyContent: 'center',
             margin: '0 auto 16px',
           }}>
-            <Megaphone color="#52525b" size={32} />
+            <Megaphone color="var(--text-tertiary)" size={32} />
           </div>
-          <h2 style={{ color: '#f5f5f5', fontWeight: 600, marginBottom: '4px', fontSize: '1rem' }}>Nenhum comunicado</h2>
-          <p style={{ color: '#71717a', fontSize: '0.875rem', margin: 0 }}>Você está em dia com todos os avisos da escola.</p>
+          <h2 style={{ color: 'var(--text-primary)', fontWeight: 600, marginBottom: '4px', fontSize: '1rem' }}>Nenhum comunicado</h2>
+          <p style={{ color: 'var(--text-tertiary)', fontSize: '0.875rem', margin: 0 }}>Você está em dia com todos os avisos da escola.</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>

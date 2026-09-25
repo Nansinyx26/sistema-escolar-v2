@@ -114,7 +114,7 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({
                                 {isExpanded ? 'Menos' : 'Mais'}
                               </button>
                             )}
-                            <p style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>
+                            <p style={{ fontSize: '0.8rem', color: 'rgba(var(--tint-rgb), 0.4)', marginTop: '8px' }}>
                               Enviado por: <strong>{n.criadoPor}</strong> • {new Date(n.dataCriacao).toLocaleString('pt-BR')}
                             </p>
                           </div>

@@ -14,6 +14,9 @@ import Icon from './ui/Icon';
 
 interface NotesCardProps {
   grades: Grade[];
+  /** Baixa o boletim oficial em PDF (botão no cabeçalho do card). */
+  onDownload?: () => void;
+  downloading?: boolean;
 }
 
 function formatSubject(code: string): string {
@@ -93,7 +96,7 @@ function getGradeMeta(value: number | null): GradeMeta {
   };
 }
 
-const NotesCard: React.FC<NotesCardProps> = ({ grades }) => {
+const NotesCard: React.FC<NotesCardProps> = ({ grades, onDownload, downloading = false }) => {
   // Estado para controlar quais matérias estão expandidas no acordeão mobile
   const [expandedSubjects, setExpandedSubjects] = useState<Record<string, boolean>>(() => {
     // Por padrão, a primeira matéria começa expandida para guiar a pessoa
@@ -114,11 +117,27 @@ const NotesCard: React.FC<NotesCardProps> = ({ grades }) => {
     <section className={styles.card} aria-labelledby="notes-heading" data-tour="notes">
       {/* Cabeçalho do Card */}
       <div className={styles.cardHeader}>
-        <h3 id="notes-heading" className={styles.cardTitle}>
-          <Icon name="book" aria-hidden="true" />
-          Notas por Disciplina
-        </h3>
-        <span className={styles.cardSubtitle}>Ano letivo 2026</span>
+        <div className={styles.cardHeaderIcon} aria-hidden="true">
+          <Icon name="book-open" />
+        </div>
+        <div className={styles.cardHeaderText}>
+          <h3 id="notes-heading" className={styles.cardTitle}>
+            Notas por Disciplina
+          </h3>
+          <span className={styles.cardSubtitle}>Ano letivo {new Date().getFullYear()}</span>
+        </div>
+        {onDownload && (
+          <button
+            type="button"
+            className={styles.cardHeaderAction}
+            onClick={onDownload}
+            disabled={downloading}
+            title="Baixar boletim em PDF"
+            aria-label={downloading ? 'Gerando boletim em PDF' : 'Baixar boletim em PDF'}
+          >
+            <Icon name={downloading ? 'loader' : 'download'} spin={downloading} aria-hidden="true" />
+          </button>
+        )}
       </div>
 
       {grades.length === 0 ? (
@@ -140,7 +159,7 @@ const NotesCard: React.FC<NotesCardProps> = ({ grades }) => {
                     <th scope="col">3º Bim</th>
                     <th scope="col">4º Bim</th>
                     <th scope="col" className={styles.thMedia}>
-                      Média Final
+                      Média
                     </th>
                   </tr>
                 </thead>
@@ -169,18 +188,13 @@ const NotesCard: React.FC<NotesCardProps> = ({ grades }) => {
                           return (
                             <td key={bIndex}>
                               <span
-                                className={`${styles.gradeBadge} ${meta.badgeClass}`}
-                                role="status"
-                                aria-label={`${bIndex + 1}º Bimestre: ${formattedValue} (${meta.label})`}
+                                className={`${styles.gradeValue} ${meta.badgeClass}`}
+                                title={nota !== null ? meta.label : 'Nota ainda não lançada'}
                               >
-                                {nota !== null && (
-                                  <Icon
-                                    name={meta.icon}
-                                    aria-hidden="true"
-                                    className={styles.badgeIcon}
-                                  />
-                                )}
-                                <span>{formattedValue}</span>
+                                <span aria-hidden="true">{formattedValue}</span>
+                                <span className="sr-only">
+                                  {nota !== null ? `${formattedValue}, ${meta.label}` : 'sem nota'}
+                                </span>
                               </span>
                             </td>
                           );
@@ -189,18 +203,14 @@ const NotesCard: React.FC<NotesCardProps> = ({ grades }) => {
                         {/* Média Final */}
                         <td className={styles.mediaTd}>
                           <span
-                            className={`${styles.gradeBadge} ${styles.mediaCell} ${mediaMeta.badgeClass}`}
-                            role="status"
-                            aria-label={`Média final: ${media !== null ? media.toFixed(1) : '—'} (${mediaMeta.label})`}
+                            className={`${styles.gradeValue} ${styles.gradeValueStrong} ${mediaMeta.badgeClass}`}
+                            title={media !== null ? mediaMeta.label : 'Sem notas lançadas'}
                           >
-                            {media !== null && (
-                              <Icon
-                                name={mediaMeta.icon}
-                                aria-hidden="true"
-                                className={styles.badgeIcon}
-                              />
-                            )}
-                            <strong>{media !== null ? media.toFixed(1) : '—'}</strong>
+                            <span className={styles.gradeDot} aria-hidden="true" />
+                            <span aria-hidden="true">{media !== null ? media.toFixed(1) : '—'}</span>
+                            <span className="sr-only">
+                              {media !== null ? `${media.toFixed(1)}, ${mediaMeta.label}` : 'sem média'}
+                            </span>
                           </span>
                         </td>
                       </tr>
@@ -301,20 +311,20 @@ const NotesCard: React.FC<NotesCardProps> = ({ grades }) => {
       )}
 
       {/* Legenda de Avaliação Acessível */}
-      <div className={styles.legend}>
-        <span className={`${styles.legendItem} ${styles.excellent}`}>
-          <Icon name="circle-check-filled" aria-hidden="true" />
+      <ul className={styles.legend} aria-label="Legenda de desempenho">
+        <li className={`${styles.legendItem} ${styles.excellent}`}>
+          <span className={styles.legendDot} aria-hidden="true" />
           <span>≥ 7.5 Bom</span>
-        </span>
-        <span className={`${styles.legendItem} ${styles.good}`}>
-          <Icon name="alert-triangle" aria-hidden="true" />
+        </li>
+        <li className={`${styles.legendItem} ${styles.good}`}>
+          <span className={styles.legendDot} aria-hidden="true" />
           <span>≥ 7.0 Regular</span>
-        </span>
-        <span className={`${styles.legendItem} ${styles.warning}`}>
-          <Icon name="alert-circle" aria-hidden="true" />
+        </li>
+        <li className={`${styles.legendItem} ${styles.warning}`}>
+          <span className={styles.legendDot} aria-hidden="true" />
           <span>&lt; 7.0 Atenção</span>
-        </span>
-      </div>
+        </li>
+      </ul>
     </section>
   );
 };
