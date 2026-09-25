@@ -404,4 +404,24 @@ describe('Páginas da escola: sessão de responsável não entra', () => {
 
         expect(res.status).toBe(200);
     });
+
+    // Mesma cobrança que existe para `conversas.html`, e pelo mesmo motivo: a
+    // lista de perfis é escrita à mão para que um perfil novo no model precise
+    // ser acrescentado de propósito. Se alguém ampliar o enum sem decidir sobre
+    // estas duas páginas, este teste quebra e força a decisão — o que evita
+    // tanto o perfil novo entrando de graça quanto ele ficando preso fora da
+    // própria troca de senha.
+    //
+    // Vive aqui, e não em `matrizAcesso.test.js`, porque aquela suíte roda em
+    // jsdom (ela carrega o guard do navegador de verdade) e o `require` do model
+    // arrasta o mongoose, que o transform do jsdom não parseia.
+    it('as paginas da pessoa cobrem todos os perfis do model', () => {
+        const Usuario = require('../models/Usuario');
+        const doModel = Usuario.schema.path('perfil').enumValues.slice().sort();
+        const { AREAS } = require('../middleware/protegerPaginas');
+
+        for (const pagina of ['/html/mudar-senha.html', '/html/termo-audio-imagem.html']) {
+            expect(AREAS[pagina].perfis.slice().sort()).toEqual(doModel);
+        }
+    });
 });

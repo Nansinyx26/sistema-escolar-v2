@@ -250,14 +250,6 @@ describe('matriz de acesso — precedência da exceção por arquivo', () => {
             }
         );
 
-        it('as páginas da pessoa cobrem todos os perfis do model', () => {
-            const Usuario = require('../models/Usuario');
-            const doModel = Usuario.schema.path('perfil').enumValues.slice().sort();
-            for (const pagina of ['/html/mudar-senha.html', '/html/termo-audio-imagem.html']) {
-                expect(matriz.AREAS[pagina].perfis.slice().sort()).toEqual(doModel);
-            }
-        });
-
         it('a negação não alcança as duas páginas que o portal declara', () => {
             // As únicas para as quais o Portal do Responsável tem link — ver
             // Header.tsx e LoginResponsavel.tsx. Se uma delas fechar, o portal
