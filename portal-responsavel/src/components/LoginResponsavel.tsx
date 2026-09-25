@@ -18,6 +18,7 @@ import '../../../css/ui-base.css';
 import '../../../css/ui-login.css';
 import '../styles/login-responsavel.scss';
 import type { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../hooks/useTheme';
 import { mascaraTelefone } from '../utils/cadastroResponsavel';
 import Toast from './Toast';
 
@@ -51,36 +52,6 @@ function gravarEmailLembrado(email: string | null) {
   } catch {
     // localStorage bloqueado (aba anônima, cookies off): só não lembra.
   }
-}
-
-type Tema = 'dark' | 'light';
-
-/** Mesma chave `theme` e mesmo evento do alternador do Header do portal. */
-function useTema() {
-  const [tema, setTema] = useState<Tema>(() => {
-    try {
-      return localStorage.getItem('theme') === 'light' ? 'light' : 'dark';
-    } catch {
-      return 'dark';
-    }
-  });
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', tema);
-  }, [tema]);
-
-  const alternar = () => {
-    const proximo: Tema = tema === 'light' ? 'dark' : 'light';
-    setTema(proximo);
-    try {
-      localStorage.setItem('theme', proximo);
-    } catch {
-      // sem persistência: o tema vale só nesta visita
-    }
-    window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: proximo } }));
-  };
-
-  return { tema, alternar };
 }
 
 /** Liga a base `ui3` no body só enquanto o login está na tela. */
@@ -594,7 +565,7 @@ const LoginResponsavel: React.FC<LoginResponsavelProps> = ({ auth, toast, onClos
   } = auth;
 
   useBaseUi3();
-  const { tema, alternar } = useTema();
+  const { tema, alternar } = useTheme();
   const [lembrar, setLembrar] = useState(false);
 
   // "Lembrar-me": o e-mail guardado volta preenchido, com a caixa marcada.

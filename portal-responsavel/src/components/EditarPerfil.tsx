@@ -379,7 +379,7 @@ export default function EditarPerfil({ user, onSuccess }: EditarPerfilProps) {
                     fontWeight: 600,
                     background: 'rgba(16, 185, 129,0.1)',
                     border: '1px solid rgba(16, 185, 129,0.3)',
-                    color: '#10b981',
+                    color: 'var(--success-text)',
                     cursor: 'pointer',
                   }}
                 >
@@ -407,7 +407,7 @@ export default function EditarPerfil({ user, onSuccess }: EditarPerfilProps) {
                   </button>
                 )}
               </div>
-              <p style={{ fontSize: '0.72rem', color: '#71717a', margin: 0 }}>
+              <p style={{ fontSize: '0.72rem', color: 'var(--text-tertiary)', margin: 0 }}>
                 JPG, PNG ou WebP · máx. 5MB
               </p>
             </div>
@@ -459,12 +459,12 @@ export default function EditarPerfil({ user, onSuccess }: EditarPerfilProps) {
               className={styles.profileSectionTitle}
               style={{ borderColor: 'rgba(16, 185, 129,0.3)' }}
             >
-              <Icon name="shield-lock" style={{ color: '#10b981' }} /> Termos de Consentimento
-              Ativos
+              <Icon name="shield-lock" style={{ color: 'var(--success-text)' }} /> Termos de
+              Consentimento Ativos
             </h3>
             <p
               style={{
-                color: '#94a3b8',
+                color: 'var(--text-secondary)',
                 fontSize: '0.85rem',
                 marginBottom: '20px',
                 lineHeight: '1.5',
@@ -538,8 +538,8 @@ export default function EditarPerfil({ user, onSuccess }: EditarPerfilProps) {
               style={{
                 marginTop: '24px',
                 padding: '16px',
-                background: 'rgba(255,255,255,0.02)',
-                border: '1px solid rgba(255,255,255,0.05)',
+                background: 'rgba(var(--tint-rgb), 0.02)',
+                border: '1px solid rgba(var(--tint-rgb), 0.05)',
                 borderRadius: '8px',
               }}
             >
@@ -548,7 +548,14 @@ export default function EditarPerfil({ user, onSuccess }: EditarPerfilProps) {
               >
                 Período de Retenção de Dados
               </h4>
-              <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.8rem', lineHeight: '1.5' }}>
+              <p
+                style={{
+                  margin: 0,
+                  color: 'var(--text-secondary)',
+                  fontSize: '0.8rem',
+                  lineHeight: '1.5',
+                }}
+              >
                 Conforme obrigatoriedades legais do MEC, o histórico acadêmico é de retenção
                 definitiva. Os dados cadastrais do responsável são mantidos enquanto o aluno possuir
                 matrícula ativa.
@@ -562,7 +569,7 @@ export default function EditarPerfil({ user, onSuccess }: EditarPerfilProps) {
             marginTop: '32px',
             display: 'flex',
             justifyContent: 'flex-end',
-            borderTop: '1px solid rgba(255,255,255,0.08)',
+            borderTop: '1px solid rgba(var(--tint-rgb), 0.08)',
             paddingTop: '20px',
           }}
         >
@@ -573,7 +580,7 @@ export default function EditarPerfil({ user, onSuccess }: EditarPerfilProps) {
             style={{
               maxWidth: '240px',
               background: isButtonDisabled
-                ? 'rgba(255,255,255,0.08)'
+                ? 'rgba(var(--tint-rgb), 0.08)'
                 : 'linear-gradient(135deg,#10b981,#8b5cf6)',
               border: 'none',
               fontWeight: 700,

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Volume2, Square, Loader2 } from 'lucide-react';
+import { Loader2, Square, Volume2 } from 'lucide-react';
+import type React from 'react';
+import { useState } from 'react';
 import { vozAtual } from '../constants/vozes';
 
 interface Props {
@@ -8,14 +9,14 @@ interface Props {
 
 let globalAudio: HTMLAudioElement | null = null;
 
-  const SpeakButton: React.FC<Props> = ({ text }) => {
+const SpeakButton: React.FC<Props> = ({ text }) => {
   const [loading, setLoading] = useState(false);
   const [playing, setPlaying] = useState(false);
 
   const stripHtml = (html: string) => {
-    const tmp = document.createElement("DIV");
+    const tmp = document.createElement('DIV');
     tmp.innerHTML = html;
-    return tmp.textContent || tmp.innerText || "";
+    return tmp.textContent || tmp.innerText || '';
   };
 
   const toggleSpeak = async () => {
@@ -36,12 +37,12 @@ let globalAudio: HTMLAudioElement | null = null;
       // quando esta chave guardava gênero) chegava ao backend como voiceId
       // desconhecido e caía no fallback.
       const voiceName = vozAtual();
-      
+
       const csrfMatch = document.cookie.match(/csrf_token=([^;]+)/);
       const csrf = csrfMatch ? decodeURIComponent(csrfMatch[1]) : '';
 
       const BASE = import.meta.env.DEV
-        ? (import.meta.env.VITE_API_URL || 'http://localhost:3001/api')
+        ? import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
         : '/api';
 
       const res = await fetch(`${BASE}/tts/speak`, {
@@ -49,20 +50,20 @@ let globalAudio: HTMLAudioElement | null = null;
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          ...(csrf ? { 'X-CSRF-Token': csrf } : {})
+          ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
         },
-        body: JSON.stringify({ text: cleanText, voiceId: voiceName, provider: 'elevenlabs' })
+        body: JSON.stringify({ text: cleanText, voiceId: voiceName, provider: 'elevenlabs' }),
       });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
-      
+
       if (globalAudio) globalAudio.pause();
-      
+
       const audio = new Audio(url);
       globalAudio = audio;
-      
+
       audio.onplay = () => {
         setPlaying(true);
         setLoading(false);
@@ -76,9 +77,8 @@ let globalAudio: HTMLAudioElement | null = null;
         setLoading(false);
         globalAudio = null;
       };
-      
-      audio.play();
 
+      audio.play();
     } catch (e) {
       console.error('TTS Error:', e);
       setLoading(false);
@@ -88,6 +88,7 @@ let globalAudio: HTMLAudioElement | null = null;
 
   return (
     <button
+      type="button"
       onClick={toggleSpeak}
       disabled={loading}
       style={{
@@ -100,9 +101,11 @@ let globalAudio: HTMLAudioElement | null = null;
         fontWeight: 500,
         transition: 'all 0.2s',
         cursor: loading ? 'default' : 'pointer',
-        background: playing ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-        color: playing ? '#a78bfa' : '#a1a1aa',
-        border: playing ? '1px solid rgba(139, 92, 246, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)',
+        background: playing ? 'rgba(139, 92, 246, 0.2)' : 'rgba(var(--tint-rgb), 0.05)',
+        color: playing ? '#a78bfa' : 'var(--text-secondary)',
+        border: playing
+          ? '1px solid rgba(139, 92, 246, 0.3)'
+          : '1px solid rgba(var(--tint-rgb), 0.1)',
       }}
     >
       {loading ? (

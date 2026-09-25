@@ -7,7 +7,7 @@
 
 .skeletonHeader {
   height: 40px;
-  background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%);
+  background: linear-gradient(90deg, rgba(var(--tint-rgb), 0.05) 25%, rgba(var(--tint-rgb), 0.1) 50%, rgba(var(--tint-rgb), 0.05) 75%);
   background-size: 200% 100%;
   animation: skeletonPulse 1.5s infinite;
   border-radius: 8px;
@@ -15,7 +15,7 @@
 
 .skeletonRow {
   height: 32px;
-  background: linear-gradient(90deg, rgba(255,255,255,0.02) 25%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.02) 75%);
+  background: linear-gradient(90deg, rgba(var(--tint-rgb), 0.02) 25%, rgba(var(--tint-rgb), 0.05) 50%, rgba(var(--tint-rgb), 0.02) 75%);
   background-size: 200% 100%;
   animation: skeletonPulse 1.5s infinite;
   border-radius: 4px;
@@ -30,7 +30,7 @@
 
 .skeletonLine {
   height: 14px;
-  background: rgba(255,255,255,0.05);
+  background: rgba(var(--tint-rgb), 0.05);
   border-radius: 7px;
   animation: skeletonPulse 1.5s infinite;
 }
@@ -44,7 +44,7 @@
 .skeletonBadge {
   width: 120px;
   height: 32px;
-  background: rgba(255,255,255,0.03);
+  background: rgba(var(--tint-rgb), 0.03);
   border-radius: 8px;
   animation: skeletonPulse 1.5s infinite;
 }

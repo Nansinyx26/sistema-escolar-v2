@@ -49,7 +49,10 @@ function SimNaoSelect({
           marginBottom: '0.25rem',
         }}
       >
-        <label htmlFor={selectId} style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)' }}>
+        <label
+          htmlFor={selectId}
+          style={{ fontSize: '0.85rem', color: 'rgba(var(--tint-rgb), 0.7)' }}
+        >
           {label}
         </label>
         {description && (
@@ -63,7 +66,7 @@ function SimNaoSelect({
               gap: '4px',
               background: 'transparent',
               border: 'none',
-              color: '#10b981',
+              color: 'var(--success-text)',
               fontSize: '0.72rem',
               fontWeight: 600,
               cursor: 'pointer',
@@ -86,7 +89,7 @@ function SimNaoSelect({
             borderRadius: '8px',
             fontSize: '0.78rem',
             lineHeight: 1.5,
-            color: 'rgba(255,255,255,0.75)',
+            color: 'rgba(var(--tint-rgb), 0.75)',
           }}
         >
           {description}
@@ -102,9 +105,9 @@ function SimNaoSelect({
           width: '100%',
           padding: '0.5rem',
           borderRadius: '8px',
-          background: '#18181b',
-          border: '1px solid #27272a',
-          color: '#fff',
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--border-color)',
+          color: 'var(--text-primary)',
         }}
       >
         <option value="">— Selecione —</option>
@@ -195,14 +198,14 @@ const FichaAluno: React.FC<Props> = ({ student, onUpdate }) => {
   return (
     <div
       style={{
-        background: '#09090b',
-        border: '1px solid #27272a',
+        background: 'var(--bg-primary)',
+        border: '1px solid var(--border-color)',
         borderRadius: '12px',
         padding: '1.25rem',
         marginTop: '1rem',
       }}
     >
-      <h3 style={{ color: '#10b981', marginBottom: '1rem', fontSize: '1rem' }}>
+      <h3 style={{ color: 'var(--success-text)', marginBottom: '1rem', fontSize: '1rem' }}>
         <i className="bi bi-clipboard-check" /> Ficha &amp; Autorizações
       </h3>
 
@@ -210,7 +213,11 @@ const FichaAluno: React.FC<Props> = ({ student, onUpdate }) => {
       {(student.responsaveis?.length || student.responsavelDados) && (
         <div style={{ marginBottom: '1.25rem' }}>
           <h4
-            style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)', marginBottom: '0.5rem' }}
+            style={{
+              fontSize: '0.85rem',
+              color: 'rgba(var(--tint-rgb), 0.6)',
+              marginBottom: '0.5rem',
+            }}
           >
             Responsáveis
           </h4>
@@ -220,7 +227,7 @@ const FichaAluno: React.FC<Props> = ({ student, onUpdate }) => {
               key={i}
               style={{
                 padding: '0.5rem',
-                background: '#18181b',
+                background: 'var(--bg-secondary)',
                 borderRadius: '8px',
                 marginBottom: '0.5rem',
                 fontSize: '0.85rem',
@@ -228,7 +235,7 @@ const FichaAluno: React.FC<Props> = ({ student, onUpdate }) => {
             >
               <strong>{r?.nome}</strong> — {r?.tipo || r?.parentesco}
               {r?.telefone && (
-                <span style={{ marginLeft: '0.5rem', color: 'rgba(255,255,255,0.5)' }}>
+                <span style={{ marginLeft: '0.5rem', color: 'rgba(var(--tint-rgb), 0.5)' }}>
                   📞 {r.telefone}
                 </span>
               )}
@@ -244,7 +251,7 @@ const FichaAluno: React.FC<Props> = ({ student, onUpdate }) => {
       <div style={{ marginBottom: '1rem' }}>
         <label
           htmlFor="select-guarda-legal"
-          style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.6)' }}
+          style={{ fontSize: '0.85rem', color: 'rgba(var(--tint-rgb), 0.6)' }}
         >
           Guarda Legal
         </label>
@@ -256,9 +263,9 @@ const FichaAluno: React.FC<Props> = ({ student, onUpdate }) => {
             width: '100%',
             padding: '0.5rem',
             borderRadius: '8px',
-            background: '#18181b',
-            border: '1px solid #27272a',
-            color: '#fff',
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border-color)',
+            color: 'var(--text-primary)',
             marginTop: '0.25rem',
           }}
         >
@@ -272,19 +279,27 @@ const FichaAluno: React.FC<Props> = ({ student, onUpdate }) => {
       </div>
 
       {/* Autorizações */}
-      <h4 style={{ fontSize: '0.85rem', color: '#10b981', margin: '1rem 0 0.25rem' }}>
+      <h4
+        id="ficha-autorizacoes"
+        style={{
+          fontSize: '0.85rem',
+          color: 'var(--success-text)',
+          margin: '1rem 0 0.25rem',
+          scrollMarginTop: '96px',
+        }}
+      >
         Autorizações Escolares
       </h4>
       <p
         style={{
           fontSize: '0.76rem',
-          color: 'rgba(255,255,255,0.5)',
+          color: 'rgba(var(--tint-rgb), 0.5)',
           margin: '0 0 0.75rem',
           lineHeight: 1.5,
         }}
       >
-        Toque em <strong style={{ color: '#10b981' }}>Exibir detalhes</strong> em cada item para
-        entender exatamente o que você está autorizando antes de escolher SIM ou NÃO.
+        Toque em <strong style={{ color: 'var(--success-text)' }}>Exibir detalhes</strong> em cada
+        item para entender exatamente o que você está autorizando antes de escolher SIM ou NÃO.
       </p>
       <SimNaoSelect
         label="Tratamento odontológico"
@@ -338,9 +353,9 @@ const FichaAluno: React.FC<Props> = ({ student, onUpdate }) => {
             style={{
               padding: '0.5rem',
               borderRadius: '8px',
-              background: '#18181b',
-              border: '1px solid #27272a',
-              color: '#fff',
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-color)',
+              color: 'var(--text-primary)',
             }}
           />
           <input
@@ -350,9 +365,9 @@ const FichaAluno: React.FC<Props> = ({ student, onUpdate }) => {
             style={{
               padding: '0.5rem',
               borderRadius: '8px',
-              background: '#18181b',
-              border: '1px solid #27272a',
-              color: '#fff',
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-color)',
+              color: 'var(--text-primary)',
             }}
           />
         </div>
@@ -379,9 +394,9 @@ const FichaAluno: React.FC<Props> = ({ student, onUpdate }) => {
             style={{
               padding: '0.5rem',
               borderRadius: '8px',
-              background: '#18181b',
-              border: '1px solid #27272a',
-              color: '#fff',
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-color)',
+              color: 'var(--text-primary)',
             }}
           />
           <input
@@ -391,22 +406,22 @@ const FichaAluno: React.FC<Props> = ({ student, onUpdate }) => {
             style={{
               padding: '0.5rem',
               borderRadius: '8px',
-              background: '#18181b',
-              border: '1px solid #27272a',
-              color: '#fff',
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-color)',
+              color: 'var(--text-primary)',
             }}
           />
         </div>
       )}
 
       {/* Pessoas autorizadas retirada */}
-      <h4 style={{ fontSize: '0.85rem', color: '#10b981', margin: '1rem 0 0.25rem' }}>
+      <h4 style={{ fontSize: '0.85rem', color: 'var(--success-text)', margin: '1rem 0 0.25rem' }}>
         Pessoas Autorizadas a Retirar
       </h4>
       <p
         style={{
           fontSize: '0.76rem',
-          color: 'rgba(255,255,255,0.5)',
+          color: 'rgba(var(--tint-rgb), 0.5)',
           margin: '0 0 0.6rem',
           lineHeight: 1.5,
         }}
@@ -436,9 +451,9 @@ const FichaAluno: React.FC<Props> = ({ student, onUpdate }) => {
             style={{
               padding: '0.5rem',
               borderRadius: '8px',
-              background: '#18181b',
-              border: '1px solid #27272a',
-              color: '#fff',
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-color)',
+              color: 'var(--text-primary)',
             }}
           />
           <input
@@ -452,9 +467,9 @@ const FichaAluno: React.FC<Props> = ({ student, onUpdate }) => {
             style={{
               padding: '0.5rem',
               borderRadius: '8px',
-              background: '#18181b',
-              border: '1px solid #27272a',
-              color: '#fff',
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-color)',
+              color: 'var(--text-primary)',
             }}
           />
           <button
@@ -477,8 +492,8 @@ const FichaAluno: React.FC<Props> = ({ student, onUpdate }) => {
         onClick={() => setPessoas([...pessoas, { nome: '', parentesco: '', telefone: '' }])}
         style={{
           background: 'transparent',
-          border: '1px solid #27272a',
-          color: '#10b981',
+          border: '1px solid var(--border-color)',
+          color: 'var(--success-text)',
           borderRadius: '8px',
           padding: '0.4rem 0.75rem',
           cursor: 'pointer',
@@ -509,7 +524,7 @@ const FichaAluno: React.FC<Props> = ({ student, onUpdate }) => {
       </button>
 
       {/* Documento assinado */}
-      <h4 style={{ fontSize: '0.85rem', color: '#10b981', marginBottom: '0.5rem' }}>
+      <h4 style={{ fontSize: '0.85rem', color: 'var(--success-text)', marginBottom: '0.5rem' }}>
         Ficha Digitalizada Assinada
       </h4>
       <div
@@ -539,9 +554,9 @@ const FichaAluno: React.FC<Props> = ({ student, onUpdate }) => {
               style={{
                 display: 'block',
                 padding: '0.5rem',
-                background: '#18181b',
+                background: 'var(--bg-secondary)',
                 borderRadius: '8px',
-                color: '#10b981',
+                color: 'var(--success-text)',
                 textDecoration: 'none',
                 fontSize: '0.85rem',
                 marginBottom: '0.35rem',
@@ -549,7 +564,7 @@ const FichaAluno: React.FC<Props> = ({ student, onUpdate }) => {
             >
               📄 {a.nome}{' '}
               {a.enviadoEm && (
-                <span style={{ color: 'rgba(255,255,255,0.4)' }}>
+                <span style={{ color: 'rgba(var(--tint-rgb), 0.4)' }}>
                   ({new Date(a.enviadoEm).toLocaleString('pt-BR')})
                 </span>
               )}
@@ -562,11 +577,11 @@ const FichaAluno: React.FC<Props> = ({ student, onUpdate }) => {
         style={{
           display: 'block',
           padding: '1rem',
-          border: '2px dashed #27272a',
+          border: '2px dashed var(--border-color)',
           borderRadius: '8px',
           textAlign: 'center',
           cursor: 'pointer',
-          color: 'rgba(255,255,255,0.6)',
+          color: 'rgba(var(--tint-rgb), 0.6)',
           fontSize: '0.85rem',
         }}
       >
@@ -583,7 +598,7 @@ const FichaAluno: React.FC<Props> = ({ student, onUpdate }) => {
 
       {/* Aviso de finalidade (Issue #399): quem envia precisa saber para que o
           documento é usado, quem vê e por quanto tempo fica guardado. */}
-      <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.55)', marginTop: '0.5rem' }}>
+      <p style={{ fontSize: '0.75rem', color: 'rgba(var(--tint-rgb), 0.55)', marginTop: '0.5rem' }}>
         Os documentos enviados são usados apenas para conferência da matrícula e das autorizações do
         seu filho. Ficam visíveis para a secretaria e a direção da escola, e guardados enquanto
         durar o vínculo escolar. Cada envio fica registrado, e a versão anterior é preservada.

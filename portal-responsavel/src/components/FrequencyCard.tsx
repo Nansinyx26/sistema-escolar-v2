@@ -1,11 +1,11 @@
 /**
  * components/FrequencyCard.tsx
- * Indicadores inline de frequência escolar alinhados à referência visual:
- * - 3 cards de métrica com cores distintas:
- *   - Presenças (verde/cyan)
- *   - Ausências (azul)
- *   - Frequência (roxo/lilás)
- * - Barra de progresso com indicador de cumprimento da LDB (75%).
+ * Indicadores de frequência do aluno, conforme a referência visual (Issue #436):
+ * três ladrilhos (presenças, ausências, frequência), cada um com ícone, número
+ * e rótulo na sua cor, e a barra de progresso do mínimo legal de 75% (LDB).
+ *
+ * Os valores vêm de `GET /frequencia` do aluno ativo; nada é fixo. As cores
+ * de cada ladrilho são tokens (`--tile-*`) com valor próprio em cada tema.
  */
 
 import type React from 'react';
@@ -17,83 +17,82 @@ interface FrequencyCardProps {
   attendance: Attendance;
 }
 
+const FREQUENCIA_MINIMA = 75;
+
 const FrequencyCard: React.FC<FrequencyCardProps> = ({ attendance }) => {
   const rawPercentual = Number(attendance.percentual ?? 0);
   const percentualFormatted =
     rawPercentual % 1 !== 0 ? rawPercentual.toFixed(1) : Math.round(rawPercentual).toString();
-  const isAboveMin = rawPercentual >= 75;
+  const isAboveMin = rawPercentual >= FREQUENCIA_MINIMA;
+
+  const tiles = [
+    {
+      key: 'presencas',
+      label: 'Presenças',
+      value: attendance.presenca ?? 0,
+      icon: 'users',
+      className: styles.metricCardPresencas,
+    },
+    {
+      key: 'ausencias',
+      label: 'Ausências',
+      value: attendance.ausencia ?? 0,
+      icon: 'circle-x',
+      className: styles.metricCardAusencias,
+    },
+    {
+      key: 'frequencia',
+      label: 'Frequência',
+      value: `${percentualFormatted}%`,
+      icon: 'chart-line',
+      className: styles.metricCardFrequencia,
+    },
+  ];
 
   return (
-    <section className={styles.frequencyInlineSection} aria-label="Resumo de Frequência Escolar">
+    <section className={styles.frequencyInlineSection} aria-label="Resumo de frequência escolar">
       <div className={styles.frequencyIndicatorsRow}>
-        {/* Presenças (Verde / Cyan) */}
-        <div className={`${styles.frequencyMetricCard} ${styles.metricCardPresencas}`}>
-          <div className={styles.frequencyMetricHeader}>
-            <span className={styles.frequencyMetricLabel}>Presenças</span>
-            <div className={styles.frequencyMetricIcon} aria-hidden="true">
-              <Icon name="circle-check-filled" />
-            </div>
+        {tiles.map((tile) => (
+          <div key={tile.key} className={`${styles.frequencyMetricCard} ${tile.className}`}>
+            <span className={styles.frequencyMetricIcon} aria-hidden="true">
+              <Icon name={tile.icon} />
+            </span>
+            <span className={styles.frequencyMetricValue}>{tile.value}</span>
+            <span className={styles.frequencyMetricLabel}>{tile.label}</span>
           </div>
-          <div className={styles.frequencyMetricValue}>{attendance.presenca}</div>
-        </div>
-
-        {/* Ausências (Azul) */}
-        <div className={`${styles.frequencyMetricCard} ${styles.metricCardAusencias}`}>
-          <div className={styles.frequencyMetricHeader}>
-            <span className={styles.frequencyMetricLabel}>Ausências</span>
-            <div className={styles.frequencyMetricIcon} aria-hidden="true">
-              <Icon name="circle-x" />
-            </div>
-          </div>
-          <div className={styles.frequencyMetricValue}>{attendance.ausencia}</div>
-        </div>
-
-        {/* Frequência (Roxo) */}
-        <div className={`${styles.frequencyMetricCard} ${styles.metricCardFrequencia}`}>
-          <div className={styles.frequencyMetricHeader}>
-            <span className={styles.frequencyMetricLabel}>Frequência</span>
-            <div className={styles.frequencyMetricIcon} aria-hidden="true">
-              <Icon name="chart-bar" />
-            </div>
-          </div>
-          <div className={styles.frequencyMetricValue}>{percentualFormatted}%</div>
-        </div>
+        ))}
       </div>
 
-      {/* Barra de progresso e status da meta legal */}
-      <div className={styles.frequencyProgressWrapper}>
+      <div
+        className={`${styles.frequencyProgressWrapper} ${isAboveMin ? styles.statusOk : styles.statusAlert}`}
+      >
+        <span className={styles.progressStatusTag}>
+          <Icon name={isAboveMin ? 'check' : 'alert-triangle'} aria-hidden="true" />
+          {isAboveMin
+            ? `Frequência dentro do limite mínimo (${FREQUENCIA_MINIMA}%)`
+            : `Abaixo do limite mínimo legal (${FREQUENCIA_MINIMA}%)`}
+        </span>
         <div className={styles.progressBar}>
           <div
             className={`${styles.progressFill} ${!isAboveMin ? styles.progressFillLow : ''}`}
             style={{ width: `${Math.min(100, Math.max(0, rawPercentual))}%` }}
             role="progressbar"
-            aria-label={`Frequência: ${percentualFormatted}% (mínimo legal de 75%)`}
+            aria-label={`Frequência: ${percentualFormatted}% (mínimo legal de ${FREQUENCIA_MINIMA}%)`}
             aria-valuenow={rawPercentual}
             aria-valuemin={0}
             aria-valuemax={100}
           />
         </div>
 
-        <div className={styles.frequencyProgressFooter}>
+        {attendance.atraso > 0 && (
           <span
-            className={`${styles.progressStatusTag} ${isAboveMin ? styles.statusOk : styles.statusAlert}`}
+            className={styles.atrasosBadge}
+            title={`${attendance.atraso} atrasos registrados neste ano`}
           >
-            <Icon name={isAboveMin ? 'circle-check-filled' : 'alert-triangle'} aria-hidden="true" />
-            {isAboveMin
-              ? 'Frequência dentro do limite mínimo (75%)'
-              : 'Abaixo do limite mínimo legal (75%)'}
+            <Icon name="clock" aria-hidden="true" />
+            {attendance.atraso} {attendance.atraso === 1 ? 'atraso' : 'atrasos'}
           </span>
-
-          {attendance.atraso > 0 && (
-            <span
-              className={styles.atrasosBadge}
-              title={`${attendance.atraso} atrasos registrados neste ano`}
-            >
-              <Icon name="clock" aria-hidden="true" />
-              {attendance.atraso} {attendance.atraso === 1 ? 'atraso' : 'atrasos'}
-            </span>
-          )}
-        </div>
+        )}
       </div>
     </section>
   );

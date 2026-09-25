@@ -1,10 +1,39 @@
 import type React from 'react';
 import { useEffect, useState } from 'react';
+import { useTheme } from '../hooks/useTheme';
 import { ApiError, updateProfile } from '../services/apiService';
 import styles from '../styles/portal.module.scss';
 import type { AuthUser } from '../types';
 import { getPhotoUrl } from '../utils/photoUtils';
 import Icon from './ui/Icon';
+
+/** Escolha de tema dentro do menu do perfil (mesmo estado do cabeçalho). */
+function ThemeChoice() {
+  const { tema, setTema } = useTheme();
+  return (
+    <fieldset className={styles.sidebarThemeChoice}>
+      <legend className={styles.sidebarThemeLegend}>Aparência</legend>
+      <div className={styles.sidebarThemeOptions}>
+        <button
+          type="button"
+          className={`${styles.sidebarThemeOption} ${tema === 'dark' ? styles.active : ''}`}
+          onClick={() => setTema('dark')}
+          aria-pressed={tema === 'dark'}
+        >
+          <Icon name="moon" aria-hidden="true" /> Tema Escuro
+        </button>
+        <button
+          type="button"
+          className={`${styles.sidebarThemeOption} ${tema === 'light' ? styles.active : ''}`}
+          onClick={() => setTema('light')}
+          aria-pressed={tema === 'light'}
+        >
+          <Icon name="sun" aria-hidden="true" /> Tema Claro
+        </button>
+      </div>
+    </fieldset>
+  );
+}
 
 interface ProfileSidebarProps {
   isOpen: boolean;
@@ -182,7 +211,7 @@ export default function ProfileSidebar({
                 fontWeight: 600,
                 background: 'rgba(16, 185, 129,0.08)',
                 border: '1px solid rgba(16, 185, 129,0.2)',
-                color: '#10b981',
+                color: 'var(--success-text)',
                 cursor: 'pointer',
                 transition: 'background 0.2s',
               }}
@@ -311,6 +340,10 @@ export default function ProfileSidebar({
                   ? 'Alterar Cadastro / Termo LGPD'
                   : 'Assinar Termo LGPD e Cadastro'}
               </button>
+
+              <hr className={styles.sidebarSeparator} />
+
+              <ThemeChoice />
 
               <hr className={styles.sidebarSeparator} />
 

@@ -3,13 +3,14 @@
  * Full-screen overlay to display all notifications with expand and comments.
  */
 
-import React, { useState } from 'react';
 import * as RadixDialog from '@radix-ui/react-dialog';
-import type { Notification } from '../types';
+import type React from 'react';
+import { useState } from 'react';
 import styles from '../styles/portal.module.scss';
-import ReactionArea from './ReactionArea';
-import CommentSection from './CommentSection';
+import type { Notification } from '../types';
 import { sanitizeHtml } from '../utils/htmlSanitizer';
+import CommentSection from './CommentSection';
+import ReactionArea from './ReactionArea';
 import Icon from './ui/Icon';
 
 interface NotificationsModalProps {
@@ -21,13 +22,13 @@ interface NotificationsModalProps {
 }
 
 const TYPE_COLORS: Record<string, string> = {
-  info:       styles.borderInfo,
-  aviso:      styles.borderAviso,
-  evento:     styles.borderEvento,
+  info: styles.borderInfo,
+  aviso: styles.borderAviso,
+  evento: styles.borderEvento,
   financeiro: styles.borderFinanceiro,
-  academico:  styles.borderAcademico,
-  saude:      styles.borderSaude,
-  falta:      styles.borderFalta,
+  academico: styles.borderAcademico,
+  saude: styles.borderSaude,
+  falta: styles.borderFalta,
 };
 
 const stripHtml = (html: string) => {
@@ -49,7 +50,12 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <RadixDialog.Root open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+    <RadixDialog.Root
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
       <RadixDialog.Portal>
         <RadixDialog.Overlay className={styles.notificationsModalOverlay} />
         <RadixDialog.Content className={styles.dialogPositioner} aria-describedby={undefined}>
@@ -62,111 +68,148 @@ const NotificationsModal: React.FC<NotificationsModalProps> = ({
                 </h2>
               </RadixDialog.Title>
               <RadixDialog.Close asChild>
-                <button className={styles.notificationsModalClose} aria-label="Fechar">
+                <button
+                  type="button"
+                  className={styles.notificationsModalClose}
+                  aria-label="Fechar"
+                >
                   &times;
                 </button>
               </RadixDialog.Close>
             </div>
 
-        <div className={styles.notificationsModalBody}>
-          {notifications.length === 0 ? (
-            <div className={styles.emptyState}>
-              <Icon name="bell-off" />
-              <p>Nenhuma notificação encontrada.</p>
-            </div>
-          ) : (
-            <div className={styles.notificationsList}>
-              {notifications.map((n) => {
-                const previewText = n.corpoHtml ? stripHtml(n.corpoHtml) : n.mensagem;
-                const isLong = previewText.length > 140;
-                const isExpanded = !!expandedIds[n.id];
-                const showCommentBox = !!openComments[n.id];
+            <div className={styles.notificationsModalBody}>
+              {notifications.length === 0 ? (
+                <div className={styles.emptyState}>
+                  <Icon name="bell-off" />
+                  <p>Nenhuma notificação encontrada.</p>
+                </div>
+              ) : (
+                <div className={styles.notificationsList}>
+                  {notifications.map((n) => {
+                    const previewText = n.corpoHtml ? stripHtml(n.corpoHtml) : n.mensagem;
+                    const isLong = previewText.length > 140;
+                    const isExpanded = !!expandedIds[n.id];
+                    const showCommentBox = !!openComments[n.id];
 
-                return (
-                  <article
-                    key={n.id}
-                    className={`
+                    return (
+                      <article
+                        key={n.id}
+                        className={`
                       ${styles.notificationCard}
                       ${!n.lido ? styles.unread : ''}
                       ${TYPE_COLORS[n.tipo] ?? ''}
                     `}
-                  >
-                    <div className={styles.notifClickArea} style={{ cursor: 'default' }}>
-                      <div className={styles.notificationHeader}>
-                        <div className={styles.notifLeft}>
-                          <span className={styles.notifIcon}>{n.icon}</span>
-                          <div className={styles.notifTextBlock}>
-                            <p className={styles.notificationTitle} style={{ fontSize: '1.1rem' }}>{n.titulo}</p>
-                            {n.corpoHtml && isExpanded ? (
-                              <div className={styles.notificationFull} dangerouslySetInnerHTML={{ __html: sanitizeHtml(n.corpoHtml) }} />
-                            ) : (
-                              <p className={`${styles.notificationPreview} ${!isExpanded && isLong ? styles.notificationPreviewClamped : ''}`} style={isExpanded ? { whiteSpace: 'pre-wrap' } : undefined}>
-                                {previewText}
-                              </p>
-                            )}
-                            {isLong && (
-                              <button
-                                type="button"
-                                className={styles.notifExpandBtn}
-                                onClick={() => setExpandedIds(prev => ({ ...prev, [n.id]: !prev[n.id] }))}
-                                aria-expanded={isExpanded}
-                              >
-                                {isExpanded ? 'Menos' : 'Mais'}
-                              </button>
-                            )}
-                            <p style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginTop: '8px' }}>
-                              Enviado por: <strong>{n.criadoPor}</strong> • {new Date(n.dataCriacao).toLocaleString('pt-BR')}
-                            </p>
+                      >
+                        <div className={styles.notifClickArea} style={{ cursor: 'default' }}>
+                          <div className={styles.notificationHeader}>
+                            <div className={styles.notifLeft}>
+                              <span className={styles.notifIcon}>{n.icon}</span>
+                              <div className={styles.notifTextBlock}>
+                                <p
+                                  className={styles.notificationTitle}
+                                  style={{ fontSize: '1.1rem' }}
+                                >
+                                  {n.titulo}
+                                </p>
+                                {n.corpoHtml && isExpanded ? (
+                                  <div
+                                    className={styles.notificationFull}
+                                    // biome-ignore lint/security/noDangerouslySetInnerHtml: corpo passa por sanitizeHtml (DOMPurify)
+                                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(n.corpoHtml) }}
+                                  />
+                                ) : (
+                                  <p
+                                    className={`${styles.notificationPreview} ${!isExpanded && isLong ? styles.notificationPreviewClamped : ''}`}
+                                    style={isExpanded ? { whiteSpace: 'pre-wrap' } : undefined}
+                                  >
+                                    {previewText}
+                                  </p>
+                                )}
+                                {isLong && (
+                                  <button
+                                    type="button"
+                                    className={styles.notifExpandBtn}
+                                    onClick={() =>
+                                      setExpandedIds((prev) => ({ ...prev, [n.id]: !prev[n.id] }))
+                                    }
+                                    aria-expanded={isExpanded}
+                                  >
+                                    {isExpanded ? 'Menos' : 'Mais'}
+                                  </button>
+                                )}
+                                <p
+                                  style={{
+                                    fontSize: '0.8rem',
+                                    color: 'rgba(var(--tint-rgb), 0.4)',
+                                    marginTop: '8px',
+                                  }}
+                                >
+                                  Enviado por: <strong>{n.criadoPor}</strong> •{' '}
+                                  {new Date(n.dataCriacao).toLocaleString('pt-BR')}
+                                </p>
+                              </div>
+                            </div>
+                            <div className={styles.notifRight}>
+                              {!n.lido && <span className={styles.newBadge}>NOVA</span>}
+                            </div>
                           </div>
                         </div>
-                        <div className={styles.notifRight}>
-                          {!n.lido && <span className={styles.newBadge}>NOVA</span>}
+
+                        <div className={styles.notifReactionRow}>
+                          <ReactionArea messageId={n.id} />
+                          <button
+                            type="button"
+                            className={styles.notifCommentBtn}
+                            onClick={() =>
+                              setOpenComments((prev) => ({ ...prev, [n.id]: !prev[n.id] }))
+                            }
+                            aria-expanded={showCommentBox}
+                          >
+                            <Icon name="message-circle" aria-hidden="true" />
+                            Comentar
+                          </button>
                         </div>
-                      </div>
-                    </div>
 
-                    <div className={styles.notifReactionRow}>
-                      <ReactionArea messageId={n.id} />
-                      <button
-                        type="button"
-                        className={styles.notifCommentBtn}
-                        onClick={() => setOpenComments(prev => ({ ...prev, [n.id]: !prev[n.id] }))}
-                        aria-expanded={showCommentBox}
-                      >
-                        <Icon name="message-circle" aria-hidden="true" />
-                        Comentar
-                      </button>
-                    </div>
+                        {showCommentBox && (
+                          <div className={styles.notifCommentsBox}>
+                            <CommentSection
+                              comunicadoId={n.comunicadoId}
+                              notificacaoId={n.notificacaoId || n.id}
+                            />
+                          </div>
+                        )}
 
-                    {showCommentBox && (
-                      <div className={styles.notifCommentsBox}>
-                        <CommentSection
-                          comunicadoId={n.comunicadoId}
-                          notificacaoId={n.notificacaoId || n.id}
-                        />
-                      </div>
-                    )}
-
-                    <div className={styles.notifActions}>
-                      {!n.lido && (
-                        <button className={styles.actionBtn} onClick={() => onMarkAsRead(n.id)}>
-                          <Icon name="check" /> Marcar como lida
-                        </button>
-                      )}
-                      <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => onDelete(n.id)}>
-                        <Icon name="trash" /> Excluir
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
+                        <div className={styles.notifActions}>
+                          {!n.lido && (
+                            <button
+                              type="button"
+                              className={styles.actionBtn}
+                              onClick={() => onMarkAsRead(n.id)}
+                            >
+                              <Icon name="check" /> Marcar como lida
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className={`${styles.actionBtn} ${styles.deleteBtn}`}
+                            onClick={() => onDelete(n.id)}
+                          >
+                            <Icon name="trash" /> Excluir
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
             <div className={styles.notificationsModalFooter}>
               <RadixDialog.Close asChild>
-                <button className={styles.primaryBtn}>Fechar</button>
+                <button type="button" className={styles.primaryBtn}>
+                  Fechar
+                </button>
               </RadixDialog.Close>
             </div>
           </div>
