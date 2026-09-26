@@ -41,7 +41,12 @@
 </head>
 
 <body>
-    <h1><i data-lucide="palette"></i> Design System · Sistema Escolar</h1>
+    <div style="display:flex;align-items:flex-start;gap:.75rem">
+    <h1 style="flex:1;min-width:0"><i data-lucide="palette"></i> Design System · Sistema Escolar</h1>
+    <!-- Slot dos botões de acessibilidade e ajustes (#457): sem ele os dois
+         flutuam por cima do título no celular. -->
+    <div class="header-actions" style="display:flex;align-items:center;gap:.5rem;margin-left:auto;flex-shrink:0"></div>
+    </div>
     <p class="muted">Padrão de UI e ícones padronizados. Ícones: <strong>Lucide</strong> (mesma família do Portal do Responsável).
         Componentes novos: <strong>daisyUI</strong> com prefixo <code>dui-</code> (não conflita com o CSS legado).</p>
 
