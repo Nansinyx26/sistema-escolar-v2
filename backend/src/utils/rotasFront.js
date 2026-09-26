@@ -45,8 +45,17 @@ const PAGINAS_ADMIN = {
     diagnostico: 'diagnostico.html',
     saude: 'saude.html',
     codigosBackup: 'codigos-backup.html',
+    gestaoEscolas: 'gestao-escolas.html',
     entrar: 'entrar.html',
 };
+
+/**
+ * Páginas do SUPER ADMIN (Issue #463). O gate de páginas decide por perfil e
+ * deixa qualquer admin abrir o arquivo (é só a casca: sem `superAdmin` toda
+ * chamada à API toma 403). O botão, porém, só aparece para quem é super admin
+ * — um admin comum não ganha um atalho que abre e falha.
+ */
+const PAGINAS_SO_SUPERADMIN = ['gestaoEscolas'];
 
 /**
  * Perfis que enxergam cada página. ESPELHA `AREAS['/html/admin']` de
@@ -67,10 +76,12 @@ function baseAdmin() {
  * Rotas da área administrativa visíveis para um perfil.
  *
  * @param {string} perfil Perfil do usuário AUTENTICADO (lido do banco, nunca do token).
+ * @param {{superAdmin?: boolean}} [opcoes] `superAdmin` lido do banco — libera
+ *        as páginas de `PAGINAS_SO_SUPERADMIN`.
  * @returns {object} Mapa `{ chave: '/caminho/real.html' }`. Vazio para quem não
  *          tem acesso a nenhuma página — assim o prefixo não vaza por omissão.
  */
-function rotasAdminPara(perfil) {
+function rotasAdminPara(perfil, { superAdmin = false } = {}) {
     const base = baseAdmin();
     const rotas = {};
 
@@ -79,6 +90,7 @@ function rotasAdminPara(perfil) {
         // dela, e mandá-la de volta ao front seria distribuir o prefixo sem
         // necessidade nenhuma.
         if (chave === 'entrar') return;
+        if (PAGINAS_SO_SUPERADMIN.includes(chave) && !(perfil === 'admin' && superAdmin)) return;
 
         const permitidos = PERFIS_POR_PAGINA[chave] || PERFIS_PADRAO_ADMIN;
         if (permitidos.includes(perfil)) rotas[chave] = `${base}/${arquivo}`;

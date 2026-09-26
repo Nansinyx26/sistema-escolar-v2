@@ -37,8 +37,9 @@
             // então o script era bloqueado e a falha ficava silenciosa.)
             script.onerror = () => {
                 console.error(
-                    '[WS] Não foi possível carregar o Socket.IO de ' + SOCKET_URL +
-                    '. As notificações em tempo real ficarão indisponíveis nesta sessão.'
+                    '[WS] Não foi possível carregar o Socket.IO de ' +
+                        SOCKET_URL +
+                        '. As notificações em tempo real ficarão indisponíveis nesta sessão.'
                 );
             };
             document.head.appendChild(script);
@@ -58,7 +59,7 @@
             transports: ['websocket', 'polling'],
             reconnection: true,
             reconnectionDelay: 2000,
-            reconnectionAttempts: 10
+            reconnectionAttempts: 10,
         });
 
         socket.on('connect', () => {
@@ -67,6 +68,11 @@
 
         socket.on('disconnect', (reason) => {
             console.log('❌ [WS] Desconectado:', reason);
+        });
+
+        // Escola bloqueada pelo super admin (Issue #463).
+        socket.on('escola:bloqueada', () => {
+            if (typeof window.tratarEscolaBloqueada === 'function') window.tratarEscolaBloqueada();
         });
 
         // ── Evento: Novo Cadastro ────────────────────────────────────────
@@ -135,17 +141,18 @@
         `;
 
         const autor = data && typeof data.criadoPor === 'object' ? data.criadoPor : null;
-        const fotoUrl = autor ? (autor.foto || autor.fotoGoogle) : '';
+        const fotoUrl = autor ? autor.foto || autor.fotoGoogle : '';
         const iniciais = window.utils ? window.utils.getInitials(autor?.nome || 'U') : 'U';
-        
-        const avatarHtml = fotoUrl 
+
+        const avatarHtml = fotoUrl
             ? `<img src="${window.getPhotoUrl ? window.getPhotoUrl(fotoUrl) : fotoUrl}" style="width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid #6366f1;">`
             : `<div style="width: 42px; height: 42px; border-radius: 50%; background: #6366f1; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem;">${iniciais}</div>`;
 
         // Data e hora exibidos em fonte grande e branca (#ffffff) conforme requisito
-        const timeDisplay = data && data.horario
-            ? `<span style="font-size: 1.1rem; font-weight: 700; color: #ffffff;">${data.horario}</span>`
-            : '';
+        const timeDisplay =
+            data && data.horario
+                ? `<span style="font-size: 1.1rem; font-weight: 700; color: #ffffff;">${data.horario}</span>`
+                : '';
 
         toast.innerHTML = `
             ${avatarHtml}
@@ -168,7 +175,9 @@
      * Incrementa visualmente o badge de notificações na barra de navegação.
      */
     function incrementBadge() {
-        const badge = document.querySelector('.notification-badge, #notifBadge, [data-notif-badge], #notif-badge');
+        const badge = document.querySelector(
+            '.notification-badge, #notifBadge, [data-notif-badge], #notif-badge'
+        );
         if (badge) {
             const current = parseInt(badge.textContent) || 0;
             badge.textContent = current + 1;

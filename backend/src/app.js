@@ -329,6 +329,12 @@ app.use((req, res, next) => {
 });
 
 app.use(require('./middleware/protegerPaginas').protegerAreasRestritas(frontendRootPath));
+// Atalho da gestão de escolas do super admin (Issue #463). Só redireciona quem
+// é super admin — ver o comentário em `atalhoGestaoEscolas`.
+app.get(
+    '/superadmin/escolas',
+    require('./middleware/protegerPaginas').atalhoGestaoEscolas(frontendRootPath)
+);
 
 staticDirectories.forEach((directory) => {
     app.use(`/${directory}`, express.static(path.join(frontendRootPath, directory), staticOptions));

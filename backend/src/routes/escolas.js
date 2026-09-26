@@ -9,6 +9,7 @@ const { getRedirectPath } = require('../controllers/UserController');
 const SecurityController = require('../controllers/SecurityController');
 const Usuario = require('../models/Usuario');
 const { logAction } = require('../utils/auditHelper');
+const escolaBloqueio = require('../services/escolaBloqueio');
 
 // Mesmo alfabeto do seed (scripts/seedEscolas.js): sem caracteres ambíguos,
 // para o código ser ditado por telefone e digitado no cadastro do docente.
@@ -59,7 +60,7 @@ router.get('/minhas', authJWT, async (req, res) => {
         const ids = vinculos.map((v) => v.escolaId);
         const escolas = ids.length
             ? await Escola.find({ _id: { $in: ids } })
-                  .select('nome tipo bairro ativo')
+                  .select('nome tipo bairro ativo status')
                   .lean()
             : [];
         res.json({
@@ -81,9 +82,14 @@ router.post('/trocar/:escolaId', authJWT, async (req, res) => {
     try {
         const { escolaId } = req.params;
 
-        const escola = await Escola.findById(escolaId).select('nome ativo').lean();
+        const escola = await Escola.findById(escolaId).select('nome ativo status').lean();
         if (!escola)
             return res.status(404).json({ success: false, error: 'Escola não encontrada.' });
+        // Escola bloqueada pelo super admin (Issue #463). O super admin entra
+        // nela por /api/superadmin/escolas/:id/acessar, não por aqui.
+        if (escola.status === 'bloqueada') {
+            return res.status(403).json(escolaBloqueio.respostaBloqueio());
+        }
         if (!escola.ativo)
             return res.status(403).json({
                 success: false,

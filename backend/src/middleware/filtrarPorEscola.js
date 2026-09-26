@@ -16,6 +16,7 @@
 const Escola = require('../models/Escola');
 const logger = require('../utils/logger');
 const logContext = require('../utils/logContext');
+const escolaBloqueio = require('../services/escolaBloqueio');
 
 const CARGO_MODEL = {
     professor: () => require('../models/Professor'),
@@ -85,12 +86,24 @@ function definirEscola(req, escolaId) {
     logContext.set({ escolaId: escolaId ? String(escolaId) : undefined });
 }
 
+/**
+ * Segue adiante, a menos que a escola resolvida esteja bloqueada (Issue #463).
+ * É aqui que se pega a escola que só o VÍNCULO revela — o authJWT conhece
+ * apenas a da sessão e a do cadastro. O super admin passa sempre: é assim que
+ * ele visualiza uma escola bloqueada.
+ */
+async function seguirSeEscolaLiberada(req, res, next) {
+    const bloqueada = await escolaBloqueio.escolaBloqueadaPara(req.user, [req.escolaId]);
+    if (bloqueada) return escolaBloqueio.recusarSessaoBloqueada(req, res, bloqueada);
+    return next();
+}
+
 module.exports = async function filtrarPorEscola(req, res, next) {
     try {
         // 1. Sessão já tem escola ativa
         if (req.session && req.session.escolaAtivaId) {
             definirEscola(req, req.session.escolaAtivaId);
-            return next();
+            return seguirSeEscolaLiberada(req, res, next);
         }
 
         const estado = await estadoEscolas();
@@ -103,7 +116,7 @@ module.exports = async function filtrarPorEscola(req, res, next) {
         if (vinculos.length === 1) {
             definirEscola(req, vinculos[0].escolaId);
             if (req.session) req.session.escolaAtivaId = req.escolaId;
-            return next();
+            return seguirSeEscolaLiberada(req, res, next);
         }
         if (vinculos.length > 1) {
             return res.status(409).json({
@@ -120,14 +133,14 @@ module.exports = async function filtrarPorEscola(req, res, next) {
         if (escolaDaConta) {
             definirEscola(req, escolaDaConta);
             if (req.session) req.session.escolaAtivaId = req.escolaId;
-            return next();
+            return seguirSeEscolaLiberada(req, res, next);
         }
 
         // 4. Rede com uma única escola ativa: é ela, para qualquer perfil.
         if (estado.ativaUnicaId) {
             definirEscola(req, estado.ativaUnicaId);
             if (req.session) req.session.escolaAtivaId = req.escolaId;
-            return next();
+            return seguirSeEscolaLiberada(req, res, next);
         }
 
         // 5. Nada resolveu a escola.
