@@ -3,10 +3,11 @@
  * Executado UMA VEZ antes de todas as suites.
  * Sobe um MongoDB in-memory e expõe a URI via process.env.
  */
-const { MongoMemoryServer } = require('mongodb-memory-server');
+const { criarServidor } = require('./mongoMemoria');
 
 module.exports = async () => {
-    const mongod = await MongoMemoryServer.create();
+    // Prazo e tentativas contra máquina sob carga: ver mongoMemoria.js.
+    const mongod = await criarServidor();
     const uri = mongod.getUri();
 
     // Injeta a URI para todos os processos de teste via variável de ambiente
