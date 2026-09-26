@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Propostas de logo — Sistema Escolar</title>
+<title>Livro e rio — variações</title>
 <meta name="robots" content="noindex">
 <style>
   :root { --bg:#f4f4f5; --card:#ffffff; --ink:#0a0a0c; --muted:#52525b; --line:#e4e4e7; --dark:#0a0a0c; }
@@ -30,30 +30,26 @@
   .texto h2 { font-size:16px; margin:0 0 4px; }
   .texto p { margin:0; font-size:14px; color:var(--muted); line-height:1.5; }
   .atual { margin-top:40px; }
-  .atual img { width:120px; }
+  a { color:inherit; }
 </style>
 </head>
 <body>
 <main>
   <header>
-    <h1>Propostas de logo — Sistema Escolar</h1>
-    <p>Sete modelos vetoriais na paleta do sistema (esmeralda, céu e índigo), cada um em fundo claro e escuro, em 88, 32 e 16&nbsp;px. A marca é do sistema, não de uma escola: serve para todas as escolas que usam a plataforma. A logo em uso não muda até a escolha — Issue #460. Variações: <a href="livro-rio/index.html">Livro e rio</a> · <a href="rede/index.html">Escolas em rede</a>.</p>
+    <h1>Livro e rio — variações</h1>
+    <p>Sete desdobramentos do modelo “Livro e rio”: o conhecimento que flui do livro. O desenho não traz o nome de nenhuma escola, então serve para todas as que usam o sistema. Cada um em fundo claro e escuro, em 88, 32 e 16&nbsp;px. <a href="../index.html">Ver a primeira rodada</a> · Issue #460.</p>
   </header>
   <section class="grade" id="grade"></section>
-  <section class="atual">
-    <h2>Logo atual, para comparar</h2>
-    <img src="../../logo-jaguari.png" alt="Logo atual">
-  </section>
 </main>
 <script>
   const modelos = [
-    ['01-cubo-capelo', 'Cubo com capelo', 'Evolução direta da logo atual, agora em vetor: o topo do cubo é o capelo e a face direita traz as barras do BI pedagógico.'],
-    ['02-monograma-s', 'Monograma S', 'O S de Sistema Escolar com o capelo em cima. Funciona bem como ícone de app e favicon.'],
-    ['03-escolas-em-rede', 'Escolas em rede', 'Três escolas ligadas ao mesmo núcleo: diz, sem palavras, que a plataforma atende várias escolas.'],
-    ['04-livro-progresso', 'Livro e progresso', 'Um livro aberto com uma seta de crescimento saindo das páginas: aprendizado acompanhado por dados.'],
-    ['05-brasao', 'Brasão', 'Escudo com estrela e livro, no tom institucional de rede de ensino. Bom para documentos e boletins.'],
-    ['06-blocos-s', 'S em blocos', 'O S montado numa grade 5×5, como um painel de dados. Visual de tecnologia, nítido até em 16 px.'],
-    ['07-selo', 'Selo', 'Selo circular com “Sistema Escolar · Portal Educacional”, para certificados, declarações e rodapé de PDF. Não serve como ícone pequeno.'],
+    ['l1-original', 'Original', 'O modelo da primeira rodada: livro aberto e três ondas em degradê, num círculo escuro.'],
+    ['l2-gradiente', 'Sobre gradiente', 'Livro e ondas em branco sobre o degradê da marca. O mais colorido; bom como ícone de app.'],
+    ['l3-nascente', 'Nascente', 'O rio nasce fino na lombada do livro e alarga até a margem. A leitura de “nascente” fica mais direta.'],
+    ['l4-amanhecer', 'Amanhecer', 'Um sol nasce atrás do livro, sobre o rio. O mais afetivo, com cara de paisagem do interior.'],
+    ['l5-paginas-de-agua', 'Páginas de água', 'As linhas do texto correm como água dentro das páginas. Mais discreto e ainda legível em 16 px.'],
+    ['l6-traco', 'Traço', 'Livro e rio só em contorno, sem fundo. Leve; bom para cabeçalho de site e documentos impressos.'],
+    ['l7-selo', 'Selo', 'Selo circular com livro e rio no centro e “Sistema Escolar · Portal Educacional”. Para certificados e PDFs.'],
   ];
   document.getElementById('grade').innerHTML = modelos.map(([arq, nome, desc]) => `
     <article>
@@ -62,7 +58,7 @@
         <div class="escuro"><img class="grande" src="${arq}.svg" alt=""><div class="mini"><img src="${arq}.svg" alt=""><img src="${arq}.svg" alt=""></div></div>
       </div>
       <div class="assinatura"><img src="${arq}.svg" alt=""><div><strong>Sistema Escolar</strong><span>Portal Educacional</span></div></div>
-      <div class="texto"><h2>${arq.slice(0, 2)} · ${nome}</h2><p>${desc}</p></div>
+      <div class="texto"><h2>${nome}</h2><p>${desc}</p></div>
     </article>`).join('');
 </script>
 </body>
