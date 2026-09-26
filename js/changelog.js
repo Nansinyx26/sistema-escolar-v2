@@ -27,16 +27,24 @@
 
     // ── Mapeamento de tipo → ícone Bootstrap ──────────────────────────────────
     const iconMap = {
-        'aviso':        { icon: 'bi-megaphone-fill',     bg: 'rgba(14,165,233,0.15)', color: '#38bdf8' },
-        'alerta':       { icon: 'bi-exclamation-triangle-fill', bg: 'rgba(239,68,68,0.12)', color: '#f87171' },
-        'informacao':   { icon: 'bi-info-circle-fill',   bg: 'rgba(99,102,241,0.15)', color: '#818cf8' },
-        'cadastro':     { icon: 'bi-person-plus-fill',   bg: 'rgba(34,197,94,0.12)',  color: '#4ade80' },
-        'sistema':      { icon: 'bi-gear-fill',          bg: 'rgba(245,158,11,0.12)', color: '#fbbf24' },
-        'seguranca':    { icon: 'bi-shield-lock-fill',   bg: 'rgba(239,68,68,0.12)', color: '#f87171' },
-        'mural':        { icon: 'bi-clipboard2-fill',    bg: 'rgba(168,85,247,0.12)', color: '#c084fc' },
-        'frequencia':   { icon: 'bi-calendar-check-fill',bg: 'rgba(16,185,129,0.12)', color: '#34d399' },
-        'nota':         { icon: 'bi-bar-chart-line-fill',bg: 'rgba(59,130,246,0.12)', color: '#60a5fa' },
-        'default':      { icon: 'bi-bell-fill',          bg: 'rgba(255,255,255,0.06)',color: '#94a3b8' }
+        aviso: { icon: 'bi-megaphone-fill', bg: 'rgba(14,165,233,0.15)', color: '#38bdf8' },
+        alerta: {
+            icon: 'bi-exclamation-triangle-fill',
+            bg: 'rgba(239,68,68,0.12)',
+            color: '#f87171',
+        },
+        informacao: { icon: 'bi-info-circle-fill', bg: 'rgba(99,102,241,0.15)', color: '#818cf8' },
+        cadastro: { icon: 'bi-person-plus-fill', bg: 'rgba(34,197,94,0.12)', color: '#4ade80' },
+        sistema: { icon: 'bi-gear-fill', bg: 'rgba(245,158,11,0.12)', color: '#fbbf24' },
+        seguranca: { icon: 'bi-shield-lock-fill', bg: 'rgba(239,68,68,0.12)', color: '#f87171' },
+        mural: { icon: 'bi-clipboard2-fill', bg: 'rgba(168,85,247,0.12)', color: '#c084fc' },
+        frequencia: {
+            icon: 'bi-calendar-check-fill',
+            bg: 'rgba(16,185,129,0.12)',
+            color: '#34d399',
+        },
+        nota: { icon: 'bi-bar-chart-line-fill', bg: 'rgba(59,130,246,0.12)', color: '#60a5fa' },
+        default: { icon: 'bi-bell-fill', bg: 'rgba(255,255,255,0.06)', color: '#94a3b8' },
     };
 
     /**
@@ -63,7 +71,7 @@
         const badge = document.getElementById('notif-badge');
         if (!badge) return;
 
-        const naoLidas = _cachedNotifs.filter(n => !n.lidoPorMim).length;
+        const naoLidas = _cachedNotifs.filter((n) => !n.lidoPorMim).length;
         badge.textContent = naoLidas > 99 ? '99+' : naoLidas;
         badge.style.display = naoLidas > 0 ? 'flex' : 'none';
     }
@@ -86,7 +94,11 @@
             if (diffHour < 24) return `${diffHour}h atrás`;
             if (diffDay < 7) return `${diffDay}d atrás`;
 
-            return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            return d.toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+            });
         } catch {
             return '';
         }
@@ -116,16 +128,17 @@
             return;
         }
 
-        container.innerHTML = _cachedNotifs.map(n => {
-            const tipo = iconMap[n.tipo] || iconMap['default'];
-            const isLida = n.lidoPorMim;
-            const dataStr = formatDate(n.dataCriacao || n.dataEnvio);
-            const notifId = n.id || n._id;
-            const mensagem = n.mensagem || '';
-            const mensagemHtml = n.corpoHtml || escapeHtml(mensagem).replace(/\n/g, '<br>');
-            const longMessage = isLongText(stripHtml(mensagemHtml), 140);
+        container.innerHTML = _cachedNotifs
+            .map((n) => {
+                const tipo = iconMap[n.tipo] || iconMap.default;
+                const isLida = n.lidoPorMim;
+                const dataStr = formatDate(n.dataCriacao || n.dataEnvio);
+                const notifId = n.id || n._id;
+                const mensagem = n.mensagem || '';
+                const mensagemHtml = n.corpoHtml || escapeHtml(mensagem).replace(/\n/g, '<br>');
+                const longMessage = isLongText(stripHtml(mensagemHtml), 140);
 
-            return `
+                return `
             <div class="notif-item${isLida ? ' lida' : ''}${longMessage ? ' notif-collapsed' : ''}" data-id="${notifId}" tabindex="0" role="article" aria-label="Notificação: ${escapeHtml(n.titulo)}">
                 <div class="notif-icon-wrap" style="background: ${tipo.bg}; color: ${tipo.color};" aria-hidden="true">
                     <i class="bi ${tipo.icon}"></i>
@@ -146,7 +159,8 @@
                 </div>
                 ${!isLida ? '<div class="notif-dot" aria-hidden="true"></div>' : ''}
             </div>`;
-        }).join('');
+            })
+            .join('');
 
         bindNotifItemEvents(container);
     }
@@ -158,7 +172,7 @@
     }
 
     function bindNotifItemEvents(container) {
-        container.querySelectorAll('.notif-mais-btn').forEach(btn => {
+        container.querySelectorAll('.notif-mais-btn').forEach((btn) => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const item = btn.closest('.notif-item');
@@ -172,7 +186,7 @@
             });
         });
 
-        container.querySelectorAll('.notif-comentar-btn').forEach(btn => {
+        container.querySelectorAll('.notif-comentar-btn').forEach((btn) => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const feed = document.getElementById('feedSection');
@@ -184,14 +198,22 @@
             });
         });
 
-        container.querySelectorAll('.notif-item:not(.lida)').forEach(el => {
+        container.querySelectorAll('.notif-item:not(.lida)').forEach((el) => {
             el.addEventListener('click', (e) => {
-                if (e.target.closest('[data-action="toggle-expand"]') || e.target.closest('[data-action="open-feed"]')) return;
+                if (
+                    e.target.closest('[data-action="toggle-expand"]') ||
+                    e.target.closest('[data-action="open-feed"]')
+                )
+                    return;
                 marcarComoLida(el.dataset.id, el);
             });
             el.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
-                    if (e.target.closest('[data-action="toggle-expand"]') || e.target.closest('[data-action="open-feed"]')) return;
+                    if (
+                        e.target.closest('[data-action="toggle-expand"]') ||
+                        e.target.closest('[data-action="open-feed"]')
+                    )
+                        return;
                     e.preventDefault();
                     marcarComoLida(el.dataset.id, el);
                 }
@@ -212,11 +234,11 @@
             await fetch(`${baseUrl}/notificacoes/${notifId}/ler`, {
                 method: 'PUT',
                 credentials: 'include',
-                headers
+                headers,
             });
 
             // Atualiza cache local
-            const idx = _cachedNotifs.findIndex(n => (n.id || n._id) === notifId);
+            const idx = _cachedNotifs.findIndex((n) => (n.id || n._id) === notifId);
             if (idx >= 0) _cachedNotifs[idx].lidoPorMim = true;
 
             if (el) {
@@ -243,14 +265,16 @@
             await fetch(`${baseUrl}/notificacoes/marcar-todas-lidas`, {
                 method: 'PUT',
                 credentials: 'include',
-                headers
+                headers,
             });
 
             // Atualiza cache local
-            _cachedNotifs.forEach(n => { n.lidoPorMim = true; });
+            _cachedNotifs.forEach((n) => {
+                n.lidoPorMim = true;
+            });
 
             // Atualiza visualmente
-            document.querySelectorAll('#notif-list .notif-item').forEach(el => {
+            document.querySelectorAll('#notif-list .notif-item').forEach((el) => {
                 el.classList.add('lida');
                 const dot = el.querySelector('.notif-dot');
                 if (dot) dot.remove();
@@ -280,7 +304,14 @@
     function escapeHtml(str) {
         if (str === null || str === undefined) return '';
         return String(str).replace(/[&<>"'`]/g, function (c) {
-            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c];
+            return {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;',
+                '`': '&#96;',
+            }[c];
         });
     }
 

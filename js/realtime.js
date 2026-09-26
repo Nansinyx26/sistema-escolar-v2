@@ -378,14 +378,14 @@
 
         starEls.forEach((star) => {
             star.addEventListener('mouseenter', () => {
-                const r = parseInt(star.dataset.rating);
+                const r = parseInt(star.dataset.rating, 10);
                 starEls.forEach((s, i) => {
                     s.classList.toggle('hover-preview', i + 1 <= r && i + 1 > selectedRating);
                 });
             });
 
             star.addEventListener('click', () => {
-                selectedRating = parseInt(star.dataset.rating);
+                selectedRating = parseInt(star.dataset.rating, 10);
                 starEls.forEach((s, i) => {
                     s.classList.toggle('active', i + 1 <= selectedRating);
                     s.classList.remove('hover-preview');
@@ -445,7 +445,7 @@
                 } else {
                     showToast?.(json.error || 'Erro ao salvar', 'error');
                 }
-            } catch (err) {
+            } catch (_err) {
                 showToast?.('Erro de conexão ou timeout', 'error');
             } finally {
                 btn.disabled = false;
@@ -470,7 +470,7 @@
                 } else {
                     showToast?.(json.error || 'Erro ao remover', 'error');
                 }
-            } catch (err) {
+            } catch (_err) {
                 showToast?.('Erro ao remover devido a falha na rede', 'error');
             }
         });
@@ -486,7 +486,7 @@
     // =============================================
     function createReactionBar(messageId, existingReactions) {
         const summary = existingReactions || {};
-        const userId = currentUser?.id || currentUser?._id;
+        const _userId = currentUser?.id || currentUser?._id;
 
         let html = '<div class="reaction-bar" data-message-id="' + messageId + '">';
         EMOJIS.forEach((emoji) => {
@@ -587,7 +587,7 @@
                 renderNotificationList(json.data);
                 updateNotifBadge(json.unreadCount);
             }
-        } catch (err) {
+        } catch (_err) {
             /* silent */
         }
     }
@@ -704,7 +704,7 @@
                 if (notification.link) window.location.href = notification.link;
                 n.close();
             };
-        } catch (e) {
+        } catch (_e) {
             /* navegador exige service worker */
         }
     }
@@ -718,7 +718,7 @@
             const item = document.querySelector(`.notif-item[data-id="${id}"]`);
             item?.classList.remove('unread');
             loadNotifications();
-        } catch (err) {
+        } catch (_err) {
             /* silent */
         }
     }
@@ -733,7 +733,7 @@
                 el.classList.remove('unread');
             });
             updateNotifBadge(0);
-        } catch (err) {
+        } catch (_err) {
             /* silent */
         }
     }

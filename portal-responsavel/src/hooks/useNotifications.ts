@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   getNotificacoesDoAluno,
+  getVapidPublicKey,
   marcarNotificacaoLida,
   ocultarNotificacao,
   subscribePush,
-  getVapidPublicKey,
 } from '../services/apiService';
 import { socket } from '../services/socket';
 import type { AuthUser, Notification } from '../types';
@@ -67,8 +67,8 @@ export function useNotifications({ authUser, activeId }: UseNotificationsOptions
     if (!authUser) return;
 
     const urlBase64ToUint8Array = (base64String: string) => {
-      const padding = '='.repeat((4 - base64String.length % 4) % 4);
-      const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+      const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+      const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
       const rawData = window.atob(base64);
       const outputArray = new Uint8Array(rawData.length);
       for (let index = 0; index < rawData.length; index += 1) {
@@ -78,7 +78,8 @@ export function useNotifications({ authUser, activeId }: UseNotificationsOptions
     };
 
     const initPush = async () => {
-      if (!('serviceWorker' in navigator) || !('PushManager' in window) || !window.Notification) return;
+      if (!('serviceWorker' in navigator) || !('PushManager' in window) || !window.Notification)
+        return;
 
       try {
         if (Notification.permission === 'denied') return;
@@ -102,35 +103,43 @@ export function useNotifications({ authUser, activeId }: UseNotificationsOptions
         }
 
         await subscribePush(subscription);
-      } catch (err: any) {
-        console.warn('⚠️ [Push] Falha ao configurar Push no portal:', err.message);
+      } catch (err) {
+        console.warn('⚠️ [Push] Falha ao configurar Push no portal:', (err as Error).message);
       }
     };
 
     void initPush();
   }, [authUser]);
 
-  const handleMarkAsRead = useCallback(async (id: string) => {
-    if (!activeId) return;
-    try {
-      await marcarNotificacaoLida(id, activeId);
-      setNotifications((prev) => prev.map((notification) => (
-        notification.id === id ? { ...notification, lido: true } : notification
-      )));
-    } catch (err) {
-      console.error('Erro ao marcar notificação como lida:', err);
-    }
-  }, [activeId]);
+  const handleMarkAsRead = useCallback(
+    async (id: string) => {
+      if (!activeId) return;
+      try {
+        await marcarNotificacaoLida(id, activeId);
+        setNotifications((prev) =>
+          prev.map((notification) =>
+            notification.id === id ? { ...notification, lido: true } : notification
+          )
+        );
+      } catch (err) {
+        console.error('Erro ao marcar notificação como lida:', err);
+      }
+    },
+    [activeId]
+  );
 
-  const handleDeleteNotification = useCallback(async (id: string) => {
-    if (!activeId) return;
-    try {
-      await ocultarNotificacao(id, activeId);
-      setNotifications((prev) => prev.filter((notification) => notification.id !== id));
-    } catch (err) {
-      console.error('Erro ao ocultar notificação:', err);
-    }
-  }, [activeId]);
+  const handleDeleteNotification = useCallback(
+    async (id: string) => {
+      if (!activeId) return;
+      try {
+        await ocultarNotificacao(id, activeId);
+        setNotifications((prev) => prev.filter((notification) => notification.id !== id));
+      } catch (err) {
+        console.error('Erro ao ocultar notificação:', err);
+      }
+    },
+    [activeId]
+  );
 
   return {
     notifications,

@@ -8,35 +8,39 @@ const logger = require('../utils/logger');
  * Hub central de notificações.
  */
 function normalizeCategoria(value) {
-    const normalized = String(value || '').trim().toLowerCase();
+    const normalized = String(value || '')
+        .trim()
+        .toLowerCase();
     const aliases = {
-        'direção': 'direcao',
-        'direcao': 'direcao',
-        'academico': 'academico',
-        'acadêmico': 'academico',
-        'financeiro': 'financeiro',
-        'saude': 'saude',
-        'evento': 'evento',
-        'informativo': 'informativo',
-        'todos': 'todos',
-        'professores': 'professores',
-        'responsaveis': 'responsaveis',
-        'responsáveis': 'responsaveis',
-        'sistema': 'sistema'
+        direção: 'direcao',
+        direcao: 'direcao',
+        academico: 'academico',
+        acadêmico: 'academico',
+        financeiro: 'financeiro',
+        saude: 'saude',
+        evento: 'evento',
+        informativo: 'informativo',
+        todos: 'todos',
+        professores: 'professores',
+        responsaveis: 'responsaveis',
+        responsáveis: 'responsaveis',
+        sistema: 'sistema',
     };
     return aliases[normalized] || 'informativo';
 }
 
 function normalizePrioridade(value) {
-    const normalized = String(value || '').trim().toLowerCase();
+    const normalized = String(value || '')
+        .trim()
+        .toLowerCase();
     const aliases = {
-        'baixa': 'normal',
-        'media': 'normal',
-        'média': 'normal',
-        'normal': 'normal',
-        'importante': 'alta',
-        'urgente': 'alta',
-        'alta': 'alta'
+        baixa: 'normal',
+        media: 'normal',
+        média: 'normal',
+        normal: 'normal',
+        importante: 'alta',
+        urgente: 'alta',
+        alta: 'alta',
     };
     return aliases[normalized] || 'normal';
 }
@@ -53,12 +57,16 @@ exports.notify = async ({
     link = '/dashboard',
     comunicadoId = null,
     paraResponsavel = null,
-    escolaId = null
+    escolaId = null,
 }) => {
     try {
         const destList = Array.isArray(destinatarios) ? destinatarios : [destinatarios];
-        const includesResponsaveis = destList.some(d =>
-            d === 'todos' || d === 'responsaveis' || String(d).startsWith('turma:') || String(d).startsWith('usuario:')
+        const includesResponsaveis = destList.some(
+            (d) =>
+                d === 'todos' ||
+                d === 'responsaveis' ||
+                String(d).startsWith('turma:') ||
+                String(d).startsWith('usuario:')
         );
 
         // 1. Salvar no Banco de Dados
@@ -73,7 +81,7 @@ exports.notify = async ({
             criadoPor,
             comunicadoId,
             escolaId: escolaId || undefined,
-            paraResponsavel: paraResponsavel != null ? paraResponsavel : includesResponsaveis
+            paraResponsavel: paraResponsavel != null ? paraResponsavel : includesResponsaveis,
         });
         await novaNotif.save();
 
@@ -84,28 +92,41 @@ exports.notify = async ({
                 .lean();
             const payload = { ...populada, link, escolaId: escolaId || null };
 
-            const isBroadcastAll = destList.some(d => d === 'todos');
+            const isBroadcastAll = destList.some((d) => d === 'todos');
 
             if (isBroadcastAll) {
                 if (escolaId) {
                     global.io.to(`escola:${escolaId}`).emit('notification:new', payload);
                 } else {
-                    global.io.to('role:professor').to('role:responsavel').to('role:diretor').emit('notification:new', payload);
+                    global.io
+                        .to('role:professor')
+                        .to('role:responsavel')
+                        .to('role:diretor')
+                        .emit('notification:new', payload);
                 }
             } else {
                 const rooms = new Set();
                 for (const d of destList) {
                     if (d === 'professores') rooms.add('role:professor');
                     else if (d === 'responsaveis') rooms.add('role:responsavel');
-                    else if (d === 'diretores' || d === 'diretor') { rooms.add('role:diretor'); rooms.add('role:admin'); }
-                    else if (String(d).startsWith('usuario:')) rooms.add(`user:${String(d).split(':')[1]}`);
-                    else if (String(d).startsWith('turma:')) { rooms.add('role:responsavel'); rooms.add('role:professor'); }
+                    else if (d === 'diretores' || d === 'diretor') {
+                        rooms.add('role:diretor');
+                        rooms.add('role:admin');
+                    } else if (String(d).startsWith('usuario:'))
+                        rooms.add(`user:${String(d).split(':')[1]}`);
+                    else if (String(d).startsWith('turma:')) {
+                        rooms.add('role:responsavel');
+                        rooms.add('role:professor');
+                    }
                 }
 
                 if (rooms.size > 0) {
-                    rooms.forEach(r => {
+                    rooms.forEach((r) => {
                         if (escolaId) {
-                            global.io.to(`escola:${escolaId}`).to(r).emit('notification:new', payload);
+                            global.io
+                                .to(`escola:${escolaId}`)
+                                .to(r)
+                                .emit('notification:new', payload);
                         } else {
                             global.io.to(r).emit('notification:new', payload);
                         }
@@ -120,7 +141,11 @@ exports.notify = async ({
         const targetUsers = await this.getTargetUsers(destList, escolaId);
 
         targetUsers.forEach(async (user) => {
-            const prefs = user.notificacoesPreferencias || { portal: true, push: true, email: true };
+            const prefs = user.notificacoesPreferencias || {
+                portal: true,
+                push: true,
+                email: true,
+            };
 
             // Email
             if (prefs.email && user.email) {
@@ -137,12 +162,16 @@ exports.notify = async ({
             }
 
             // Push
-            if (prefs.push !== false && user.pushSubscriptions && user.pushSubscriptions.length > 0) {
+            if (
+                prefs.push !== false &&
+                user.pushSubscriptions &&
+                user.pushSubscriptions.length > 0
+            ) {
                 const payload = {
                     title: titulo,
                     body: mensagem,
                     icon: '/img/icons/icon-192.png',
-                    data: { url: link, id: novaNotif._id }
+                    data: { url: link, id: novaNotif._id },
                 };
 
                 for (const sub of user.pushSubscriptions) {
@@ -150,7 +179,7 @@ exports.notify = async ({
                     if (result === 'expired') {
                         // Limpar inscrição expirada
                         await Usuario.findByIdAndUpdate(user._id, {
-                            $pull: { pushSubscriptions: { endpoint: sub.endpoint } }
+                            $pull: { pushSubscriptions: { endpoint: sub.endpoint } },
                         });
                     }
                 }
@@ -195,7 +224,7 @@ exports.pushParaUsuario = async (usuarioId, { title, body, url = '/', tag } = {}
             title,
             body,
             icon: '/img/icons/icon-192.png',
-            data: { url, id: tag }
+            data: { url, id: tag },
         };
 
         let entregues = 0;
@@ -204,7 +233,7 @@ exports.pushParaUsuario = async (usuarioId, { title, body, url = '/', tag } = {}
             if (resultado === true) entregues++;
             else if (resultado === 'expired') {
                 await Usuario.findByIdAndUpdate(usuarioId, {
-                    $pull: { pushSubscriptions: { endpoint: sub.endpoint } }
+                    $pull: { pushSubscriptions: { endpoint: sub.endpoint } },
                 });
             }
         }
@@ -225,7 +254,7 @@ exports.getTargetUsers = async (destinatarios, escolaId = null) => {
     const userMap = new Map();
 
     for (const dest of destList) {
-        let query = { ativo: true };
+        const query = { ativo: true };
         // Multi-tenant: prioriza usuários da mesma escola, mas inclui os
         // legados sem escolaId (ex.: contas da Jaguari anteriores à migração)
         // para não deixar de notificar quem já existe.
@@ -250,7 +279,7 @@ exports.getTargetUsers = async (destinatarios, escolaId = null) => {
         }
 
         const users = await Usuario.find(query).lean();
-        users.forEach(u => userMap.set(String(u._id), u));
+        for (const u of users) userMap.set(String(u._id), u);
     }
 
     return Array.from(userMap.values());

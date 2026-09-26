@@ -117,7 +117,7 @@ exports.subscribe = async (req, res) => {
     }
 };
 
-exports.getVapidPublicKey = async (req, res) => {
+exports.getVapidPublicKey = async (_req, res) => {
     try {
         const WebPushService = require('../services/WebPushService');
         res.json({ success: true, publicKey: WebPushService.getPublicKey() });
