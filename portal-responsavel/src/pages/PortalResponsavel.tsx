@@ -374,7 +374,7 @@ const PortalResponsavel: React.FC = () => {
 
       <footer className={styles.footer}>
         <p>
-          © {new Date().getFullYear()} Escola Jaguari — Portal do Responsável |{' '}
+          © {new Date().getFullYear()} Sistema Escolar — Portal do Responsável |{' '}
           <button
             type="button"
             className={styles.footerLinkBtn}
