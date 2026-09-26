@@ -218,7 +218,7 @@ async function sessaoDoRequest(req) {
         // Perfil lido do BANCO, nunca do token: um rebaixamento vale já na
         // próxima requisição, sem esperar o cookie expirar.
         const usuario = await Usuario.findById(decoded.id || decoded._id)
-            .select('tokenVersion ativo perfil')
+            .select('tokenVersion ativo perfil superAdmin')
             .lean();
 
         const versaoConta = usuario?.tokenVersion !== undefined ? usuario.tokenVersion : 0;
@@ -431,8 +431,37 @@ function protegerAreasRestritas(frontendRootPath) {
     };
 }
 
+/**
+ * Atalho `/superadmin/escolas` → página "Gestão de Escolas" (Issue #463).
+ *
+ * A página mora dentro da área administrativa, que pode estar atrás do apelido
+ * secreto (ADMIN_PATH). Por isso o atalho segue a MESMA regra do link antigo
+ * em `redirecionarSeAutorizado`: só redireciona quem já provou ser super admin;
+ * para todo o resto a resposta é o 404 de um caminho que nunca existiu — um
+ * 302 público entregaria o prefixo secreto a qualquer `curl -I`.
+ */
+function atalhoGestaoEscolas(frontendRootPath) {
+    const pagina404 = path.join(frontendRootPath, 'html', '404.html');
+    const parseCookies = cookieParser();
+    const base = APELIDO_ADMIN ? `/html/${APELIDO_ADMIN}` : AREA_ADMIN_REAL;
+
+    return (req, res) =>
+        parseCookies(req, res, async () => {
+            try {
+                const usuario = await sessaoDoRequest(req);
+                if (!usuario || usuario.perfil !== 'admin' || usuario.superAdmin !== true) {
+                    return res.status(404).sendFile(pagina404);
+                }
+                return res.redirect(302, `${base}/gestao-escolas.html`);
+            } catch (_e) {
+                return res.status(404).sendFile(pagina404);
+            }
+        });
+}
+
 module.exports = {
     protegerAreasRestritas,
+    atalhoGestaoEscolas,
     AREAS,
     formasDoCaminho,
     areaDe,

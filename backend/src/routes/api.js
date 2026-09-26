@@ -246,6 +246,15 @@ router.use('/admin/convites-equipe', authJWT, authorize('admin'), require('./con
 // Gestão de pedidos LGPD do titular (Issue #413).
 router.use('/admin/pedidos-titular', authJWT, authorize('admin'), require('./adminPedidosTitular'));
 router.use('/admin', authJWT, authorize('admin'), require('./admin'));
+// Super admin (Issue #463): gestão e bloqueio de escolas. SEM `filtrarPorEscola`
+// — a área é da rede, e nem o recorte de tenant nem o bloqueio de escola podem
+// alcançá-la. `requireSuperAdmin` devolve 403 ao admin comum e a todo o resto.
+router.use(
+    '/superadmin',
+    authJWT,
+    require('../middleware/requireSuperAdmin'),
+    require('./superadmin')
+);
 router.use('/security', authJWT, filtrarPorEscola, require('./security'));
 router.use('/audit', authJWT, filtrarPorEscola, require('./audit'));
 router.use('/usuarios', authJWT, filtrarPorEscola, require('./usuarios'));

@@ -52,6 +52,9 @@ router.get('/me', authJWT, async (req, res) => {
             'nome',
             'email',
             'perfil',
+            // Só liga a entrada "Gestão de Escolas" no front. A autorização de
+            // verdade é o `requireSuperAdmin` de /api/superadmin (Issue #463).
+            'superAdmin',
             'foto',
             'fotoGoogle',
             'escola',
@@ -120,11 +123,12 @@ router.get('/rotas', authJWT, async (req, res) => {
         const { rotasAdminPara } = require('../utils/rotasFront');
 
         const usuario = await Usuario.findById(req.user?.id || req.user?._id)
-            .select('perfil ativo')
+            .select('perfil ativo superAdmin')
             .lean();
 
         const perfil = usuario && usuario.ativo !== false ? usuario.perfil : null;
-        res.json({ success: true, rotas: { admin: perfil ? rotasAdminPara(perfil) : {} } });
+        const opcoes = { superAdmin: usuario?.superAdmin === true };
+        res.json({ success: true, rotas: { admin: perfil ? rotasAdminPara(perfil, opcoes) : {} } });
     } catch (e) {
         res.status(500).json({ success: false, error: 'Erro ao resolver rotas.' });
     }

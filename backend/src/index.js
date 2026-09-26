@@ -302,7 +302,7 @@ const startServer = async () => {
                 const decoded = jwt.verify(token, JWT_SECRET);
 
                 const conta = await Usuario.findById(decoded.id || decoded._id)
-                    .select('tokenVersion ativo perfil escolaId')
+                    .select('tokenVersion ativo perfil escolaId superAdmin')
                     .lean();
 
                 if (!conta || conta.ativo === false) {
@@ -329,6 +329,22 @@ const startServer = async () => {
                     if (vinculos.length === 1) escolaId = String(vinculos[0].escolaId);
                 }
                 socket.escolaId = escolaId;
+
+                // Escola bloqueada pelo super admin (Issue #463): sem isto, o
+                // cliente desconectado no bloqueio voltaria na reconexão
+                // automática. `socket.data` (e não uma propriedade solta) porque
+                // é o que `fetchSockets()` enxerga nas OUTRAS instâncias — o
+                // desconectarEscola precisa saber quem é super admin para poupá-lo.
+                const usuarioSocket = {
+                    perfil: conta.perfil,
+                    superAdmin: conta.superAdmin === true,
+                };
+                socket.data.usuario = usuarioSocket;
+                const escolaBloqueio = require('./services/escolaBloqueio');
+                if (await escolaBloqueio.escolaBloqueadaPara(usuarioSocket, [escolaId])) {
+                    return next(new Error(escolaBloqueio.CODIGO));
+                }
+
                 apagarCredenciaisDoHandshake(socket);
 
                 next();

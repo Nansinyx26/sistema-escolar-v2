@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+
+<head>
+    <!-- Trava de acesso por perfil. SEM defer e antes de tudo: a decisao
+         precisa acontecer antes do primeiro pixel. Ver js/guarda-acesso.js. -->
+    <script src="/js/guarda-acesso.js?v=1.0"></script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Gestão de Escolas - Super Admin</title>
+    <link rel="stylesheet" href="../../css/variables.css">
+    <link rel="stylesheet" href="../../css/base.css">
+    <link rel="stylesheet" href="../../css/components-new.css">
+    <link rel="stylesheet" href="../../css/dashboard.css">
+    <link rel="preload" href="../../js/libs/fonts/bootstrap-icons.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="../../js/libs/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../../css/parallax-glass.css">
+    <link rel="stylesheet" href="../../css/neo-brutal.css">
+    <link rel="stylesheet" href="../../css/tailwind-built.css">
+    <link rel="stylesheet" href="../../css/responsive-global.css?v=1.2">
+    <link rel="stylesheet" href="../../css/splash-screen.css?v=1.0">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/img/icons/apple-touch-icon-180.png">
+    <meta name="theme-color" content="#09090b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Escola">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="stylesheet" href="../../css/system-global.css?v=1.0">
+    <!-- Rolagem e performance mobile — deve ser o ÚLTIMO stylesheet de layout -->
+    <link rel="stylesheet" href="../../css/mobile-scroll.css?v=1.0">
+    <link rel="stylesheet" href="../../css/motion.css">
+    <link rel="stylesheet" href="../../css/gestao-escolas.css?v=1">
+    <script src="../../js/scroll-lock.js?v=1.0"></script>
+    <!-- Acessibilidade (LBI/eMAG) — ver docs/CONFORMIDADE-LEGAL.md -->
+    <link rel="stylesheet" href="../../css/acessibilidade.css">
+    <link rel="stylesheet" href="/css/botao-voltar.css">
+</head>
+
+<body>
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <img src="/img/logo-jaguari.png" alt="Escola Jaguari" class="splash-logo-img" decoding="async" loading="eager" fetchpriority="high">
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Escola Jaguari</h2>
+            <p class="splash-subtitle">Portal Educacional</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Inicializando sistema...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="../../js/splash-screen.js"></script>
+
+    <div class="dashboard-page">
+        <header class="dashboard-header">
+            <div class="header-content">
+                <div class="header-left">
+                    <button type="button" class="btn-voltar-global" data-fallback="/html/dashboard.html" aria-label="Voltar para a página anterior">
+                        <i class="bi bi-arrow-left"></i>
+                        <span>Voltar</span>
+                    </button>
+                    <div class="header-logo">
+                        <i class="bi bi-buildings"></i>
+                        <span>Gestão de Escolas</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="ge-main">
+            <section class="ge-intro">
+                <p class="ge-eyebrow">Super Admin · rede inteira</p>
+                <h1 class="ge-titulo">Escolas da rede</h1>
+                <p class="ge-sub">
+                    Bloquear uma escola encerra na hora o acesso de toda a equipe e das famílias dela.
+                    O desbloqueio devolve o acesso sem reiniciar nada. Cada decisão fica registrada na auditoria.
+                </p>
+            </section>
+
+            <!-- Recusa para quem abriu a casca sem ser super admin (a API responde 403). -->
+            <section id="geSemAcesso" class="ge-vazio" hidden>
+                <i class="bi bi-shield-lock" aria-hidden="true"></i>
+                <h2>Área do super administrador</h2>
+                <p>Esta conta não tem permissão para gerenciar escolas. Fale com o administrador do sistema.</p>
+            </section>
+
+            <section id="geConteudo" aria-label="Lista de escolas">
+                <form class="ge-controles" id="geFiltros" role="search" novalidate>
+                    <label class="ge-busca" for="geBusca">
+                        <span class="sr-only">Buscar por nome ou cidade</span>
+                        <i class="bi bi-search" aria-hidden="true"></i>
+                        <input type="search" id="geBusca" class="form-input" placeholder="Buscar por nome ou cidade" autocomplete="off" maxlength="80">
+                    </label>
+                    <div class="ge-status" role="radiogroup" aria-label="Filtrar por situação">
+                        <button type="button" role="radio" class="ge-status-opcao" data-status="todas" aria-checked="true">
+                            Todas <span class="ge-contagem" data-contagem="todas">–</span>
+                        </button>
+                        <button type="button" role="radio" class="ge-status-opcao" data-status="ativa" aria-checked="false">
+                            Ativas <span class="ge-contagem" data-contagem="ativas">–</span>
+                        </button>
+                        <button type="button" role="radio" class="ge-status-opcao" data-status="bloqueada" aria-checked="false">
+                            Bloqueadas <span class="ge-contagem" data-contagem="bloqueadas">–</span>
+                        </button>
+                    </div>
+                </form>
+
+                <div class="ge-tabela" role="table" aria-label="Escolas" aria-busy="true" id="geTabela">
+                    <div class="ge-cabecalho" role="row">
+                        <span role="columnheader">Escola</span>
+                        <span role="columnheader">Situação</span>
+                        <span role="columnheader" class="ge-num">Usuários</span>
+                        <span role="columnheader">Última alteração</span>
+                        <span role="columnheader" class="ge-acoes-col">Ações</span>
+                    </div>
+                    <div id="geLinhas" role="rowgroup"></div>
+                </div>
+
+                <nav class="ge-paginacao" id="gePaginacao" aria-label="Paginação" hidden>
+                    <button type="button" class="btn btn-secondary btn-sm" id="gePaginaAnterior">
+                        <i class="bi bi-chevron-left" aria-hidden="true"></i> Anterior
+                    </button>
+                    <span id="gePaginaInfo" aria-live="polite"></span>
+                    <button type="button" class="btn btn-secondary btn-sm" id="gePaginaProxima">
+                        Próxima <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                    </button>
+                </nav>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal: bloquear (motivo obrigatório) -->
+    <dialog class="ge-dialogo" id="geDialogoBloquear" aria-labelledby="geBloquearTitulo">
+        <form method="dialog" id="geFormBloquear" novalidate>
+            <h2 id="geBloquearTitulo" class="ge-dialogo-titulo">Bloquear <span data-nome-escola></span>?</h2>
+            <p class="ge-dialogo-texto">
+                Toda a equipe e as famílias desta escola perdem o acesso agora: quem estiver conectado é
+                desconectado e o login passa a ser recusado até o desbloqueio.
+            </p>
+            <label for="geMotivo" class="ge-rotulo">Motivo do bloqueio <span aria-hidden="true">*</span></label>
+            <textarea id="geMotivo" class="form-input ge-motivo" rows="4" minlength="5" maxlength="500" required
+                aria-describedby="geMotivoAjuda geMotivoErro" placeholder="Ex.: contrato suspenso pela Secretaria de Educação"></textarea>
+            <div class="ge-motivo-rodape">
+                <span id="geMotivoAjuda">Fica registrado na auditoria. Entre 5 e 500 caracteres.</span>
+                <span id="geMotivoContador" aria-hidden="true">0/500</span>
+            </div>
+            <p id="geMotivoErro" class="ge-erro" role="alert" hidden></p>
+            <div class="ge-dialogo-acoes">
+                <button type="button" class="btn btn-secondary" data-fechar>Cancelar</button>
+                <button type="submit" class="btn btn-danger" id="geConfirmarBloqueio">
+                    <i class="bi bi-lock" aria-hidden="true"></i> Bloquear escola
+                </button>
+            </div>
+        </form>
+    </dialog>
+
+    <!-- Modal: desbloquear (confirmação) -->
+    <dialog class="ge-dialogo" id="geDialogoDesbloquear" aria-labelledby="geDesbloquearTitulo">
+        <form method="dialog" id="geFormDesbloquear">
+            <h2 id="geDesbloquearTitulo" class="ge-dialogo-titulo">Desbloquear <span data-nome-escola></span>?</h2>
+            <p class="ge-dialogo-texto">
+                A equipe e as famílias voltam a entrar imediatamente. Quem foi desconectado no bloqueio
+                precisa fazer login de novo.
+            </p>
+            <blockquote class="ge-motivo-citado" id="geMotivoAtual" hidden></blockquote>
+            <div class="ge-dialogo-acoes">
+                <button type="button" class="btn btn-secondary" data-fechar>Cancelar</button>
+                <button type="submit" class="btn btn-success" id="geConfirmarDesbloqueio">
+                    <i class="bi bi-unlock" aria-hidden="true"></i> Desbloquear escola
+                </button>
+            </div>
+        </form>
+    </dialog>
+
+    <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+    <script src="../../js/api-config.js"></script>
+    <!-- csrfHeaders(): sem o header X-CSRF-Token o backend recusa bloquear e desbloquear. -->
+    <script src="../../js/csrf-helper.js"></script>
+    <script defer src="../../js/auth.js"></script>
+    <script defer src="../../js/utils.js"></script>
+    <script defer src="../../js/superadmin-escolas.js?v=1"></script>
+    <script defer src="../../js/settings-drawer.js"></script>
+    <script src="../../js/libs/lucide.min.js"></script>
+    <script src="../../js/libs/lucide-init.js"></script>
+    <script defer src="../../js/observability.js"></script>
+    <script defer src="../../js/motion.js"></script>
+    <script defer src="../../js/acessibilidade.js"></script>
+    <script defer src="/js/botao-voltar.js"></script>
+</body>
+
+</html>

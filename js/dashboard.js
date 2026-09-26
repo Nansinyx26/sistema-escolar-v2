@@ -279,6 +279,19 @@ async function atualizarCards(user, perfil) {
         if (cardCodigosEscolas) cardCodigosEscolas.style.display = 'flex';
         if (cardConvitesEquipe) cardConvitesEquipe.style.display = 'flex';
         if (cardIaAssistant) cardIaAssistant.style.display = 'flex';
+        // Gestão de Escolas: só o super admin recebe a rota (Issue #463).
+        const cardGestaoEscolas = document.getElementById('cardGestaoEscolas');
+        const menuGestaoEscolas = document.getElementById('sidebarGestaoEscolas');
+        if (window.ROTAS) {
+            window.ROTAS.resolver('admin.gestaoEscolas').then((caminho) => {
+                if (!caminho) return;
+                if (cardGestaoEscolas) cardGestaoEscolas.style.display = 'flex';
+                if (menuGestaoEscolas) {
+                    menuGestaoEscolas.hidden = false;
+                    menuGestaoEscolas.style.display = '';
+                }
+            });
+        }
     } else if (user.perfil === 'professor' && perfil) {
         // ... (existing teacher logic) ...
         const principal = perfil.salaPrincipal || '';

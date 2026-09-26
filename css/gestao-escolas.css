@@ -1,0 +1,495 @@
+/*
+ * gestao-escolas.css — Gestão de Escolas do Super Admin (Issue #463).
+ *
+ * Só tokens do sistema (variables.css / motion.css): a página mora dentro do
+ * painel administrativo e não pode parecer outro produto.
+ *
+ * A marca da tela é a FAIXA DE SITUAÇÃO à esquerda de cada escola — verde
+ * ativa, vermelha bloqueada — com o motivo do bloqueio citado logo abaixo do
+ * nome. Numa lista longa, é o que deixa a situação legível sem ler coluna.
+ *
+ * Motion (docs/MOTION.md): filtro e busca são de alta frequência e NÃO animam;
+ * só a entrada das linhas (recipe do cookbook) e o modal, que é ocasional.
+ */
+
+/* O `display` dos blocos abaixo venceria o atributo `hidden` sem isto. */
+.ge-main [hidden] {
+    display: none !important;
+}
+
+.ge-main {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 1.5rem 16px 3rem;
+}
+
+/* ── Introdução ─────────────────────────────────────────────────────────── */
+.ge-intro {
+    margin-bottom: 1.5rem;
+}
+
+.ge-eyebrow {
+    margin: 0 0 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+}
+
+.ge-titulo {
+    margin: 0;
+    font-size: clamp(1.5rem, 1.2rem + 1.2vw, 2rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+}
+
+.ge-sub {
+    max-width: 62ch;
+    margin: 0.5rem 0 0;
+    color: var(--text-secondary);
+    font-size: 0.925rem;
+    line-height: 1.55;
+}
+
+/* ── Busca e filtro ─────────────────────────────────────────────────────── */
+.ge-controles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.ge-busca {
+    position: relative;
+    display: block;
+    flex: 1 1 260px;
+    max-width: 420px;
+}
+
+/* `i` ou `svg`: o shim do Lucide (js/libs/lucide-init.js) troca o ícone. */
+.ge-busca i,
+.ge-busca svg {
+    position: absolute;
+    left: 0.85rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-tertiary);
+    pointer-events: none;
+}
+
+.ge-busca input {
+    width: 100%;
+    padding-left: 2.4rem;
+}
+
+.ge-status {
+    display: inline-flex;
+    padding: 3px;
+    gap: 2px;
+    border-radius: var(--radius-full);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-secondary, var(--border-primary));
+}
+
+.ge-status-opcao {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 36px;
+    padding: 0.35rem 0.9rem;
+    border: 0;
+    border-radius: var(--radius-full);
+    background: transparent;
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+.ge-status-opcao[aria-checked='true'] {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.ge-status-opcao:focus-visible,
+.ge-acao:focus-visible {
+    outline: 2px solid var(--border-focus, var(--primary));
+    outline-offset: 2px;
+}
+
+.ge-contagem {
+    font-variant-numeric: tabular-nums;
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+}
+
+/* ── Tabela (desktop) ───────────────────────────────────────────────────── */
+.ge-tabela {
+    /* Ações com largura fixa: cada linha é um grid próprio, e `auto` desalinharia as colunas. */
+    --ge-colunas: minmax(0, 2.2fr) 7.5rem 5rem minmax(0, 1.3fr) 23rem;
+    border: 1px solid var(--border-secondary, var(--border-primary));
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
+    overflow: hidden;
+}
+
+.ge-cabecalho,
+.ge-linha {
+    display: grid;
+    grid-template-columns: var(--ge-colunas);
+    gap: 1rem;
+    align-items: center;
+    padding: 0.85rem 1.1rem 0.85rem 1.35rem;
+}
+
+.ge-cabecalho {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    border-bottom: 1px solid var(--border-secondary, var(--border-primary));
+}
+
+.ge-linha {
+    position: relative;
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.ge-linha:last-child {
+    border-bottom: 0;
+}
+
+/* A faixa de situação. */
+.ge-linha::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.6rem;
+    bottom: 0.6rem;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--success);
+}
+
+.ge-linha[data-status='bloqueada']::before {
+    background: var(--error);
+}
+
+.ge-linha[data-status='bloqueada'] {
+    background: color-mix(in srgb, var(--error) 5%, transparent);
+}
+
+.ge-nome {
+    display: block;
+    font-weight: 600;
+    color: var(--text-primary);
+    overflow-wrap: anywhere;
+}
+
+.ge-local {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.8125rem;
+    color: var(--text-tertiary);
+}
+
+.ge-motivo-linha {
+    margin: 0.4rem 0 0;
+    padding-left: 0.6rem;
+    border-left: 2px solid color-mix(in srgb, var(--error) 55%, transparent);
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    overflow-wrap: anywhere;
+}
+
+.ge-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.65rem;
+    border-radius: var(--radius-full);
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.ge-badge-ativa {
+    background: color-mix(in srgb, var(--success) 15%, transparent);
+    color: var(--success);
+}
+
+.ge-badge-bloqueada {
+    background: color-mix(in srgb, var(--error) 15%, transparent);
+    color: var(--error);
+}
+
+.ge-num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.ge-data {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.ge-data small {
+    display: block;
+    color: var(--text-tertiary);
+}
+
+.ge-acoes-col {
+    text-align: right;
+}
+
+.ge-acoes {
+    display: flex;
+    gap: 0.4rem;
+    justify-content: flex-end;
+}
+
+.ge-acao {
+    min-height: 36px;
+    white-space: nowrap;
+}
+
+.ge-rotulo-mobile {
+    display: none;
+}
+
+/* Entrada das linhas — recipe do cookbook (motion.css), sem escalonar. */
+.ge-linha.motion-content {
+    animation-duration: var(--motion-enter, 260ms);
+}
+
+/* Skeleton da primeira carga. */
+.ge-linha-skeleton {
+    display: grid;
+    grid-template-columns: var(--ge-colunas);
+    gap: 1rem;
+    padding: 1rem 1.35rem;
+    border-bottom: 1px solid var(--border-primary);
+}
+
+/* ── Estados vazio e sem acesso ─────────────────────────────────────────── */
+.ge-vazio {
+    display: grid;
+    justify-items: center;
+    gap: 0.4rem;
+    padding: 3rem 1rem;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.ge-vazio i {
+    font-size: 2rem;
+    color: var(--text-tertiary);
+}
+
+.ge-vazio h2 {
+    margin: 0;
+    font-size: 1.05rem;
+    color: var(--text-primary);
+}
+
+.ge-vazio p {
+    margin: 0;
+    max-width: 44ch;
+}
+
+/* ── Paginação ──────────────────────────────────────────────────────────── */
+.ge-paginacao {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1rem;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Modais (<dialog>) ──────────────────────────────────────────────────── */
+.ge-dialogo {
+    /* Centraliza mesmo com o reset global que zera a margem de <dialog>. */
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    height: fit-content;
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+    width: min(480px, calc(100vw - 32px));
+    padding: 1.4rem;
+    border: 1px solid var(--border-secondary, var(--border-primary));
+    border-radius: var(--radius-xl);
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-2xl);
+}
+
+.ge-dialogo::backdrop {
+    background: rgba(0, 0, 0, 0.55);
+}
+
+.ge-dialogo[open] {
+    animation: ge-dialogo-in 200ms var(--motion-ease-out, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+
+@keyframes ge-dialogo-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+        filter: blur(4px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+        filter: none;
+    }
+}
+
+.ge-dialogo-titulo {
+    margin: 0 0 0.5rem;
+    font-size: 1.15rem;
+    overflow-wrap: anywhere;
+}
+
+.ge-dialogo-texto {
+    margin: 0 0 1rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.ge-rotulo {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.ge-motivo {
+    width: 100%;
+    resize: vertical;
+    min-height: 6rem;
+}
+
+.ge-motivo-rodape {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 0.35rem;
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    font-variant-numeric: tabular-nums;
+}
+
+.ge-erro {
+    margin: 0.5rem 0 0;
+    font-size: 0.8125rem;
+    color: var(--error);
+}
+
+.ge-motivo-citado {
+    margin: 0 0 1rem;
+    padding: 0.6rem 0.8rem;
+    border-left: 3px solid var(--error);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    background: color-mix(in srgb, var(--error) 8%, transparent);
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    overflow-wrap: anywhere;
+}
+
+.ge-dialogo-acoes {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+    flex-wrap: wrap;
+}
+
+/* ── Celular: cada escola vira um card ──────────────────────────────────── */
+@media (max-width: 860px) {
+    .ge-cabecalho {
+        display: none;
+    }
+
+    .ge-tabela {
+        background: transparent;
+        border: 0;
+        overflow: visible;
+    }
+
+    .ge-linha,
+    .ge-linha-skeleton {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            'escola situacao'
+            'data usuarios'
+            'acoes acoes';
+        gap: 0.6rem 0.75rem;
+        margin-bottom: 0.75rem;
+        padding: 1rem 1rem 1rem 1.2rem;
+        border: 1px solid var(--border-secondary, var(--border-primary));
+        border-radius: var(--radius-lg);
+        background: var(--bg-secondary);
+    }
+
+    .ge-linha:last-child {
+        border-bottom: 1px solid var(--border-secondary, var(--border-primary));
+    }
+
+    .ge-c-escola { grid-area: escola; }
+    .ge-c-situacao { grid-area: situacao; justify-self: end; align-self: start; }
+    .ge-c-usuarios { grid-area: usuarios; justify-self: end; align-self: end; white-space: nowrap; }
+    .ge-c-data { grid-area: data; }
+    .ge-c-acoes { grid-area: acoes; }
+
+    .ge-num {
+        text-align: left;
+    }
+
+    .ge-rotulo-mobile {
+        display: inline;
+        color: var(--text-tertiary);
+        font-size: 0.8125rem;
+    }
+
+    .ge-acoes {
+        justify-content: stretch;
+    }
+
+    .ge-acao {
+        flex: 1 1 0;
+        justify-content: center;
+    }
+
+    .ge-status {
+        width: 100%;
+    }
+
+    .ge-status-opcao {
+        flex: 1 1 0;
+        justify-content: center;
+        padding-inline: 0.5rem;
+    }
+
+    .ge-busca {
+        max-width: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ge-dialogo[open],
+    .ge-linha.motion-content {
+        animation: none;
+    }
+}
