@@ -70,6 +70,7 @@ exports.sendVerificationCode = async (to, code, userName) => {
     `;
 
     const r = await enviarEmail(to, 'Código de recuperação de senha — Sistema Escolar', html);
-    if (!r.ok) logger.error(`[EmailService] Código de recuperação não entregue (${r.etapa}): ${r.erro}`);
+    if (!r.ok)
+        logger.error(`[EmailService] Código de recuperação não entregue (${r.etapa}): ${r.erro}`);
     return r.ok;
 };

@@ -1,5 +1,5 @@
 /* js/announcement-feed-legacy.js */
-(function() {
+(function () {
     const feedContainer = document.getElementById('announcement-feed-container');
     if (!feedContainer) return;
 
@@ -11,10 +11,17 @@
     // Definido localmente (e não via js/escape-html.js) para não depender da
     // ordem de carregamento dos <script> das 53 páginas.
     // ============================================
-    const _ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' };
+    const _ESC = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+        '`': '&#96;',
+    };
     function esc(v) {
         if (v === null || v === undefined) return '';
-        return String(v).replace(/[&<>"'`]/g, c => _ESC[c]);
+        return String(v).replace(/[&<>"'`]/g, (c) => _ESC[c]);
     }
 
     /**
@@ -77,11 +84,11 @@
             if (json.success && Array.isArray(json.data)) {
                 renderFeed(json.data);
             } else {
-                mostrarErro("Não foi possível carregar os comunicados.");
+                mostrarErro('Não foi possível carregar os comunicados.');
             }
         } catch (e) {
             console.error('[Feed Legacy] Erro ao carregar:', e);
-            mostrarErro("Erro de conexão com o servidor.");
+            mostrarErro('Erro de conexão com o servidor.');
         }
     }
 
@@ -90,12 +97,13 @@
         if (!list) return;
 
         if (comunicados.length === 0) {
-            list.innerHTML = '<div class="empty-message" style="text-align: center; padding: 3rem; color: var(--text-secondary);">Nenhum comunicado disponível.</div>';
+            list.innerHTML =
+                '<div class="empty-message" style="text-align: center; padding: 3rem; color: var(--text-secondary);">Nenhum comunicado disponível.</div>';
             return;
         }
 
         list.innerHTML = '';
-        comunicados.forEach(c => {
+        comunicados.forEach((c) => {
             const card = createComunicadoCard(c);
             list.appendChild(card);
         });
@@ -105,11 +113,15 @@
         const div = document.createElement('div');
         div.className = 'comunicado-card';
         div.dataset.id = c._id;
-        
+
         const dataStr = new Date(c.criadoEm).toLocaleString('pt-BR');
         const userReactions = c.reacoes || [];
-        const hasReacted = currentUser && userReactions.some(r => r.usuarioId === currentUser.id || r.usuarioId === currentUser._id);
-        
+        const hasReacted =
+            currentUser &&
+            userReactions.some(
+                (r) => r.usuarioId === currentUser.id || r.usuarioId === currentUser._id
+            );
+
         div.innerHTML = `
             <div class="comunicado-meta">
                 <span>Direção — ${esc(c.autorNome || 'Sistema Escolar')}</span>
@@ -117,11 +129,22 @@
             </div>
             <h3 class="comunicado-titulo">${esc(c.titulo)}</h3>
             <div class="comunicado-texto">${esc(c.texto)}</div>
-            ${c.imagens && c.imagens.length > 0 ? `
+            ${
+                c.imagens && c.imagens.length > 0
+                    ? `
                 <div class="comunicado-media">
-                    ${c.imagens.map(urlSegura).filter(Boolean).map(img => `<img src="${esc(img)}" class="media-item" onclick="window.open('${esc(img)}', '_blank')">`).join('')}
+                    ${c.imagens
+                        .map(urlSegura)
+                        .filter(Boolean)
+                        .map(
+                            (img) =>
+                                `<img src="${esc(img)}" class="media-item" onclick="window.open('${esc(img)}', '_blank')">`
+                        )
+                        .join('')}
                 </div>
-            ` : ''}
+            `
+                    : ''
+            }
             
             <div class="comunicado-actions">
                 <button class="action-btn ${hasReacted ? 'active' : ''}" onclick="window.LegacyFeed.toggleReacao('${esc(c._id)}')">
@@ -136,20 +159,28 @@
 
             <div id="comentarios-${esc(c._id)}" class="comentarios-section" style="display: none;">
                 <div class="comentarios-list">
-                    ${(c.comentarios || []).map(com => `
+                    ${(c.comentarios || [])
+                        .map(
+                            (com) => `
                         <div class="comentario-item">
                             <div class="comentario-header">
                                 <span class="comentario-autor">${esc(com.autorNome)}</span>
                                 <span class="comentario-data">${esc(new Date(com.criadoEm).toLocaleDateString())}</span>
                             </div>
                             <div class="comentario-texto">${esc(com.texto || '')}</div>
-                            ${urlSegura(com.audioUrl) ? `
+                            ${
+                                urlSegura(com.audioUrl)
+                                    ? `
                                 <div class="comentario-audio">
                                     <audio src="${esc(urlSegura(com.audioUrl))}" controls controlsList="nodownload" class="mini-audio-player"></audio>
                                 </div>
-                            ` : ''}
+                            `
+                                    : ''
+                            }
                         </div>
-                    `).join('')}
+                    `
+                        )
+                        .join('')}
                 </div>
                 <div class="comentario-input-group">
                     <input type="text" placeholder="Escreva um comentário..." class="comentario-input" id="input-${esc(c._id)}">
@@ -165,10 +196,10 @@
 
     function setupSocket() {
         if (typeof io === 'undefined') return;
-        
+
         socket = io(API_BASE_URL.replace('/api', ''), {
             withCredentials: true,
-            transports: ['websocket', 'polling']
+            transports: ['websocket', 'polling'],
         });
 
         socket.on('novo-comunicado', (comunicado) => {
@@ -193,10 +224,12 @@
             if (card) {
                 const countSpan = card.querySelector('.reacoes-count');
                 if (countSpan) countSpan.textContent = reacoes.length;
-                
+
                 const heartBtn = card.querySelector('.bi-heart, .bi-heart-fill').parentElement;
-                const userHasReacted = currentUser && reacoes.some(r => r.usuarioId === (currentUser.id || currentUser._id));
-                
+                const userHasReacted =
+                    currentUser &&
+                    reacoes.some((r) => r.usuarioId === (currentUser.id || currentUser._id));
+
                 if (userHasReacted) {
                     heartBtn.classList.add('active');
                     heartBtn.querySelector('i').className = 'bi bi-heart-fill';
@@ -220,15 +253,19 @@
                             <span class="comentario-data">Agora</span>
                         </div>
                         <div class="comentario-texto">${esc(comentario.texto || '')}</div>
-                        ${urlSegura(comentario.audioUrl) ? `
+                        ${
+                            urlSegura(comentario.audioUrl)
+                                ? `
                             <div class="comentario-audio">
                                 <audio src="${esc(urlSegura(comentario.audioUrl))}" controls controlsList="nodownload" class="mini-audio-player"></audio>
                             </div>
-                        ` : ''}
+                        `
+                                : ''
+                        }
                     `;
                     list.appendChild(comDiv);
                 }
-                
+
                 const chatCount = card.querySelector('.bi-chat-text').nextElementSibling;
                 if (chatCount) chatCount.textContent = parseInt(chatCount.textContent || '0') + 1;
             }
@@ -249,8 +286,10 @@
             // Filtro de linguagem imprópria. `validarAntesDeEnviar` já mostra o
             // aviso e grifa o campo; o servidor recusa de qualquer forma, isto
             // aqui é só para a pessoa saber por quê antes de mandar.
-            if (window.FiltroPalavroesUI
-                && !window.FiltroPalavroesUI.validarAntesDeEnviar(texto, { campo: input })) {
+            if (
+                window.FiltroPalavroesUI &&
+                !window.FiltroPalavroesUI.validarAntesDeEnviar(texto, { campo: input })
+            ) {
                 return;
             }
 
@@ -259,7 +298,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ texto }),
-                    credentials: 'include'
+                    credentials: 'include',
                 });
                 if (res.ok) {
                     input.value = '';
@@ -282,17 +321,18 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ tipo: 'heart' }),
-                    credentials: 'include'
+                    credentials: 'include',
                 });
             } catch (e) {
                 console.error('[Feed Legacy] Erro ao reagir:', e);
             }
-        }
+        },
     };
 
     function mostrarErro(msg) {
         const list = document.getElementById('feed-list');
-        if (list) list.innerHTML = `<div class="alert alert-danger" style="margin: 2rem;">${esc(msg)}</div>`;
+        if (list)
+            list.innerHTML = `<div class="alert alert-danger" style="margin: 2rem;">${esc(msg)}</div>`;
     }
 
     // Start
