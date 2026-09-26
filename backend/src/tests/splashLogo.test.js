@@ -36,7 +36,7 @@ describe('splash com a logo do site (Issue #443)', () => {
 
     it.each(paginas.map((p) => [p.rel, p.bloco]))('%s mostra a logo', (rel, bloco) => {
         const src = bloco.match(/<div class="splash-logo">\s*<img[^>]*\ssrc="([^"]+)"/)?.[1];
-        expect(src).toMatch(/img\/logo-jaguari\.png$/);
+        expect(src).toMatch(/img\/logo\.svg$/);
 
         // O caminho é resolvido como o navegador resolve, a partir da URL da
         // página: tem de cair num arquivo que existe, em qualquer nível de pasta.
@@ -51,7 +51,7 @@ describe('splash com a logo do site (Issue #443)', () => {
     it('o inject-pwa-features.js injeta a mesma marcação', () => {
         const script = fs.readFileSync(path.join(RAIZ, 'inject-pwa-features.js'), 'utf8');
         const bloco = blocoSplash(script);
-        expect(bloco).toContain('src="/img/logo-jaguari.png"');
+        expect(bloco).toContain('src="/img/logo.svg"');
         expect(bloco).not.toContain('bi-mortarboard');
         expect(bloco).toContain('<h2 class="splash-title">Escola Jaguari</h2>');
         expect(bloco).toContain('<p class="splash-subtitle">Portal Educacional</p>');

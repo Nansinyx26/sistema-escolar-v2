@@ -1,0 +1,22 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sistema Escolar — escolas em rede em traço">
+  <defs>
+    <linearGradient id="r5-traco" x1="60" y1="60" x2="452" y2="452" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#10b981"/>
+      <stop offset="0.55" stop-color="#0ea5e9"/>
+      <stop offset="1" stop-color="#6366f1"/>
+    </linearGradient>
+  </defs>
+  <g stroke="url(#r5-traco)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M256 212 L256 186"/>
+    <path d="M215.9 291.9 L176.5 321.3"/>
+    <path d="M296.1 291.9 L335.5 321.3"/>
+    <path d="M208 124 L256 80.8 L304 124 V170 H208 Z"/>
+    <path d="M244 170 V142 H268 V170"/>
+    <path d="M82 352 L130 308.8 L178 352 V398 H82 Z"/>
+    <path d="M118 398 V370 H142 V398"/>
+    <path d="M334 352 L382 308.8 L430 352 V398 H334 Z"/>
+    <path d="M370 398 V370 H394 V398"/>
+    <circle cx="256" cy="262" r="32"/>
+  </g>
+  <circle cx="256" cy="262" r="10" fill="url(#r5-traco)"/>
+</svg>

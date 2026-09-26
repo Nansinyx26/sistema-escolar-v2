@@ -1,0 +1,15 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sistema Escolar — rio nascendo da lombada do livro">
+  <defs>
+    <linearGradient id="l3-rio" x1="256" y1="250" x2="280" y2="500" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#10b981"/>
+      <stop offset="0.5" stop-color="#0ea5e9"/>
+      <stop offset="1" stop-color="#6366f1"/>
+    </linearGradient>
+    <clipPath id="l3-circulo"><circle cx="256" cy="256" r="240"/></clipPath>
+  </defs>
+  <circle cx="256" cy="256" r="240" fill="#0a0a0c"/>
+  <!-- O rio nasce fino na lombada, faz a curva e alarga até a margem -->
+  <path clip-path="url(#l3-circulo)" d="M250 250 C246 300 196 316 204 350 C212 386 282 384 270 430 C264 452 236 470 210 500 L310 500 C330 462 340 420 320 390 C298 358 238 362 240 334 C242 310 264 292 262 250 Z" fill="url(#l3-rio)"/>
+  <path d="M256 172 C218 146 166 140 120 148 V254 C166 246 218 252 256 276 C294 252 346 246 392 254 V148 C346 140 294 146 256 172 Z" fill="#ffffff"/>
+  <path d="M256 172 V276" stroke="#0a0a0c" stroke-width="6" stroke-linecap="round"/>
+</svg>
