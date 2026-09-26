@@ -1,5 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
-  <rect width="16" height="16" rx="3" fill="#1a56db"/>
-  <polygon points="8,2 14,5.5 8,7.5 2,5.5" fill="white"/>
-  <rect x="2" y="8" width="12" height="1.5" rx="1" fill="white" opacity="0.9"/>
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sistema Escolar">
+  <defs>
+    <linearGradient id="l1-onda" x1="96" y1="0" x2="416" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#10b981"/>
+      <stop offset="0.5" stop-color="#0ea5e9"/>
+      <stop offset="1" stop-color="#6366f1"/>
+    </linearGradient>
+    <clipPath id="l1-circulo"><circle cx="256" cy="256" r="232"/></clipPath>
+  </defs>
+  <circle cx="256" cy="256" r="232" fill="#0a0a0c"/>
+  <!-- Livro aberto: a nascente -->
+  <path d="M256 196 C218 170 166 164 120 172 V284 C166 276 218 282 256 306 C294 282 346 276 392 284 V172 C346 164 294 170 256 196 Z" fill="#ffffff"/>
+  <path d="M256 196 V306" stroke="#0a0a0c" stroke-width="6" stroke-linecap="round"/>
+  <!-- O rio: três ondas que saem do livro -->
+  <g clip-path="url(#l1-circulo)" stroke="url(#l1-onda)" stroke-linecap="round" fill="none">
+    <path d="M60 346 C120 316 176 376 256 346 S392 316 452 346" stroke-width="22"/>
+    <path d="M80 392 C136 364 188 420 256 392 S376 364 432 392" stroke-width="18" opacity="0.7"/>
+    <path d="M110 436 C156 414 200 456 256 436 S356 414 402 436" stroke-width="14" opacity="0.45"/>
+  </g>
 </svg>

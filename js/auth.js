@@ -186,6 +186,13 @@ const MENSAGENS_LOGIN = {
     MUITAS_TENTATIVAS: 'Muitas tentativas. Aguarde antes de tentar de novo.',
     ESCOLA_INDISPONIVEL: 'Esta escola ainda não está disponível no sistema.',
     SEM_VINCULO_ESCOLA: 'Você não possui vínculo com esta escola. Fale com a direção.',
+    // Porta errada (backend/src/utils/portalDeLogin.js, Issue #429). A senha
+    // estava certa — o que não serve é a tela. A mensagem leva ao endereço
+    // certo; sem ela a pessoa fica tentando a mesma porta achando que errou a
+    // senha.
+    CONTA_DE_RESPONSAVEL:
+        'Esta é uma conta de responsável. Entre pelo Portal do Responsável, em /portal-responsavel/.',
+    CONTA_DA_ESCOLA: 'Esta é uma conta da equipe escolar. Entre pela página de login da escola.',
 };
 
 /**
@@ -310,7 +317,13 @@ class AuthManager {
         try {
             const baseUrl = this._apiBase();
 
-            const body = { email, senha };
+            // `portal` diz ao servidor por qual PORTA esta tentativa chegou.
+            // Este arquivo é o do site da escola — o Portal do Responsável tem o
+            // cliente dele (`portal-responsavel/src/services/apiService.ts`), que
+            // manda 'responsavel'. Sem o campo o servidor já lê 'escola', que é o
+            // lado fechado do erro; mandá-lo explicitamente é o que deixa a
+            // intenção no código em vez de num padrão. Ver utils/portalDeLogin.js.
+            const body = { email, senha, portal: 'escola' };
             if (escolaId) body.escolaId = escolaId;
 
             const res = await fetch(`${baseUrl}/auth/login`, {

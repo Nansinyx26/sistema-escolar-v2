@@ -7,7 +7,7 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Diagnóstico do Sistema - Escola Jaguari</title>
+    <title>Diagnóstico do Sistema - Sistema Escolar</title>
     <link rel="stylesheet" href="../../css/variables.css">
     <link rel="stylesheet" href="../../css/base.css">
     <link rel="stylesheet" href="../../css/responsive-global.css?v=1.2">
@@ -37,7 +37,12 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 0.75rem;
             margin-bottom: 20px;
+        }
+        @media (max-width: 640px) {
+            .header h1 { font-size: 1.35rem; }
         }
         .stats-grid {
             display: grid;
@@ -163,13 +168,13 @@
     <div id="splashScreen">
         <div class="splash-logo-container">
             <div class="splash-logo">
-                <i class="ti ti-school"></i>
+                <img src="/img/logo.svg" alt="Sistema Escolar" class="splash-logo-img" decoding="async" loading="eager" fetchpriority="high">
             </div>
             <div class="splash-logo-ring"></div>
         </div>
         <div class="splash-text">
             <h2 class="splash-title">Sistema Escolar</h2>
-            <p class="splash-subtitle">Diagnóstico do Sistema</p>
+            <p class="splash-subtitle">Portal Educacional</p>
         </div>
         <div class="splash-progress-container">
             <div class="splash-progress-track">
@@ -189,9 +194,13 @@
             </button>
             <h1><i class="ti ti-activity"></i> Diagnóstico do Sistema</h1>
         </div>
-        <button class="refresh-btn" onclick="location.reload()">
-            <i class="ti ti-refresh"></i> Atualizar
-        </button>
+        <!-- `header-actions`: slot dos botões de acessibilidade e ajustes, que
+             sem ele flutuavam por cima do "Atualizar" (#457). -->
+        <div class="header-actions" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+            <button class="refresh-btn" onclick="location.reload()">
+                <i class="ti ti-refresh"></i> Atualizar
+            </button>
+        </div>
     </div>
 
     <div class="stats-grid">

@@ -139,6 +139,9 @@ exports.add = async (req, res) => {
         }
 
         // --- NOTIFICAÇÕES ---
+        // Escola do comunicado (ou da sessão): sem ela o aviso ia para o diretor
+        // de TODAS as escolas da rede, inclusive por e-mail.
+        const escolaDoAviso = comunicado?.escolaId || req.escolaId || null;
         try {
             if (parentId) {
                 // Notificar autor do comentário original
@@ -154,7 +157,7 @@ exports.add = async (req, res) => {
                         mensagem: `${usuario.nome} respondeu seu comentário.`,
                         destinatarios: `usuario:${originalComment.usuarioId}`,
                         criadoPor: usuarioId,
-                        link: '/dashboard',
+                        escolaId: escolaDoAviso,
                     });
                 }
             } else if (comunicado) {
@@ -166,7 +169,7 @@ exports.add = async (req, res) => {
                     mensagem: `${usuario.nome} comentou na publicação "${comunicado.titulo}".`,
                     destinatarios: 'diretor',
                     criadoPor: usuarioId,
-                    link: '/dashboard',
+                    escolaId: escolaDoAviso,
                 });
             }
         } catch (notifErr) {

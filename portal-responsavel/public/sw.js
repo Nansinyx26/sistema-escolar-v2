@@ -56,7 +56,7 @@ self.addEventListener('fetch', (event) => {
 
 // Escuta eventos push de notificações
 self.addEventListener('push', function(event) {
-  let data = { title: 'Escola Jaguari', body: 'Você tem uma nova atualização.' };
+  let data = { title: 'Sistema Escolar', body: 'Você tem uma nova atualização.' };
   if (event.data) {
     try {
       data = event.data.json();

@@ -12,13 +12,15 @@
 /* Responsiveness overrides for the grid layout */
 .grade-grid-layout {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1.5rem;
 }
 
 @media (max-width: 768px) {
     .grade-grid-layout {
-        grid-template-columns: 1fr;
+        /* `minmax(0, 1fr)`: o select com o nome longo do professor esticava
+           a coluna além da tela em 320px (#457). */
+        grid-template-columns: minmax(0, 1fr);
     }
     
     .grade-form-card {

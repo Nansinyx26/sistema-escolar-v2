@@ -1,0 +1,26 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sistema Escolar — capelo no centro da rede">
+  <defs>
+    <linearGradient id="r4-fundo" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#10b981"/>
+      <stop offset="0.55" stop-color="#0ea5e9"/>
+      <stop offset="1" stop-color="#6366f1"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="120" fill="url(#r4-fundo)"/>
+  <g stroke="#ffffff" stroke-width="12" stroke-linecap="round" stroke-opacity="0.9">
+    <path d="M256 214 L128 344"/>
+    <path d="M256 214 L256 360"/>
+    <path d="M256 214 L384 344"/>
+  </g>
+  <!-- Capelo -->
+  <path d="M256 104 L376 154 L256 204 L136 154 Z" fill="#0f172a"/>
+  <path d="M196 180 V222 C196 240 222 252 256 252 C290 252 316 240 316 222 V180 L256 206 Z" fill="#0f172a"/>
+  <path d="M376 154 V206" stroke="#0f172a" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="376" cy="214" r="11" fill="#0f172a"/>
+  <path d="M82 354 L128 312.6 L174 354 V404 H82 Z" fill="#ffffff"/>
+  <path d="M210 370 L256 328.6 L302 370 V420 H210 Z" fill="#ffffff"/>
+  <path d="M338 354 L384 312.6 L430 354 V404 H338 Z" fill="#ffffff"/>
+  <rect x="115.1" y="374.6" width="25.8" height="29.4" rx="4.6" fill="#10b981"/>
+  <rect x="243.1" y="390.6" width="25.8" height="29.4" rx="4.6" fill="#0ea5e9"/>
+  <rect x="371.1" y="374.6" width="25.8" height="29.4" rx="4.6" fill="#6366f1"/>
+</svg>

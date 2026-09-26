@@ -3,6 +3,7 @@ const fs = require('fs');
 const Aluno = require('../models/Aluno');
 const Nota = require('../models/Nota');
 const Falta = require('../models/Falta');
+const Escola = require('../models/Escola');
 const logger = require('../utils/logger');
 const { escolaMatch } = require('../middleware/filtrarPorEscola');
 
@@ -30,9 +31,9 @@ function loadVfsFontBuffers() {
         const vfs = (vfsModule.pdfMake && vfsModule.pdfMake.vfs) || vfsModule.vfs || vfsModule;
         const get = (name) => (vfs[name] ? Buffer.from(vfs[name], 'base64') : null);
         const buffers = {
-            normal:      get('Roboto-Regular.ttf'),
-            bold:        get('Roboto-Medium.ttf'),
-            italics:     get('Roboto-Italic.ttf'),
+            normal: get('Roboto-Regular.ttf'),
+            bold: get('Roboto-Medium.ttf'),
+            italics: get('Roboto-Italic.ttf'),
             bolditalics: get('Roboto-MediumItalic.ttf'),
         };
         return buffers.normal ? buffers : null;
@@ -44,9 +45,9 @@ function loadVfsFontBuffers() {
 
 function buildRobotoFontDef() {
     const disk = {
-        normal:      resolveFontFile('Roboto-Regular.ttf'),
-        bold:        resolveFontFile('Roboto-Medium.ttf'),
-        italics:     resolveFontFile('Roboto-Italic.ttf'),
+        normal: resolveFontFile('Roboto-Regular.ttf'),
+        bold: resolveFontFile('Roboto-Medium.ttf'),
+        italics: resolveFontFile('Roboto-Italic.ttf'),
         bolditalics: resolveFontFile('Roboto-MediumItalic.ttf'),
     };
     if (disk.normal && disk.bold && disk.italics && disk.bolditalics) {
@@ -58,9 +59,9 @@ function buildRobotoFontDef() {
         logger.info('[PDF] Fontes Roboto carregadas do vfs embutido (Buffers).');
         // Preenche eventuais faltas de disco com o buffer correspondente
         return {
-            normal:      disk.normal      || vfs.normal,
-            bold:        disk.bold        || vfs.bold,
-            italics:     disk.italics     || vfs.italics,
+            normal: disk.normal || vfs.normal,
+            bold: disk.bold || vfs.bold,
+            italics: disk.italics || vfs.italics,
             bolditalics: disk.bolditalics || vfs.bolditalics,
         };
     }
@@ -89,15 +90,15 @@ exports.obterPrinter = () => printer || null;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 // Paleta alinhada ao design system do portal: fundo escuro + acento emerald #10b981.
-const CYAN   = '#10b981'; // acento primário (emerald) — antes ciano #00d4ff
+const CYAN = '#10b981'; // acento primário (emerald) — antes ciano #00d4ff
 const PURPLE = '#059669'; // acento secundário (emerald escuro) p/ cabeçalhos — antes roxo
-const DARK   = '#0f172a';
-const DARK2  = '#1e293b';
-const WHITE  = '#ffffff';
-const GRAY   = '#94a3b8';
-const GREEN  = '#10b981';
+const DARK = '#0f172a';
+const DARK2 = '#1e293b';
+const WHITE = '#ffffff';
+const GRAY = '#94a3b8';
+const GREEN = '#10b981';
 const YELLOW = '#f59e0b';
-const RED    = '#ef4444';
+const RED = '#ef4444';
 const BORDER = '#334155';
 
 function notaColor(v) {
@@ -109,7 +110,7 @@ function notaColor(v) {
 }
 
 function notaCell(v) {
-    const display = (v == null || v === '' || v === undefined) ? '-' : String(v);
+    const display = v == null || v === '' || v === undefined ? '-' : String(v);
     return {
         text: display,
         alignment: 'center',
@@ -132,9 +133,35 @@ function headerCell(text) {
     };
 }
 
+// Marca usada quando o aluno não tem escola (cadastro anterior ao multi-escola)
+// ou a escola não é encontrada. O sistema atende várias escolas (Issue #471):
+// o boletim é documento oficial da escola do aluno, não de uma escola fixa.
+const MARCA_SISTEMA = 'Sistema Escolar';
+
+/**
+ * Nome da escola do aluno para o cabeçalho e o rodapé do boletim.
+ * @param {{escolaId?: string}} aluno
+ * @returns {Promise<string>}
+ */
+async function nomeDaEscolaDoAluno(aluno) {
+    if (!aluno?.escolaId) return MARCA_SISTEMA;
+    try {
+        const escola = await Escola.findById(aluno.escolaId).select('nome').lean();
+        return escola?.nome || MARCA_SISTEMA;
+    } catch (err) {
+        // `escolaId` legado que não é ObjectId válido: o boletim sai com a
+        // marca do sistema em vez de falhar.
+        logger.warn('[Boletim] escola do aluno não encontrada', { erro: err.message });
+        return MARCA_SISTEMA;
+    }
+}
+exports.nomeDaEscolaDoAluno = nomeDaEscolaDoAluno;
+
 exports.gerarBoletim = async (req, res) => {
     if (!printer) {
-        return res.status(503).json({ success: false, error: 'Serviço de PDF não disponível no momento.' });
+        return res
+            .status(503)
+            .json({ success: false, error: 'Serviço de PDF não disponível no momento.' });
     }
 
     try {
@@ -145,8 +172,10 @@ exports.gerarBoletim = async (req, res) => {
         // responsável baixava o boletim de qualquer criança da rede.
         const assertAcessoAoAluno = require('../middleware/assertAcessoAoAluno');
         const acesso = await assertAcessoAoAluno(req, alunoId);
-        if (!acesso.ok) return res.status(acesso.status).json({ success: false, error: acesso.error });
+        if (!acesso.ok)
+            return res.status(acesso.status).json({ success: false, error: acesso.error });
         const aluno = acesso.aluno;
+        const nomeEscola = await nomeDaEscolaDoAluno(aluno);
 
         // 2. Notas
         const notas = await Nota.find({ alunoId: String(alunoId) }).lean();
@@ -154,14 +183,14 @@ exports.gerarBoletim = async (req, res) => {
         // 3. Frequência
         const faltas = await Falta.find({ aluno: String(alunoId) }).lean();
         const totalAulas = faltas.length;
-        const totalPresencas = faltas.filter(f => f.presente).length;
+        const totalPresencas = faltas.filter((f) => f.presente).length;
         const freqNum = totalAulas > 0 ? (totalPresencas / totalAulas) * 100 : 100;
         const freqStr = freqNum.toFixed(1) + '%';
         const freqColor = freqNum >= 75 ? GREEN : freqNum >= 60 ? YELLOW : RED;
 
         // 4. Organiza notas por matéria
         const boletimMap = {};
-        notas.forEach(n => {
+        notas.forEach((n) => {
             if (!boletimMap[n.materiaId]) {
                 boletimMap[n.materiaId] = { nome: n.materiaId, b1: '-', b2: '-', b3: '-', b4: '-' };
             }
@@ -169,13 +198,24 @@ exports.gerarBoletim = async (req, res) => {
         });
 
         // 5. Linhas da tabela
-        const tableRows = Object.values(boletimMap).map(m => {
+        const tableRows = Object.values(boletimMap).map((m) => {
             const vals = [m.b1, m.b2, m.b3, m.b4];
-            const nums = vals.filter(v => v !== '-').map(Number);
-            const media = nums.length > 0 ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(1) : '-';
+            const nums = vals.filter((v) => v !== '-').map(Number);
+            const media =
+                nums.length > 0 ? (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(1) : '-';
             return [
-                { text: m.nome, bold: false, color: WHITE, fillColor: DARK2, margin: [6, 4, 0, 4], fontSize: 9 },
-                notaCell(m.b1), notaCell(m.b2), notaCell(m.b3), notaCell(m.b4),
+                {
+                    text: m.nome,
+                    bold: false,
+                    color: WHITE,
+                    fillColor: DARK2,
+                    margin: [6, 4, 0, 4],
+                    fontSize: 9,
+                },
+                notaCell(m.b1),
+                notaCell(m.b2),
+                notaCell(m.b3),
+                notaCell(m.b4),
                 {
                     text: media,
                     bold: true,
@@ -184,14 +224,25 @@ exports.gerarBoletim = async (req, res) => {
                     alignment: 'center',
                     margin: [0, 4, 0, 4],
                     fontSize: 10,
-                }
+                },
             ];
         });
 
         if (tableRows.length === 0) {
             tableRows.push([
-                { text: 'Nenhuma nota lançada ainda.', colSpan: 6, alignment: 'center', color: GRAY, fillColor: DARK2, margin: [0, 8, 0, 8] },
-                {}, {}, {}, {}, {}
+                {
+                    text: 'Nenhuma nota lançada ainda.',
+                    colSpan: 6,
+                    alignment: 'center',
+                    color: GRAY,
+                    fillColor: DARK2,
+                    margin: [0, 8, 0, 8],
+                },
+                {},
+                {},
+                {},
+                {},
+                {},
             ]);
         }
 
@@ -211,56 +262,139 @@ exports.gerarBoletim = async (req, res) => {
                     columns: [
                         {
                             stack: [
-                                { text: 'ESCOLA JAGUARI', fontSize: 18, bold: true, color: CYAN, letterSpacing: 2 },
-                                { text: 'SISTEMA ESCOLAR — BOLETIM OFICIAL', fontSize: 8, color: GRAY, margin: [0, 2, 0, 0] },
-                            ]
+                                {
+                                    text: nomeEscola.toUpperCase(),
+                                    fontSize: 18,
+                                    bold: true,
+                                    color: CYAN,
+                                    letterSpacing: 2,
+                                },
+                                {
+                                    text: 'SISTEMA ESCOLAR — BOLETIM OFICIAL',
+                                    fontSize: 8,
+                                    color: GRAY,
+                                    margin: [0, 2, 0, 0],
+                                },
+                            ],
                         },
                         {
                             stack: [
-                                { text: `Ano Letivo ${ano}`, fontSize: 11, bold: true, color: WHITE, alignment: 'right' },
-                                { text: `Gerado em ${new Date().toLocaleDateString('pt-BR')}`, fontSize: 8, color: GRAY, alignment: 'right' },
-                            ]
-                        }
+                                {
+                                    text: `Ano Letivo ${ano}`,
+                                    fontSize: 11,
+                                    bold: true,
+                                    color: WHITE,
+                                    alignment: 'right',
+                                },
+                                {
+                                    text: `Gerado em ${new Date().toLocaleDateString('pt-BR')}`,
+                                    fontSize: 8,
+                                    color: GRAY,
+                                    alignment: 'right',
+                                },
+                            ],
+                        },
                     ],
                     margin: [0, 0, 0, 12],
                 },
                 // linha separadora gradiente simulada
-                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 2, lineColor: PURPLE }], margin: [0, 0, 0, 16] },
+                {
+                    canvas: [
+                        {
+                            type: 'line',
+                            x1: 0,
+                            y1: 0,
+                            x2: 515,
+                            y2: 0,
+                            lineWidth: 2,
+                            lineColor: PURPLE,
+                        },
+                    ],
+                    margin: [0, 0, 0, 16],
+                },
 
                 // ── Info do aluno ──
                 {
                     table: {
                         widths: ['*', '*', '*'],
-                        body: [[
-                            {
-                                stack: [
-                                    { text: 'ALUNO', fontSize: 7, color: GRAY, bold: true, margin: [0, 0, 0, 2] },
-                                    { text: nomeCompleto, fontSize: 13, bold: true, color: WHITE }
-                                ],
-                                fillColor: DARK2, border: [false, false, false, false], margin: [12, 10, 0, 10]
-                            },
-                            {
-                                stack: [
-                                    { text: 'TURMA', fontSize: 7, color: GRAY, bold: true, margin: [0, 0, 0, 2] },
-                                    { text: aluno.turma || 'N/A', fontSize: 13, bold: true, color: CYAN }
-                                ],
-                                fillColor: DARK2, border: [false, false, false, false], margin: [12, 10, 0, 10]
-                            },
-                            {
-                                stack: [
-                                    { text: 'FREQUÊNCIA', fontSize: 7, color: GRAY, bold: true, margin: [0, 0, 0, 2] },
-                                    { text: freqStr, fontSize: 13, bold: true, color: freqColor }
-                                ],
-                                fillColor: DARK2, border: [false, false, false, false], margin: [12, 10, 12, 10]
-                            }
-                        ]]
+                        body: [
+                            [
+                                {
+                                    stack: [
+                                        {
+                                            text: 'ALUNO',
+                                            fontSize: 7,
+                                            color: GRAY,
+                                            bold: true,
+                                            margin: [0, 0, 0, 2],
+                                        },
+                                        {
+                                            text: nomeCompleto,
+                                            fontSize: 13,
+                                            bold: true,
+                                            color: WHITE,
+                                        },
+                                    ],
+                                    fillColor: DARK2,
+                                    border: [false, false, false, false],
+                                    margin: [12, 10, 0, 10],
+                                },
+                                {
+                                    stack: [
+                                        {
+                                            text: 'TURMA',
+                                            fontSize: 7,
+                                            color: GRAY,
+                                            bold: true,
+                                            margin: [0, 0, 0, 2],
+                                        },
+                                        {
+                                            text: aluno.turma || 'N/A',
+                                            fontSize: 13,
+                                            bold: true,
+                                            color: CYAN,
+                                        },
+                                    ],
+                                    fillColor: DARK2,
+                                    border: [false, false, false, false],
+                                    margin: [12, 10, 0, 10],
+                                },
+                                {
+                                    stack: [
+                                        {
+                                            text: 'FREQUÊNCIA',
+                                            fontSize: 7,
+                                            color: GRAY,
+                                            bold: true,
+                                            margin: [0, 0, 0, 2],
+                                        },
+                                        {
+                                            text: freqStr,
+                                            fontSize: 13,
+                                            bold: true,
+                                            color: freqColor,
+                                        },
+                                    ],
+                                    fillColor: DARK2,
+                                    border: [false, false, false, false],
+                                    margin: [12, 10, 12, 10],
+                                },
+                            ],
+                        ],
                     },
                     layout: { defaultBorder: false },
                     margin: [0, 0, 0, 16],
                 },
 
                 // ── Tabela de notas ──
-                { text: 'NOTAS POR DISCIPLINA', fontSize: 9, bold: true, color: GRAY, letterSpacing: 1, margin: [0, 0, 0, 6] },
+                {
+                    text: 'NOTAS POR DISCIPLINA',
+                    fontSize: 9,
+                    bold: true,
+                    color: GRAY,
+                    letterSpacing: 1,
+                    margin: [0, 0, 0, 6],
+                },
                 {
                     table: {
                         headerRows: 1,
@@ -272,10 +406,10 @@ exports.gerarBoletim = async (req, res) => {
                                 headerCell('2º BIM'),
                                 headerCell('3º BIM'),
                                 headerCell('4º BIM'),
-                                { ...headerCell('MÉDIA'), fillColor: '#064e3b' }
+                                { ...headerCell('MÉDIA'), fillColor: '#064e3b' },
                             ],
-                            ...tableRows
-                        ]
+                            ...tableRows,
+                        ],
                     },
                     layout: {
                         hLineWidth: () => 1,
@@ -291,7 +425,12 @@ exports.gerarBoletim = async (req, res) => {
                 {
                     columns: [
                         { text: '● Aprovado: ≥ 7.0', color: GREEN, fontSize: 8, bold: true },
-                        { text: '● Em recuperação: 5.0–6.9', color: YELLOW, fontSize: 8, bold: true },
+                        {
+                            text: '● Em recuperação: 5.0–6.9',
+                            color: YELLOW,
+                            fontSize: 8,
+                            bold: true,
+                        },
                         { text: '● Reprovado: < 5.0', color: RED, fontSize: 8, bold: true },
                         { text: '● Frequência mínima: 75%', color: CYAN, fontSize: 8, bold: true },
                     ],
@@ -301,9 +440,20 @@ exports.gerarBoletim = async (req, res) => {
 
             footer: (currentPage, pageCount) => ({
                 columns: [
-                    { text: `Escola Jaguari — Documento gerado automaticamente`, fontSize: 7, color: GRAY, margin: [40, 0, 0, 0] },
-                    { text: `Página ${currentPage} de ${pageCount}`, fontSize: 7, color: GRAY, alignment: 'right', margin: [0, 0, 40, 0] }
-                ]
+                    {
+                        text: `${nomeEscola} — Documento gerado automaticamente`,
+                        fontSize: 7,
+                        color: GRAY,
+                        margin: [40, 0, 0, 0],
+                    },
+                    {
+                        text: `Página ${currentPage} de ${pageCount}`,
+                        fontSize: 7,
+                        color: GRAY,
+                        alignment: 'right',
+                        margin: [0, 0, 40, 0],
+                    },
+                ],
             }),
         };
 
@@ -314,10 +464,12 @@ exports.gerarBoletim = async (req, res) => {
         }
 
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename=Boletim_${aluno.nome.replace(/\s+/g, '_')}.pdf`);
+        res.setHeader(
+            'Content-Disposition',
+            `attachment; filename=Boletim_${aluno.nome.replace(/\s+/g, '_')}.pdf`
+        );
         pdfDoc.pipe(res);
         pdfDoc.end();
-
     } catch (error) {
         logger.error(`Erro ao gerar boletim: ${error.message}`);
         if (!res.headersSent) {
@@ -344,36 +496,52 @@ exports.gerarRelatorioBI = async (req, res) => {
         // `$convert` com `onError: null` descarta o registro em vez de abortar.
         const pipeline = [
             { $match: escolaMatch(req.escolaId) },
-            { $addFields: { notaNum: { $convert: { input: "$nota", to: "double", onError: null, onNull: null } } } },
+            {
+                $addFields: {
+                    notaNum: {
+                        $convert: { input: '$nota', to: 'double', onError: null, onNull: null },
+                    },
+                },
+            },
             { $match: { notaNum: { $ne: null } } },
             {
                 $group: {
-                    _id: { materia: "$materiaId", turma: "$turmaId" },
-                    media: { $avg: "$notaNum" },
-                    total: { $sum: 1 }
-                }
+                    _id: { materia: '$materiaId', turma: '$turmaId' },
+                    media: { $avg: '$notaNum' },
+                    total: { $sum: 1 },
+                },
             },
-            { $sort: { "_id.turma": 1, "_id.materia": 1 } }
+            { $sort: { '_id.turma': 1, '_id.materia': 1 } },
         ];
         const data = await Nota.aggregate(pipeline);
 
         if (data.length === 0) {
-            return res.status(404).json({ success: false, error: 'Não há dados suficientes para gerar o relatório.' });
+            return res.status(404).json({
+                success: false,
+                error: 'Não há dados suficientes para gerar o relatório.',
+            });
         }
 
         // 2. Transforma em matriz para a tabela do PDF
-        const turmas = [...new Set(data.map(d => d._id.turma))].sort();
-        const materias = [...new Set(data.map(d => d._id.materia))].sort();
+        const turmas = [...new Set(data.map((d) => d._id.turma))].sort();
+        const materias = [...new Set(data.map((d) => d._id.materia))].sort();
 
-        const tableBody = [
-            [headerCell('Matéria / Turma'), ...turmas.map(t => headerCell(t))]
-        ];
+        const tableBody = [[headerCell('Matéria / Turma'), ...turmas.map((t) => headerCell(t))]];
 
-        materias.forEach(m => {
-            const row = [{ text: m, bold: true, color: WHITE, fillColor: DARK2, fontSize: 8, margin: [4, 4, 4, 4] }];
-            turmas.forEach(t => {
-                const entry = data.find(d => d._id.materia === m && d._id.turma === t);
-                const media = (entry && entry.media != null) ? entry.media.toFixed(1) : '-';
+        materias.forEach((m) => {
+            const row = [
+                {
+                    text: m,
+                    bold: true,
+                    color: WHITE,
+                    fillColor: DARK2,
+                    fontSize: 8,
+                    margin: [4, 4, 4, 4],
+                },
+            ];
+            turmas.forEach((t) => {
+                const entry = data.find((d) => d._id.materia === m && d._id.turma === t);
+                const media = entry && entry.media != null ? entry.media.toFixed(1) : '-';
                 row.push(notaCell(media));
             });
             tableBody.push(row);
@@ -384,18 +552,29 @@ exports.gerarRelatorioBI = async (req, res) => {
             pageOrientation: 'landscape',
             background: [{ canvas: [{ type: 'rect', x: 0, y: 0, w: 842, h: 595, color: DARK }] }],
             content: [
-                { text: 'RELATÓRIO DE DESEMPENHO PEDAGÓGICO (BI)', fontSize: 16, bold: true, color: CYAN, margin: [0, 0, 0, 10] },
-                { text: `Gerado em: ${new Date().toLocaleString('pt-BR')}`, fontSize: 9, color: GRAY, margin: [0, 0, 0, 20] },
+                {
+                    text: 'RELATÓRIO DE DESEMPENHO PEDAGÓGICO (BI)',
+                    fontSize: 16,
+                    bold: true,
+                    color: CYAN,
+                    margin: [0, 0, 0, 10],
+                },
+                {
+                    text: `Gerado em: ${new Date().toLocaleString('pt-BR')}`,
+                    fontSize: 9,
+                    color: GRAY,
+                    margin: [0, 0, 0, 20],
+                },
                 {
                     table: {
                         headerRows: 1,
                         widths: [100, ...turmas.map(() => '*')],
-                        body: tableBody
+                        body: tableBody,
                     },
-                    layout: { hLineColor: () => BORDER, vLineColor: () => BORDER }
-                }
+                    layout: { hLineColor: () => BORDER, vLineColor: () => BORDER },
+                },
             ],
-            defaultStyle: { font: 'Roboto' }
+            defaultStyle: { font: 'Roboto' },
         };
 
         const pdfDoc = printer.createPdfKitDocument(docDefinition);
@@ -403,7 +582,6 @@ exports.gerarRelatorioBI = async (req, res) => {
         res.setHeader('Content-Disposition', 'attachment; filename=Relatorio_BI_Pedagogico.pdf');
         pdfDoc.pipe(res);
         pdfDoc.end();
-
     } catch (error) {
         logger.error(`Erro ao gerar relatório BI: ${error.message}`);
         res.status(500).json({ success: false, error: 'Erro interno ao gerar relatório.' });

@@ -824,6 +824,10 @@ body.ui3 .modal .password-toggle {
         padding: 1.1rem clamp(1rem, 4vw, 2rem);
         border-right: 0;
         border-bottom: 1px solid var(--ui-line);
+        /* Folga à direita para `.lg-topo` (tema + acessibilidade), que é
+           absoluto no canto: sem ela os botões cortavam o nome do portal
+           ("Portal da Direç…") no celular (#457). */
+        padding-right: calc(clamp(1rem, 3vw, 2rem) + 6.25rem);
     }
 
     body.ui3 .lg-hero-corpo,
@@ -908,6 +912,13 @@ body.ui3 .lg-lgpd-mobile svg {
         gap: 0.2rem;
         min-height: 54px;
         font-size: 0.78rem;
+    }
+
+    /* O `word-break` global do responsive-global.css partia "Secretari/a"
+       numa aba que tem espaço para a palavra inteira (#457). */
+    body.ui3 .lg-aba span {
+        word-break: normal;
+        overflow-wrap: normal;
     }
 }
 
