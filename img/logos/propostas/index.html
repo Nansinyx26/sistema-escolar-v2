@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Propostas de logo — Escola Jaguari</title>
+<meta name="robots" content="noindex">
+<style>
+  :root { --bg:#f4f4f5; --card:#ffffff; --ink:#0a0a0c; --muted:#52525b; --line:#e4e4e7; --dark:#0a0a0c; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:Inter, system-ui, sans-serif; }
+  main { max-width:1120px; margin:0 auto; padding:40px 16px 64px; }
+  h1 { font-size:28px; margin:0 0 6px; letter-spacing:-0.02em; }
+  header p { margin:0 0 32px; color:var(--muted); max-width:62ch; line-height:1.5; }
+  .grade { display:grid; gap:20px; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); }
+  article { background:var(--card); border:1px solid var(--line); border-radius:16px; overflow:hidden; }
+  .palco { display:grid; grid-template-columns:1fr 1fr; }
+  .palco > div { display:flex; align-items:center; justify-content:center; gap:12px; padding:20px 8px; }
+  .claro { background:#ffffff; }
+  .escuro { background:var(--dark); }
+  .grande { width:88px; height:88px; }
+  .mini { display:flex; flex-direction:column; gap:8px; align-items:center; }
+  .mini img:nth-child(1) { width:32px; height:32px; }
+  .mini img:nth-child(2) { width:16px; height:16px; }
+  .assinatura { display:flex; align-items:center; gap:12px; padding:16px 20px; border-top:1px solid var(--line); }
+  .assinatura img { width:44px; height:44px; }
+  .assinatura strong { display:block; font-size:17px; letter-spacing:-0.01em; }
+  .assinatura span { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em; }
+  .texto { padding:0 20px 20px; }
+  .texto h2 { font-size:16px; margin:0 0 4px; }
+  .texto p { margin:0; font-size:14px; color:var(--muted); line-height:1.5; }
+  .atual { margin-top:40px; }
+  .atual img { width:120px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Propostas de logo — Escola Jaguari</h1>
+    <p>Sete modelos vetoriais na paleta do sistema (esmeralda, céu e índigo), cada um em fundo claro e escuro, em 88, 32 e 16&nbsp;px. A logo em uso não muda até a escolha — Issue #460.</p>
+  </header>
+  <section class="grade" id="grade"></section>
+  <section class="atual">
+    <h2>Logo atual, para comparar</h2>
+    <img src="../../logo-jaguari.png" alt="Logo atual da Escola Jaguari">
+  </section>
+</main>
+<script>
+  const modelos = [
+    ['01-cubo-capelo', 'Cubo com capelo', 'Evolução direta da logo atual, agora em vetor: o topo do cubo é o capelo e a face direita traz as barras do BI pedagógico.'],
+    ['02-monograma-j', 'Monograma J', 'O J de Jaguari vira uma pessoa formada: a haste é o corpo, o capelo é a cabeça. Funciona bem como ícone de app.'],
+    ['03-livro-rio', 'Livro e rio', 'Um livro aberto como nascente do rio Jaguari. Mais afetivo e ligado à região.'],
+    ['04-roseta-onca', 'Roseta de onça', 'Uma roseta da pelagem da onça com o centro nas cores do sistema. É a mais ousada e a mais reconhecível em tamanho pequeno.'],
+    ['05-brasao', 'Brasão', 'Escudo com estrela e livro, no tom institucional de escola pública. Bom para documentos e boletins.'],
+    ['06-blocos-j', 'J em blocos', 'O J montado numa grade 5×5, como um painel de dados. Visual de tecnologia, nítido até em 16 px.'],
+    ['07-selo', 'Selo', 'Selo circular com o nome da escola, para certificados, declarações e rodapé de PDF. Não serve como ícone pequeno.'],
+  ];
+  document.getElementById('grade').innerHTML = modelos.map(([arq, nome, desc]) => `
+    <article>
+      <div class="palco">
+        <div class="claro"><img class="grande" src="${arq}.svg" alt="${nome}"><div class="mini"><img src="${arq}.svg" alt=""><img src="${arq}.svg" alt=""></div></div>
+        <div class="escuro"><img class="grande" src="${arq}.svg" alt=""><div class="mini"><img src="${arq}.svg" alt=""><img src="${arq}.svg" alt=""></div></div>
+      </div>
+      <div class="assinatura"><img src="${arq}.svg" alt=""><div><strong>Escola Jaguari</strong><span>Portal Educacional</span></div></div>
+      <div class="texto"><h2>${arq.slice(0, 2)} · ${nome}</h2><p>${desc}</p></div>
+    </article>`).join('');
+</script>
+</body>
+</html>

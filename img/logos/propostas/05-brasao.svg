@@ -1,0 +1,16 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Escola Jaguari — brasão com estrela e livro">
+  <defs>
+    <linearGradient id="b5-escudo" x1="256" y1="48" x2="256" y2="464" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#0ea5e9"/>
+    </linearGradient>
+  </defs>
+  <path d="M256 48 L432 106 V246 C432 356 356 430 256 466 C156 430 80 356 80 246 V106 Z" fill="url(#b5-escudo)"/>
+  <path d="M256 78 L404 127 V246 C404 339 342 402 256 434 C170 402 108 339 108 246 V127 Z" stroke="#ffffff" stroke-opacity="0.35" stroke-width="6"/>
+  <!-- Estrela -->
+  <path d="M256.0 114.0 L270.7 155.8 L315.0 156.8 L279.8 183.7 L292.4 226.2 L256.0 201.0 L219.6 226.2 L232.2 183.7 L197.0 156.8 L241.3 155.8 Z" fill="#fbbf24"/>
+  <!-- Livro -->
+  <path d="M256 282 C226 262 186 258 150 264 V350 C186 344 226 348 256 368 C286 348 326 344 362 350 V264 C326 258 286 262 256 282 Z" fill="#ffffff"/>
+  <path d="M256 282 V368" stroke="#4f46e5" stroke-width="6" stroke-linecap="round"/>
+  <path d="M150 250 H362" stroke="#10b981" stroke-width="10" stroke-linecap="round"/>
+</svg>

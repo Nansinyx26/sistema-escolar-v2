@@ -1,0 +1,26 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Escola Jaguari — cubo com capelo">
+  <defs>
+    <linearGradient id="c1-esq" x1="83" y1="156" x2="256" y2="456" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#34d399"/>
+      <stop offset="1" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="c1-dir" x1="429" y1="156" x2="256" y2="456" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#818cf8"/>
+      <stop offset="1" stop-color="#4f46e5"/>
+    </linearGradient>
+  </defs>
+  <!-- Face esquerda -->
+  <path d="M83 156 L256 256 V456 L83 356 Z" fill="url(#c1-esq)"/>
+  <!-- Face direita, com as barras de crescimento na perspectiva da face -->
+  <path d="M256 256 L429 156 V356 L256 456 Z" fill="url(#c1-dir)"/>
+  <g transform="translate(256 456) skewY(-30)" fill="#ffffff">
+    <rect x="18" y="-92" width="26" height="58" rx="8" opacity="0.7"/>
+    <rect x="56" y="-126" width="26" height="92" rx="8" opacity="0.85"/>
+    <rect x="94" y="-160" width="26" height="126" rx="8"/>
+  </g>
+  <!-- Topo = capelo -->
+  <path d="M256 56 L429 156 L256 256 L83 156 Z" fill="#0f172a" stroke="#334155" stroke-width="6" stroke-linejoin="round"/>
+  <circle cx="256" cy="156" r="12" fill="#fbbf24"/>
+  <path d="M256 156 L392 176 V238" stroke="#fbbf24" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="382" y="234" width="20" height="36" rx="6" fill="#fbbf24"/>
+</svg>
