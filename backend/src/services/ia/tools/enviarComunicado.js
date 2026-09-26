@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * enviarComunicado — publica um aviso para a comunidade escolar.
  *
@@ -23,7 +21,8 @@ const MAX_CHARS_CONTEUDO = 5000;
 
 module.exports = {
     name: 'enviarComunicado',
-    description: 'Publica um comunicado/aviso para a comunidade escolar, com notificação. Use quando pedirem para avisar/comunicar algo a professores, responsáveis ou a todos. Exige confirmação antes do envio.',
+    description:
+        'Publica um comunicado/aviso para a comunidade escolar, com notificação. Use quando pedirem para avisar/comunicar algo a professores, responsáveis ou a todos. Exige confirmação antes do envio.',
 
     schema: {
         type: 'object',
@@ -31,26 +30,26 @@ module.exports = {
             titulo: { type: 'string', description: 'Título do comunicado.' },
             conteudo: {
                 type: 'string',
-                description: 'Texto do comunicado, já redigido e pronto para publicação.'
+                description: 'Texto do comunicado, já redigido e pronto para publicação.',
             },
             destinatarios: {
                 type: 'array',
                 items: { type: 'string', enum: DESTINATARIOS },
-                description: 'Quem recebe. Use "todos" para a comunidade inteira.'
+                description: 'Quem recebe. Use "todos" para a comunidade inteira.',
             },
             prioridade: {
                 type: 'string',
                 enum: PRIORIDADES,
-                description: 'Prioridade. Padrão: Normal.'
-            }
+                description: 'Prioridade. Padrão: Normal.',
+            },
         },
-        required: ['titulo', 'conteudo', 'destinatarios']
+        required: ['titulo', 'conteudo', 'destinatarios'],
     },
 
     cargosPermitidos: ['diretor', 'secretaria'],
     mutates: true,
 
-    async handler({ titulo, conteudo, destinatarios, prioridade }, ctx) {
+    async handler({ titulo, conteudo, destinatarios, prioridade }, _ctx) {
         const tituloLimpo = String(titulo || '').trim();
         const conteudoLimpo = String(conteudo || '').trim();
 
@@ -58,15 +57,23 @@ module.exports = {
             throw new ErroPermissao('Preciso do título do comunicado. Pergunte à pessoa.');
         }
         if (!conteudoLimpo) {
-            throw new ErroPermissao('Preciso do texto do comunicado. Pergunte à pessoa o que deve ser comunicado.');
+            throw new ErroPermissao(
+                'Preciso do texto do comunicado. Pergunte à pessoa o que deve ser comunicado.'
+            );
         }
         if (conteudoLimpo.length > MAX_CHARS_CONTEUDO) {
-            throw new ErroPermissao(`O comunicado está muito longo (máximo de ${MAX_CHARS_CONTEUDO} caracteres).`);
+            throw new ErroPermissao(
+                `O comunicado está muito longo (máximo de ${MAX_CHARS_CONTEUDO} caracteres).`
+            );
         }
 
         const alvos = (Array.isArray(destinatarios) ? destinatarios : [destinatarios])
-            .map(d => String(d || '').toLowerCase().trim())
-            .filter(d => DESTINATARIOS.includes(d));
+            .map((d) =>
+                String(d || '')
+                    .toLowerCase()
+                    .trim()
+            )
+            .filter((d) => DESTINATARIOS.includes(d));
 
         if (alvos.length === 0) {
             throw new ErroPermissao(
@@ -79,14 +86,15 @@ module.exports = {
         return {
             // O preview leva o texto INTEIRO: o objetivo da confirmação é a
             // pessoa reler o que vai sair no nome dela.
-            resumo: `Enviar comunicado "${tituloLimpo}" para ${alvos.join(', ')} `
-                + `(prioridade ${prioridadeLimpa})`,
+            resumo:
+                `Enviar comunicado "${tituloLimpo}" para ${alvos.join(', ')} ` +
+                `(prioridade ${prioridadeLimpa})`,
             parametros: {
                 titulo: tituloLimpo,
                 conteudo: conteudoLimpo,
                 destinatarios: alvos,
-                prioridade: prioridadeLimpa
-            }
+                prioridade: prioridadeLimpa,
+            },
         };
     },
 
@@ -114,7 +122,7 @@ module.exports = {
             destinatarios: parametros.destinatarios,
             categoria: ctx.perfil === 'secretaria' ? 'Secretaria' : 'Direção',
             prioridade: parametros.prioridade,
-            dataAgendada: null
+            dataAgendada: null,
         });
 
         // Notificação pelo MESMO serviço da tela normal. Uma falha aqui não
@@ -124,21 +132,23 @@ module.exports = {
             const NotificationService = require('../../NotificationService');
             await NotificationService.notify({
                 tipo: 'informativo',
-                categoria: (ctx.perfil === 'secretaria' ? 'secretaria' : 'direcao'),
+                categoria: ctx.perfil === 'secretaria' ? 'secretaria' : 'direcao',
                 prioridade: parametros.prioridade === 'Urgente' ? 'alta' : 'media',
                 titulo: parametros.titulo,
-                mensagem: parametros.conteudo.replace(/<[^>]*>/g, '').substring(0, 150)
-                    + (parametros.conteudo.length > 150 ? '...' : ''),
+                mensagem:
+                    parametros.conteudo.replace(/<[^>]*>/g, '').substring(0, 150) +
+                    (parametros.conteudo.length > 150 ? '...' : ''),
                 corpoHtml: parametros.conteudo,
                 destinatarios: parametros.destinatarios,
                 criadoPor: ctx.usuarioId,
-                link: '/dashboard',
                 comunicadoId: comunicado._id,
-                escolaId: ctx.escolaId
+                escolaId: ctx.escolaId,
             });
         } catch (e) {
             logger.error('[IA] Comunicado publicado, mas a notificação falhou', {
-                err: e, action: 'ia.comunicado', comunicadoId: String(comunicado._id)
+                err: e,
+                action: 'ia.comunicado',
+                comunicadoId: String(comunicado._id),
             });
         }
 
@@ -148,8 +158,8 @@ module.exports = {
             comunicado: {
                 titulo: comunicado.titulo,
                 destinatarios: comunicado.destinatarios,
-                prioridade: comunicado.prioridade
-            }
+                prioridade: comunicado.prioridade,
+            },
         };
-    }
+    },
 };

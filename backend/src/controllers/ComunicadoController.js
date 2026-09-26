@@ -160,7 +160,6 @@ exports.create = async (req, res) => {
                 corpoHtml: conteudo,
                 destinatarios,
                 criadoPor: diretorId,
-                link: '/dashboard',
                 comunicadoId: novoComunicado._id,
                 escolaId:
                     req.escolaId || req.session?.escolaAtivaId || novoComunicado.escolaId || null,

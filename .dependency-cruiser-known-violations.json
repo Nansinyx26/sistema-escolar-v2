@@ -647,15 +647,6 @@
   },
   {
     "type": "module",
-    "from": "js/notif-manager.js",
-    "to": "js/notif-manager.js",
-    "rule": {
-      "severity": "warn",
-      "name": "sem-orfaos"
-    }
-  },
-  {
-    "type": "module",
     "from": "js/notifications.js",
     "to": "js/notifications.js",
     "rule": {
