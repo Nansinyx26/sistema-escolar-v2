@@ -112,7 +112,7 @@
         
         div.innerHTML = `
             <div class="comunicado-meta">
-                <span>Direção — ${esc(c.autorNome || 'Escola Jaguari')}</span>
+                <span>Direção — ${esc(c.autorNome || 'Sistema Escolar')}</span>
                 <span class="comunicado-data">${esc(dataStr)}</span>
             </div>
             <h3 class="comunicado-titulo">${esc(c.titulo)}</h3>

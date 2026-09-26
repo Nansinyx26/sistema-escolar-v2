@@ -3,6 +3,7 @@ const fs = require('fs');
 const Aluno = require('../models/Aluno');
 const Nota = require('../models/Nota');
 const Falta = require('../models/Falta');
+const Escola = require('../models/Escola');
 const logger = require('../utils/logger');
 const { escolaMatch } = require('../middleware/filtrarPorEscola');
 
@@ -132,6 +133,30 @@ function headerCell(text) {
     };
 }
 
+// Marca usada quando o aluno não tem escola (cadastro anterior ao multi-escola)
+// ou a escola não é encontrada. O sistema atende várias escolas (Issue #471):
+// o boletim é documento oficial da escola do aluno, não de uma escola fixa.
+const MARCA_SISTEMA = 'Sistema Escolar';
+
+/**
+ * Nome da escola do aluno para o cabeçalho e o rodapé do boletim.
+ * @param {{escolaId?: string}} aluno
+ * @returns {Promise<string>}
+ */
+async function nomeDaEscolaDoAluno(aluno) {
+    if (!aluno?.escolaId) return MARCA_SISTEMA;
+    try {
+        const escola = await Escola.findById(aluno.escolaId).select('nome').lean();
+        return escola?.nome || MARCA_SISTEMA;
+    } catch (err) {
+        // `escolaId` legado que não é ObjectId válido: o boletim sai com a
+        // marca do sistema em vez de falhar.
+        logger.warn('[Boletim] escola do aluno não encontrada', { erro: err.message });
+        return MARCA_SISTEMA;
+    }
+}
+exports.nomeDaEscolaDoAluno = nomeDaEscolaDoAluno;
+
 exports.gerarBoletim = async (req, res) => {
     if (!printer) {
         return res.status(503).json({ success: false, error: 'Serviço de PDF não disponível no momento.' });
@@ -147,6 +172,7 @@ exports.gerarBoletim = async (req, res) => {
         const acesso = await assertAcessoAoAluno(req, alunoId);
         if (!acesso.ok) return res.status(acesso.status).json({ success: false, error: acesso.error });
         const aluno = acesso.aluno;
+        const nomeEscola = await nomeDaEscolaDoAluno(aluno);
 
         // 2. Notas
         const notas = await Nota.find({ alunoId: String(alunoId) }).lean();
@@ -211,7 +237,7 @@ exports.gerarBoletim = async (req, res) => {
                     columns: [
                         {
                             stack: [
-                                { text: 'ESCOLA JAGUARI', fontSize: 18, bold: true, color: CYAN, letterSpacing: 2 },
+                                { text: nomeEscola.toUpperCase(), fontSize: 18, bold: true, color: CYAN, letterSpacing: 2 },
                                 { text: 'SISTEMA ESCOLAR — BOLETIM OFICIAL', fontSize: 8, color: GRAY, margin: [0, 2, 0, 0] },
                             ]
                         },
@@ -301,7 +327,7 @@ exports.gerarBoletim = async (req, res) => {
 
             footer: (currentPage, pageCount) => ({
                 columns: [
-                    { text: `Escola Jaguari — Documento gerado automaticamente`, fontSize: 7, color: GRAY, margin: [40, 0, 0, 0] },
+                    { text: `${nomeEscola} — Documento gerado automaticamente`, fontSize: 7, color: GRAY, margin: [40, 0, 0, 0] },
                     { text: `Página ${currentPage} de ${pageCount}`, fontSize: 7, color: GRAY, alignment: 'right', margin: [0, 0, 40, 0] }
                 ]
             }),
