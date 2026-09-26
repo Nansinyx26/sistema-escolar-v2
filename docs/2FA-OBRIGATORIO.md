@@ -23,6 +23,13 @@ PERFIS_2FA_OBRIGATORIO=diretor,secretaria,admin
 Vazia, o padrão é `diretor,secretaria` — a política que já existia. Um deploy
 sem a variável **não afrouxa nada**.
 
+Não afrouxar também não é proteger o admin: no padrão ele fica de fora da
+exigência por perfil, e o segundo fator dele depende de cada conta ter
+`twoFactorEnabled`. Enquanto houver conta admin ativa sem isso, o boot emite o
+alerta `SEGURANCA_ADMIN_SEM_2FA` com a quantidade de contas (sem e-mail nem
+nome). O alerta some quando todas as contas admin estiverem ativadas ou quando
+`admin` entrar na variável.
+
 `DISPENSAR_2FA_EMAIL` é a saída de emergência: enquanto estiver preenchida, o
 boot emite o alerta `SEGURANCA_2FA_DISPENSADO` e todo login sem segundo fator
 entra na auditoria como `LOGIN_SEM_2FA`.
