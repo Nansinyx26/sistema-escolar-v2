@@ -2,8 +2,8 @@
  * Batch inject PWA features (Splash Screen and Reactions) into all HTML files
  * Run: node inject-pwa-features.js
  */
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const ROOT = __dirname;
 const SKIP = ['node_modules', 'portal-responsavel', '.git', 'portal-responsavel/dist'];
@@ -36,7 +36,7 @@ for (const file of files) {
     // Calculate relative path prefix from file to ROOT
     const fileDir = path.dirname(file);
     const relToRoot = path.relative(fileDir, ROOT).replace(/\\/g, '/');
-    const prefix = relToRoot ? relToRoot + '/' : '';
+    const prefix = relToRoot ? `${relToRoot}/` : '';
 
     // 1. Inject CSS links in <head>
     let cssInjections = '';
@@ -46,9 +46,9 @@ for (const file of files) {
     if (!content.includes('reactions.css')) {
         cssInjections += `    <link rel="stylesheet" href="${prefix}css/reactions.css?v=1.0">\n`;
     }
-    
+
     if (cssInjections) {
-        content = content.replace('</head>', cssInjections + '</head>');
+        content = content.replace('</head>', `${cssInjections}</head>`);
         hasChanges = true;
     }
 
@@ -57,12 +57,9 @@ for (const file of files) {
         // Extract page title dynamically for premium personalized subtitle
         let subtitle = 'Portal Educacional';
         const titleMatch = content.match(/<title>([^<]+)<\/title>/i);
-        if (titleMatch && titleMatch[1]) {
+        if (titleMatch?.[1]) {
             // Clean up title (e.g. remove "Sistema Escolar" prefix/suffix)
-            const cleanTitle = titleMatch[1]
-                .replace(/—| - /g, '-')
-                .split('-')[0]
-                .trim();
+            const cleanTitle = titleMatch[1].replace(/—| - /g, '-').split('-')[0].trim();
             if (cleanTitle && !cleanTitle.toLowerCase().includes('sistema escolar')) {
                 subtitle = cleanTitle;
             }
@@ -98,7 +95,7 @@ for (const file of files) {
     // 3. Inject reactions.js right before </body>
     if (!content.includes('reactions.js')) {
         const reactionScript = `    <script defer src="${prefix}js/reactions.js"></script>\n`;
-        content = content.replace('</body>', reactionScript + '</body>');
+        content = content.replace('</body>', `${reactionScript}</body>`);
         hasChanges = true;
     }
 
@@ -107,14 +104,14 @@ for (const file of files) {
     const isLoginPage = /login/i.test(path.basename(file));
     if (!isLoginPage && !content.includes('push-notifications.js')) {
         const pushScript = `    <script defer src="${prefix}js/push-notifications.js"></script>\n`;
-        content = content.replace('</body>', pushScript + '</body>');
+        content = content.replace('</body>', `${pushScript}</body>`);
         hasChanges = true;
     }
 
     // 5. Inject pwa-install.js before </body>
     if (!content.includes('pwa-install.js')) {
         const pwaInstallScript = `    <script defer src="${prefix}js/pwa-install.js"></script>\n`;
-        content = content.replace('</body>', pwaInstallScript + '</body>');
+        content = content.replace('</body>', `${pwaInstallScript}</body>`);
         hasChanges = true;
     }
 
@@ -140,7 +137,7 @@ for (const file of files) {
         headMeta += `    <meta name="mobile-web-app-capable" content="yes">\n`;
     }
     if (headMeta) {
-        content = content.replace('</head>', headMeta + '</head>');
+        content = content.replace('</head>', `${headMeta}</head>`);
         hasChanges = true;
     }
 
@@ -156,8 +153,10 @@ for (const file of files) {
 
     // 8. settings-drawer.js (painel ⚙ de Configurações) em todas as páginas,
     //    exceto telas públicas de login/cadastro, onde não há sessão.
-    const isPublicPage = /login|cadastro|reset-password|primeiro-acesso|politica-privacidade|offline/i
-        .test(path.basename(file));
+    const isPublicPage =
+        /login|cadastro|reset-password|primeiro-acesso|politica-privacidade|offline/i.test(
+            path.basename(file)
+        );
     if (!isPublicPage && !content.includes('settings-drawer.js')) {
         content = content.replace(
             '</body>',
@@ -175,4 +174,6 @@ for (const file of files) {
     }
 }
 
-console.log(`\nDone! PWA features successfully integrated into ${updated} files. Total files processed: ${files.length}.`);
+console.log(
+    `\nDone! PWA features successfully integrated into ${updated} files. Total files processed: ${files.length}.`
+);
