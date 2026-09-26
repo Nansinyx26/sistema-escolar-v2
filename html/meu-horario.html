@@ -236,6 +236,28 @@
             }
         }
 
+        /* Celular: "Voltar" e os botões de ajustes na primeira linha, título
+           na segunda. Numa linha só, o título espremia até sumir (#457). */
+        @media (max-width: 640px) {
+            .page-header {
+                padding: 0 16px;
+            }
+
+            .header-inner {
+                flex-wrap: wrap;
+                height: auto;
+                min-height: 64px;
+                padding: 10px 0;
+                gap: 10px;
+            }
+
+            .header-title {
+                order: 3;
+                flex: 1 1 100%;
+                min-width: 0;
+            }
+        }
+
         /* ── Card de dia ──────────────────────────────────────────────── */
         .day-card {
             background: var(--bg-card);
@@ -589,6 +611,9 @@
                     <p id="pageSubtitle">CIEP Profª. Maria Nilde Mascellani — Jaguari · 2026</p>
                 </div>
             </div>
+            <!-- Slot dos botões de acessibilidade e ajustes (#457): sem ele os dois
+                 flutuam por cima do título no celular. -->
+            <div class="header-actions" style="display:flex;align-items:center;gap:.5rem;margin-left:auto;flex-shrink:0"></div>
         </div>
     </header>
 

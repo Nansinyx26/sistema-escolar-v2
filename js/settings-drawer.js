@@ -801,7 +801,7 @@
         btn.addEventListener('click', openSettings);
 
         var slot = document.querySelector(
-            '.header-actions,.header-right,.topbar-actions,.nav-actions,.dashboard-header-actions'
+            '.header-actions,.header-right,.topbar-actions,.nav-actions,.dashboard-header-actions,.navbar-nav'
         );
         if (slot) {
             slot.appendChild(btn);
