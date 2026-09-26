@@ -99,17 +99,51 @@ exports.createAndEmit = async ({
 };
 
 /**
+ * Reduz o corpo recebido ao formato de uma PushSubscription válida, ou `null`.
+ * Antes o corpo inteiro ia para o banco — qualquer JSON virava "inscrição" e o
+ * envio falhava depois, a cada aviso.
+ */
+function normalizarInscricao(body) {
+    if (!body || typeof body !== 'object') return null;
+    const { endpoint, keys, expirationTime } = body;
+    if (typeof endpoint !== 'string' || endpoint.length > 2048) return null;
+    let url;
+    try {
+        url = new URL(endpoint);
+    } catch {
+        return null;
+    }
+    if (url.protocol !== 'https:') return null;
+    if (!keys || typeof keys.p256dh !== 'string' || typeof keys.auth !== 'string') return null;
+    if (!keys.p256dh || !keys.auth || keys.p256dh.length > 256 || keys.auth.length > 256)
+        return null;
+
+    const inscricao = { endpoint, keys: { p256dh: keys.p256dh, auth: keys.auth } };
+    if (typeof expirationTime === 'number') inscricao.expirationTime = expirationTime;
+    return inscricao;
+}
+
+/**
  * Salva uma nova inscrição de push notification para o usuário logado.
  */
 exports.subscribe = async (req, res) => {
     try {
-        const subscription = req.body;
+        const subscription = normalizarInscricao(req.body);
+        if (!subscription) {
+            return res.status(400).json({ success: false, error: 'Inscrição de push inválida.' });
+        }
         const usuarioId = req.user.id || req.user._id;
 
+        // `$addToSet` compara o subdocumento inteiro: as mesmas chaves em outra
+        // ordem (ou com `expirationTime` a mais) viravam uma segunda inscrição
+        // do mesmo aparelho, e cada aviso chegava duplicado. A identidade de
+        // uma inscrição é o `endpoint` — sai a antiga, entra a atual.
         const Usuario = require('../models/Usuario');
-        await Usuario.findByIdAndUpdate(usuarioId, {
-            $addToSet: { pushSubscriptions: subscription },
-        });
+        await Usuario.updateOne(
+            { _id: usuarioId },
+            { $pull: { pushSubscriptions: { endpoint: subscription.endpoint } } }
+        );
+        await Usuario.updateOne({ _id: usuarioId }, { $push: { pushSubscriptions: subscription } });
 
         res.status(201).json({ success: true, message: 'Inscrição de push salva com sucesso.' });
     } catch (error) {

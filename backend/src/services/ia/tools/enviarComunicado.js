@@ -141,7 +141,6 @@ module.exports = {
                 corpoHtml: parametros.conteudo,
                 destinatarios: parametros.destinatarios,
                 criadoPor: ctx.usuarioId,
-                link: '/dashboard',
                 comunicadoId: comunicado._id,
                 escolaId: ctx.escolaId,
             });

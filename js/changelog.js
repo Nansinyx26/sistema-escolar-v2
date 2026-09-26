@@ -353,6 +353,15 @@
 
     document.addEventListener('DOMContentLoaded', init);
 
+    // Tempo real: js/realtime.js repassa o aviso do mural que chega pelo socket.
+    // Sem isto o sino só mudava no próximo polling, até 60 s depois.
+    document.addEventListener('notificacao:nova', async () => {
+        await fetchNotificacoes();
+        atualizarBadge();
+        const panel = document.getElementById('notif-panel');
+        if (panel && panel.classList.contains('open')) renderNotificacoes();
+    });
+
     // ── Exporta funções globais (usadas por dashboard-events.js) ──────────────
     window.toggleNotifPanel = toggleNotifPanel;
     window.marcarTodasLidas = marcarTodasLidas;

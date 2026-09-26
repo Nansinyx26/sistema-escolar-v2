@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   getNotificacoesDoAluno,
   getVapidPublicKey,
@@ -47,14 +47,31 @@ export function useNotifications({ authUser, activeId }: UseNotificationsOptions
     };
   }, [activeId]);
 
+  // O socket é assinado uma vez por sessão; o aluno ativo muda por baixo.
+  const activeIdRef = useRef(activeId);
+  activeIdRef.current = activeId;
+
   useEffect(() => {
     if (!authUser) return;
 
-    const handleNewNotification = (notification: Notification) => {
-      setNotifications((prev) => [notification, ...prev]);
-      if (notification.prioridade === 'alta') {
-        setPriorityNotification(notification);
-      }
+    // O evento traz o documento cru (`lido` é array de ids, `destinatarios` é
+    // o público inteiro) e não sabe qual filho está aberto. Em vez de inserir
+    // o cru na lista, a lista é relida pelo endpoint do aluno ativo — o mesmo
+    // filtro de escola e de público do carregamento normal — e o aviso só
+    // aparece se for mesmo deste aluno.
+    const handleNewNotification = async (data: {
+      notification?: { id?: string; _id?: string };
+    }) => {
+      const alunoId = activeIdRef.current;
+      const nova = data?.notification;
+      if (!alunoId || !nova) return;
+      try {
+        const lista = await getNotificacoesDoAluno(alunoId);
+        if (activeIdRef.current !== alunoId) return;
+        setNotifications(lista);
+        const chegou = lista.find((n) => n.id === nova.id || n.id === nova._id);
+        if (chegou?.prioridade === 'alta') setPriorityNotification(chegou);
+      } catch {}
     };
 
     socket.on('notification:new', handleNewNotification);

@@ -143,10 +143,22 @@
         socket.on('reaction:remove', (data) => updateReactionUI(data));
 
         // === NOTIFICATION EVENTS ===
+        // Formato único: `{ notification, unreadCount? }`. Dois emissores usam o
+        // evento — o RealtimeNotification (lista `#notifList`, campos em inglês)
+        // e o aviso do mural (Notificacao, `titulo`/`mensagem`, sino do
+        // changelog.js). Cada um vai para a sua lista; som e toast valem para os dois.
         socket.on('notification:new', (data) => {
-            addNotificationToUI(data.notification);
-            updateNotifBadge(data.unreadCount);
-            showNotifPopup(data.notification);
+            const notification = data?.notification;
+            if (!notification) return;
+            if (notification.title !== undefined) {
+                addNotificationToUI(notification);
+                if (typeof data.unreadCount === 'number') updateNotifBadge(data.unreadCount);
+            } else {
+                document.dispatchEvent(
+                    new CustomEvent('notificacao:nova', { detail: notification })
+                );
+            }
+            showNotifPopup(notification);
         });
         socket.on('notification:count', (data) => {
             updateNotifBadge(data.unreadCount);
