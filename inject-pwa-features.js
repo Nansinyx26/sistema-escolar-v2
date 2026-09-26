@@ -54,28 +54,20 @@ for (const file of files) {
 
     // 2. Inject Splash Screen HTML block right after <body>
     if (!content.includes('id="splashScreen"')) {
-        // Extract page title dynamically for premium personalized subtitle
-        let subtitle = 'Portal Educacional';
-        const titleMatch = content.match(/<title>([^<]+)<\/title>/i);
-        if (titleMatch?.[1]) {
-            // Clean up title (e.g. remove "Sistema Escolar" prefix/suffix)
-            const cleanTitle = titleMatch[1].replace(/—| - /g, '-').split('-')[0].trim();
-            if (cleanTitle && !cleanTitle.toLowerCase().includes('sistema escolar')) {
-                subtitle = cleanTitle;
-            }
-        }
-
+        // Mesma marcação da index.html em toda página (Issue #443): logo do
+        // site, "Escola Jaguari / Portal Educacional". O caminho da imagem é
+        // absoluto porque serve em qualquer nível de pasta.
         const splashHtml = `    <!-- Splash Screen (PWA) -->
     <div id="splashScreen">
         <div class="splash-logo-container">
             <div class="splash-logo">
-                <i class="bi bi-mortarboard-fill"></i>
+                <img src="/img/logo-jaguari.png" alt="Escola Jaguari" class="splash-logo-img" decoding="async" loading="eager" fetchpriority="high">
             </div>
             <div class="splash-logo-ring"></div>
         </div>
         <div class="splash-text">
-            <h2 class="splash-title">Sistema Escolar</h2>
-            <p class="splash-subtitle">${subtitle}</p>
+            <h2 class="splash-title">Escola Jaguari</h2>
+            <p class="splash-subtitle">Portal Educacional</p>
         </div>
         <div class="splash-progress-container">
             <div class="splash-progress-track">
