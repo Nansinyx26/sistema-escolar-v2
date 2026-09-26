@@ -110,12 +110,12 @@
     <div id="splashScreen">
         <div class="splash-logo-container">
             <div class="splash-logo">
-                <img src="/img/logo-jaguari.png" alt="Escola Jaguari" class="splash-logo-img" decoding="async" loading="eager" fetchpriority="high">
+                <img src="/img/logo.svg" alt="Sistema Escolar" class="splash-logo-img" decoding="async" loading="eager" fetchpriority="high">
             </div>
             <div class="splash-logo-ring"></div>
         </div>
         <div class="splash-text">
-            <h2 class="splash-title">Escola Jaguari</h2>
+            <h2 class="splash-title">Sistema Escolar</h2>
             <p class="splash-subtitle">Portal Educacional</p>
         </div>
         <div class="splash-progress-container">
@@ -131,7 +131,12 @@
 <div class="dashboard-page p-6" style="max-width: 1100px; margin: 0 auto;">
 
     <header class="mb-6">
-        <h1 class="text-3xl font-bold mb-1">Diagnóstico de Áudio</h1>
+        <div style="display:flex;align-items:flex-start;gap:.75rem">
+        <h1 class="text-3xl font-bold mb-1" style="flex:1;min-width:0">Diagnóstico de Áudio</h1>
+        <!-- Slot dos botões de acessibilidade e ajustes (#457): sem ele os dois
+             flutuam por cima do título no celular. -->
+        <div class="header-actions" style="display:flex;align-items:center;gap:.5rem;margin-left:auto;flex-shrink:0"></div>
+        </div>
         <p class="text-secondary text-sm">Verifique os provedores de áudio premium (Google Cloud Neural2 e ElevenLabs) e teste a síntese.</p>
     </header>
 

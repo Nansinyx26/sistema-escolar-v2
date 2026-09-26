@@ -55,18 +55,18 @@ for (const file of files) {
     // 2. Inject Splash Screen HTML block right after <body>
     if (!content.includes('id="splashScreen"')) {
         // Mesma marcação da index.html em toda página (Issue #443): logo do
-        // site, "Escola Jaguari / Portal Educacional". O caminho da imagem é
+        // site, "Sistema Escolar / Portal Educacional". O caminho da imagem é
         // absoluto porque serve em qualquer nível de pasta.
         const splashHtml = `    <!-- Splash Screen (PWA) -->
     <div id="splashScreen">
         <div class="splash-logo-container">
             <div class="splash-logo">
-                <img src="/img/logo-jaguari.png" alt="Escola Jaguari" class="splash-logo-img" decoding="async" loading="eager" fetchpriority="high">
+                <img src="/img/logo.svg" alt="Sistema Escolar" class="splash-logo-img" decoding="async" loading="eager" fetchpriority="high">
             </div>
             <div class="splash-logo-ring"></div>
         </div>
         <div class="splash-text">
-            <h2 class="splash-title">Escola Jaguari</h2>
+            <h2 class="splash-title">Sistema Escolar</h2>
             <p class="splash-subtitle">Portal Educacional</p>
         </div>
         <div class="splash-progress-container">

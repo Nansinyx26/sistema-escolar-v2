@@ -642,4 +642,12 @@ body {
     .ca-section { padding: 1.25rem; }
     .ca-footer { flex-direction: column; align-items: stretch; }
     .ca-footer-actions { justify-content: flex-end; }
+
+    /* Stepper: cinco rótulos não cabem lado a lado e colavam uns nos outros
+       ("EndereçoResponsávelSaúde"). No celular só a etapa atual mostra o
+       nome; as outras ficam no número. O texto continua no DOM para leitor
+       de tela (#457). */
+    .ca-step { font-size: 0; min-width: 0; }
+    .ca-step-dot { font-size: .75rem; }
+    .ca-step.active { font-size: .68rem; white-space: nowrap; }
 }

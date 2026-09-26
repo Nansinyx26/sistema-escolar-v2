@@ -647,7 +647,10 @@
 
       /* ── Responsivo ─────────────────────────────────────────────── */
       @media (max-width: 1024px) {
-        .app { grid-template-columns: 1fr; grid-template-rows: minmax(220px, 30vh) 1fr; }
+        /* `minmax(0, 1fr)`: `1fr` puro deixava a coluna crescer até a largura
+           mínima do conteúdo e o painel de conversa vazava da tela (#457). */
+        .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(220px, 30vh) 1fr; }
+        .app > * { min-width: 0; }
         .chat-panel { border-left: 0; border-top: 1px solid var(--border); height: auto; min-height: 0; }
         :root { --orb-size: 110px; --esfera-tam: min(200px, 24vh); }
         .ring-3 { display: none; }
@@ -676,7 +679,7 @@
           --orb-size: 64px;
         }
 
-        .app { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+        .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
 
         .stage {
           flex-direction: row; justify-content: flex-start;
@@ -714,6 +717,17 @@
         .input-wrap { padding: 11px 13px; }
         /* Acompanha o recuo das mensagens. */
         .ia-faixa-dev { padding: 8px 13px; }
+
+        /* Cabeçalho da conversa: a esfera já está na faixa acima, e o título
+           numa linha só — com os quatro botões ao lado, ele quebrava no meio
+           da palavra ("Assisten / te"). */
+        .chat-header { padding: 12px 13px; gap: 8px; }
+        .chat-header-orb { display: none; }
+        .chat-header-info h1,
+        .chat-header-info p {
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          word-break: normal; overflow-wrap: normal;
+        }
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -745,11 +759,11 @@
     <!-- Splash Screen (PWA) -->
     <div id="splashScreen">
       <div class="splash-logo-container">
-        <div class="splash-logo"><img src="/img/logo-jaguari.png" alt="Escola Jaguari" class="splash-logo-img" decoding="async" loading="eager" fetchpriority="high"></div>
+        <div class="splash-logo"><img src="/img/logo.svg" alt="Sistema Escolar" class="splash-logo-img" decoding="async" loading="eager" fetchpriority="high"></div>
         <div class="splash-logo-ring"></div>
       </div>
       <div class="splash-text">
-        <h2 class="splash-title">Escola Jaguari</h2>
+        <h2 class="splash-title">Sistema Escolar</h2>
         <p class="splash-subtitle">Portal Educacional</p>
       </div>
       <div class="splash-progress-container">

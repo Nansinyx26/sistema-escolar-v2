@@ -43,8 +43,8 @@
 </head>
 <body>
 <div id="splashScreen">
-    <div class="splash-logo-container"><div class="splash-logo"><img src="/img/logo-jaguari.png" alt="Escola Jaguari" class="splash-logo-img" decoding="async" loading="eager" fetchpriority="high"></div><div class="splash-logo-ring"></div></div>
-    <div class="splash-text"><h2 class="splash-title">Escola Jaguari</h2><p class="splash-subtitle">Portal Educacional</p></div>
+    <div class="splash-logo-container"><div class="splash-logo"><img src="/img/logo.svg" alt="Sistema Escolar" class="splash-logo-img" decoding="async" loading="eager" fetchpriority="high"></div><div class="splash-logo-ring"></div></div>
+    <div class="splash-text"><h2 class="splash-title">Sistema Escolar</h2><p class="splash-subtitle">Portal Educacional</p></div>
     <div class="splash-progress-container"><div class="splash-progress-track"><div class="splash-progress-bar"></div></div><div class="splash-progress-text">Carregando...</div></div>
     <div class="splash-version">v3.0</div>
 </div>
@@ -53,7 +53,7 @@
 <header class="mn-header">
     <div class="mn-header-brand">
         <button type="button" id="btnVoltar" class="btn-voltar-global" data-fallback="/html/direcao/index.html" aria-label="Voltar para a página anterior"><i class="bi bi-arrow-left"></i><span>Voltar</span></button>
-        <img src="../../img/logo-jaguari.png" alt="Logo" onerror="this.style.display='none'" decoding="async" loading="eager" fetchpriority="high">
+        <img src="../../img/logo.svg" alt="Logo" onerror="this.style.display='none'" decoding="async" loading="eager" fetchpriority="high">
         <div>
             <h1>Mural Escolar <span id="liveBadge" class="mn-live-badge">● AO VIVO</span></h1>
             <p id="notifCount" class="mn-header-count">Carregando avisos...</p>
@@ -67,6 +67,9 @@
         <button class="mn-cat-btn" data-cat="Responsáveis">Responsáveis</button>
     </div>
     <button id="btnNovaNotificacao" class="mn-btn-primary" style="margin-left:auto;"><i class="bi bi-plus-lg"></i> Novo Aviso</button>
+    <!-- Slot dos botões de acessibilidade e ajustes: sem ele os dois flutuavam
+         sobre o "Novo Aviso" no celular (#457). -->
+    <div class="header-actions mn-header-actions"></div>
 </header>
 
 <div class="mn-layout">

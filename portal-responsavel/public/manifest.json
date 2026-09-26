@@ -1,6 +1,6 @@
 {
-  "name": "Portal do Responsável - Escola Jaguari",
-  "short_name": "Portal Jaguari",
+  "name": "Portal do Responsável - Sistema Escolar",
+  "short_name": "Portal Escolar",
   "description": "Acompanhamento acadêmico, notas e avisos em tempo real para pais e responsáveis.",
   "start_url": "/",
   "display": "standalone",

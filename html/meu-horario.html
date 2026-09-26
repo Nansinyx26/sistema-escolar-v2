@@ -8,8 +8,8 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="description" content="Meu Horário Semanal - Sistema Escolar CIEP Jaguari">
-    <title>Meu Horário — CIEP Jaguari</title>
+    <meta name="description" content="Meu Horário Semanal - Sistema Escolar">
+    <title>Meu Horário — Sistema Escolar</title>
 
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="../favicon/favicon.png">
@@ -233,6 +233,28 @@
         @media (max-width: 500px) {
             .week-grid {
                 grid-template-columns: 1fr;
+            }
+        }
+
+        /* Celular: "Voltar" e os botões de ajustes na primeira linha, título
+           na segunda. Numa linha só, o título espremia até sumir (#457). */
+        @media (max-width: 640px) {
+            .page-header {
+                padding: 0 16px;
+            }
+
+            .header-inner {
+                flex-wrap: wrap;
+                height: auto;
+                min-height: 64px;
+                padding: 10px 0;
+                gap: 10px;
+            }
+
+            .header-title {
+                order: 3;
+                flex: 1 1 100%;
+                min-width: 0;
             }
         }
 
@@ -552,12 +574,12 @@
     <div id="splashScreen">
         <div class="splash-logo-container">
             <div class="splash-logo">
-                <img src="/img/logo-jaguari.png" alt="Escola Jaguari" class="splash-logo-img" decoding="async" loading="eager" fetchpriority="high">
+                <img src="/img/logo.svg" alt="Sistema Escolar" class="splash-logo-img" decoding="async" loading="eager" fetchpriority="high">
             </div>
             <div class="splash-logo-ring"></div>
         </div>
         <div class="splash-text">
-            <h2 class="splash-title">Escola Jaguari</h2>
+            <h2 class="splash-title">Sistema Escolar</h2>
             <p class="splash-subtitle">Portal Educacional</p>
         </div>
         <div class="splash-progress-container">
@@ -589,6 +611,9 @@
                     <p id="pageSubtitle">CIEP Profª. Maria Nilde Mascellani — Jaguari · 2026</p>
                 </div>
             </div>
+            <!-- Slot dos botões de acessibilidade e ajustes (#457): sem ele os dois
+                 flutuam por cima do título no celular. -->
+            <div class="header-actions" style="display:flex;align-items:center;gap:.5rem;margin-left:auto;flex-shrink:0"></div>
         </div>
     </header>
 
