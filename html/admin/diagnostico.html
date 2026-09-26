@@ -37,7 +37,12 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 0.75rem;
             margin-bottom: 20px;
+        }
+        @media (max-width: 640px) {
+            .header h1 { font-size: 1.35rem; }
         }
         .stats-grid {
             display: grid;
@@ -189,9 +194,13 @@
             </button>
             <h1><i class="ti ti-activity"></i> Diagnóstico do Sistema</h1>
         </div>
-        <button class="refresh-btn" onclick="location.reload()">
-            <i class="ti ti-refresh"></i> Atualizar
-        </button>
+        <!-- `header-actions`: slot dos botões de acessibilidade e ajustes, que
+             sem ele flutuavam por cima do "Atualizar" (#457). -->
+        <div class="header-actions" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+            <button class="refresh-btn" onclick="location.reload()">
+                <i class="ti ti-refresh"></i> Atualizar
+            </button>
+        </div>
     </div>
 
     <div class="stats-grid">

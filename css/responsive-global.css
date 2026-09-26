@@ -473,28 +473,39 @@ html {
   }
 
   /* === TABLES (General mobile) === */
-  .table-responsive,
+  /* A tabela ROLA dentro do próprio contêiner; não se espreme. Com
+     `overflow-x: hidden` + `word-break` as colunas quebravam letra a letra
+     ("NO / ME", "MATRÍ / CULA") e o que sobrava era cortado. Ver #457. */
   .nd-form-card {
     width: 100%;
     overflow-x: hidden;
   }
 
+  .table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    contain: inline-size;
+  }
+
   table {
     min-width: 100%;
-    width: 100%;
     font-size: 0.8rem;
-    word-break: break-word;
   }
-  
+
   th, td {
     padding: 0.5rem !important;
   }
 
   /* === WATERMARK === */
+  /* Mantém a centralização de css/watermark.css (`left: 50%` +
+     `translateX(-50%)`): só com `scale`, a marca começava no meio da tela e
+     vazava pela direita em telas de 320px (#457). */
   .nandev-watermark {
-    transform: scale(0.8) !important;
+    transform: translateX(-50%) scale(0.8) !important;
+    transform-origin: center bottom;
     bottom: 0.5rem !important;
-    right: 0.5rem !important;
+    max-width: calc(100vw - 1rem);
   }
 
   /* === TEACHER PANEL === */
@@ -987,7 +998,7 @@ pre {
     max-width: 100%;
   }
 
-  p, span, td, th, li, a, h1, h2, h3, h4 {
+  p, span, li, a, h1, h2, h3, h4 {
     overflow-wrap: break-word;
     word-break: break-word;
   }
@@ -998,8 +1009,43 @@ pre {
   table:not(.no-responsive) {
     display: block;
     width: 100%;
+    max-width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    /* A largura da tabela não vaza para os ancestrais: sem isto, um
+       contêiner com `margin: auto` num pai flex (as páginas da secretaria)
+       crescia até a largura das colunas e o resto era recortado pelo
+       `overflow-x: clip` da raiz. */
+    contain: inline-size;
+  }
+
+  /* Célula quebra por PALAVRA, nunca por letra; cabeçalho numa linha só.
+     O que não couber rola junto com a tabela (regra acima). */
+  table:not(.no-responsive) th {
+    white-space: nowrap;
+  }
+  table:not(.no-responsive) td {
+    min-width: 5.5rem;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+  table:not(.no-responsive) td:has(> input[type='checkbox']),
+  table:not(.no-responsive) td:empty {
+    min-width: 0;
+  }
+  /* Linha de estado ("Nenhum aluno encontrado", "Carregando…") ocupa todas
+     as colunas: centralizada na largura da tabela, caía fora da tela. */
+  table:not(.no-responsive) td[colspan] {
+    text-align: left !important;
+  }
+  table:not(.no-responsive) td[colspan] > * {
+    position: sticky;
+    left: 0;
+    max-width: calc(100vw - 3rem);
+  }
+  table:not(.no-responsive) td span,
+  table:not(.no-responsive) td a {
+    word-break: normal;
   }
 
   /* Modais e overlays ocupam a tela com folga, sem vazar */
@@ -1007,6 +1053,16 @@ pre {
     max-width: calc(100vw - 24px) !important;
     max-height: calc(100dvh - 24px) !important;
   }
+}
+
+/* Páginas da secretaria: `.sec-page` tem `margin: 0 auto` dentro de um body
+   flex em coluna. Margem automática desliga o `stretch`, e a página passava a
+   medir a largura mínima do conteúdo — no tablet, 949px numa tela de 768px,
+   com o excesso recortado pela raiz. Largura explícita devolve o limite à
+   viewport; o `max-width` de cada página continua valendo (#457). */
+.sec-page {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* ============================================================

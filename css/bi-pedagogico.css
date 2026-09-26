@@ -996,20 +996,25 @@ body::after {
     .bi-mobile-bar {
         display: flex;
     }
+    /* Fechada, a gaveta sai inteira pela esquerda. Com `left: -320px` e
+       280px + padding, sobravam 9px dela na borda da tela (#457). O
+       deslocamento por `transform` também não recalcula layout a cada frame. */
     .bi-sidebar {
         position: fixed;
         top: 0;
-        left: -320px;
+        left: 0;
         width: 280px;
+        max-width: 85vw;
         height: 100vh;
         height: 100dvh;
         z-index: 999;
-        transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transform: translateX(calc(-100% - 40px));
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         background: rgba(10, 11, 15, 0.98);
         box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
     }
     .bi-sidebar.active {
-        left: 0;
+        transform: none;
     }
     .bi-sidebar-overlay.active {
         display: block;
