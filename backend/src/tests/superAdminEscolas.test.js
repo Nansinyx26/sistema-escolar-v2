@@ -280,7 +280,7 @@ describe('PATCH bloquear / desbloquear', () => {
 
         const log = await AuditLog.findOne({ acao: 'ESCOLA_BLOQUEADA' }).lean();
         expect(log.escolaId).toBe(String(escolaA._id));
-        expect(log.usuarioId).toBe(String(superAdmin._id));
+        expect(String(log.usuarioId)).toBe(String(superAdmin._id));
         expect(log.detalhes.valorNovo.motivoBloqueio).toBe(MOTIVO);
 
         const repetido = await agent
