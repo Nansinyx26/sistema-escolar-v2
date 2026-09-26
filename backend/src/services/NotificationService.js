@@ -3,6 +3,7 @@ const Usuario = require('../models/Usuario');
 const EmailService = require('./EmailService');
 const WebPushService = require('./WebPushService');
 const logger = require('../utils/logger');
+const obs = require('../observability');
 
 /**
  * Hub central de notificações.
@@ -205,7 +206,10 @@ exports.notify = async ({
                 mensagem,
                 link,
             })
-            .catch((err) => logger.error(`[NotificationService] entrega: ${err.message}`));
+            .catch((err) => {
+                logger.error(`[NotificationService] entrega: ${err.message}`);
+                obs.captureException(err, { tipo: 'notificacao.entrega' });
+            });
 
         return novaNotif;
     } catch (error) {
@@ -220,10 +224,22 @@ exports.notify = async ({
  *
  * @returns {Promise<{ entregues: number, falhas: number }>}
  */
-exports.entregarForaDoPortal = async (
+exports.entregarForaDoPortal = (novaNotif, opcoes) =>
+    obs.withSpan(
+        'notificacao.entrega',
+        { destinatarios: opcoes.destList.length, 'escola.id': String(opcoes.escolaId || '') },
+        async (span) => {
+            const resultado = await entregar(novaNotif, opcoes);
+            span.setAttribute('entregas.ok', resultado.entregues);
+            span.setAttribute('entregas.falhas', resultado.falhas);
+            return resultado;
+        }
+    );
+
+async function entregar(
     novaNotif,
     { destList, escolaId, alcancaResponsavel, titulo, mensagem, link }
-) => {
+) {
     const targetUsers = await exports.getTargetUsers(destList, escolaId, {
         incluirResponsaveis: alcancaResponsavel,
     });
@@ -275,12 +291,13 @@ exports.entregarForaDoPortal = async (
 
     const falhas = resultados.filter((r) => r.status === 'rejected');
     for (const f of falhas) {
+        obs.captureException(f.reason, { tipo: 'notificacao.entrega_destinatario' });
         logger.error(
             `[NotificationService] entrega a um destinatário falhou: ${f.reason?.message || f.reason}`
         );
     }
     return { entregues: resultados.length - falhas.length, falhas: falhas.length };
-};
+}
 
 /**
  * Envia um Web Push direto a um usuário, sem criar registro em Notificacao.
