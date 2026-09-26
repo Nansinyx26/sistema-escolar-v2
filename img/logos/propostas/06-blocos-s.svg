@@ -1,29 +1,29 @@
-<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Escola Jaguari — J em blocos">
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sistema Escolar — S em blocos">
   <rect width="512" height="512" rx="120" fill="#0a0a0c"/>
-  <!-- J desenhado em blocos, como uma grade de dados -->
+  <!-- S desenhado em blocos, como uma grade de dados -->
   <rect x="56" y="56" width="64" height="64" rx="16" fill="#ffffff" opacity="0.08"/>
   <rect x="140" y="56" width="64" height="64" rx="16" fill="#10b981"/>
   <rect x="224" y="56" width="64" height="64" rx="16" fill="#10b981"/>
   <rect x="308" y="56" width="64" height="64" rx="16" fill="#10b981"/>
   <rect x="392" y="56" width="64" height="64" rx="16" fill="#10b981"/>
-  <rect x="56" y="140" width="64" height="64" rx="16" fill="#ffffff" opacity="0.08"/>
+  <rect x="56" y="140" width="64" height="64" rx="16" fill="#10b981"/>
   <rect x="140" y="140" width="64" height="64" rx="16" fill="#ffffff" opacity="0.08"/>
   <rect x="224" y="140" width="64" height="64" rx="16" fill="#ffffff" opacity="0.08"/>
-  <rect x="308" y="140" width="64" height="64" rx="16" fill="#10b981"/>
+  <rect x="308" y="140" width="64" height="64" rx="16" fill="#ffffff" opacity="0.08"/>
   <rect x="392" y="140" width="64" height="64" rx="16" fill="#ffffff" opacity="0.08"/>
   <rect x="56" y="224" width="64" height="64" rx="16" fill="#ffffff" opacity="0.08"/>
-  <rect x="140" y="224" width="64" height="64" rx="16" fill="#ffffff" opacity="0.08"/>
-  <rect x="224" y="224" width="64" height="64" rx="16" fill="#ffffff" opacity="0.08"/>
+  <rect x="140" y="224" width="64" height="64" rx="16" fill="#0ea5e9"/>
+  <rect x="224" y="224" width="64" height="64" rx="16" fill="#0ea5e9"/>
   <rect x="308" y="224" width="64" height="64" rx="16" fill="#0ea5e9"/>
   <rect x="392" y="224" width="64" height="64" rx="16" fill="#ffffff" opacity="0.08"/>
-  <rect x="56" y="308" width="64" height="64" rx="16" fill="#0ea5e9"/>
+  <rect x="56" y="308" width="64" height="64" rx="16" fill="#ffffff" opacity="0.08"/>
   <rect x="140" y="308" width="64" height="64" rx="16" fill="#ffffff" opacity="0.08"/>
   <rect x="224" y="308" width="64" height="64" rx="16" fill="#ffffff" opacity="0.08"/>
-  <rect x="308" y="308" width="64" height="64" rx="16" fill="#0ea5e9"/>
-  <rect x="392" y="308" width="64" height="64" rx="16" fill="#ffffff" opacity="0.08"/>
-  <rect x="56" y="392" width="64" height="64" rx="16" fill="#ffffff" opacity="0.08"/>
+  <rect x="308" y="308" width="64" height="64" rx="16" fill="#ffffff" opacity="0.08"/>
+  <rect x="392" y="308" width="64" height="64" rx="16" fill="#0ea5e9"/>
+  <rect x="56" y="392" width="64" height="64" rx="16" fill="#6366f1"/>
   <rect x="140" y="392" width="64" height="64" rx="16" fill="#6366f1"/>
   <rect x="224" y="392" width="64" height="64" rx="16" fill="#6366f1"/>
-  <rect x="308" y="392" width="64" height="64" rx="16" fill="#ffffff" opacity="0.08"/>
+  <rect x="308" y="392" width="64" height="64" rx="16" fill="#6366f1"/>
   <rect x="392" y="392" width="64" height="64" rx="16" fill="#ffffff" opacity="0.08"/>
 </svg>
