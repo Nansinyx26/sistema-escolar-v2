@@ -21,6 +21,13 @@ const UsuarioSchema = new mongoose.Schema(
             enum: ['admin', 'diretor', 'professor', 'responsavel', 'secretaria'],
             default: 'professor',
         },
+        // Administrador GLOBAL do sistema (Issue #463). Só vale junto com
+        // `perfil: 'admin'` — ver `ehSuperAdmin` em services/escolaBloqueio.js.
+        // O admin comum administra a rede pelo painel; o super admin, além disso,
+        // bloqueia e desbloqueia escolas e nunca é alcançado por esse bloqueio.
+        // Não há rota que ligue este campo: ele nasce pelo script
+        // `npm run superadmin:definir` (acesso ao banco), de propósito.
+        superAdmin: { type: Boolean, default: false },
         escola: { type: String }, // Nome da escola
         escolaId: { type: String, index: true }, // Multi-tenant: id da Escola (para notificações/filtros)
         disciplina: { type: String }, // Disciplina lecionada

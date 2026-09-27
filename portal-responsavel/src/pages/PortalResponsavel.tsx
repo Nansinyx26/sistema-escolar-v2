@@ -48,7 +48,12 @@ const PortalResponsavel: React.FC = () => {
     : '/api';
   const cleanApiUrl = rawApiUrl.replace(/\/api$/, '');
 
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  // Sessão encerrada pelo bloqueio da escola (Issue #463): o aviso chega pela URL.
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(() =>
+    new URLSearchParams(window.location.search).get('motivo') === 'escola-bloqueada'
+      ? { message: 'Escola temporariamente bloqueada. Contate o administrador.', type: 'error' }
+      : null
+  );
   const auth = useAuth({ cleanApiUrl, onToast: setToast });
   const { authUser, setAuthUser, authLoading, setShowForgotModal, gmailUser, handleLogout } = auth;
 

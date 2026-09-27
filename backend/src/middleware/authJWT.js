@@ -4,6 +4,7 @@ const Usuario = require('../models/Usuario');
 const { tokenEstaRevogado } = require('../utils/sessionToken');
 const logger = require('../utils/logger');
 const logContext = require('../utils/logContext');
+const escolaBloqueio = require('../services/escolaBloqueio');
 
 module.exports = async function authJWT(req, res, next) {
     // Tenta obter o token do cookie primeiro, depois do header Authorization
@@ -17,7 +18,10 @@ module.exports = async function authJWT(req, res, next) {
 
     if (!token) {
         // PERMISSÃO ESPECIAL EM DESENVOLVIMENTO para o serviço de voz
-        if (process.env.NODE_ENV === 'development' && (req.path === '/api/tts' || req.baseUrl === '/api/tts')) {
+        if (
+            process.env.NODE_ENV === 'development' &&
+            (req.path === '/api/tts' || req.baseUrl === '/api/tts')
+        ) {
             req.user = { id: 'dev-user', nome: 'Dev User', perfil: 'diretor' };
             return next();
         }
@@ -31,37 +35,56 @@ module.exports = async function authJWT(req, res, next) {
         // esta checagem, o token intermediário do 2FA autenticava sessão
         // completa — pulando o segundo fator inteiro.
         if (decoded.purpose && decoded.purpose !== 'session') {
-            return res.status(401).json({ success: false, error: 'Token inválido para esta operação' });
+            return res
+                .status(401)
+                .json({ success: false, error: 'Token inválido para esta operação' });
         }
 
         // LOGOUT REAL: `clearCookie` só pede ao browser para esquecer o cookie —
         // o token continuava válido até `exp` e o header Authorization aceitava
         // a cópia. A denylist por `jti` mata a sessão no servidor.
         if (await tokenEstaRevogado(decoded)) {
-            return res.status(401).json({ success: false, error: 'Sessão encerrada. Faça login novamente.' });
+            return res
+                .status(401)
+                .json({ success: false, error: 'Sessão encerrada. Faça login novamente.' });
         }
 
         // Verificação de invalidação de sessão (senha alterada, conta removida)
         const user = await Usuario.findById(decoded.id || decoded._id)
-            .select('tokenVersion ativo perfil')
+            .select('tokenVersion ativo perfil superAdmin escolaId')
             .lean();
 
-        const userTokenVersion = (user && user.tokenVersion !== undefined) ? user.tokenVersion : 0;
+        const userTokenVersion = user && user.tokenVersion !== undefined ? user.tokenVersion : 0;
         const decodedTokenVersion = decoded.tokenVersion !== undefined ? decoded.tokenVersion : 0;
         if (!user || userTokenVersion !== decodedTokenVersion) {
-            return res.status(401).json({ success: false, error: 'Sessão expirada ou senha alterada. Faça login novamente.' });
+            return res.status(401).json({
+                success: false,
+                error: 'Sessão expirada ou senha alterada. Faça login novamente.',
+            });
         }
 
         // Conta desativada/anonimizada perde o acesso IMEDIATAMENTE. Antes só
         // tokenVersion era comparado: um usuário desligado seguia operando com
         // o cookie até ele expirar (8h).
         if (user.ativo === false) {
-            return res.status(401).json({ success: false, error: 'Conta desativada. Procure a administração da escola.' });
+            return res.status(401).json({
+                success: false,
+                error: 'Conta desativada. Procure a administração da escola.',
+            });
         }
 
         // O perfil vem do BANCO, não do token: um rebaixamento de privilégio
         // passa a valer na requisição seguinte, sem esperar novo login.
-        req.user = { ...decoded, perfil: user.perfil };
+        req.user = { ...decoded, perfil: user.perfil, superAdmin: user.superAdmin === true };
+
+        // Escola bloqueada pelo super admin (Issue #463): a sessão aberta antes
+        // do bloqueio cai AQUI, no primeiro request depois dele. A escola da
+        // requisição é a ativa na sessão ou, sem ela, a do cadastro — a escola
+        // resolvida por vínculo é conferida adiante, em filtrarPorEscola.
+        // O super admin nunca é barrado (ehSuperAdmin).
+        const escolaDaSessao = req.session?.escolaAtivaId || user.escolaId;
+        const bloqueada = await escolaBloqueio.escolaBloqueadaPara(req.user, [escolaDaSessao]);
+        if (bloqueada) return escolaBloqueio.recusarSessaoBloqueada(req, res, bloqueada);
 
         // A partir daqui todo log da requisição sai identificado.
         logContext.set({
@@ -77,9 +100,12 @@ module.exports = async function authJWT(req, res, next) {
         // indistinguível entre expiração normal, relógio dessincronizado e
         // segredo JWT trocado num deploy.
         logger.warn('Falha na verificação do JWT', {
-            reason: e.name === 'TokenExpiredError' ? 'expirado'
-                : e.name === 'JsonWebTokenError' ? 'assinatura_invalida'
-                : 'erro_inesperado',
+            reason:
+                e.name === 'TokenExpiredError'
+                    ? 'expirado'
+                    : e.name === 'JsonWebTokenError'
+                      ? 'assinatura_invalida'
+                      : 'erro_inesperado',
             errName: e.name,
         });
         return res.status(401).json({ success: false, error: 'Token inválido ou expirado' });
