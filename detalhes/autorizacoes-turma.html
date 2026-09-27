@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+
+<head>
+    <!-- Trava de acesso por perfil. SEM defer e antes de tudo: a decisao
+         precisa acontecer antes do primeiro pixel. Ver js/guarda-acesso.js. -->
+    <script src="/js/guarda-acesso.js?v=1.0"></script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Sistema Escolar - Gestão Completa de Avaliações e Lançamento de Notas">
+    <title>Autorizações da Turma - Sistema Escolar</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="../../favicon/favicon.png">
+    <link rel="apple-touch-icon" href="../../favicon/favicon.png">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link rel="preload" href="../js/libs/fonts/bootstrap-icons.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="../js/libs/bootstrap-icons.min.css">
+
+    <!-- Theme Init -->
+    <script defer src="../../js/theme.js"></script>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="../css/variables.css">
+    <link rel="stylesheet" href="../css/main.css">
+    <link rel="stylesheet" href="../../css/components.css">
+    <link rel="stylesheet" href="../../css/botao-voltar.css">
+    <link rel="stylesheet" href="../../detalhes/detalhes.css">
+    <link rel="stylesheet" href="../../detalhes/avaliacoes.css?v=2.0">
+    <link rel="stylesheet" href="../../css/watermark.css">
+    <link rel="stylesheet" href="../../css/parallax-glass.css">
+    <link rel="stylesheet" href="../../css/neo-brutal.css">
+    <link rel="stylesheet" href="../../css/tailwind-built.css">
+    <link rel="stylesheet" href="../../css/responsive-global.css?v=1.2">
+    <link rel="stylesheet" href="../../css/splash-screen.css?v=1.0">
+    <link rel="stylesheet" href="../../css/reactions.css?v=1.0">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#09090b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Escola">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="stylesheet" href="../css/system-global.css?v=1.0">
+    <link rel="stylesheet" href="../css/mobile-scroll.css?v=1.0">
+    <link rel="stylesheet" href="../css/motion.css">
+    <script src="../js/scroll-lock.js?v=1.0"></script>
+    <link rel="stylesheet" href="../css/acessibilidade.css">
+</head>
+
+<body>
+    <!-- Splash Screen (PWA) -->
+    <div id="splashScreen">
+        <div class="splash-logo-container">
+            <div class="splash-logo">
+                <img src="/img/logo.svg" alt="Sistema Escolar" class="splash-logo-img" decoding="async" loading="eager" fetchpriority="high">
+            </div>
+            <div class="splash-logo-ring"></div>
+        </div>
+        <div class="splash-text">
+            <h2 class="splash-title">Sistema Escolar</h2>
+            <p class="splash-subtitle">Portal Educacional</p>
+        </div>
+        <div class="splash-progress-container">
+            <div class="splash-progress-track">
+                <div class="splash-progress-bar"></div>
+            </div>
+            <div class="splash-progress-text">Carregando autorizações da turma...</div>
+        </div>
+        <div class="splash-version">v3.0</div>
+    </div>
+    <script src="../../js/splash-screen.js"></script>
+
+    <div class="page">
+        <!-- Navbar -->
+        <nav class="navbar">
+            <div class="navbar-content">
+                <div class="navbar-brand" style="display: flex; align-items: center; gap: 1rem;">
+                    <a href="javascript:void(0)" class="btn-voltar-global" id="btnVoltarNav" aria-label="Voltar"><i class="bi bi-arrow-left"></i> Voltar</a>
+                    <span class="logo"><i class="bi bi-star-fill" style="color: #00dc82;"></i></span>
+                    <span>Sistema Escolar</span>
+                </div>
+                <div class="navbar-nav">
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="container" style="max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem;">
+                <h1 style="font-size: 1.4rem; margin-bottom: 0.25rem;"><i class="bi bi-file-earmark-check"></i> Autorizações da turma</h1>
+                <p style="color: #94a3b8; font-size: 0.88rem; margin-bottom: 1rem;">
+                    Situação das autorizações das famílias para as atividades da escola. Documentos, remédios e
+                    contatos ficam com a secretaria.
+                </p>
+                <div id="autorizacoesTurma"><p style="color:#94a3b8;">Carregando...</p></div>
+            </div>
+        </main>
+
+        <!-- Watermark -->
+        <div class="watermark">
+            <span class="watermark-icon"><i class="bi bi-laptop"></i></span>
+            <span class="watermark-text">Desenvolvido por NanDev</span>
+        </div>
+    </div>
+
+    <!-- ── Modal 1: Cadastro / Edição de Avaliação ── -->
+    <div class="modal-overlay" id="modalNovaAvaliacao" role="dialog" aria-modal="true" aria-labelledby="modalAvaliacaoTitulo" aria-hidden="true">
+        <div class="modal-dialog-custom">
+            <div class="modal-header-custom">
+                <h3 class="modal-title-custom">
+                    <i class="bi bi-pencil-square" style="color: #00dc82;"></i>
+                    <span id="modalAvaliacaoTitulo">Nova Avaliação</span>
+                </h3>
+                <button type="button" class="modal-close-btn" id="btnFecharModalNova" aria-label="Fechar modal">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <form id="formNovaAvaliacao" novalidate>
+                <input type="hidden" id="formAvaliacaoId" value="">
+                <div class="modal-body-custom">
+                    <div class="form-resumo-erros" id="formResumoErros" role="alert" hidden></div>
+
+                    <div class="form-grid-2col">
+                        <div class="form-group-custom">
+                            <label for="formTurma">Turma <span class="obrigatorio" aria-hidden="true">*</span></label>
+                            <select class="form-control-custom" id="formTurma" required aria-required="true" aria-describedby="erroTurma dicaTurma">
+                                <option value="">Selecione a turma...</option>
+                            </select>
+                            <small class="form-dica" id="dicaTurma" hidden></small>
+                            <small class="form-erro" id="erroTurma"></small>
+                        </div>
+
+                        <div class="form-group-custom">
+                            <label for="formMateria">Disciplina <span class="obrigatorio" aria-hidden="true">*</span></label>
+                            <select class="form-control-custom" id="formMateria" required aria-required="true" aria-describedby="erroMateria">
+                                <option value="">Selecione a disciplina...</option>
+                            </select>
+                            <small class="form-erro" id="erroMateria"></small>
+                        </div>
+                    </div>
+
+                    <div class="form-group-custom">
+                        <label for="formTitulo">Título da avaliação <span class="obrigatorio" aria-hidden="true">*</span></label>
+                        <input type="text" class="form-control-custom" id="formTitulo" maxlength="120" placeholder="Ex.: Prova de leitura e interpretação" required aria-required="true" aria-describedby="erroTitulo">
+                        <small class="form-erro" id="erroTitulo"></small>
+                    </div>
+
+                    <div class="form-group-custom">
+                        <label for="formDescricao">Descrição ou instruções</label>
+                        <textarea class="form-control-custom" id="formDescricao" rows="3" maxlength="1000" placeholder="Ex.: Conteúdo das páginas 30 a 42 do livro. Trazer lápis e borracha."></textarea>
+                    </div>
+
+                    <div class="form-grid-2col">
+                        <div class="form-group-custom">
+                            <label for="formData">Data da avaliação <span class="obrigatorio" aria-hidden="true">*</span></label>
+                            <input type="date" class="form-control-custom" id="formData" required aria-required="true" aria-describedby="erroData">
+                            <small class="form-erro" id="erroData"></small>
+                        </div>
+
+                        <div class="form-group-custom">
+                            <label for="formDataEntrega">Data de entrega <span class="opcional">(se houver)</span></label>
+                            <input type="date" class="form-control-custom" id="formDataEntrega" aria-describedby="erroDataEntrega">
+                            <small class="form-erro" id="erroDataEntrega"></small>
+                        </div>
+                    </div>
+
+                    <div class="form-grid-2col">
+                        <div class="form-group-custom">
+                            <label for="formValor">Valor da avaliação <span class="obrigatorio" aria-hidden="true">*</span></label>
+                            <input type="number" class="form-control-custom" id="formValor" min="0.1" max="10" step="0.1" value="10" inputmode="decimal" required aria-required="true" aria-describedby="dicaValor erroValor">
+                            <small class="form-dica" id="dicaValor">Pontuação máxima, de 0,1 a 10.</small>
+                            <small class="form-erro" id="erroValor"></small>
+                        </div>
+
+                        <div class="form-group-custom">
+                            <label for="formBimestre">Bimestre <span class="obrigatorio" aria-hidden="true">*</span></label>
+                            <select class="form-control-custom" id="formBimestre" required aria-required="true">
+                                <option value="1">1º Bimestre</option>
+                                <option value="2">2º Bimestre</option>
+                                <option value="3">3º Bimestre</option>
+                                <option value="4">4º Bimestre</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-grid-2col">
+                        <div class="form-group-custom">
+                            <label for="formTipo">Tipo de avaliação</label>
+                            <select class="form-control-custom" id="formTipo">
+                                <option value="Prova">Prova</option>
+                                <option value="Trabalho">Trabalho</option>
+                                <option value="Seminário">Seminário</option>
+                                <option value="Redação">Redação</option>
+                                <option value="Simulado">Simulado</option>
+                                <option value="Atividade">Atividade</option>
+                                <option value="Outro">Outro</option>
+                            </select>
+                        </div>
+
+                        <!-- Só a gestão escolhe; para o professor, o responsável é ele mesmo. -->
+                        <div class="form-group-custom" id="grupoProfessor" hidden>
+                            <label for="formProfessor">Professor responsável</label>
+                            <select class="form-control-custom" id="formProfessor" aria-describedby="dicaProfessor">
+                                <option value="">Definir automaticamente</option>
+                            </select>
+                            <small class="form-dica" id="dicaProfessor"></small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer-custom">
+                    <button type="button" class="btn btn-ghost" id="btnCancelarNova">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btnSalvarNovaAvaliacao">
+                        <i class="bi bi-check-circle"></i> Salvar avaliação
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ── Modal 2: Lançamento de Notas por Aluno (Painel Completo) ── -->
+    <div class="modal-overlay" id="modalLancarNotas" role="dialog" aria-modal="true" aria-labelledby="lancarNotasHeaderTitulo" aria-hidden="true">
+        <div class="modal-dialog-custom modal-dialog-large">
+            <div class="modal-header-custom">
+                <h3 class="modal-title-custom">
+                    <i class="bi bi-clipboard2-data-fill" style="color: #00dc82;"></i>
+                    <span id="lancarNotasHeaderTitulo">Lançamento de Notas</span>
+                </h3>
+                <button type="button" class="modal-close-btn" id="btnFecharModalNotas" aria-label="Fechar modal">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <div class="modal-body-custom">
+                <!-- Banner com dados da avaliação selecionada -->
+                <div class="avaliacao-info-banner" id="lancarInfoBanner">
+                    <div class="info-banner-details">
+                        <div class="info-banner-item">
+                            <span>Turma</span>
+                            <span id="infoBannerTurma">-</span>
+                        </div>
+                        <div class="info-banner-item">
+                            <span>Disciplina</span>
+                            <span id="infoBannerDisciplina">-</span>
+                        </div>
+                        <div class="info-banner-item">
+                            <span>Bimestre / Tipo</span>
+                            <span id="infoBannerBimestreTipo">-</span>
+                        </div>
+                        <div class="info-banner-item">
+                            <span>Data</span>
+                            <span id="infoBannerData">-</span>
+                        </div>
+                        <div class="info-banner-item">
+                            <span>Valor</span>
+                            <span id="infoBannerValor">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Barra de Métricas ao Vivo (Live Metrics) -->
+                <div class="live-metrics-bar">
+                    <div class="live-metric-pill">
+                        <i class="bi bi-calculator" style="color: #00dc82;"></i>
+                        <span>Média: <strong id="liveMediaTurma">0.0</strong></span>
+                    </div>
+                    <div class="live-metric-pill">
+                        <i class="bi bi-arrow-up-circle" style="color: #3b82f6;"></i>
+                        <span>Maior Nota: <strong id="liveMaiorNota">0.0</strong></span>
+                    </div>
+                    <div class="live-metric-pill">
+                        <i class="bi bi-arrow-down-circle" style="color: #ef4444;"></i>
+                        <span>Menor Nota: <strong id="liveMenorNota">0.0</strong></span>
+                    </div>
+                    <div class="live-metric-pill">
+                        <i class="bi bi-pie-chart" style="color: #a855f7;"></i>
+                        <span>Taxa Aprovação: <strong id="liveTaxaAprovacao">0%</strong></span>
+                    </div>
+                    <div class="live-metric-pill">
+                        <i class="bi bi-person-check" style="color: #f59e0b;"></i>
+                        <span>Avaliados: <strong id="liveAlunosAvaliados">0/0</strong></span>
+                    </div>
+                </div>
+
+                <!-- Campo para Motivo / Justificativa da Alteração -->
+                <div class="form-group-custom" style="margin-bottom: 1.25rem;">
+                    <label for="inputMotivoAlteracao">
+                        <i class="bi bi-shield-check"></i> Motivo da alteração / Lançamento
+                        <span style="font-weight: normal; font-size: 0.78rem; color: var(--text-muted);">(Registrado na auditoria pedagógica)</span>
+                    </label>
+                    <input type="text" class="form-control-custom" id="inputMotivoAlteracao" placeholder="Ex: Lançamento regular de notas ou Correção de digitação">
+                </div>
+
+                <!-- Tabela de Alunos e Lançamento -->
+                <div class="table-responsive" style="max-height: 50vh; overflow-y: auto;">
+                    <table class="detalhes-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 35%;">Aluno</th>
+                                <th style="width: 15%; text-align: center;">Presença</th>
+                                <th style="width: 15%; text-align: center;" id="thNotaTeto">Nota (0 a 10)</th>
+                                <th style="width: 15%; text-align: center;">Status</th>
+                                <th style="width: 20%;">Observações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alunosNotasTableBody">
+                            <!-- Inserido dinamicamente via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="modal-footer-custom">
+                <div id="msgFeedbackNotas" style="flex-grow: 1; font-size: 0.88rem;"></div>
+                <button type="button" class="btn btn-ghost" id="btnCancelarNotas">Fechar</button>
+                <button type="button" class="btn btn-primary" id="btnSalvarNotas">
+                    <i class="bi bi-check-circle-fill"></i> Salvar Notas
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Modal 3: Histórico de Auditoria ── -->
+    <div class="modal-overlay" id="modalHistorico" role="dialog" aria-modal="true" aria-labelledby="tituloHistorico" aria-hidden="true">
+        <div class="modal-dialog-custom modal-dialog-large">
+            <div class="modal-header-custom">
+                <h3 class="modal-title-custom">
+                    <i class="bi bi-clock-history" style="color: #00dc82;"></i>
+                    <span id="tituloHistorico">Histórico de Auditoria de Notas</span>
+                </h3>
+                <button type="button" class="modal-close-btn" id="btnFecharModalHistorico" aria-label="Fechar histórico">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="modal-body-custom">
+                <p id="historicoSubtitulo" style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+                    Registro de todas as inserções e alterações de notas para esta avaliação.
+                </p>
+                <div id="historicoContent">
+                    <!-- Preenchido dinamicamente com .audit-timeline -->
+                </div>
+            </div>
+            <div class="modal-footer-custom">
+                <button type="button" class="btn btn-ghost" id="btnFecharHistoricoRodape">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts do Sistema. api-config.js SEM defer e antes de todos: define
+         window.API_BASE_URL. Sem ele o database.js e o auth.js caíam em
+         localhost:3001 fora do ambiente local e a sessão não era encontrada. -->
+    <script src="../../js/api-config.js"></script>
+    <script defer src="../../js/botao-voltar.js"></script>
+    <script defer src="../../detalhes/autorizacoes-turma.js"></script>
+</body>
+
+</html>

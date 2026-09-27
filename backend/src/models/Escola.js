@@ -18,6 +18,9 @@ const EscolaSchema = new mongoose.Schema(
         // `undefined` = sem decisão registrada: vale o padrão da rede
         // (`IA_ESCOLAS_PADRAO`, que nasce desligado).
         iaHabilitada: { type: Boolean },
+        // Professor vê a SITUAÇÃO das autorizações da própria turma (Issue
+        // #496). Decisão da direção da escola; sem decisão, não vê.
+        professorVeAutorizacoes: { type: Boolean },
 
         // ─── Identificação no Censo Escolar (INEP) ──────────────────────────────
         // Sem o código INEP da unidade não existe declaração: o Educacenso identifica
