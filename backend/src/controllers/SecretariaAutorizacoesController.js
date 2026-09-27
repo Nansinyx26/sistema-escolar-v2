@@ -333,3 +333,6 @@ exports.detalhesAutorizacoesAluno = async (req, res) => {
             .json({ success: false, error: 'Erro ao carregar detalhes das autorizações.' });
     }
 };
+
+// Reusada pela visão do professor (Issue #496), que devolve só a situação.
+exports.consolidarAutorizacoesAluno = consolidarAutorizacoesAluno;
