@@ -60,7 +60,7 @@ router.get('/minhas', authJWT, async (req, res) => {
         const ids = vinculos.map((v) => v.escolaId);
         const escolas = ids.length
             ? await Escola.find({ _id: { $in: ids } })
-                  .select('nome tipo bairro ativo status')
+                  .select('nome tipo bairro ativo status professorVeAutorizacoes')
                   .lean()
             : [];
         res.json({
@@ -275,6 +275,59 @@ router.patch('/:escolaId/ia', authJWT, authorize('admin'), async (req, res) => {
         return res.status(500).json({ success: false, error: e.message });
     }
 });
+
+/**
+ * PATCH /api/escolas/:escolaId/autorizacoes-professor — a direção decide se o
+ * professor vê a situação das autorizações da própria turma (Issue #496).
+ * O diretor só decide pela escola a que está vinculado; o admin, por qualquer
+ * uma. Sem decisão, o professor não vê.
+ */
+router.patch(
+    '/:escolaId/autorizacoes-professor',
+    authJWT,
+    authorize('admin', 'diretor'),
+    async (req, res) => {
+        try {
+            const liberar = req.body?.liberar;
+            if (typeof liberar !== 'boolean') {
+                return res
+                    .status(400)
+                    .json({ success: false, error: 'Informe liberar: true ou false.' });
+            }
+            const { escolaId } = req.params;
+            if (req.user.perfil !== 'admin') {
+                const conta = await Usuario.findById(req.user.id || req.user._id)
+                    .select('escolaId')
+                    .lean();
+                const vinculos = await vinculosDoUsuario(req.user);
+                const minhas = new Set([
+                    ...vinculos.map((v) => String(v.escolaId)),
+                    ...(conta?.escolaId ? [String(conta.escolaId)] : []),
+                ]);
+                if (!minhas.has(String(escolaId))) {
+                    return res.status(403).json({ success: false, error: 'Acesso negado.' });
+                }
+            }
+            const antes = await Escola.findById(escolaId).select('professorVeAutorizacoes').lean();
+            if (!antes) {
+                return res.status(404).json({ success: false, error: 'Escola não encontrada.' });
+            }
+            await Escola.updateOne(
+                { _id: escolaId },
+                { $set: { professorVeAutorizacoes: liberar } }
+            );
+            await logAction(req, 'AUTORIZACOES_PROFESSOR_ALTERADO', 'Escola', {
+                recursoId: String(escolaId),
+                valorAnterior: { professorVeAutorizacoes: antes.professorVeAutorizacoes === true },
+                valorNovo: { professorVeAutorizacoes: liberar },
+                descricao: `Consulta de autorizações pelo professor ${liberar ? 'liberada' : 'fechada'} na escola ${escolaId}.`,
+            });
+            return res.json({ success: true, data: { professorVeAutorizacoes: liberar } });
+        } catch (e) {
+            return res.status(500).json({ success: false, error: e.message });
+        }
+    }
+);
 
 router.post('/:escolaId/codigo-secreto', authJWT, authorize('admin'), async (req, res) => {
     try {
