@@ -381,6 +381,10 @@
             </div>
             <textarea id="reviewComment" class="form-textarea" placeholder="O que você achou do sistema?" 
                 rows="2" maxlength="500" style="margin-bottom:0.6rem;font-size:0.82rem;resize:none;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:8px 12px;width:100%;color:var(--text-primary);">${existingReview?.comment || ''}</textarea>
+            <label style="display:flex;gap:0.4rem;align-items:flex-start;font-size:0.72rem;color:var(--text-secondary,#94a3b8);margin-bottom:0.6rem;">
+                <input type="checkbox" id="reviewExibirPublicamente" ${existingReview?.exibirPublicamente === true ? 'checked' : ''} style="margin-top:0.15rem;">
+                <span>Pode mostrar na página inicial, só com minhas iniciais e sem foto, depois de revisada.</span>
+            </label>
             <div style="display:flex;gap:0.5rem;align-items:center;">
                 <button id="btnSubmitReview" class="btn btn-primary btn-sm" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);border:none;color:#111;font-weight:700;border-radius:8px;padding:6px 16px;display:flex;align-items:center;gap:6px;">
                     <i class="bi bi-send-fill"></i> ${existingReview ? 'Atualizar' : 'Enviar'}
@@ -451,7 +455,13 @@
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         credentials: 'include',
-                        body: JSON.stringify({ rating: selectedRating, comment }),
+                        body: JSON.stringify({
+                            rating: selectedRating,
+                            comment,
+                            exibirPublicamente:
+                                document.getElementById('reviewExibirPublicamente')?.checked ===
+                                true,
+                        }),
                     },
                     8000
                 );
