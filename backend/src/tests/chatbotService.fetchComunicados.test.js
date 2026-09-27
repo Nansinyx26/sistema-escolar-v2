@@ -13,6 +13,15 @@ beforeAll(async () => {
     await conectarBanco();
 });
 
+// Limpa antes e depois (Issue #485). Só o `afterEach` deixava o arquivo
+// dependendo de o arquivo ANTERIOR ter largado o banco vazio. Quem limpa em
+// `beforeEach` (como `comunicadosNotificacoesIndicesPaginacao`) deixa resíduo
+// ao terminar, e o caso "retorna array vazio" encontrava comunicado alheio.
+// Com `--runInBand` a ordem dos arquivos muda quando entra um teste novo.
+beforeEach(async () => {
+    await limparBanco();
+});
+
 afterEach(async () => {
     await limparBanco();
 });
@@ -36,7 +45,6 @@ async function criarComunicado(overrides = {}) {
 }
 
 describe('fetchComunicados', () => {
-
     // Requisito 10.1 / 10.4: nenhum comunicado ativo → retornar array vazio
     it('retorna array vazio quando não há comunicados ativos', async () => {
         await criarComunicado({ ativo: false });
@@ -54,7 +62,7 @@ describe('fetchComunicados', () => {
         const result = await fetchComunicados({ perfil: 'diretor', turmaAluno: null });
 
         expect(result).toHaveLength(1);
-        result.forEach(c => expect(c.ativo).toBe(true));
+        for (const c of result) expect(c.ativo).toBe(true);
     });
 
     // Requisito 10.2: limitar a 5 registros mais recentes
@@ -75,9 +83,21 @@ describe('fetchComunicados', () => {
     // Requisito 10.2: ordenar por dataCriacao decrescente
     it('retorna os comunicados ordenados por dataCriacao decrescente', async () => {
         const agora = Date.now();
-        await criarComunicado({ titulo: 'Antigo', destinatarios: ['todos'], dataCriacao: new Date(agora - 2000) });
-        await criarComunicado({ titulo: 'Recente', destinatarios: ['todos'], dataCriacao: new Date(agora) });
-        await criarComunicado({ titulo: 'Meio', destinatarios: ['todos'], dataCriacao: new Date(agora - 1000) });
+        await criarComunicado({
+            titulo: 'Antigo',
+            destinatarios: ['todos'],
+            dataCriacao: new Date(agora - 2000),
+        });
+        await criarComunicado({
+            titulo: 'Recente',
+            destinatarios: ['todos'],
+            dataCriacao: new Date(agora),
+        });
+        await criarComunicado({
+            titulo: 'Meio',
+            destinatarios: ['todos'],
+            dataCriacao: new Date(agora - 1000),
+        });
 
         const result = await fetchComunicados({ perfil: 'diretor', turmaAluno: null });
 
