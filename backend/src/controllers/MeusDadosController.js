@@ -32,6 +32,7 @@ const JustificativaFalta = require('../models/JustificativaFalta');
 const escapeRegex = require('../utils/escapeRegex');
 const { semRestricaoPara } = require('../utils/restricaoAcesso');
 const { logAction } = require('../utils/auditHelper');
+const logger = require('../utils/logger');
 
 // A identidade e a vigência dos dois consentimentos moram nos utils, e não
 // aqui: esta tela é LEITORA da mesma regra que a página do Termo escreve
@@ -147,6 +148,44 @@ async function montarConversasCopiloto(userId) {
  * Coleta os dados pessoais e escolares dos alunos sob responsabilidade do titular.
  * (LGPD Art. 14 — Melhores interesses da criança/adolescente e direito de acesso dos pais/responsáveis).
  */
+/**
+ * Escola a que o pedido do titular pertence (Issue #484).
+ *
+ * `Usuario.escola` guarda o NOME da escola; o identificador fica em
+ * `escolaId`. Gravar o nome no `escolaId` do pedido deixava a fila sem como
+ * separar escola por escola. Equipe tem a escola na conta; o responsável
+ * herda a do filho, que é o vínculo que diz qual escola atende a família.
+ */
+async function escolaDoPedido(usuario) {
+    if (usuario.escolaId) return String(usuario.escolaId);
+    if (!usuario.email) return undefined;
+    const emailRegex = new RegExp(
+        `^${escapeRegex(String(usuario.email).trim().toLowerCase())}$`,
+        'i'
+    );
+    const aluno = await Aluno.findOne({
+        $or: [
+            { responsavel: emailRegex },
+            { 'responsavelDados.email': emailRegex },
+            { 'responsaveis.email': emailRegex },
+        ],
+    })
+        .select('escolaId')
+        .lean();
+    return aluno?.escolaId ? String(aluno.escolaId) : undefined;
+}
+
+/**
+ * Protocolo entregue ao titular (Issue #484). Antes levava os últimos dígitos
+ * do id da conta — um pedaço de identificador interno na mão de quem recebe o
+ * número. O sufixo agora é aleatório.
+ */
+function gerarProtocolo() {
+    const data = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const sufixo = require('node:crypto').randomBytes(4).toString('hex').toUpperCase();
+    return `LGPD-${data}-${sufixo}`;
+}
+
 async function montarDadosDependentes(usuario) {
     if (!usuario?.email) return [];
     const emailLimpo = String(usuario.email).trim().toLowerCase();
@@ -343,7 +382,7 @@ exports.solicitarExclusao = async (req, res) => {
         const userId = req.user.id;
         const { motivo } = req.body;
 
-        const usuario = await Usuario.findById(userId).select('email nome perfil escola');
+        const usuario = await Usuario.findById(userId).select('email nome perfil escolaId');
         if (!usuario) {
             return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
         }
@@ -356,8 +395,11 @@ exports.solicitarExclusao = async (req, res) => {
         });
         const conversasDoTitular = await IaConversa.countDocuments({ usuarioId: String(userId) });
 
-        const protocolo = `LGPD-${Date.now()}-${userId.toString().slice(-6).toUpperCase()}`;
-        const prazoAtendimento = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000); // 15 dias corridos (LGPD Art. 19, II)
+        const protocolo = gerarProtocolo();
+        // 15 dias corridos como COMPROMISSO DA ESCOLA (Issue #484). O art. 19
+        // trata do prazo para o direito de acesso; para exclusão a LGPD não
+        // fixa esse número. [VALIDAR COM JURÍDICO] o prazo de cada tipo.
+        const prazoAtendimento = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
 
         // Registra formalmente na coleção de pedidos do titular (Issue #413)
         const pedido = await PedidoTitular.create({
@@ -366,7 +408,7 @@ exports.solicitarExclusao = async (req, res) => {
             usuarioEmail: usuario.email.toLowerCase(),
             usuarioNome: usuario.nome,
             perfil: usuario.perfil,
-            escolaId: usuario.escola ? String(usuario.escola) : undefined,
+            escolaId: await escolaDoPedido(usuario),
             tipo: 'exclusao',
             motivo: motivo ? String(motivo).trim() : '',
             status: 'pendente',
@@ -386,24 +428,26 @@ exports.solicitarExclusao = async (req, res) => {
         });
 
         // Registra a solicitação no audit log para o admin processar
+        // Só protocolo e ids (Issue #484). O motivo é texto livre do titular —
+        // pode falar de saúde ou de família — e fica no próprio pedido, que a
+        // escola pode corrigir ou apagar. O AuditLog só aceita inclusão: o que
+        // entra nele não sai mais, e o pedido é justamente de exclusão.
         await logAction(req, 'LGPD_SOLICITAR_EXCLUSAO', 'MeusDados', {
             recursoId: userId,
             protocolo,
             descricao:
-                `SOLICITAÇÃO DE EXCLUSÃO LGPD [${protocolo}] — Titular: ${usuario.email}${motivo ? ` | Motivo: ${motivo}` : ''}. ` +
+                `Pedido de exclusão ${protocolo} aberto pelo titular ${userId}. ` +
                 `Inclui ${mensagensDoTitular} mensagem(ns) do chat interno ` +
                 `e ${conversasDoTitular} conversa(s) com o assistente (estas serão excluídas). ` +
                 `Registrado na coleção pedidos_titular para despacho pela administração.`,
         });
 
-        console.log(
-            `⚠️  [LGPD] Solicitação de exclusão recebida de: ${usuario.email} [${protocolo}]`
-        );
+        logger.info('[LGPD] Pedido de exclusão recebido', { protocolo, usuarioId: String(userId) });
 
         return res.json({
             success: true,
             message:
-                'Sua solicitação foi recebida e será processada em até 15 dias, conforme previsto na LGPD.',
+                'Sua solicitação foi recebida e será respondida em até 15 dias. Guarde o número de protocolo para acompanhar.',
             protocolo,
             status: pedido.status,
             prazo: prazoAtendimento,

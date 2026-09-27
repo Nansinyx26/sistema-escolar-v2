@@ -5,7 +5,8 @@ const mongoose = require('mongoose');
  *
  * Registra formalmente cada requisição de direito do titular (exclusão/anonimização,
  * exportação/portabilidade, retificação ou informação) com protocolo auditável,
- * prazo legal (LGPD Art. 19, II: 15 dias), status de atendimento e histórico
+ * prazo de atendimento (15 dias corridos, compromisso da escola — o art. 19
+ * trata do direito de acesso; [VALIDAR COM JURÍDICO] o prazo de cada tipo), status de atendimento e histórico
  * completo de despacho pela administração.
  */
 const HistoricoPedidoSchema = new mongoose.Schema(
