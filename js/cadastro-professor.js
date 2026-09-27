@@ -5,11 +5,26 @@
 
 let fotoBase64 = '';
 const todasSalas = [
-    '1ºA', '1ºB', '1ºC', '1ºD',
-    '2ºA', '2ºB', '2ºC', '2ºD',
-    '3ºA', '3ºB', '3ºC', '3ºD',
-    '4ºA', '4ºB', '4ºC', '4ºD',
-    '5ºA', '5ºB', '5ºC', '5ºD'
+    '1ºA',
+    '1ºB',
+    '1ºC',
+    '1ºD',
+    '2ºA',
+    '2ºB',
+    '2ºC',
+    '2ºD',
+    '3ºA',
+    '3ºB',
+    '3ºC',
+    '3ºD',
+    '4ºA',
+    '4ºB',
+    '4ºC',
+    '4ºD',
+    '5ºA',
+    '5ºB',
+    '5ºC',
+    '5ºD',
 ];
 
 // === INICIALIZAÇÍO ===
@@ -26,7 +41,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Verifica se tem perfil de professor
     const user = auth.getCurrentUser();
     if (user.perfil !== 'professor') {
-        window.location.href = 'escolher-perfil.html';
+        window.location.href = auth.painelDoUsuario();
         return;
     }
 
@@ -95,10 +110,10 @@ function setupRoleSelection() {
     const salasAdicionaisGroup = document.getElementById('salasAdicionaisGroup');
     const salaPrincipalSelect = document.getElementById('salaPrincipal');
 
-    radios.forEach(radio => {
+    radios.forEach((radio) => {
         radio.addEventListener('change', (e) => {
             const role = e.target.value;
-            
+
             if (role === 'principal') {
                 containerPrincipal.classList.remove('hidden');
                 containerMateria.classList.add('hidden');
@@ -117,7 +132,7 @@ function setupRoleSelection() {
 
     const professorKeySelect = document.getElementById('professorKey');
     const nomeInput = document.getElementById('nome');
-    
+
     if (professorKeySelect && nomeInput) {
         professorKeySelect.addEventListener('change', (e) => {
             const val = e.target.value;
@@ -125,9 +140,11 @@ function setupRoleSelection() {
             if (val && val !== 'OUTRO') {
                 if (val.startsWith('PEB1')) {
                     // Auto seleciona "Professor Principal"
-                    const rbPrincipal = document.querySelector('input[name="tipoAtuacao"][value="principal"]');
+                    const rbPrincipal = document.querySelector(
+                        'input[name="tipoAtuacao"][value="principal"]'
+                    );
                     if (rbPrincipal) rbPrincipal.click();
-                    
+
                     // Se não for o PEB1 genérico, preenche o nome
                     if (val !== 'PEB1') {
                         const nomeOnly = text.split('(')[0].trim();
@@ -136,9 +153,11 @@ function setupRoleSelection() {
                 } else {
                     const nomeOnly = text.split('(')[0].trim();
                     nomeInput.value = nomeOnly;
-                    
+
                     // Auto seleciona "Professor de Matéria" se for especialista
-                    const rbMateria = document.querySelector('input[name="tipoAtuacao"][value="materia"]');
+                    const rbMateria = document.querySelector(
+                        'input[name="tipoAtuacao"][value="materia"]'
+                    );
                     if (rbMateria) rbMateria.click();
                 }
             }
@@ -168,15 +187,16 @@ function renderSalasAdicionais() {
     const salaPrincipal = document.getElementById('salaPrincipal').value;
 
     if (!salaPrincipal) {
-        container.innerHTML = '<p class="text-sm text-tertiary">Selecione uma sala principal primeiro</p>';
+        container.innerHTML =
+            '<p class="text-sm text-tertiary">Selecione uma sala principal primeiro</p>';
         return;
     }
 
     // Filtra salas (remove a sala principal)
-    const salasDisponiveis = todasSalas.filter(sala => sala !== salaPrincipal);
+    const salasDisponiveis = todasSalas.filter((sala) => sala !== salaPrincipal);
 
     container.innerHTML = '';
-    salasDisponiveis.forEach(sala => {
+    salasDisponiveis.forEach((sala) => {
         const item = document.createElement('span');
         item.className = 'select-multiple-item';
         item.dataset.sala = sala;
@@ -219,7 +239,7 @@ function renderSalasParaProfessorEspecial() {
     container.innerHTML = '';
 
     // Mostra TODAS as salas para seleção
-    todasSalas.forEach(sala => {
+    todasSalas.forEach((sala) => {
         const item = document.createElement('span');
         item.className = 'select-multiple-item';
         item.dataset.sala = sala;
@@ -254,7 +274,7 @@ function renderSalasParaProfessorEspecial() {
 function validarTurmasSelecionadas() {
     const turmasSelecionadas = getSalasAdicionaisSelecionadas();
     const materias = getMateriasSelecionadas();
-    const temEspecial = materias.some(m => MATERIAS_ESPECIAIS.includes(m));
+    const temEspecial = materias.some((m) => MATERIAS_ESPECIAIS.includes(m));
 
     if (temEspecial && turmasSelecionadas.length === 0) {
         // Mostra aviso
@@ -274,16 +294,25 @@ function validarTurmasSelecionadas() {
 }
 
 function getSalasAdicionaisSelecionadas() {
-    const items = document.querySelectorAll('#salasAdicionaisContainer .select-multiple-item.selected');
-    return Array.from(items).map(item => item.dataset.sala);
+    const items = document.querySelectorAll(
+        '#salasAdicionaisContainer .select-multiple-item.selected'
+    );
+    return Array.from(items).map((item) => item.dataset.sala);
 }
 
 // Matérias que podem ser lecionadas
-const MATERIAS_ESPECIAIS = ['Inglês', 'Educação Física', 'Artes', 'SEBRAE', 'Oficina de Leitura', 'Of. Maker'];
+const MATERIAS_ESPECIAIS = [
+    'Inglês',
+    'Educação Física',
+    'Artes',
+    'SEBRAE',
+    'Oficina de Leitura',
+    'Of. Maker',
+];
 
 function getMateriasSelecionadas() {
     const checkboxes = document.querySelectorAll('input[name="materia"]:checked');
-    return Array.from(checkboxes).map(cb => cb.value);
+    return Array.from(checkboxes).map((cb) => cb.value);
 }
 
 // === FORMULÁRIO ===
@@ -323,7 +352,9 @@ function setupForm() {
             tipo: 'professor',
             tipoAtuacao: tipoAtuacao, // principal ou materia
             nome: document.getElementById('nome').value.trim(),
-            professorKey: document.getElementById('professorKey') ? document.getElementById('professorKey').value : '',
+            professorKey: document.getElementById('professorKey')
+                ? document.getElementById('professorKey').value
+                : '',
             foto: fotoBase64,
             escola: document.getElementById('escola').value.trim(),
             disciplina: document.getElementById('disciplina').value.trim(),
@@ -336,7 +367,7 @@ function setupForm() {
             atividadesPessoais: document.getElementById('atividadesPessoais').value.trim(),
             ideiasParaAno: document.getElementById('ideiasParaAno').value.trim(),
             criadoEm: new Date().toISOString(),
-            atualizadoEm: new Date().toISOString()
+            atualizadoEm: new Date().toISOString(),
         };
 
         // Loading

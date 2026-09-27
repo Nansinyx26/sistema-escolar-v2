@@ -1,5 +1,5 @@
 /**
- * Escolher Perfil Script  
+ * Escolher Perfil Script
  * Gerencia a escolha de perfil (Professor ou Diretor)
  */
 
@@ -14,9 +14,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    // Se já tem perfil, redireciona
-    if (auth.hasProfile()) {
-        window.location.href = 'dashboard.html';
+    // Conta com QUALQUER perfil já definido não escolhe de novo: responsável e
+    // secretaria também vão para o próprio painel, nunca para esta tela.
+    if (auth.getCurrentUser().perfil) {
+        window.location.href = auth.painelDoUsuario();
         return;
     }
 
@@ -36,7 +37,7 @@ async function selecionarPerfil(tipoPerfil) {
 
     // Desabilita todos os botões
     const botoes = document.querySelectorAll('.perfil-card .btn');
-    botoes.forEach(btn => {
+    botoes.forEach((btn) => {
         showLoading(btn);
     });
 
@@ -58,7 +59,7 @@ async function selecionarPerfil(tipoPerfil) {
         showToast(error.message || 'Erro ao selecionar perfil', 'error');
 
         // Remove loading dos botões
-        botoes.forEach(btn => {
+        botoes.forEach((btn) => {
             hideLoading(btn);
         });
 
