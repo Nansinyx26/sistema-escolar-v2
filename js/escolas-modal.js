@@ -9,11 +9,11 @@
 (function () {
     'use strict';
 
-    var API_BASE = window.API_BASE_URL || (
-        (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+    var API_BASE =
+        window.API_BASE_URL ||
+        (location.hostname === 'localhost' || location.hostname === '127.0.0.1'
             ? 'http://localhost:3001/api'
-            : (location.origin + '/api')
-    );
+            : location.origin + '/api');
 
     function iconePorTipo(tipo) {
         return tipo === 'CIEP' ? 'bi-mortarboard' : 'bi-book';
@@ -30,11 +30,12 @@
         var lista = document.getElementById('schoolSwitcherList');
         if (!lista || !escolas.length) return;
 
-        // Escola Jaguari/Ativa primeiro
+        // Disponível = escola.ativo, e só isso (#475): ativas primeiro,
+        // depois alfabética. Nenhuma regra olha o nome da escola.
         escolas.sort(function (a, b) {
-            var aIsJ = (a.nome || '').toLowerCase().includes('jaguari') || (a.nome || '').toLowerCase().includes('mascellani') || a.ativo;
-            var bIsJ = (b.nome || '').toLowerCase().includes('jaguari') || (b.nome || '').toLowerCase().includes('mascellani') || b.ativo;
-            return (bIsJ ? 1 : 0) - (aIsJ ? 1 : 0);
+            return (
+                (b.ativo ? 1 : 0) - (a.ativo ? 1 : 0) || (a.nome || '').localeCompare(b.nome || '')
+            );
         });
 
         lista.textContent = '';
@@ -47,15 +48,18 @@
             item.appendChild(icone);
             item.appendChild(document.createTextNode(' ' + textoEscola(e) + ' '));
 
-            var isJaguari = (e.nome || '').toLowerCase().includes('jaguari') || (e.nome || '').toLowerCase().includes('mascellani') || e.ativo;
-
-            if (isJaguari) {
+            if (e.ativo) {
                 item.href = '/html/login.html?escolaId=' + encodeURIComponent(e._id);
                 item.title = 'Entrar em ' + e.nome;
                 item.addEventListener('click', function () {
                     try {
-                        localStorage.setItem('escolaSelecionada', JSON.stringify({ id: String(e._id), nome: e.nome }));
-                    } catch (err) { /* armazenamento indisponível */ }
+                        localStorage.setItem(
+                            'escolaSelecionada',
+                            JSON.stringify({ id: String(e._id), nome: e.nome })
+                        );
+                    } catch (err) {
+                        /* armazenamento indisponível */
+                    }
                     aplicarMarcaEscola(e.nome);
                 });
             } else {
@@ -69,7 +73,7 @@
                 item.addEventListener('click', function (evt) {
                     evt.preventDefault();
                     if (typeof showToast === 'function') {
-                        showToast('Esta escola está temporariamente indisponível. Apenas a Escola Jaguari está em operação.', 'warning');
+                        showToast('Esta escola ainda não está disponível no sistema.', 'warning');
                     }
                 });
             }
@@ -102,7 +106,6 @@
 
     /**
      * Troca o nome no topo da landing pela escola selecionada.
-     * Padrão: "Escola Jaguari" (a escola em operação).
      */
     function aplicarMarcaEscola(nome) {
         if (!nome) return;
@@ -122,13 +125,17 @@
         try {
             var salva = JSON.parse(localStorage.getItem('escolaSelecionada') || 'null');
             if (salva && salva.nome) aplicarMarcaEscola(salva.nome);
-        } catch (e) { /* mantém a marca padrão */ }
+        } catch (e) {
+            /* mantém a marca padrão */
+        }
     }
 
     function carregar() {
         restaurarMarcaEscola();
         fetch(API_BASE + '/escolas')
-            .then(function (res) { return res.ok ? res.json() : null; })
+            .then(function (res) {
+                return res.ok ? res.json() : null;
+            })
             .then(function (json) {
                 if (json && json.success && Array.isArray(json.data) && json.data.length > 0) {
                     renderEscolas(json.data);
@@ -136,7 +143,9 @@
                 }
                 // API vazia ou fora do ar: mantém o fallback estático do HTML
             })
-            .catch(function () { /* fallback estático permanece */ });
+            .catch(function () {
+                /* fallback estático permanece */
+            });
     }
 
     if (document.readyState === 'loading') {
