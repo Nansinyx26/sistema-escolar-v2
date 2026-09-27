@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Verifica se tem perfil de diretor
     const user = auth.getCurrentUser();
     if (user.perfil !== 'diretor') {
-        window.location.href = 'escolher-perfil.html';
+        window.location.href = auth.painelDoUsuario();
         return;
     }
 
@@ -99,10 +99,10 @@ function setupForm() {
                 'ver_graficos',
                 'ver_notas',
                 'gerenciar_professores',
-                'relatorios'
+                'relatorios',
             ],
             criadoEm: new Date().toISOString(),
-            atualizadoEm: new Date().toISOString()
+            atualizadoEm: new Date().toISOString(),
         };
 
         // Loading

@@ -9,13 +9,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     await db.init();
     await auth.init();
 
-    // Se já estiver autenticado, redireciona
+    // Se já estiver autenticado, vai para o painel do próprio perfil. Só conta
+    // sem perfil cai na escolha de Professor/Diretor — o responsável que volta
+    // a esta tela vai para o portal dele.
     if (auth.isAuthenticated()) {
-        if (auth.hasProfile()) {
-            window.location.href = 'dashboard.html';
-        } else {
-            window.location.href = 'escolher-perfil.html';
-        }
+        window.location.href = auth.painelDoUsuario();
         return;
     }
 
@@ -361,19 +359,8 @@ function setupLoginForm() {
                 return;
             }
 
-            // Fallback raso caso o backend não retorne redirect_to
-            if (
-                usuario.perfil &&
-                (usuario.perfil === 'admin' ||
-                    usuario.perfil === 'professor' ||
-                    usuario.perfil === 'diretor')
-            ) {
-                window.location.href = 'dashboard.html';
-            } else if (usuario.perfilDefinidoEm) {
-                window.location.href = 'dashboard.html';
-            } else {
-                window.location.href = 'escolher-perfil.html';
-            }
+            // Fallback caso o backend não retorne redirect_to
+            window.location.href = auth.painelDoUsuario();
         } catch (error) {
             console.error('Erro no login:', error);
             showToast(error.message || 'Erro ao fazer login', 'error');
