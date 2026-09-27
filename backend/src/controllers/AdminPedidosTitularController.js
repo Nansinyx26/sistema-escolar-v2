@@ -39,8 +39,19 @@ exports.listarPedidos = async (req, res) => {
             ];
         }
 
+        // Escola e busca são condições independentes: as duas usam `$or`, e
+        // atribuir a segunda por cima da primeira descartava a busca (Issue
+        // #484). Com `$and`, valem as duas.
         if (req.escolaId) {
-            filtro.$or = [{ escolaId: String(req.escolaId) }, { escolaId: { $exists: false } }];
+            const daEscola = {
+                $or: [{ escolaId: String(req.escolaId) }, { escolaId: { $exists: false } }],
+            };
+            if (filtro.$or) {
+                filtro.$and = [{ $or: filtro.$or }, daEscola];
+                delete filtro.$or;
+            } else {
+                Object.assign(filtro, daEscola);
+            }
         }
 
         const pedidos = await PedidoTitular.find(filtro).sort({ createdAt: -1 }).lean();
