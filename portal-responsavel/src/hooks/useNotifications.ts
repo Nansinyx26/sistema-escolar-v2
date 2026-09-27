@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   getNotificacoesDoAluno,
+  getVapidPublicKey,
   marcarNotificacaoLida,
   ocultarNotificacao,
   subscribePush,
-  getVapidPublicKey,
 } from '../services/apiService';
 import { socket } from '../services/socket';
 import type { AuthUser, Notification } from '../types';
@@ -47,14 +47,31 @@ export function useNotifications({ authUser, activeId }: UseNotificationsOptions
     };
   }, [activeId]);
 
+  // O socket é assinado uma vez por sessão; o aluno ativo muda por baixo.
+  const activeIdRef = useRef(activeId);
+  activeIdRef.current = activeId;
+
   useEffect(() => {
     if (!authUser) return;
 
-    const handleNewNotification = (notification: Notification) => {
-      setNotifications((prev) => [notification, ...prev]);
-      if (notification.prioridade === 'alta') {
-        setPriorityNotification(notification);
-      }
+    // O evento traz o documento cru (`lido` é array de ids, `destinatarios` é
+    // o público inteiro) e não sabe qual filho está aberto. Em vez de inserir
+    // o cru na lista, a lista é relida pelo endpoint do aluno ativo — o mesmo
+    // filtro de escola e de público do carregamento normal — e o aviso só
+    // aparece se for mesmo deste aluno.
+    const handleNewNotification = async (data: {
+      notification?: { id?: string; _id?: string };
+    }) => {
+      const alunoId = activeIdRef.current;
+      const nova = data?.notification;
+      if (!alunoId || !nova) return;
+      try {
+        const lista = await getNotificacoesDoAluno(alunoId);
+        if (activeIdRef.current !== alunoId) return;
+        setNotifications(lista);
+        const chegou = lista.find((n) => n.id === nova.id || n.id === nova._id);
+        if (chegou?.prioridade === 'alta') setPriorityNotification(chegou);
+      } catch {}
     };
 
     socket.on('notification:new', handleNewNotification);
@@ -67,8 +84,8 @@ export function useNotifications({ authUser, activeId }: UseNotificationsOptions
     if (!authUser) return;
 
     const urlBase64ToUint8Array = (base64String: string) => {
-      const padding = '='.repeat((4 - base64String.length % 4) % 4);
-      const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+      const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+      const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
       const rawData = window.atob(base64);
       const outputArray = new Uint8Array(rawData.length);
       for (let index = 0; index < rawData.length; index += 1) {
@@ -78,7 +95,8 @@ export function useNotifications({ authUser, activeId }: UseNotificationsOptions
     };
 
     const initPush = async () => {
-      if (!('serviceWorker' in navigator) || !('PushManager' in window) || !window.Notification) return;
+      if (!('serviceWorker' in navigator) || !('PushManager' in window) || !window.Notification)
+        return;
 
       try {
         if (Notification.permission === 'denied') return;
@@ -102,35 +120,43 @@ export function useNotifications({ authUser, activeId }: UseNotificationsOptions
         }
 
         await subscribePush(subscription);
-      } catch (err: any) {
-        console.warn('⚠️ [Push] Falha ao configurar Push no portal:', err.message);
+      } catch (err) {
+        console.warn('⚠️ [Push] Falha ao configurar Push no portal:', (err as Error).message);
       }
     };
 
     void initPush();
   }, [authUser]);
 
-  const handleMarkAsRead = useCallback(async (id: string) => {
-    if (!activeId) return;
-    try {
-      await marcarNotificacaoLida(id, activeId);
-      setNotifications((prev) => prev.map((notification) => (
-        notification.id === id ? { ...notification, lido: true } : notification
-      )));
-    } catch (err) {
-      console.error('Erro ao marcar notificação como lida:', err);
-    }
-  }, [activeId]);
+  const handleMarkAsRead = useCallback(
+    async (id: string) => {
+      if (!activeId) return;
+      try {
+        await marcarNotificacaoLida(id, activeId);
+        setNotifications((prev) =>
+          prev.map((notification) =>
+            notification.id === id ? { ...notification, lido: true } : notification
+          )
+        );
+      } catch (err) {
+        console.error('Erro ao marcar notificação como lida:', err);
+      }
+    },
+    [activeId]
+  );
 
-  const handleDeleteNotification = useCallback(async (id: string) => {
-    if (!activeId) return;
-    try {
-      await ocultarNotificacao(id, activeId);
-      setNotifications((prev) => prev.filter((notification) => notification.id !== id));
-    } catch (err) {
-      console.error('Erro ao ocultar notificação:', err);
-    }
-  }, [activeId]);
+  const handleDeleteNotification = useCallback(
+    async (id: string) => {
+      if (!activeId) return;
+      try {
+        await ocultarNotificacao(id, activeId);
+        setNotifications((prev) => prev.filter((notification) => notification.id !== id));
+      } catch (err) {
+        console.error('Erro ao ocultar notificação:', err);
+      }
+    },
+    [activeId]
+  );
 
   return {
     notifications,

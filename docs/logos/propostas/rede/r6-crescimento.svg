@@ -1,0 +1,21 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sistema Escolar — escolas em rede crescendo">
+  <defs>
+    <linearGradient id="r6-linha" x1="150" y1="0" x2="362" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#10b981"/>
+      <stop offset="0.55" stop-color="#0ea5e9"/>
+      <stop offset="1" stop-color="#6366f1"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="120" fill="#0a0a0c"/>
+  <path d="M98 324 L150 280 L202 324 V420 H98 Z" fill="#ffffff"/>
+  <path d="M204 270 L256 226 L308 270 V420 H204 Z" fill="#ffffff"/>
+  <path d="M310 216 L362 172 L414 216 V420 H310 Z" fill="#ffffff"/>
+  <rect x="135.4" y="386.7" width="29.1" height="33.3" rx="5.2" fill="#10b981"/>
+  <rect x="241.4" y="386.7" width="29.1" height="33.3" rx="5.2" fill="#0ea5e9"/>
+  <rect x="347.4" y="386.7" width="29.1" height="33.3" rx="5.2" fill="#6366f1"/>
+  <!-- Linha de crescimento ligando as escolas -->
+  <path d="M150 244 L256 190 L362 136" stroke="url(#r6-linha)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="150" cy="244" r="20" fill="#10b981" stroke="#0a0a0c" stroke-width="8"/>
+  <circle cx="256" cy="190" r="20" fill="#0ea5e9" stroke="#0a0a0c" stroke-width="8"/>
+  <circle cx="362" cy="136" r="20" fill="#6366f1" stroke="#0a0a0c" stroke-width="8"/>
+</svg>

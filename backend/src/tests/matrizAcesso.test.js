@@ -90,6 +90,15 @@ const CAMINHOS = [
     '/direcao/codigos-secretos.js',
     '/direcao/horario-jaguari.html',
     '/html/pagina-que-nao-existe.html',
+    // Páginas da escola que a matriz não lista: é por elas que passa o recorte
+    // do responsável (PERFIS_SEM_PAGINAS_DA_ESCOLA), e a paridade precisa vê-lo
+    // valer dos dois lados.
+    '/html/turma.html',
+    '/html/planilha-faltas.html',
+    // Páginas da PESSOA declaradas para todos os perfis — o outro lado do
+    // recorte: ele não pode alcançá-las.
+    '/html/mudar-senha.html',
+    '/html/termo-audio-imagem.html',
     '/detalhes/alunos.html',
     '/detalhes/autorizacoes-pais.html',
     '/detalhes/avaliacoes.html',
@@ -189,7 +198,80 @@ describe('matriz de acesso — precedência da exceção por arquivo', () => {
         expect(veredito.exigeSessao).toBe(true);
         expect(veredito.perfis).toBeNull();
         expect(matriz.podeAbrir(null, '/html/pagina-nova-solta.html')).toBe(false);
-        expect(matriz.podeAbrir('responsavel', '/html/pagina-nova-solta.html')).toBe(true);
+        expect(matriz.podeAbrir('professor', '/html/pagina-nova-solta.html')).toBe(true);
+        expect(matriz.podeAbrir('secretaria', '/html/pagina-nova-solta.html')).toBe(true);
+    });
+
+    // ─────────────────────────────────────────────────────────────────────
+    // O RECORTE DO PADRÃO DO DESCONHECIDO (Issue #444)
+    // ─────────────────────────────────────────────────────────────────────
+    // Este bloco INVERTE uma afirmação que a suíte fazia: o teste acima
+    // terminava com `podeAbrir('responsavel', '/html/pagina-nova-solta.html')
+    // === true`, e isso descrevia o comportamento com fidelidade — o padrão do
+    // desconhecido era "basta estar autenticado", e o responsável está
+    // autenticado. A consequência é que toda tela da escola não listada
+    // nominalmente abria para a conta de família: turma, planilha de faltas,
+    // lista de professores, meu horário. Interface que não é dela, com a
+    // estrutura interna da escola à vista.
+    //
+    // `PERFIS_SEM_PAGINAS_DA_ESCOLA` recorta essa abertura sem fechá-la para
+    // quem depende dela (o admin na área sob apelido, que cai neste mesmo
+    // padrão). O que estes testes travam é o recorte: quem está na lista não
+    // entra por omissão, e quem não está continua entrando.
+    describe('perfis que não moram nas páginas da escola', () => {
+        const DA_ESCOLA = [
+            '/html/turma.html',
+            '/html/planilha-faltas.html',
+            '/html/lista-professores.html',
+            '/html/meu-horario.html',
+            '/html/frequencia-professores.html',
+            '/html/perfil.html',
+            '/detalhes/alunos.html',
+            '/graficos/index.html',
+        ];
+
+        it.each(DA_ESCOLA)('o responsável não abre %s', (caminho) => {
+            expect(matriz.podeAbrir('responsavel', caminho)).toBe(false);
+        });
+
+        it.each(DA_ESCOLA)('a equipe da escola continua abrindo %s', (caminho) => {
+            expect(matriz.podeAbrir('professor', caminho)).toBe(true);
+            expect(matriz.podeAbrir('admin', caminho)).toBe(true);
+        });
+
+        // Sem estas duas declaradas, a regra prenderia a pessoa: é para
+        // `mudar-senha.html` que o próprio login manda quem tem troca
+        // obrigatória, e é em `termo-audio-imagem.html` que se aceita o Termo
+        // que destrava áudio e anexo no chat que o responsável usa.
+        it.each(['/html/mudar-senha.html', '/html/termo-audio-imagem.html'])(
+            'o responsável abre %s, que é página dele e não da escola',
+            (caminho) => {
+                expect(matriz.podeAbrir('responsavel', caminho)).toBe(true);
+            }
+        );
+
+        it('a negação não alcança as duas páginas que o portal declara', () => {
+            // As únicas para as quais o Portal do Responsável tem link — ver
+            // Header.tsx e LoginResponsavel.tsx. Se uma delas fechar, o portal
+            // ganha um link que leva a lugar nenhum.
+            expect(matriz.podeAbrir('responsavel', '/html/conversas.html')).toBe(true);
+            expect(matriz.podeAbrir('responsavel', '/html/politica-privacidade.html')).toBe(true);
+        });
+
+        it('o admin continua entrando no padrão do desconhecido — a área dele cai nele', () => {
+            // O motivo de `perfis` continuar `null` em vez de virar uma lista de
+            // permitidos: sob ADMIN_PATH a área não vai para o navegador e é por
+            // este padrão que ela passa.
+            expect(matriz.vereditoDe('/html/pagina-nova-solta.html').perfis).toBeNull();
+            expect(matriz.podeAbrir('admin', '/html/pagina-nova-solta.html')).toBe(true);
+        });
+
+        it('área declarada decide por `perfis`, sem negação por cima', () => {
+            // Negar de novo dentro de uma área escreveria a mesma regra duas
+            // vezes — e a segunda cópia poderia discordar da primeira.
+            expect(matriz.vereditoDe('/html/conversas.html').negados).toEqual([]);
+            expect(matriz.vereditoDe('/html/dashboard.html').negados).toEqual([]);
+        });
     });
 
     it('o responsável continua barrado no dashboard, que foi o defeito de origem', () => {

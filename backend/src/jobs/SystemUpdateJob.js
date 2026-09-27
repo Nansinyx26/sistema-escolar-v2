@@ -47,7 +47,6 @@ async function anunciarParaEscola(notif, escolaId) {
         destinatarios: 'todos',
         paraResponsavel: true, // visível também para responsáveis
         criadoPor: 'Sistema',
-        link: '/dashboard',
         escolaId: escolaId || null,
     });
     return true;

@@ -75,6 +75,7 @@ const {
     PAGINAS_SEM_SESSAO,
     ehCaminhoDePagina,
     vereditoDe,
+    podeAbrir,
     perfisPermitidos: perfisDaMatriz,
 } = require('../utils/matrizAcesso');
 
@@ -241,15 +242,6 @@ async function autorizar(req, res, next, { config, forma }, pagina404) {
     // Tela de login da área: segue adiante sem sessão (ver PAGINAS_SEM_SESSAO).
     if (PAGINAS_SEM_SESSAO.includes(arquivo)) return next();
 
-    // A precedência da exceção por arquivo sobre a área é decidida na matriz,
-    // em um lugar só — o navegador aplica exatamente a mesma.
-    //
-    // `null` significa "qualquer perfil autenticado serve", e não "nenhum": é o
-    // veredito do PADRAO_DESCONHECIDO, por onde passa toda página fechada por
-    // omissão (ver PREFIXOS_DE_PAGINA). Negar por perfil aqui bloquearia todo
-    // mundo numa página que só precisa de sessão. Mesma semântica de `podeAbrir`.
-    const perfisPermitidos = perfisDaMatriz(forma);
-
     if (!extrairToken(req)) {
         // ============================================
         // O DESTINO VAI NA SESSÃO, NÃO NA URL
@@ -288,7 +280,15 @@ async function autorizar(req, res, next, { config, forma }, pagina404) {
     const usuario = await sessaoDoRequest(req);
     if (!usuario) return res.redirect(302, '/html/login.html');
 
-    if (perfisPermitidos !== null && !perfisPermitidos.includes(usuario.perfil)) {
+    // A decisão inteira é da matriz, em um lugar só — o navegador aplica
+    // exatamente a mesma função. Aqui havia uma reimplementação dela
+    // (`perfisPermitidos !== null && !perfisPermitidos.includes(perfil)`), que
+    // respondia certo enquanto "quem pode abrir" fosse só a lista de perfis;
+    // quando o padrão do desconhecido ganhou o recorte `negados` (Issue #444,
+    // PERFIS_SEM_PAGINAS_DA_ESCOLA), essa cópia teria continuado liberando o
+    // responsável em silêncio. Chamar `podeAbrir` é o que impede o gate e o
+    // guard de divergirem.
+    if (!podeAbrir(usuario.perfil, forma)) {
         logger.warn('Acesso negado a área restrita', {
             arquivo,
             perfil: usuario.perfil,

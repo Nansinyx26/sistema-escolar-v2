@@ -1,0 +1,30 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sistema Escolar — escolas em rede sobre gradiente">
+  <defs>
+    <linearGradient id="e3-fundo" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#10b981"/>
+      <stop offset="0.55" stop-color="#0ea5e9"/>
+      <stop offset="1" stop-color="#6366f1"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="120" fill="url(#e3-fundo)"/>
+  <g transform="translate(256 262) scale(1.32) translate(-256 -235)">
+  <!-- Ligações: cada escola conectada ao mesmo sistema -->
+  <g stroke-width="14" stroke-linecap="round">
+    <path d="M256 256 V150" stroke="#ffffff"/>
+    <path d="M256 256 L150 330" stroke="#ffffff"/>
+    <path d="M256 256 L362 330" stroke="#ffffff"/>
+  </g>
+  <!-- Três escolas -->
+  <g fill="#0f172a">
+    <path d="M212 132 L256 92 L300 132 V176 H212 Z"/>
+    <path d="M106 334 L150 294 L194 334 V378 H106 Z"/>
+    <path d="M318 334 L362 294 L406 334 V378 H318 Z"/>
+  </g>
+  <rect x="244" y="148" width="24" height="28" rx="4" fill="#ffffff"/>
+  <rect x="138" y="350" width="24" height="28" rx="4" fill="#ffffff"/>
+  <rect x="350" y="350" width="24" height="28" rx="4" fill="#ffffff"/>
+  <!-- Núcleo -->
+  <circle cx="256" cy="256" r="42" fill="#0f172a" stroke="#ffffff" stroke-width="10"/>
+  <circle cx="256" cy="256" r="12" fill="#ffffff"/>
+  </g>
+</svg>

@@ -13,13 +13,13 @@
  */
 const http = require('http');
 const WebSocket = require('ws');
-const { MongoMemoryReplSet } = require('mongodb-memory-server');
 const { MongoClient } = require('mongodb');
 const { Server } = require('socket.io');
 const { createAdapter } = require('@socket.io/mongo-adapter');
 
 const presence = require('../realtime/presence');
 const { apagarCredenciaisDoHandshake } = require('../realtime/adapter');
+const { criarReplicaSet, PRAZO_SUBIDA_MS } = require('./mongoMemoria');
 
 let seq = 0;
 const novoId = (prefixo) => `${prefixo}_${Date.now()}_${++seq}`;
@@ -274,7 +274,7 @@ describe('presença entre duas instâncias com o adapter do Mongo', () => {
     }
 
     beforeAll(async () => {
-        replSet = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
+        replSet = await criarReplicaSet(1);
         mongo = new MongoClient(replSet.getUri());
         await mongo.connect();
         const db = mongo.db('adapter_presenca');
@@ -289,7 +289,9 @@ describe('presença entre duas instâncias com o adapter do Mongo', () => {
                 (await A.io.of('/').adapter.serverCount()) === 2 &&
                 (await B.io.of('/').adapter.serverCount()) === 2
         );
-    }, 120000);
+        // A subida do replica set pode tentar mais de uma vez sob carga
+        // (mongoMemoria.js); o resto do preparo mantém os 120 s de antes.
+    }, PRAZO_SUBIDA_MS + 120000);
 
     afterAll(async () => {
         await Promise.all(clientes.map((c) => c.fechar()));

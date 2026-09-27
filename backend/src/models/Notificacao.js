@@ -39,7 +39,15 @@ function normalizePrioridade(value) {
 }
 
 const NotificacaoSchema = new mongoose.Schema({
-    id: { type: String, unique: true },
+    // Índice único em produção sem `sparse`: dois documentos sem `id` colidem
+    // em `{ id: null }` (E11000) e só a primeira notificação do
+    // NotificationService era gravada. O default garante o campo em todo
+    // caminho de criação, sem depender de migração do índice.
+    id: {
+        type: String,
+        unique: true,
+        default: () => `notif_${new mongoose.Types.ObjectId().toHexString()}`,
+    },
     tipo: { type: String, required: true }, // 'informativo', 'alerta', etc.
     categoria: {
         type: String,

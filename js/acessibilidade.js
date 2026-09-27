@@ -282,7 +282,7 @@
         // Posiciona no slot de ações do cabeçalho, ao lado da engrenagem (settings-trigger), ou flutuante
         function posicionarBotao() {
             var slot = document.querySelector(
-                '.header-actions, .header-right, .topbar-actions, .nav-actions, .dashboard-header-actions, .page-header-actions'
+                '.header-actions, .header-right, .topbar-actions, .nav-actions, .dashboard-header-actions, .page-header-actions, .navbar-nav'
             );
             if (slot) {
                 // `[data-acessibilidade-antes]` marca o lugar nos painéis novos

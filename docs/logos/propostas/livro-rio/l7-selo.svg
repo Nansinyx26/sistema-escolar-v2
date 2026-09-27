@@ -1,0 +1,26 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sistema Escolar — selo com livro e rio">
+  <defs>
+    <linearGradient id="l7-anel" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#10b981"/>
+      <stop offset="0.55" stop-color="#0ea5e9"/>
+      <stop offset="1" stop-color="#6366f1"/>
+    </linearGradient>
+    <path id="l7-cima" d="M86 256 A170 170 0 0 1 426 256"/>
+    <path id="l7-baixo" d="M70 256 A186 186 0 0 0 442 256"/>
+    <clipPath id="l7-miolo"><circle cx="256" cy="256" r="140"/></clipPath>
+  </defs>
+  <circle cx="256" cy="256" r="240" fill="url(#l7-anel)"/>
+  <circle cx="256" cy="256" r="146" fill="#0a0a0c"/>
+  <g fill="#ffffff" font-family="Inter, system-ui, sans-serif" font-weight="800">
+    <text font-size="38" text-anchor="middle" letter-spacing="6"><textPath href="#l7-cima" startOffset="50%">SISTEMA ESCOLAR</textPath></text>
+    <text font-size="26" text-anchor="middle" letter-spacing="5"><textPath href="#l7-baixo" startOffset="50%">PORTAL EDUCACIONAL</textPath></text>
+  </g>
+  <circle cx="92" cy="256" r="7" fill="#ffffff"/>
+  <circle cx="420" cy="256" r="7" fill="#ffffff"/>
+  <path d="M256 214 C233.64705882352942 198.7058823529412 203.05882352941177 195.1764705882353 176 199.88235294117646 V265.05882352941177 C203.05882352941177 260.3529411764706 233.64705882352942 263.88235294117646 256 278 C278.3529411764706 263.88235294117646 308.94117647058823 260.3529411764706 336 265.05882352941177 V199.88235294117646 C308.94117647058823 195.1764705882353 278.3529411764706 198.7058823529412 256 214 Z" fill="#ffffff"/>
+  <path d="M256 214 V278" stroke="#0a0a0c" stroke-width="4" stroke-linecap="round"/>
+  <g clip-path="url(#l7-miolo)" stroke-linecap="round" fill="none">
+    <path d="M140 310 C170 294 200 326 256 310 S340 294 372 310" stroke="#0ea5e9" stroke-width="12"/>
+    <path d="M160 338 C188 324 214 352 256 338 S326 324 352 338" stroke="#10b981" stroke-width="10" opacity="0.8"/>
+  </g>
+</svg>

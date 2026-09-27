@@ -1,0 +1,35 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sistema Escolar — seis escolas em rede">
+  <defs>
+    <linearGradient id="r1-no" x1="216" y1="222" x2="296" y2="302" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#10b981"/>
+      <stop offset="1" stop-color="#6366f1"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="120" fill="#0a0a0c"/>
+  <!-- Anel: as escolas também se falam entre si -->
+  <path d="M256 94 L401.5 178 L401.5 346 L256 430 L110.5 346 L110.5 178 Z" stroke="#ffffff" stroke-opacity="0.18" stroke-width="8" stroke-linejoin="round"/>
+  <g stroke-width="12" stroke-linecap="round">
+    <path d="M256 262 L256 94" stroke="#10b981"/>
+    <path d="M256 262 L401.5 178" stroke="#0ea5e9"/>
+    <path d="M256 262 L401.5 346" stroke="#6366f1"/>
+    <path d="M256 262 L256 430" stroke="#10b981"/>
+    <path d="M256 262 L110.5 346" stroke="#0ea5e9"/>
+    <path d="M256 262 L110.5 178" stroke="#6366f1"/>
+  </g>
+  <g fill="#ffffff">
+    <path d="M224 86 L256 57.2 L288 86 V120 H224 Z"/>
+    <path d="M369.5 170 L401.5 141.2 L433.5 170 V204 H369.5 Z"/>
+    <path d="M369.5 338 L401.5 309.2 L433.5 338 V372 H369.5 Z"/>
+    <path d="M224 422 L256 393.2 L288 422 V456 H224 Z"/>
+    <path d="M78.5 338 L110.5 309.2 L142.5 338 V372 H78.5 Z"/>
+    <path d="M78.5 170 L110.5 141.2 L142.5 170 V204 H78.5 Z"/>
+  </g>
+  <rect x="247" y="99.5" width="17.9" height="20.5" rx="3.2" fill="#10b981"/>
+  <rect x="392.5" y="183.5" width="17.9" height="20.5" rx="3.2" fill="#0ea5e9"/>
+  <rect x="392.5" y="351.5" width="17.9" height="20.5" rx="3.2" fill="#6366f1"/>
+  <rect x="247" y="435.5" width="17.9" height="20.5" rx="3.2" fill="#10b981"/>
+  <rect x="101.5" y="351.5" width="17.9" height="20.5" rx="3.2" fill="#0ea5e9"/>
+  <rect x="101.5" y="183.5" width="17.9" height="20.5" rx="3.2" fill="#6366f1"/>
+  <circle cx="256" cy="262" r="42" fill="url(#r1-no)" stroke="#0a0a0c" stroke-width="10"/>
+  <circle cx="256" cy="262" r="12" fill="#ffffff"/>
+</svg>

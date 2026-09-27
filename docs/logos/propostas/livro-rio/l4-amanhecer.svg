@@ -1,0 +1,23 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sistema Escolar — livro no horizonte com sol e rio">
+  <defs>
+    <linearGradient id="l4-sol" x1="256" y1="118" x2="256" y2="300" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fbbf24"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+    <linearGradient id="l4-onda" x1="96" y1="0" x2="416" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#10b981"/>
+      <stop offset="0.5" stop-color="#0ea5e9"/>
+      <stop offset="1" stop-color="#6366f1"/>
+    </linearGradient>
+    <clipPath id="l4-circulo"><circle cx="256" cy="256" r="240"/></clipPath>
+  </defs>
+  <circle cx="256" cy="256" r="240" fill="#0a0a0c"/>
+  <circle cx="256" cy="210" r="92" fill="url(#l4-sol)"/>
+  <path d="M256 214 C214.08823529411765 185.3235294117647 156.73529411764707 178.70588235294116 106 187.52941176470588 V289.7352941176471 C156.73529411764707 280.9117647058823 214.08823529411765 287.52941176470586 256 314 C297.9117647058824 287.52941176470586 355.2647058823529 280.9117647058823 406 289.7352941176471 V187.52941176470588 C355.2647058823529 178.70588235294116 297.9117647058824 185.3235294117647 256 214 Z" fill="#ffffff"/>
+  <path d="M256 214 V314" stroke="#0a0a0c" stroke-width="6" stroke-linecap="round"/>
+  <g clip-path="url(#l4-circulo)" stroke="url(#l4-onda)" stroke-linecap="round" fill="none" transform="translate(0 -4)">
+    <path d="M60 346 C120 316 176 376 256 346 S392 316 452 346" stroke-width="22"/>
+    <path d="M80 392 C136 364 188 420 256 392 S376 364 432 392" stroke-width="18" opacity="0.7"/>
+    <path d="M110 436 C156 414 200 456 256 436 S356 414 402 436" stroke-width="14" opacity="0.45"/>
+  </g>
+</svg>

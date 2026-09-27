@@ -1,10 +1,10 @@
 """
-Gera os icones do PWA a partir de img/logo-jaguari.png.
+Gera os icones do PWA a partir de img/logo.png (render de img/logo.svg).
 
 Os navegadores (Chrome/Edge/Samsung Internet) so exibem "Instalar aplicativo"
 quando o manifest aponta para icones PNG QUADRADOS de 192x192 e 512x512 cujo
-tamanho real bate com o atributo "sizes". O logo original e 521x479 (nao
-quadrado), por isso os icones precisam ser gerados.
+tamanho real bate com o atributo "sizes", e o manifest precisa de varios
+tamanhos e da variante maskable, por isso os icones sao gerados.
 
 Uso: python scripts/generate-pwa-icons.py
 """
@@ -12,7 +12,7 @@ import os
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = os.path.join(ROOT, 'img', 'logo-jaguari.png')
+SRC = os.path.join(ROOT, 'img', 'logo.png')
 OUT_DIR = os.path.join(ROOT, 'img', 'icons')
 
 BG = (9, 9, 11, 255)          # #09090b - fundo oficial do tema escuro

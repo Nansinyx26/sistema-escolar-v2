@@ -132,6 +132,31 @@ const startServer = async () => {
                 logger.warn(`⚠️  ${avisoPolitica2FA}`);
             }
 
+            // 5a-. Conta admin entrando so com senha? O boot conta e avisa.
+            //
+            // O padrao da politica deixa o admin de fora de proposito, para o
+            // rollout ser por conta (docs/2FA-OBRIGATORIO.md). Sem este aviso,
+            // "ainda nao ativei" vira "esqueci" sem ninguem perceber. So a
+            // QUANTIDADE vai para o log. Falha na consulta nao derruba o boot.
+            if (!politica2FA.adminCobertoPelaPolitica()) {
+                require('./models/Usuario')
+                    .countDocuments(politica2FA.filtroAdminSemSegundoFator())
+                    .then((total) => {
+                        const avisoAdmin = politica2FA.avisoAdminSemSegundoFator(total);
+                        if (!avisoAdmin) return;
+                        logger.alert('SEGURANCA_ADMIN_SEM_2FA', avisoAdmin, {
+                            action: 'boot.politica2FA',
+                            contas: total,
+                        });
+                        logger.warn(`⚠️  ${avisoAdmin}`);
+                    })
+                    .catch((err) => {
+                        logger.error('[Boot] Falha ao contar contas admin sem segundo fator', {
+                            err,
+                        });
+                    });
+            }
+
             // 5a-. Onde os dados estao hospedados? O boot registra.
             //
             // A regiao do cluster e escolha de contrato, nao de codigo — mas a

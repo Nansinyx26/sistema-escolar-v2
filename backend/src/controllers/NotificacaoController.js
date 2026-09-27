@@ -4,89 +4,60 @@ const Aluno = require('../models/Aluno');
 const { escolaMatch } = require('../middleware/filtrarPorEscola');
 const { extrairPaginacao } = require('../middleware/pagination');
 const escapeRegex = require('../utils/escapeRegex');
+const { filtroPorId, filtroDoPerfil, paraTurmas } = require('../utils/visibilidadeNotificacao');
 
 /** Regex ancorada e escapada para casar e-mail exato. */
 function emailRegexExato(email) {
     return new RegExp(`^${escapeRegex(String(email || ''))}$`, 'i');
 }
 
+/** Turmas em que o professor dá aula (sala principal, adicionais e lista). */
+async function turmasDoProfessor(userId) {
+    const professor = await Professor.findOne({ idUsuario: userId }).lean();
+    if (!professor) return [];
+    const turmas = [];
+    if (professor.salaPrincipal) turmas.push(professor.salaPrincipal);
+    if (Array.isArray(professor.salasAdicionais)) turmas.push(...professor.salasAdicionais);
+    if (Array.isArray(professor.turmas)) turmas.push(...professor.turmas);
+    return [...new Set(turmas.filter(Boolean))];
+}
+
+/** Destinatários que alcançam os filhos do responsável: turmas e ids dos alunos. */
+async function destinatariosDaFamilia(email) {
+    if (!email) return [];
+    const alunos = await Aluno.find({ responsavel: emailRegexExato(email) }).lean();
+    const lista = [];
+    for (const a of alunos) {
+        lista.push(...paraTurmas([a.turma || a.turmaId]));
+        lista.push(String(a._id));
+        if (a.id) lista.push(String(a.id));
+    }
+    return lista;
+}
+
+/**
+ * Filtro final do sino para a sessão: visibilidade por perfil × escola ativa.
+ * O mesmo filtro serve à leitura e às escritas.
+ */
+async function filtroDaSessao(req) {
+    const perfil = req.user?.perfil || '';
+    const userId = String(req.user?._id || req.user?.id || '');
+    const ctx = { perfil, userId };
+    if (perfil === 'professor') ctx.turmas = await turmasDoProfessor(userId);
+    if (perfil === 'responsavel') ctx.familia = await destinatariosDaFamilia(req.user?.email);
+
+    const filtro = filtroDoPerfil(ctx);
+    // Multi-escola: filtro tolerante (escola ativa + legados sem escolaId).
+    const escolaFilter = escolaMatch(req.escolaId);
+    const temEscola = escolaFilter && Object.keys(escolaFilter).length > 0;
+    return temEscola ? { $and: [filtro, escolaFilter] } : filtro;
+}
+
 module.exports = {
     async getAll(req, res) {
         try {
-            const userPerfil = req.user?.perfil || '';
             const userId = String(req.user?._id || req.user?.id || '');
-            let filter = {};
-            // Multi-escola: filtro tolerante (escola ativa + registros legados
-            // sem escolaId/'default'), aplicado ao final sobre o filtro por perfil.
-            const escolaFilter = escolaMatch(req.escolaId);
-
-            // Filtrar notificações por perfil do usuário logado
-            if (userPerfil === 'professor') {
-                // Professor vê:
-                // 1. Avisos liberados pela direção aos responsáveis (paraResponsavel: true)
-                // 2. Avisos internos de funcionários (paraResponsavel != true) direcionados a 'todos', 'professores', ou suas turmas
-                const professor = await Professor.findOne({ idUsuario: userId }).lean();
-                let professorTurmas = [];
-                if (professor) {
-                    if (professor.salaPrincipal) professorTurmas.push(professor.salaPrincipal);
-                    if (Array.isArray(professor.salasAdicionais))
-                        professorTurmas.push(...professor.salasAdicionais);
-                    if (Array.isArray(professor.turmas)) professorTurmas.push(...professor.turmas);
-                }
-                professorTurmas = [...new Set(professorTurmas.filter(Boolean))];
-
-                filter = {
-                    $or: [
-                        { paraResponsavel: true },
-                        {
-                            paraResponsavel: { $ne: true },
-                            destinatarios: { $in: ['todos', 'professores', ...professorTurmas] },
-                        },
-                    ],
-                };
-            } else if (userPerfil === 'diretor') {
-                // Diretor gerencia tudo, mas vê por padrão avisos administrativos (todos, diretores) e avisos enviados aos pais
-                filter = {
-                    $or: [
-                        { paraResponsavel: true },
-                        {
-                            paraResponsavel: { $ne: true },
-                            destinatarios: { $in: ['todos', 'diretores'] },
-                        },
-                    ],
-                };
-            } else if (userPerfil === 'responsavel') {
-                // Responsável/Pai NUNCA vê notificações internas de funcionários
-                // Só vê notificações marcadas com paraResponsavel: true filtradas pelas informações vinculadas
-                const email = req.user?.email;
-                if (email) {
-                    // Regex escapada: e-mails com metacaracteres (o próprio
-                    // responsável pode trocar o seu em updateProfile) casariam
-                    // com os alunos de outras famílias.
-                    const query = { responsavel: emailRegexExato(email) };
-                    const alunos = await Aluno.find(query).lean();
-                    const destinatariosList = ['todos'];
-                    alunos.forEach((a) => {
-                        const turmaId = a.turma || a.turmaId;
-                        if (turmaId) destinatariosList.push(turmaId);
-                        destinatariosList.push(String(a._id));
-                        if (a.id) destinatariosList.push(String(a.id));
-                    });
-
-                    filter = {
-                        paraResponsavel: true,
-                        destinatarios: { $in: destinatariosList },
-                    };
-                } else {
-                    filter = { paraResponsavel: true, destinatarios: 'todos' };
-                }
-            } else if (userPerfil === 'admin') {
-                // Admin vê tudo sem filtros
-                filter = {};
-            }
-
-            const temEscolaFilter = escolaFilter && Object.keys(escolaFilter).length > 0;
-            const filtroFinal = temEscolaFilter ? { $and: [filter, escolaFilter] } : filter;
+            const filtroFinal = await filtroDaSessao(req);
 
             const paginacao = extrairPaginacao(req.query);
             let notificacoes;
@@ -130,7 +101,9 @@ module.exports = {
     async create(req, res) {
         try {
             const userPerfil = req.user?.perfil || '';
-            const data = req.body;
+            const data = { ...req.body };
+            // `id` é gerado pelo model; aceitar do corpo abria colisão no índice único.
+            delete data.id;
 
             // Regra 6: Professores NÃO podem enviar notificações diretamente para responsáveis.
             if (
@@ -142,11 +115,6 @@ module.exports = {
                     success: false,
                     error: 'Acesso negado. Apenas diretores e administradores podem enviar avisos aos responsáveis/pais.',
                 });
-            }
-
-            // Ensure ID exists
-            if (!data.id) {
-                data.id = `notif_${Date.now()}`;
             }
 
             // Atribui o nome do remetente (diretor/admin que enviou)
@@ -172,7 +140,7 @@ module.exports = {
             const { id } = req.params;
 
             // Multi-escola: só apaga notificação da escola ativa (admin vê tudo)
-            const filtro = { $or: [{ _id: String(id) }, { id: String(id) }] };
+            const filtro = filtroPorId(id);
             const escolaFilter = req.user?.perfil === 'admin' ? {} : escolaMatch(req.escolaId);
             const filtroFinal = Object.keys(escolaFilter).length
                 ? { $and: [filtro, escolaFilter] }
@@ -210,7 +178,11 @@ module.exports = {
             if (!userId) {
                 return res.status(401).json({ success: false, error: 'Não autenticado' });
             }
-            const notificacao = await Notificacao.findOne({ $or: [{ _id: id }, { id: id }] });
+            // Só o que a pessoa enxerga: marcar como lida é escrita, e o escopo
+            // precisa ser o mesmo da leitura.
+            const notificacao = await Notificacao.findOne({
+                $and: [filtroPorId(id), await filtroDaSessao(req)],
+            });
             if (!notificacao) {
                 return res
                     .status(404)
@@ -236,63 +208,7 @@ module.exports = {
             if (!userId) {
                 return res.status(401).json({ success: false, error: 'Não autenticado' });
             }
-            const userPerfil = req.user?.perfil || '';
-            let filter = {};
-
-            if (userPerfil === 'professor') {
-                const professor = await Professor.findOne({ idUsuario: userId }).lean();
-                let professorTurmas = [];
-                if (professor) {
-                    if (professor.salaPrincipal) professorTurmas.push(professor.salaPrincipal);
-                    if (Array.isArray(professor.salasAdicionais))
-                        professorTurmas.push(...professor.salasAdicionais);
-                    if (Array.isArray(professor.turmas)) professorTurmas.push(...professor.turmas);
-                }
-                professorTurmas = [...new Set(professorTurmas.filter(Boolean))];
-                filter = {
-                    $or: [
-                        { paraResponsavel: true },
-                        {
-                            paraResponsavel: { $ne: true },
-                            destinatarios: { $in: ['todos', 'professores', ...professorTurmas] },
-                        },
-                    ],
-                };
-            } else if (userPerfil === 'diretor') {
-                filter = {
-                    $or: [
-                        { paraResponsavel: true },
-                        {
-                            paraResponsavel: { $ne: true },
-                            destinatarios: { $in: ['todos', 'diretores'] },
-                        },
-                    ],
-                };
-            } else if (userPerfil === 'responsavel') {
-                const email = req.user?.email;
-                const query = { responsavel: emailRegexExato(email) };
-                const alunos = await Aluno.find(query).lean();
-                const destinatariosList = ['todos'];
-                alunos.forEach((a) => {
-                    const turmaId = a.turma || a.turmaId;
-                    if (turmaId) destinatariosList.push(turmaId);
-                    destinatariosList.push(String(a._id));
-                    if (a.id) destinatariosList.push(String(a.id));
-                });
-                filter = {
-                    paraResponsavel: true,
-                    destinatarios: { $in: destinatariosList },
-                };
-            } else if (userPerfil === 'admin') {
-                filter = {};
-            }
-
-            // Add userId to lido of all notifications matching filter that don't already have it
-            const escolaFilter = escolaMatch(req.escolaId);
-            const baseFilter =
-                escolaFilter && Object.keys(escolaFilter).length > 0
-                    ? { $and: [filter, escolaFilter] }
-                    : filter;
+            const baseFilter = await filtroDaSessao(req);
             await Notificacao.updateMany(
                 { ...baseFilter, lido: { $ne: String(userId) } },
                 { $push: { lido: String(userId) } }

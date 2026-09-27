@@ -108,6 +108,40 @@ const AREAS = {
         perfis: ['admin', 'diretor', 'secretaria', 'professor', 'responsavel'],
     },
 
+    // ── Páginas que são DA PESSOA, não da escola ─────────────────────────
+    // Estas duas vivem em `/html` por acidente de organização: nenhuma mostra
+    // dado da escola, e as duas são alcançadas por QUALQUER perfil, inclusive o
+    // responsável, que não mora aqui.
+    //
+    // Antes da Issue #444 elas não precisavam ser declaradas — o padrão do
+    // desconhecido já liberava para qualquer autenticado. Com o recorte de
+    // `PERFIS_SEM_PAGINAS_DA_ESCOLA`, ficar de fora passou a significar TRANCAR
+    // o responsável fora delas, e nos dois casos isso prenderia a pessoa:
+    //
+    //   • `mudar-senha.html` é para onde o próprio login manda quem tem troca
+    //     obrigatória (`getRedirectPath`: `deveMudarSenha` tem precedência sobre
+    //     o painel). Uma conta de família criada por admin nasce com esse campo
+    //     ligado (`UserController.create`), então ela cairia num 404 no primeiro
+    //     acesso, sem caminho nenhum para trocar a senha e entrar.
+    //
+    //   • `termo-audio-imagem.html` é o aceite do Termo de Áudio e Imagem,
+    //     alcançado a partir do chat (`js/termo-audio-imagem.js`, link no
+    //     cabeçalho de `conversas.html`). O responsável usa o chat; sem esta
+    //     página ele veria os botões de áudio e anexo travados e não teria onde
+    //     aceitar o Termo que os destrava.
+    //
+    // Os perfis são ENUMERADOS, e não derivados do enum de `models/Usuario.js`,
+    // pelo mesmo motivo de `conversas.html`: hoje a lista cobre todos, então na
+    // prática o gate significa "precisa estar autenticado" — mas um perfil novo
+    // precisa ser acrescentado aqui de propósito, em vez de ganhar as páginas de
+    // graça. `paginasAdmin.test.js` cobra que a lista cubra o enum inteiro.
+    '/html/mudar-senha.html': {
+        perfis: ['admin', 'diretor', 'secretaria', 'professor', 'responsavel'],
+    },
+    '/html/termo-audio-imagem.html': {
+        perfis: ['admin', 'diretor', 'secretaria', 'professor', 'responsavel'],
+    },
+
     // ── Painel unificado ─────────────────────────────────────────────────
     // O dashboard se adapta ao perfil que o abre (professor, diretor, admin) e
     // NUNCA conferiu qual era esse perfil. Um responsável que chegasse aqui —
@@ -238,6 +272,50 @@ const PAGINAS_PUBLICAS = Object.freeze([
 const PREFIXOS_DE_PAGINA = Object.freeze(['/html', '/detalhes', '/direcao', '/graficos']);
 
 /**
+ * Perfis que NÃO moram nas páginas da escola.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ * POR QUE ESTA LISTA EXISTE (Issue #444)
+ * ─────────────────────────────────────────────────────────────────────────
+ * A Issue #429 fechou a PORTA: conta de responsável não autentica mais no portal
+ * da escola (`utils/portalDeLogin.js`). Quem entra pelo portal DELA, no entanto,
+ * recebe cookie no mesmo domínio — e caía no padrão do desconhecido, que é
+ * "basta estar autenticado". Toda tela da escola que a matriz não listasse
+ * nominalmente abria para a conta de família: `/html/turma.html`,
+ * `/html/planilha-faltas.html`, `/html/lista-professores.html`,
+ * `/html/meu-horario.html`, `/html/frequencia-professores.html` — as telas do
+ * professor, inteiras.
+ *
+ * O dado não vazava (as rotas têm `authorize(...)` e a página é casca), mas a
+ * pessoa entrava numa interface que não é a dela, e a conta de família passava a
+ * ver a estrutura interna da escola: endpoints chamados, nomes de campo, regra
+ * de negócio no JS.
+ *
+ * O responsável mora FORA destes prefixos: o Portal do Responsável é servido de
+ * `/portal-responsavel/dist`, que é diretório de asset e nem passa pelo gate.
+ * Dentro de `/html`, `/detalhes`, `/direcao` e `/graficos` ele alcança
+ * exatamente duas páginas, as duas declaradas: a tela de conversas (em `AREAS`)
+ * e a política de privacidade (em `PAGINAS_PUBLICAS`). São as únicas para as
+ * quais o portal tem link — ver `Header.tsx` e `LoginResponsavel.tsx`.
+ *
+ * ─────────────────────────────────────────────────────────────────────────
+ * POR QUE NEGAR POR PERFIL, EM VEZ DE LISTAR OS PERMITIDOS
+ * ─────────────────────────────────────────────────────────────────────────
+ * Porque a área administrativa não vai para o navegador (ver `matrizPublicavel`)
+ * e cai justamente neste padrão. Trocar `perfis: null` por uma lista de
+ * permitidos bloquearia o admin na própria área dele — foi por isso que o campo
+ * nasceu `null`, e continua `null`. O que muda é o recorte: "qualquer
+ * autenticado, MENOS quem não mora aqui".
+ *
+ * O custo dessa forma é conhecido e aceito: um perfil novo no enum de
+ * `models/Usuario.js` nasce ALCANÇANDO as páginas da escola, e só para de
+ * alcançá-las se for escrito aqui. Vale para `responsavel` porque a alternativa
+ * — enumerar os permitidos — quebra o admin hoje, com certeza, em troca de um
+ * perfil que talvez nunca exista.
+ */
+const PERFIS_SEM_PAGINAS_DA_ESCOLA = Object.freeze(['responsavel']);
+
+/**
  * Veredito de uma página que a matriz não conhece.
  *
  * `perfis: null` significa "qualquer perfil autenticado serve" — e não "todos
@@ -245,8 +323,15 @@ const PREFIXOS_DE_PAGINA = Object.freeze(['/html', '/detalhes', '/direcao', '/gr
  * o enum crescesse. Falha FECHADA em relação ao anônimo, ABERTA em relação ao
  * perfil: negar por perfil aqui bloquearia o admin na própria área dele, já que
  * é exatamente ela que não vai para o navegador.
+ *
+ * `negados` é o recorte dessa abertura: quem não mora nas páginas da escola não
+ * entra nelas por omissão. Ver `PERFIS_SEM_PAGINAS_DA_ESCOLA`.
  */
-const PADRAO_DESCONHECIDO = Object.freeze({ exigeSessao: true, perfis: null });
+const PADRAO_DESCONHECIDO = Object.freeze({
+    exigeSessao: true,
+    perfis: null,
+    negados: PERFIS_SEM_PAGINAS_DA_ESCOLA,
+});
 
 /**
  * Normaliza um caminho para comparação: barras invertidas viram barras, barras
@@ -326,9 +411,14 @@ function perfisPermitidos(caminho) {
  * Veredito completo sobre um caminho, na forma que servidor e navegador
  * consultam.
  *
+ * `negados` só é preenchido no padrão do desconhecido: uma área declarada já
+ * diz quem entra em `perfis`, e negar de novo ali seria escrever a mesma regra
+ * duas vezes — com o risco de as duas discordarem.
+ *
  * @param {string} caminho
  * @returns {{publica: boolean, exigeSessao: boolean, perfis: string[]|null,
- *            redirecionarAoPainel: boolean, semSessao: boolean}}
+ *            negados: string[], redirecionarAoPainel: boolean,
+ *            semSessao: boolean}}
  */
 function vereditoDe(caminho) {
     const alvo = normalizarCaminho(caminho);
@@ -353,6 +443,7 @@ function vereditoDe(caminho) {
             publica: false,
             exigeSessao: false,
             perfis: null,
+            negados: [],
             redirecionarAoPainel: false,
             semSessao: true,
         };
@@ -364,6 +455,7 @@ function vereditoDe(caminho) {
             publica: false,
             exigeSessao: true,
             perfis: perfisPermitidos(alvo),
+            negados: [],
             redirecionarAoPainel: regra.config.redirecionarAoPainel === true,
             semSessao: false,
         };
@@ -374,6 +466,7 @@ function vereditoDe(caminho) {
             publica: true,
             exigeSessao: false,
             perfis: null,
+            negados: [],
             redirecionarAoPainel: false,
             semSessao: false,
         };
@@ -383,6 +476,7 @@ function vereditoDe(caminho) {
         publica: false,
         exigeSessao: PADRAO_DESCONHECIDO.exigeSessao,
         perfis: PADRAO_DESCONHECIDO.perfis,
+        negados: PADRAO_DESCONHECIDO.negados.slice(),
         redirecionarAoPainel: false,
         semSessao: false,
     };
@@ -404,6 +498,9 @@ function podeAbrir(perfil, caminho) {
         .trim()
         .toLowerCase();
     if (!chave) return false;
+    // A negação vem ANTES da abertura: é ela que recorta o "basta estar
+    // autenticado" do padrão do desconhecido. Ver PERFIS_SEM_PAGINAS_DA_ESCOLA.
+    if (veredito.negados?.includes(chave)) return false;
     if (veredito.perfis === null) return true; // basta estar autenticado
     return veredito.perfis.includes(chave);
 }
@@ -450,6 +547,10 @@ function matrizPublicavel() {
         areas,
         publicas: PAGINAS_PUBLICAS.slice(),
         semSessao: PAGINAS_SEM_SESSAO.slice(),
+        // Quem NÃO abre página da escola que não esteja declarada para ele. O
+        // guard precisa da mesma lista para não revelar uma tela que o servidor
+        // não entregaria — ver PERFIS_SEM_PAGINAS_DA_ESCOLA.
+        semPaginasDaEscola: PERFIS_SEM_PAGINAS_DA_ESCOLA.slice(),
         // O guard precisa saber para ONDE mandar quem não pode abrir a página.
         // Sem isto ele só saberia negar, e negar sem destino é a tela de erro
         // que `redirecionarAoPainel` existe para evitar.
@@ -466,6 +567,7 @@ module.exports = {
     AREAS,
     PAGINAS_PUBLICAS,
     PAGINAS_SEM_SESSAO,
+    PERFIS_SEM_PAGINAS_DA_ESCOLA,
     PREFIXOS_DE_PAGINA,
     normalizarCaminho,
     regraDe,

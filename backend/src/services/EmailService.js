@@ -22,7 +22,7 @@ exports.sendNotificationEmail = async (to, subject, title, summary, link) => {
     const html = `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 10px; overflow: hidden;">
         <div style="background: #06b6d4; padding: 20px; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">Escola Jaguari</h1>
+            <h1 style="color: white; margin: 0; font-size: 24px;">Sistema Escolar</h1>
         </div>
         <div style="padding: 30px;">
             <h2 style="color: #333; margin-top: 0;">${title}</h2>
@@ -51,7 +51,7 @@ exports.sendVerificationCode = async (to, code, userName) => {
     const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 10px; overflow: hidden;">
         <div style="background: #06b6d4; padding: 20px; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">Escola Jaguari</h1>
+            <h1 style="color: white; margin: 0; font-size: 24px;">Sistema Escolar</h1>
         </div>
         <div style="padding: 30px;">
             <h2 style="color: #333; margin-top: 0;">Recuperação de Senha</h2>
@@ -69,7 +69,8 @@ exports.sendVerificationCode = async (to, code, userName) => {
     </div>
     `;
 
-    const r = await enviarEmail(to, 'Código de recuperação de senha — Escola Jaguari', html);
-    if (!r.ok) logger.error(`[EmailService] Código de recuperação não entregue (${r.etapa}): ${r.erro}`);
+    const r = await enviarEmail(to, 'Código de recuperação de senha — Sistema Escolar', html);
+    if (!r.ok)
+        logger.error(`[EmailService] Código de recuperação não entregue (${r.etapa}): ${r.erro}`);
     return r.ok;
 };

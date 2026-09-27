@@ -91,6 +91,17 @@
             '/html/conversas.html': {
                 perfis: ['admin', 'diretor', 'secretaria', 'professor', 'responsavel'],
             },
+            // Páginas DA PESSOA, não da escola: a troca de senha obrigatória e o
+            // aceite do Termo de Áudio e Imagem. Declaradas porque o recorte de
+            // `semPaginasDaEscola` trancaria o responsável fora das duas — e as
+            // duas são justamente onde ele precisaria entrar para se desbloquear.
+            // O motivo completo está no backend, em `AREAS`.
+            '/html/mudar-senha.html': {
+                perfis: ['admin', 'diretor', 'secretaria', 'professor', 'responsavel'],
+            },
+            '/html/termo-audio-imagem.html': {
+                perfis: ['admin', 'diretor', 'secretaria', 'professor', 'responsavel'],
+            },
             '/html/dashboard.html': {
                 perfis: ['admin', 'diretor', 'professor', 'secretaria'],
                 redirecionarAoPainel: true,
@@ -133,6 +144,12 @@
             '/html/pages/primeiro-acesso.html',
         ],
         semSessao: ['entrar.html'],
+        // Quem NÃO abre página da escola que não esteja declarada para ele. O
+        // responsável mora em /portal-responsavel/dist, fora destes prefixos, e
+        // dentro de /html alcança só as duas páginas declaradas acima (conversas
+        // e a política de privacidade, que é pública). Ver
+        // PERFIS_SEM_PAGINAS_DA_ESCOLA no backend — Issue #444.
+        semPaginasDaEscola: ['responsavel'],
         paineis: {
             admin: '/html/dashboard.html',
             diretor: '/html/dashboard.html',
@@ -188,7 +205,13 @@
         // que este espelho não reconhece. O raciocínio inteiro está na função
         // equivalente do backend.
         if (MATRIZ.semSessao.indexOf(arquivo) !== -1) {
-            return { publica: false, exigeSessao: false, perfis: null, aoPainel: false };
+            return {
+                publica: false,
+                exigeSessao: false,
+                perfis: null,
+                negados: [],
+                aoPainel: false,
+            };
         }
 
         for (prefixo in MATRIZ.areas) {
@@ -201,17 +224,38 @@
                 publica: false,
                 exigeSessao: true,
                 perfis: excecao || config.perfis,
+                // Área declarada já diz quem entra em `perfis`; negar de novo
+                // aqui escreveria a mesma regra duas vezes. Mesmo recorte do
+                // backend.
+                negados: [],
                 aoPainel: config.redirecionarAoPainel === true,
             };
         }
 
         if (MATRIZ.publicas.indexOf(alvo) !== -1) {
-            return { publica: true, exigeSessao: false, perfis: null, aoPainel: false };
+            return {
+                publica: true,
+                exigeSessao: false,
+                perfis: null,
+                negados: [],
+                aoPainel: false,
+            };
         }
 
-        // Desconhecido: exige sessão, não exige perfil. Ver PADRAO_DESCONHECIDO
-        // no backend.
-        return { publica: false, exigeSessao: true, perfis: null, aoPainel: false };
+        // Desconhecido: exige sessão, não exige perfil — MENOS quem não mora nas
+        // páginas da escola. Ver PADRAO_DESCONHECIDO no backend.
+        //
+        // O `|| []` não é paranoia: `MATRIZ` é substituída em
+        // `reconciliarComServidor` pelo que a API devolve, e um servidor anterior
+        // a esta regra não manda o campo. Sem o fallback, o guard quebraria no
+        // `indexOf` e a tela ficaria escondida até o prazo.
+        return {
+            publica: false,
+            exigeSessao: true,
+            perfis: null,
+            negados: MATRIZ.semPaginasDaEscola || [],
+            aoPainel: false,
+        };
     }
 
     function painelDoPerfil(perfil) {
@@ -320,8 +364,12 @@
     function permitido(veredito, perfil) {
         if (veredito.publica || !veredito.exigeSessao) return true;
         if (!perfil) return false;
+        var chave = String(perfil).trim().toLowerCase();
+        // A negação vem ANTES da abertura, como no backend: é ela que recorta o
+        // "basta estar autenticado" do padrão do desconhecido.
+        if (veredito.negados && veredito.negados.indexOf(chave) !== -1) return false;
         if (veredito.perfis === null) return true; // basta estar autenticado
-        return veredito.perfis.indexOf(String(perfil).trim().toLowerCase()) !== -1;
+        return veredito.perfis.indexOf(chave) !== -1;
     }
 
     /** Para onde mandar quem foi barrado. */

@@ -19,7 +19,7 @@
 // linha, e o CI roda essa verificação. O script lê a lista daqui de baixo —
 // não mantém cópia — então acrescentar um asset já o coloca sob a regra.
 // Detalhes em docs/QUALITY.md, seção "Service worker: o bump do VERSION".
-const VERSION = 'v28';
+const VERSION = 'v33';
 const STATIC_CACHE = `escola-static-${VERSION}`;
 const PAGES_CACHE = `escola-pages-${VERSION}`;
 const CURRENT_CACHES = [STATIC_CACHE, PAGES_CACHE];
@@ -228,7 +228,7 @@ self.addEventListener('fetch', (event) => {
 // PUSH NOTIFICATIONS
 // ============================================
 self.addEventListener('push', (event) => {
-    let data = { title: 'Escola Jaguari', body: 'Você tem uma nova atualização.' };
+    let data = { title: 'Sistema Escolar', body: 'Você tem uma nova atualização.' };
     if (event.data) {
         try {
             data = event.data.json();
@@ -242,13 +242,17 @@ self.addEventListener('push', (event) => {
         icon: data.icon || '/img/icons/icon-192.png',
         badge: '/img/icons/icon-96.png',
         vibrate: [100, 50, 100],
-        // Reabre a mesma notificação em vez de empilhar duplicatas do mesmo aviso
-        tag: data.data?.id ? String(data.data.id) : undefined,
-        renotify: true,
         data: {
             url: data.data?.url || data.url || '/',
         },
     };
+    // Reabre a mesma notificação em vez de empilhar duplicatas do mesmo aviso.
+    // `renotify: true` sem `tag` faz `showNotification` lançar TypeError — o
+    // push chegava e não aparecia nada. Os dois só entram juntos.
+    if (data.data?.id) {
+        options.tag = String(data.data.id);
+        options.renotify = true;
+    }
 
     event.waitUntil(self.registration.showNotification(data.title, options));
 });
@@ -257,7 +261,10 @@ self.addEventListener('notificationclick', (event) => {
     event.notification.close();
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-            const targetUrl = event.notification.data.url;
+            // `client.url` é absoluta; o link do push é relativo. Comparar as
+            // duas cruas nunca casava e cada clique abria uma aba nova.
+            const targetUrl = new URL(event.notification.data?.url || '/', self.location.origin)
+                .href;
             for (const client of clientList) {
                 if (client.url === targetUrl && 'focus' in client) return client.focus();
             }

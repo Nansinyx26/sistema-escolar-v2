@@ -607,14 +607,14 @@ body.ap-body {
    ========================================================================== */
 .ap-master-detail-grid {
     display: grid;
-    grid-template-columns: 380px 1fr;
+    grid-template-columns: 380px minmax(0, 1fr);
     gap: 1.5rem;
     align-items: start;
 }
 
 @media (max-width: 1100px) {
     .ap-master-detail-grid {
-        grid-template-columns: 320px 1fr;
+        grid-template-columns: 320px minmax(0, 1fr);
     }
 }
 
@@ -1337,6 +1337,126 @@ body.ap-body {
 :root[data-theme="light"]:not(.high-contrast) body.ap-body .btn-voltar-global[class]:hover * {
     color: var(--btn-voltar-hover-text) !important;
     -webkit-text-fill-color: var(--btn-voltar-hover-text) !important;
+}
+
+/* ==========================================================================
+   9b. RESPONSIVO — TABLET E CELULAR (#457)
+   A sidebar de 240px ocupava metade da tela no celular. Abaixo de 900px ela
+   vira uma faixa no topo com o menu rolando na horizontal — sem JS novo e sem
+   esconder nenhum destino.
+   ========================================================================== */
+@media (max-width: 900px) {
+    .ap-app-layout {
+        flex-direction: column;
+    }
+
+    .ap-sidebar {
+        width: 100%;
+        border-right: 0;
+        border-bottom: 1px solid var(--ap-border);
+    }
+
+    .ap-sidebar-brand {
+        padding: 0.85rem 1rem 0.35rem;
+    }
+
+    .ap-sidebar-menu {
+        flex-direction: row;
+        overflow-x: auto;
+        scrollbar-width: none;
+        padding: 0.35rem 0.75rem 0.75rem;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .ap-sidebar-menu::-webkit-scrollbar {
+        display: none;
+    }
+
+    .ap-menu-item a {
+        white-space: nowrap;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .ap-sidebar-footer {
+        display: none;
+    }
+
+    .ap-top-header {
+        height: auto;
+        padding: 0.75rem 1rem;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+
+    .ap-page-content {
+        padding: 1.25rem 1rem 2rem;
+    }
+
+    /* `1fr` sozinho é `minmax(auto, 1fr)`: a coluna crescia até a largura
+       das tabelas do detalhe. A tabela rola no próprio contêiner. */
+    .ap-master-detail-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .ap-master-col,
+    .ap-detail-col {
+        min-width: 0;
+    }
+
+    .ap-table-container {
+        contain: inline-size;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .ap-tabs-nav {
+        overflow-x: auto;
+        scrollbar-width: none;
+        gap: 1rem;
+    }
+
+    .ap-tab-btn {
+        white-space: nowrap;
+    }
+
+    /* Cartão do aluno: perfil em cima, selo de status embaixo */
+    .ap-student-detail-card {
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .ap-header-left {
+        flex: 1 1 100%;
+        gap: 0.75rem !important;
+    }
+
+    .ap-search-global {
+        flex: 1;
+        width: auto;
+        min-width: 0;
+    }
+
+    .ap-user-actions {
+        flex: 1 1 100%;
+        justify-content: flex-end;
+        gap: 0.85rem;
+    }
+
+    .ap-filter-search {
+        min-width: 0;
+        flex-basis: 100%;
+    }
+
+    .ap-header-titles h1 {
+        font-size: 1.2rem;
+    }
+
+    :root[data-theme="light"] .ap-app-layout {
+        padding: 8px;
+        gap: 8px;
+    }
 }
 
 /* ==========================================================================

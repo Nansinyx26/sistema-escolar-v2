@@ -1,0 +1,15 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sistema Escolar — livro e rio em traço">
+  <defs>
+    <linearGradient id="l6-traco" x1="60" y1="60" x2="452" y2="452" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#10b981"/>
+      <stop offset="0.5" stop-color="#0ea5e9"/>
+      <stop offset="1" stop-color="#6366f1"/>
+    </linearGradient>
+  </defs>
+  <g stroke="url(#l6-traco)" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M256 150 C208.5 117.5 143.5 110 86 120 V262.5 C143.5 252.5 208.5 260 256 290 C303.5 260 368.5 252.5 426 262.5 V120 C368.5 110 303.5 117.5 256 150 Z" stroke-width="20"/>
+    <path d="M256 150 V290" stroke-width="14"/>
+    <path d="M56 360 C120 326 180 394 256 360 S392 326 456 360" stroke-width="22"/>
+    <path d="M96 420 C150 392 200 448 256 420 S362 392 416 420" stroke-width="18"/>
+  </g>
+</svg>

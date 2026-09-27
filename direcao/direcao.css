@@ -575,6 +575,12 @@ select:focus {
         margin: 0 4px;
     }
 
+    /* O `.container` do Tailwind (carregado depois deste arquivo) fixa
+       `width: 100%`; somado à margem, a caixa passava 4px da tela (#457). */
+    .main-content > .container {
+        width: auto;
+    }
+
     /* Stat card inside the security panel */
     .stats-grid .stat-card[style*="grid-column: 1 / -1"] {
         flex-direction: column;

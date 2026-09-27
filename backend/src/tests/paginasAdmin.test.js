@@ -33,6 +33,13 @@ const PAGINAS_SO_ADMIN = [
     '/html/admin/codigos-backup.html',
 ];
 
+/**
+ * Páginas que ficam em `/html` mas são DA PESSOA, e não da escola: a troca de
+ * senha obrigatória e o aceite do Termo de Áudio e Imagem. Declaradas na matriz
+ * para todos os perfis (Issue #444) — o motivo de cada uma está em `AREAS`.
+ */
+const PAGINAS_DA_PESSOA = ['/html/mudar-senha.html', '/html/termo-audio-imagem.html'];
+
 const { assinarTokenSessao } = require('../utils/sessionToken');
 
 /**
@@ -347,5 +354,81 @@ describe('Tela de conversas', () => {
     it('o gate do arquivo nao alcanca outras paginas de /html', async () => {
         const res = await request(app).get('/html/login.html');
         expect(res.status).toBe(200);
+    });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// PÁGINAS DA ESCOLA × CONTA DE FAMÍLIA (Issue #444)
+// ─────────────────────────────────────────────────────────────────────────
+// A Issue #429 fechou a PORTA: conta de responsável não autentica mais no portal
+// da escola. Mas quem entra pelo portal DELA recebe cookie no mesmo domínio, e
+// estas páginas não estão em `AREAS` — caíam no padrão do desconhecido, que é
+// "basta estar autenticado". O HTML do professor saía inteiro para a família.
+//
+// Os testes usam `sessaoDe`, que assina o token direto: o ponto aqui é o gate de
+// PÁGINA diante de uma sessão legítima de responsável, não o login (esse tem
+// `loginPorPortal.test.js`). É justamente a sessão que o portal emite.
+describe('Páginas da escola: sessão de responsável não entra', () => {
+    const PAGINAS_DA_ESCOLA = [
+        '/html/turma.html',
+        '/html/planilha-faltas.html',
+        '/html/lista-professores.html',
+        '/html/meu-horario.html',
+        '/html/frequencia-professores.html',
+        '/detalhes/alunos.html',
+    ];
+
+    it.each(PAGINAS_DA_ESCOLA)('nao entrega %s ao responsavel', async (pagina) => {
+        const cookies = await sessaoDe('responsavel', 'resp_escola_gate@escola.test');
+
+        const res = await request(app).get(pagina).set('Cookie', cookies);
+
+        // 404 e não 403: mesma resposta que o gate dá em toda negação por
+        // perfil — um 403 confirmaria que a página existe.
+        expect(res.status).toBe(404);
+    });
+
+    it.each(PAGINAS_DA_ESCOLA)('continua entregando %s ao professor', async (pagina) => {
+        const cookies = await sessaoDe('professor', 'prof_escola_gate@escola.test');
+
+        const res = await request(app).get(pagina).set('Cookie', cookies);
+
+        expect(res.status).toBe(200);
+    });
+
+    // As duas páginas para as quais o Portal do Responsável tem link. Se uma
+    // delas fechar, o portal ganha um link que leva a lugar nenhum.
+    it('o responsavel continua abrindo a tela de conversas', async () => {
+        const cookies = await sessaoDe('responsavel', 'resp_conv@escola.test');
+
+        const res = await request(app).get('/html/conversas.html').set('Cookie', cookies);
+
+        expect(res.status).toBe(200);
+    });
+
+    it('a politica de privacidade segue publica, inclusive sem sessao', async () => {
+        const res = await request(app).get('/html/politica-privacidade.html');
+
+        expect(res.status).toBe(200);
+    });
+
+    // Mesma cobrança que existe para `conversas.html`, e pelo mesmo motivo: a
+    // lista de perfis é escrita à mão para que um perfil novo no model precise
+    // ser acrescentado de propósito. Se alguém ampliar o enum sem decidir sobre
+    // estas duas páginas, este teste quebra e força a decisão — o que evita
+    // tanto o perfil novo entrando de graça quanto ele ficando preso fora da
+    // própria troca de senha.
+    //
+    // Vive aqui, e não em `matrizAcesso.test.js`, porque aquela suíte roda em
+    // jsdom (ela carrega o guard do navegador de verdade) e o `require` do model
+    // arrasta o mongoose, que o transform do jsdom não parseia.
+    it('as paginas da pessoa cobrem todos os perfis do model', () => {
+        const Usuario = require('../models/Usuario');
+        const doModel = Usuario.schema.path('perfil').enumValues.slice().sort();
+        const { AREAS } = require('../middleware/protegerPaginas');
+
+        for (const pagina of PAGINAS_DA_PESSOA) {
+            expect(AREAS[pagina].perfis.slice().sort()).toEqual(doModel);
+        }
     });
 });
