@@ -2,16 +2,24 @@ import { useState } from 'react';
 import { ApiError, updateProfile } from '../services/apiService';
 import styles from '../styles/portal.module.scss';
 import type { AuthUser } from '../types';
+import { textoDoControlador } from '../utils/controladorDados';
 import Icon from './ui/Icon';
 
 interface CompletarCadastroProps {
   user: AuthUser;
   onSuccess: (updatedUser: AuthUser) => void;
+  /** Nome da escola de cada aluno vinculado — a controladora dos dados (#474). */
+  escolasDosAlunos?: Array<string | undefined>;
 }
 
 type Step = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
-export default function CompletarCadastro({ user, onSuccess }: CompletarCadastroProps) {
+export default function CompletarCadastro({
+  user,
+  onSuccess,
+  escolasDosAlunos = [],
+}: CompletarCadastroProps) {
+  const controlador = textoDoControlador(escolasDosAlunos);
   const [step, setStep] = useState<Step>(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -924,8 +932,8 @@ export default function CompletarCadastro({ user, onSuccess }: CompletarCadastro
                 <>
                   <h4>1. Coleta de Informações</h4>
                   <p>
-                    A Escola Jaguari coleta dados essenciais para o registro acadêmico e segurança
-                    do aluno, incluindo nome, CPF, e-mail e contatos de emergência.
+                    {controlador.coleta} dados essenciais para o registro acadêmico e segurança do
+                    aluno, incluindo nome, CPF, e-mail e contatos de emergência.
                   </p>
 
                   <h4>2. Uso dos Dados</h4>
@@ -945,8 +953,9 @@ export default function CompletarCadastro({ user, onSuccess }: CompletarCadastro
                 <>
                   <h4>1. Acesso ao Portal</h4>
                   <p>
-                    Este portal é de uso exclusivo dos responsáveis legais dos alunos matriculados
-                    na Escola Jaguari. As credenciais de acesso são pessoais e intransferíveis.
+                    Este portal é de uso exclusivo dos responsáveis legais dos alunos{' '}
+                    {controlador.matriculados}. As credenciais de acesso são pessoais e
+                    intransferíveis.
                   </p>
 
                   <h4>2. Responsabilidades</h4>
