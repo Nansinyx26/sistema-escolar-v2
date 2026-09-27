@@ -197,6 +197,7 @@ const PortalResponsavel: React.FC = () => {
         />
         <CompletarCadastro
           user={authUser}
+          escolasDosAlunos={students.map((student) => student.escolaNome)}
           onSuccess={(updatedUser) => {
             setAuthUser(updatedUser);
             setToast({ message: 'Cadastro completado com sucesso!', type: 'success' });
