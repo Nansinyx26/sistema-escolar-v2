@@ -30,6 +30,7 @@ const Falta = require('../models/Falta');
 const DocumentoResponsavel = require('../models/DocumentoResponsavel');
 const JustificativaFalta = require('../models/JustificativaFalta');
 const escapeRegex = require('../utils/escapeRegex');
+const { semRestricaoPara } = require('../utils/restricaoAcesso');
 const { logAction } = require('../utils/auditHelper');
 
 // A identidade e a vigência dos dois consentimentos moram nos utils, e não
@@ -157,6 +158,9 @@ async function montarDadosDependentes(usuario) {
             { 'responsavelDados.email': emailRegex },
             { 'responsaveis.email': emailRegex },
         ],
+        // Bloqueio por decisão judicial (Issue #491): o pacote do titular não
+        // traz aluno ao qual ele não tem acesso.
+        ...semRestricaoPara(emailLimpo),
     }).lean();
 
     if (!alunos || alunos.length === 0) return [];

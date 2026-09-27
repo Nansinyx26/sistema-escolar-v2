@@ -33,6 +33,7 @@
 | Rodar a limpeza dos campos removidos na #408 nos cadastros antigos | Secretaria | Script pronto, em modo de simulação (`campos:limpar-sem-finalidade`) |
 | **Anonimização automática** de contas inativas | Mantenedora | 12 meses sem acesso |
 | **Regenerar os códigos de vínculo** dos alunos e como avisar as famílias | Direção | Script pronto, em modo de simulação |
+| Alcance do **bloqueio por decisão judicial** (#491): hoje corta também o chat com a escola e os comunicados da turma | Direção + jurídico | Bloqueio total: a pessoa deixa de ser reconhecida como responsável daquele aluno em todo o sistema |
 
 ## 4. Prazos de guarda
 
