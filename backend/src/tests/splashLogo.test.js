@@ -13,7 +13,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { execSync } = require('node:child_process');
+const { execFileSync } = require('node:child_process');
 
 const RAIZ = path.resolve(__dirname, '../../..');
 
@@ -25,10 +25,14 @@ function blocoSplash(html) {
     return html.slice(inicio, fim < 0 ? undefined : fim);
 }
 
-const paginas = execSync("git ls-files '*.html'", { cwd: RAIZ })
+// `execFileSync` chama o git sem shell (Issue #485). Com `execSync`, o
+// Windows passa a linha ao `cmd.exe`, que não entende aspa simples: o padrão
+// chegava como `'*.html'`, a lista vinha vazia e `path.join(RAIZ, '')` virava
+// a própria raiz — o teste morria com EISDIR só na máquina de quem desenvolve.
+const paginas = execFileSync('git', ['ls-files', '*.html'], { cwd: RAIZ })
     .toString()
-    .trim()
-    .split('\n')
+    .split(/\r?\n/)
+    .filter(Boolean)
     .map((rel) => ({ rel, bloco: blocoSplash(fs.readFileSync(path.join(RAIZ, rel), 'utf8')) }))
     .filter((p) => p.bloco);
 
