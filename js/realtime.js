@@ -130,6 +130,12 @@
             console.log('🔌 [Realtime] Conectado ao servidor Socket.IO');
         });
 
+        // Escola bloqueada pelo super admin (Issue #463): o servidor avisa e
+        // desconecta; a sessão já foi encerrada, então volta ao login.
+        socket.on('escola:bloqueada', () => {
+            if (typeof window.tratarEscolaBloqueada === 'function') window.tratarEscolaBloqueada();
+        });
+
         // === REVIEW EVENTS ===
         socket.on('review:new', (data) => updateReviewUI(data));
         socket.on('review:update', (data) => updateReviewUI(data));

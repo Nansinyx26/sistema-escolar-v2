@@ -17,3 +17,9 @@ socket.on('connect', () => {
 socket.on('disconnect', () => {
   console.log('Disconnected from real-time server');
 });
+
+// Escola bloqueada pelo super admin (Issue #463): o servidor já encerrou a
+// sessão e desconectou este socket. Volta ao login do portal com o aviso.
+socket.on('escola:bloqueada', () => {
+  window.location.href = '/login.html?motivo=escola-bloqueada';
+});

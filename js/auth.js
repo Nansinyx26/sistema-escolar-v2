@@ -653,6 +653,25 @@ class AuthManager {
     }
 
     /**
+     * Painel do perfil da sessão — espelho de PAINEL_POR_PERFIL
+     * (backend/src/utils/painelPorPerfil.js). Só conta SEM perfil vai para a
+     * escolha de Professor/Diretor: `hasProfile()` responde "tem perfil de
+     * painel", e usá-lo para decidir o destino mandava o responsável (e a
+     * secretaria) para `escolher-perfil.html`.
+     */
+    painelDoUsuario() {
+        const perfil = this.currentUser && this.currentUser.perfil;
+        const paineis = {
+            admin: '/html/dashboard.html',
+            diretor: '/html/dashboard.html',
+            professor: '/html/dashboard.html',
+            secretaria: '/html/secretaria/painel.html',
+            responsavel: '/portal-responsavel/dist/index.html',
+        };
+        return paineis[perfil] || '/html/escolher-perfil.html';
+    }
+
+    /**
      * Verifica se é professor
      */
     isProfessor() {

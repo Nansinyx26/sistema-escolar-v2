@@ -206,6 +206,11 @@
                 <i class="bi bi-person-gear"></i>
                 <span>Gerenciar Secretaria</span>
             </a>
+            <!-- Super admin (Issue #463): js/dashboard.js mostra quando a rota existe. -->
+            <a data-rota="admin.gestaoEscolas" class="sidebar-item" id="sidebarGestaoEscolas" style="display: none;">
+                <i class="bi bi-buildings"></i>
+                <span>Gestão de Escolas</span>
+            </a>
 
             <!-- GRUPO: SECRETARIA (Secretaria Only) -->
             <div class="sidebar-group-label secretaria-only" style="display: none;">Secretaria</div>
@@ -773,6 +778,13 @@
                     <div class="pn-card-cab"><h3 class="pn-card-titulo">Códigos por escola</h3><p class="pn-card-desc">Cadastro de professores</p></div>
                     <a data-rota="admin.codigosEscolas" class="ui-btn">Abrir <i class="bi bi-arrow-right"></i></a>
                 </div>
+                <!-- Só o super admin (Issue #463): js/dashboard.js mostra o card
+                     quando /api/auth/rotas devolve a rota da gestão de escolas. -->
+                <div class="pn-card pn-atalho" id="cardGestaoEscolas" style="display: none;">
+                    <span class="pn-card-ico ui-tint"><i class="bi bi-buildings"></i></span>
+                    <div class="pn-card-cab"><h3 class="pn-card-titulo">Gestão de Escolas</h3><p class="pn-card-desc">Bloquear, desbloquear e acessar escolas</p></div>
+                    <a data-rota="admin.gestaoEscolas" class="ui-btn">Abrir <i class="bi bi-arrow-right"></i></a>
+                </div>
                 <div class="pn-card pn-atalho" id="cardConvitesEquipe" style="display: none;">
                     <span class="pn-card-ico ui-tint"><i class="bi bi-envelope-plus"></i></span>
                     <div class="pn-card-cab"><h3 class="pn-card-titulo">Convites de equipe</h3><p class="pn-card-desc">Contas de direção e secretaria</p></div>
@@ -847,7 +859,7 @@
     <script defer src="../js/painel-professor.js?v=1.0"></script>
     <script defer src="../js/painel-dados.js?v=1.0"></script>
     <script defer src="../js/painel-direcao.js?v=1.0"></script>
-    <script defer src="../js/dashboard.js?v=7"></script>
+    <script defer src="../js/dashboard.js?v=8"></script>
     <script defer src="../js/professores-online.js?v=2.0"></script>
     <!-- Sons de enviar/receber mensagem e de aviso do mural. Precisa vir antes
          do chat e do realtime.js, que são quem os dispara. -->

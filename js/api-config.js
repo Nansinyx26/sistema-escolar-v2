@@ -408,6 +408,7 @@ window.fetch = async (...args) => {
 
         try {
             const res = await fetchPromise;
+            if (res.status === 403) verificarEscolaBloqueada(res);
             return res.clone();
         } catch (error) {
             return handleFetchError(error);
@@ -428,6 +429,8 @@ window.fetch = async (...args) => {
             getCache.clear();
         }
 
+        if (isApiRequest && res.status === 403) verificarEscolaBloqueada(res);
+
         // Tratamento global para erros HTTP (como 429 Rate Limit)
         if (res.status === 429) {
             const msg = 'Muitas requisições vindas deste IP. Tente novamente em alguns minutos.';
@@ -447,6 +450,83 @@ window.fetch = async (...args) => {
         return handleFetchError(error);
     }
 };
+
+// ============================================
+// ESCOLA BLOQUEADA PELO SUPER ADMIN (Issue #463)
+// ============================================
+// O servidor encerra a sessão de quem está numa escola bloqueada e responde
+// 403 com `codigo: 'ESCOLA_BLOQUEADA'` — em QUALQUER rota da API. A tela que
+// fez a chamada não sabe tratar isso, então o tratamento é global: volta ao
+// login, que mostra o aviso. O Socket.IO avisa pelo evento `escola:bloqueada`
+// (js/realtime.js e demais clientes chamam `window.tratarEscolaBloqueada`).
+const MENSAGEM_ESCOLA_BLOQUEADA = 'Escola temporariamente bloqueada. Contate o administrador.';
+let saindoPorBloqueio = false;
+
+function tratarEscolaBloqueada() {
+    if (saindoPorBloqueio) return;
+    saindoPorBloqueio = true;
+    try {
+        sessionStorage.removeItem('superadminContexto');
+        sessionStorage.removeItem('currentUser');
+    } catch (_e) {
+        /* armazenamento indisponível: o cookie já foi apagado pelo servidor */
+    }
+    if (/\/html\/login\.html$/.test(window.location.pathname)) {
+        saindoPorBloqueio = false;
+        return;
+    }
+    window.location.href = '/html/login.html?motivo=escola-bloqueada';
+}
+window.tratarEscolaBloqueada = tratarEscolaBloqueada;
+
+function verificarEscolaBloqueada(res) {
+    res.clone()
+        .json()
+        .then((corpo) => {
+            if (corpo && corpo.codigo === 'ESCOLA_BLOQUEADA') tratarEscolaBloqueada();
+        })
+        .catch(() => {
+            /* corpo que não é JSON não é esta recusa */
+        });
+}
+
+// Na tela de login, o aviso de quem foi desconectado pelo bloqueio.
+function avisoDeEscolaBloqueada() {
+    let motivo = null;
+    try {
+        motivo = new URLSearchParams(window.location.search).get('motivo');
+    } catch (_e) {
+        motivo = null;
+    }
+    if (motivo !== 'escola-bloqueada') return;
+    const mostrar = () => {
+        if (typeof window.showToast === 'function') {
+            window.showToast(MENSAGEM_ESCOLA_BLOQUEADA, 'error', 8000);
+        }
+    };
+    // Os scripts `defer` da página (utils.js, login.js) definem o showToast.
+    if (document.readyState === 'complete') mostrar();
+    else window.addEventListener('load', mostrar, { once: true });
+}
+avisoDeEscolaBloqueada();
+
+// Faixa "visualizando a escola X como Super Admin". Carregada sob demanda: só
+// quem entrou numa escola pela Gestão de Escolas tem a marca na sessão da aba,
+// e mais ninguém paga pelo script.
+(function carregarFaixaSuperAdmin() {
+    let marcado = false;
+    try {
+        marcado = !!sessionStorage.getItem('superadminContexto');
+    } catch (_e) {
+        marcado = false;
+    }
+    if (!marcado || document.querySelector('script[data-superadmin-contexto]')) return;
+    const script = document.createElement('script');
+    script.src = '/js/superadmin-contexto.js?v=1';
+    script.defer = true;
+    script.setAttribute('data-superadmin-contexto', '');
+    document.head.appendChild(script);
+})();
 
 /** Função centralizada para tratamento amigável de erros de rede */
 function handleFetchError(error) {

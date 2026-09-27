@@ -5,6 +5,7 @@ const SecurityController = require('./SecurityController');
 const { logAction } = require('../utils/auditHelper');
 const { notificarVerificacaoEmail, notificarBruteForce } = require('../utils/emailNotifications');
 const { enviarVerificacao, invalidarCacheDeVerificacao } = require('../services/verificacaoEmail');
+const escolaBloqueio = require('../services/escolaBloqueio');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const ImageProcessor = require('../utils/imageProcessor');
@@ -217,6 +218,9 @@ exports.create = async (req, res) => {
             'consentimentoPendingToken',
             'consentimentoPendingExpiry',
             'consentimentoPendingTentativas',
+            // Super admin (Issue #463) nunca nasce por rota: um admin comum
+            // criaria, com um POST, a conta que o alcança.
+            'superAdmin',
         ].forEach((campo) => {
             delete req.body[campo];
         });
@@ -519,6 +523,9 @@ const CODIGOS_LOGIN = {
     MUITAS_TENTATIVAS: 'MUITAS_TENTATIVAS',
     ESCOLA_INDISPONIVEL: 'ESCOLA_INDISPONIVEL',
     SEM_VINCULO_ESCOLA: 'SEM_VINCULO_ESCOLA',
+    // Escola bloqueada pelo super admin (Issue #463) — mesmo código que o
+    // authJWT devolve para a sessão que cai depois do bloqueio.
+    ESCOLA_BLOQUEADA: escolaBloqueio.CODIGO,
 };
 
 const ERRO_CREDENCIAIS = {
@@ -774,12 +781,24 @@ exports.login = async (req, res) => {
             } else if (vinculos.length === 1) {
                 escolaAtivaId = String(vinculos[0].escolaId);
             } else if (vinculos.length > 1) {
-                const escolas = await Escola.find({
+                // Escola bloqueada não entra no seletor (Issue #463). Se TODAS
+                // as escolas da pessoa estiverem bloqueadas, a recusa sai logo
+                // abaixo, pela escola do cadastro ou pela lista vazia.
+                const filtroEscolas = {
                     _id: { $in: vinculos.map((v) => v.escolaId) },
                     ativo: true,
-                })
-                    .select('nome tipo bairro')
-                    .lean();
+                };
+                if (!escolaBloqueio.ehSuperAdmin(user)) filtroEscolas.status = { $ne: 'bloqueada' };
+                const escolas = await Escola.find(filtroEscolas).select('nome tipo bairro').lean();
+                if (!escolas.length) {
+                    const bloqueadas = await escolaBloqueio.escolaBloqueadaPara(
+                        user,
+                        vinculos.map((v) => v.escolaId)
+                    );
+                    if (bloqueadas) {
+                        return res.status(403).json(escolaBloqueio.respostaBloqueio());
+                    }
+                }
                 if (escolas.length > 1) {
                     return res.json({
                         success: true,
@@ -797,6 +816,26 @@ exports.login = async (req, res) => {
                 '[LOGIN] Falha na resolução multi-escola (seguindo sem contexto):',
                 e.message
             );
+        }
+
+        // ============================================
+        // ESCOLA BLOQUEADA (Issue #463) — depois da prova de senha, como as
+        // demais recusas: a mensagem só aparece para quem é dono da conta.
+        // Vale a escola que o login acabou de resolver ou, sem ela, a do
+        // cadastro (responsável, contas anteriores ao multi-escola). Fica FORA
+        // do try acima de propósito: aquele bloco segue "sem contexto" quando
+        // falha, e o bloqueio não pode ser pulado por uma exceção.
+        // ============================================
+        const escolaBarrada = await escolaBloqueio.escolaBloqueadaPara(user, [
+            escolaAtivaId || user.escolaId,
+        ]);
+        if (escolaBarrada) {
+            await logAction(req, 'LOGIN_ESCOLA_BLOQUEADA', 'Auth', {
+                recursoId: user._id,
+                escolaId: escolaBarrada,
+                descricao: `Login recusado: a escola ${escolaBarrada} está bloqueada.`,
+            });
+            return res.status(403).json(escolaBloqueio.respostaBloqueio());
         }
 
         // ============================================
@@ -1226,6 +1265,10 @@ exports.googleLogin = async (req, res) => {
                     success: false,
                     error: 'Conta desativada. Procure a secretaria da escola.',
                 });
+            }
+            // Família da escola bloqueada pelo super admin (Issue #463).
+            if (await escolaBloqueio.escolaBloqueadaPara(user, [user.escolaId])) {
+                return res.status(403).json(escolaBloqueio.respostaBloqueio());
             }
 
             // Usuário existente: sincronizar foto do Google se houver mudança

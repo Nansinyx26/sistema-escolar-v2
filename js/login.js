@@ -9,13 +9,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     await db.init();
     await auth.init();
 
-    // Se já estiver autenticado, redireciona
+    // Se já estiver autenticado, vai para o painel do próprio perfil. Só conta
+    // sem perfil cai na escolha de Professor/Diretor — o responsável que volta
+    // a esta tela vai para o portal dele.
     if (auth.isAuthenticated()) {
-        if (auth.hasProfile()) {
-            window.location.href = 'dashboard.html';
-        } else {
-            window.location.href = 'escolher-perfil.html';
-        }
+        window.location.href = auth.painelDoUsuario();
         return;
     }
 
@@ -114,32 +112,22 @@ async function setupEscolaSelect() {
 
         select.innerHTML = '<option value="">Selecione sua escola</option>';
 
+        // Disponível no login = escola.ativo, e só isso (#475). Ativar uma
+        // escola no banco a libera aqui sem mudar código; nada olha o nome.
         escolas
-            .sort((a, b) => {
-                const aIsJ =
-                    (a.nome || '').toLowerCase().includes('jaguari') ||
-                    (a.nome || '').toLowerCase().includes('mascellani') ||
-                    a.ativo;
-                const bIsJ =
-                    (b.nome || '').toLowerCase().includes('jaguari') ||
-                    (b.nome || '').toLowerCase().includes('mascellani') ||
-                    b.ativo;
-                return (
-                    (bIsJ ? 1 : 0) - (aIsJ ? 1 : 0) || (a.nome || '').localeCompare(b.nome || '')
-                );
-            })
+            .sort(
+                (a, b) =>
+                    (b.ativo ? 1 : 0) - (a.ativo ? 1 : 0) ||
+                    (a.nome || '').localeCompare(b.nome || '')
+            )
             .forEach((e) => {
-                const isJaguari =
-                    (e.nome || '').toLowerCase().includes('jaguari') ||
-                    (e.nome || '').toLowerCase().includes('mascellani') ||
-                    e.ativo;
                 // A tela mostra só o nome da escola: o _id fica no value, e
                 // "Em breve" vira selo no seletor (escola-combobox.js) a partir
                 // do disabled — nada disso entra no texto da opção.
                 const opt = document.createElement('option');
                 opt.value = e._id;
                 opt.textContent = e.nome;
-                if (!isJaguari) {
+                if (!e.ativo) {
                     opt.disabled = true;
                 }
                 select.appendChild(opt);
@@ -151,14 +139,15 @@ async function setupEscolaSelect() {
         const lembrada = lerLembrado().escolaId;
         const habilitada = (id) =>
             id && Array.from(select.options).some((o) => o.value === String(id) && !o.disabled);
-        if (ctx && escolas.some((e) => String(e._id) === String(ctx))) {
+        if (habilitada(ctx)) {
             select.value = ctx;
         } else if (habilitada(lembrada)) {
             select.value = lembrada;
         } else {
-            // Seleciona a Jaguari por padrão
-            const jaguariOpt = Array.from(select.options).find((o) => !o.disabled && o.value);
-            if (jaguariOpt) select.value = jaguariOpt.value;
+            // Com uma única escola ativa ela já vem escolhida; com duas ou
+            // mais, quem entra escolhe — não há escola "padrão".
+            const ativas = Array.from(select.options).filter((o) => !o.disabled && o.value);
+            if (ativas.length === 1) select.value = ativas[0].value;
         }
 
         group.style.display = '';
@@ -370,19 +359,8 @@ function setupLoginForm() {
                 return;
             }
 
-            // Fallback raso caso o backend não retorne redirect_to
-            if (
-                usuario.perfil &&
-                (usuario.perfil === 'admin' ||
-                    usuario.perfil === 'professor' ||
-                    usuario.perfil === 'diretor')
-            ) {
-                window.location.href = 'dashboard.html';
-            } else if (usuario.perfilDefinidoEm) {
-                window.location.href = 'dashboard.html';
-            } else {
-                window.location.href = 'escolher-perfil.html';
-            }
+            // Fallback caso o backend não retorne redirect_to
+            window.location.href = auth.painelDoUsuario();
         } catch (error) {
             console.error('Erro no login:', error);
             showToast(error.message || 'Erro ao fazer login', 'error');
@@ -1189,3 +1167,9 @@ window.closePrivacyModal = function () {
     const modal = document.getElementById('privacyModal');
     if (modal) modal.classList.add('hidden');
 };
+
+// Jest carrega o arquivo como módulo para testar a regra de escola (#475);
+// no navegador `module` não existe e nada muda.
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { setupEscolaSelect };
+}

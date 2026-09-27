@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Verifica se tem perfil
     if (!auth.hasProfile()) {
-        window.location.href = 'escolher-perfil.html';
+        window.location.href = auth.painelDoUsuario();
         return;
     }
 

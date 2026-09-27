@@ -93,6 +93,11 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
     if (res.status === 401 && !path.includes('/auth/')) {
       window.location.href = '/login.html?expired=true';
     }
+    // Escola bloqueada pelo super admin (Issue #463): a sessão já foi encerrada
+    // no servidor; o login do portal mostra o aviso.
+    if (res.status === 403 && body.codigo === 'ESCOLA_BLOQUEADA' && !path.includes('/auth/login')) {
+      window.location.href = '/login.html?motivo=escola-bloqueada';
+    }
     throw new ApiError(body.error ?? `HTTP ${res.status}`, res.status, body.codigo);
   }
 
