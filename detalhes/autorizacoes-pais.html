@@ -153,6 +153,12 @@
                     </div>
                 </div>
 
+                <!-- Decisão da direção (Issue #496): só aparece para direção e admin -->
+                <label id="chaveAutorizacoesProfessor" hidden style="display:flex;gap:0.5rem;align-items:flex-start;margin:0 0 1rem;font-size:0.85rem;">
+                    <input type="checkbox" id="chaveAutorizacoesProfessorInput">
+                    <span>Professores podem ver a situação das autorizações das próprias turmas (autorizado, não autorizado ou sem resposta). Documentos e detalhes continuam só com a gestão.</span>
+                </label>
+
                 <!-- Barra de Filtros -->
                 <section class="ap-filter-bar" aria-label="Filtros de estudantes">
                     <div class="ap-filter-search">
@@ -337,6 +343,7 @@
     <!-- Script de Inicialização e Comunicação com MongoDB Atlas -->
     <script defer src="../js/botao-voltar.js"></script>
     <script defer src="autorizacoes-pais-dados.js"></script>
+    <script defer src="autorizacoes-professor-chave.js"></script>
     <script type="module" src="autorizacoes-pais.js"></script>
 </body>
 </html>

@@ -119,6 +119,9 @@
             '/detalhes/avaliacoes.html': {
                 perfis: ['admin', 'diretor', 'secretaria', 'professor'],
             },
+            '/detalhes/autorizacoes-turma.html': {
+                perfis: ['professor'],
+            },
         },
         publicas: [
             '/',
