@@ -245,6 +245,8 @@ router.use('/admin/seguranca', authJWT, authorize('admin'), require('./adminSegu
 router.use('/admin/convites-equipe', authJWT, authorize('admin'), require('./convitesEquipe'));
 // Gestão de pedidos LGPD do titular (Issue #413).
 router.use('/admin/pedidos-titular', authJWT, authorize('admin'), require('./adminPedidosTitular'));
+// Registro de incidentes de segurança (Res. CD/ANPD 15/2024 — Issue #513).
+router.use('/admin/incidentes', authJWT, authorize('admin'), require('./adminIncidentes'));
 router.use('/admin', authJWT, authorize('admin'), require('./admin'));
 // Super admin (Issue #463): gestão e bloqueio de escolas. SEM `filtrarPorEscola`
 // — a área é da rede, e nem o recorte de tenant nem o bloqueio de escola podem
