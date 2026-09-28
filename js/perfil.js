@@ -785,6 +785,8 @@ function setupAvaliacao() {
                 body: JSON.stringify({
                     estrelas: ratingValue,
                     texto: texto,
+                    exibirPublicamente:
+                        document.getElementById('avaliacaoExibirPublicamente')?.checked === true,
                 }),
                 credentials: 'include',
             });

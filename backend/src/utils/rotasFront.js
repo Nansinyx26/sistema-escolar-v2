@@ -46,6 +46,7 @@ const PAGINAS_ADMIN = {
     saude: 'saude.html',
     codigosBackup: 'codigos-backup.html',
     gestaoEscolas: 'gestao-escolas.html',
+    moderacaoAvaliacoes: 'moderacao-avaliacoes.html',
     entrar: 'entrar.html',
 };
 

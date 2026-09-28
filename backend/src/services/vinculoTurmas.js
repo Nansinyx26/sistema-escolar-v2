@@ -51,6 +51,7 @@
 const Professor = require('../models/Professor');
 const Aluno = require('../models/Aluno');
 const escapeRegex = require('../utils/escapeRegex');
+const { semRestricaoPara } = require('../utils/restricaoAcesso');
 
 /**
  * Expande uma turma nas grafias equivalentes: "1ºC" → {"1ºC", "1C"}.
@@ -130,6 +131,8 @@ async function turmasDosFilhos(email, escolaId) {
             { 'responsavelDados.email': regexEmail },
             { 'responsaveis.email': regexEmail },
         ],
+        // Bloqueio por decisão judicial (Issue #491).
+        ...semRestricaoPara(alvo),
     };
     if (escolaId) filtro.escolaId = String(escolaId);
 
@@ -182,6 +185,7 @@ async function vinculoDoResponsavel(email) {
             { 'responsavelDados.email': regexEmail },
             { 'responsaveis.email': regexEmail },
         ],
+        ...semRestricaoPara(alvo),
     })
         .select('escolaId')
         .lean();

@@ -556,12 +556,15 @@ async function podeAcessarMensagem(socket, messageId) {
         const Aluno = require('./models/Aluno');
         const escapeRegex = require('./utils/escapeRegex');
         const emailRegex = new RegExp(`^${escapeRegex(String(socket.user.email))}$`, 'i');
+        const { semRestricaoPara } = require('./utils/restricaoAcesso');
         const alunos = await Aluno.find({
             $or: [
                 { responsavel: emailRegex },
                 { 'responsavelDados.email': emailRegex },
                 { 'responsaveis.email': emailRegex },
             ],
+            // Bloqueio por decisão judicial (Issue #491).
+            ...semRestricaoPara(socket.user.email),
         })
             .select('turma turmaId id')
             .lean();

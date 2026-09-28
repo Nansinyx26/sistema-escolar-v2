@@ -12,6 +12,7 @@
 
 const mongoose = require('mongoose');
 const Aluno = require('../models/Aluno');
+const { semRestricaoPara } = require('../utils/restricaoAcesso');
 const Nota = require('../models/Nota');
 const Falta = require('../models/Falta');
 const FrequenciaProfessor = require('../models/FrequenciaProfessor');
@@ -165,6 +166,8 @@ async function verifyOwnership(alunoId, email) {
                     { 'responsaveis.email': emailRegex },
                 ],
             },
+            // Bloqueio por decisão judicial (Issue #491).
+            semRestricaoPara(email),
         ],
     }).lean();
     return !!aluno;
@@ -186,6 +189,8 @@ exports.getAlunos = async (req, res) => {
                 { 'responsavelDados.email': emailRegex },
                 { 'responsaveis.email': emailRegex },
             ],
+            // Bloqueio por decisão judicial (Issue #491).
+            ...semRestricaoPara(email),
         };
         const alunos = await Aluno.find(query).lean();
 
