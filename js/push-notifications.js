@@ -20,7 +20,26 @@ window.PushNotifications = (function () {
     'use strict';
 
     const API_BASE = (window.API_BASE_URL || '/api').replace(/\/$/, '');
-    const DISMISS_KEY = 'push_prompt_dismissed';
+    // Guarda ATÉ QUANDO o aviso fica escondido. Antes era '1' para sempre:
+    // quem dispensava sem querer nunca mais recebia aviso no celular.
+    const DISMISS_KEY = 'push_prompt_adiado_ate';
+    const SETE_DIAS_MS = 7 * 24 * 60 * 60 * 1000;
+
+    function adiado() {
+        try {
+            return Number(localStorage.getItem(DISMISS_KEY) || 0) > Date.now();
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function adiar() {
+        try {
+            localStorage.setItem(DISMISS_KEY, String(Date.now() + SETE_DIAS_MS));
+        } catch (_) {
+            /* navegação privada: some só nesta visita */
+        }
+    }
 
     function apiUrl(path) {
         return `${API_BASE}${path}`;
@@ -41,14 +60,26 @@ window.PushNotifications = (function () {
         return output;
     }
 
+    function mesmaChave(buffer, bytes) {
+        if (!buffer) return false;
+        const atual = new Uint8Array(buffer);
+        if (atual.length !== bytes.length) return false;
+        for (let i = 0; i < atual.length; i++) if (atual[i] !== bytes[i]) return false;
+        return true;
+    }
+
     const isSupported = () =>
         'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 
     // iOS/iPadOS só entrega push quando o site está instalado (Adicionar à Tela
     // de Início) e rodando em modo standalone (iOS 16.4+).
-    const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    // iPadOS 13+ se apresenta como Mac; o toque denuncia.
+    const isIOS = () =>
+        /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
     const isStandalone = () =>
-        window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        window.matchMedia('(display-mode: standalone)').matches ||
+        window.navigator.standalone === true;
 
     async function getRegistration() {
         // Registra o SW aqui também: em páginas internas ele pode não ter sido
@@ -63,7 +94,7 @@ window.PushNotifications = (function () {
 
     async function fetchVapidKey() {
         const res = await fetch(apiUrl('/notifications/realtime/vapid-public-key'), {
-            credentials: 'include'
+            credentials: 'include',
         });
         if (!res.ok) return null; // 401 = sem sessão; não insiste
         const json = await res.json();
@@ -75,10 +106,10 @@ window.PushNotifications = (function () {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-Token': getCsrfToken() || ''
+                'X-CSRF-Token': getCsrfToken() || '',
             },
             credentials: 'include',
-            body: JSON.stringify(subscription)
+            body: JSON.stringify(subscription),
         });
         // Confirma que o backend realmente persistiu a inscrição no banco.
         if (!res.ok) {
@@ -92,13 +123,22 @@ window.PushNotifications = (function () {
         const publicKey = await fetchVapidKey();
         if (!publicKey) return false;
 
+        const chave = urlBase64ToUint8Array(publicKey);
         const registration = await getRegistration();
         let subscription = await registration.pushManager.getSubscription();
+
+        // Inscrição criada com uma chave VAPID antiga (ex.: deploy que gerou
+        // chaves novas) não recebe mais nada, e o servidor não tem como saber.
+        // Ao abrir o sistema, o aparelho se reinscreve com a chave atual.
+        if (subscription && !mesmaChave(subscription.options.applicationServerKey, chave)) {
+            await subscription.unsubscribe().catch(() => undefined);
+            subscription = null;
+        }
 
         if (!subscription) {
             subscription = await registration.pushManager.subscribe({
                 userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(publicKey)
+                applicationServerKey: chave,
             });
         }
 
@@ -119,7 +159,7 @@ window.PushNotifications = (function () {
         if (isIOS() && !isStandalone()) {
             alert(
                 'Para receber notificações no iPhone/iPad, toque em Compartilhar → ' +
-                '"Adicionar à Tela de Início" e abra o app por lá. Depois ative novamente.'
+                    '"Adicionar à Tela de Início" e abra o app por lá. Depois ative novamente.'
             );
             return false;
         }
@@ -144,77 +184,185 @@ window.PushNotifications = (function () {
     }
 
     // ── Aviso discreto para ativar (permissão ainda "default") ───────────────
+    // Montado com createElement e estilizado pelos tokens do tema (ui-base.css),
+    // com fallback escuro para as páginas que ainda não carregam a base nova.
+    function injetarEstilo() {
+        if (document.getElementById('push-banner-style')) return;
+        const style = document.createElement('style');
+        style.id = 'push-banner-style';
+        style.textContent = `
+            #push-enable-banner {
+                position: fixed;
+                left: 50%;
+                bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+                transform: translateX(-50%);
+                z-index: 99999;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                width: min(440px, calc(100vw - 32px));
+                box-sizing: border-box;
+                padding: 14px 12px 14px 14px;
+                border: 1px solid var(--ui-accent-line, rgba(16, 185, 129, 0.35));
+                border-radius: 16px;
+                background: var(--ui-surface, #111827);
+                color: var(--ui-text, #f9fafb);
+                box-shadow: var(--ui-shadow-pop, 0 12px 40px rgba(0, 0, 0, 0.45));
+                font-family: var(--ui-font, inherit);
+                animation: pushBannerUp 320ms var(--ui-ease-out, cubic-bezier(0.16, 1, 0.3, 1)) both;
+            }
+            .push-banner-icone {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 40px;
+                height: 40px;
+                flex-shrink: 0;
+                border-radius: 12px;
+                background: var(--ui-accent-soft, rgba(16, 185, 129, 0.15));
+                color: var(--ui-accent, #34d399);
+                font-size: 1.1rem;
+            }
+            .push-banner-texto { flex: 1; min-width: 0; line-height: 1.35; }
+            .push-banner-texto strong { display: block; margin-bottom: 2px; font-size: 0.9rem; }
+            .push-banner-texto span { font-size: 0.8rem; color: var(--ui-text-2, #cbd5e1); }
+            .push-banner-texto span b { color: var(--ui-text, #f9fafb); }
+            #push-enable-btn {
+                min-height: 40px;
+                padding: 0 16px;
+                flex-shrink: 0;
+                border: none;
+                border-radius: 10px;
+                background: var(--ui-accent, #10b981);
+                color: var(--ui-accent-ink, #04150f);
+                font: inherit;
+                font-size: 0.85rem;
+                font-weight: 700;
+                cursor: pointer;
+                white-space: nowrap;
+            }
+            #push-enable-btn:disabled { opacity: 0.7; cursor: progress; }
+            #push-dismiss-btn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                align-self: flex-start;
+                width: 32px;
+                height: 32px;
+                flex-shrink: 0;
+                padding: 0;
+                border: 1px solid var(--ui-line-strong, rgba(255, 255, 255, 0.12));
+                border-radius: 9px;
+                background: transparent;
+                color: var(--ui-text-2, #94a3b8);
+                cursor: pointer;
+                transition: background-color 140ms var(--ui-ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+            }
+            #push-dismiss-btn:hover { background: var(--ui-surface-2, rgba(255, 255, 255, 0.08)); }
+            #push-enable-btn:focus-visible,
+            #push-dismiss-btn:focus-visible {
+                outline: 2px solid var(--ui-accent, #10b981);
+                outline-offset: 2px;
+            }
+            /* Acima da barra inferior dos painéis no celular. */
+            @media (max-width: 768px) {
+                #push-enable-banner { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+            }
+            @keyframes pushBannerUp {
+                from { opacity: 0; transform: translate(-50%, 12px); filter: blur(4px); }
+                to { opacity: 1; transform: translate(-50%, 0); filter: blur(0); }
+            }
+            @media (prefers-reduced-motion: reduce) {
+                #push-enable-banner { animation: none; }
+                #push-dismiss-btn { transition: none; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    const ICONE_FECHAR =
+        '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+
+    /**
+     * Preenche o aviso. Os textos são constantes deste arquivo — nada vindo
+     * do usuário ou do servidor passa pelo innerHTML.
+     */
+    function preencherBanner(banner, { icone, titulo, texto, botaoAtivar, rotuloFechar }) {
+        banner.innerHTML =
+            `<div class="push-banner-icone" aria-hidden="true"><i class="bi ${icone}"></i></div>` +
+            `<div class="push-banner-texto"><strong>${titulo}</strong><span>${texto}</span></div>` +
+            (botaoAtivar ? '<button type="button" id="push-enable-btn">Ativar</button>' : '') +
+            `<button type="button" id="push-dismiss-btn" aria-label="${rotuloFechar}" title="${rotuloFechar}">${ICONE_FECHAR}</button>`;
+    }
+
     function showBanner() {
         if (document.getElementById('push-enable-banner')) return;
-        if (localStorage.getItem(DISMISS_KEY) === '1') return;
-        if (isIOS() && !isStandalone()) return; // sem instalar não adianta
+        if (adiado()) return;
 
+        injetarEstilo();
         const banner = document.createElement('div');
         banner.id = 'push-enable-banner';
-        banner.style.cssText = [
-            'position:fixed', 'left:50%', 'bottom:20px', 'transform:translateX(-50%)',
-            'z-index:99999', 'max-width:420px', 'width:calc(100% - 32px)',
-            'display:flex', 'align-items:center', 'gap:12px',
-            'padding:14px 16px', 'border-radius:14px',
-            'background:#111827', 'color:#f9fafb',
-            'border:1px solid rgba(16,185,129,0.35)',
-            'box-shadow:0 12px 40px rgba(0,0,0,0.45)',
-            'font-family:inherit', 'font-size:0.9rem',
-            'animation:pushBannerUp .35s ease'
-        ].join(';');
+        banner.setAttribute('role', 'region');
+        banner.setAttribute('aria-label', 'Notificações no celular');
+        banner.setAttribute('aria-live', 'polite');
 
-        banner.innerHTML =
-            '<div style="font-size:1.6rem;line-height:1">📱</div>' +
-            '<div style="flex:1;line-height:1.35">' +
-            '<strong style="display:block;color:#34d399;margin-bottom:2px">Notificações no celular</strong>' +
-            '<span style="color:#cbd5e1;font-size:0.82rem">Receba avisos da escola mesmo com o app fechado.</span>' +
-            '</div>' +
-            '<button id="push-enable-btn" style="background:#10b981;color:#04150f;border:none;border-radius:10px;padding:9px 14px;font-weight:700;cursor:pointer;white-space:nowrap">Ativar</button>' +
-            '<button id="push-dismiss-btn" aria-label="Dispensar" style="background:transparent;color:#94a3b8;border:none;font-size:1.3rem;cursor:pointer;line-height:1;padding:0 4px">&times;</button>';
-
-        if (!document.getElementById('push-banner-style')) {
-            const style = document.createElement('style');
-            style.id = 'push-banner-style';
-            style.textContent =
-                '@keyframes pushBannerUp{from{opacity:0;transform:translate(-50%,20px)}to{opacity:1;transform:translate(-50%,0)}}';
-            document.head.appendChild(style);
-        }
+        // No iPhone/iPad fora da Tela de Início o push não existe: em vez de
+        // esconder o aviso (como antes), ensina o caminho.
+        const instalarIOS = isIOS() && !isStandalone();
+        preencherBanner(
+            banner,
+            instalarIOS
+                ? {
+                      icone: 'bi-phone',
+                      titulo: 'Receba os avisos no iPhone',
+                      texto: 'Toque em <b>Compartilhar</b> e em <b>Adicionar à Tela de Início</b>. Abra o sistema pelo ícone criado e ative as notificações.',
+                      botaoAtivar: false,
+                      rotuloFechar: 'Agora não',
+                  }
+                : {
+                      icone: 'bi-bell',
+                      titulo: 'Notificações no celular',
+                      texto: 'Receba os avisos da escola mesmo com o sistema fechado.',
+                      botaoAtivar: true,
+                      rotuloFechar: 'Agora não',
+                  }
+        );
 
         document.body.appendChild(banner);
 
-        document.getElementById('push-enable-btn').addEventListener('click', async () => {
-            const btn = document.getElementById('push-enable-btn');
-            btn.disabled = true;
-            btn.textContent = 'Ativando...';
-            const ok = await enable();
-            if (ok) {
-                // Salvo no banco: NÃO some — mostra o estado confirmado.
-                markBannerActivated();
-            } else {
-                btn.disabled = false;
-                btn.textContent = 'Ativar';
-            }
-        });
+        const btnAtivar = document.getElementById('push-enable-btn');
+        if (btnAtivar) {
+            btnAtivar.addEventListener('click', async () => {
+                btnAtivar.disabled = true;
+                btnAtivar.textContent = 'Ativando…';
+                const ok = await enable();
+                if (ok) {
+                    markBannerActivated();
+                } else {
+                    btnAtivar.disabled = false;
+                    btnAtivar.textContent = 'Ativar';
+                }
+            });
+        }
         document.getElementById('push-dismiss-btn').addEventListener('click', () => {
-            localStorage.setItem(DISMISS_KEY, '1');
+            adiar();
             removeBanner();
         });
     }
 
-    // Após ativar e o backend confirmar o salvamento, transforma o aviso num
-    // estado de confirmação que PERMANECE na tela (não desaparece sozinho).
+    // Após ativar e o backend confirmar o salvamento, confirma e some sozinho.
     function markBannerActivated() {
         const banner = document.getElementById('push-enable-banner');
         if (!banner) return;
-        banner.style.borderColor = 'rgba(16,185,129,0.6)';
-        banner.innerHTML =
-            '<div style="font-size:1.6rem;line-height:1">✅</div>' +
-            '<div style="flex:1;line-height:1.35">' +
-            '<strong style="display:block;color:#34d399;margin-bottom:2px">Notificações ativadas</strong>' +
-            '<span style="color:#cbd5e1;font-size:0.82rem">Preferência salva no sistema. Você receberá os avisos da escola neste dispositivo.</span>' +
-            '</div>' +
-            '<button id="push-dismiss-btn" aria-label="Fechar" style="background:transparent;color:#94a3b8;border:none;font-size:1.3rem;cursor:pointer;line-height:1;padding:0 4px">&times;</button>';
+        preencherBanner(banner, {
+            icone: 'bi-check2',
+            titulo: 'Notificações ativadas',
+            texto: 'Preferência salva. Os avisos da escola vão aparecer neste aparelho.',
+            botaoAtivar: false,
+            rotuloFechar: 'Fechar',
+        });
         document.getElementById('push-dismiss-btn').addEventListener('click', removeBanner);
+        setTimeout(removeBanner, 5000);
     }
 
     function removeBanner() {
@@ -227,9 +375,17 @@ window.PushNotifications = (function () {
     }
 
     async function init() {
-        if (!isSupported()) return;
         // Não roda nas telas de login (usuário ainda não autenticado)
         if (/login/i.test(window.location.pathname)) return;
+
+        // Safari do iPhone fora da Tela de Início nem expõe PushManager, então
+        // esta checagem vem antes da de suporte.
+        if (isIOS() && !isStandalone()) {
+            const logado = await fetchVapidKey().catch(() => null);
+            if (logado) showBanner();
+            return;
+        }
+        if (!isSupported()) return;
 
         if (Notification.permission === 'granted') {
             // Modo sempre ativo: mantém a inscrição do dispositivo em dia.

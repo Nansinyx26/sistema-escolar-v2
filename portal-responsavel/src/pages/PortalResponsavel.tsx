@@ -10,6 +10,7 @@ import NotificationsModal from '../components/NotificationsModal';
 import PortalOnboardingManager from '../components/PortalOnboardingManager';
 import { PortalTabContent } from '../components/PortalTabs';
 import ProfileSidebar from '../components/ProfileSidebar';
+import PushAtivacaoAviso from '../components/PushAtivacaoAviso';
 import Toast from '../components/Toast';
 import Icon from '../components/ui/Icon';
 import { useAuth } from '../hooks/useAuth';
@@ -229,6 +230,7 @@ const PortalResponsavel: React.FC = () => {
   return (
     <div className={styles.portal}>
       <Toast toast={toast} onClose={() => setToast(null)} />
+      <PushAtivacaoAviso />
 
       <Header
         user={headerUser}

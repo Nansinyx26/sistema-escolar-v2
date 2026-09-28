@@ -13,7 +13,7 @@ const KEYS_FILE = path.join(__dirname, '..', '..', 'vapid-keys.json');
 
 const vapidKeys = {
     publicKey: process.env.VAPID_PUBLIC_KEY,
-    privateKey: process.env.VAPID_PRIVATE_KEY
+    privateKey: process.env.VAPID_PRIVATE_KEY,
 };
 
 function isPlaceholder(v) {
@@ -30,7 +30,9 @@ try {
                 if (!isPlaceholder(saved.publicKey) && !isPlaceholder(saved.privateKey)) {
                     vapidKeys.publicKey = saved.publicKey;
                     vapidKeys.privateKey = saved.privateKey;
-                    logger.info('🔑 [WebPush] Chaves VAPID carregadas de vapid-keys.json (persistidas).');
+                    logger.info(
+                        '🔑 [WebPush] Chaves VAPID carregadas de vapid-keys.json (persistidas).'
+                    );
                 }
             } catch (readErr) {
                 logger.warn(`⚠️ [WebPush] Falha ao ler vapid-keys.json: ${readErr.message}`);
@@ -39,7 +41,19 @@ try {
 
         // Ainda sem chaves válidas → gera uma vez e persiste para os próximos boots
         if (isPlaceholder(vapidKeys.publicKey) || isPlaceholder(vapidKeys.privateKey)) {
-            logger.warn('⚠️ [WebPush] Chaves VAPID ausentes. Gerando e persistindo um par estável.');
+            if (process.env.NODE_ENV === 'production') {
+                // Em produção o disco é efêmero: o par gerado aqui some no
+                // próximo deploy e leva junto todas as inscrições de push.
+                logger.error(
+                    '❌ [WebPush] VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY ausentes em produção. ' +
+                        'As chaves geradas agora mudam a cada deploy e o push no celular para de chegar. ' +
+                        'Defina as duas variáveis no ambiente (npx web-push generate-vapid-keys).'
+                );
+            } else {
+                logger.warn(
+                    '⚠️ [WebPush] Chaves VAPID ausentes. Gerando e persistindo um par estável.'
+                );
+            }
             const generated = webpush.generateVAPIDKeys();
             vapidKeys.publicKey = generated.publicKey;
             vapidKeys.privateKey = generated.privateKey;
@@ -47,7 +61,9 @@ try {
                 fs.writeFileSync(KEYS_FILE, JSON.stringify(generated, null, 2), 'utf-8');
                 logger.info('🔑 [WebPush] Novas chaves VAPID salvas em vapid-keys.json.');
             } catch (writeErr) {
-                logger.warn(`⚠️ [WebPush] Não foi possível persistir as chaves (defina VAPID_* no ambiente): ${writeErr.message}`);
+                logger.warn(
+                    `⚠️ [WebPush] Não foi possível persistir as chaves (defina VAPID_* no ambiente): ${writeErr.message}`
+                );
             }
         }
     }

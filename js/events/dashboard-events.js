@@ -5,7 +5,6 @@
  * CSP-compatível: zero JavaScript inline.
  */
 document.addEventListener('DOMContentLoaded', function () {
-
     // ── Sino de Notificações ────────────────────────────────────────────────
     const notifBtn = document.getElementById('notif-btn');
     if (notifBtn) {
@@ -16,10 +15,17 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Marcar todas as notificações como lidas
-    const btnMarcarLidas = document.querySelector('#notif-panel .notif-header button');
+    const btnMarcarLidas = document.getElementById('btn-marcar-lidas');
     if (btnMarcarLidas) {
         btnMarcarLidas.addEventListener('click', function () {
             if (typeof marcarTodasLidas === 'function') marcarTodasLidas();
+        });
+    }
+
+    const btnFecharNotif = document.getElementById('btn-fechar-notif');
+    if (btnFecharNotif) {
+        btnFecharNotif.addEventListener('click', function () {
+            if (typeof fecharNotifPanel === 'function') fecharNotifPanel(true);
         });
     }
 
@@ -54,11 +60,12 @@ document.addEventListener('DOMContentLoaded', function () {
         btn.addEventListener('click', function () {
             const action = this.dataset.action;
             const fnMap = {
-                'irParaTurmas':     () => typeof irParaTurmas    === 'function' && irParaTurmas(),
-                'verPerfil':        () => typeof verPerfil        === 'function' && verPerfil(),
-                'verRelatorios':    () => typeof verRelatorios    === 'function' && verRelatorios(),
-                'abrirFerramentas': () => typeof abrirFerramentas === 'function' && abrirFerramentas(),
-                'sair':             () => typeof sair             === 'function' && sair(),
+                irParaTurmas: () => typeof irParaTurmas === 'function' && irParaTurmas(),
+                verPerfil: () => typeof verPerfil === 'function' && verPerfil(),
+                verRelatorios: () => typeof verRelatorios === 'function' && verRelatorios(),
+                abrirFerramentas: () =>
+                    typeof abrirFerramentas === 'function' && abrirFerramentas(),
+                sair: () => typeof sair === 'function' && sair(),
             };
             if (fnMap[action]) fnMap[action]();
         });

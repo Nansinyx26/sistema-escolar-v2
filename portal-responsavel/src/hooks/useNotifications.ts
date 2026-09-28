@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   getNotificacoesDoAluno,
-  getVapidPublicKey,
   marcarNotificacaoLida,
   ocultarNotificacao,
-  subscribePush,
 } from '../services/apiService';
+import { sincronizarPush } from '../services/pushService';
 import { socket } from '../services/socket';
 import type { AuthUser, Notification } from '../types';
 
@@ -80,52 +79,12 @@ export function useNotifications({ authUser, activeId }: UseNotificationsOptions
     };
   }, [authUser]);
 
+  // Com a permissão já concedida, mantém a inscrição do aparelho em dia (e a
+  // renova se as chaves VAPID do servidor mudaram). O PEDIDO de permissão não
+  // sai daqui: precisa de um toque — ver components/PushAtivacaoAviso.tsx.
   useEffect(() => {
     if (!authUser) return;
-
-    const urlBase64ToUint8Array = (base64String: string) => {
-      const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-      const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-      const rawData = window.atob(base64);
-      const outputArray = new Uint8Array(rawData.length);
-      for (let index = 0; index < rawData.length; index += 1) {
-        outputArray[index] = rawData.charCodeAt(index);
-      }
-      return outputArray;
-    };
-
-    const initPush = async () => {
-      if (!('serviceWorker' in navigator) || !('PushManager' in window) || !window.Notification)
-        return;
-
-      try {
-        if (Notification.permission === 'denied') return;
-
-        const keyData = await getVapidPublicKey();
-        if (!keyData?.publicKey) return;
-
-        if (Notification.permission !== 'granted') {
-          const permission = await Notification.requestPermission();
-          if (permission !== 'granted') return;
-        }
-
-        const registration = await navigator.serviceWorker.ready;
-        let subscription = await registration.pushManager.getSubscription();
-
-        if (!subscription) {
-          subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(keyData.publicKey),
-          });
-        }
-
-        await subscribePush(subscription);
-      } catch (err) {
-        console.warn('⚠️ [Push] Falha ao configurar Push no portal:', (err as Error).message);
-      }
-    };
-
-    void initPush();
+    void sincronizarPush();
   }, [authUser]);
 
   const handleMarkAsRead = useCallback(

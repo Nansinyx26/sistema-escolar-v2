@@ -295,14 +295,17 @@
 
                 <!-- Notificações -->
                 <div class="notif-wrapper">
-                    <button id="notif-btn" title="Notificações" class="ui-icon-btn" aria-label="Notificações">
+                    <button id="notif-btn" title="Notificações" class="ui-icon-btn" aria-label="Notificações" aria-controls="notif-panel" aria-expanded="false">
                         <i class="bi bi-bell"></i>
                         <span id="notif-badge" style="display:none;">0</span>
                     </button>
-                    <div id="notif-panel">
+                    <div id="notif-panel" role="dialog" aria-label="Notificações">
                         <div class="notif-header">
                             <h4><i class="bi bi-bell-fill"></i> Notificações</h4>
-                            <button id="btn-marcar-lidas"><i class="bi bi-check2-all"></i> Marcar tudo como lido</button>
+                            <div class="notif-header-acoes">
+                                <button type="button" id="btn-marcar-lidas" class="notif-marcar-btn"><i class="bi bi-check2-all" aria-hidden="true"></i> Marcar tudo como lido</button>
+                                <button type="button" id="btn-fechar-notif" class="notif-fechar-btn" aria-label="Fechar notificações" title="Fechar"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+                            </div>
                         </div>
                         <div id="notif-list"></div>
                         <div class="notif-footer"><i class="bi bi-hand-index"></i> Clique em cada item para marcar como lido</div>
