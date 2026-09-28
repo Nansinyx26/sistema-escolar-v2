@@ -152,6 +152,7 @@ exports.notify = async ({
     comunicadoId = null,
     paraResponsavel = null,
     escolaId = null,
+    resumoEmail = null, // dados estruturados do resumo mensal (só para o e-mail)
 }) => {
     try {
         const destList = Array.isArray(destinatarios) ? destinatarios : [destinatarios];
@@ -206,6 +207,7 @@ exports.notify = async ({
                 titulo,
                 mensagem,
                 link,
+                resumoEmail,
             })
             .catch((err) => {
                 logger.error(`[NotificationService] entrega: ${err.message}`);
@@ -239,7 +241,7 @@ exports.entregarForaDoPortal = (novaNotif, opcoes) =>
 
 async function entregar(
     novaNotif,
-    { destList, escolaId, alcancaResponsavel, tipo, titulo, mensagem, link }
+    { destList, escolaId, alcancaResponsavel, tipo, titulo, mensagem, link, resumoEmail }
 ) {
     const targetUsers = await exports.getTargetUsers(destList, escolaId, {
         incluirResponsaveis: alcancaResponsavel,
@@ -261,7 +263,7 @@ async function entregar(
                     titulo,
                     mensagem,
                     `${process.env.FRONTEND_URL || 'http://localhost:3000'}${destino}`,
-                    { tipo }
+                    { tipo, resumo: resumoEmail }
                 );
                 if (sent)
                     await Notificacao.findByIdAndUpdate(novaNotif._id, { enviadoEmail: true });

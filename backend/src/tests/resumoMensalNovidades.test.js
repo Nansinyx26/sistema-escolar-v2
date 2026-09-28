@@ -5,7 +5,7 @@ const {
     itensDoMes,
     montarResumoMensal,
 } = require('../config/changelog');
-const { htmlResumoAtualizacao } = require('../services/EmailService');
+const { htmlResumoMensal } = require('../services/EmailResumoMensal');
 
 const exemplo = [
     {
@@ -20,7 +20,12 @@ const exemplo = [
         versao: '1.2.0',
         data: '2026-09-02',
         itens: [
-            { tipo: 'novidade', texto: 'Agora dá para exportar a frequência <em PDF>.' },
+            {
+                tipo: 'novidade',
+                icone: 'pdf',
+                texto: 'Agora dá para exportar a frequência <em PDF>.',
+                detalhe: 'Direto da turma.',
+            },
             { tipo: 'melhoria', texto: 'Chamada carrega mais rápido.' },
         ],
     },
@@ -66,14 +71,43 @@ describe('resumo mensal de novidades', () => {
         }
     });
 
-    it('o e-mail agrupa por tipo e escapa o texto', () => {
+    it('o e-mail agrupa por tipo, usa os ícones e escapa o texto', () => {
         const r = montarResumoMensal('2026-09', exemplo);
-        const html = htmlResumoAtualizacao(r.titulo, r.mensagem, 'https://x/y');
+        const html = htmlResumoMensal(r, 'https://x/y?a=1&b=2', 'https://escola.exemplo/');
         expect(html).toContain('Novidades');
         expect(html).toContain('Correções');
         expect(html).toContain('setembro de 2026');
+        expect(html).toContain('1 novidade');
+        expect(html).toContain('Direto da turma.');
         expect(html).toContain('&lt;em PDF&gt;');
         expect(html).not.toContain('<em PDF>');
+        expect(html).toContain('https://x/y?a=1&amp;b=2');
+        expect(html).toContain('https://escola.exemplo/img/email/item-pdf-novidade.png');
+        // Sem ícone definido, vale o padrão do tipo.
+        expect(html).toContain('/img/email/item-chave-correcao.png');
         expect(html.indexOf('exportar')).toBeLessThan(html.indexOf('Boletim'));
+    });
+
+    it('ícone desconhecido cai no padrão do tipo', () => {
+        const html = htmlResumoMensal(
+            { mesNome: 'maio de 2026', itens: [{ tipo: 'melhoria', texto: 'x', icone: '../x' }] },
+            '/',
+            ''
+        );
+        expect(html).toContain('/img/email/item-tendencia-melhoria.png');
+        expect(html).not.toContain('../x');
+    });
+
+    it('toda imagem citada pelo template existe em img/email', () => {
+        const fs = require('node:fs');
+        const path = require('node:path');
+        const r = montarResumoMensal('2026-09', exemplo);
+        const html = htmlResumoMensal(r, '/', '');
+        const nomes = [...html.matchAll(/\/img\/email\/([\w-]+\.png)/g)].map((m) => m[1]);
+        expect(nomes.length).toBeGreaterThan(5);
+        const pasta = path.join(__dirname, '..', '..', '..', 'img', 'email');
+        for (const nome of new Set(nomes)) {
+            expect(fs.existsSync(path.join(pasta, nome))).toBe(true);
+        }
     });
 });
