@@ -1,27 +1,27 @@
 /**
  * SystemUpdateJob.js
- * Executa todos os dias às 16h (horário de Brasília) e, sempre que houver uma
- * atualização no sistema (nova versão no topo de config/changelog.js que ainda
- * não foi anunciada), envia uma notificação automática para todos os usuários
- * de todas as escolas ativas via NotificationService.
+ * Executa no dia 1 de cada mês, às 7h (horário de Brasília), e envia UM resumo
+ * com as novidades, melhorias e correções do mês anterior (config/changelog.js)
+ * para todos os usuários de todas as escolas ativas via NotificationService.
  *
- * Cada versão é anunciada UMA única vez por escola — a checagem de duplicata
- * garante que rodar o job em dias seguintes não reenvia a mesma novidade.
+ * Só entram os itens que mudam algo para o usuário (itens `interno` ficam de
+ * fora). Mês sem nada relevante não gera envio. Cada resumo sai UMA única vez
+ * por escola — a checagem de duplicata e a trava mensal garantem isso.
  */
 
 const cron = require('node-cron');
 const Escola = require('../models/Escola');
 const Notificacao = require('../models/Notificacao');
 const NotificationService = require('../services/NotificationService');
-const { releaseAtual, montarNotificacao } = require('../config/changelog');
+const { mesAnterior, montarResumoMensal } = require('../config/changelog');
 const logger = require('../utils/logger');
-const { executarComTravaJanela, formatarJanelaDia } = require('../utils/travaDistribuida');
+const { executarComTravaJanela, formatarJanelaMes } = require('../utils/travaDistribuida');
 
 const TIPO = 'atualizacao_sistema';
 
 /**
  * Já foi anunciada esta versão para esta escola?
- * Dedup por tipo + título (o título carrega a versão) + escola.
+ * Dedup por tipo + título (o título carrega o mês) + escola.
  */
 async function jaAnunciada(titulo, escolaId) {
     const filtro = { tipo: TIPO, titulo };
@@ -53,22 +53,22 @@ async function anunciarParaEscola(notif, escolaId) {
 }
 
 /**
- * Rotina principal: anuncia a versão atual do changelog, se ainda não anunciada.
+ * Rotina principal: envia o resumo do mês anterior, se houver o que contar.
  */
 async function anunciarAtualizacao(opcoesTrava = {}) {
-    const janela = formatarJanelaDia();
+    const janela = formatarJanelaMes();
     return executarComTravaJanela(
-        'aviso-atualizacao',
+        'aviso-atualizacao-mensal',
         janela,
         async () => {
             try {
-                const notif = montarNotificacao(releaseAtual());
+                const notif = montarResumoMensal(mesAnterior(janela));
                 if (!notif) {
-                    logger.info('[SystemUpdate] Nenhuma release no changelog. Nada a anunciar.');
+                    logger.info('[SystemUpdate] Nada relevante no mês anterior. Nenhum e-mail.');
                     return;
                 }
 
-                logger.info(`[SystemUpdate] Verificando atualização v${notif.versao} às 16h...`);
+                logger.info(`[SystemUpdate] Enviando resumo de ${notif.mesNome}...`);
 
                 const escolas = await Escola.find({ ativo: true }).select('_id').lean();
 
@@ -90,12 +90,10 @@ async function anunciarAtualizacao(opcoesTrava = {}) {
 
                 if (enviados > 0) {
                     logger.info(
-                        `[SystemUpdate] Atualização v${notif.versao} anunciada para ${enviados} escola(s).`
+                        `[SystemUpdate] Resumo de ${notif.mesNome} enviado para ${enviados} escola(s).`
                     );
                 } else {
-                    logger.info(
-                        `[SystemUpdate] Atualização v${notif.versao} já havia sido anunciada. Nada enviado.`
-                    );
+                    logger.info(`[SystemUpdate] Resumo de ${notif.mesNome} já havia sido enviado.`);
                 }
             } catch (err) {
                 logger.error(`[SystemUpdate] Erro ao anunciar atualização: ${err.message}`);
@@ -106,11 +104,11 @@ async function anunciarAtualizacao(opcoesTrava = {}) {
 }
 
 /**
- * Inicializa o job: todo dia às 16:00 (horário de Brasília).
+ * Inicializa o job: dia 1 de cada mês, às 07:00 (horário de Brasília).
  */
 function iniciarSystemUpdateJob() {
     cron.schedule(
-        '0 16 * * *',
+        '0 7 1 * *',
         () => {
             anunciarAtualizacao();
         },
@@ -119,7 +117,7 @@ function iniciarSystemUpdateJob() {
         }
     );
 
-    logger.info('[SystemUpdate] Job agendado: aviso de atualizações às 16h (BRT).');
+    logger.info('[SystemUpdate] Job agendado: resumo mensal de novidades no dia 1, às 7h (BRT).');
 }
 
 module.exports = { iniciarSystemUpdateJob, anunciarAtualizacao };
