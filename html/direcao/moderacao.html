@@ -192,6 +192,21 @@
         <section class="mod-lista" id="mod-lista" aria-live="polite" aria-label="Ocorrências pendentes"></section>
 
         <p class="mod-vazio" id="mod-vazio" hidden>Nenhuma ocorrência esperando decisão.</p>
+
+        <!-- Issue #511: a comunicação ao Conselho Tutelar é dever da escola
+             (ECA, art. 56; Lei 15.231/2025) e continua pendente mesmo depois
+             que a ocorrência sai da fila de decisão. -->
+        <header class="mod-cabecalho" style="margin-top: 2.5rem;">
+            <h2>Comunicação ao Conselho Tutelar</h2>
+            <p>
+                Denúncias de violência, assédio e automutilação precisam ser comunicadas ao
+                Conselho Tutelar. Registre aqui quando e como a escola comunicou. Casos de
+                automutilação são sigilosos.
+            </p>
+        </header>
+        <p class="mod-erro" id="ct-erro" role="alert" hidden></p>
+        <section class="mod-lista" id="ct-lista" aria-live="polite" aria-label="Comunicações ao Conselho Tutelar pendentes"></section>
+        <p class="mod-vazio" id="ct-vazio" hidden>Nenhuma comunicação ao Conselho Tutelar pendente.</p>
     </main>
 
     <script defer src="../../js/botao-voltar.js"></script>
@@ -199,6 +214,7 @@
     <script defer src="../../js/auth.js?v=3"></script>
     <script defer src="../../js/motion.js"></script>
     <script defer src="../../js/moderacao/painel.js?v=1.0"></script>
+    <script defer src="../../js/moderacao/conselho-tutelar.js?v=1.0"></script>
     <script defer src="../../js/observability.js"></script>
     <script defer src="../../js/acessibilidade.js"></script>
 </body>

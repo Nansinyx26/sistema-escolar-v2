@@ -79,6 +79,40 @@ const ModeracaoOcorrenciaSchema = new mongoose.Schema(
         // fachada. Fica limitado em tamanho e só é lido pela moderação da escola.
         relato: { type: String, maxlength: 2000, default: undefined },
 
+        // ─── Comunicação ao Conselho Tutelar (Issue #511) ───────────────────
+        // ECA, arts. 13, 56-I e 245; Lei 14.344/2022; Lei 13.819/2019, art. 6º;
+        // LDB, art. 12, VIII (redação da Lei 15.231/2025). Denúncia de
+        // violência, assédio ou automutilação nasce com a comunicação
+        // EXIGIDA e `situacao: 'pendente'`; a gestão registra quando e como
+        // comunicou — ou, só a direção, por que a apuração dispensou.
+        // `sigilosa` marca a violência autoprovocada, que a Lei 13.819 manda
+        // tratar em sigilo. Nenhum campo aqui guarda o relato.
+        conselhoTutelar: {
+            type: new mongoose.Schema(
+                {
+                    exigida: { type: Boolean, default: false },
+                    sigilosa: { type: Boolean, default: false },
+                    situacao: {
+                        type: String,
+                        enum: ['pendente', 'comunicado', 'dispensado'],
+                        default: 'pendente',
+                    },
+                    comunicadoEm: Date,
+                    meio: {
+                        type: String,
+                        enum: ['oficio', 'email', 'telefone', 'presencial', 'sistema_do_conselho'],
+                    },
+                    protocolo: { type: String, trim: true, maxlength: 60 },
+                    justificativaDispensa: { type: String, trim: true, maxlength: 1000 },
+                    registradoPor: String,
+                    registradoPerfil: String,
+                    registradoEm: Date,
+                },
+                { _id: false }
+            ),
+            default: undefined,
+        },
+
         provedor: { type: String },
         provedorLatenciaMs: { type: Number },
         provedorVersao: { type: String },
