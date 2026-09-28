@@ -243,7 +243,7 @@ const OnboardingTour: React.FC<Props> = ({ steps, onComplete, onSkip }) => {
 
 const btnPrimary: React.CSSProperties = {
   padding: '0.6rem 1.25rem',
-  background: '#10b981',
+  background: '#047857',
   color: '#fff',
   border: 'none',
   borderRadius: '10px',

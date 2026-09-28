@@ -398,6 +398,9 @@
         dom.drawerDetalhes.classList.add('active');
         dom.drawerBackdrop.setAttribute('aria-hidden', 'false');
         dom.drawerDetalhes.setAttribute('aria-hidden', 'false');
+        // `inert` fechado, fora do fechado: sem isso o botão de fechar da gaveta
+        // escondida seguia recebendo foco pelo Tab (WCAG 4.1.2).
+        dom.drawerDetalhes.inert = false;
 
         try {
             const apiBase = window.API_BASE_URL || '/api';
@@ -504,6 +507,7 @@
         dom.drawerDetalhes.classList.remove('active');
         dom.drawerBackdrop.setAttribute('aria-hidden', 'true');
         dom.drawerDetalhes.setAttribute('aria-hidden', 'true');
+        dom.drawerDetalhes.inert = true;
     }
 
     /**
