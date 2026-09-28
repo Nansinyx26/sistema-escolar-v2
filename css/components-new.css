@@ -115,12 +115,14 @@
 
 /* Botão de perigo */
 .btn-danger {
-    background: var(--error);
+    /* Tom fixo e mais escuro que --error: branco sobre #ef4444 dá 3,76:1,
+       abaixo dos 4,5:1 da WCAG 1.4.3 (Issue #536). */
+    background: #dc2626;
     color: white;
 }
 
 .btn-danger:hover:not(:disabled) {
-    background: var(--error-hover);
+    background: #b91c1c;
     transform: translateY(-2px);
     box-shadow: var(--shadow-lg);
 }
@@ -136,12 +138,13 @@
 
 /* Botão de sucesso */
 .btn-success {
-    background: var(--success);
+    /* Mesma razão do .btn-danger: branco sobre #10b981 dá 2,53:1. */
+    background: #047857;
     color: white;
 }
 
 .btn-success:hover:not(:disabled) {
-    background: var(--success-hover);
+    background: #065f46;
     transform: translateY(-2px);
     box-shadow: var(--shadow-lg);
 }
@@ -469,6 +472,12 @@
 .toast-close {
     color: var(--text-tertiary);
     cursor: pointer;
+    /* Alvo mínimo de 24px (WCAG 2.5.8): o ícone sozinho tinha ~16px. */
+    min-width: 24px;
+    min-height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     transition: color var(--transition-fast);
 }
 

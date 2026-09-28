@@ -299,7 +299,7 @@
                 padding: 10px 20px; border-radius: 12px; font-weight: 700; font-size: 0.85rem;
                 cursor: pointer; transition: all 0.2s; border: 1px solid rgba(255,255,255,0.1);
             }
-            .btn-next-tour { background: #10b981; color: #fff; border: none; box-shadow: 0 8px 20px rgba(16,185,129,0.3); }
+            .btn-next-tour { background: #047857; color: #fff; border: none; box-shadow: 0 8px 20px rgba(16,185,129,0.3); }
             .btn-next-tour:hover { transform: translateY(-2px); box-shadow: 0 12px 25px rgba(16,185,129,0.5); }
             .btn-back-tour { background: rgba(255,255,255,0.05); color: #fff; }
             .btn-skip-tour { background: transparent; color: rgba(255,255,255,0.4); border: none; }

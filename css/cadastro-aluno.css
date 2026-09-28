@@ -150,11 +150,11 @@ body {
     text-align: center;
     font-size: .72rem;
     font-weight: 500;
-    color: rgba(255,255,255,.35);
+    color: rgba(255,255,255,.6);
     position: relative;
 }
 .ca-step.active { color: #10b981; font-weight: 600; }
-.ca-step.done { color: rgba(16,185,129,.7); }
+.ca-step.done { color: #34d399; }
 .ca-step-dot {
     width: 28px; height: 28px;
     border-radius: 50%;
@@ -348,8 +348,8 @@ body {
     background: rgba(16,185,129,.04);
 }
 .doc-upload-zone i { font-size: 2rem; color: rgba(255,255,255,.25); display: block; margin-bottom: .5rem; }
-.doc-upload-zone p { font-size: .83rem; color: rgba(255,255,255,.4); }
-.doc-upload-zone span { font-size: .72rem; color: rgba(255,255,255,.25); }
+.doc-upload-zone p { font-size: .83rem; color: rgba(255,255,255,.6); }
+.doc-upload-zone span { font-size: .72rem; color: rgba(255,255,255,.55); }
 #docInput { display: none; }
 
 .doc-list { margin-top: 1rem; display: flex; flex-direction: column; gap: .5rem; }
@@ -557,7 +557,7 @@ body {
     gap: .3rem;
     background: rgba(255,255,255,.05);
     border: 1px solid rgba(255,255,255,.08);
-    color: rgba(255,255,255,.4);
+    color: rgba(255,255,255,.6);
     padding: .25rem .6rem;
     border-radius: 6px;
     font-size: .7rem;
