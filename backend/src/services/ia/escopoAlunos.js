@@ -38,11 +38,19 @@ async function alunosDoEscopo(ctx) {
     const emCache = cache.get(chave);
     if (emCache && Date.now() - emCache.at < TTL_MS) return emCache.alunos;
 
-    const docs = await Aluno.find(filtro(ctx)).select('nome sobrenome').limit(LIMITE).lean();
-    const alunos = docs.map((a) => ({
-        id: String(a._id),
-        nome: [a.nome, a.sobrenome].filter(Boolean).join(' ').trim(),
-    }));
+    const docs = await Aluno.find(filtro(ctx))
+        .select('nome sobrenome nomeSocial')
+        .limit(LIMITE)
+        .lean();
+    // O nome social (Issue #510) é nome da criança como o civil: quem digita
+    // "a Ana" pensando no nome social precisa ver a Ana virar rótulo também.
+    // Mesmo `id`, então os dois nomes caem no mesmo rótulo.
+    const alunos = docs.flatMap((a) => {
+        const id = String(a._id);
+        const civil = { id, nome: [a.nome, a.sobrenome].filter(Boolean).join(' ').trim() };
+        const social = String(a.nomeSocial || '').trim();
+        return social ? [civil, { id, nome: social }] : [civil];
+    });
     cache.set(chave, { at: Date.now(), alunos });
     return alunos;
 }
