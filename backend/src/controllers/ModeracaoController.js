@@ -85,6 +85,16 @@ function paraPainel(doc) {
         statusAtual: doc.statusAtual,
         revisao: doc.revisao || null,
         contestacao: doc.contestacao || null,
+        // Issue #511 — só a situação; a justificativa de dispensa fica no banco.
+        conselhoTutelar: doc.conselhoTutelar
+            ? {
+                  exigida: doc.conselhoTutelar.exigida,
+                  sigilosa: doc.conselhoTutelar.sigilosa,
+                  situacao: doc.conselhoTutelar.situacao,
+                  comunicadoEm: doc.conselhoTutelar.comunicadoEm || null,
+                  meio: doc.conselhoTutelar.meio || null,
+              }
+            : null,
         criadoEm: doc.criadoEm,
     };
 }
