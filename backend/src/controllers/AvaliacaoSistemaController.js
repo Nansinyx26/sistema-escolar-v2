@@ -1,46 +1,57 @@
+const mongoose = require('mongoose');
 const AvaliacaoSistema = require('../models/AvaliacaoSistema');
 const Usuario = require('../models/Usuario');
 const SiteReview = require('../models/SiteReview');
-const Professor = require('../models/Professor');
-const Diretor = require('../models/Diretor');
-const Secretaria = require('../models/Secretaria');
+const { logAction } = require('../utils/auditHelper');
+const {
+    FILTRO_PAGINA_INICIAL,
+    avaliacaoParaPublico,
+    aderiu,
+} = require('../utils/avaliacaoPublica');
 
 /**
- * Normaliza o campo foto para uma URL que o <img> da landing consegue
- * carregar. Trata o prefixo "gridfs:<id>" (foto salva no GridFS pelos
- * perfis de equipe) — sem isso, a URL virava /api/files/gridfs:<id> e
- * a imagem nunca carregava, caindo nas iniciais.
+ * Avaliações do sistema (Issue #489).
+ *
+ * A página inicial é pública: nada de nome completo, foto ou id da conta. A
+ * avaliação só aparece lá se a pessoa escolheu aparecer (`exibirPublicamente`)
+ * e a administração aprovou (`moderacao`). Mudar o texto devolve a avaliação
+ * para revisão — a aprovação vale para o texto que foi lido.
  */
-function resolverFotoPublica(foto) {
-    if (!foto || typeof foto !== 'string') return '';
-    if (foto.startsWith('gridfs:')) return `/api/files/${foto.slice('gridfs:'.length)}`;
-    return foto; // data:, http(s):, /api/files/... já prontos
-}
-
 exports.create = async (req, res) => {
     try {
         const { estrelas, texto } = req.body;
+        const exibirPublicamente = aderiu(req.body.exibirPublicamente);
         const usuarioId = req.user.id || req.user._id;
 
         if (!estrelas || !texto) {
-            return res.status(400).json({ success: false, error: 'Estrelas e texto são obrigatórios.' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'Estrelas e texto são obrigatórios.' });
         }
 
-        const usuario = await Usuario.findById(usuarioId).lean();
+        const usuario = await Usuario.findById(usuarioId).select('nome perfil').lean();
         if (!usuario) {
             return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
         }
 
-        // Verifica se o usuário já avaliou (opcional: permite só 1 por usuário)
         const avaliacaoExistente = await AvaliacaoSistema.findOne({ usuarioId });
         if (avaliacaoExistente) {
-            // Atualiza a existente
+            const textoMudou = avaliacaoExistente.texto !== texto;
             avaliacaoExistente.estrelas = estrelas;
             avaliacaoExistente.texto = texto;
-            avaliacaoExistente.foto = usuario.foto || usuario.fotoGoogle || '';
+            avaliacaoExistente.exibirPublicamente = exibirPublicamente;
+            // A foto não é mais guardada: nenhuma saída a usa.
+            avaliacaoExistente.foto = '';
             avaliacaoExistente.dataCriacao = Date.now();
+            if (textoMudou || !avaliacaoExistente.moderacao) {
+                avaliacaoExistente.moderacao = 'pendente';
+                avaliacaoExistente.moderadoPor = undefined;
+                avaliacaoExistente.moderadoEm = undefined;
+            }
             await avaliacaoExistente.save();
-            return res.status(200).json({ success: true, message: 'Avaliação atualizada com sucesso!' });
+            return res
+                .status(200)
+                .json({ success: true, message: 'Avaliação atualizada com sucesso!' });
         }
 
         const avaliacao = new AvaliacaoSistema({
@@ -49,7 +60,8 @@ exports.create = async (req, res) => {
             perfil: usuario.perfil,
             estrelas,
             texto,
-            foto: usuario.foto || usuario.fotoGoogle || ''
+            exibirPublicamente,
+            moderacao: 'pendente',
         });
 
         await avaliacao.save();
@@ -59,84 +71,124 @@ exports.create = async (req, res) => {
     }
 };
 
-exports.getPublic = async (req, res) => {
+/** SiteReview (avaliação feita pelo painel) na forma de AvaliacaoSistema. */
+function siteReviewComoAvaliacao(r) {
+    return {
+        _id: r._id,
+        nome: r.userName,
+        perfil: r.userType,
+        estrelas: r.rating,
+        texto: r.comment,
+        dataCriacao: r.updatedAt || r.createdAt,
+    };
+}
+
+/**
+ * GET /api/avaliacoes/public — página inicial, sem login.
+ * Só aderidas e aprovadas; iniciais em vez de nome; sem foto e sem id da conta.
+ */
+exports.getPublic = async (_req, res) => {
     try {
-        // 1. Busca todas as avaliações feitas pela Landing Page
-        const avaliacoes = await AvaliacaoSistema.find({ ativo: true }).lean();
-
-        // 2. Busca todas as avaliações feitas pelo Dashboard / Realtime
-        const siteReviews = await SiteReview.find().lean();
-
-        // 3. Unifica IDs de usuários para busca em massa
-        const allUserIds = [
-            ...new Set([
-                ...avaliacoes.map(a => a.usuarioId?.toString()),
-                ...siteReviews.map(r => r.userId?.toString())
-            ])
-        ].filter(Boolean);
-
-        const usuarios = await Usuario.find({ _id: { $in: allUserIds } })
-            .select('nome foto fotoGoogle perfil')
-            .lean();
-
-        const usuariosMap = {};
-        usuarios.forEach(u => {
-            usuariosMap[u._id.toString()] = u;
-        });
-
-        // Fallback de foto: perfis de equipe guardam a foto na própria
-        // collection (professores/diretores/secretarias), não em usuarios.
-        const [profs, dirs, secs] = await Promise.all([
-            Professor.find({ idUsuario: { $in: allUserIds } }).select('idUsuario foto').lean().catch(() => []),
-            Diretor.find({ idUsuario: { $in: allUserIds } }).select('idUsuario foto').lean().catch(() => []),
-            Secretaria.find({ idUsuario: { $in: allUserIds } }).select('idUsuario foto').lean().catch(() => []),
+        const [avaliacoes, siteReviews] = await Promise.all([
+            AvaliacaoSistema.find({ ativo: { $ne: false }, ...FILTRO_PAGINA_INICIAL }).lean(),
+            SiteReview.find(FILTRO_PAGINA_INICIAL).lean(),
         ]);
-        const fotoPerfilMap = {};
-        [...profs, ...dirs, ...secs].forEach(d => {
-            if (d.idUsuario && d.foto && !fotoPerfilMap[String(d.idUsuario)]) {
-                fotoPerfilMap[String(d.idUsuario)] = d.foto;
-            }
-        });
 
-        // 4. Formata Avaliacoes do Sistema com dados atuais
-        const formattedAvaliacoes = avaliacoes.map(a => {
-            const u = a.usuarioId ? usuariosMap[a.usuarioId.toString()] : null;
-            return {
-                _id: a._id,
-                usuarioId: a.usuarioId,
-                nome: u?.nome || a.nome || "Usuário",
-                perfil: u?.perfil || a.perfil,
-                estrelas: a.estrelas,
-                texto: a.texto,
-                foto: resolverFotoPublica(u?.foto || u?.fotoGoogle || fotoPerfilMap[a.usuarioId?.toString()] || a.foto || ''),
-                ativo: true,
-                dataCriacao: a.dataCriacao
-            };
-        });
+        const combinadas = [
+            ...avaliacoes.map(avaliacaoParaPublico),
+            ...siteReviews.map((r) => avaliacaoParaPublico(siteReviewComoAvaliacao(r))),
+        ];
+        combinadas.sort((a, b) => new Date(b.dataCriacao) - new Date(a.dataCriacao));
 
-        // 5. Formata SiteReviews com dados atuais
-        const mappedSiteReviews = siteReviews.map(r => {
-            const u = r.userId ? usuariosMap[r.userId.toString()] : null;
-            return {
-                _id: r._id,
-                usuarioId: r.userId,
-                nome: u?.nome || r.userName || "Usuário",
-                perfil: u?.perfil || r.userType,
-                estrelas: r.rating,
-                texto: r.comment,
-                foto: resolverFotoPublica(u?.foto || u?.fotoGoogle || fotoPerfilMap[r.userId?.toString()] || r.userAvatar || ''),
-                ativo: true,
-                dataCriacao: r.updatedAt || r.createdAt || new Date()
-            };
-        });
-
-        // 6. Combina e ordena
-        const combined = [...formattedAvaliacoes, ...mappedSiteReviews];
-        combined.sort((a, b) => new Date(b.dataCriacao) - new Date(a.dataCriacao));
-
-        res.status(200).json({ success: true, data: combined });
+        res.status(200).json({ success: true, data: combinadas });
     } catch (error) {
         console.error('[AvaliacaoSistemaController.getPublic] Error:', error);
         res.status(500).json({ success: false, error: 'Erro ao buscar avaliações.' });
+    }
+};
+
+const COLECOES = {
+    sistema: AvaliacaoSistema,
+    painel: SiteReview,
+};
+
+/**
+ * GET /api/avaliacoes/moderacao — fila da administração.
+ * Mostra texto e estrelas; quem escreveu aparece por iniciais e papel.
+ */
+exports.listarParaModeracao = async (req, res) => {
+    try {
+        const situacao = ['pendente', 'aprovada', 'recusada'].includes(req.query.situacao)
+            ? req.query.situacao
+            : 'pendente';
+        const filtro =
+            situacao === 'pendente'
+                ? { moderacao: { $in: ['pendente', null] } }
+                : { moderacao: situacao };
+
+        const [sistema, painel] = await Promise.all([
+            AvaliacaoSistema.find(filtro).sort({ dataCriacao: -1 }).limit(200).lean(),
+            SiteReview.find(filtro).sort({ updatedAt: -1 }).limit(200).lean(),
+        ]);
+
+        const data = [
+            ...sistema.map((a) => ({
+                colecao: 'sistema',
+                ...avaliacaoParaPublico(a),
+                exibirPublicamente: a.exibirPublicamente === true,
+                moderacao: a.moderacao || 'pendente',
+            })),
+            ...painel.map((r) => ({
+                colecao: 'painel',
+                ...avaliacaoParaPublico(siteReviewComoAvaliacao(r)),
+                exibirPublicamente: r.exibirPublicamente === true,
+                moderacao: r.moderacao || 'pendente',
+            })),
+        ].sort((a, b) => new Date(b.dataCriacao) - new Date(a.dataCriacao));
+
+        res.json({ success: true, data });
+    } catch {
+        res.status(500).json({
+            success: false,
+            error: 'Erro ao listar avaliações para moderação.',
+        });
+    }
+};
+
+/**
+ * PATCH /api/avaliacoes/moderacao/:colecao/:id  { decisao: 'aprovada' | 'recusada' }
+ * A decisão vai para o AuditLog com antes e depois, por id.
+ */
+exports.moderar = async (req, res) => {
+    try {
+        const Modelo = COLECOES[req.params.colecao];
+        const { decisao } = req.body || {};
+        if (!Modelo || !['aprovada', 'recusada'].includes(decisao)) {
+            return res.status(400).json({ success: false, error: 'Coleção ou decisão inválida.' });
+        }
+        if (!mongoose.isValidObjectId(req.params.id)) {
+            return res.status(404).json({ success: false, error: 'Avaliação não encontrada.' });
+        }
+
+        const doc = await Modelo.findById(req.params.id);
+        if (!doc)
+            return res.status(404).json({ success: false, error: 'Avaliação não encontrada.' });
+
+        const anterior = doc.moderacao || 'pendente';
+        doc.moderacao = decisao;
+        doc.moderadoPor = String(req.user.id || req.user._id);
+        doc.moderadoEm = new Date();
+        await doc.save();
+
+        await logAction(req, 'AVALIACAO_MODERADA', 'AvaliacaoSistema', {
+            recursoId: String(doc._id),
+            valorAnterior: { moderacao: anterior },
+            valorNovo: { moderacao: decisao },
+            descricao: `Avaliação ${doc._id} (${req.params.colecao}): ${anterior} → ${decisao}.`,
+        });
+
+        res.json({ success: true, data: { id: doc._id, moderacao: doc.moderacao } });
+    } catch {
+        res.status(500).json({ success: false, error: 'Erro ao moderar a avaliação.' });
     }
 };

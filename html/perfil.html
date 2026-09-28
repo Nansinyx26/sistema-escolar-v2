@@ -353,6 +353,12 @@
                                 <label class="form-label" for="avaliacaoTexto">Deixe seu depoimento sobre a plataforma</label>
                                 <textarea id="avaliacaoTexto" class="form-textarea" placeholder="O que você achou do sistema?..." rows="3"></textarea>
                             </div>
+
+                            <!-- Adesão opcional (Issue #489): desmarcada por padrão. Aparecer na página inicial é escolha de quem avalia. -->
+                            <label class="form-label" style="display:flex;gap:0.5rem;align-items:flex-start;font-weight:400;margin-bottom:1rem;">
+                                <input type="checkbox" id="avaliacaoExibirPublicamente" style="margin-top:0.2rem;">
+                                <span>Pode mostrar esta avaliação na página inicial do sistema, só com as iniciais do meu nome e sem foto. Ela passa por revisão antes de aparecer.</span>
+                            </label>
                             
                             <button type="button" class="btn btn-outline btn-sm" id="btnEnviarAvaliacao" style="border-color: var(--gold); color: var(--gold);">
                                 <i class="bi bi-send-fill"></i> Enviar Avaliação

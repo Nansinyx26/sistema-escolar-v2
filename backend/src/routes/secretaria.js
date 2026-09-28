@@ -24,6 +24,28 @@ router.post('/alunos', auth, filtrarPorEscola, SecretariaController.criarAluno);
 router.post('/alunos/importar', auth, filtrarPorEscola, SecretariaController.importarAlunos);
 router.post('/alunos/importar/estruturar', auth, SecretariaController.estruturarTextoAlunos);
 router.put('/alunos/:id', auth, SecretariaController.editarAluno);
+
+// Bloqueio de acesso de responsável por decisão judicial (Issue #491).
+// `filtrarPorEscola` dá o recorte: a gestão só marca aluno da própria escola.
+const RestricaoAcessoController = require('../controllers/RestricaoAcessoController');
+router.get(
+    '/alunos/:id/restricoes-acesso',
+    auth,
+    filtrarPorEscola,
+    RestricaoAcessoController.listar
+);
+router.post(
+    '/alunos/:id/restricoes-acesso',
+    auth,
+    filtrarPorEscola,
+    RestricaoAcessoController.incluir
+);
+router.post(
+    '/alunos/:id/restricoes-acesso/remover',
+    auth,
+    filtrarPorEscola,
+    RestricaoAcessoController.retirar
+);
 router.post('/matriculas', auth, SecretariaController.criarMatricula);
 router.put('/matriculas/:id/transferir', auth, SecretariaController.transferirMatricula);
 router.put('/matriculas/:id/status', auth, SecretariaController.atualizarStatusMatricula);

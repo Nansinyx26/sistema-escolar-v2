@@ -5,6 +5,7 @@ const logger = require('../utils/logger');
 const escapeRegex = require('../utils/escapeRegex');
 const { emitirParaEscola } = require('../utils/realtime');
 const { extrairPaginacao } = require('../middleware/pagination');
+const { semRestricaoPara } = require('../utils/restricaoAcesso');
 
 /**
  * Restringe a consulta à escola ativa. Admin enxerga a rede toda.
@@ -39,6 +40,7 @@ async function podeVerComunicado(comunicado, user) {
                 { 'responsavelDados.email': emailRegex },
                 { 'responsaveis.email': emailRegex },
             ],
+            ...semRestricaoPara(user.email),
         })
             .select('turma turmaId')
             .lean();
@@ -236,6 +238,7 @@ exports.getAll = async (req, res) => {
                             { 'responsavelDados.email': emailRegex },
                             { 'responsaveis.email': emailRegex },
                         ],
+                        ...semRestricaoPara(email),
                     })
                         .select('turma turmaId')
                         .lean();
