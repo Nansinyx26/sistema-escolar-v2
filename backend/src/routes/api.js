@@ -14,6 +14,8 @@ const { convertToWebP } = require('../middleware/upload');
 // Confere os BYTES do arquivo contra o mimetype declarado. Usado tanto aqui
 // (documentos de aluno) quanto nos anexos do chat, mais abaixo.
 const { validarAssinatura } = require('../utils/assinaturaArquivo');
+const verificarDireitosAutorais = require('../middleware/verificarDireitosAutorais');
+const { carimboImpressao } = require('../services/direitosAutorais');
 
 // Controllers Auxiliares (mantidos para rotas gerais da raiz)
 const ConfigController = require('../controllers/ConfigController');
@@ -95,6 +97,7 @@ router.post(
     authJWT,
     filtrarPorEscola,
     upload.single('foto'),
+    verificarDireitosAutorais,
     convertToWebP,
     async (req, res) => {
         if (!req.file)
@@ -117,6 +120,7 @@ router.post(
                     usuarioId: String(req.user?.id || req.user?._id || ''),
                     escolaId: req.escolaId ? String(req.escolaId) : undefined,
                     alunoId: req.body?.alunoId ? String(req.body.alunoId) : undefined,
+                    impressao: carimboImpressao(req.file),
                 },
             });
             uploadStream.end(req.file.buffer);
@@ -143,6 +147,7 @@ router.post(
     horizontalFilter,
     filtrarPorEscola,
     uploadDocument.array('documentos', 10),
+    verificarDireitosAutorais,
     async (req, res) => {
         if (!req.files || req.files.length === 0) {
             return res.status(400).json({ success: false, error: 'Nenhum arquivo enviado' });
@@ -199,6 +204,7 @@ router.post(
                         usuarioId: String(req.user?.id || req.user?._id || ''),
                         escolaId: req.escolaId ? String(req.escolaId) : undefined,
                         alunoId,
+                        impressao: carimboImpressao(file),
                     },
                 });
                 await new Promise((resolve, reject) => {
@@ -248,6 +254,15 @@ router.use('/admin/pedidos-titular', authJWT, authorize('admin'), require('./adm
 // Registro de incidentes de segurança (Res. CD/ANPD 15/2024 — Issue #513).
 router.use('/admin/incidentes', authJWT, authorize('admin'), require('./adminIncidentes'));
 router.use('/admin', authJWT, authorize('admin'), require('./admin'));
+// Catálogo de obras protegidas e bloqueio de arquivo por direito autoral
+// (Issue #509). Direção na própria escola; o admin passa e atua na rede toda.
+router.use(
+    '/direitos-autorais',
+    authJWT,
+    filtrarPorEscola,
+    authorize('diretor'),
+    require('./direitosAutorais')
+);
 // Super admin (Issue #463): gestão e bloqueio de escolas. SEM `filtrarPorEscola`
 // — a área é da rede, e nem o recorte de tenant nem o bloqueio de escola podem
 // alcançá-la. `requireSuperAdmin` devolve 403 ao admin comum e a todo o resto.
@@ -483,6 +498,7 @@ router.post(
     chatUploadLimiter,
     exigirAceiteTermo,
     receberAnexosChat,
+    verificarDireitosAutorais,
     ChatDiretoController.uploadAnexo
 );
 router.get('/chat-direto/anexo/:id', authJWT, filtrarPorEscola, FileController.serveFile);

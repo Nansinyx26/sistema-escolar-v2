@@ -7,6 +7,8 @@ const authJWT = require('../middleware/authJWT');
 const filtrarPorEscola = require('../middleware/filtrarPorEscola');
 const { autorizarArquivo, findFileDoc } = require('../controllers/FileController');
 const exigirAceiteTermo = require('../middleware/exigirAceiteTermo');
+const verificarDireitosAutorais = require('../middleware/verificarDireitosAutorais');
+const { carimboImpressao, checarBloqueioArquivo } = require('../services/direitosAutorais');
 
 // POST /api/audio/upload
 //
@@ -26,6 +28,7 @@ router.post(
     filtrarPorEscola,
     exigirAceiteTermo,
     audioUpload.single('audio'),
+    verificarDireitosAutorais,
     async (req, res) => {
         if (!req.file) {
             return res
@@ -55,6 +58,7 @@ router.post(
                     usuarioId: String(req.user.id || req.user._id || ''),
                     escolaId: req.escolaId ? String(req.escolaId) : undefined,
                     type: 'voice_message',
+                    impressao: carimboImpressao(req.file),
                 },
             });
 
@@ -123,6 +127,14 @@ router.get('/:id', authJWT, filtrarPorEscola, async (req, res) => {
         const permissao = await autorizarArquivo(req, file);
         if (!permissao.ok) {
             return res.status(permissao.status).json({ success: false, error: permissao.error });
+        }
+
+        // 3. Áudio bloqueado por direito autoral (Issue #509).
+        const direitos = checarBloqueioArquivo(file);
+        if (!direitos.ok) {
+            return res
+                .status(direitos.status)
+                .json({ success: false, codigo: direitos.codigo, error: direitos.error });
         }
 
         const db = mongoose.connection.db;
