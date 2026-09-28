@@ -225,4 +225,6 @@ function htmlResumoMensal(resumo, link, base) {
 </html>`;
 }
 
-module.exports = { htmlResumoMensal };
+// As peças visuais também servem ao e-mail de cada notificação
+// (services/EmailNotificacao.js), para os dois terem a mesma identidade.
+module.exports = { htmlResumoMensal, TIPOS, FONTE, escaparHtml, img };

@@ -19,11 +19,19 @@ window.SomNotificacao = (function () {
     let ctx = null;
 
     function ativo() {
-        try { return localStorage.getItem(PREF) !== '0'; } catch (e) { return true; }
+        try {
+            return localStorage.getItem(PREF) !== '0';
+        } catch (e) {
+            return true;
+        }
     }
 
     function definir(on) {
-        try { localStorage.setItem(PREF, on ? '1' : '0'); } catch (e) { /* storage off */ }
+        try {
+            localStorage.setItem(PREF, on ? '1' : '0');
+        } catch (e) {
+            /* storage off */
+        }
     }
 
     function contexto() {
@@ -31,7 +39,7 @@ window.SomNotificacao = (function () {
         if (!Ctx) return null;
         if (!ctx) ctx = new Ctx();
         // Navegadores suspendem o contexto até haver interação do usuário.
-        if (ctx.state === 'suspended') ctx.resume().catch(() => { });
+        if (ctx.state === 'suspended') ctx.resume().catch(() => {});
         return ctx;
     }
 
@@ -60,7 +68,9 @@ window.SomNotificacao = (function () {
                 osc.start(t0);
                 osc.stop(t0 + n.dur + 0.02);
             });
-        } catch (e) { /* áudio indisponível */ }
+        } catch (e) {
+            /* áudio indisponível */
+        }
     }
 
     /** Mensagem recebida: sobe de D5 para A5 (som histórico do chat). */
@@ -73,21 +83,56 @@ window.SomNotificacao = (function () {
         tocar([{ f: 880, ate: 523.25, inicio: 0, dur: 0.11, vol: 0.07, tipo: 'triangle' }]);
     }
 
-    /** Aviso do mural / notificação do sistema: duas notas em sino. */
+    /**
+     * Som próprio das notificações do sistema (Issue #540): três notas
+     * subindo em arpejo — Sol, Dó, Mi — com um harmônico de oitava em cada uma
+     * para soar como sino, e a última mais longa, como um "chegou".
+     * É o mesmo no painel da equipe e no portal do responsável, para quem usa
+     * o sistema reconhecer o aviso da escola de ouvido.
+     */
+    const ASSINATURA = [
+        { f: 783.99, inicio: 0, dur: 0.32, vol: 0.11 }, // G5
+        { f: 1567.98, inicio: 0, dur: 0.18, vol: 0.025 },
+        { f: 1046.5, inicio: 0.12, dur: 0.34, vol: 0.1 }, // C6
+        { f: 2093.0, inicio: 0.12, dur: 0.18, vol: 0.022 },
+        { f: 1318.51, inicio: 0.24, dur: 0.65, vol: 0.1 }, // E6
+        { f: 2637.02, inicio: 0.24, dur: 0.3, vol: 0.02 },
+    ];
+
+    // O mesmo aviso chega por mais de um caminho (socket, toast, push do
+    // service worker). Um toque só por aviso: repetição em menos de 1,5 s é
+    // ignorada.
+    const INTERVALO_MIN_MS = 1500;
+    let ultimoAviso = 0;
+
+    /** Aviso do mural / notificação do sistema: o som próprio da escola. */
     function aviso() {
-        tocar([
-            { f: 783.99, inicio: 0, dur: 0.18, vol: 0.12 },   // G5
-            { f: 1046.50, inicio: 0.13, dur: 0.30, vol: 0.10 } // C6
-        ]);
+        const agora = Date.now();
+        if (agora - ultimoAviso < INTERVALO_MIN_MS) return;
+        ultimoAviso = agora;
+        tocar(ASSINATURA);
+    }
+
+    // Push que chega com o sistema aberto em alguma aba: o service worker
+    // avisa as páginas, e a página toca o som (a notificação do aparelho, por
+    // si, usa o som padrão do sistema operacional).
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', (e) => {
+            if (e.data && e.data.tipo === 'notificacao:push') aviso();
+        });
     }
 
     // O primeiro gesto do usuário na página libera o áudio para os sons que
     // chegam depois sem interação nenhuma (mensagem recebida, aviso do mural).
     ['pointerdown', 'keydown'].forEach((ev) => {
-        window.addEventListener(ev, function liberar() {
-            contexto();
-            window.removeEventListener(ev, liberar);
-        }, { once: true, passive: true });
+        window.addEventListener(
+            ev,
+            function liberar() {
+                contexto();
+                window.removeEventListener(ev, liberar);
+            },
+            { once: true, passive: true }
+        );
     });
 
     return { receber, enviar, aviso, tocar, ativo, definir };

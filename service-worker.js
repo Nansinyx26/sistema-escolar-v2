@@ -241,7 +241,9 @@ self.addEventListener('push', (event) => {
         body: data.body,
         icon: data.icon || '/img/icons/icon-192.png',
         badge: '/img/icons/icon-96.png',
-        vibrate: [100, 50, 100],
+        // Padrão próprio (curto-curto-longo), no ritmo do som do sistema
+        // (js/som-notificacao.js). Só o Android vibra; os demais ignoram.
+        vibrate: [90, 60, 90, 60, 260],
         data: {
             url: data.data?.url || data.url || '/',
         },
@@ -254,7 +256,16 @@ self.addEventListener('push', (event) => {
         options.renotify = true;
     }
 
-    event.waitUntil(self.registration.showNotification(data.title, options));
+    event.waitUntil(
+        Promise.all([
+            self.registration.showNotification(data.title, options),
+            // Com o sistema aberto em alguma aba, a página toca o som próprio.
+            // Web Push não aceita som personalizado na notificação em si.
+            clients.matchAll({ type: 'window', includeUncontrolled: true }).then((lista) => {
+                for (const c of lista) c.postMessage({ tipo: 'notificacao:push' });
+            }),
+        ])
+    );
 });
 
 self.addEventListener('notificationclick', (event) => {
