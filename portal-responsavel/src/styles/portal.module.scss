@@ -3794,7 +3794,7 @@ input:checked + .slider:before {
   background: var(--bg-overlay);
   backdrop-filter: blur(4px);
   z-index: 10000;
-  animation: fadeIn 0.2s ease;
+  animation: fadeIn 200ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 // Camada de posicionamento do Radix Content: recria o flex-center que antes
@@ -3830,7 +3830,7 @@ input:checked + .slider:before {
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-pop);
-  animation: slideUp 0.3s ease;
+  animation: notifModalIn 280ms cubic-bezier(0.16, 1, 0.3, 1);
   overflow: hidden;
 
   @media (max-width: 768px) {
@@ -3846,37 +3846,90 @@ input:checked + .slider:before {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24px;
+  gap: 16px;
+  padding: 20px 20px 20px 24px;
   border-bottom: 1px solid rgba(var(--tint-rgb), 0.1);
   flex-shrink: 0;
 
   h2 {
     margin: 0;
     text-align: left;
-    font-size: 1.5rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.2;
     color: $text-primary;
-    display: flex;
-    align-items: center;
-    gap: 10px;
 
-    i { color: $accent-cyan; }
-
-    @media (max-width: 768px) { font-size: 1.2rem; }
+    @media (max-width: 768px) { font-size: 1.1rem; }
   }
+
+  @media (max-width: 768px) { padding: 14px 14px 14px 16px; }
 }
 
-.notificationsModalClose {
-  background: transparent;
-  border: none;
-  color: $text-secondary;
-  font-size: 2rem;
-  cursor: pointer;
-  padding: 4px 8px;
-  line-height: 1;
-  border-radius: $radius-sm;
-  transition: all $transition-smooth;
+.notificationsModalHeading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
 
-  &:hover { color: $text-primary; background: rgba(var(--tint-rgb), 0.08); }
+.notificationsModalHeadingIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--accent);
+  font-size: 1.15rem;
+}
+
+.notificationsModalSubtitle {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  color: $text-tertiary;
+}
+
+// Botão fechar do cabeçalho: alvo de 40px, borda e anel de foco visíveis
+// nos dois temas. Antes era um "×" de texto solto, sem área definida.
+.notificationsModalClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 1px solid rgba(var(--tint-rgb), 0.12);
+  border-radius: 12px;
+  background: rgba(var(--tint-rgb), 0.04);
+  color: $text-secondary;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition:
+    background-color 150ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 150ms cubic-bezier(0.16, 1, 0.3, 1),
+    color 150ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 120ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  svg { transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1); }
+
+  &:hover {
+    color: $text-primary;
+    background: rgba(var(--tint-rgb), 0.08);
+    border-color: rgba(var(--tint-rgb), 0.22);
+
+    svg { transform: rotate(90deg); }
+  }
+
+  &:active { transform: scale(0.94); }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+    border-color: var(--accent);
+  }
 }
 
 .notificationsModalBody {
@@ -3894,25 +3947,161 @@ input:checked + .slider:before {
 .notificationsModalFooter {
   display: flex;
   justify-content: flex-end;
-  padding: 16px 24px;
+  padding: 14px 20px;
   border-top: 1px solid rgba(var(--tint-rgb), 0.1);
   flex-shrink: 0;
 
-  @media (max-width: 768px) { padding: 12px 16px; }
-
-  // O botão "Fechar" usava .primaryBtn, que só existia aninhado noutra seção
-  .primaryBtn {
-    min-height: 44px;
-    padding: 0 22px;
-    border: none;
-    border-radius: 10px;
-    background: var(--accent);
-    color: var(--text-on-accent);
-    font-weight: 600;
-
-    &:hover { background: var(--accent-hover); }
-    &:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  @media (max-width: 768px) {
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
   }
+}
+
+.notificationsModalFooterBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 20px;
+  border: 1px solid rgba(var(--tint-rgb), 0.14);
+  border-radius: 12px;
+  background: rgba(var(--tint-rgb), 0.05);
+  color: $text-primary;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 150ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 150ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 120ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  &:hover {
+    background: rgba(var(--tint-rgb), 0.1);
+    border-color: rgba(var(--tint-rgb), 0.24);
+  }
+
+  &:active { transform: scale(0.97); }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+    border-color: var(--accent);
+  }
+
+  @media (max-width: 768px) { width: 100%; }
+}
+
+.notificationsModalToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 24px;
+  border-bottom: 1px solid rgba(var(--tint-rgb), 0.08);
+  flex-shrink: 0;
+
+  @media (max-width: 768px) { padding: 10px 12px; }
+}
+
+.notificationsModalFiltros {
+  display: inline-flex;
+  gap: 4px;
+  margin: 0;
+  min-inline-size: 0;
+  border: 0;
+  padding: 3px;
+  border-radius: 12px;
+  background: rgba(var(--tint-rgb), 0.05);
+}
+
+.notificationsModalFiltro {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: $text-secondary;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 150ms cubic-bezier(0.16, 1, 0.3, 1), color 150ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  span {
+    min-width: 20px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: rgba(var(--tint-rgb), 0.08);
+    font-size: 0.72rem;
+    text-align: center;
+  }
+
+  &:hover { color: $text-primary; }
+
+  &[aria-pressed='true'] {
+    background: var(--bg-elevated);
+    color: $text-primary;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+
+    span { background: rgba(var(--accent-rgb), 0.15); color: var(--accent); }
+  }
+
+  &:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+}
+
+.notificationsModalMarcarTodas {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
+  border-radius: 10px;
+  background: rgba(var(--accent-rgb), 0.08);
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 150ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  &:hover { background: rgba(var(--accent-rgb), 0.16); }
+  &:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+}
+
+.notificationTitleLg {
+  font-size: 1.05rem;
+  white-space: normal;
+}
+
+.notificationMeta {
+  margin-top: 8px;
+  font-size: 0.78rem;
+  color: $text-tertiary;
+
+  strong { color: $text-secondary; font-weight: 600; }
+}
+
+.notifClickAreaStatic { cursor: default; }
+
+@keyframes notifModalIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); filter: blur(4px); }
+  to   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notificationsModalOverlay,
+  .notificationsModalCard { animation: none; }
+
+  .notificationsModalClose,
+  .notificationsModalClose svg,
+  .notificationsModalFooterBtn,
+  .notificationsModalFiltro,
+  .notificationsModalMarcarTodas { transition: none; }
+
+  .notificationsModalClose:hover svg { transform: none; }
 }
 
 // ─── Comunicados Grid (used in PortalResponsavel) ───────────────────────────
