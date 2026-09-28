@@ -279,7 +279,7 @@ async function atualizarCards(user, perfil) {
         if (cardCodigosEscolas) cardCodigosEscolas.style.display = 'flex';
         if (cardConvitesEquipe) cardConvitesEquipe.style.display = 'flex';
         if (cardIaAssistant) cardIaAssistant.style.display = 'flex';
-        // Gestão de Escolas: só o super admin recebe a rota (Issue #463).
+        // Gestão de Escolas: todo admin recebe a rota (Issues #463 e #533).
         const cardGestaoEscolas = document.getElementById('cardGestaoEscolas');
         const menuGestaoEscolas = document.getElementById('sidebarGestaoEscolas');
         if (window.ROTAS) {

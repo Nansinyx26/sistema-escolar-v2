@@ -71,12 +71,16 @@ function invalidarCache() {
 }
 
 /**
- * Super admin = `perfil: 'admin'` E `superAdmin: true`, ambos lidos do BANCO.
- * O admin comum não passa: é justamente ele (e toda a equipe) que o bloqueio
- * alcança quando a conta pertence à escola bloqueada.
+ * Gestor da rede = qualquer conta `perfil: 'admin'`, lido do BANCO (Issue #533).
+ *
+ * A Issue #463 separava um "super admin" (flag `superAdmin`, ligada só por
+ * script) do admin comum. Na prática o admin já é global — gera o código de
+ * professor e o convite de direção de qualquer escola —, e a flag deixava a
+ * conta administradora sem a gestão de escolas. O bloqueio segue alcançando
+ * toda a equipe e as famílias da escola; o admin é que nunca é barrado.
  */
 function ehSuperAdmin(usuario) {
-    return !!usuario && usuario.perfil === 'admin' && usuario.superAdmin === true;
+    return !!usuario && usuario.perfil === 'admin';
 }
 
 /**

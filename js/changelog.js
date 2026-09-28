@@ -74,6 +74,18 @@
         const naoLidas = _cachedNotifs.filter((n) => !n.lidoPorMim).length;
         badge.textContent = naoLidas > 99 ? '99+' : naoLidas;
         badge.style.display = naoLidas > 0 ? 'flex' : 'none';
+        badge.setAttribute('aria-hidden', 'true');
+
+        // O número do badge é só visual; o leitor de tela ouve pelo rótulo.
+        const btn = document.getElementById('notif-btn');
+        if (btn) {
+            btn.setAttribute(
+                'aria-label',
+                naoLidas > 0
+                    ? `Notificações, ${naoLidas} não ${naoLidas === 1 ? 'lida' : 'lidas'}`
+                    : 'Notificações'
+            );
+        }
     }
 
     /**
@@ -121,9 +133,9 @@
 
         if (_cachedNotifs.length === 0) {
             container.innerHTML = `
-            <div style="padding: 2.5rem 1.25rem; text-align: center; color: #64748b;">
-                <i class="bi bi-bell-slash" style="font-size: 2rem; display: block; margin-bottom: 0.75rem; opacity: 0.4;"></i>
-                <p style="margin: 0; font-size: 0.88rem;">Nenhuma notificação no momento</p>
+            <div class="notif-vazio" role="status">
+                <i class="bi bi-bell-slash" aria-hidden="true"></i>
+                <p>Nenhuma notificação no momento</p>
             </div>`;
             return;
         }
@@ -193,8 +205,7 @@
                 if (feed) {
                     feed.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
-                const panel = document.getElementById('notif-panel');
-                if (panel) panel.classList.remove('open');
+                fecharNotifPanel();
             });
         });
 
@@ -231,11 +242,14 @@
             const headers = { 'Content-Type': 'application/json' };
             if (csrf) headers['X-CSRF-Token'] = csrf;
 
-            await fetch(`${baseUrl}/notificacoes/${notifId}/ler`, {
+            const res = await fetch(`${baseUrl}/notificacoes/${notifId}/ler`, {
                 method: 'PUT',
                 credentials: 'include',
                 headers,
             });
+            // Sem a confirmação do servidor o item voltaria como não lido no
+            // próximo polling — então não finge que marcou.
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
             // Atualiza cache local
             const idx = _cachedNotifs.findIndex((n) => (n.id || n._id) === notifId);
@@ -262,11 +276,12 @@
             const headers = { 'Content-Type': 'application/json' };
             if (csrf) headers['X-CSRF-Token'] = csrf;
 
-            await fetch(`${baseUrl}/notificacoes/marcar-todas-lidas`, {
+            const res = await fetch(`${baseUrl}/notificacoes/marcar-todas-lidas`, {
                 method: 'PUT',
                 credentials: 'include',
                 headers,
             });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
             // Atualiza cache local
             _cachedNotifs.forEach((n) => {
@@ -292,9 +307,23 @@
         const panel = document.getElementById('notif-panel');
         if (!panel) return;
         const isOpen = panel.classList.toggle('open');
+        document.getElementById('notif-btn')?.setAttribute('aria-expanded', String(isOpen));
         if (isOpen) {
             renderNotificacoes();
         }
+    }
+
+    /**
+     * Fecha o painel. Com `devolverFoco`, o foco volta ao sino — usado pelo
+     * botão fechar e pelo Esc, para quem navega por teclado não se perder.
+     */
+    function fecharNotifPanel(devolverFoco = false) {
+        const panel = document.getElementById('notif-panel');
+        if (!panel || !panel.classList.contains('open')) return;
+        panel.classList.remove('open');
+        const btn = document.getElementById('notif-btn');
+        btn?.setAttribute('aria-expanded', 'false');
+        if (devolverFoco) btn?.focus();
     }
 
     // ── Utilitários ───────────────────────────────────────────────────────────
@@ -330,40 +359,58 @@
         const panel = document.getElementById('notif-panel');
         const btn = document.getElementById('notif-btn');
         if (panel && !panel.contains(e.target) && btn && !btn.contains(e.target)) {
-            panel.classList.remove('open');
+            fecharNotifPanel();
         }
     });
 
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') fecharNotifPanel(true);
+    });
+
     // ── Inicialização ─────────────────────────────────────────────────────────
+    async function atualizarTudo() {
+        await fetchNotificacoes();
+        atualizarBadge();
+        // Se painel estiver aberto, re-renderiza
+        const panel = document.getElementById('notif-panel');
+        if (panel && panel.classList.contains('open')) {
+            renderNotificacoes();
+        }
+    }
+
+    function iniciarPolling() {
+        clearInterval(_pollTimer);
+        _pollTimer = setInterval(atualizarTudo, POLL_INTERVAL_MS);
+    }
+
     async function init() {
         await fetchNotificacoes();
         atualizarBadge();
-
-        // Polling automático
-        _pollTimer = setInterval(async () => {
-            await fetchNotificacoes();
-            atualizarBadge();
-            // Se painel estiver aberto, re-renderiza
-            const panel = document.getElementById('notif-panel');
-            if (panel && panel.classList.contains('open')) {
-                renderNotificacoes();
-            }
-        }, POLL_INTERVAL_MS);
+        iniciarPolling();
     }
+
+    // Aba em segundo plano (ou celular com a tela apagada) não precisa
+    // consultar o servidor a cada minuto. Ao voltar, atualiza na hora — assim
+    // o que chegou enquanto a aba dormia aparece sem esperar o próximo ciclo.
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            clearInterval(_pollTimer);
+            _pollTimer = null;
+        } else {
+            atualizarTudo();
+            iniciarPolling();
+        }
+    });
 
     document.addEventListener('DOMContentLoaded', init);
 
     // Tempo real: js/realtime.js repassa o aviso do mural que chega pelo socket.
     // Sem isto o sino só mudava no próximo polling, até 60 s depois.
-    document.addEventListener('notificacao:nova', async () => {
-        await fetchNotificacoes();
-        atualizarBadge();
-        const panel = document.getElementById('notif-panel');
-        if (panel && panel.classList.contains('open')) renderNotificacoes();
-    });
+    document.addEventListener('notificacao:nova', atualizarTudo);
 
     // ── Exporta funções globais (usadas por dashboard-events.js) ──────────────
     window.toggleNotifPanel = toggleNotifPanel;
+    window.fecharNotifPanel = fecharNotifPanel;
     window.marcarTodasLidas = marcarTodasLidas;
     window.atualizarBadge = atualizarBadge;
 })();

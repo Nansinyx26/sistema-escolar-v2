@@ -48,6 +48,7 @@ async function anunciarParaEscola(notif, escolaId) {
         paraResponsavel: true, // visível também para responsáveis
         criadoPor: 'Sistema',
         escolaId: escolaId || null,
+        resumoEmail: { mesNome: notif.mesNome, itens: notif.itens },
     });
     return true;
 }

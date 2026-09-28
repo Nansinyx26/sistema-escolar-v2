@@ -17,12 +17,19 @@ const { logAction } = require('../utils/auditHelper');
 const escapeRegex = require('../utils/escapeRegex');
 const logger = require('../utils/logger');
 const obs = require('../observability');
+const { gerarCodigo } = require('../services/codigoEscolaService');
 
 const LIMITE_PADRAO = 12;
 const LIMITE_MAXIMO = 50;
 const MOTIVO_MIN = 5;
 const MOTIVO_MAX = 500;
-const ACOES_DE_STATUS = ['ESCOLA_BLOQUEADA', 'ESCOLA_DESBLOQUEADA'];
+const ACOES_DE_STATUS = [
+    'ESCOLA_BLOQUEADA',
+    'ESCOLA_DESBLOQUEADA',
+    'ESCOLA_LIBERADA',
+    'ESCOLA_RETIRADA_DE_USO',
+];
+const FILTROS_STATUS = ['ativa', 'bloqueada', 'aguardando'];
 
 // Campos que a gestão mostra. `codigoSecreto` fica de fora (é `select: false`
 // e dá direito a criar conta de professor — tem tela própria).
@@ -100,15 +107,16 @@ function formatarEscola(e, { usuarios, alunos, nomes }) {
 }
 
 /**
- * GET /api/superadmin/escolas?busca=&status=todas|ativa|bloqueada&pagina=1&limite=12
+ * GET /api/superadmin/escolas?busca=&status=todas|ativa|bloqueada|aguardando&pagina=1&limite=12
+ *
+ * `aguardando` = escola ainda não liberada para uso (`ativo` diferente de true),
+ * independentemente do bloqueio.
  */
 exports.listar = async (req, res) => {
     try {
         const busca =
             typeof req.query.busca === 'string' ? req.query.busca.trim().slice(0, 80) : '';
-        const status = ['ativa', 'bloqueada'].includes(req.query.status)
-            ? req.query.status
-            : 'todas';
+        const status = FILTROS_STATUS.includes(req.query.status) ? req.query.status : 'todas';
         const pagina = Math.max(1, Number.parseInt(req.query.pagina, 10) || 1);
         const limite = Math.min(
             LIMITE_MAXIMO,
@@ -121,37 +129,52 @@ exports.listar = async (req, res) => {
             filtroBusca.$or = [{ nome: termo }, { municipio: termo }, { bairro: termo }];
         }
         // `$ne: 'bloqueada'` e não `'ativa'`: escola gravada antes da migração
-        // (sem o campo) é ativa, e não pode sumir do filtro "Ativas".
-        const filtroStatus =
-            status === 'bloqueada'
-                ? { status: 'bloqueada' }
-                : status === 'ativa'
-                  ? { status: { $ne: 'bloqueada' } }
-                  : {};
+        // (sem o campo) não está bloqueada, e não pode sumir do filtro "Ativas".
+        const filtrosPorStatus = {
+            bloqueada: { status: 'bloqueada' },
+            // Ativa = liberada para uso e não bloqueada; a que ainda espera
+            // liberação fica só em "Aguardando" (Issue #533).
+            ativa: { status: { $ne: 'bloqueada' }, ativo: true },
+            aguardando: { ativo: { $ne: true } },
+        };
+        const filtroStatus = filtrosPorStatus[status] || {};
         const filtro = { ...filtroBusca, ...filtroStatus };
 
         const resultado = await obs.withSpan(
             'superadmin.escolas.listar',
             { 'escolas.filtro.status': status, 'escolas.pagina': pagina },
             async () => {
-                const [total, bloqueadas, totalBusca, escolas] = await Promise.all([
-                    Escola.countDocuments(filtroBusca),
-                    Escola.countDocuments({ ...filtroBusca, status: 'bloqueada' }),
-                    Escola.countDocuments(filtro),
-                    Escola.find(filtro)
-                        .select(CAMPOS_ESCOLA)
-                        .sort({ nome: 1 })
-                        .skip((pagina - 1) * limite)
-                        .limit(limite)
-                        .lean(),
-                ]);
+                const [total, ativas, bloqueadas, aguardando, totalBusca, escolas] =
+                    await Promise.all([
+                        Escola.countDocuments(filtroBusca),
+                        Escola.countDocuments({ ...filtroBusca, ...filtrosPorStatus.ativa }),
+                        Escola.countDocuments({ ...filtroBusca, status: 'bloqueada' }),
+                        Escola.countDocuments({ ...filtroBusca, ativo: { $ne: true } }),
+                        Escola.countDocuments(filtro),
+                        Escola.find(filtro)
+                            .select(CAMPOS_ESCOLA)
+                            .sort({ nome: 1 })
+                            .skip((pagina - 1) * limite)
+                            .limit(limite)
+                            .lean(),
+                    ]);
                 const ids = escolas.map((e) => String(e._id));
                 const [usuarios, alunos, nomes] = await Promise.all([
                     contarPorEscola(Usuario, ids),
                     contarPorEscola(Aluno, ids, { ativo: { $ne: false } }),
                     nomesDosAutores(escolas),
                 ]);
-                return { total, bloqueadas, totalBusca, escolas, usuarios, alunos, nomes };
+                return {
+                    total,
+                    ativas,
+                    bloqueadas,
+                    aguardando,
+                    totalBusca,
+                    escolas,
+                    usuarios,
+                    alunos,
+                    nomes,
+                };
             }
         );
 
@@ -167,8 +190,9 @@ exports.listar = async (req, res) => {
             // Contadores do filtro (respeitam a busca, não o status).
             resumo: {
                 todas: resultado.total,
-                ativas: resultado.total - resultado.bloqueadas,
+                ativas: resultado.ativas,
                 bloqueadas: resultado.bloqueadas,
+                aguardando: resultado.aguardando,
             },
         });
     } catch (err) {
@@ -394,6 +418,101 @@ exports.desbloquear = async (req, res) => {
         });
     } catch (err) {
         return erroInterno(res, err, 'superadmin.escolas.desbloquear');
+    }
+};
+
+/**
+ * PATCH /api/superadmin/escolas/:id/disponibilidade  { disponivel: boolean }
+ *
+ * Libera (ou retira) a escola para uso (Issue #533). É o `ativo` do modelo: a
+ * escola nasce fora do sistema — cadeado na landing, código de professor
+ * recusado — até o admin liberá-la. Não confundir com o bloqueio, que corta o
+ * acesso de quem já usa.
+ *
+ * Liberar uma escola que ainda não tem código de cadastro de professor gera o
+ * código, senão a escola liberada continuaria sem como receber a equipe.
+ * Retirar do uso não desconecta ninguém: para cortar o acesso existe o bloqueio.
+ */
+exports.disponibilidade = async (req, res) => {
+    try {
+        if (!idValido(req.params.id)) {
+            return res
+                .status(400)
+                .json({ success: false, error: 'Identificador de escola inválido.' });
+        }
+        const disponivel = req.body?.disponivel;
+        if (typeof disponivel !== 'boolean') {
+            return res
+                .status(400)
+                .json({ success: false, error: 'Informe disponivel: true ou false.' });
+        }
+
+        const escola = await obs.withSpan(
+            'superadmin.escolas.disponibilidade',
+            { 'escola.id': req.params.id, 'escola.disponivel': disponivel },
+            async () => {
+                // Condicional no update: repetir a mesma decisão é 409, não um
+                // segundo registro na auditoria.
+                const filtro = disponivel
+                    ? { _id: req.params.id, ativo: { $ne: true } }
+                    : { _id: req.params.id, ativo: true };
+                const atualizada = await Escola.findOneAndUpdate(
+                    filtro,
+                    { $set: { ativo: disponivel } },
+                    { new: true }
+                ).select(`${CAMPOS_ESCOLA} +codigoSecreto`);
+                if (atualizada && disponivel && !atualizada.codigoSecreto) {
+                    atualizada.codigoSecreto = gerarCodigo();
+                    await atualizada.save();
+                }
+                return atualizada ? atualizada.toObject() : null;
+            }
+        );
+
+        if (!escola) {
+            const existe = await Escola.exists({ _id: req.params.id });
+            if (!existe) {
+                return res.status(404).json({ success: false, error: 'Escola não encontrada.' });
+            }
+            return res.status(409).json({
+                success: false,
+                error: disponivel
+                    ? 'Esta escola já está liberada para uso.'
+                    : 'Esta escola ainda não foi liberada para uso.',
+            });
+        }
+
+        await logAction(req, disponivel ? 'ESCOLA_LIBERADA' : 'ESCOLA_RETIRADA_DE_USO', 'Escola', {
+            recursoId: String(escola._id),
+            escolaId: String(escola._id),
+            valorAnterior: { ativo: !disponivel },
+            valorNovo: { ativo: disponivel },
+            descricao: disponivel
+                ? `Escola "${escola.nome}" liberada para uso pelo admin.`
+                : `Escola "${escola.nome}" retirada de uso pelo admin.`,
+        });
+        logger.info('[superadmin] disponibilidade da escola alterada', {
+            escolaId: String(escola._id),
+            disponivel,
+            action: 'superadmin.escolas.disponibilidade',
+        });
+
+        const nomes = await nomesDosAutores([escola]);
+        return res.json({
+            success: true,
+            message: disponivel
+                ? `Escola "${escola.nome}" liberada. A equipe já pode se cadastrar.`
+                : `Escola "${escola.nome}" retirada de uso.`,
+            data: formatarEscola(escola, {
+                usuarios: await contarPorEscola(Usuario, [String(escola._id)]),
+                alunos: await contarPorEscola(Aluno, [String(escola._id)], {
+                    ativo: { $ne: false },
+                }),
+                nomes,
+            }),
+        });
+    } catch (err) {
+        return erroInterno(res, err, 'superadmin.escolas.disponibilidade');
     }
 };
 

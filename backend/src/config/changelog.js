@@ -14,7 +14,13 @@
  *   itens   — lista de mudanças. Cada item:
  *       tipo    — 'novidade' | 'melhoria' | 'correcao'
  *       texto   — frase curta, do ponto de vista de quem USA o sistema
- *                 ("Agora você pode…", "O boletim passou a…").
+ *                 ("Agora você pode…", "O boletim passou a…"). Vira o título
+ *                 do card no e-mail.
+ *       detalhe — (opcional) uma ou duas frases explicando o que muda no dia
+ *                 a dia. Aparece abaixo do título.
+ *       icone   — (opcional) ícone do card: estrela, tendencia, chave, pdf,
+ *                 robo, raio, celular, sino, grafico, calendario. Sem ele,
+ *                 vale o padrão do tipo (estrela / tendencia / chave).
  *       interno — true quando a mudança não muda nada para o usuário
  *                 (refatoração, teste, infraestrutura, CI). Fica registrada
  *                 aqui, mas NÃO entra no e-mail.
@@ -27,15 +33,22 @@ const releases = [
         itens: [
             {
                 tipo: 'novidade',
+                icone: 'robo',
                 texto: 'A IA/chatbot agora responde considerando apenas os dados da sua escola.',
+                detalhe:
+                    'O assistente virtual usa somente as informações da sua escola para responder, com mais segurança e precisão.',
             },
             {
                 tipo: 'melhoria',
+                icone: 'grafico',
                 texto: 'Boletim, BI e notificações passam a respeitar o contexto de cada escola.',
+                detalhe: 'Cada escola vê apenas os próprios dados nos relatórios e avisos.',
             },
             {
                 tipo: 'correcao',
                 texto: 'Corrigidos o dashboard do professor e a navegação entre as turmas.',
+                detalhe:
+                    'O painel volta a carregar normalmente e a troca de turma funciona como esperado.',
             },
         ],
     },
@@ -80,6 +93,8 @@ function itensDoMes(mesRef, lista = releases) {
             itens.push({
                 tipo: TIPOS.includes(item.tipo) ? item.tipo : 'melhoria',
                 texto: item.texto,
+                detalhe: item.detalhe || '',
+                icone: item.icone || '',
             });
         }
     }

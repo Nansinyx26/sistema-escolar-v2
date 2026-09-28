@@ -88,6 +88,7 @@
 
 .ge-status {
     display: inline-flex;
+    max-width: 100%;
     padding: 3px;
     gap: 2px;
     border-radius: var(--radius-full);
@@ -107,6 +108,7 @@
     color: var(--text-secondary);
     font: inherit;
     font-size: 0.875rem;
+    white-space: nowrap;
     cursor: pointer;
 }
 
@@ -177,6 +179,10 @@
     background: var(--success);
 }
 
+.ge-linha[data-status='aguardando']::before {
+    background: var(--warning);
+}
+
 .ge-linha[data-status='bloqueada']::before {
     background: var(--error);
 }
@@ -222,6 +228,11 @@
 .ge-badge-ativa {
     background: color-mix(in srgb, var(--success) 15%, transparent);
     color: var(--success);
+}
+
+.ge-badge-aguardando {
+    background: color-mix(in srgb, var(--warning) 15%, transparent);
+    color: var(--warning);
 }
 
 .ge-badge-bloqueada {
@@ -418,6 +429,10 @@
 
 /* ── Celular: cada escola vira um card ──────────────────────────────────── */
 @media (max-width: 860px) {
+    .ge-status {
+        border-radius: var(--radius-lg);
+    }
+
     .ge-cabecalho {
         display: none;
     }
@@ -472,7 +487,10 @@
         justify-content: center;
     }
 
+    /* Quatro filtros não cabem numa linha de celular: grade 2×2 (Issue #533). */
     .ge-status {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
         width: 100%;
     }
 

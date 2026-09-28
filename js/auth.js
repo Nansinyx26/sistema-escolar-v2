@@ -249,7 +249,11 @@ class AuthManager {
      * Inicializa o gerenciador de autenticação
      */
     async init() {
-        await db.init();
+        // O cache local (js/database.js) não é carregado em toda página — as
+        // telas do admin como Convites de Equipe e Códigos por Escola não o
+        // incluem. Chamar `db.init()` direto lançava "db is not defined" e a
+        // tela parava antes de buscar os dados (Issue #533).
+        if (window.db && typeof window.db.init === 'function') await window.db.init();
         await this.checkSession();
         // Tenta atualizar os dados do usuário em background para sincronizar fotos/infos
         if (this.isAuthenticated()) {
