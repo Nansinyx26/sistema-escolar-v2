@@ -56,6 +56,8 @@ const SITUACOES_ELEGIVEIS = ['transferido', 'abandono', 'nao_compareceu', 'outro
 const CAMPOS_IDENTIFICADORES = [
     // Identificação direta
     'sobrenome',
+    'nomeSocial',
+    'nomeSocialRequerimento',
     'matricula',
     'raDigito',
     'raUf',

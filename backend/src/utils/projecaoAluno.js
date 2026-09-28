@@ -13,6 +13,9 @@
  * `codigoSecreto` não está em lista nenhuma: é credencial de vínculo e só sai
  * pela rota da secretaria que existe para exibi-lo.
  *
+ * NOME SOCIAL (Issue #510): o professor recebe `nomeSocial` em `nome`, sem
+ * o sobrenome civil; quem responde pela ficha recebe os dois.
+ *
  * DECISÕES INSTITUCIONAIS (padrão mais protetivo, configurável):
  *   PROFESSOR_VE_DETALHE_DEFICIENCIA=sim  → professor recebe deficiência e
  *       transtornos por extenso; sem isso, só o indicador `necessitaApoio`.
@@ -65,6 +68,8 @@ const FICHA = [
     ...SAUDE_ESSENCIAL,
     ...DEFICIENCIA_DETALHADA,
     'nomeNormalizado',
+    'nomeSocial',
+    'nomeSocialRequerimento',
     'raUf',
     'nascimento',
     'sexo',
@@ -147,6 +152,16 @@ function projetarAluno(aluno, perfil) {
     }
 
     if (chave === 'professor') {
+        // Nome social (Issue #510): na turma, o aluno é chamado pelo nome que
+        // pediu. O professor recebe esse nome no campo `nome` — é o que toda
+        // tela dele já desenha — e não recebe o civil: o sobrenome civil
+        // somado ao nome social revelaria justamente o que o aluno pediu para
+        // não expor.
+        const social = String(origem.nomeSocial || '').trim();
+        if (social) {
+            saida.nome = social;
+            delete saida.sobrenome;
+        }
         saida.necessitaApoio = necessitaApoio(origem);
         if (professorVeDetalheDeficiencia()) {
             for (const campo of DEFICIENCIA_DETALHADA) {

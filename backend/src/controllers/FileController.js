@@ -2,6 +2,7 @@ const { getFileStream } = require('../utils/gridfs');
 const mongoose = require('mongoose');
 const { GridFSBucket } = require('mongodb');
 const assertAcessoAoAluno = require('../middleware/assertAcessoAoAluno');
+const { checarBloqueioArquivo } = require('../services/direitosAutorais');
 
 const PERFIS_GESTAO = ['admin', 'diretor', 'secretaria'];
 
@@ -190,6 +191,17 @@ exports.serveFile = async (req, res) => {
             });
         }
 
+        // Arquivo bloqueado por direito autoral (Issue #509): 451 para todos que
+        // podem vê-lo — inclusive quem enviou.
+        const direitos = checarBloqueioArquivo(fileDoc);
+        if (!direitos.ok) {
+            return res.status(direitos.status).json({
+                success: false,
+                codigo: direitos.codigo,
+                error: direitos.error,
+            });
+        }
+
         streamFile(res, fileDoc);
     } catch (error) {
         console.error('Erro no serveFile:', error);
@@ -260,6 +272,15 @@ exports.servePublicImage = async (req, res) => {
             return res
                 .status(403)
                 .json({ success: false, error: 'Este arquivo requer autenticação.' });
+        }
+
+        const direitos = checarBloqueioArquivo(fileDoc);
+        if (!direitos.ok) {
+            return res.status(direitos.status).json({
+                success: false,
+                codigo: direitos.codigo,
+                error: direitos.error,
+            });
         }
 
         streamFile(res, fileDoc, 'public, max-age=3600');

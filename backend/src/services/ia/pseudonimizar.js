@@ -63,7 +63,14 @@ const CAMPOS_BLOQUEADOS = new Set([
 ]);
 
 /** Campos cujo VALOR é o nome da criança. */
-const CAMPOS_DE_NOME = new Set(['nome', 'nomeAluno', 'alunoNome', 'sobrenome', 'nomeCompleto']);
+const CAMPOS_DE_NOME = new Set([
+    'nome',
+    'nomeAluno',
+    'alunoNome',
+    'sobrenome',
+    'nomeCompleto',
+    'nomeSocial',
+]);
 
 /** Campos cujo VALOR identifica a criança e vira o mesmo rótulo do nome. */
 const CAMPOS_DE_ID = new Set(['id', '_id', 'alunoId', 'matricula', 'ra', 'matriculaId']);

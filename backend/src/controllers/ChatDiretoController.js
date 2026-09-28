@@ -11,6 +11,7 @@ const escapeRegex = require('../utils/escapeRegex');
 const logger = require('../utils/logger');
 const NotificationService = require('../services/NotificationService');
 const { EXT_POR_MIME } = require('../middleware/uploadChat');
+const { carimboImpressao } = require('../services/direitosAutorais');
 
 /** Página de histórico: 30 mensagens por vez alimentam o lazy loading. */
 const PAGINA_HISTORICO = 30;
@@ -937,6 +938,7 @@ exports.uploadAnexo = async (req, res) => {
                         destinatarioId: String(destinatarioId),
                         escolaId: req.escolaId ? String(req.escolaId) : undefined,
                         nomeOriginal: String(file.originalname || '').slice(0, 255),
+                        impressao: carimboImpressao(file),
                     },
                 });
                 stream.on('error', reject);

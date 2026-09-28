@@ -17,6 +17,7 @@ router.get('/escolas', SuperAdminController.listar);
 router.get('/escolas/:id', SuperAdminController.detalhar);
 router.patch('/escolas/:id/bloquear', SuperAdminController.bloquear);
 router.patch('/escolas/:id/desbloquear', SuperAdminController.desbloquear);
+router.patch('/escolas/:id/disponibilidade', SuperAdminController.disponibilidade);
 router.post('/escolas/:id/acessar', SuperAdminController.acessar);
 router.get('/contexto', SuperAdminController.contexto);
 router.delete('/contexto', SuperAdminController.sairContexto);

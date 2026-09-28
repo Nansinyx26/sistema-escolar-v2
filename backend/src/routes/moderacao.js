@@ -43,6 +43,23 @@ router.post(
     ModeracaoController.responderContestacao
 );
 
+// ── Comunicação ao Conselho Tutelar (Issue #511) ─────────────────────────────
+// A secretaria entra aqui (e não na fila): ela costuma ser quem protocola o
+// ofício. A resposta não traz relato nem autor da denúncia. Dispensar a
+// comunicação é só da direção — a regra está no controller.
+const ConselhoTutelarController = require('../controllers/ConselhoTutelarController');
+const GESTAO_CONSELHO = ['diretor', 'secretaria', 'coordenacao'];
+router.get(
+    '/conselho-tutelar/pendentes',
+    authorize.estrito(GESTAO_CONSELHO),
+    ConselhoTutelarController.listarPendentes
+);
+router.post(
+    '/ocorrencia/:id/conselho-tutelar',
+    authorize.estrito(GESTAO_CONSELHO),
+    ConselhoTutelarController.registrar
+);
+
 // ── Canais do usuário (qualquer autenticado) ─────────────────────────────────
 router.post('/denunciar', moderacaoAbusoLimiter, ModeracaoController.denunciar);
 router.post('/contestar', moderacaoAbusoLimiter, ModeracaoController.contestar);

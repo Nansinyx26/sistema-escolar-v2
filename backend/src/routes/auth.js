@@ -123,12 +123,11 @@ router.get('/rotas', authJWT, async (req, res) => {
         const { rotasAdminPara } = require('../utils/rotasFront');
 
         const usuario = await Usuario.findById(req.user?.id || req.user?._id)
-            .select('perfil ativo superAdmin')
+            .select('perfil ativo')
             .lean();
 
         const perfil = usuario && usuario.ativo !== false ? usuario.perfil : null;
-        const opcoes = { superAdmin: usuario?.superAdmin === true };
-        res.json({ success: true, rotas: { admin: perfil ? rotasAdminPara(perfil, opcoes) : {} } });
+        res.json({ success: true, rotas: { admin: perfil ? rotasAdminPara(perfil) : {} } });
     } catch (e) {
         res.status(500).json({ success: false, error: 'Erro ao resolver rotas.' });
     }

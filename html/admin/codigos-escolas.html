@@ -137,7 +137,7 @@
                 <h3 style="margin: 0; font-size: 1.1rem; color: var(--primary-color); display: flex; align-items: center; gap: 0.5rem;">
                     <i class="bi bi-shield-lock"></i> Códigos secretos de cadastro de professores
                 </h3>
-                <p class="text-secondary text-sm" style="margin: 0.4rem 0 0;">
+                <p class="text-secondary text-sm" style="margin: 0.4rem 0 0; color: var(--text-secondary);">
                     Cada escola tem um código próprio. O professor informa este código ao criar a conta para ser
                     vinculado à escola correta. Repasse-o apenas aos docentes autorizados. Ao gerar um novo código, o
                     anterior deixa de funcionar para novos cadastros.
@@ -210,9 +210,11 @@
                         ? `<span class="codigo-cell" data-code="${codigoAttr}">••••••••••</span>`
                         : `<span class="text-secondary text-sm">Não gerado</span>`;
 
+                    // `ativo` = liberada para uso (Gestão de Escolas). Sem isso o
+                    // código é recusado no cadastro, mesmo estando gerado.
                     const statusBadge = e.ativo
-                        ? `<span class="badge badge-success">Ativa</span>`
-                        : `<span class="badge badge-inativa">Bloqueada</span>`;
+                        ? `<span class="badge badge-success">Liberada</span>`
+                        : `<span class="badge badge-inativa" title="Libere a escola em Gestão de Escolas para o código funcionar">Aguardando liberação</span>`;
 
                     return `
                         <tr>
@@ -283,7 +285,9 @@
             window.loadCodigos = async () => {
                 table.innerHTML = '<tr><td colspan="5" class="text-center">Carregando...</td></tr>';
                 try {
-                    const res = await fetch(`${window.API_BASE_URL}/escolas/codigos-secretos`);
+                    const res = await fetch(`${window.API_BASE_URL}/escolas/codigos-secretos`, {
+                        credentials: 'include'
+                    });
                     const json = await res.json();
                     if (json.success) {
                         render(json.data || []);

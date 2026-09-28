@@ -153,18 +153,18 @@
 
             <div class="ca-grid ca-grid-3" style="margin-bottom:1rem">
                 <div class="ca-field">
-                    <label>Data de Nascimento<span class="req-mark">*</span></label>
+                    <label for="nascimento">Data de Nascimento<span class="req-mark">*</span></label>
                     <input type="date" id="nascimento"
                         onchange="onFieldEdit('dados-basicos','nascimento')" required>
                 </div>
                 <div class="ca-field">
-                    <label>Turma<span class="req-mark">*</span></label>
+                    <label for="turmaId">Turma<span class="req-mark">*</span></label>
                     <select id="turmaId" onchange="onFieldEdit('dados-basicos','turma')" required>
                         <option value="">Selecionar turma</option>
                     </select>
                 </div>
                 <div class="ca-field">
-                    <label>Nível</label>
+                    <label for="nivel">Nível</label>
                     <select id="nivel" onchange="onFieldEdit('dados-basicos','nivel')">
                         <option value="">Selecionar</option>
                         <option value="Básico">Básico</option>
@@ -181,7 +181,7 @@
                         oninput="onFieldEdit('dados-basicos','cpf');maskCPF(this)">
                 </div>
                 <div class="ca-field">
-                    <label>Nacionalidade</label>
+                    <label for="nacionalidade">Nacionalidade</label>
                     <input type="text" id="nacionalidade" value="Brasileira"
                         oninput="onFieldEdit('dados-basicos','nacionalidade')">
                 </div>
@@ -189,7 +189,7 @@
 
             <div class="ca-grid ca-grid-2">
                 <div class="ca-field">
-                    <label>
+                    <label for="etnia">
                         Cor/Etnia
                         <span class="sensitive-tag"><i class="bi bi-lock-fill"></i> Sensível</span>
                     </label>
@@ -260,7 +260,7 @@
                         oninput="onFieldEdit('endereco','cidade')">
                 </div>
                 <div class="ca-field">
-                    <label>Estado</label>
+                    <label for="estado">Estado</label>
                     <select id="estado" onchange="onFieldEdit('endereco','estado')">
                         <option value="">UF</option>
                         <option>AC</option><option>AL</option><option>AM</option><option>AP</option>
@@ -291,7 +291,7 @@
                         oninput="onFieldEdit('responsavel','nome')">
                 </div>
                 <div class="ca-field">
-                    <label>Parentesco / Tipo</label>
+                    <label for="respParentesco">Parentesco / Tipo</label>
                     <select id="respParentesco" onchange="onFieldEdit('responsavel','parentesco')">
                         <option value="Mãe">Mãe</option>
                         <option value="Pai">Pai</option>
@@ -322,7 +322,7 @@
             </div>
             <div class="ca-grid ca-grid-2">
                 <div class="ca-field">
-                    <label>Autorizado a Buscar</label>
+                    <label for="respBusca">Autorizado a Buscar</label>
                     <select id="respBusca" onchange="onFieldEdit('responsavel','busca')">
                         <option value="Sim">Sim</option>
                         <option value="Não">Não</option>
@@ -337,7 +337,7 @@
         <div class="ca-section">
             <div class="ca-section-title">
                 <i class="bi bi-person-plus-fill"></i>
-                Segundo Responsável <span style="font-weight:400;font-size:.8rem;color:rgba(255,255,255,.4)">(opcional — máx. 2)</span>
+                Segundo Responsável <span style="font-weight:400;font-size:.8rem;color:rgba(255,255,255,.6)">(opcional — máx. 2)</span>
             </div>
             <div class="ca-grid ca-grid-2" style="margin-bottom:1rem">
                 <div class="ca-field">
@@ -345,7 +345,7 @@
                     <input type="text" id="resp2Nome" placeholder="Nome completo">
                 </div>
                 <div class="ca-field">
-                    <label>Tipo de Responsável</label>
+                    <label for="resp2Tipo">Tipo de Responsável</label>
                     <select id="resp2Tipo">
                         <option value="">— Selecione —</option>
                         <option value="Mãe">Mãe</option>
@@ -392,7 +392,7 @@
                         oninput="onFieldEdit('responsavel','whatsapp');maskTel(this)">
                 </div>
                 <div class="ca-field">
-                    <label>Quem possui a guarda legal?</label>
+                    <label for="guardaLegal">Quem possui a guarda legal?</label>
                     <select id="guardaLegal" onchange="onFieldEdit('responsavel','guardaLegal')">
                         <option value="">— Selecione —</option>
                         <option value="Mãe">Mãe</option>
@@ -439,7 +439,7 @@
 
             <div class="ca-grid ca-grid-2" style="margin-bottom:1rem">
                 <div class="ca-field">
-                    <label>Possui Deficiência (PCD)?</label>
+                    <label for="pcd">Possui Deficiência (PCD)?</label>
                     <select id="pcd" onchange="onFieldEdit('saude','pcd');togglePcd(this.value)">
                         <option value="Não">Não</option>
                         <option value="Sim">Sim</option>
@@ -472,7 +472,7 @@
                         oninput="onFieldEdit('saude','plano')">
                 </div>
                 <div class="ca-field">
-                    <label>Condição Especial</label>
+                    <label for="condicao">Condição Especial</label>
                     <select id="condicao" onchange="onFieldEdit('saude','condicao')">
                         <option value="">Nenhuma</option>
                         <option value="Recuperação">Recuperação</option>
@@ -501,25 +501,25 @@
 
             <h4 style="font-size:.85rem;color:#10b981;margin:1rem 0 .5rem">Serviços de Atendimento ao Aluno</h4>
             <div class="ca-grid ca-grid-2" style="margin-bottom:.75rem">
-                <div class="ca-field"><label>Tratamento odontológico</label>
+                <div class="ca-field"><label for="authOdontologico">Tratamento odontológico</label>
                     <select id="authOdontologico"><option value="">—</option><option value="sim">SIM</option><option value="nao">NÃO</option></select></div>
-                <div class="ca-field"><label>Tratamento médico emergencial</label>
+                <div class="ca-field"><label for="authMedico">Tratamento médico emergencial</label>
                     <select id="authMedico"><option value="">—</option><option value="sim">SIM</option><option value="nao">NÃO</option></select></div>
-                <div class="ca-field"><label>Testagem acuidade visual/auditiva</label>
+                <div class="ca-field"><label for="authAcuidade">Testagem acuidade visual/auditiva</label>
                     <select id="authAcuidade"><option value="">—</option><option value="sim">SIM</option><option value="nao">NÃO</option></select></div>
             </div>
 
             <h4 style="font-size:.85rem;color:#10b981;margin:1rem 0 .5rem">Atividades</h4>
             <div class="ca-grid ca-grid-2" style="margin-bottom:.75rem">
-                <div class="ca-field"><label>Atividades físicas (sem restrição)</label>
+                <div class="ca-field"><label for="authAtivFisicas">Atividades físicas (sem restrição)</label>
                     <select id="authAtivFisicas"><option value="">—</option><option value="sim">SIM</option><option value="nao">NÃO</option></select></div>
-                <div class="ca-field"><label>Atividades extraclasse / excursões</label>
+                <div class="ca-field"><label for="authExtraclasse">Atividades extraclasse / excursões</label>
                     <select id="authExtraclasse"><option value="">—</option><option value="sim">SIM</option><option value="nao">NÃO</option></select></div>
             </div>
 
             <h4 style="font-size:.85rem;color:#10b981;margin:1rem 0 .5rem">Condução Escolar</h4>
             <div class="ca-grid ca-grid-2" style="margin-bottom:.75rem">
-                <div class="ca-field"><label>Autoriza condução escolar contratada?</label>
+                <div class="ca-field"><label for="authConducao">Autoriza condução escolar contratada?</label>
                     <select id="authConducao" onchange="toggleConducaoFields()"><option value="">—</option><option value="sim">SIM</option><option value="nao">NÃO</option></select></div>
             </div>
             <div id="conducaoFields" class="ca-grid ca-grid-2" style="display:none;margin-bottom:.75rem">
@@ -529,7 +529,7 @@
 
             <h4 style="font-size:.85rem;color:#10b981;margin:1rem 0 .5rem">Autorização de Antitérmico</h4>
             <div class="ca-grid ca-grid-2" style="margin-bottom:.75rem">
-                <div class="ca-field"><label>Autoriza administrar antitérmico?</label>
+                <div class="ca-field"><label for="authAntitermico">Autoriza administrar antitérmico?</label>
                     <select id="authAntitermico" onchange="toggleAntitermicoFields()"><option value="">—</option><option value="sim">SIM</option><option value="nao">NÃO</option></select></div>
             </div>
             <div id="antitermicoFields" class="ca-grid ca-grid-2" style="display:none">
@@ -631,7 +631,7 @@
 
             <!-- Consentimento 1 — Dados do menor -->
             <div class="consent-item" id="ci1">
-                <input type="checkbox" id="c1" onchange="checkConsents()">
+                <input aria-label="Autorização para tratamento de dados do menor" type="checkbox" id="c1" onchange="checkConsents()">
                 <div class="consent-item-body">
                     <div class="consent-item-title">
                         Autorização para tratamento de dados do menor
@@ -647,7 +647,7 @@
 
             <!-- Consentimento 2 — Dados sensíveis -->
             <div class="consent-item" id="ci2">
-                <input type="checkbox" id="c2" onchange="checkConsents()">
+                <input aria-label="Autorização para dados sensíveis de saúde e identidade" type="checkbox" id="c2" onchange="checkConsents()">
                 <div class="consent-item-body">
                     <div class="consent-item-title">
                         Autorização para dados sensíveis de saúde e identidade
@@ -663,7 +663,7 @@
 
             <!-- Consentimento 3 — Comunicações -->
             <div class="consent-item" id="ci3">
-                <input type="checkbox" id="c3" onchange="checkConsents()">
+                <input aria-label="Autorização para comunicações institucionais" type="checkbox" id="c3" onchange="checkConsents()">
                 <div class="consent-item-body">
                     <div class="consent-item-title">
                         Autorização para comunicações institucionais
@@ -678,7 +678,7 @@
 
             <!-- Consentimento 4 — Política e direitos -->
             <div class="consent-item" id="ci4">
-                <input type="checkbox" id="c4" onchange="checkConsents()">
+                <input aria-label="Ciência da Política de Privacidade e direitos LGPD" type="checkbox" id="c4" onchange="checkConsents()">
                 <div class="consent-item-body">
                     <div class="consent-item-title">
                         Ciência da Política de Privacidade e direitos LGPD
@@ -686,7 +686,7 @@
                     </div>
                     <div class="consent-item-desc">
                         Declaro ter lido e compreendido a
-                        <a href="politica-privacidade.html" target="_blank" style="color:#34d399">Política de Privacidade</a>
+                        <a href="politica-privacidade.html" target="_blank" style="color:#34d399;text-decoration:underline">Política de Privacidade</a>
                         desta instituição. Ciente dos direitos de acesso, correção, portabilidade,
                         eliminação e revogação de consentimento garantidos pelo Art. 18 da LGPD.
                     </div>
@@ -699,8 +699,9 @@
                 <div class="dpo-box-body">
                     <div class="dpo-box-title">Encarregado de Proteção de Dados (DPO)</div>
                     <div class="dpo-box-desc">
-                        Para exercer seus direitos ou tirar dúvidas sobre o tratamento de dados:
-                        <a href="mailto:dpo@escola.edu.br">dpo@escola.edu.br</a>
+                        O encarregado está sendo designado pela rede de ensino. Até lá, a família
+                        exerce seus direitos pela secretaria da escola, e a equipe pela página
+                        <a href="meus-dados.html" style="text-decoration:underline">Meus Dados</a>.
                     </div>
                 </div>
             </div>
@@ -717,7 +718,7 @@
                 </div>
                 <span class="audit-count" id="auditCount">0 registros</span>
             </div>
-            <p style="font-size:.78rem;color:rgba(255,255,255,.4);margin:.5rem 0 0">
+            <p style="font-size:.78rem;color:rgba(255,255,255,.6);margin:.5rem 0 0">
                 Registro imutável de todas as interações com este formulário, conforme exigências da ANPD.
             </p>
             <div class="audit-table-wrap">

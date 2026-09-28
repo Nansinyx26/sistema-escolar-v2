@@ -1,5 +1,6 @@
 const logger = require('../utils/logger');
 const { enviarEmail } = require('./EnvioEmail');
+const { htmlResumoMensal } = require('./EmailResumoMensal');
 
 // ============================================================================
 // O transporte local foi REMOVIDO em favor de services/EnvioEmail.js.
@@ -17,8 +18,19 @@ const { enviarEmail } = require('./EnvioEmail');
 
 /**
  * Envia um e-mail de notificação formatado.
+ * `opcoes.tipo === 'atualizacao_sistema'` com `opcoes.resumo` usa o layout do
+ * resumo mensal (services/EmailResumoMensal.js).
  */
-exports.sendNotificationEmail = async (to, subject, title, summary, link) => {
+exports.sendNotificationEmail = async (to, subject, title, summary, link, opcoes = {}) => {
+    if (opcoes.tipo === 'atualizacao_sistema' && opcoes.resumo) {
+        const base = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const html = htmlResumoMensal(opcoes.resumo, link, base);
+        const r = await enviarEmail(to, subject, html);
+        if (!r.ok)
+            logger.error(`[EmailService] Resumo mensal não entregue (${r.etapa}): ${r.erro}`);
+        return r.ok;
+    }
+
     const html = `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 10px; overflow: hidden;">
         <div style="background: #06b6d4; padding: 20px; text-align: center;">

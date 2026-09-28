@@ -1,9 +1,8 @@
 /**
- * Gestão de Escolas — tela do super admin (Issue #463).
+ * Gestão de Escolas — tela do admin (Issues #463 e #533).
  *
- * Consome /api/superadmin/*. A casca desta página abre para qualquer admin
- * (o gate de páginas decide por perfil); quem decide de verdade é a API, que
- * devolve 403 a quem não é super admin — e aí a tela mostra a recusa.
+ * Consome /api/superadmin/*. Quem decide o acesso de verdade é a API, que
+ * devolve 403 a quem não é admin — e aí a tela mostra a recusa.
  *
  * Toda mensagem vinda do servidor passa por `escapar` antes de ir ao toast:
  * o `showToast` de utils.js monta o HTML com innerHTML, e nome de escola é
@@ -36,6 +35,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         formDesbloquear: document.getElementById('geFormDesbloquear'),
         motivoAtual: document.getElementById('geMotivoAtual'),
         confirmarDesbloqueio: document.getElementById('geConfirmarDesbloqueio'),
+        dialogoLiberar: document.getElementById('geDialogoLiberar'),
+        formLiberar: document.getElementById('geFormLiberar'),
+        confirmarLiberar: document.getElementById('geConfirmarLiberar'),
     };
 
     const estado = { busca: '', status: 'todas', pagina: 1, totalPaginas: 1, escolas: [] };
@@ -107,19 +109,32 @@ document.addEventListener('DOMContentLoaded', async () => {
             ? `${bloqueada ? 'Bloqueada' : 'Desbloqueada'} em ${escapar(dataTexto)}${quem && quem.nome ? `<small>por ${escapar(quem.nome)}</small>` : ''}`
             : 'Nunca bloqueada';
 
-        const acaoStatus = bloqueada
-            ? `<button type="button" class="btn btn-success btn-sm ge-acao" data-acao="desbloquear" data-id="${escapar(e._id)}"><i class="bi bi-unlock" aria-hidden="true"></i> Desbloquear</button>`
-            : `<button type="button" class="btn btn-danger btn-sm ge-acao" data-acao="bloquear" data-id="${escapar(e._id)}"><i class="bi bi-lock" aria-hidden="true"></i> Bloquear</button>`;
+        // Escola ainda não liberada (Issue #533): a ação que importa é liberar;
+        // bloquear só faz sentido para quem já usa o sistema.
+        const aguardando = !bloqueada && !e.disponivel;
+        const acaoStatus = aguardando
+            ? `<button type="button" class="btn btn-primary btn-sm ge-acao" data-acao="liberar" data-id="${escapar(e._id)}"><i class="bi bi-check2-circle" aria-hidden="true"></i> Liberar</button>`
+            : bloqueada
+              ? `<button type="button" class="btn btn-success btn-sm ge-acao" data-acao="desbloquear" data-id="${escapar(e._id)}"><i class="bi bi-unlock" aria-hidden="true"></i> Desbloquear</button>`
+              : `<button type="button" class="btn btn-danger btn-sm ge-acao" data-acao="bloquear" data-id="${escapar(e._id)}"><i class="bi bi-lock" aria-hidden="true"></i> Bloquear</button>`;
 
-        return `<div class="ge-linha motion-content" role="row" data-status="${bloqueada ? 'bloqueada' : 'ativa'}" data-id="${escapar(e._id)}">
+        const situacao = bloqueada
+            ? { classe: 'ge-badge-bloqueada', icone: 'bi-lock-fill', rotulo: 'Bloqueada' }
+            : aguardando
+              ? { classe: 'ge-badge-aguardando', icone: 'bi-hourglass-split', rotulo: 'Aguardando' }
+              : { classe: 'ge-badge-ativa', icone: 'bi-check-circle-fill', rotulo: 'Ativa' };
+
+        const status = bloqueada ? 'bloqueada' : aguardando ? 'aguardando' : 'ativa';
+
+        return `<div class="ge-linha motion-content" role="row" data-status="${status}" data-id="${escapar(e._id)}">
             <div class="ge-c-escola" role="cell">
                 <span class="ge-nome">${escapar(e.nome)}</span>
-                <span class="ge-local">${escapar(local || e.tipo || '')}${e.disponivel ? '' : ' · ainda não liberada'}</span>
+                <span class="ge-local">${escapar(local || e.tipo || '')}</span>
                 ${bloqueada && e.motivoBloqueio ? `<p class="ge-motivo-linha"><span class="sr-only">Motivo: </span>${escapar(e.motivoBloqueio)}</p>` : ''}
             </div>
             <div class="ge-c-situacao" role="cell">
-                <span class="ge-badge ${bloqueada ? 'ge-badge-bloqueada' : 'ge-badge-ativa'}">
-                    <i class="bi ${bloqueada ? 'bi-lock-fill' : 'bi-check-circle-fill'}" aria-hidden="true"></i>${bloqueada ? 'Bloqueada' : 'Ativa'}
+                <span class="ge-badge ${situacao.classe}">
+                    <i class="bi ${situacao.icone}" aria-hidden="true"></i>${situacao.rotulo}
                 </span>
             </div>
             <div class="ge-c-usuarios ge-num" role="cell"><span class="ge-rotulo-mobile">Usuários: </span>${Number(e.usuarios) || 0}</div>
@@ -284,6 +299,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         el.confirmarDesbloqueio.focus();
     }
 
+    function abrirLiberacao(escola) {
+        escolaEmAcao = escola;
+        preencherNome(el.dialogoLiberar, escola.nome);
+        el.dialogoLiberar.showModal();
+        el.confirmarLiberar.focus();
+    }
+
     async function acessar(escola, botao) {
         botao.disabled = true;
         const r = await chamar(`/superadmin/escolas/${encodeURIComponent(escola._id)}/acessar`, {
@@ -313,6 +335,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!escola) return;
         if (botao.dataset.acao === 'bloquear') abrirBloqueio(escola);
         else if (botao.dataset.acao === 'desbloquear') abrirDesbloqueio(escola);
+        else if (botao.dataset.acao === 'liberar') abrirLiberacao(escola);
         else if (botao.dataset.acao === 'acessar') acessar(escola, botao);
     });
 
@@ -375,6 +398,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         avisar(`Escola "${escolaEmAcao.nome}" desbloqueada. O acesso já está liberado.`, 'success');
+        escolaEmAcao = null;
+        carregar();
+    });
+
+    el.formLiberar.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        if (!escolaEmAcao) return;
+        el.confirmarLiberar.disabled = true;
+        const r = await chamar(
+            `/superadmin/escolas/${encodeURIComponent(escolaEmAcao._id)}/disponibilidade`,
+            { method: 'PATCH', body: JSON.stringify({ disponivel: true }) }
+        );
+        el.confirmarLiberar.disabled = false;
+        el.dialogoLiberar.close();
+        if (!r.ok) {
+            avisar(r.json.error || 'Não foi possível liberar a escola.', 'error');
+            carregar();
+            return;
+        }
+        avisar(`Escola "${escolaEmAcao.nome}" liberada. A equipe já pode se cadastrar.`, 'success');
         escolaEmAcao = null;
         carregar();
     });

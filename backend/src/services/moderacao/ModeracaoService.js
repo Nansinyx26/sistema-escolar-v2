@@ -201,6 +201,30 @@ async function registrarDenuncia({ mensagemId, motivo, contexto = {} }) {
 const CATEGORIAS_GRAVES = ['violencia', 'assedio', 'automutilacao'];
 
 /**
+ * Categorias cuja denúncia obriga a escola a comunicar o Conselho Tutelar
+ * (Issue #511): violência (ECA, arts. 13 e 56-I; Lei 14.344/2022), assédio —
+ * que no canal da escola cobre o sexual — e automutilação (Lei 13.819/2019,
+ * art. 6º, e LDB, art. 12, VIII, na redação da Lei 15.231/2025). Bullying e
+ * discriminação vão à apuração da escola; se ela achar violência, a gestão
+ * registra a comunicação do mesmo jeito.
+ */
+const CATEGORIAS_CONSELHO_TUTELAR = ['violencia', 'assedio', 'automutilacao'];
+
+/** Violência autoprovocada: a notificação é sigilosa (Lei 13.819/2019). */
+const CATEGORIAS_SIGILOSAS = ['automutilacao'];
+
+function conselhoTutelarInicial(categoria) {
+    if (!CATEGORIAS_CONSELHO_TUTELAR.includes(categoria)) return {};
+    return {
+        conselhoTutelar: {
+            exigida: true,
+            sigilosa: CATEGORIAS_SIGILOSAS.includes(categoria),
+            situacao: 'pendente',
+        },
+    };
+}
+
+/**
  * Canal aberto de denúncia (ECA Digital) — denúncia SEM mensagem vinculada.
  *
  * POR QUE NÃO DAVA PARA REUSAR `registrarDenuncia`
@@ -240,7 +264,11 @@ async function registrarDenunciaAberta({ categoria, relato, contexto = {} }) {
         conteudoHash: hashDoTexto(relato),
         decisao,
         contexto,
-        extras: { categoriaDenuncia: categoria, relato },
+        extras: {
+            categoriaDenuncia: categoria,
+            relato,
+            ...conselhoTutelarInicial(categoria),
+        },
     });
 
     return { ...decisao, ocorrencia, modo: modo() };
@@ -314,6 +342,8 @@ module.exports = {
     registrarDenuncia,
     registrarDenunciaAberta,
     CATEGORIAS_GRAVES,
+    CATEGORIAS_CONSELHO_TUTELAR,
+    CATEGORIAS_SIGILOSAS,
     expirarPendencias,
     hashDoTexto,
     hashDoBinario,
