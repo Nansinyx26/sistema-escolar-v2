@@ -128,14 +128,14 @@
                     <form id="gradeForm" class="grade-grid-layout" style="margin-top: 1rem;">
 
                         <div class="form-group">
-                            <label class="form-label">Professor *</label>
+                            <label for="selectProfessor" class="form-label">Professor *</label>
                             <select id="selectProfessor" class="form-input" required>
                                 <option value="">Carregando...</option>
                             </select>
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label">Turma *</label>
+                            <label for="selectTurma" class="form-label">Turma *</label>
                             <select id="selectTurma" class="form-input" required>
                                 <option value="">Carregando...</option>
                             </select>
@@ -154,7 +154,7 @@
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label">Dia da Semana *</label>
+                            <label for="selectDia" class="form-label">Dia da Semana *</label>
                             <select id="selectDia" class="form-input" required>
                                 <option value="1">Segunda-feira</option>
                                 <option value="2">Terça-feira</option>
@@ -167,17 +167,17 @@
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label">Hora Início *</label>
+                            <label for="horaInicio" class="form-label">Hora Início *</label>
                             <input type="time" id="horaInicio" class="form-input" required>
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label">Hora Fim *</label>
+                            <label for="horaFim" class="form-label">Hora Fim *</label>
                             <input type="time" id="horaFim" class="form-input" required>
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label">Aulas Seguidas (Max) *</label>
+                            <label for="aulasSeguidas" class="form-label">Aulas Seguidas (Max) *</label>
                             <input type="number" id="aulasSeguidas" class="form-input" value="1" min="1" max="5"
                                 required>
                         </div>
@@ -202,7 +202,7 @@
                 <div class="form-card">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
                         <h3>Horários Cadastrados</h3>
-                        <select id="filterProfessor" class="form-input" style="max-width:300px;">
+                        <select aria-label="Filtrar horários por professor" id="filterProfessor" class="form-input" style="max-width:300px;">
                             <option value="">Filtrar por Professor...</option>
                         </select>
                     </div>

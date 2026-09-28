@@ -9,10 +9,17 @@
 // nome contendo aspas fecha o atributo e permite injetar outro no lugar —
 // inclusive um handler de evento, que a CSP ainda aceita (script-src-attr).
 // Ver js/escape-html.js.
-const _ESC_MAP_LP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' };
+const _ESC_MAP_LP = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+    '`': '&#96;',
+};
 function escHtml(v) {
     if (v === null || v === undefined) return '';
-    return String(v).replace(/[&<>"'`]/g, c => _ESC_MAP_LP[c]);
+    return String(v).replace(/[&<>"'`]/g, (c) => _ESC_MAP_LP[c]);
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -55,7 +62,9 @@ async function carregarDados() {
             json = JSON.parse(text);
         } catch (e) {
             console.error('Resposta inválida (não JSON):', text);
-            throw new Error('O servidor retornou uma resposta inválida. Verifique se o backend está rodando na porta 3001.');
+            throw new Error(
+                'O servidor retornou uma resposta inválida. Verifique se o backend está rodando na porta 3001.'
+            );
         }
 
         if (!response.ok || !json.success) {
@@ -78,7 +87,7 @@ function renderizarTabela(atribuicoes) {
         return;
     }
 
-    atribuicoes.forEach(atrib => {
+    atribuicoes.forEach((atrib) => {
         const novaLinha = document.createElement('tr');
         if (atrib._id) novaLinha.dataset.id = atrib._id;
 
@@ -94,7 +103,7 @@ function renderizarTabela(atribuicoes) {
             <td><input type="text" value="${escHtml(atrib.cargaHoraria || '40h')}" placeholder="Carga"></td>
             <td><input type="text" value="${escHtml(atrib.observacoes || '')}" placeholder="Observações"></td>
             <td class="col-assinatura">_____________________</td>
-            <td><button class="btn btn-delete btn-sm" onclick="removerLinha(this)"><i class="bi bi-trash"></i></button></td>
+            <td><button type="button" class="btn btn-delete btn-sm" onclick="removerLinha(this)" aria-label="Remover linha"><i class="bi bi-trash" aria-hidden="true"></i></button></td>
         `;
         tbody.appendChild(novaLinha);
     });
@@ -116,7 +125,7 @@ function adicionarProfessor() {
         <td><input type="text" placeholder="Carga" value="40h"></td>
         <td><input type="text" placeholder="Observações"></td>
         <td class="col-assinatura">_____________________</td>
-        <td><button class="btn btn-delete btn-sm" onclick="removerLinha(this)"><i class="bi bi-trash"></i></button></td>
+        <td><button type="button" class="btn btn-delete btn-sm" onclick="removerLinha(this)" aria-label="Remover linha"><i class="bi bi-trash" aria-hidden="true"></i></button></td>
     `;
 
     tbody.appendChild(novaLinha);
@@ -133,7 +142,8 @@ async function removerLinha(botao) {
                 const url = `${db.baseUrl}/atribuicoes/${id}`;
                 const response = await fetch(url, { method: 'DELETE' });
                 const json = await response.json();
-                if (!response.ok || !json.success) throw new Error(json.error || 'Erro ao deletar no servidor');
+                if (!response.ok || !json.success)
+                    throw new Error(json.error || 'Erro ao deletar no servidor');
                 showToast('Professor removido com sucesso', 'success');
             } catch (error) {
                 console.error('Erro ao deletar:', error);
@@ -154,7 +164,7 @@ async function salvarAlteracoes() {
         const rows = document.querySelectorAll('#tabelaProfessores tbody tr');
         const atribuicoes = [];
 
-        rows.forEach(row => {
+        rows.forEach((row) => {
             const inputs = row.querySelectorAll('input');
             const atrib = {
                 nome: inputs[0].value.trim(),
@@ -166,7 +176,7 @@ async function salvarAlteracoes() {
                 estudoL: Number(inputs[6].value) || 0,
                 estudoEsc: Number(inputs[7].value) || 0,
                 cargaHoraria: inputs[8].value.trim(),
-                observacoes: inputs[9].value.trim()
+                observacoes: inputs[9].value.trim(),
             };
 
             if (row.dataset.id) {
@@ -193,7 +203,7 @@ async function salvarAlteracoes() {
         const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ atribuicoes })
+            body: JSON.stringify({ atribuicoes }),
         });
 
         const text = await response.text();
@@ -211,7 +221,6 @@ async function salvarAlteracoes() {
 
         renderizarTabela(json.data);
         showToast('Todas as alterações foram salvas com sucesso!', 'success');
-
     } catch (error) {
         console.error('Erro ao salvar alterações:', error);
         showToast(`Erro ao salvar: ${error.message}`, 'error');
@@ -246,16 +255,16 @@ function gerarPDF() {
         doc.setFontSize(10);
         const splitObs = doc.splitTextToSize(observacoes, 260);
         doc.text(splitObs, 14, currentY);
-        currentY += (splitObs.length * 5) + 5;
+        currentY += splitObs.length * 5 + 5;
     }
 
     const linhas = [];
     const rows = document.querySelectorAll('#tabelaProfessores tbody tr');
 
-    rows.forEach(row => {
+    rows.forEach((row) => {
         const inputs = row.querySelectorAll('input');
         const dados = [];
-        inputs.forEach(input => {
+        inputs.forEach((input) => {
             dados.push(input.value || '-');
         });
         // Adiciona uma coluna vazia para a Assinatura (para assinatura manual no papel)
@@ -265,7 +274,21 @@ function gerarPDF() {
 
     doc.autoTable({
         startY: currentY,
-        head: [['Nome', 'Classe', 'Pontuação', 'Série/Turma', 'H.A', 'R.P', 'Estudo L', 'Estudo Esc.', 'Carga', 'Observações', 'Assinatura']],
+        head: [
+            [
+                'Nome',
+                'Classe',
+                'Pontuação',
+                'Série/Turma',
+                'H.A',
+                'R.P',
+                'Estudo L',
+                'Estudo Esc.',
+                'Carga',
+                'Observações',
+                'Assinatura',
+            ],
+        ],
         body: linhas,
         theme: 'grid',
         headStyles: {
@@ -273,31 +296,36 @@ function gerarPDF() {
             textColor: [255, 255, 255],
             fontSize: 9,
             fontStyle: 'bold',
-            halign: 'center'
+            halign: 'center',
         },
         columnStyles: {
             0: { cellWidth: 40 }, // Nome
             9: { cellWidth: 40 }, // Observações
-            10: { cellWidth: 35 } // Assinatura
+            10: { cellWidth: 35 }, // Assinatura
         },
         bodyStyles: {
             fontSize: 8,
             textColor: [50, 50, 50],
-            valign: 'middle'
+            valign: 'middle',
         },
         alternateRowStyles: {
-            fillColor: [248, 250, 252]
+            fillColor: [248, 250, 252],
         },
-        margin: { top: 10, left: 10, right: 10 }
+        margin: { top: 10, left: 10, right: 10 },
     });
 
     const dataAtual = new Date().toLocaleDateString('pt-BR');
-    const horaAtual = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const horaAtual = new Date().toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+    });
 
     doc.setFontSize(8);
     doc.setTextColor(148, 163, 184);
     doc.text(`Gerado em: ${dataAtual} às ${horaAtual}`, 14, doc.internal.pageSize.height - 10);
-    doc.text('Sistema de Gestão Escolar', 283, doc.internal.pageSize.height - 10, { align: 'right' });
+    doc.text('Sistema de Gestão Escolar', 283, doc.internal.pageSize.height - 10, {
+        align: 'right',
+    });
 
     doc.save(`lista_professores_${dataAtual.replace(/\//g, '-')}.pdf`);
 }

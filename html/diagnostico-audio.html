@@ -83,7 +83,7 @@
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.08em;
-            color: #64748b;
+            color: #94a3b8;
             margin-bottom: 0.6rem;
             margin-top: 0.2rem;
         }
@@ -168,7 +168,7 @@
             <div class="section-title mt-4">Configuração</div>
             <p class="text-xs text-secondary mb-2">
                 Obtenha sua chave em
-                <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-400 underline">aistudio.google.com</a>
+                <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-400 underline" style="text-decoration:underline">aistudio.google.com</a>
                 e coloque no <code>backend/.env</code>:
             </p>
             <code class="text-xs text-emerald-400 block bg-black/30 p-2 rounded">GOOGLE_TTS_API_KEY=AIzaSua...</code>
@@ -200,7 +200,7 @@
             <div class="section-title mt-4">Configuração</div>
             <p class="text-xs text-secondary mb-2">
                 Obtenha em
-                <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" class="text-purple-400 underline">elevenlabs.io</a>
+                <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" class="text-purple-400 underline" style="text-decoration:underline">elevenlabs.io</a>
                 e coloque no <code>backend/.env</code>:
             </p>
             <code class="text-xs text-emerald-400 block bg-black/30 p-2 rounded">ELEVENLABS_API_KEY=sk_...</code>
@@ -226,15 +226,15 @@
                 placeholder="Digite pelo menos 10 caracteres para testar..."></textarea>
 
             <div class="flex flex-col gap-3">
-                <select id="test-gender" class="form-select bg-white/5 border border-white/10 rounded-lg p-2 text-white" disabled>
+                <select aria-label="Voz do teste" id="test-gender" class="form-select bg-white/5 border border-white/10 rounded-lg p-2 text-white" disabled>
                     <option value="male" selected>Voz Masculina (Padrão Único)</option>
                 </select>
-                <select id="test-provider" class="form-select bg-white/5 border border-white/10 rounded-lg p-2 text-white">
+                <select aria-label="Provedor de voz" id="test-provider" class="form-select bg-white/5 border border-white/10 rounded-lg p-2 text-white">
                     <option value="auto" selected>Auto (mais estável)</option>
                     <option value="elevenlabs">ElevenLabs (High Quality)</option>
                     <option value="google-cloud">Google Cloud (Neural2)</option>
                 </select>
-                <select id="test-speed" class="form-select bg-white/5 border border-white/10 rounded-lg p-2 text-white">
+                <select aria-label="Velocidade da fala" id="test-speed" class="form-select bg-white/5 border border-white/10 rounded-lg p-2 text-white">
                     <option value="0.75">0.75x (lento)</option>
                     <option value="1.0" selected>1.0x (normal)</option>
                     <option value="1.25">1.25x (rápido)</option>
@@ -255,7 +255,7 @@
             <button id="btn-clear-logs" class="text-xs text-secondary hover:text-white underline">Limpar</button>
         </h3>
         <div id="diagnostico-logs" class="log-container">
-            <div style="color:#64748b">[SYSTEM] Aguardando diagnóstico...</div>
+            <div style="color:#94a3b8">[SYSTEM] Aguardando diagnóstico...</div>
         </div>
     </div>
 

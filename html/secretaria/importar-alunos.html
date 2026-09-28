@@ -32,8 +32,8 @@
         .sec-input:focus { outline:none; border-color:#10b981; }
         .sec-btn { padding:0.6rem 1.2rem; border-radius:10px; font-size:0.85rem; font-weight:600; cursor:pointer; border:none; transition:all 0.2s; display:inline-flex; align-items:center; gap:0.4rem; }
         .sec-btn:disabled { opacity:0.5; cursor:not-allowed; }
-        .sec-btn-primary { background:#10b981; color:#fff; }
-        .sec-btn-primary:hover:not(:disabled) { background:#059669; }
+        .sec-btn-primary { background:#047857; color:#fff; }
+        .sec-btn-primary:hover:not(:disabled) { background:#065f46; }
         .sec-btn-outline { background:transparent; color:#10b981; border:1px solid rgba(16,185,129,0.3); }
         .sec-btn-danger { background:rgba(239,68,68,0.15); color:#ef4444; padding:0.35rem 0.6rem; }
         .sec-table { width:100%; border-collapse:collapse; font-size:0.8rem; }
@@ -114,9 +114,9 @@
             <div class="sec-form-card">
                 <h3><i class="bi bi-1-circle" style="color:#10b981;"></i> Envie o documento com os dados dos alunos</h3>
                 <p class="step-hint">
-                    Aceita <strong>CSV / planilha</strong>. Para o <strong>PDF da SEDUC</strong>, use a importação na <a href="turma-alunos.html" style="color:#10b981;">tela da turma</a>, que lê o arquivo no próprio servidor.
+                    Aceita <strong>CSV / planilha</strong>. Para o <strong>PDF da SEDUC</strong>, use a importação na <a href="turma-alunos.html" style="color:#10b981;text-decoration:underline;">tela da turma</a>, que lê o arquivo no próprio servidor.
                     Colunas reconhecidas: nome, sobrenome, matricula, turma, nascimento, responsavel, telefone, cpfAluno.
-                    <a href="#" onclick="baixarModeloCSV(event)" style="color:#10b981;">Baixar modelo CSV</a>.
+                    <a href="#" onclick="baixarModeloCSV(event)" style="color:#10b981;text-decoration:underline;">Baixar modelo CSV</a>.
                 </p>
                 <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Selecionar arquivo">
                     <i class="bi bi-file-earmark-arrow-up"></i>

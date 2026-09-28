@@ -33,8 +33,8 @@
         .sec-input:focus { outline:none; border-color:#10b981; }
         .sec-select { width:100%; padding:0.6rem 0.8rem; background:rgba(15,23,42,0.8); border:1px solid rgba(255,255,255,0.12); border-radius:10px; color:#fff; font-size:0.85rem; }
         .sec-btn { padding:0.6rem 1.2rem; border-radius:10px; font-size:0.85rem; font-weight:600; cursor:pointer; border:none; transition:all 0.2s; }
-        .sec-btn-primary { background:#10b981; color:#fff; }
-        .sec-btn-primary:hover { background:#059669; }
+        .sec-btn-primary { background:#047857; color:#fff; }
+        .sec-btn-primary:hover { background:#065f46; }
         .sec-btn-outline { background:transparent; color:#10b981; border:1px solid rgba(16,185,129,0.3); }
         .sec-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
         .sec-table th { padding:0.75rem 1rem; text-align:left; color:#94a3b8; font-weight:600; font-size:0.75rem; text-transform:uppercase; border-bottom:1px solid rgba(255,255,255,0.06); }
@@ -112,8 +112,8 @@
                 <form id="formMatricula" onsubmit="criarMatricula(event)">
                     <div class="sec-form-grid">
                         <div><label style="font-size:0.75rem;color:#94a3b8;">ID do Aluno</label><input id="matAlunoId" class="sec-input" placeholder="ID do aluno" required></div>
-                        <div><label style="font-size:0.75rem;color:#94a3b8;">Turma</label><select id="matTurmaId" class="sec-select"><option value="">Carregando...</option></select></div>
-                        <div><label style="font-size:0.75rem;color:#94a3b8;">Ano Letivo</label><input id="matAno" class="sec-input" type="number" value="2025" required></div>
+                        <div><label for="matTurmaId" style="font-size:0.75rem;color:#94a3b8;">Turma</label><select id="matTurmaId" class="sec-select"><option value="">Carregando...</option></select></div>
+                        <div><label for="matAno" style="font-size:0.75rem;color:#94a3b8;">Ano Letivo</label><input id="matAno" class="sec-input" type="number" value="2025" required></div>
                         <div><label style="font-size:0.75rem;color:#94a3b8;">Nº Chamada</label><input id="matChamada" class="sec-input" type="number" placeholder="Opcional"></div>
                     </div>
                     <div style="margin-top:1rem;display:flex;gap:0.5rem;">
@@ -127,7 +127,7 @@
                 <h3><i class="bi bi-arrow-left-right" style="color:#3b82f6;"></i> Alterar Status / Transferir</h3>
                 <div class="sec-form-grid">
                     <div><label style="font-size:0.75rem;color:#94a3b8;">ID da Matrícula</label><input id="statusMatId" class="sec-input" placeholder="ID da matrícula"></div>
-                    <div><label style="font-size:0.75rem;color:#94a3b8;">Novo Status</label>
+                    <div><label for="statusNovo" style="font-size:0.75rem;color:#94a3b8;">Novo Status</label>
                         <select id="statusNovo" class="sec-select">
                             <option value="cursando">Cursando</option>
                             <option value="aprovado">Aprovado</option>
