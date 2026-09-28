@@ -23,8 +23,8 @@ function showToast(message, type = 'info', duration = 3000) {
         <div class="toast-content">
             <div class="toast-message">${message}</div>
         </div>
-        <button class="toast-close" onclick="this.parentElement.remove()">
-            <i class="bi bi-x"></i>
+        <button type="button" class="toast-close" onclick="this.parentElement.remove()" aria-label="Fechar aviso">
+            <i class="bi bi-x" aria-hidden="true"></i>
         </button>
     `;
 

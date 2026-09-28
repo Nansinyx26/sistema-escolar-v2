@@ -140,7 +140,7 @@ function renderHistorico() {
     let lista = [...comunicados];
     if (histFiltroAtual === 'ativos') lista = lista.filter(c => c.ativo !== false);
     if (lista.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#52525b;padding:2.5rem;">Nenhum aviso encontrado.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#8e8e96;padding:2.5rem;">Nenhum aviso encontrado.</td></tr>`;
         return;
     }
     tbody.innerHTML = lista.map(c => {

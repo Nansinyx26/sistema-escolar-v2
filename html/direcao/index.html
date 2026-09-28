@@ -177,7 +177,7 @@
             </a>
         </nav>
         <div class="sidebar-footer">
-            <button class="sidebar-toggle" id="sidebarToggle">
+            <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Recolher o menu">
                 <i class="bi bi-chevron-left"></i>
             </button>
         </div>
@@ -315,10 +315,10 @@
                     <div class="bi-chart-header">
                         <h2><i class="bi bi-graph-up-arrow"></i> Evolução de Desempenho Escolar</h2>
                         <div class="bi-chart-filters">
-                            <select id="filtroTurma" class="bi-select">
+                            <select aria-label="Filtrar por turma" id="filtroTurma" class="bi-select">
                                 <option value="">Todas as turmas</option>
                             </select>
-                            <select id="filtroBimestre" class="bi-select">
+                            <select aria-label="Filtrar por bimestre" id="filtroBimestre" class="bi-select">
                                 <option value="">Todos os bimestres</option>
                                 <option value="1">1º Bimestre</option>
                                 <option value="2">2º Bimestre</option>

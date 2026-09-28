@@ -176,7 +176,7 @@
 
         <section class="audit-filters">
             <input type="text" id="filterUser" placeholder="Filtrar por Usuário/Email" class="audit-input">
-            <select id="filterAction" class="audit-input">
+            <select aria-label="Filtrar por ação" id="filterAction" class="audit-input">
                 <option value="">Todas as Ações</option>
                 <option value="CREATE_NOTE">Lançamento de Notas</option>
                 <option value="UPDATE_NOTE">Edição de Notas</option>
@@ -185,8 +185,8 @@
                 <option value="SYNC_ATTENDANCE">Sincronização de Frequência</option>
                 <option value="LOGIN">Login de Usuário</option>
             </select>
-            <input type="date" id="filterDate" class="audit-input">
-            <button id="btnSearch" class="audit-input" style="background: var(--accent-primary); border: none; cursor: pointer;">
+            <input aria-label="Filtrar por data" type="date" id="filterDate" class="audit-input">
+            <button id="btnSearch" class="audit-input" style="background: #2563eb; color: #fff; border: none; cursor: pointer;">
                 <i class="bi bi-search"></i> Buscar
             </button>
         </section>

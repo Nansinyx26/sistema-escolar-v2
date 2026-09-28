@@ -23,6 +23,10 @@
     <link rel="stylesheet" href="../../js/libs/bootstrap-icons.min.css">
     <link rel="stylesheet" href="../../css/tailwind-built.css">
     <style>
+        /* Fundo sólido do tema no body (Issue #536): a camada decorativa fixa
+           não conta como fundo para leitor de contraste nem para quem a tem
+           bloqueada; sem isto, os cartões translúcidos ficavam sobre branco. */
+        body.dashboard-page { background-color: var(--bg-primary); }
         .sec-page { max-width: 1280px; margin: 0 auto; padding: 2rem 1.5rem; }
         .sec-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
         .sec-header h1 { font-size: 1.6rem; font-weight: 800; color: #fff; margin: 0 0 0.35rem; display: flex; align-items: center; gap: 0.75rem; letter-spacing: -0.02em; }
@@ -76,8 +80,8 @@
 
         .sec-btn { padding: 0.55rem 1.1rem; border-radius: 10px; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 0.45rem; font-family: inherit; transition: all 0.2s ease; }
         .sec-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .sec-btn-primary { background: #10b981; color: #fff; }
-        .sec-btn-primary:hover:not(:disabled) { background: #059669; }
+        .sec-btn-primary { background:#047857; color:#fff; }
+        .sec-btn-primary:hover:not(:disabled) { background: #065f46; }
         .sec-btn-outline { background: transparent; color: #10b981; border: 1px solid rgba(16,185,129,0.35); }
         .sec-btn-outline:hover:not(:disabled) { background: rgba(16,185,129,0.1); }
         .sec-btn-ghost { background: rgba(148,163,184,0.1); color: #cbd5e1; }
@@ -114,8 +118,12 @@
         @keyframes skeletonPulse { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
 
         /* Painel Lateral / Drawer de Detalhes */
-        .drawer-backdrop { position: fixed; inset: 0; background: rgba(2,6,23,0.7); backdrop-filter: blur(4px); z-index: 950; opacity: 0; pointer-events: none; transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
-        .drawer-backdrop.active { opacity: 1; pointer-events: auto; }
+        /* Fechada, a camada sai da renderização (visibility), não só fica
+           transparente: o véu com desfoque por cima da página inteira
+           falseava o cálculo de contraste (Issue #536). A transição de
+           opacidade continua; o visibility só vira no fim da saída. */
+        .drawer-backdrop { position: fixed; inset: 0; background: rgba(2,6,23,0.7); backdrop-filter: blur(4px); z-index: 950; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s linear 0.25s; }
+        .drawer-backdrop.active { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s; }
         .drawer {
             position: fixed; top: 0; right: 0; bottom: 0; width: 100%; max-width: 520px;
             background: #111318; border-left: 1px solid rgba(255,255,255,0.1);
@@ -282,7 +290,7 @@
                 <div class="sec-pagination">
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
                         <span>Linhas por página:</span>
-                        <select id="selectPorPagina" class="sec-select" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.8rem;">
+                        <select aria-label="Linhas por página" id="selectPorPagina" class="sec-select" style="width: auto; padding: 0.25rem 0.5rem; font-size: 0.8rem;">
                             <option value="10">10</option>
                             <option value="25" selected>25</option>
                             <option value="50">50</option>
@@ -300,7 +308,7 @@
 
     <!-- Drawer Lateral de Detalhes -->
     <div class="drawer-backdrop" id="drawerBackdrop" aria-hidden="true"></div>
-    <aside class="drawer" id="drawerDetalhes" role="dialog" aria-labelledby="drawerTituloAluno" aria-modal="true" aria-hidden="true">
+    <aside class="drawer" id="drawerDetalhes" role="dialog" aria-labelledby="drawerTituloAluno" aria-modal="true" aria-hidden="true" inert>
         <div class="drawer-header">
             <div>
                 <span class="chip chip-azul" style="margin-bottom: 0.35rem;">Ficha de Autorizações</span>

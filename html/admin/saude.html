@@ -72,9 +72,15 @@
             border-radius: 50%;
             background: currentColor;
         }
-        .ok { color: #1a8f6b; background: rgba(26, 143, 107, .13); }
-        .alerta { color: #a37312; background: rgba(163, 115, 18, .14); }
-        .erro { color: #b8412f; background: rgba(184, 65, 47, .14); }
+        /* Tons claros no tema escuro (padrão): os escuros davam ~4:1 sobre o
+           fundo do cartão, abaixo da WCAG 1.4.3 (Issue #536). O tema claro
+           mantém os tons originais, que lá têm contraste. */
+        .ok { color: #34d399; background: rgba(26, 143, 107, .13); }
+        .alerta { color: #fbbf24; background: rgba(163, 115, 18, .14); }
+        .erro { color: #f87171; background: rgba(184, 65, 47, .14); }
+        :root[data-theme="light"] .ok { color: #1a8f6b; }
+        :root[data-theme="light"] .alerta { color: #a37312; }
+        :root[data-theme="light"] .erro { color: #b8412f; }
 
         h2 { font-size: 1.05rem; margin: 2rem 0 .75rem; }
 
