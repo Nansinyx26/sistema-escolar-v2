@@ -23,10 +23,22 @@ function escaparHtml(texto) {
         .replace(/"/g, '&quot;');
 }
 
+// Paleta black & mint do resumo mensal.
+const COR = {
+    pagina: '#050807',
+    cartao: '#0b100e',
+    item: '#121a17',
+    borda: '#1c2823',
+    mint: '#5ef2c1',
+    mintSuave: '#b8f7e1',
+    texto: '#e8f3ee',
+    apagado: '#7f948c',
+};
+
 const GRUPOS_ATUALIZACAO = [
-    { rotulo: 'Novidade', titulo: 'Novidades', cor: '#047857', fundo: '#ecfdf5' },
-    { rotulo: 'Melhoria', titulo: 'Melhorias', cor: '#1d4ed8', fundo: '#eff6ff' },
-    { rotulo: 'Correção', titulo: 'Correções', cor: '#b45309', fundo: '#fffbeb' },
+    { rotulo: 'Novidade', titulo: 'Novidades', cor: COR.mint },
+    { rotulo: 'Melhoria', titulo: 'Melhorias', cor: '#2dd4bf' },
+    { rotulo: 'Correção', titulo: 'Correções', cor: '#c9d6d0' },
 ];
 
 /**
@@ -59,53 +71,61 @@ function htmlResumoAtualizacao(title, mensagem, link) {
     const { intro, itens } = lerResumo(mensagem);
     const mes = title.includes('—') ? title.split('—').pop().trim() : '';
 
-    const secoes = GRUPOS_ATUALIZACAO.map((grupo) => {
-        const doGrupo = itens.filter((i) => i.grupo === grupo);
-        if (doGrupo.length === 0) return '';
-        const linhas = doGrupo
-            .map(
-                (i) => `
-                <tr>
-                    <td width="22" valign="top" style="padding:0 0 12px 0;">
-                        <div style="width:8px;height:8px;border-radius:4px;background:${grupo.cor};margin-top:7px;"></div>
-                    </td>
-                    <td valign="top" style="padding:0 0 12px 0;font-size:15px;line-height:22px;color:#1e293b;">${escaparHtml(i.texto)}</td>
-                </tr>`
-            )
-            .join('');
-        return `
-            <tr><td style="padding:8px 0 10px 0;">
-                <span style="display:inline-block;background:${grupo.fundo};color:${grupo.cor};font-size:12px;font-weight:700;letter-spacing:0.4px;text-transform:uppercase;padding:4px 10px;border-radius:999px;">${grupo.titulo}</span>
-            </td></tr>
-            <tr><td>
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${linhas}</table>
-            </td></tr>`;
-    }).join('');
+    const contagem = GRUPOS_ATUALIZACAO.map((g) => ({
+        g,
+        n: itens.filter((i) => i.grupo === g).length,
+    })).filter((c) => c.n > 0);
+    const chips = contagem
+        .map(
+            ({ g, n }) =>
+                `<span style="display:inline-block;margin:0 6px 6px 0;padding:5px 11px;border-radius:999px;border:1px solid ${COR.borda};background:${COR.item};color:${g.cor};font-size:12px;font-weight:600;">${n} ${n === 1 ? g.rotulo.toLowerCase() : g.titulo.toLowerCase()}</span>`
+        )
+        .join('');
+
+    const secoes = contagem
+        .map(({ g }) => {
+            const linhas = itens
+                .filter((i) => i.grupo === g)
+                .map(
+                    (i) => `
+                <tr><td style="padding:0 0 8px 0;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${COR.item};border:1px solid ${COR.borda};border-left:3px solid ${g.cor};border-radius:10px;">
+                        <tr><td style="padding:13px 16px;font-size:15px;line-height:22px;color:${COR.texto};">${escaparHtml(i.texto)}</td></tr>
+                    </table>
+                </td></tr>`
+                )
+                .join('');
+            return `
+            <tr><td style="padding:18px 0 10px 0;font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:${g.cor};">${g.titulo}</td></tr>
+            ${linhas}`;
+        })
+        .join('');
 
     return `
-    <div style="background:#f1f5f9;padding:32px 12px;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <div style="background:${COR.pagina};padding:36px 12px;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
         <div style="display:none;max-height:0;overflow:hidden;">${escaparHtml(intro)}</div>
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;margin:0 auto;background:${COR.cartao};border:1px solid ${COR.borda};border-radius:16px;overflow:hidden;">
+            <tr><td style="height:4px;line-height:4px;font-size:0;background:${COR.mint};">&nbsp;</td></tr>
             <tr>
-                <td style="background:#0e7490;padding:28px 32px;">
-                    <div style="color:#a5f3fc;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">Sistema Escolar · Resumo mensal</div>
-                    <div style="color:#ffffff;font-size:26px;line-height:32px;font-weight:700;margin-top:8px;">O que há de novo</div>
-                    ${mes ? `<div style="color:#cffafe;font-size:15px;margin-top:4px;">${escaparHtml(mes)}</div>` : ''}
+                <td style="padding:32px 32px 8px 32px;">
+                    <div style="color:${COR.mint};font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">Sistema Escolar &nbsp;·&nbsp; Resumo mensal</div>
+                    <div style="color:#ffffff;font-size:30px;line-height:36px;font-weight:800;margin-top:12px;">O que há de novo</div>
+                    ${mes ? `<div style="color:${COR.mintSuave};font-size:16px;margin-top:4px;">${escaparHtml(mes)}</div>` : ''}
+                    <div style="margin-top:20px;">${chips}</div>
                 </td>
             </tr>
             <tr>
-                <td style="padding:28px 32px 8px 32px;">
-                    <p style="margin:0 0 20px 0;font-size:15px;line-height:22px;color:#475569;">${escaparHtml(intro)}</p>
+                <td style="padding:8px 32px 8px 32px;">
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${secoes}</table>
                 </td>
             </tr>
             <tr>
-                <td align="center" style="padding:12px 32px 32px 32px;">
-                    <a href="${escaparHtml(link)}" style="display:inline-block;background:#0891b2;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;padding:13px 28px;border-radius:8px;">Acessar o sistema</a>
+                <td align="center" style="padding:24px 32px 36px 32px;">
+                    <a href="${escaparHtml(link)}" style="display:inline-block;background:${COR.mint};color:#04110c;font-size:15px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:10px;">Acessar o sistema &rarr;</a>
                 </td>
             </tr>
             <tr>
-                <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:18px 32px;text-align:center;font-size:12px;line-height:18px;color:#94a3b8;">
+                <td style="border-top:1px solid ${COR.borda};padding:20px 32px;text-align:center;font-size:12px;line-height:18px;color:${COR.apagado};">
                     Você recebe este resumo uma vez por mês, no dia 1.<br>
                     Este é um e-mail automático. Por favor, não responda.
                 </td>
