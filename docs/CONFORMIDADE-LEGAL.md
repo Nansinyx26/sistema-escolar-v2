@@ -12,11 +12,13 @@ Leis consideradas: **LGPD** (13.709/2018) e as resoluções da ANPD (nº 15/2024
 incidentes, nº 18/2024 encarregado, nº 19/2024 transferência internacional),
 **ECA** (8.069/1990), **ECA Digital** (Lei 15.211/2025, em vigor desde
 17/03/2026, regulamentado pelo Decreto 12.880/2026), **Lei Henry Borel**
-(14.344/2022), **Programa de Combate à Intimidação Sistemática** (Lei
+(14.344/2022), **Política de Prevenção da Automutilação e do Suicídio** (Lei
+13.819/2019, com a Lei 15.231/2025), **Programa de Combate à Intimidação Sistemática** (Lei
 13.185/2015, com a Lei 14.811/2024), **Marco Civil da Internet** (12.965/2014),
 **LBI** (13.146/2015) com a **ABNT NBR 17225:2025**, **LDB** (9.394/1996, com a
 Lei 13.803/2019), **LAI** (12.527/2011), **nome social** (Decreto 8.727/2016 e
-Resolução CNE/CP nº 1/2018) e as exigências do **Censo Escolar/INEP**.
+Resolução CNE/CP nº 1/2018) e as exigências do **Censo Escolar/INEP**. As
+normas do **Estado de São Paulo** e do **município de Americana** estão na §9.
 
 > **Revisão de setembro de 2026.** A pesquisa da legislação vigente achou sete
 > lacunas que este mapa não listava; elas estão marcadas como **Pendente** nas
@@ -154,7 +156,7 @@ leitor de tela real vai apontar.
 | Exportação para o Censo Escolar (JSON auditável) | **Pronto** | [`services/conformidade/educacenso.js`](../backend/src/services/conformidade/educacenso.js) — códigos oficiais e lista de pendências por aluno |
 | Arquivo de migração delimitado | **Parcial** | [`services/conformidade/leiauteEducacenso.js`](../backend/src/services/conformidade/leiauteEducacenso.js) gera o `.txt` e **recusa** lote com pendência; a ordem dos campos precisa ser conferida contra o caderno da edição — ver abaixo |
 | Nome social no registro escolar (Decreto 8.727/2016; Resolução CNE/CP nº 1/2018) | **Pendente** | o cadastro do aluno (`models/Aluno.js`) não tem campo de nome social. A resolução garante a aluno maior de 18 anos, e ao menor a pedido dos responsáveis, o uso do nome social nos registros escolares — chamada, boletim, listas — com o nome civil só onde a lei exige (histórico, Educacenso). Ver §7, item 11 |
-| Comunicação ao Conselho Tutelar de suspeita de violência (ECA, arts. 13, 56-I e 245; Lei 14.344/2022) | **Pendente** | o canal de denúncia classifica `violencia`, `automutilacao` e `assedio` (`models/ModeracaoOcorrencia.js`), mas o fluxo termina em `mantida`/`revertida`: não há status "comunicado ao Conselho Tutelar", data, protocolo nem ficha — ao contrário da infrequência, que já tem ficha pronta. A omissão do dirigente é infração do art. 245 do ECA. Ver §7, item 12 |
+| Comunicação ao Conselho Tutelar de suspeita de violência (ECA, arts. 13, 56-I e 245; Lei 14.344/2022; Lei 13.819/2019, art. 6º; LDB, art. 12, VIII, na redação da **Lei 15.231/2025**) | **Pendente** | desde 07/10/2025 a LDB manda a escola enviar ao Conselho Tutelar, além da lista de infrequentes, as **ocorrências e os dados de violência** envolvendo alunos — em especial automutilação, tentativa de suicídio e suicídio —, e a Lei 13.819 dá **caráter sigiloso** à notificação de violência autoprovocada. O canal de denúncia classifica `violencia`, `automutilacao` e `assedio` (`models/ModeracaoOcorrencia.js`), mas o fluxo termina em `mantida`/`revertida`: não há status "comunicado ao Conselho Tutelar", data, protocolo nem ficha — ao contrário da infrequência, que já tem ficha pronta. A omissão do dirigente é infração do art. 245 do ECA. Ver §7, item 12 |
 | Relatório bimestral de intimidação sistemática (Lei 13.185/2015, art. 6º) | **Pendente** | as denúncias de `bullying` e `ciberbullying` são gravadas, mas não há agregado por bimestre para a escola publicar ou enviar à rede. Deve sair com a mesma supressão k = 5 dos dados abertos (§5). Ver §7, item 13 |
 | Nunca bloquear boletim por pendência financeira | **Pronto por ausência** | o sistema não tem módulo financeiro; nenhuma rota de boletim/frequência consulta débito |
 
@@ -320,12 +322,57 @@ Itens acrescentados na revisão de setembro de 2026:
     situação da apuração, sem nome e com supressão k = 5
     (`services/conformidade/dadosAbertos.js`), exportável para a rede.
 
+Ver também os itens 14 a 17, da §9 (São Paulo e Americana).
+
 Fora do código, mas que a rede deve acompanhar: a **Lei 13.460/2017** (ouvidoria
 e carta de serviços do município — o canal é da prefeitura, não deste sistema),
 a **Lei 14.063/2020** se a rede quiser que documentos emitidos pelo sistema
 (ficha do Conselho, declarações) tenham assinatura eletrônica em vez de
 impressa, e o **PL 2338/2023** (marco da IA), que em setembro de 2026 ainda
 aguarda parecer na Câmara e não é lei.
+
+---
+
+## 9. Estado de São Paulo e município de Americana
+
+Levantamento de setembro de 2026. A rede-alvo é a **municipal de Americana
+(SP)**, então as normas do sistema **estadual** de ensino (Conviva SP, Placon,
+protocolos da Seduc-SP) orientam, mas não obrigam a rede municipal — a menos
+que a Secretaria de Educação de Americana as adote por ato próprio. O que
+obriga Americana é: lei federal, lei e decreto **municipais**, e as normas do
+**Conselho Municipal de Educação de Americana (CMEA)**, que é o órgão
+normativo do sistema municipal.
+
+| Norma | Alcance | Situação | O que pede ao sistema |
+|---|---|---|---|
+| **Decreto estadual 55.588/2010** (nome social) | administração estadual; a Seduc-SP o aplica no cadastro de alunos, lista de chamada, carteirinha e boletim | **Pendente** | reforça o item 11 da §7. Na rede municipal a base é a Resolução CNE/CP nº 1/2018, que é nacional |
+| **Lei estadual 18.069/2024** (protocolo de combate ao bullying) | rede **estadual** | referência | o protocolo pede registro e acompanhamento do caso; o item 13 da §7 e o fluxo de denúncia já seguem essa linha |
+| **Programa Conviva SP / Placon** (registro de ocorrências escolares) | rede **estadual** | não se aplica, salvo adesão | se Americana aderir, o sistema precisaria exportar as ocorrências no formato da Seduc — hoje não exporta |
+| **Secretaria Escolar Digital (SED)** e Matrícula Antecipada | parceria Estado–municípios; a SED é usada por redes estaduais, municipais e privadas de SP | **Parcial** | o sistema **importa** o PDF de alunos da SEDUC (`services/importacaoAlunos`) e guarda o RA (`Aluno.matricula`, alias `ra`); não devolve dados para a SED. `[CONFIRMAR COM A SECRETARIA DE AMERICANA]` se o cadastro da rede municipal passa pela SED ou só pelos sistemas próprios da prefeitura (INFOSEDUC/SISGERED) |
+| **Decreto municipal de LGPD de Americana** | prefeitura de Americana | **Pendente — não localizado** | a pesquisa não achou decreto de Americana que regulamente a LGPD, como o Decreto 59.767/2020 faz na capital. É esse ato que costuma dizer **quem é o controlador** e **quem é o encarregado** do município — exatamente as duas lacunas dos itens 7 e 8. `[CONFIRMAR NA PREFEITURA / CONTROLADORIA DE AMERICANA]` |
+| **PL 58/2026 da Câmara de Americana** (diretrizes para tecnologias digitais e IA na rede municipal) | rede **municipal** | **Acompanhar** | aprovado em 2ª discussão em agosto de 2026; foco declarado em proteção de dados, segurança de crianças, transparência e participação das famílias. Não localizamos o texto nem a sanção. O sistema já tem IA **desligada por padrão por escola**, pseudonimização e aviso de apoio sem decisão automática (§1); se virar lei, conferir artigo por artigo — item 16 |
+| **Normas do CMEA** (regimento escolar, avaliação, frequência) | rede **municipal** | **Pendente — não conferido** | calendário (dias letivos), escala de notas, recuperação e compensação de ausências são definidos pelo sistema municipal. O sistema aceita `?diasLetivos` e configurações por escola, mas os valores de Americana não foram conferidos contra as deliberações do CMEA — item 17 |
+
+### Itens de trabalho desta seção
+
+14. **Nome social também pela norma paulista** (junta com o item 11). Mesmo
+    campo, mesma regra; o requerimento assinado (aluno maior, ou responsáveis)
+    fica anexado ao cadastro como documento, com versão e trilha (§2).
+15. **Fluxo da Lei 15.231/2025** (junta com o item 12). A comunicação ao
+    Conselho Tutelar passa a incluir ocorrências de violência, automutilação e
+    suicídio; a de violência autoprovocada é **sigilosa** — o registro no
+    sistema não pode aparecer para professor nem para outros responsáveis, só
+    para a gestão que comunica.
+16. **Conferir a lei de IA de Americana**, se sancionada (`tipo:melhoria`).
+    Obter o texto final do PL 58/2026 e mapear cada artigo contra
+    `services/ia/`, como foi feito para a LGPD na §1.
+17. **Conferir os parâmetros pedagógicos com o CMEA** (`tipo:melhoria`).
+    Dias letivos, compensação de ausências e escala de avaliação da rede de
+    Americana, e se há deliberação municipal sobre escrituração escolar digital.
+
+Pedidos que dependem da Secretaria de Educação de Americana, não do código:
+o decreto municipal de LGPD (ou a confirmação de que não existe), a adesão ou
+não à SED/Conviva e as deliberações vigentes do CMEA.
 
 ---
 
