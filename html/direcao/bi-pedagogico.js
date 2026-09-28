@@ -371,8 +371,15 @@ function renderAIPedagogicalSummary(data) {
                 <div class="badge-mini" title="Alunos em Risco"><i class="bi bi-people"></i> ${data.alunosRisco || 0}</div>
                 <div class="badge-mini" title="Matéria Crítica"><i class="bi bi-journal-x"></i> ${data.materiaCritica || 'N/A'}</div>
             </div>
+            <p class="bi-aviso-indicador" style="margin-top: 1rem; font-size: 0.78rem; color: #94a3b8;">
+                <i class="bi bi-info-circle"></i> <span data-aviso-indicador></span>
+            </p>
         </div>
     `;
+
+    // Aviso de indicador automático (Issue #494): texto do servidor, via textContent.
+    const avisoEl = container.querySelector('[data-aviso-indicador]');
+    if (avisoEl) avisoEl.textContent = data.aviso || '';
 
     // Event Listener para Vocalização (Integrado com VoiceOrb)
     document.getElementById('btn-vocalize-insights')?.addEventListener('click', async function() {

@@ -152,6 +152,16 @@
                 ? risco + ' com média abaixo de 5'
                 : 'Nenhum com média abaixo de 5';
         }
+        // Indicador automático é apoio, não avaliação (Issue #494): o aviso do
+        // servidor aparece ao passar o mouse e para leitor de tela.
+        if (dados.avisoAlunosRisco) {
+            var alvos = [legenda, document.getElementById('alunosRisco')];
+            alvos.forEach(function (el) {
+                if (!el) return;
+                el.title = dados.avisoAlunosRisco;
+                el.setAttribute('aria-description', dados.avisoAlunosRisco);
+            });
+        }
         var resumo = document.getElementById('pnDesResumo');
         if (resumo && Number(dados.mediaGeral) > 0) {
             resumo.textContent =
