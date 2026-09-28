@@ -8,10 +8,25 @@
 > só lista o que funciona é pior que nenhum: ele faz a rede assinar um termo de
 > conformidade sobre uma lacuna que ninguém sabia que existia.
 
-Leis consideradas: **LGPD** (13.709/2018), **ECA** (8.069/1990, incl. as
-alterações do ECA Digital), **Marco Civil da Internet** (12.965/2014), **LBI**
-(13.146/2015), **LDB** (9.394/1996, com a Lei 13.803/2019), **LAI**
-(12.527/2011) e as exigências do **Censo Escolar/INEP**.
+Leis consideradas: **LGPD** (13.709/2018) e as resoluções da ANPD (nº 15/2024
+incidentes, nº 18/2024 encarregado, nº 19/2024 transferência internacional),
+**ECA** (8.069/1990), **ECA Digital** (Lei 15.211/2025, em vigor desde
+17/03/2026, regulamentado pelo Decreto 12.880/2026), **Lei Henry Borel**
+(14.344/2022), **Política de Prevenção da Automutilação e do Suicídio** (Lei
+13.819/2019, com a Lei 15.231/2025), **Programa de Combate à Intimidação Sistemática** (Lei
+13.185/2015, com a Lei 14.811/2024), **Marco Civil da Internet** (12.965/2014),
+**LBI** (13.146/2015) com a **ABNT NBR 17225:2025**, **LDB** (9.394/1996, com a
+Lei 13.803/2019), **LAI** (12.527/2011), **nome social** (Decreto 8.727/2016 e
+Resolução CNE/CP nº 1/2018) e as exigências do **Censo Escolar/INEP**. As
+normas do **Estado de São Paulo** e do **município de Americana** estão na §9.
+
+> **Revisão de setembro de 2026.** A pesquisa da legislação vigente achou sete
+> lacunas que este mapa não listava; elas estão marcadas como **Pendente** nas
+> tabelas e numeradas de 7 a 13 na §7. Resposta curta à pergunta *"o sistema
+> está 100% em conformidade?"*: **não** — há deveres de lei sem código
+> (nome social, comunicação de violência ao Conselho Tutelar, relatório de
+> bullying, registro de incidentes) e deveres institucionais vencidos
+> (encarregado publicado, cláusulas-padrão de transferência internacional).
 
 ---
 
@@ -57,6 +72,10 @@ alterações do ECA Digital), **Marco Civil da Internet** (12.965/2014), **LBI**
 | Documento de matrícula não sai do servidor para IA | **Pronto** | `POST /api/secretaria/alunos/importar/estruturar` responde 410 e não chama provedor externo; PDF da SEDUC e planilha são lidos localmente em `services/importacaoAlunos` (Issue #378, mesmo teste) |
 | Dado de aluno pseudonimizado antes da IA | **Pronto** | camada única em [`services/ia/pseudonimizar.js`](../backend/src/services/ia/pseudonimizar.js): nome vira rótulo ("Aluno A"), identificadores e data de nascimento não saem, e motivo de falta, saúde, deficiência, transtornos e observação em texto livre nunca saem; o texto digitado pela pessoa passa pelo mesmo filtro ([`escopoAlunos.js`](../backend/src/services/ia/escopoAlunos.js)) e a resposta é traduzida de volta no servidor; a IA é ligada **por escola** ([`interruptor.js`](../backend/src/services/ia/interruptor.js), padrão desligado) e a narração recusa texto que cite aluno — [`iaPseudonimizada.regressao.test.js`](../backend/src/tests/iaPseudonimizada.regressao.test.js) (Issue #401). O insight global da direção, que fala com o provedor por `voiceService` e não pela camada acima, mandava o nome dos alunos com frequência crítica quando a escola tinha a IA ligada; agora manda rótulos e reidentifica a resposta no servidor. As rotas pedagógicas já respeitavam o interruptor por escola (`exigirIaLigada`), e os controllers passaram a conferir de novo, como segunda barreira — [`iaPedagogico.regressao.test.js`](../backend/src/tests/iaPedagogico.regressao.test.js) (Issue #493) |
 | Indicador automático como apoio, sem decisão automática | **Pronto** | "alunos em risco", tendência e previsão de nota são estimativas: as respostas que os trazem incluem um aviso único ([`utils/avisoIndicador.js`](../backend/src/utils/avisoIndicador.js)) de que servem de apoio e não geram decisão sobre o aluno, e o BI pedagógico e o painel da direção o exibem junto do indicador. Nenhum desses cálculos grava situação no cadastro; o teste garante que continue assim (LGPD, art. 20: revisão humana) [VALIDAR COM JURÍDICO] o enquadramento — [`avisoIndicadores.regressao.test.js`](../backend/src/tests/avisoIndicadores.regressao.test.js) (Issue #494) |
+| Encarregado identificado em local de destaque (Res. CD/ANPD nº 18/2024) | **Pendente** | `html/politica-privacidade.html` publica `dpo@escola.edu.br`, um endereço de exemplo, sem nome do encarregado nem do controlador. A resolução exige **nome** e **meio de contato** que funcione para o titular e para a ANPD; a ANPD fiscaliza isso desde dez/2024. Depende de nomeação (ver [`lgpd/pendencias-institucionais.md`](lgpd/pendencias-institucionais.md)) — ver §7, item 7 |
+| Transferência internacional com cláusulas-padrão (LGPD, art. 33; Res. CD/ANPD nº 19/2024) | **Pendente** | a aplicação roda no Render em `oregon` (EUA), e Gemini, ElevenLabs e login Google também estão fora do país ([`lgpd/fornecedores-e-subprocessadores-RASCUNHO.md`](lgpd/fornecedores-e-subprocessadores-RASCUNHO.md)). O prazo para incorporar as cláusulas-padrão da ANPD aos contratos **venceu em 23/08/2025** — ver §7, item 8 |
+| Cookies informados na política (Guia ANPD de cookies, 2022) | **Parcial** | o sistema usa só cookies necessários (`escola_jwt`, `csrf_token`, `destino_pos_login`) e nenhum rastreador de terceiros, então **não precisa de banner** de consentimento; mas a política publicada não menciona cookies. O rascunho do aviso já cita — sai junto com a publicação da Issue #400 |
+| ECA Digital (Lei 15.211/2025, Decreto 12.880/2026) — análise de aplicabilidade | **Parcial** | não existe perfil de aluno (`Usuario.role` só admite adulto), então o produto não é "direcionado" a criança nem tem "acesso provável" por ela na maior parte das telas — o que afasta aferição de idade e supervisão parental. O que a lei pede de todos já existe: privacidade por padrão (§1), canal de denúncia visível, nenhum perfilamento para publicidade. Falta **registrar** essa análise por escrito antes das sanções da ANPD (previstas a partir de nov/2026) e refazê-la se um dia houver login de aluno — ver §7, item 9 |
 | Soberania de dados (dados no Brasil) | **Infra** | cluster MongoDB Atlas em região brasileira e Render em região compatível; ver §7 |
 
 ### A matriz de acesso, na forma em que o setor público a cobra
@@ -95,6 +114,7 @@ guarda, documentos ou o código de vínculo.
 | 2FA para perfis administrativos | **Parcial** | [`utils/politica2FA.js`](../backend/src/utils/politica2FA.js), [`docs/2FA-OBRIGATORIO.md`](2FA-OBRIGATORIO.md). Sem configuração, o segundo fator é exigido de `diretor` e `secretaria`; o **admin** — que vê todos os alunos e exporta dado governamental — só passa por ele se a conta tiver `twoFactorEnabled` ou se `PERFIS_2FA_OBRIGATORIO` incluir `admin`. O padrão não inclui o admin de propósito: ligar a exigência com o e-mail fora e sem códigos de backup tranca a conta administrativa, e por isso a ativação segue o roteiro por conta do documento. Enquanto houver admin entrando só com senha, isto não está pronto — ver §7 |
 | Senha com hash forte | **Pronto** | bcrypt em `AuthenticationService`; códigos de backup em scrypt ([`utils/codigosBackup.js`](../backend/src/utils/codigosBackup.js)) |
 | HTTPS ponta a ponta | **Infra** | terminação TLS no Render; `helmet` com HSTS no `app.js` |
+| Registro de todo incidente de segurança por 5 anos (Res. CD/ANPD nº 15/2024) | **Pendente** | a resolução manda comunicar à ANPD em **3 dias úteis** e guardar o registro de **todo** incidente — inclusive o não comunicado — por no mínimo cinco anos. Não há coleção nem tela para isso; o `AuditLog` expira em 365 dias e registra ação, não incidente. O plano está em rascunho em [`lgpd/plano-resposta-incidentes-RASCUNHO.md`](lgpd/plano-resposta-incidentes-RASCUNHO.md) — ver §7, item 10 |
 | Nunca logar PII | **Pronto** | [`utils/logSanitizer.js`](../backend/src/utils/logSanitizer.js) mascara por **nome de chave** (`{ nome: 'Maria Silva' }` vira `M. S.`) e varre segredo em texto livre — mas nome dentro de mensagem ele não tem como mascarar. Por isso nenhuma chamada de log interpola nome de pessoa: descrição de auditoria e mensagem de logger citam **id**, e `UPDATE_STUDENT` guarda a lista de campos alterados em vez da ficha inteira dos dois lados. Uma varredura do código-fonte reprova quem voltar a interpolar — [`logSemNome.regressao.test.js`](../backend/src/tests/logSemNome.regressao.test.js) (Issue #410) |
 
 ---
@@ -110,6 +130,7 @@ guarda, documentos ou o código de vínculo.
 | Redimensionamento de texto (WCAG 1.4.4) | **Pronto** | escala 100/115/130% guardada por navegador |
 | Alvo de toque mínimo (WCAG 2.5.5) | **Pronto** | 44–48px nos controles do painel e do canal de denúncia |
 | Auditoria com leitor de tela real + laudo eMAG | **Pendente** | ver §7 |
+| Referência técnica atualizada: **ABNT NBR 17225:2025** (WCAG 2.2) | **Pendente** | publicada em 11/03/2025, é hoje a norma brasileira que dá conteúdo ao art. 63 da LBI e a que os editais passaram a citar. A auditoria do item acima deve ser feita contra ela, não só contra o eMAG 3.1 (que é de WCAG 2.0) — ver §7, item 2 |
 
 Os recursos estão em **todas** as páginas — a injeção é um codemod idempotente
 (`scripts/inject-acessibilidade.js`), porque acessibilidade que existe em
@@ -134,6 +155,9 @@ leitor de tela real vai apontar.
 | Ficha de encaminhamento pronta para assinar | **Pronto** | `GET /api/conformidade/frequencia/:alunoId/ficha-conselho` → PDF ([`services/conformidade/fichaConselhoTutelar.js`](../backend/src/services/conformidade/fichaConselhoTutelar.js)) |
 | Exportação para o Censo Escolar (JSON auditável) | **Pronto** | [`services/conformidade/educacenso.js`](../backend/src/services/conformidade/educacenso.js) — códigos oficiais e lista de pendências por aluno |
 | Arquivo de migração delimitado | **Parcial** | [`services/conformidade/leiauteEducacenso.js`](../backend/src/services/conformidade/leiauteEducacenso.js) gera o `.txt` e **recusa** lote com pendência; a ordem dos campos precisa ser conferida contra o caderno da edição — ver abaixo |
+| Nome social no registro escolar (Decreto 8.727/2016; Resolução CNE/CP nº 1/2018) | **Pendente** | o cadastro do aluno (`models/Aluno.js`) não tem campo de nome social. A resolução garante a aluno maior de 18 anos, e ao menor a pedido dos responsáveis, o uso do nome social nos registros escolares — chamada, boletim, listas — com o nome civil só onde a lei exige (histórico, Educacenso). Ver §7, item 11 |
+| Comunicação ao Conselho Tutelar de suspeita de violência (ECA, arts. 13, 56-I e 245; Lei 14.344/2022; Lei 13.819/2019, art. 6º; LDB, art. 12, VIII, na redação da **Lei 15.231/2025**) | **Pendente** | desde 07/10/2025 a LDB manda a escola enviar ao Conselho Tutelar, além da lista de infrequentes, as **ocorrências e os dados de violência** envolvendo alunos — em especial automutilação, tentativa de suicídio e suicídio —, e a Lei 13.819 dá **caráter sigiloso** à notificação de violência autoprovocada. O canal de denúncia classifica `violencia`, `automutilacao` e `assedio` (`models/ModeracaoOcorrencia.js`), mas o fluxo termina em `mantida`/`revertida`: não há status "comunicado ao Conselho Tutelar", data, protocolo nem ficha — ao contrário da infrequência, que já tem ficha pronta. A omissão do dirigente é infração do art. 245 do ECA. Ver §7, item 12 |
+| Relatório bimestral de intimidação sistemática (Lei 13.185/2015, art. 6º) | **Pendente** | as denúncias de `bullying` e `ciberbullying` são gravadas, mas não há agregado por bimestre para a escola publicar ou enviar à rede. Deve sair com a mesma supressão k = 5 dos dados abertos (§5). Ver §7, item 13 |
 | Nunca bloquear boletim por pendência financeira | **Pronto por ausência** | o sistema não tem módulo financeiro; nenhuma rota de boletim/frequência consulta débito |
 
 ### As contas, explícitas
@@ -240,7 +264,9 @@ de conformidade (#378 e seguintes) e nos itens marcados **Parcial** acima.
    o acidente; a permissão impede o dolo.
 2. **Auditoria WCAG/eMAG com leitor de tela real** (`tipo:melhoria`). Os
    recursos estão entregues (§3); falta o laudo, que é o que o edital pede — e
-   que vai apontar a semântica página a página.
+   que vai apontar a semântica página a página. Fazer contra a **ABNT NBR
+   17225:2025** (WCAG 2.2), que tem critérios que o eMAG não tem — por exemplo
+   tamanho mínimo de alvo (2.5.8) e foco não encoberto (2.4.11).
 3. **Validação por SMS ou Gov.br** (`tipo:nova-funcao`). Dependem de contrato
    com gateway e de credenciamento do município como serviço confiante. O campo
    `metodoValidacao` já existe e já distingue as forças de validação, então
@@ -258,6 +284,52 @@ de conformidade (#378 e seguintes) e nos itens marcados **Parcial** acima.
    ativação na própria conta, validação com código de backup — e só então
    acrescentar `admin` a `PERFIS_2FA_OBRIGATORIO` no Render. O perfil de maior
    alcance do sistema não pode depender só de senha.
+
+Itens acrescentados na revisão de setembro de 2026:
+
+7. **Publicar o encarregado** (institucional + `tipo:correcao` na política).
+   Nomear, e trocar o `dpo@escola.edu.br` de exemplo por nome e canal reais em
+   `html/politica-privacidade.html` e em `PoliticaPrivacidade.tsx` (Res. CD/ANPD
+   nº 18/2024). Anda junto com a Issue #400.
+8. **Cláusulas-padrão da ANPD nos contratos com fornecedores estrangeiros**
+   (institucional, **atrasado**). Render, Google e ElevenLabs. O prazo da Res.
+   CD/ANPD nº 19/2024 venceu em 23/08/2025. Alternativa técnica que reduz o
+   problema: mover a aplicação para região no Brasil (Render não tem; exigiria
+   trocar de hospedagem) — ver item 5.
+9. **Registrar a análise de aplicabilidade do ECA Digital** (`tipo:melhoria`,
+   documento). Escrever em `docs/lgpd/` por que o sistema não é serviço
+   direcionado a criança (sem login de aluno), o que já cumpre dos deveres
+   gerais e o gatilho para refazer a análise. As sanções da ANPD estão
+   previstas a partir de novembro de 2026.
+10. **Registro de incidentes de segurança** (`tipo:nova-funcao`, backend).
+    Coleção própria, só de inclusão como o `AuditLog`, **sem TTL** de 365 dias
+    (guarda mínima de 5 anos), com data de ciência, dados e titulares afetados,
+    avaliação de risco, se foi comunicado à ANPD e aos titulares e quando —
+    e contador de dias úteis a partir da ciência (Res. CD/ANPD nº 15/2024).
+11. **Nome social do aluno** (`tipo:nova-funcao`, backend + telas). Campo
+    `nomeSocial` no aluno, preenchido só pela secretaria, com registro no
+    `AuditLog`; exibido no lugar do nome civil em chamada, listas, boletim e
+    portal; nome civil preservado no histórico, no Educacenso e na ficha do
+    Conselho Tutelar. Entra na projeção por perfil (`utils/projecaoAluno.js`).
+12. **Encaminhamento de violência ao Conselho Tutelar** (`tipo:nova-funcao`,
+    backend). Para denúncia de `violencia`, `automutilacao` e `assedio`:
+    status próprio ("comunicado ao Conselho Tutelar"), data, protocolo e
+    responsável pela comunicação, prazo visível na fila da moderação e ficha em
+    PDF no modelo da de infrequência. Só gestão da escola comunica, como hoje
+    na §6.
+13. **Relatório bimestral de bullying** (`tipo:nova-funcao`, backend). Contagem
+    por escola e bimestre das denúncias de `bullying`/`ciberbullying`, por
+    situação da apuração, sem nome e com supressão k = 5
+    (`services/conformidade/dadosAbertos.js`), exportável para a rede.
+
+Ver também os itens 14 a 17, da §9 (São Paulo e Americana).
+
+Fora do código, mas que a rede deve acompanhar: a **Lei 13.460/2017** (ouvidoria
+e carta de serviços do município — o canal é da prefeitura, não deste sistema),
+a **Lei 14.063/2020** se a rede quiser que documentos emitidos pelo sistema
+(ficha do Conselho, declarações) tenham assinatura eletrônica em vez de
+impressa, e o **PL 2338/2023** (marco da IA), que em setembro de 2026 ainda
+aguarda parecer na Câmara e não é lei.
 
 ---
 
@@ -286,3 +358,46 @@ de conformidade (#378 e seguintes) e nos itens marcados **Parcial** acima.
 | [`avaliacoesPublicas.regressao.test.js`](../backend/src/tests/avaliacoesPublicas.regressao.test.js) | avaliação pública só com adesão e moderação, iniciais no lugar de nome, sem foto nem id da conta — também na listagem do painel e no evento em tempo real |
 | [`restricaoJudicial.regressao.test.js`](../backend/src/tests/restricaoJudicial.regressao.test.js) | responsável bloqueado por decisão judicial perde o acesso mesmo com o e-mail na ficha; o outro responsável segue; só a gestão da escola marca |
 | [`iaPedagogico.regressao.test.js`](../backend/src/tests/iaPedagogico.regressao.test.js) | insight global sem nome de aluno no texto enviado ao provedor; controllers pedagógicos não chamam o provedor em escola sem adesão à IA, mesmo fora da rota protegida |
+
+---
+
+## 9. Estado de São Paulo e município de Americana
+
+Levantamento de setembro de 2026. A rede-alvo é a **municipal de Americana
+(SP)**, então as normas do sistema **estadual** de ensino (Conviva SP, Placon,
+protocolos da Seduc-SP) orientam, mas não obrigam a rede municipal — a menos
+que a Secretaria de Educação de Americana as adote por ato próprio. O que
+obriga Americana é: lei federal, lei e decreto **municipais**, e as normas do
+**Conselho Municipal de Educação de Americana (CMEA)**, que é o órgão
+normativo do sistema municipal.
+
+| Norma | Alcance | Situação | O que pede ao sistema |
+|---|---|---|---|
+| **Decreto estadual 55.588/2010** (nome social) | administração estadual; a Seduc-SP o aplica no cadastro de alunos, lista de chamada, carteirinha e boletim | **Pendente** | reforça o item 11 da §7. Na rede municipal a base é a Resolução CNE/CP nº 1/2018, que é nacional |
+| **Lei estadual 18.069/2024** (protocolo de combate ao bullying) | rede **estadual** | referência | o protocolo pede registro e acompanhamento do caso; o item 13 da §7 e o fluxo de denúncia já seguem essa linha |
+| **Programa Conviva SP / Placon** (registro de ocorrências escolares) | rede **estadual** | não se aplica, salvo adesão | se Americana aderir, o sistema precisaria exportar as ocorrências no formato da Seduc — hoje não exporta |
+| **Secretaria Escolar Digital (SED)** e Matrícula Antecipada | parceria Estado–municípios; a SED é usada por redes estaduais, municipais e privadas de SP | **Parcial** | o sistema **importa** o PDF de alunos da SEDUC (`services/importacaoAlunos`) e guarda o RA (`Aluno.matricula`, alias `ra`); não devolve dados para a SED. `[CONFIRMAR COM A SECRETARIA DE AMERICANA]` se o cadastro da rede municipal passa pela SED ou só pelos sistemas próprios da prefeitura (INFOSEDUC/SISGERED) |
+| **Decreto municipal de LGPD de Americana** | prefeitura de Americana | **Pendente — não localizado** | a pesquisa não achou decreto de Americana que regulamente a LGPD, como o Decreto 59.767/2020 faz na capital. É esse ato que costuma dizer **quem é o controlador** e **quem é o encarregado** do município — exatamente as duas lacunas dos itens 7 e 8. `[CONFIRMAR NA PREFEITURA / CONTROLADORIA DE AMERICANA]` |
+| **PL 58/2026 da Câmara de Americana** (diretrizes para tecnologias digitais e IA na rede municipal) | rede **municipal** | **Acompanhar** | aprovado em 2ª discussão em agosto de 2026; foco declarado em proteção de dados, segurança de crianças, transparência e participação das famílias. Não localizamos o texto nem a sanção. O sistema já tem IA **desligada por padrão por escola**, pseudonimização e aviso de apoio sem decisão automática (§1); se virar lei, conferir artigo por artigo — item 16 |
+| **Normas do CMEA** (regimento escolar, avaliação, frequência) | rede **municipal** | **Pendente — não conferido** | calendário (dias letivos), escala de notas, recuperação e compensação de ausências são definidos pelo sistema municipal. O sistema aceita `?diasLetivos` e configurações por escola, mas os valores de Americana não foram conferidos contra as deliberações do CMEA — item 17 |
+
+### Itens de trabalho desta seção
+
+14. **Nome social também pela norma paulista** (junta com o item 11). Mesmo
+    campo, mesma regra; o requerimento assinado (aluno maior, ou responsáveis)
+    fica anexado ao cadastro como documento, com versão e trilha (§2).
+15. **Fluxo da Lei 15.231/2025** (junta com o item 12). A comunicação ao
+    Conselho Tutelar passa a incluir ocorrências de violência, automutilação e
+    suicídio; a de violência autoprovocada é **sigilosa** — o registro no
+    sistema não pode aparecer para professor nem para outros responsáveis, só
+    para a gestão que comunica.
+16. **Conferir a lei de IA de Americana**, se sancionada (`tipo:melhoria`).
+    Obter o texto final do PL 58/2026 e mapear cada artigo contra
+    `services/ia/`, como foi feito para a LGPD na §1.
+17. **Conferir os parâmetros pedagógicos com o CMEA** (`tipo:melhoria`).
+    Dias letivos, compensação de ausências e escala de avaliação da rede de
+    Americana, e se há deliberação municipal sobre escrituração escolar digital.
+
+Pedidos que dependem da Secretaria de Educação de Americana, não do código:
+o decreto municipal de LGPD (ou a confirmação de que não existe), a adesão ou
+não à SED/Conviva e as deliberações vigentes do CMEA.
