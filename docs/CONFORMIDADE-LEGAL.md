@@ -131,6 +131,7 @@ guarda, documentos ou o código de vínculo.
 | Alto contraste | **Pronto** | escopo `[data-contraste="alto"]`, que desliga o glassmorphism |
 | Redimensionamento de texto (WCAG 1.4.4) | **Pronto** | escala 100/115/130% guardada por navegador |
 | Alvo de toque mínimo (WCAG 2.5.5) | **Pronto** | 44–48px nos controles do painel e do canal de denúncia |
+| Varredura automática WCAG 2.2 A/AA (axe-core) | **Pronto** | varredura de 76 páginas, cada uma aberta com o perfil que tem acesso a ela: de 48 páginas com falha para **nenhuma** — rótulos ligados aos campos, nome acessível em botões só de ícone, regiões com rolagem alcançáveis pelo teclado, links sublinhados e contraste de pelo menos 4,5:1 (Issue #536). As páginas públicas ficam travadas no CI por [`e2e/acessibilidade.a11y.spec.ts`](../e2e/acessibilidade.a11y.spec.ts). A varredura automática pega só parte dos problemas; não substitui o item abaixo |
 | Auditoria com leitor de tela real + laudo eMAG | **Pendente** | ver §7 |
 | Referência técnica atualizada: **ABNT NBR 17225:2025** (WCAG 2.2) | **Pendente** | publicada em 11/03/2025, é hoje a norma brasileira que dá conteúdo ao art. 63 da LBI e a que os editais passaram a citar. A auditoria do item acima deve ser feita contra ela, não só contra o eMAG 3.1 (que é de WCAG 2.0) — ver §7, item 2 |
 
