@@ -65,6 +65,17 @@ services:
       - key: FRONTEND_URL
         value: https://sistema-escolar-bfty.onrender.com
 
+      # ── Web Push (notificações no celular) ──────────────────────────────────
+      # Par de chaves VAPID que assina cada push. PRECISA ficar fixo: o disco do
+      # Render é apagado a cada deploy, e sem estas variáveis o servidor gera um
+      # par novo a cada subida — todas as inscrições dos celulares param de
+      # receber em silêncio até o usuário abrir o sistema de novo.
+      # Gere uma única vez com: npx web-push generate-vapid-keys
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+
       # ── Google OAuth (login com Google) ─────────────────────────────────────
       - key: GOOGLE_CLIENT_ID
         sync: false # Console do Google Cloud → APIs & Services → Credentials

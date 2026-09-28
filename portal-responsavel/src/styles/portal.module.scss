@@ -4086,6 +4086,102 @@ input:checked + .slider:before {
 
 .notifClickAreaStatic { cursor: default; }
 
+// ─── Aviso "notificações no celular" (PushAtivacaoAviso) ─────────────────────
+.pushAviso {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(420px, calc(100vw - 32px));
+  padding: 14px 12px 14px 14px;
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
+  border-radius: 16px;
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-pop);
+  color: $text-primary;
+  animation: notifModalIn 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+
+  // Acima da barra inferior do celular (e da pílula de gestos).
+  @media (max-width: 1023px) {
+    right: 16px;
+    left: 16px;
+    width: auto;
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+.pushAvisoOk { border-color: rgba(var(--accent-rgb), 0.55); }
+
+.pushAvisoIcone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--accent);
+  font-size: 1.15rem;
+}
+
+.pushAvisoTexto {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.35;
+
+  strong { display: block; font-size: 0.9rem; margin-bottom: 2px; }
+  p { margin: 0; font-size: 0.8rem; color: $text-secondary; }
+  p strong { display: inline; font-size: inherit; margin: 0; color: $text-primary; }
+}
+
+.pushAvisoAtivar {
+  min-height: 40px;
+  padding: 0 16px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 120ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  &:active { transform: scale(0.97); }
+  &:disabled { opacity: 0.7; cursor: progress; }
+  &:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+}
+
+.pushAvisoFechar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 1px solid rgba(var(--tint-rgb), 0.12);
+  border-radius: 9px;
+  background: transparent;
+  color: $text-secondary;
+  cursor: pointer;
+  transition: background-color 150ms cubic-bezier(0.16, 1, 0.3, 1), color 150ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  &:hover { background: rgba(var(--tint-rgb), 0.08); color: $text-primary; }
+  &:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pushAviso { animation: none; }
+  .pushAvisoAtivar,
+  .pushAvisoFechar { transition: none; }
+}
+
 @keyframes notifModalIn {
   from { opacity: 0; transform: translateY(12px) scale(0.98); filter: blur(4px); }
   to   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
