@@ -263,7 +263,12 @@ async function entregar(
                     titulo,
                     mensagem,
                     `${process.env.FRONTEND_URL || 'http://localhost:3000'}${destino}`,
-                    { tipo, resumo: resumoEmail }
+                    {
+                        tipo,
+                        resumo: resumoEmail,
+                        categoria: novaNotif.categoria,
+                        prioridade: novaNotif.prioridade,
+                    }
                 );
                 if (sent)
                     await Notificacao.findByIdAndUpdate(novaNotif._id, { enviadoEmail: true });

@@ -1,6 +1,7 @@
 const logger = require('../utils/logger');
 const { enviarEmail } = require('./EnvioEmail');
 const { htmlResumoMensal } = require('./EmailResumoMensal');
+const { htmlNotificacao } = require('./EmailNotificacao');
 
 // ============================================================================
 // O transporte local foi REMOVIDO em favor de services/EnvioEmail.js.
@@ -19,7 +20,9 @@ const { htmlResumoMensal } = require('./EmailResumoMensal');
 /**
  * Envia um e-mail de notificação formatado.
  * `opcoes.tipo === 'atualizacao_sistema'` com `opcoes.resumo` usa o layout do
- * resumo mensal (services/EmailResumoMensal.js).
+ * resumo mensal (services/EmailResumoMensal.js); o resto usa a mesma arte em
+ * versão de aviso único (services/EmailNotificacao.js). `opcoes.categoria` e
+ * `opcoes.prioridade` escolhem a cor e o ícone.
  */
 exports.sendNotificationEmail = async (to, subject, title, summary, link, opcoes = {}) => {
     if (opcoes.tipo === 'atualizacao_sistema' && opcoes.resumo) {
@@ -31,25 +34,15 @@ exports.sendNotificationEmail = async (to, subject, title, summary, link, opcoes
         return r.ok;
     }
 
-    const html = `
-    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 10px; overflow: hidden;">
-        <div style="background: #06b6d4; padding: 20px; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">Sistema Escolar</h1>
-        </div>
-        <div style="padding: 30px;">
-            <h2 style="color: #333; margin-top: 0;">${title}</h2>
-            <p style="color: #666; line-height: 1.6;">${summary}</p>
-            <div style="margin-top: 30px; text-align: center;">
-                <a href="${link}" style="background: #06b6d4; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
-                    Abrir no Portal
-                </a>
-            </div>
-            <p style="color: #999; font-size: 12px; margin-top: 40px; text-align: center;">
-                Este é um e-mail automático. Por favor, não responda.
-            </p>
-        </div>
-    </div>
-    `;
+    const html = htmlNotificacao({
+        titulo: title,
+        mensagem: summary,
+        link,
+        base: process.env.FRONTEND_URL || 'http://localhost:3000',
+        tipo: opcoes.tipo,
+        categoria: opcoes.categoria,
+        prioridade: opcoes.prioridade,
+    });
 
     const r = await enviarEmail(to, `[Notificação] ${subject}`, html);
     if (!r.ok) logger.error(`[EmailService] Notificação não entregue (${r.etapa}): ${r.erro}`);

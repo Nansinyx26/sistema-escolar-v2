@@ -12,3 +12,14 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+/** js/som-notificacao.js — sons do sistema, compartilhados com o painel da equipe. */
+interface Window {
+  SomNotificacao?: {
+    aviso: () => void;
+    receber: () => void;
+    enviar: () => void;
+    ativo: () => boolean;
+    definir: (on: boolean) => void;
+  };
+}
