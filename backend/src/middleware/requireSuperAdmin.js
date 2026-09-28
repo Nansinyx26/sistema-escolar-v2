@@ -1,12 +1,11 @@
 /**
- * requireSuperAdmin — só o administrador GLOBAL passa (Issue #463).
+ * requireSuperAdmin — só o gestor da rede passa (Issues #463 e #533).
  *
- * Reaproveita o RBAC de `authorize('admin')` e acrescenta a única coisa que o
- * separa do admin comum: `superAdmin: true` na conta. Os dois valores chegam do
- * BANCO pelo authJWT (que precisa rodar antes), nunca do token — rebaixar um
- * super admin vale na requisição seguinte.
+ * Gestor da rede = conta `perfil: 'admin'` (ver `ehSuperAdmin`). O perfil chega
+ * do BANCO pelo authJWT (que precisa rodar antes), nunca do token — rebaixar
+ * um admin vale na requisição seguinte.
  *
- * Admin comum, diretor, secretaria, professor e responsável recebem 403.
+ * Diretor, secretaria, professor e responsável recebem 403.
  */
 const authorize = require('./authorize');
 const { ehSuperAdmin } = require('../services/escolaBloqueio');
