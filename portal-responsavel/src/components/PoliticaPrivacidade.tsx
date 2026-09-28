@@ -18,8 +18,7 @@ import { useEffect } from 'react';
 import styles from '../styles/portal.module.scss';
 import Icon from './ui/Icon';
 
-const ULTIMA_ATUALIZACAO = '09 de setembro de 2026';
-const EMAIL_DPO = 'dpo@escola.edu.br';
+const ULTIMA_ATUALIZACAO = '28 de setembro de 2026';
 
 interface PoliticaPrivacidadeProps {
   /** Volta para o painel. */
@@ -218,16 +217,15 @@ export default function PoliticaPrivacidade({ onBack, onOpenConsents }: Politica
 
         <section className={styles.policySection}>
           <h2>
-            <Icon name="mail" aria-hidden="true" /> 7. Falar com o encarregado (DPO)
+            <Icon name="mail" aria-hidden="true" /> 7. Encarregado de Proteção de Dados (DPO)
           </h2>
           <p>
-            Para tirar dúvidas sobre o tratamento dos dados ou exercer qualquer um dos direitos
-            acima, escreva para o nosso Encarregado de Proteção de Dados:
+            O encarregado está sendo designado pela rede de ensino. O nome e o contato dele serão
+            publicados aqui assim que a designação sair.
           </p>
           <p>
-            <a className={styles.policyLink} href={`mailto:${EMAIL_DPO}`}>
-              {EMAIL_DPO}
-            </a>
+            Enquanto isso, para tirar dúvidas ou exercer qualquer um dos direitos acima, procure a
+            secretaria da escola do seu filho.
           </p>
         </section>
 
