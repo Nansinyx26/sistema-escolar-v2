@@ -1,4 +1,5 @@
 const Aluno = require('../models/Aluno');
+const { semRestricaoPara } = require('../utils/restricaoAcesso');
 const Nota = require('../models/Nota');
 const Falta = require('../models/Falta');
 const Professor = require('../models/Professor');
@@ -518,6 +519,8 @@ async function enforceRBAC({ perfil, userId, userEmail, escolaId }) {
         const alunoFilter = comEscola(
             {
                 $or: [{ responsavel: userEmail }, { 'responsavelDados.email': userEmail }],
+                // Bloqueio por decisão judicial (Issue #491).
+                ...semRestricaoPara(userEmail),
             },
             ef
         );

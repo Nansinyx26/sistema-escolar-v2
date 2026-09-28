@@ -196,6 +196,27 @@ const AlunoSchema = new mongoose.Schema(
         // precisa dele pede `.select('+codigoSecreto')` (rota de códigos da
         // secretaria e geração em lote).
         codigoSecreto: { type: String, unique: true, sparse: true, select: false },
+
+        // Bloqueio por decisão judicial (Issue #491): e-mails que NÃO acessam
+        // este aluno, mesmo constando como responsáveis. Controlado pela gestão
+        // da escola; sem texto livre — a decisão fica arquivada na secretaria.
+        // Ver utils/restricaoAcesso.js.
+        restricoesAcesso: {
+            type: [
+                {
+                    _id: false,
+                    email: { type: String, lowercase: true, trim: true, required: true },
+                    motivo: {
+                        type: String,
+                        enum: ['decisao_judicial'],
+                        default: 'decisao_judicial',
+                    },
+                    registradoPor: { type: String },
+                    registradoEm: { type: Date, default: Date.now },
+                },
+            ],
+            default: undefined,
+        },
     },
     {
         timestamps: true,

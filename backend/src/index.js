@@ -280,7 +280,6 @@ const startServer = async () => {
 
         // Configuração do Socket.IO com autenticação JWT
         const { Server } = require('socket.io');
-        const jwt = require('jsonwebtoken');
         const JWT_SECRET = require('./utils/jwtConfig');
 
         const io = new Server(server, {
@@ -299,84 +298,17 @@ const startServer = async () => {
         // Adapter compartilhado. Com uma instância só (plano free do Render) ele
         // fica desligado; a partir de duas, sem isto as salas ficam presas ao
         // processo e mensagem/presença não cruzam entre instâncias.
-        const { instalarAdapter, apagarCredenciaisDoHandshake } = require('./realtime/adapter');
+        const { instalarAdapter } = require('./realtime/adapter');
         const presence = require('./realtime/presence');
         // Com o adapter, a presença passa a ser consultada em todas as
         // instâncias, não só no mapa deste processo (Issue #339).
         if (await instalarAdapter(io)) presence.usarAdapter(io);
 
-        // Middleware de autenticação Socket.IO
-        // Replica as MESMAS checagens do authJWT: só verificar a assinatura
-        // deixava um token de conta desativada (ou com senha trocada) recebendo
-        // eventos em tempo real por até 8h depois da revogação.
-        const Usuario = require('./models/Usuario');
-        const { vinculosDoUsuario } = require('./middleware/filtrarPorEscola');
-
-        io.use(async (socket, next) => {
-            try {
-                // Tenta obter token do handshake (cookie ou query)
-                const token =
-                    socket.handshake.auth?.token ||
-                    socket.handshake.headers?.cookie?.match(/escola_jwt=([^;]+)/)?.[1] ||
-                    socket.handshake.query?.token;
-
-                if (!token) {
-                    return next(new Error('Authentication required'));
-                }
-
-                const decoded = jwt.verify(token, JWT_SECRET);
-
-                const conta = await Usuario.findById(decoded.id || decoded._id)
-                    .select('tokenVersion ativo perfil escolaId superAdmin')
-                    .lean();
-
-                if (!conta || conta.ativo === false) {
-                    return next(new Error('Account disabled'));
-                }
-
-                const versaoConta = conta.tokenVersion !== undefined ? conta.tokenVersion : 0;
-                const versaoToken = decoded.tokenVersion !== undefined ? decoded.tokenVersion : 0;
-                if (versaoConta !== versaoToken) {
-                    return next(new Error('Session revoked'));
-                }
-
-                // Perfil vem do BANCO, não do token: um rebaixamento vale na hora
-                socket.user = { ...decoded, perfil: conta.perfil };
-
-                // Escola do socket — base do isolamento multi-tenant no realtime
-                let escolaId = conta.escolaId ? String(conta.escolaId) : null;
-                if (!escolaId) {
-                    const vinculos = await vinculosDoUsuario({
-                        id: conta._id,
-                        email: decoded.email,
-                        perfil: conta.perfil,
-                    });
-                    if (vinculos.length === 1) escolaId = String(vinculos[0].escolaId);
-                }
-                socket.escolaId = escolaId;
-
-                // Escola bloqueada pelo super admin (Issue #463): sem isto, o
-                // cliente desconectado no bloqueio voltaria na reconexão
-                // automática. `socket.data` (e não uma propriedade solta) porque
-                // é o que `fetchSockets()` enxerga nas OUTRAS instâncias — o
-                // desconectarEscola precisa saber quem é super admin para poupá-lo.
-                const usuarioSocket = {
-                    perfil: conta.perfil,
-                    superAdmin: conta.superAdmin === true,
-                };
-                socket.data.usuario = usuarioSocket;
-                const escolaBloqueio = require('./services/escolaBloqueio');
-                if (await escolaBloqueio.escolaBloqueadaPara(usuarioSocket, [escolaId])) {
-                    return next(new Error(escolaBloqueio.CODIGO));
-                }
-
-                apagarCredenciaisDoHandshake(socket);
-
-                next();
-            } catch (err) {
-                next(new Error('Invalid authentication token'));
-            }
-        });
+        // Autenticação do handshake: as MESMAS checagens do authJWT — conta
+        // ativa, tokenVersion, jti revogado no logout e propósito de sessão
+        // (Issue #488). Só verificar a assinatura deixava um token revogado
+        // recebendo eventos em tempo real até expirar.
+        io.use(require('./realtime/autenticarSocket').criarAutenticacaoSocket(JWT_SECRET));
 
         // Status agregado do usuário em todas as instâncias. Com uma instância
         // só, é o mesmo valor do mapa em memória.
@@ -624,12 +556,15 @@ async function podeAcessarMensagem(socket, messageId) {
         const Aluno = require('./models/Aluno');
         const escapeRegex = require('./utils/escapeRegex');
         const emailRegex = new RegExp(`^${escapeRegex(String(socket.user.email))}$`, 'i');
+        const { semRestricaoPara } = require('./utils/restricaoAcesso');
         const alunos = await Aluno.find({
             $or: [
                 { responsavel: emailRegex },
                 { 'responsavelDados.email': emailRegex },
                 { 'responsaveis.email': emailRegex },
             ],
+            // Bloqueio por decisão judicial (Issue #491).
+            ...semRestricaoPara(socket.user.email),
         })
             .select('turma turmaId id')
             .lean();

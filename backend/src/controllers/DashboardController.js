@@ -3,6 +3,7 @@ const Nota = require('../models/Nota');
 const Falta = require('../models/Falta');
 const { escolaMatch } = require('../middleware/filtrarPorEscola');
 const logger = require('../utils/logger');
+const { AVISO_INDICADOR } = require('../utils/avisoIndicador');
 
 exports.getPublicSummary = async (req, res) => {
     try {
@@ -126,6 +127,8 @@ exports.getSummary = async (req, res) => {
                 totalTurmas,
                 mediaGeral: parseFloat(mediaGeral.toFixed(1)),
                 alunosRisco,
+                // "Em risco" = média abaixo de 5: estimativa de apoio (Issue #494).
+                avisoAlunosRisco: AVISO_INDICADOR,
             },
         });
     } catch (error) {

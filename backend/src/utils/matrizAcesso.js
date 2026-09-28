@@ -189,6 +189,11 @@ const AREAS = {
     '/detalhes/avaliacoes.html': {
         perfis: ['admin', 'diretor', 'secretaria', 'professor'],
     },
+    // Situação das autorizações da turma (Issue #496). A página é do professor;
+    // a API ainda confere se a direção liberou a consulta naquela escola.
+    '/detalhes/autorizacoes-turma.html': {
+        perfis: ['professor'],
+    },
 };
 
 /**

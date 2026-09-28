@@ -129,6 +129,33 @@
                     </table>
                 </div>
             </div>
+
+            <!-- Bloqueio por decisão judicial (Issue #491) -->
+            <div class="sec-form-card" style="margin-top:1.5rem;">
+                <h2 style="margin:0 0 0.5rem;font-size:1.05rem;"><i class="bi bi-shield-lock" style="color:#f87171;"></i> Bloqueio de acesso por decisão judicial</h2>
+                <p style="margin:0 0 1rem;color:#94a3b8;font-size:0.85rem;">
+                    Use quando uma decisão judicial restringir o acesso de um genitor ou responsável à criança.
+                    O bloqueio vale mesmo que o e-mail continue na ficha, e as sessões da pessoa são encerradas na hora.
+                    Não registre aqui detalhes do processo: a decisão fica arquivada na secretaria.
+                </p>
+                <label for="restricaoBusca" style="display:block;font-size:0.85rem;margin-bottom:0.25rem;">Aluno</label>
+                <input type="search" id="restricaoBusca" class="sec-input" placeholder="Digite o nome do aluno" autocomplete="off" style="width:100%;max-width:420px;">
+                <div id="restricaoResultados" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin:0.5rem 0;"></div>
+
+                <div id="restricaoPainel" hidden>
+                    <h3 id="restricaoAlunoTitulo" style="margin:1rem 0 0.5rem;font-size:0.95rem;"></h3>
+                    <ul id="restricaoLista" style="list-style:none;padding:0;margin:0 0 1rem;display:grid;gap:0.4rem;"></ul>
+                    <form id="restricaoForm" style="display:grid;gap:0.5rem;max-width:420px;">
+                        <label for="restricaoEmail" style="font-size:0.85rem;">E-mail a bloquear</label>
+                        <input type="email" id="restricaoEmail" class="sec-input" required>
+                        <label style="display:flex;gap:0.4rem;align-items:flex-start;font-size:0.8rem;color:#cbd5e1;">
+                            <input type="checkbox" id="restricaoConfirmacao">
+                            <span>Confirmo que a decisão judicial está arquivada na secretaria.</span>
+                        </label>
+                        <button type="submit" class="sec-filter-btn active">Bloquear acesso</button>
+                    </form>
+                </div>
+            </div>
         </div>
     </main>
 </div>
@@ -140,6 +167,7 @@
 <script defer src="../../js/auth.js?v=3"></script>
 <script defer src="../../js/utils.js?v=3"></script>
 <script defer src="../../js/secretaria-vinculos.js"></script>
+<script defer src="../../js/secretaria-restricao-acesso.js"></script>
 <script src="../../js/sidebar-voice.js?v=5.0"></script>
 <script src="../../js/voice-orb.js?v=2.0"></script>
 <script src="../../js/chatbot-ia.js?v=5.0"></script>

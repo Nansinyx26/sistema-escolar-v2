@@ -6,6 +6,21 @@ const voiceService = require('../services/voiceService');
 const { withPersona } = require('../services/assistantPersona');
 const offlineResponseService = require('../services/offlineResponseService');
 const logger = require('../utils/logger');
+const { AVISO_INDICADOR } = require('../utils/avisoIndicador');
+const { iaLiberada } = require('../services/ia/interruptor');
+
+/**
+ * Escola sem adesão à IA não chama o provedor (Issue #493). As rotas em
+ * `routes/ia.js` já barram por `exigirIaLigada`; esta é a segunda barreira,
+ * para o controller não depender de onde foi montado. O erro cai no mesmo
+ * `catch` de quando a IA está fora do ar, que serve a resposta offline.
+ */
+async function exigirIaDaEscola(req) {
+    if (await iaLiberada(req.escolaId)) return;
+    const erro = new Error('IA desligada para esta escola');
+    erro.iaDesligada = true;
+    throw erro;
+}
 
 // Opções sugeridas exibidas no front quando a resposta é gerada em modo offline.
 const OPCOES_OFFLINE = [
@@ -73,6 +88,8 @@ exports.analisarDesempenho = async (req, res) => {
                 aluno: al.nome,
                 status,
                 tendencia,
+                // Status, tendência e previsão são estimativas (Issue #494).
+                aviso: AVISO_INDICADOR,
                 metrics: {
                     mediaGeral:
                         notasNumericas.length > 0
@@ -98,7 +115,8 @@ exports.analisarDesempenho = async (req, res) => {
 exports.getGlobalInsights = async (req, res) => {
     try {
         const insights = await PedagogicoService.getGlobalInsights(req.escolaId);
-        res.json({ success: true, data: insights });
+        // "Alunos em risco" e o resumo são estimativas (Issue #494).
+        res.json({ success: true, data: { ...insights, aviso: AVISO_INDICADOR } });
     } catch (error) {
         logger.error(`[PedagogicoController] Error in getGlobalInsights: ${error.message}`);
         res.status(500).json({ success: false, error: 'Erro ao gerar insights pedagógicos.' });
@@ -131,6 +149,7 @@ ESTRUTURA OBRIGATÓRIA (nesta ordem, com h3 em cada seção):
 Tom: prático e direto, escrito PARA o professor. Português-BR.`);
 
         try {
+            await exigirIaDaEscola(req);
             const planoHtml = await voiceService.generateInsightText(prompt, {
                 maxOutputTokens: 1400,
             });
@@ -214,6 +233,7 @@ ESTRUTURA OBRIGATÓRIA (h3 em cada seção):
 Tom: encorajador e realista. Português-BR.`);
 
         try {
+            await exigirIaDaEscola(req);
             const bruto = await voiceService.generateInsightText(prompt, {
                 maxOutputTokens: 1400,
             });
@@ -313,11 +333,15 @@ Escreva em Português-BR, texto puro, em NO MÁXIMO 4 frases:
 3-4. Duas ações práticas e específicas para esta turma nesta semana.`);
 
         try {
+            await exigirIaDaEscola(req);
             const insight = await voiceService.generateInsightText(prompt, {
                 maxOutputTokens: 400,
                 temperature: 0.5,
             });
-            return res.json({ success: true, data: { turmaId, metrics, insight } });
+            return res.json({
+                success: true,
+                data: { turmaId, metrics, insight, aviso: AVISO_INDICADOR },
+            });
         } catch (iaError) {
             logger.warn(
                 `[PedagogicoController] IA indisponível em analisarTurma: ${iaError.message} — usando resposta offline.`
@@ -336,6 +360,7 @@ Escreva em Português-BR, texto puro, em NO MÁXIMO 4 frases:
                     turmaId,
                     metrics,
                     insight,
+                    aviso: AVISO_INDICADOR,
                     modoOffline: true,
                     opcoesSugeridas: OPCOES_OFFLINE,
                 },

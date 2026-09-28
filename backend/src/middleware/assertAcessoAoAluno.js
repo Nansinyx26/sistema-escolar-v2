@@ -17,6 +17,7 @@ const mongoose = require('mongoose');
 const Aluno = require('../models/Aluno');
 const escapeRegex = require('../utils/escapeRegex');
 const { contaPrecisaConfirmar } = require('../services/verificacaoEmail');
+const { restritoPara } = require('../utils/restricaoAcesso');
 
 const PERFIS_GESTAO = ['admin', 'diretor', 'secretaria'];
 
@@ -37,6 +38,8 @@ function normalizarTurma(t) {
 
 /** true se o e-mail informado consta como responsável do aluno. */
 function ehResponsavelDoAluno(aluno, email) {
+    // Bloqueio por decisão judicial vence o e-mail na ficha (Issue #491).
+    if (restritoPara(aluno, email)) return false;
     if (!email) return false;
     const alvo = String(email).toLowerCase();
     if (String(aluno.responsavel || '').toLowerCase() === alvo) return true;
