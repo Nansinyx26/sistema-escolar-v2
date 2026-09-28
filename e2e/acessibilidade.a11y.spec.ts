@@ -35,17 +35,41 @@ const PAGINAS_PUBLICAS = [
 
 const CRITERIOS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 
+// Na primeira visita o service worker assume o controle e a página recarrega
+// (`controllerchange`): a splash volta depois de o teste já ter visto ela sair,
+// e o axe mede o login através dela. O que se mede aqui é a página, não o PWA.
+test.use({ serviceWorkers: 'block' });
+
 for (const caminho of PAGINAS_PUBLICAS) {
     test(`${caminho} sem violação WCAG 2.2 A/AA`, async ({ page }) => {
         await page.goto(caminho, { waitUntil: 'load' });
 
         // A splash sai depois do `load`; medir com ela na tela é medir a
         // transição, não a página — o contraste sairia contra o véu dela.
-        await page
-            .waitForFunction(() => !document.getElementById('splashScreen'), null, {
-                timeout: 8000,
-            })
-            .catch(() => undefined);
+        // Com a máquina carregada (CI, dois workers) a splash passa de 8 s;
+        // medir com ela ainda saindo dá contraste falso em metade da página.
+        await page.waitForFunction(() => !document.getElementById('splashScreen'), null, {
+            timeout: 20_000,
+        });
+
+        // Entrada animada do conteúdo (motion.css): no meio do fade, o texto
+        // está com opacidade parcial e o contraste medido é falso. Espera as
+        // animações FINITAS acabarem — tempo fixo não serve, porque com a
+        // máquina carregada (CI, dois workers) a entrada atrasa. As infinitas
+        // (indicador de carregamento) ficam de fora, senão nunca terminaria.
+        await page.evaluate(() =>
+            Promise.race([
+                Promise.all(
+                    document
+                        .getAnimations()
+                        .filter(
+                            (a) => a.effect?.getTiming().iterations !== Number.POSITIVE_INFINITY
+                        )
+                        .map((a) => a.finished.catch(() => undefined))
+                ),
+                new Promise((resolve) => setTimeout(resolve, 5000)),
+            ])
+        );
 
         const resultado = await new AxeBuilder({ page }).withTags(CRITERIOS).analyze();
 
