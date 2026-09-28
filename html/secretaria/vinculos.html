@@ -156,6 +156,40 @@
                     </form>
                 </div>
             </div>
+
+            <!-- Nome social (Issue #510) -->
+            <div class="sec-form-card" style="margin-top:1.5rem;">
+                <h2 style="margin:0 0 0.5rem;font-size:1.05rem;"><i class="bi bi-person-badge"></i> Nome social</h2>
+                <p style="margin:0 0 1rem;color:#94a3b8;font-size:0.85rem;">
+                    Registre quando houver requerimento escrito: do próprio aluno, se maior de 18 anos, ou dos responsáveis.
+                    O professor passa a ver só o nome social na chamada e nas listas; o nome civil continua no Censo e nos documentos oficiais.
+                </p>
+                <label for="nomeSocialBusca" style="display:block;font-size:0.85rem;margin-bottom:0.25rem;">Aluno</label>
+                <input type="search" id="nomeSocialBusca" class="sec-input" placeholder="Digite o nome do aluno" autocomplete="off" style="width:100%;max-width:420px;">
+                <div id="nomeSocialResultados" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin:0.5rem 0;"></div>
+
+                <div id="nomeSocialPainel" hidden>
+                    <h3 id="nomeSocialAlunoTitulo" style="margin:1rem 0 0.5rem;font-size:0.95rem;"></h3>
+                    <p id="nomeSocialAtual" style="margin:0 0 0.75rem;font-size:0.85rem;color:#cbd5e1;"></p>
+                    <form id="nomeSocialForm" style="display:grid;gap:0.5rem;max-width:420px;">
+                        <label for="nomeSocialCampo" style="font-size:0.85rem;">Nome social completo</label>
+                        <input type="text" id="nomeSocialCampo" class="sec-input" maxlength="120" required autocomplete="off">
+                        <label for="nomeSocialRequerente" style="font-size:0.85rem;">Quem fez o requerimento</label>
+                        <select id="nomeSocialRequerente" class="sec-input">
+                            <option value="responsaveis">Responsáveis (aluno menor de 18 anos)</option>
+                            <option value="aluno">O próprio aluno (maior de 18 anos)</option>
+                        </select>
+                        <label style="display:flex;gap:0.4rem;align-items:flex-start;font-size:0.8rem;color:#cbd5e1;">
+                            <input type="checkbox" id="nomeSocialConfirmacao">
+                            <span>Confirmo que o requerimento escrito está arquivado na secretaria.</span>
+                        </label>
+                        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                            <button type="submit" class="sec-filter-btn active">Salvar nome social</button>
+                            <button type="button" id="nomeSocialRemover" class="sec-filter-btn" hidden>Remover nome social</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     </main>
 </div>
@@ -168,6 +202,7 @@
 <script defer src="../../js/utils.js?v=3"></script>
 <script defer src="../../js/secretaria-vinculos.js"></script>
 <script defer src="../../js/secretaria-restricao-acesso.js"></script>
+<script defer src="../../js/secretaria-nome-social.js"></script>
 <script src="../../js/sidebar-voice.js?v=5.0"></script>
 <script src="../../js/voice-orb.js?v=2.0"></script>
 <script src="../../js/chatbot-ia.js?v=5.0"></script>

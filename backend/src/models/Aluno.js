@@ -75,6 +75,25 @@ const AlunoSchema = new mongoose.Schema(
         id: { type: mongoose.Schema.Types.Mixed, index: true }, // Pode ser numero (legacy) ou string/uuid
         nome: { type: String, required: true },
         sobrenome: String,
+        // Nome social (Resolução CNE/CP nº 1/2018; em SP, Decreto 55.588/2010 —
+        // Issue #510). Nome completo pelo qual o aluno é tratado nos registros
+        // internos: o professor o recebe NO LUGAR do nome civil
+        // (utils/projecaoAluno.js). O nome civil continua em `nome`/`sobrenome`
+        // e é o que sai no Educacenso, na ficha do Conselho Tutelar e no
+        // histórico. Só é gravado pela rota da secretaria, que exige o
+        // requerimento: do próprio aluno, se maior de 18, ou dos responsáveis.
+        nomeSocial: { type: String, trim: true, maxlength: 120 },
+        nomeSocialRequerimento: {
+            type: new mongoose.Schema(
+                {
+                    requerente: { type: String, enum: ['aluno', 'responsaveis'] },
+                    registradoEm: Date,
+                    registradoPor: String, // id da conta de quem registrou
+                },
+                { _id: false }
+            ),
+            default: undefined,
+        },
         // Chave de busca e de detecção de duplicata por nome: minúsculo, sem
         // acento, sem espaço duplo. Mantido pelo pre-save abaixo — nenhum caminho
         // de escrita precisa lembrar de calcular.

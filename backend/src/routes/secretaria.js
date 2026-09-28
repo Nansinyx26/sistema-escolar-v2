@@ -46,6 +46,10 @@ router.post(
     filtrarPorEscola,
     RestricaoAcessoController.retirar
 );
+// Nome social (Issue #510): rota própria porque exige o requerimento.
+const NomeSocialController = require('../controllers/NomeSocialController');
+router.put('/alunos/:id/nome-social', auth, filtrarPorEscola, NomeSocialController.definir);
+router.delete('/alunos/:id/nome-social', auth, filtrarPorEscola, NomeSocialController.remover);
 router.post('/matriculas', auth, SecretariaController.criarMatricula);
 router.put('/matriculas/:id/transferir', auth, SecretariaController.transferirMatricula);
 router.put('/matriculas/:id/status', auth, SecretariaController.atualizarStatusMatricula);
