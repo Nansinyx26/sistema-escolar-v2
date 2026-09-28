@@ -31,6 +31,7 @@ const Escola = require('../models/Escola');
 const Usuario = require('../models/Usuario');
 const Aluno = require('../models/Aluno');
 const logger = require('../utils/logger');
+const obs = require('../observability');
 const { logAction } = require('../utils/auditHelper');
 const { escolaMatch } = require('../middleware/filtrarPorEscola');
 const { obterPrinter } = require('./RelatorioController');
@@ -40,6 +41,7 @@ const { montarLote } = require('../services/conformidade/educacenso');
 const { gerarArquivo } = require('../services/conformidade/leiauteEducacenso');
 const { situacaoAtual } = require('../utils/soberaniaDados');
 const { montarPainel } = require('../services/conformidade/dadosAbertos');
+const { montarRelatorio, bimestreDe } = require('../services/conformidade/relatorioBullying');
 const {
     podeAnonimizar,
     planoDeAnonimizacao,
@@ -286,6 +288,45 @@ exports.dadosAbertos = async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'Falha ao montar o painel de dados abertos.',
+        });
+    }
+};
+
+// GET /api/conformidade/bullying/relatorio?ano=2026&bimestre=3
+// Lei 13.185/2015, art. 6º (Issue #512). Sem parâmetro, o bimestre corrente.
+exports.relatorioBullying = async (req, res) => {
+    try {
+        const atual = bimestreDe(new Date());
+        const ano = req.query.ano === undefined ? atual.ano : Number(req.query.ano);
+        const bimestre =
+            req.query.bimestre === undefined ? atual.bimestre : Number(req.query.bimestre);
+        if (!Number.isInteger(ano) || ano < 2000 || ano > 2100) {
+            return res.status(400).json({ success: false, error: 'Ano inválido.' });
+        }
+        if (!Number.isInteger(bimestre) || bimestre < 1 || bimestre > 6) {
+            return res
+                .status(400)
+                .json({ success: false, error: 'Bimestre inválido: use de 1 a 6.' });
+        }
+
+        const relatorio = await obs.withSpan(
+            'conformidade.relatorioBullying',
+            { 'relatorio.ano': ano, 'relatorio.bimestre': bimestre },
+            () => montarRelatorio({ filtroEscola: escolaMatch(req.escolaId), ano, bimestre })
+        );
+
+        await logAction(req, 'EXPORTAR_RELATORIO_BULLYING', 'Conformidade', {
+            recursoId: req.escolaId ? String(req.escolaId) : 'rede',
+            descricao: `Relatório de intimidação sistemática do ${bimestre}º bimestre de ${ano}.`,
+        });
+
+        res.json({ success: true, data: relatorio });
+    } catch (error) {
+        logger.error(`[Conformidade.relatorioBullying] ${error.message}`);
+        obs.captureException(error, { rota: 'GET /api/conformidade/bullying/relatorio' });
+        res.status(500).json({
+            success: false,
+            error: 'Falha ao montar o relatório de intimidação sistemática.',
         });
     }
 };

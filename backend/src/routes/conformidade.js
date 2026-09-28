@@ -12,8 +12,9 @@
  *   • ficha ao Conselho — secretaria, diretor, admin. O professor identifica a
  *     infrequência, mas quem COMUNICA a autoridade é a gestão da unidade;
  *   • Censo Escolar — secretaria, diretor, admin. É declaração da unidade;
- *   • dados abertos — secretaria, diretor, admin. Sem dado pessoal na resposta,
- *     mas a extração continua sendo ato administrativo com log.
+ *   • dados abertos e relatório de bullying — secretaria, diretor, admin. Sem
+ *     dado pessoal na resposta, mas a extração continua sendo ato
+ *     administrativo com log.
  */
 
 const express = require('express');
@@ -57,6 +58,10 @@ router.post(
 
 router.get('/educacenso', gestao, ConformidadeController.exportarEducacenso);
 router.get('/dados-abertos', gestao, ConformidadeController.dadosAbertos);
+
+// Relatório bimestral de bullying (Lei 13.185/2015, art. 6º — Issue #512).
+// Mesmo formato de dado aberto: contagem com supressão k = 5, sem relato.
+router.get('/bullying/relatorio', gestao, ConformidadeController.relatorioBullying);
 
 // Diagnóstico de soberania de dados (Portaria SGD/MGI 5.950/2023). É informação
 // de infraestrutura, não de aluno — mas diz em qual país estão os dados da
