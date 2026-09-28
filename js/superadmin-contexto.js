@@ -69,14 +69,14 @@
         var faixa = document.createElement('div');
         faixa.id = 'superadminFaixa';
         faixa.setAttribute('role', 'region');
-        faixa.setAttribute('aria-label', 'Contexto do Super Admin');
+        faixa.setAttribute('aria-label', 'Contexto do administrador');
 
         var texto = document.createElement('span');
         texto.appendChild(document.createTextNode('Você está visualizando a escola '));
         var nome = document.createElement('strong');
         nome.textContent = contexto.nome || 'selecionada';
         texto.appendChild(nome);
-        texto.appendChild(document.createTextNode(' como Super Admin'));
+        texto.appendChild(document.createTextNode(' como administrador'));
         faixa.appendChild(texto);
 
         if (contexto.status === 'bloqueada') {

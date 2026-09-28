@@ -8,7 +8,7 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Gestão de Escolas - Super Admin</title>
+    <title>Gestão de Escolas - Admin</title>
     <link rel="stylesheet" href="../../css/variables.css">
     <link rel="stylesheet" href="../../css/base.css">
     <link rel="stylesheet" href="../../css/components-new.css">
@@ -31,7 +31,7 @@
     <!-- Rolagem e performance mobile — deve ser o ÚLTIMO stylesheet de layout -->
     <link rel="stylesheet" href="../../css/mobile-scroll.css?v=1.0">
     <link rel="stylesheet" href="../../css/motion.css">
-    <link rel="stylesheet" href="../../css/gestao-escolas.css?v=1">
+    <link rel="stylesheet" href="../../css/gestao-escolas.css?v=2">
     <script src="../../js/scroll-lock.js?v=1.0"></script>
     <!-- Acessibilidade (LBI/eMAG) — ver docs/CONFORMIDADE-LEGAL.md -->
     <link rel="stylesheet" href="../../css/acessibilidade.css">
@@ -79,18 +79,19 @@
 
         <main class="ge-main">
             <section class="ge-intro">
-                <p class="ge-eyebrow">Super Admin · rede inteira</p>
+                <p class="ge-eyebrow">Administração · rede inteira</p>
                 <h1 class="ge-titulo">Escolas da rede</h1>
                 <p class="ge-sub">
-                    Bloquear uma escola encerra na hora o acesso de toda a equipe e das famílias dela.
-                    O desbloqueio devolve o acesso sem reiniciar nada. Cada decisão fica registrada na auditoria.
+                    Uma escola nova só começa a ser usada depois de liberada: aí a equipe consegue se cadastrar
+                    com o código da escola. Bloquear encerra na hora o acesso de toda a equipe e das famílias;
+                    o desbloqueio devolve o acesso sem reiniciar nada. Cada decisão fica registrada na auditoria.
                 </p>
             </section>
 
-            <!-- Recusa para quem abriu a casca sem ser super admin (a API responde 403). -->
+            <!-- Recusa para quem abriu a casca sem ser admin (a API responde 403). -->
             <section id="geSemAcesso" class="ge-vazio" hidden>
                 <i class="bi bi-shield-lock" aria-hidden="true"></i>
-                <h2>Área do super administrador</h2>
+                <h2>Área do administrador</h2>
                 <p>Esta conta não tem permissão para gerenciar escolas. Fale com o administrador do sistema.</p>
             </section>
 
@@ -110,6 +111,9 @@
                         </button>
                         <button type="button" role="radio" class="ge-status-opcao" data-status="bloqueada" aria-checked="false">
                             Bloqueadas <span class="ge-contagem" data-contagem="bloqueadas">–</span>
+                        </button>
+                        <button type="button" role="radio" class="ge-status-opcao" data-status="aguardando" aria-checked="false">
+                            Aguardando <span class="ge-contagem" data-contagem="aguardando">–</span>
                         </button>
                     </div>
                 </form>
@@ -181,13 +185,31 @@
         </form>
     </dialog>
 
+    <!-- Modal: liberar para uso (Issue #533) -->
+    <dialog class="ge-dialogo" id="geDialogoLiberar" aria-labelledby="geLiberarTitulo">
+        <form method="dialog" id="geFormLiberar">
+            <h2 id="geLiberarTitulo" class="ge-dialogo-titulo">Liberar <span data-nome-escola></span> para uso?</h2>
+            <p class="ge-dialogo-texto">
+                A escola sai do cadeado da página inicial e passa a aceitar o cadastro de professores pelo
+                código dela — se ainda não houver código, ele é gerado agora. Veja o código em
+                “Códigos por Escola” e convide a direção e a secretaria em “Convites de Equipe”.
+            </p>
+            <div class="ge-dialogo-acoes">
+                <button type="button" class="btn btn-secondary" data-fechar>Cancelar</button>
+                <button type="submit" class="btn btn-success" id="geConfirmarLiberar">
+                    <i class="bi bi-check2-circle" aria-hidden="true"></i> Liberar escola
+                </button>
+            </div>
+        </form>
+    </dialog>
+
     <div id="toastContainer" class="toast-container" aria-live="polite"></div>
     <script src="../../js/api-config.js"></script>
     <!-- csrfHeaders(): sem o header X-CSRF-Token o backend recusa bloquear e desbloquear. -->
     <script src="../../js/csrf-helper.js"></script>
     <script defer src="../../js/auth.js"></script>
     <script defer src="../../js/utils.js"></script>
-    <script defer src="../../js/superadmin-escolas.js?v=1"></script>
+    <script defer src="../../js/superadmin-escolas.js?v=2"></script>
     <script defer src="../../js/settings-drawer.js"></script>
     <script src="../../js/libs/lucide.min.js"></script>
     <script src="../../js/libs/lucide-init.js"></script>

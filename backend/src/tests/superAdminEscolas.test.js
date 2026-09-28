@@ -1,8 +1,8 @@
 /**
- * superAdminEscolas.test.js — gestão de escolas do super admin (Issue #463).
+ * superAdminEscolas.test.js — gestão de escolas do admin (Issues #463 e #533).
  *
- * Cobre os critérios de aceite da Issue:
- *   • admin comum, diretor e professor recebem 403 em /api/superadmin/*;
+ * Cobre os critérios de aceite:
+ *   • diretor e professor recebem 403 em /api/superadmin/*; todo admin passa;
  *   • bloquear → o usuário da escola não loga, a sessão aberta cai no próximo
  *     request e os sockets da escola são desconectados;
  *   • desbloquear → o usuário loga normalmente, sem reinício;
@@ -103,17 +103,16 @@ async function superAdminLogado() {
 // ─────────────────────────────────────────────────────────
 // 1. Autorização
 // ─────────────────────────────────────────────────────────
-describe('/api/superadmin — só o super admin passa', () => {
+describe('/api/superadmin — só o admin passa', () => {
     it('401 sem sessão', async () => {
         const res = await request(app).get('/api/superadmin/escolas');
         expect(res.status).toBe(401);
     });
 
     it.each([
-        ['admin comum', { perfil: 'admin' }],
         ['diretor', { perfil: 'diretor' }],
         ['professor', { perfil: 'professor' }],
-        ['admin comum com superAdmin forjado no token', { perfil: 'admin' }],
+        ['diretor com superAdmin forjado no token', { perfil: 'diretor' }],
     ])('%s recebe 403 na listagem e no bloqueio', async (_rotulo, dados) => {
         const conta = await criarUsuario({
             email: `nao-super-${Date.now()}@rede.test`,
@@ -121,7 +120,7 @@ describe('/api/superadmin — só o super admin passa', () => {
             ...dados,
         });
         const { assinarTokenSessao } = require('../utils/sessionToken');
-        // O claim `superAdmin` no token é ignorado: o authJWT lê o BANCO.
+        // Claims do token são ignorados: o authJWT lê o perfil do BANCO.
         const cookie = `escola_jwt=${assinarTokenSessao(conta, { superAdmin: true })}`;
 
         const lista = await request(app).get('/api/superadmin/escolas').set('Cookie', cookie);
@@ -135,7 +134,17 @@ describe('/api/superadmin — só o super admin passa', () => {
         expect((await Escola.findById(escolaB._id).lean()).status).toBe('ativa');
     });
 
-    it('o admin comum não se promove pela criação de conta', async () => {
+    it('admin sem a flag superAdmin gerencia a rede (Issue #533)', async () => {
+        const conta = await criarUsuario({ email: 'comum@rede.test', perfil: 'admin' });
+        const { assinarTokenSessao } = require('../utils/sessionToken');
+        const cookie = `escola_jwt=${assinarTokenSessao(conta)}`;
+
+        const lista = await request(app).get('/api/superadmin/escolas').set('Cookie', cookie);
+        expect(lista.status).toBe(200);
+        expect(lista.body.data).toHaveLength(3);
+    });
+
+    it('a flag superAdmin não vem da criação de conta', async () => {
         const admin = await criarUsuario({ email: 'comum@rede.test', perfil: 'admin' });
         const { assinarTokenSessao } = require('../utils/sessionToken');
         await request(app)
@@ -177,7 +186,7 @@ describe('GET /api/superadmin/escolas', () => {
         const res = await agent.get('/api/superadmin/escolas');
         expect(res.status).toBe(200);
         expect(res.body.data).toHaveLength(3);
-        expect(res.body.resumo).toEqual({ todas: 3, ativas: 2, bloqueadas: 1 });
+        expect(res.body.resumo).toEqual({ todas: 3, ativas: 2, bloqueadas: 1, aguardando: 0 });
 
         const alfa = res.body.data.find((e) => e.nome === 'EMEF Alfa');
         expect(alfa.status).toBe('ativa');
@@ -453,10 +462,10 @@ describe('super admin e escola bloqueada', () => {
         expect((await agent.get('/api/superadmin/escolas')).status).toBe(200);
     });
 
-    it('o admin COMUM de uma escola bloqueada é barrado como o resto da equipe', async () => {
+    it('a direção de uma escola bloqueada é barrada como o resto da equipe', async () => {
         await criarUsuario({
             email: 'admin-escola@a.test',
-            perfil: 'admin',
+            perfil: 'diretor',
             escolaId: String(escolaA._id),
         });
         await Escola.updateOne({ _id: escolaA._id }, { $set: { status: 'bloqueada' } });
@@ -475,7 +484,7 @@ describe('escolaBloqueio.desconectarEscola', () => {
         return { data: { usuario }, emit: jest.fn(), disconnect: jest.fn() };
     }
 
-    it('avisa e desconecta a escola inteira, menos o super admin', async () => {
+    it('avisa e desconecta a escola inteira, menos o admin', async () => {
         const professor = socketFalso({ perfil: 'professor' });
         const adminComum = socketFalso({ perfil: 'admin', superAdmin: false });
         const superAdm = socketFalso({ perfil: 'admin', superAdmin: true });
@@ -490,14 +499,15 @@ describe('escolaBloqueio.desconectarEscola', () => {
         const n = await escolaBloqueio.desconectarEscola(io, escolaA._id);
 
         expect(salas).toEqual([`escola:${escolaA._id}`]);
-        expect(n).toBe(2);
-        for (const s of [professor, adminComum]) {
+        expect(n).toBe(1);
+        for (const s of [professor]) {
             expect(s.emit).toHaveBeenCalledWith('escola:bloqueada', {
                 codigo: 'ESCOLA_BLOQUEADA',
                 mensagem: 'Escola temporariamente bloqueada. Contate o administrador.',
             });
             expect(s.disconnect).toHaveBeenCalledWith(true);
         }
+        expect(adminComum.disconnect).not.toHaveBeenCalled();
         expect(superAdm.disconnect).not.toHaveBeenCalled();
     });
 
@@ -518,23 +528,19 @@ describe('escolaBloqueio.desconectarEscola', () => {
 // 6. Menu e migração
 // ─────────────────────────────────────────────────────────
 describe('menu e migração', () => {
-    it('a rota da gestão de escolas só vai para o super admin', () => {
-        expect(rotasAdminPara('admin', { superAdmin: true }).gestaoEscolas).toMatch(
-            /gestao-escolas\.html$/
-        );
-        expect(rotasAdminPara('admin').gestaoEscolas).toBeUndefined();
-        expect(rotasAdminPara('diretor', { superAdmin: true }).gestaoEscolas).toBeUndefined();
+    it('a rota da gestão de escolas vai para todo admin e para mais ninguém', () => {
+        expect(rotasAdminPara('admin').gestaoEscolas).toMatch(/gestao-escolas\.html$/);
+        expect(rotasAdminPara('diretor').gestaoEscolas).toBeUndefined();
+        expect(rotasAdminPara('secretaria').gestaoEscolas).toBeUndefined();
     });
 
-    it('GET /api/auth/rotas devolve a entrada só para o super admin', async () => {
-        const sa = await superAdminLogado();
-        const res = await sa.get('/api/auth/rotas');
-        expect(res.body.rotas.admin.gestaoEscolas).toBeDefined();
-
+    it('GET /api/auth/rotas devolve a entrada ao admin sem a flag superAdmin', async () => {
         await criarUsuario({ email: 'comum2@rede.test', perfil: 'admin' });
         const { agent } = await logar('comum2@rede.test');
         const comum = await agent.get('/api/auth/rotas');
-        expect(comum.body.rotas.admin.gestaoEscolas).toBeUndefined();
+        expect(comum.body.rotas.admin.gestaoEscolas).toBeDefined();
+        expect(comum.body.rotas.admin.codigosEscolas).toBeDefined();
+        expect(comum.body.rotas.admin.convitesEquipe).toBeDefined();
     });
 
     it('a migração preenche status só onde falta e é idempotente', async () => {
@@ -550,5 +556,99 @@ describe('menu e migração', () => {
 
         const segunda = await migracao.up();
         expect(segunda.atualizadas).toBe(0);
+    });
+});
+
+// ─────────────────────────────────────────────────────────
+// 7. Liberar para uso (Issue #533)
+// ─────────────────────────────────────────────────────────
+describe('PATCH /api/superadmin/escolas/:id/disponibilidade', () => {
+    let nova;
+    beforeEach(async () => {
+        nova = await Escola.create({ nome: 'EMEF Delta', tipo: 'EMEF', bairro: 'Novo' });
+    });
+
+    it('a escola nasce aguardando liberação e aparece no filtro', async () => {
+        const agent = await superAdminLogado();
+        const res = await agent.get('/api/superadmin/escolas?status=aguardando');
+        expect(res.status).toBe(200);
+        expect(res.body.data.map((e) => e.nome)).toEqual(['EMEF Delta']);
+        expect(res.body.data[0].disponivel).toBe(false);
+        expect(res.body.resumo.aguardando).toBe(1);
+    });
+
+    it('libera, gera o código de professor que faltava e audita', async () => {
+        const agent = await superAdminLogado();
+        const res = await agent
+            .patch(`/api/superadmin/escolas/${nova._id}/disponibilidade`)
+            .send({ disponivel: true });
+        expect(res.status).toBe(200);
+        expect(res.body.data.disponivel).toBe(true);
+        expect(res.body.data.codigoSecreto).toBeUndefined();
+
+        const salva = await Escola.findById(nova._id).select('+codigoSecreto').lean();
+        expect(salva.ativo).toBe(true);
+        expect(salva.codigoSecreto).toMatch(/^[A-Za-z0-9]{10}$/);
+
+        const { validarCodigoEscola } = require('../services/codigoEscolaService');
+        expect(await validarCodigoEscola(salva.codigoSecreto, String(nova._id))).toBeTruthy();
+
+        const log = await AuditLog.findOne({ acao: 'ESCOLA_LIBERADA' }).lean();
+        expect(log).toBeTruthy();
+        expect(String(log.recursoId)).toBe(String(nova._id));
+    });
+
+    it('preserva o código que já existia', async () => {
+        await Escola.updateOne({ _id: nova._id }, { $set: { codigoSecreto: 'ABCDEFGH23' } });
+        const agent = await superAdminLogado();
+        await agent
+            .patch(`/api/superadmin/escolas/${nova._id}/disponibilidade`)
+            .send({ disponivel: true })
+            .expect(200);
+        const salva = await Escola.findById(nova._id).select('+codigoSecreto').lean();
+        expect(salva.codigoSecreto).toBe('ABCDEFGH23');
+    });
+
+    it('repetir a decisão é 409 e retirar de uso volta a escola ao cadeado', async () => {
+        const agent = await superAdminLogado();
+        const url = `/api/superadmin/escolas/${escolaA._id}/disponibilidade`;
+        const repetida = await agent.patch(url).send({ disponivel: true });
+        expect(repetida.status).toBe(409);
+
+        const retirada = await agent.patch(url).send({ disponivel: false });
+        expect(retirada.status).toBe(200);
+        expect((await Escola.findById(escolaA._id).lean()).ativo).toBe(false);
+        expect(await AuditLog.exists({ acao: 'ESCOLA_RETIRADA_DE_USO' })).toBeTruthy();
+    });
+
+    it('valida o corpo e o id', async () => {
+        const agent = await superAdminLogado();
+        const semCorpo = await agent
+            .patch(`/api/superadmin/escolas/${nova._id}/disponibilidade`)
+            .send({ disponivel: 'sim' });
+        expect(semCorpo.status).toBe(400);
+        const idRuim = await agent
+            .patch('/api/superadmin/escolas/xyz/disponibilidade')
+            .send({ disponivel: true });
+        expect(idRuim.status).toBe(400);
+        const inexistente = await agent
+            .patch(`/api/superadmin/escolas/${new mongoose.Types.ObjectId()}/disponibilidade`)
+            .send({ disponivel: true });
+        expect(inexistente.status).toBe(404);
+    });
+
+    it('diretor não libera escola', async () => {
+        const conta = await criarUsuario({
+            email: 'dir@rede.test',
+            perfil: 'diretor',
+            escolaId: String(escolaA._id),
+        });
+        const { assinarTokenSessao } = require('../utils/sessionToken');
+        const res = await request(app)
+            .patch(`/api/superadmin/escolas/${nova._id}/disponibilidade`)
+            .set('Cookie', `escola_jwt=${assinarTokenSessao(conta)}`)
+            .send({ disponivel: true });
+        expect(res.status).toBe(403);
+        expect((await Escola.findById(nova._id).lean()).ativo).toBe(false);
     });
 });

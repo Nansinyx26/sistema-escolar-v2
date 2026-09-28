@@ -436,7 +436,7 @@ function protegerAreasRestritas(frontendRootPath) {
  *
  * A página mora dentro da área administrativa, que pode estar atrás do apelido
  * secreto (ADMIN_PATH). Por isso o atalho segue a MESMA regra do link antigo
- * em `redirecionarSeAutorizado`: só redireciona quem já provou ser super admin;
+ * em `redirecionarSeAutorizado`: só redireciona quem já provou ser admin;
  * para todo o resto a resposta é o 404 de um caminho que nunca existiu — um
  * 302 público entregaria o prefixo secreto a qualquer `curl -I`.
  */
@@ -449,7 +449,7 @@ function atalhoGestaoEscolas(frontendRootPath) {
         parseCookies(req, res, async () => {
             try {
                 const usuario = await sessaoDoRequest(req);
-                if (!usuario || usuario.perfil !== 'admin' || usuario.superAdmin !== true) {
+                if (!usuario || usuario.perfil !== 'admin') {
                     return res.status(404).sendFile(pagina404);
                 }
                 return res.redirect(302, `${base}/gestao-escolas.html`);
