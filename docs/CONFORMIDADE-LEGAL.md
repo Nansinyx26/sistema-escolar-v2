@@ -20,13 +20,14 @@ Lei 13.803/2019), **LAI** (12.527/2011), **nome social** (Decreto 8.727/2016 e
 Resolução CNE/CP nº 1/2018) e as exigências do **Censo Escolar/INEP**. As
 normas do **Estado de São Paulo** e do **município de Americana** estão na §9.
 
-> **Revisão de setembro de 2026.** A pesquisa da legislação vigente achou sete
-> lacunas que este mapa não listava; elas estão marcadas como **Pendente** nas
-> tabelas e numeradas de 7 a 13 na §7. Resposta curta à pergunta *"o sistema
-> está 100% em conformidade?"*: **não** — há deveres de lei sem código
-> (nome social, comunicação de violência ao Conselho Tutelar, relatório de
-> bullying, registro de incidentes) e deveres institucionais vencidos
-> (encarregado publicado, cláusulas-padrão de transferência internacional).
+> **Revisão de setembro de 2026.** A pesquisa da legislação vigente achou
+> lacunas que este mapa não listava, numeradas de 7 a 17 na §7 e na §9. Os
+> deveres de lei que pediam código — nome social, comunicação de violência ao
+> Conselho Tutelar, relatório de bullying e registro de incidentes — foram
+> entregues nas Issues #510 a #513. Resposta curta à pergunta *"o sistema está
+> 100% em conformidade?"*: **ainda não** — seguem abertos deveres
+> institucionais, dois deles vencidos (encarregado publicado e cláusulas-padrão
+> de transferência internacional), além dos laudos e conferências da §7.
 
 ---
 
@@ -114,7 +115,7 @@ guarda, documentos ou o código de vínculo.
 | 2FA para perfis administrativos | **Parcial** | [`utils/politica2FA.js`](../backend/src/utils/politica2FA.js), [`docs/2FA-OBRIGATORIO.md`](2FA-OBRIGATORIO.md). Sem configuração, o segundo fator é exigido de `diretor` e `secretaria`; o **admin** — que vê todos os alunos e exporta dado governamental — só passa por ele se a conta tiver `twoFactorEnabled` ou se `PERFIS_2FA_OBRIGATORIO` incluir `admin`. O padrão não inclui o admin de propósito: ligar a exigência com o e-mail fora e sem códigos de backup tranca a conta administrativa, e por isso a ativação segue o roteiro por conta do documento. Enquanto houver admin entrando só com senha, isto não está pronto — ver §7 |
 | Senha com hash forte | **Pronto** | bcrypt em `AuthenticationService`; códigos de backup em scrypt ([`utils/codigosBackup.js`](../backend/src/utils/codigosBackup.js)) |
 | HTTPS ponta a ponta | **Infra** | terminação TLS no Render; `helmet` com HSTS no `app.js` |
-| Registro de todo incidente de segurança por 5 anos (Res. CD/ANPD nº 15/2024) | **Pendente** | a resolução manda comunicar à ANPD em **3 dias úteis** e guardar o registro de **todo** incidente — inclusive o não comunicado — por no mínimo cinco anos. Não há coleção nem tela para isso; o `AuditLog` expira em 365 dias e registra ação, não incidente. O plano está em rascunho em [`lgpd/plano-resposta-incidentes-RASCUNHO.md`](lgpd/plano-resposta-incidentes-RASCUNHO.md) — ver §7, item 10 |
+| Registro de todo incidente de segurança por 5 anos (Res. CD/ANPD nº 15/2024) | **Pronto** | coleção `incidentes_seguranca` ([`models/IncidenteSeguranca.js`](../backend/src/models/IncidenteSeguranca.js)) **sem TTL** e sem exclusão pelo mongoose, com os campos do art. 10 e histórico de cada passo; rotas só do admin em `/api/admin/incidentes`. O prazo de **3 dias úteis** é calculado em [`services/conformidade/prazoIncidente.js`](../backend/src/services/conformidade/prazoIncidente.js) no fuso de Brasília, pulando fim de semana e feriado nacional fixo; encerrar exige a comunicação à ANPD e aos titulares (risco relevante) ou a justificativa de não comunicar. `AuditLog` só com o protocolo — [`registroIncidentes.regressao.test.js`](../backend/src/tests/registroIncidentes.regressao.test.js) (Issue #513). Sem tela: por enquanto é API. O plano de resposta segue em rascunho em [`lgpd/plano-resposta-incidentes-RASCUNHO.md`](lgpd/plano-resposta-incidentes-RASCUNHO.md) |
 | Nunca logar PII | **Pronto** | [`utils/logSanitizer.js`](../backend/src/utils/logSanitizer.js) mascara por **nome de chave** (`{ nome: 'Maria Silva' }` vira `M. S.`) e varre segredo em texto livre — mas nome dentro de mensagem ele não tem como mascarar. Por isso nenhuma chamada de log interpola nome de pessoa: descrição de auditoria e mensagem de logger citam **id**, e `UPDATE_STUDENT` guarda a lista de campos alterados em vez da ficha inteira dos dois lados. Uma varredura do código-fonte reprova quem voltar a interpolar — [`logSemNome.regressao.test.js`](../backend/src/tests/logSemNome.regressao.test.js) (Issue #410) |
 | Imagem e áudio de terceiros protegidos por direito autoral (Lei 9.610/98) | **Parcial** | [`services/direitosAutorais/`](../backend/src/services/direitosAutorais/): o upload de foto, documento, anexo do chat e mensagem de voz responde **451** quando o arquivo bate com o catálogo de obras da escola (SHA-256, hash do áudio sem ID3 e hash perceptual de imagem) ou traz aviso de copyright embutido (EXIF, XMP, IPTC, ID3, Vorbis, RIFF, MP4); a direção bloqueia um arquivo já armazenado pelo id (`POST /api/direitos-autorais/arquivos/:id/bloquear`) e todo download dele passa a responder 451. Tudo vai ao `AuditLog`. Falta tela para a direção e impressão acústica — ver [`docs/DIREITOS-AUTORAIS.md`](DIREITOS-AUTORAIS.md) e [`direitosAutorais.test.js`](../backend/src/tests/direitosAutorais.test.js) (Issue #509) |
 
@@ -156,9 +157,9 @@ leitor de tela real vai apontar.
 | Ficha de encaminhamento pronta para assinar | **Pronto** | `GET /api/conformidade/frequencia/:alunoId/ficha-conselho` → PDF ([`services/conformidade/fichaConselhoTutelar.js`](../backend/src/services/conformidade/fichaConselhoTutelar.js)) |
 | Exportação para o Censo Escolar (JSON auditável) | **Pronto** | [`services/conformidade/educacenso.js`](../backend/src/services/conformidade/educacenso.js) — códigos oficiais e lista de pendências por aluno |
 | Arquivo de migração delimitado | **Parcial** | [`services/conformidade/leiauteEducacenso.js`](../backend/src/services/conformidade/leiauteEducacenso.js) gera o `.txt` e **recusa** lote com pendência; a ordem dos campos precisa ser conferida contra o caderno da edição — ver abaixo |
-| Nome social no registro escolar (Decreto 8.727/2016; Resolução CNE/CP nº 1/2018) | **Pendente** | o cadastro do aluno (`models/Aluno.js`) não tem campo de nome social. A resolução garante a aluno maior de 18 anos, e ao menor a pedido dos responsáveis, o uso do nome social nos registros escolares — chamada, boletim, listas — com o nome civil só onde a lei exige (histórico, Educacenso). Ver §7, item 11 |
-| Comunicação ao Conselho Tutelar de suspeita de violência (ECA, arts. 13, 56-I e 245; Lei 14.344/2022; Lei 13.819/2019, art. 6º; LDB, art. 12, VIII, na redação da **Lei 15.231/2025**) | **Pendente** | desde 07/10/2025 a LDB manda a escola enviar ao Conselho Tutelar, além da lista de infrequentes, as **ocorrências e os dados de violência** envolvendo alunos — em especial automutilação, tentativa de suicídio e suicídio —, e a Lei 13.819 dá **caráter sigiloso** à notificação de violência autoprovocada. O canal de denúncia classifica `violencia`, `automutilacao` e `assedio` (`models/ModeracaoOcorrencia.js`), mas o fluxo termina em `mantida`/`revertida`: não há status "comunicado ao Conselho Tutelar", data, protocolo nem ficha — ao contrário da infrequência, que já tem ficha pronta. A omissão do dirigente é infração do art. 245 do ECA. Ver §7, item 12 |
-| Relatório bimestral de intimidação sistemática (Lei 13.185/2015, art. 6º) | **Pendente** | as denúncias de `bullying` e `ciberbullying` são gravadas, mas não há agregado por bimestre para a escola publicar ou enviar à rede. Deve sair com a mesma supressão k = 5 dos dados abertos (§5). Ver §7, item 13 |
+| Nome social no registro escolar (Decreto 8.727/2016; Resolução CNE/CP nº 1/2018; em SP, Decreto 55.588/2010) | **Pronto** | `Aluno.nomeSocial`, gravado só por `PUT`/`DELETE /api/secretaria/alunos/:id/nome-social` ([`controllers/NomeSocialController.js`](../backend/src/controllers/NomeSocialController.js)), que exige o requerimento arquivado: do aluno maior de 18 anos ou dos responsáveis. O professor recebe o nome social **em `nome`**, sem o sobrenome civil (`utils/projecaoAluno.js`); a ficha da gestão e do responsável traz os dois; o nome civil continua no Educacenso e na ficha do Conselho. A anonimização apaga, e a IA trata como nome. Tela em `html/secretaria/vinculos.html` — [`nomeSocial.regressao.test.js`](../backend/src/tests/nomeSocial.regressao.test.js) (Issue #510). Telas que desenham nome de aluno por outro caminho que não a projeção seguem mostrando o civil |
+| Comunicação ao Conselho Tutelar de suspeita de violência (ECA, arts. 13, 56-I e 245; Lei 14.344/2022; Lei 13.819/2019, art. 6º; LDB, art. 12, VIII, na redação da **Lei 15.231/2025**) | **Pronto** | denúncia de `violencia`, `assedio` ou `automutilacao` nasce com `conselhoTutelar.situacao: 'pendente'` (`models/ModeracaoOcorrencia.js`); a gestão registra data, meio e protocolo em `POST /api/moderacao/ocorrencia/:id/conselho-tutelar`, e só a direção dispensa, com justificativa ([`controllers/ConselhoTutelarController.js`](../backend/src/controllers/ConselhoTutelarController.js)). A fila `GET /api/moderacao/conselho-tutelar/pendentes` não traz relato nem autor; automutilação sai marcada como **sigilosa**. Bloco no painel da direção (`html/direcao/moderacao.html`) — [`conselhoTutelarViolencia.regressao.test.js`](../backend/src/tests/conselhoTutelarViolencia.regressao.test.js) (Issue #511). A ficha em PDF, como a de infrequência, ainda não existe |
+| Relatório bimestral de intimidação sistemática (Lei 13.185/2015, art. 6º) | **Pronto** | `GET /api/conformidade/bullying/relatorio?ano=&bimestre=` ([`services/conformidade/relatorioBullying.js`](../backend/src/services/conformidade/relatorioBullying.js)): denúncias de `bullying` e `ciberbullying` da escola no bimestre civil, por categoria e situação da apuração, com a supressão k = 5 da §5 e total abaixo de 5 não publicado como número — [`relatorioBullying.regressao.test.js`](../backend/src/tests/relatorioBullying.regressao.test.js) (Issue #512). Sem tela de publicação: por enquanto é API |
 | Nunca bloquear boletim por pendência financeira | **Pronto por ausência** | o sistema não tem módulo financeiro; nenhuma rota de boletim/frequência consulta débito |
 
 ### As contas, explícitas
@@ -302,26 +303,13 @@ Itens acrescentados na revisão de setembro de 2026:
    direcionado a criança (sem login de aluno), o que já cumpre dos deveres
    gerais e o gatilho para refazer a análise. As sanções da ANPD estão
    previstas a partir de novembro de 2026.
-10. **Registro de incidentes de segurança** (`tipo:nova-funcao`, backend).
-    Coleção própria, só de inclusão como o `AuditLog`, **sem TTL** de 365 dias
-    (guarda mínima de 5 anos), com data de ciência, dados e titulares afetados,
-    avaliação de risco, se foi comunicado à ANPD e aos titulares e quando —
-    e contador de dias úteis a partir da ciência (Res. CD/ANPD nº 15/2024).
-11. **Nome social do aluno** (`tipo:nova-funcao`, backend + telas). Campo
-    `nomeSocial` no aluno, preenchido só pela secretaria, com registro no
-    `AuditLog`; exibido no lugar do nome civil em chamada, listas, boletim e
-    portal; nome civil preservado no histórico, no Educacenso e na ficha do
-    Conselho Tutelar. Entra na projeção por perfil (`utils/projecaoAluno.js`).
-12. **Encaminhamento de violência ao Conselho Tutelar** (`tipo:nova-funcao`,
-    backend). Para denúncia de `violencia`, `automutilacao` e `assedio`:
-    status próprio ("comunicado ao Conselho Tutelar"), data, protocolo e
-    responsável pela comunicação, prazo visível na fila da moderação e ficha em
-    PDF no modelo da de infrequência. Só gestão da escola comunica, como hoje
-    na §6.
-13. **Relatório bimestral de bullying** (`tipo:nova-funcao`, backend). Contagem
-    por escola e bimestre das denúncias de `bullying`/`ciberbullying`, por
-    situação da apuração, sem nome e com supressão k = 5
-    (`services/conformidade/dadosAbertos.js`), exportável para a rede.
+10. ~~Registro de incidentes de segurança~~ — **entregue** na Issue #513
+    (§2). Falta a tela do painel e aprovar o plano de resposta.
+11. ~~Nome social do aluno~~ — **entregue** na Issue #510 (§4).
+12. ~~Encaminhamento de violência ao Conselho Tutelar~~ — **entregue** na
+    Issue #511 (§4). Falta a ficha em PDF no modelo da de infrequência.
+13. ~~Relatório bimestral de bullying~~ — **entregue** na Issue #512 (§4).
+    Falta a tela de publicação.
 
 Ver também os itens 14 a 17, da §9 (São Paulo e Americana).
 
@@ -359,6 +347,10 @@ aguarda parecer na Câmara e não é lei.
 | [`avaliacoesPublicas.regressao.test.js`](../backend/src/tests/avaliacoesPublicas.regressao.test.js) | avaliação pública só com adesão e moderação, iniciais no lugar de nome, sem foto nem id da conta — também na listagem do painel e no evento em tempo real |
 | [`restricaoJudicial.regressao.test.js`](../backend/src/tests/restricaoJudicial.regressao.test.js) | responsável bloqueado por decisão judicial perde o acesso mesmo com o e-mail na ficha; o outro responsável segue; só a gestão da escola marca |
 | [`iaPedagogico.regressao.test.js`](../backend/src/tests/iaPedagogico.regressao.test.js) | insight global sem nome de aluno no texto enviado ao provedor; controllers pedagógicos não chamam o provedor em escola sem adesão à IA, mesmo fora da rota protegida |
+| [`nomeSocial.regressao.test.js`](../backend/src/tests/nomeSocial.regressao.test.js) | só a gestão registra o nome social, com requerimento e regra de idade; o professor recebe o nome social sem o civil; anonimização e IA; AuditLog sem o nome |
+| [`conselhoTutelarViolencia.regressao.test.js`](../backend/src/tests/conselhoTutelarViolencia.regressao.test.js) | denúncia de violência, assédio e automutilação exige a comunicação; fila por escola sem relato; só a direção dispensa; não registra duas vezes |
+| [`relatorioBullying.regressao.test.js`](../backend/src/tests/relatorioBullying.regressao.test.js) | bimestre civil no fuso de Brasília; recorte por categoria, escola e período; supressão k = 5 inclusive contra subtração; só a gestão |
+| [`registroIncidentes.regressao.test.js`](../backend/src/tests/registroIncidentes.regressao.test.js) | prazo de 3 dias úteis com fim de semana e feriado; sem TTL e sem exclusão; regras de encerramento; só admin; AuditLog sem o texto livre |
 
 ---
 
@@ -374,7 +366,7 @@ normativo do sistema municipal.
 
 | Norma | Alcance | Situação | O que pede ao sistema |
 |---|---|---|---|
-| **Decreto estadual 55.588/2010** (nome social) | administração estadual; a Seduc-SP o aplica no cadastro de alunos, lista de chamada, carteirinha e boletim | **Pendente** | reforça o item 11 da §7. Na rede municipal a base é a Resolução CNE/CP nº 1/2018, que é nacional |
+| **Decreto estadual 55.588/2010** (nome social) | administração estadual; a Seduc-SP o aplica no cadastro de alunos, lista de chamada, carteirinha e boletim | **Pronto** | atendido pelo nome social da Issue #510 (§4). Na rede municipal a base é a Resolução CNE/CP nº 1/2018, que é nacional |
 | **Lei estadual 18.069/2024** (protocolo de combate ao bullying) | rede **estadual** | referência | o protocolo pede registro e acompanhamento do caso; o item 13 da §7 e o fluxo de denúncia já seguem essa linha |
 | **Programa Conviva SP / Placon** (registro de ocorrências escolares) | rede **estadual** | não se aplica, salvo adesão | se Americana aderir, o sistema precisaria exportar as ocorrências no formato da Seduc — hoje não exporta |
 | **Secretaria Escolar Digital (SED)** e Matrícula Antecipada | parceria Estado–municípios; a SED é usada por redes estaduais, municipais e privadas de SP | **Parcial** | o sistema **importa** o PDF de alunos da SEDUC (`services/importacaoAlunos`) e guarda o RA (`Aluno.matricula`, alias `ra`); não devolve dados para a SED. `[CONFIRMAR COM A SECRETARIA DE AMERICANA]` se o cadastro da rede municipal passa pela SED ou só pelos sistemas próprios da prefeitura (INFOSEDUC/SISGERED) |
@@ -384,14 +376,11 @@ normativo do sistema municipal.
 
 ### Itens de trabalho desta seção
 
-14. **Nome social também pela norma paulista** (junta com o item 11). Mesmo
-    campo, mesma regra; o requerimento assinado (aluno maior, ou responsáveis)
-    fica anexado ao cadastro como documento, com versão e trilha (§2).
-15. **Fluxo da Lei 15.231/2025** (junta com o item 12). A comunicação ao
-    Conselho Tutelar passa a incluir ocorrências de violência, automutilação e
-    suicídio; a de violência autoprovocada é **sigilosa** — o registro no
-    sistema não pode aparecer para professor nem para outros responsáveis, só
-    para a gestão que comunica.
+14. ~~Nome social também pela norma paulista~~ — **entregue** com o item 11
+    (Issue #510). O requerimento fica arquivado na secretaria; o sistema
+    guarda quem pediu, quando e quem registrou.
+15. ~~Fluxo da Lei 15.231/2025~~ — **entregue** com o item 12 (Issue #511):
+    automutilação sai sigilosa e a fila não mostra relato nem autor.
 16. **Conferir a lei de IA de Americana**, se sancionada (`tipo:melhoria`).
     Obter o texto final do PL 58/2026 e mapear cada artigo contra
     `services/ia/`, como foi feito para a LGPD na §1.
