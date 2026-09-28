@@ -333,6 +333,34 @@ aguarda parecer na Câmara e não é lei.
 
 ---
 
+## 8. Testes que sustentam este documento
+
+| Arquivo | O que fixa |
+|---|---|
+| [`frequenciaLdb.test.js`](../backend/src/tests/frequenciaLdb.test.js) | os gatilhos legais nas bordas (14 vs 15 faltas, 49 vs 50) |
+| [`conformidadeRotas.test.js`](../backend/src/tests/conformidadeRotas.test.js) | contagem por dia, recorte por perfil e por escola, e o rastro em `AuditLog` |
+| [`educacenso.test.js`](../backend/src/tests/educacenso.test.js) | códigos do INEP e a lista de pendências |
+| [`dadosAbertosAnonimato.test.js`](../backend/src/tests/dadosAbertosAnonimato.test.js) | a supressão que impede reidentificação |
+| [`fichaConselhoTutelar.test.js`](../backend/src/tests/fichaConselhoTutelar.test.js) | o conteúdo do documento oficial (endereço, responsáveis, dias) |
+| [`auditLogImutavel.test.js`](../backend/src/tests/auditLogImutavel.test.js) | que nenhuma escrita além de inserção passa em `audit_logs` |
+| [`anonimizacaoAluno.test.js`](../backend/src/tests/anonimizacaoAluno.test.js) | a lista de campos que saem e os que ficam — inclusive a chave de busca |
+| [`validacaoConsentimento.test.js`](../backend/src/tests/validacaoConsentimento.test.js) | as bordas do código de confirmação (expirado, travado, nunca pedido) |
+| [`consentimentoCadastro.test.js`](../backend/src/tests/consentimentoCadastro.test.js) | as cinco rotas de cadastro recusam sem aceite e gravam o registro auditável com ele; gestor não consente por outra pessoa; e uma trava que reprova qualquer `Usuario.create` que volte a gravar consentimento sozinho |
+| [`canalDenuncia.test.js`](../backend/src/tests/canalDenuncia.test.js) | gravidade por categoria e o fato de nada ser bloqueado |
+| [`leiauteEducacenso.test.js`](../backend/src/tests/leiauteEducacenso.test.js) | sanitização do separador e a recusa de gerar lote incompleto |
+| [`soberaniaDados.test.js`](../backend/src/tests/soberaniaDados.test.js) | o conflito entre região declarada e infraestrutura real |
+| [`pedidosTitular.regressao.test.js`](../backend/src/tests/pedidosTitular.regressao.test.js) | pedido do titular com protocolo e prazo de 15 dias, exportação com os dados do filho e despacho só pelo admin |
+| [`registroPedidoTitular.regressao.test.js`](../backend/src/tests/registroPedidoTitular.regressao.test.js) | motivo do titular fora do `AuditLog`, prazo sem atribuição à lei, escola do pedido pelo id, protocolo sem pedaço do id da conta e busca da fila junto com a escola |
+| [`loginPorPortal.test.js`](../backend/src/tests/loginPorPortal.test.js) | recusa de conta na porta errada, sem cookie, depois da prova de senha |
+| [`handshakeSocket.regressao.test.js`](../backend/src/tests/handshakeSocket.regressao.test.js) | handshake do Socket.IO recusa token encerrado no logout e token que não é de sessão; mantém conta ativa e `tokenVersion` |
+| [`autorizacoesProfessor.regressao.test.js`](../backend/src/tests/autorizacoesProfessor.regressao.test.js) | professor vê só a situação das autorizações das próprias turmas, e só se a direção da escola liberou |
+| [`avisoIndicadores.regressao.test.js`](../backend/src/tests/avisoIndicadores.regressao.test.js) | indicadores automáticos sobre aluno chegam com o aviso de apoio; o cálculo não altera o cadastro |
+| [`avaliacoesPublicas.regressao.test.js`](../backend/src/tests/avaliacoesPublicas.regressao.test.js) | avaliação pública só com adesão e moderação, iniciais no lugar de nome, sem foto nem id da conta — também na listagem do painel e no evento em tempo real |
+| [`restricaoJudicial.regressao.test.js`](../backend/src/tests/restricaoJudicial.regressao.test.js) | responsável bloqueado por decisão judicial perde o acesso mesmo com o e-mail na ficha; o outro responsável segue; só a gestão da escola marca |
+| [`iaPedagogico.regressao.test.js`](../backend/src/tests/iaPedagogico.regressao.test.js) | insight global sem nome de aluno no texto enviado ao provedor; controllers pedagógicos não chamam o provedor em escola sem adesão à IA, mesmo fora da rota protegida |
+
+---
+
 ## 9. Estado de São Paulo e município de Americana
 
 Levantamento de setembro de 2026. A rede-alvo é a **municipal de Americana
@@ -373,31 +401,3 @@ normativo do sistema municipal.
 Pedidos que dependem da Secretaria de Educação de Americana, não do código:
 o decreto municipal de LGPD (ou a confirmação de que não existe), a adesão ou
 não à SED/Conviva e as deliberações vigentes do CMEA.
-
----
-
-## 8. Testes que sustentam este documento
-
-| Arquivo | O que fixa |
-|---|---|
-| [`frequenciaLdb.test.js`](../backend/src/tests/frequenciaLdb.test.js) | os gatilhos legais nas bordas (14 vs 15 faltas, 49 vs 50) |
-| [`conformidadeRotas.test.js`](../backend/src/tests/conformidadeRotas.test.js) | contagem por dia, recorte por perfil e por escola, e o rastro em `AuditLog` |
-| [`educacenso.test.js`](../backend/src/tests/educacenso.test.js) | códigos do INEP e a lista de pendências |
-| [`dadosAbertosAnonimato.test.js`](../backend/src/tests/dadosAbertosAnonimato.test.js) | a supressão que impede reidentificação |
-| [`fichaConselhoTutelar.test.js`](../backend/src/tests/fichaConselhoTutelar.test.js) | o conteúdo do documento oficial (endereço, responsáveis, dias) |
-| [`auditLogImutavel.test.js`](../backend/src/tests/auditLogImutavel.test.js) | que nenhuma escrita além de inserção passa em `audit_logs` |
-| [`anonimizacaoAluno.test.js`](../backend/src/tests/anonimizacaoAluno.test.js) | a lista de campos que saem e os que ficam — inclusive a chave de busca |
-| [`validacaoConsentimento.test.js`](../backend/src/tests/validacaoConsentimento.test.js) | as bordas do código de confirmação (expirado, travado, nunca pedido) |
-| [`consentimentoCadastro.test.js`](../backend/src/tests/consentimentoCadastro.test.js) | as cinco rotas de cadastro recusam sem aceite e gravam o registro auditável com ele; gestor não consente por outra pessoa; e uma trava que reprova qualquer `Usuario.create` que volte a gravar consentimento sozinho |
-| [`canalDenuncia.test.js`](../backend/src/tests/canalDenuncia.test.js) | gravidade por categoria e o fato de nada ser bloqueado |
-| [`leiauteEducacenso.test.js`](../backend/src/tests/leiauteEducacenso.test.js) | sanitização do separador e a recusa de gerar lote incompleto |
-| [`soberaniaDados.test.js`](../backend/src/tests/soberaniaDados.test.js) | o conflito entre região declarada e infraestrutura real |
-| [`pedidosTitular.regressao.test.js`](../backend/src/tests/pedidosTitular.regressao.test.js) | pedido do titular com protocolo e prazo de 15 dias, exportação com os dados do filho e despacho só pelo admin |
-| [`registroPedidoTitular.regressao.test.js`](../backend/src/tests/registroPedidoTitular.regressao.test.js) | motivo do titular fora do `AuditLog`, prazo sem atribuição à lei, escola do pedido pelo id, protocolo sem pedaço do id da conta e busca da fila junto com a escola |
-| [`loginPorPortal.test.js`](../backend/src/tests/loginPorPortal.test.js) | recusa de conta na porta errada, sem cookie, depois da prova de senha |
-| [`handshakeSocket.regressao.test.js`](../backend/src/tests/handshakeSocket.regressao.test.js) | handshake do Socket.IO recusa token encerrado no logout e token que não é de sessão; mantém conta ativa e `tokenVersion` |
-| [`autorizacoesProfessor.regressao.test.js`](../backend/src/tests/autorizacoesProfessor.regressao.test.js) | professor vê só a situação das autorizações das próprias turmas, e só se a direção da escola liberou |
-| [`avisoIndicadores.regressao.test.js`](../backend/src/tests/avisoIndicadores.regressao.test.js) | indicadores automáticos sobre aluno chegam com o aviso de apoio; o cálculo não altera o cadastro |
-| [`avaliacoesPublicas.regressao.test.js`](../backend/src/tests/avaliacoesPublicas.regressao.test.js) | avaliação pública só com adesão e moderação, iniciais no lugar de nome, sem foto nem id da conta — também na listagem do painel e no evento em tempo real |
-| [`restricaoJudicial.regressao.test.js`](../backend/src/tests/restricaoJudicial.regressao.test.js) | responsável bloqueado por decisão judicial perde o acesso mesmo com o e-mail na ficha; o outro responsável segue; só a gestão da escola marca |
-| [`iaPedagogico.regressao.test.js`](../backend/src/tests/iaPedagogico.regressao.test.js) | insight global sem nome de aluno no texto enviado ao provedor; controllers pedagógicos não chamam o provedor em escola sem adesão à IA, mesmo fora da rota protegida |
