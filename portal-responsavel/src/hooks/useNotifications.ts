@@ -7,6 +7,9 @@ import {
 import { sincronizarPush } from '../services/pushService';
 import { socket } from '../services/socket';
 import type { AuthUser, Notification } from '../types';
+// Som próprio das notificações, o mesmo do painel da equipe (Issue #540).
+// O módulo também toca quando o service worker avisa que chegou um push.
+import '../../../js/som-notificacao.js';
 
 interface UseNotificationsOptions {
   authUser: AuthUser | null;
@@ -69,7 +72,9 @@ export function useNotifications({ authUser, activeId }: UseNotificationsOptions
         if (activeIdRef.current !== alunoId) return;
         setNotifications(lista);
         const chegou = lista.find((n) => n.id === nova.id || n.id === nova._id);
-        if (chegou?.prioridade === 'alta') setPriorityNotification(chegou);
+        if (!chegou) return;
+        window.SomNotificacao?.aviso();
+        if (chegou.prioridade === 'alta') setPriorityNotification(chegou);
       } catch {}
     };
 
