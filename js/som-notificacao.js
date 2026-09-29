@@ -31,13 +31,43 @@ window.SomNotificacao = (function () {
 
     // ── Catálogo de sons disponíveis ─────────────────────────────────
     var SONS = [
-        { id: 'notificacao', nome: 'Principal',          arquivo: '/song/notificacao.mp3',  desc: 'Som principal do sistema' },
-        { id: 'sino',        nome: 'Sino Cristalino',    arquivo: '/song/sino.wav',         desc: 'Duas notas subindo, estilo sino' },
-        { id: 'bolha',       nome: 'Bolha',              arquivo: '/song/bolha.wav',        desc: 'Pop curto e moderno' },
-        { id: 'gentil',      nome: 'Chime Gentil',       arquivo: '/song/gentil.wav',       desc: 'Arpejo suave, estilo iOS' },
-        { id: 'dong-dong',   nome: 'Ding-Dong',          arquivo: '/song/dong-dong.wav',    desc: 'Campainha de escola' },
-        { id: 'moderno',     nome: 'Moderno',            arquivo: '/song/moderno.wav',      desc: 'Swoosh + nota, Material Design' },
-        { id: 'xilofone',    nome: 'Xilofone',           arquivo: '/song/xilofone.wav',     desc: 'Três notas alegres, som de madeira' },
+        {
+            id: 'notificacao',
+            nome: 'Principal',
+            arquivo: '/song/notificacao.mp3',
+            desc: 'Som principal do sistema',
+        },
+        {
+            id: 'sino',
+            nome: 'Sino Cristalino',
+            arquivo: '/song/sino.wav',
+            desc: 'Duas notas subindo, estilo sino',
+        },
+        { id: 'bolha', nome: 'Bolha', arquivo: '/song/bolha.wav', desc: 'Pop curto e moderno' },
+        {
+            id: 'gentil',
+            nome: 'Chime Gentil',
+            arquivo: '/song/gentil.wav',
+            desc: 'Arpejo suave, estilo iOS',
+        },
+        {
+            id: 'dong-dong',
+            nome: 'Ding-Dong',
+            arquivo: '/song/dong-dong.wav',
+            desc: 'Campainha de escola',
+        },
+        {
+            id: 'moderno',
+            nome: 'Moderno',
+            arquivo: '/song/moderno.wav',
+            desc: 'Swoosh + nota, Material Design',
+        },
+        {
+            id: 'xilofone',
+            nome: 'Xilofone',
+            arquivo: '/song/xilofone.wav',
+            desc: 'Três notas alegres, som de madeira',
+        },
     ];
 
     // ── Cache de objetos Audio pré-carregados ────────────────────────
@@ -46,18 +76,28 @@ window.SomNotificacao = (function () {
 
     function precarregarSom(id) {
         if (audioCache[id]) return;
-        var som = SONS.find(function (s) { return s.id === id; });
+        var som = SONS.find(function (s) {
+            return s.id === id;
+        });
         if (!som) return;
         try {
             var audio = new Audio(som.arquivo);
             audio.preload = 'auto';
             audio.volume = 0.5;
-            audio.addEventListener('canplaythrough', function () {
-                audioPronto[id] = true;
-            }, { once: true });
-            audio.addEventListener('error', function () {
-                audioPronto[id] = false;
-            }, { once: true });
+            audio.addEventListener(
+                'canplaythrough',
+                function () {
+                    audioPronto[id] = true;
+                },
+                { once: true }
+            );
+            audio.addEventListener(
+                'error',
+                function () {
+                    audioPronto[id] = false;
+                },
+                { once: true }
+            );
             audio.load();
             audioCache[id] = audio;
         } catch (_e) {
@@ -67,7 +107,9 @@ window.SomNotificacao = (function () {
     }
 
     function precarregarTodos() {
-        SONS.forEach(function (s) { precarregarSom(s.id); });
+        SONS.forEach(function (s) {
+            precarregarSom(s.id);
+        });
     }
 
     /**
@@ -79,7 +121,9 @@ window.SomNotificacao = (function () {
         if (!audio || !audioPronto[id]) return false;
         try {
             audio.currentTime = 0;
-            audio.play().catch(function () { /* bloqueado pelo navegador */ });
+            audio.play().catch(function () {
+                /* bloqueado pelo navegador */
+            });
             return true;
         } catch (_e) {
             return false;
@@ -116,7 +160,9 @@ window.SomNotificacao = (function () {
 
     /** Define o som de notificação (persiste no localStorage). */
     function definirSom(id) {
-        var existe = SONS.some(function (s) { return s.id === id; });
+        var existe = SONS.some(function (s) {
+            return s.id === id;
+        });
         if (!existe) return;
         try {
             localStorage.setItem(PREF_SOM, id);
@@ -271,4 +317,3 @@ window.SomNotificacao = (function () {
         testar: testar,
     };
 })();
-

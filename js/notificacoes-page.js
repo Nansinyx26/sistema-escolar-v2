@@ -13,19 +13,64 @@
     let _usuarioAtual = null;
 
     const ICONES_TIPO = {
-        aviso: { icon: 'bi-megaphone-fill', bg: 'rgba(14,165,233,0.15)', color: '#38bdf8', label: 'Aviso' },
-        alerta: { icon: 'bi-exclamation-triangle-fill', bg: 'rgba(239,68,68,0.12)', color: '#f87171', label: 'Alerta' },
-        comunicado: { icon: 'bi-megaphone-fill', bg: 'rgba(14,165,233,0.15)', color: '#38bdf8', label: 'Comunicado' },
-        frequencia: { icon: 'bi-calendar-check-fill', bg: 'rgba(16,185,129,0.12)', color: '#34d399', label: 'Frequência' },
-        nota: { icon: 'bi-bar-chart-line-fill', bg: 'rgba(59,130,246,0.12)', color: '#60a5fa', label: 'Nota' },
-        sistema: { icon: 'bi-gear-fill', bg: 'rgba(245,158,11,0.12)', color: '#fbbf24', label: 'Sistema' },
-        seguranca: { icon: 'bi-shield-lock-fill', bg: 'rgba(239,68,68,0.12)', color: '#f87171', label: 'Segurança' },
-        mural: { icon: 'bi-clipboard2-fill', bg: 'rgba(168,85,247,0.12)', color: '#c084fc', label: 'Mural' },
-        default: { icon: 'bi-bell-fill', bg: 'rgba(255,255,255,0.06)', color: '#94a3b8', label: 'Notificação' }
+        aviso: {
+            icon: 'bi-megaphone-fill',
+            bg: 'rgba(14,165,233,0.15)',
+            color: '#38bdf8',
+            label: 'Aviso',
+        },
+        alerta: {
+            icon: 'bi-exclamation-triangle-fill',
+            bg: 'rgba(239,68,68,0.12)',
+            color: '#f87171',
+            label: 'Alerta',
+        },
+        comunicado: {
+            icon: 'bi-megaphone-fill',
+            bg: 'rgba(14,165,233,0.15)',
+            color: '#38bdf8',
+            label: 'Comunicado',
+        },
+        frequencia: {
+            icon: 'bi-calendar-check-fill',
+            bg: 'rgba(16,185,129,0.12)',
+            color: '#34d399',
+            label: 'Frequência',
+        },
+        nota: {
+            icon: 'bi-bar-chart-line-fill',
+            bg: 'rgba(59,130,246,0.12)',
+            color: '#60a5fa',
+            label: 'Nota',
+        },
+        sistema: {
+            icon: 'bi-gear-fill',
+            bg: 'rgba(245,158,11,0.12)',
+            color: '#fbbf24',
+            label: 'Sistema',
+        },
+        seguranca: {
+            icon: 'bi-shield-lock-fill',
+            bg: 'rgba(239,68,68,0.12)',
+            color: '#f87171',
+            label: 'Segurança',
+        },
+        mural: {
+            icon: 'bi-clipboard2-fill',
+            bg: 'rgba(168,85,247,0.12)',
+            color: '#c084fc',
+            label: 'Mural',
+        },
+        default: {
+            icon: 'bi-bell-fill',
+            bg: 'rgba(255,255,255,0.06)',
+            color: '#94a3b8',
+            label: 'Notificação',
+        },
     };
 
     function getApiBaseUrl() {
-        return window.API_BASE_URL || (window.location.origin + '/api');
+        return window.API_BASE_URL || window.location.origin + '/api';
     }
 
     function formatarDataRelativa(isoStr) {
@@ -40,9 +85,17 @@
             const diffHoras = Math.floor(diffMin / 60);
             if (diffHoras < 24) return `Há ${diffHoras}h`;
             const diffDias = Math.floor(diffHoras / 24);
-            if (diffDias === 1) return 'Ontem às ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            if (diffDias === 1)
+                return (
+                    'Ontem às ' +
+                    d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                );
             if (diffDias < 7) return `Há ${diffDias} dias`;
-            return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            return d.toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+            });
         } catch {
             return '';
         }
@@ -67,7 +120,10 @@
         const elAvatar = document.getElementById('userAvatar');
         if (_usuarioAtual) {
             if (elNome) elNome.textContent = _usuarioAtual.nome || 'Usuário';
-            if (elCargo) elCargo.textContent = _usuarioAtual.perfil ? _usuarioAtual.perfil.toUpperCase() : '';
+            if (elCargo)
+                elCargo.textContent = _usuarioAtual.perfil
+                    ? _usuarioAtual.perfil.toUpperCase()
+                    : '';
             if (elAvatar && _usuarioAtual.foto) elAvatar.src = _usuarioAtual.foto;
         }
     }
@@ -125,7 +181,7 @@
     }
 
     function atualizarContadores() {
-        const naoLidas = _notificacoes.filter(n => !n.lidoPorMim).length;
+        const naoLidas = _notificacoes.filter((n) => !n.lidoPorMim).length;
         const total = _notificacoes.length;
 
         const elNaoLidas = document.getElementById('statNaoLidas');
@@ -141,12 +197,15 @@
     }
 
     function filtrarNotificacoes() {
-        return _notificacoes.filter(n => {
+        return _notificacoes.filter((n) => {
             // Filtro por tipo
             if (_filtroAtual === 'nao-lidas' && n.lidoPorMim) return false;
-            if (_filtroAtual === 'aviso' && !['aviso', 'comunicado', 'mural'].includes(n.tipo)) return false;
-            if (_filtroAtual === 'frequencia' && !['frequencia', 'nota'].includes(n.tipo)) return false;
-            if (_filtroAtual === 'sistema' && !['sistema', 'seguranca', 'alerta'].includes(n.tipo)) return false;
+            if (_filtroAtual === 'aviso' && !['aviso', 'comunicado', 'mural'].includes(n.tipo))
+                return false;
+            if (_filtroAtual === 'frequencia' && !['frequencia', 'nota'].includes(n.tipo))
+                return false;
+            if (_filtroAtual === 'sistema' && !['sistema', 'seguranca', 'alerta'].includes(n.tipo))
+                return false;
 
             // Busca textual
             if (_buscaTermo.trim()) {
@@ -179,12 +238,13 @@
             return;
         }
 
-        container.innerHTML = filtradas.map(n => {
-            const tipoConfig = ICONES_TIPO[n.tipo] || ICONES_TIPO.default;
-            const naoLida = !n.lidoPorMim;
-            const tempo = formatarDataRelativa(n.dataCriacao || n.createdAt);
+        container.innerHTML = filtradas
+            .map((n) => {
+                const tipoConfig = ICONES_TIPO[n.tipo] || ICONES_TIPO.default;
+                const naoLida = !n.lidoPorMim;
+                const tempo = formatarDataRelativa(n.dataCriacao || n.createdAt);
 
-            return `
+                return `
                 <div class="notif-card-item ${naoLida ? 'nao-lida' : ''} tipo-${n.tipo || 'default'} motion-reveal" id="notif-item-${n.id}">
                     <div class="notif-card-icon" style="background: ${tipoConfig.bg}; color: ${tipoConfig.color};">
                         <i class="bi ${tipoConfig.icon}"></i>
@@ -206,26 +266,31 @@
                             <button type="button" class="notif-action-btn-sm" onclick="window.NotificacoesPage.ouvir('${escapeHtml(n.titulo)}: ${escapeHtml(n.mensagem)}')">
                                 <i class="bi bi-volume-up"></i> Ouvir
                             </button>
-                            ${n.link || (n.data && n.data.url) ? `
+                            ${
+                                n.link || (n.data && n.data.url)
+                                    ? `
                                 <a href="${n.link || n.data.url}" class="notif-action-btn-sm" style="text-decoration: none;">
                                     <i class="bi bi-box-arrow-up-right"></i> Abrir
                                 </a>
-                            ` : ''}
+                            `
+                                    : ''
+                            }
                         </div>
                     </div>
                 </div>
             `;
-        }).join('');
+            })
+            .join('');
     }
 
     function escapeHtml(text) {
         if (!text) return '';
         const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-        return String(text).replace(/[&<>"']/g, m => map[m]);
+        return String(text).replace(/[&<>"']/g, (m) => map[m]);
     }
 
     async function alternarLida(id, marcarComoLida) {
-        const notif = _notificacoes.find(n => n.id === id);
+        const notif = _notificacoes.find((n) => n.id === id);
         if (notif) {
             notif.lidoPorMim = marcarComoLida;
             atualizarContadores();
@@ -237,7 +302,7 @@
                 await fetch(`${getApiBaseUrl()}/notificacoes/${id}/ler`, {
                     method: 'PUT',
                     credentials: 'include',
-                    headers: { 'X-CSRF-Token': getCsrfToken() || '' }
+                    headers: { 'X-CSRF-Token': getCsrfToken() || '' },
                 });
             }
         } catch (err) {
@@ -246,7 +311,9 @@
     }
 
     async function marcarTodasComoLidas() {
-        _notificacoes.forEach(n => { n.lidoPorMim = true; });
+        _notificacoes.forEach((n) => {
+            n.lidoPorMim = true;
+        });
         atualizarContadores();
         renderizarLista();
 
@@ -254,7 +321,7 @@
             await fetch(`${getApiBaseUrl()}/notificacoes/marcar-todas-lidas`, {
                 method: 'PUT',
                 credentials: 'include',
-                headers: { 'X-CSRF-Token': getCsrfToken() || '' }
+                headers: { 'X-CSRF-Token': getCsrfToken() || '' },
             });
         } catch (err) {
             console.warn('[Notif] Falha ao marcar todas como lidas:', err);
@@ -283,10 +350,14 @@
 
         const switchAtivo = document.getElementById('switchSomAtivo');
         const containerSons = document.getElementById('soundOptionsContainer');
-        const somAtual = window.SomNotificacao.obterSom ? window.SomNotificacao.obterSom() : 'notificacao';
+        const somAtual = window.SomNotificacao.obterSom
+            ? window.SomNotificacao.obterSom()
+            : 'notificacao';
 
         if (switchAtivo) {
-            switchAtivo.checked = window.SomNotificacao.ativo ? window.SomNotificacao.ativo() : true;
+            switchAtivo.checked = window.SomNotificacao.ativo
+                ? window.SomNotificacao.ativo()
+                : true;
             switchAtivo.addEventListener('change', () => {
                 window.SomNotificacao.definir(switchAtivo.checked);
                 atualizarStatSom();
@@ -295,10 +366,11 @@
 
         if (containerSons && window.SomNotificacao.listarSons) {
             const sons = window.SomNotificacao.listarSons();
-            containerSons.innerHTML = sons.map(s => {
-                const isSelected = s.id === somAtual;
-                const isPrincipal = s.id === 'notificacao';
-                return `
+            containerSons.innerHTML = sons
+                .map((s) => {
+                    const isSelected = s.id === somAtual;
+                    const isPrincipal = s.id === 'notificacao';
+                    return `
                     <div class="notif-sound-option ${isSelected ? 'selected' : ''}" data-sound-id="${s.id}" onclick="window.NotificacoesPage.selecionarSom('${s.id}')">
                         <div class="notif-sound-name">
                             <i class="bi ${isSelected ? 'bi-check-circle-fill' : 'bi-circle'}" style="color: ${isSelected ? 'var(--primary)' : 'var(--text-tertiary)'}"></i>
@@ -310,7 +382,8 @@
                         </button>
                     </div>
                 `;
-            }).join('');
+                })
+                .join('');
         }
 
         atualizarStatSom();
@@ -321,7 +394,7 @@
         window.SomNotificacao.definirSom(id);
         window.SomNotificacao.testar(id);
 
-        document.querySelectorAll('.notif-sound-option').forEach(el => {
+        document.querySelectorAll('.notif-sound-option').forEach((el) => {
             const sid = el.getAttribute('data-sound-id');
             const isSelected = sid === id;
             el.classList.toggle('selected', isSelected);
@@ -346,12 +419,14 @@
         if (!window.SomNotificacao) return;
 
         const ativo = window.SomNotificacao.ativo ? window.SomNotificacao.ativo() : true;
-        const somId = window.SomNotificacao.obterSom ? window.SomNotificacao.obterSom() : 'notificacao';
+        const somId = window.SomNotificacao.obterSom
+            ? window.SomNotificacao.obterSom()
+            : 'notificacao';
 
         if (elStat) elStat.textContent = ativo ? 'Ativado' : 'Silencioso';
         if (elSub) {
             const sons = window.SomNotificacao.listarSons ? window.SomNotificacao.listarSons() : [];
-            const somObj = sons.find(s => s.id === somId);
+            const somObj = sons.find((s) => s.id === somId);
             elSub.textContent = ativo ? (somObj ? somObj.nome : 'Padrão') : 'Sem som';
         }
     }
@@ -362,7 +437,8 @@
         const elPushSub = document.getElementById('statPushSub');
         const elBtnAtivar = document.getElementById('btnAtivarPush');
 
-        const suportado = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+        const suportado =
+            'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
         if (!suportado) {
             if (elPushStat) elPushStat.textContent = 'Não Suportado';
             if (elPushSub) elPushSub.textContent = 'Navegador incompatível';
@@ -380,17 +456,30 @@
         } catch {}
 
         if (elPushStat) {
-            elPushStat.textContent = inscrito ? 'Ativo' : (permissao === 'denied' ? 'Bloqueado' : 'Inativo');
-            elPushStat.style.color = inscrito ? 'var(--success, #10b981)' : (permissao === 'denied' ? 'var(--error, #ef4444)' : 'var(--text-primary)');
+            elPushStat.textContent = inscrito
+                ? 'Ativo'
+                : permissao === 'denied'
+                  ? 'Bloqueado'
+                  : 'Inativo';
+            elPushStat.style.color = inscrito
+                ? 'var(--success, #10b981)'
+                : permissao === 'denied'
+                  ? 'var(--error, #ef4444)'
+                  : 'var(--text-primary)';
         }
 
         if (elPushSub) {
-            elPushSub.textContent = inscrito ? 'Recebendo neste aparelho' : (permissao === 'denied' ? 'Permissão negada no navegador' : 'Toque para ativar');
+            elPushSub.textContent = inscrito
+                ? 'Recebendo neste aparelho'
+                : permissao === 'denied'
+                  ? 'Permissão negada no navegador'
+                  : 'Toque para ativar';
         }
 
         if (elBtnAtivar) {
             if (inscrito) {
-                elBtnAtivar.innerHTML = '<i class="bi bi-check-circle"></i> Push Ativado Neste Aparelho';
+                elBtnAtivar.innerHTML =
+                    '<i class="bi bi-check-circle"></i> Push Ativado Neste Aparelho';
                 elBtnAtivar.classList.remove('primary');
             } else {
                 elBtnAtivar.innerHTML = '<i class="bi bi-bell"></i> Ativar Notificações Push';
@@ -434,16 +523,18 @@
                     icon: '/img/icons/icon-192.png',
                     badge: '/img/icons/icon-192.png',
                     vibrate: [90, 60, 90, 60, 260],
-                    data: { url: '/html/notificacoes.html' }
+                    data: { url: '/html/notificacoes.html' },
                 });
             } catch {
                 new Notification('Escola Jaguari — Teste de Notificação', {
                     body: 'Seu sistema de notificações e som está configurado e pronto!',
-                    icon: '/img/icons/icon-192.png'
+                    icon: '/img/icons/icon-192.png',
                 });
             }
         } else {
-            alert('Som tocado! Para ver a notificação na tela, ative as notificações push primeiro.');
+            alert(
+                'Som tocado! Para ver a notificação na tela, ative as notificações push primeiro.'
+            );
         }
     }
 
@@ -463,9 +554,11 @@
             });
         }
 
-        document.querySelectorAll('.notif-pill-filter').forEach(btn => {
+        document.querySelectorAll('.notif-pill-filter').forEach((btn) => {
             btn.addEventListener('click', () => {
-                document.querySelectorAll('.notif-pill-filter').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.notif-pill-filter').forEach((b) => {
+                    b.classList.remove('active');
+                });
                 btn.classList.add('active');
                 _filtroAtual = btn.getAttribute('data-filtro') || 'todas';
                 renderizarLista();
@@ -473,9 +566,11 @@
         });
 
         // Alternância de Abas
-        document.querySelectorAll('.notif-tab-btn').forEach(btn => {
+        document.querySelectorAll('.notif-tab-btn').forEach((btn) => {
             btn.addEventListener('click', () => {
-                document.querySelectorAll('.notif-tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.notif-tab-btn').forEach((b) => {
+                    b.classList.remove('active');
+                });
                 btn.classList.add('active');
                 _abaAtual = btn.getAttribute('data-aba');
 
@@ -499,7 +594,7 @@
                     ...notif,
                     id: notif.id || String(notif._id),
                     lidoPorMim: false,
-                    dataCriacao: notif.dataCriacao || new Date().toISOString()
+                    dataCriacao: notif.dataCriacao || new Date().toISOString(),
                 });
                 atualizarContadores();
                 renderizarLista();
@@ -524,7 +619,6 @@
         selecionarSom,
         testarSom,
         ativarPush,
-        testarPush
+        testarPush,
     };
-
 })();
