@@ -11,9 +11,14 @@ const logger = require('../utils/logger');
 //   3. Gerar e persistir uma vez
 const KEYS_FILE = path.join(__dirname, '..', '..', 'vapid-keys.json');
 
+function limparChave(k) {
+    if (!k || typeof k !== 'string') return k;
+    return k.trim().replace(/^["']|["']$/g, '');
+}
+
 const vapidKeys = {
-    publicKey: process.env.VAPID_PUBLIC_KEY,
-    privateKey: process.env.VAPID_PRIVATE_KEY,
+    publicKey: limparChave(process.env.VAPID_PUBLIC_KEY),
+    privateKey: limparChave(process.env.VAPID_PRIVATE_KEY),
 };
 
 function isPlaceholder(v) {

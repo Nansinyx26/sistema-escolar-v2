@@ -102,6 +102,9 @@
             '/html/termo-audio-imagem.html': {
                 perfis: ['admin', 'diretor', 'secretaria', 'professor', 'responsavel'],
             },
+            '/html/notificacoes.html': {
+                perfis: ['admin', 'diretor', 'secretaria', 'professor', 'responsavel'],
+            },
             '/html/dashboard.html': {
                 perfis: ['admin', 'diretor', 'professor', 'secretaria'],
                 redirecionarAoPainel: true,

@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <!-- Trava de acesso por perfil. SEM defer e antes de tudo: a decisão precisa acontecer antes do primeiro pixel. -->
+    <script src="/js/guarda-acesso.js?v=1.0"></script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+    <title>Central de Notificações | Sistema Escolar</title>
+    
+    <link rel="icon" type="image/png" href="../favicon/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- CSS Design System -->
+    <link rel="stylesheet" href="../css/variables.css?v=2.0">
+    <link rel="stylesheet" href="../css/base.css?v=2.0">
+    <link rel="stylesheet" href="../css/components-new.css?v=2.0">
+    <link rel="stylesheet" href="../css/responsive-global.css?v=1.2">
+    <link rel="stylesheet" href="../css/system-global.css?v=1.0">
+    <link rel="stylesheet" href="../css/motion.css?v=1.0">
+    <link rel="stylesheet" href="../css/acessibilidade.css">
+    <link rel="stylesheet" href="/css/botao-voltar.css">
+    <link rel="stylesheet" href="../css/notificacoes-page.css?v=1.0">
+
+    <!-- Bootstrap Icons -->
+    <link rel="preload" href="../js/libs/fonts/bootstrap-icons.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="../js/libs/bootstrap-icons.min.css">
+</head>
+<body>
+    <div class="notif-page-layout">
+        <!-- Top Navigation Header -->
+        <header class="notif-nav-header">
+            <div class="notif-nav-container">
+                <div class="notif-nav-left">
+                    <button type="button" id="btnVoltar" class="btn-voltar-global" data-fallback="/html/dashboard.html" aria-label="Voltar para a página anterior">
+                        <i class="bi bi-arrow-left"></i>
+                        <span class="btn-voltar-txt">Voltar</span>
+                    </button>
+                    <div class="notif-nav-brand">
+                        <img src="/img/logo.svg" alt="Logo Escola" class="notif-nav-logo" onerror="this.src='/favicon/favicon.png'">
+                        <div>
+                            <h1 class="notif-nav-title">
+                                Central de Notificações
+                                <span class="notif-nav-badge-live">Tempo Real</span>
+                            </h1>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="notif-nav-right">
+                    <!-- Alternador de Tema -->
+                    <button type="button" class="ui-icon-btn ui-theme-toggle" data-ui-tema aria-label="Alternar tema claro/escuro">
+                        <span class="ui-ico-lua"><i class="bi bi-moon-stars"></i></span>
+                        <span class="ui-ico-sol"><i class="bi bi-sun"></i></span>
+                    </button>
+                    
+                    <!-- Avatar do usuário -->
+                    <div class="notif-user-chip">
+                        <img src="/img/default-avatar.png" id="userAvatar" alt="Avatar" class="notif-user-avatar">
+                        <div class="notif-user-info hide-mobile">
+                            <span id="userName" class="notif-user-name">Carregando...</span>
+                            <span id="userCargo" class="notif-user-cargo">...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Body Content -->
+        <main class="notif-main-container">
+            <!-- Stats & Diagnostics Overview -->
+            <section class="notif-stats-grid">
+                <div class="notif-stat-card">
+                    <div class="notif-stat-icon unread">
+                        <i class="bi bi-bell-fill"></i>
+                    </div>
+                    <div class="notif-stat-info">
+                        <div class="notif-stat-label">Não Lidas</div>
+                        <h2 class="notif-stat-value" id="statNaoLidas">0</h2>
+                        <div class="notif-stat-sub">Mensagens pendentes</div>
+                    </div>
+                </div>
+
+                <div class="notif-stat-card">
+                    <div class="notif-stat-icon push">
+                        <i class="bi bi-phone"></i>
+                    </div>
+                    <div class="notif-stat-info">
+                        <div class="notif-stat-label">Push no Aparelho</div>
+                        <h2 class="notif-stat-value" id="statPushStatus">Verificando...</h2>
+                        <div class="notif-stat-sub" id="statPushSub">Status do navegador</div>
+                    </div>
+                </div>
+
+                <div class="notif-stat-card">
+                    <div class="notif-stat-icon sound">
+                        <i class="bi bi-volume-up-fill"></i>
+                    </div>
+                    <div class="notif-stat-info">
+                        <div class="notif-stat-label">Som do Sistema</div>
+                        <h2 class="notif-stat-value" id="statSomStatus">Ativado</h2>
+                        <div class="notif-stat-sub" id="statSomSub">notificacao.mp3</div>
+                    </div>
+                </div>
+
+                <div class="notif-stat-card">
+                    <div class="notif-stat-icon" style="background: rgba(168, 85, 247, 0.15); color: #c084fc;">
+                        <i class="bi bi-inbox-fill"></i>
+                    </div>
+                    <div class="notif-stat-info">
+                        <div class="notif-stat-label">Total de Avisos</div>
+                        <h2 class="notif-stat-value" id="statTotal">0</h2>
+                        <div class="notif-stat-sub">Histórico geral</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Navigation Tabs -->
+            <nav class="notif-main-tabs" aria-label="Seções da página">
+                <button type="button" class="notif-tab-btn active" data-aba="notificacoes">
+                    <i class="bi bi-list-check"></i> Todas as Notificações
+                    <span class="badge" id="tabBadgeNaoLidas" style="display: none;">0</span>
+                </button>
+                <button type="button" class="notif-tab-btn" data-aba="configuracoes">
+                    <i class="bi bi-sliders"></i> Preferências & Sons
+                </button>
+            </nav>
+
+            <!-- VIEW 1: Lista de Notificações -->
+            <div id="viewListaNotificacoes" style="display: block;">
+                <!-- Controls & Filters Bar -->
+                <div class="notif-controls-bar">
+                    <div class="notif-filter-group">
+                        <button type="button" class="notif-pill-filter active" data-filtro="todas">Todas</button>
+                        <button type="button" class="notif-pill-filter" data-filtro="nao-lidas">Não Lidas</button>
+                        <button type="button" class="notif-pill-filter" data-filtro="aviso">Avisos & Comunicados</button>
+                        <button type="button" class="notif-pill-filter" data-filtro="frequencia">Frequência & Notas</button>
+                        <button type="button" class="notif-pill-filter" data-filtro="sistema">Sistema</button>
+                    </div>
+
+                    <div class="notif-search-container">
+                        <i class="bi bi-search notif-search-icon"></i>
+                        <input type="text" id="notifSearch" placeholder="Buscar avisos..." class="ui-input notif-search-input">
+                    </div>
+
+                    <div class="notif-actions-group">
+                        <button type="button" class="notif-btn-action" onclick="window.NotificacoesPage.marcarTodasComoLidas()" title="Marcar todas como lidas">
+                            <i class="bi bi-check2-all"></i> <span class="notif-btn-txt">Marcar tudo como lido</span>
+                        </button>
+                        <button type="button" class="notif-btn-action" onclick="window.NotificacoesPage.recarregar()" title="Atualizar notificações">
+                            <i class="bi bi-arrow-clockwise"></i> <span class="notif-btn-txt">Atualizar</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Lista de Notificações -->
+                <div id="notifList" class="notif-list-container" style="margin-top: 1rem;">
+                    <!-- Preenchido via JavaScript -->
+                </div>
+            </div>
+
+            <!-- VIEW 2: Configurações & Sons -->
+            <div id="viewConfiguracoes" class="notif-settings-layout" style="display: none;">
+                <!-- Card Sons -->
+                <div class="notif-settings-card">
+                    <div>
+                        <h3 class="notif-settings-title">
+                            <i class="bi bi-music-note-beamed" style="color: var(--primary);"></i>
+                            Sons de Notificação
+                        </h3>
+                        <p class="notif-settings-desc">
+                            Personalize o som emitido quando uma nova mensagem ou aviso chegar.
+                        </p>
+                    </div>
+
+                    <div class="notif-setting-row">
+                        <div>
+                            <span style="font-size: 0.92rem; font-weight: 600;">Efeito Sonoro Ativado</span>
+                            <p style="font-size: 0.8rem; color: var(--text-tertiary); margin: 0.1rem 0 0;">Tocar som nas notificações em tempo real</p>
+                        </div>
+                        <label class="notif-switch">
+                            <input type="checkbox" id="switchSomAtivo" checked>
+                            <span class="notif-slider"></span>
+                        </label>
+                    </div>
+
+                    <div>
+                        <span style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; color: var(--text-tertiary); display: block; margin-bottom: 0.6rem;">
+                            Selecione o Som Desejado
+                        </span>
+                        <div id="soundOptionsContainer" class="notif-sound-selector">
+                            <!-- Preenchido via som-notificacao.js -->
+                        </div>
+                    </div>
+
+                    <button type="button" class="notif-btn-action" onclick="window.NotificacoesPage.testarPush()" style="justify-content: center; padding: 0.6rem;">
+                        <i class="bi bi-play-circle"></i> Testar Notificação com Som
+                    </button>
+                </div>
+
+                <!-- Card Notificações Push Web (VAPID) -->
+                <div class="notif-settings-card">
+                    <div>
+                        <h3 class="notif-settings-title">
+                            <i class="bi bi-bell-fill" style="color: var(--secondary);"></i>
+                            Notificações Push no Celular / Computador
+                        </h3>
+                        <p class="notif-settings-desc">
+                            Receba alertas mesmo com o navegador fechado ou minimizado através da tecnologia Web Push (VAPID).
+                        </p>
+                    </div>
+
+                    <div class="notif-callout">
+                        <i class="bi bi-info-circle notif-callout-icon"></i>
+                        <div>
+                            <strong>No iPhone ou iPad (iOS):</strong> As notificações push exigem que você adicione o sistema à Tela de Início (toque em <em>Compartilhar</em> → <em>Adicionar à Tela de Início</em>).
+                        </div>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <button type="button" id="btnAtivarPush" class="notif-btn-action primary" onclick="window.NotificacoesPage.ativarPush()" style="justify-content: center; padding: 0.75rem;">
+                            <i class="bi bi-bell"></i> Ativar Notificações Push
+                        </button>
+                        <button type="button" class="notif-btn-action" onclick="window.NotificacoesPage.testarPush()" style="justify-content: center; padding: 0.75rem;">
+                            <i class="bi bi-broadcast"></i> Disparar Notificação de Teste
+                        </button>
+                    </div>
+
+                    <div class="notif-setting-row" style="margin-top: auto;">
+                        <div>
+                            <span style="font-size: 0.9rem; font-weight: 600;">Status do Dispositivo</span>
+                            <p style="font-size: 0.8rem; color: var(--text-tertiary); margin: 0.1rem 0 0;">Inscrição criptográfica segura (P-256)</p>
+                        </div>
+                        <span class="notif-tag" style="background: rgba(16, 185, 129, 0.15); color: var(--success, #10b981);">Conectado</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts do Sistema -->
+    <script src="../js/api-config.js"></script>
+    <script src="../js/csrf-helper.js"></script>
+    <script src="../js/theme.js"></script>
+    <script defer src="../js/realtime.js"></script>
+    <script defer src="../js/som-notificacao.js?v=1.0"></script>
+    <script defer src="../js/push-notifications.js?v=1.0"></script>
+    <script defer src="../js/notificacoes-page.js?v=1.0"></script>
+    <script defer src="../js/motion.js"></script>
+    <script defer src="../js/acessibilidade.js"></script>
+</body>
+</html>
