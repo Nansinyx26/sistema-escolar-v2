@@ -75,7 +75,9 @@ export default defineConfig({
             name: 'reduced-motion',
             use: {
                 ...devices['Desktop Chrome'],
-                reducedMotion: 'reduce',
+                contextOptions: {
+                    reducedMotion: 'reduce',
+                },
             },
             testMatch: /.*\.a11y\.spec\.ts/,
         },
