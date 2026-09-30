@@ -12,7 +12,10 @@ const EscolaSchema = new mongoose.Schema(
         endereco: { type: String, default: '' },
         bairro: { type: String, default: '' },
         municipio: { type: String, default: 'Americana' },
-        codigoSecreto: { type: String, select: false },
+        // Credencial de cadastro da escola. O índice único correspondente é
+        // criado também pela migration 1790785374633: ele impede que duas
+        // escolas aceitem o mesmo código, inclusive sob escritas concorrentes.
+        codigoSecreto: { type: String, select: false, unique: true, sparse: true },
 
         // Decisão da escola sobre usar o assistente de IA (Issue #401).
         // `undefined` = sem decisão registrada: vale o padrão da rede
