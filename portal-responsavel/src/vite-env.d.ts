@@ -21,5 +21,9 @@ interface Window {
     enviar: () => void;
     ativo: () => boolean;
     definir: (on: boolean) => void;
+    listarSons: () => Array<{ id: string; nome: string; arquivo: string; duracaoMs: number }>;
+    obterSom: () => string;
+    definirSom: (id: string) => boolean;
+    testar: (id?: string) => void;
   };
 }

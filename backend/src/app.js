@@ -272,6 +272,7 @@ const staticDirectories = [
     'graficos',
     'favicon',
     'portal-responsavel/dist',
+    'song',
 ];
 // `favicon.ico` SAIU desta lista (Issue #109): o caminho estava declarado, mas
 // o arquivo não existe no repositório — o que existe é `favicon.svg` e a pasta

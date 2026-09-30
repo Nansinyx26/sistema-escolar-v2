@@ -19,7 +19,7 @@
 // linha, e o CI roda essa verificação. O script lê a lista daqui de baixo —
 // não mantém cópia — então acrescentar um asset já o coloca sob a regra.
 // Detalhes em docs/QUALITY.md, seção "Service worker: o bump do VERSION".
-const VERSION = 'v39';
+const VERSION = 'v40';
 const STATIC_CACHE = `escola-static-${VERSION}`;
 const PAGES_CACHE = `escola-pages-${VERSION}`;
 const CURRENT_CACHES = [STATIC_CACHE, PAGES_CACHE];
@@ -74,6 +74,13 @@ const STATIC_ASSETS = [
     '/js/libs/sweetalert2.min.js',
     '/img/icons/icon-192.png',
     '/img/icons/icon-512.png',
+    '/song/notificacao.mp3',
+    '/song/sino.wav',
+    '/song/bolha.wav',
+    '/song/gentil.wav',
+    '/song/dong-dong.wav',
+    '/song/moderno.wav',
+    '/song/xilofone.wav',
 ];
 
 async function precache() {

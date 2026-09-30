@@ -141,6 +141,9 @@ const AREAS = {
     '/html/termo-audio-imagem.html': {
         perfis: ['admin', 'diretor', 'secretaria', 'professor', 'responsavel'],
     },
+    '/html/notificacoes.html': {
+        perfis: ['admin', 'diretor', 'secretaria', 'professor', 'responsavel'],
+    },
 
     // ── Painel unificado ─────────────────────────────────────────────────
     // O dashboard se adapta ao perfil que o abre (professor, diretor, admin) e
