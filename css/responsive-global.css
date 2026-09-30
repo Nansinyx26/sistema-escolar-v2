@@ -343,10 +343,16 @@ html {
 
   /* === NOTIFICATION PANEL === */
   #notif-panel {
-    width: calc(100vw - 1.5rem) !important;
-    right: 0 !important;
-    left: auto !important;
-    max-height: 70vh !important;
+    position: fixed !important;
+    top: 60px !important;
+    left: 10px !important;
+    right: 10px !important;
+    width: auto !important;
+    max-width: calc(100vw - 20px) !important;
+    max-height: calc(100dvh - 74px - env(safe-area-inset-bottom, 0px)) !important;
+    transform-origin: top center !important;
+    border-radius: 14px !important;
+    z-index: 10000 !important;
   }
 
   /* === LOGIN PAGE === */

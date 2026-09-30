@@ -1,15 +1,18 @@
-import React, { useState } from 'react';
-import { Bell, Mail, Smartphone, Save, ShieldCheck } from 'lucide-react';
+import { Bell, Mail, Save, ShieldCheck, Smartphone } from 'lucide-react';
+import type React from 'react';
+import { useState } from 'react';
 import { updateProfile } from '../services/apiService';
 import styles from '../styles/portal.module.scss';
 
+export interface NotificationPrefs {
+  portal: boolean;
+  push: boolean;
+  email: boolean;
+}
+
 interface NotificationSettingsProps {
-  initialPrefs: {
-    portal: boolean;
-    push: boolean;
-    email: boolean;
-  };
-  onUpdate: (updatedPrefs: any) => void;
+  initialPrefs: NotificationPrefs;
+  onUpdate: (updatedPrefs: NotificationPrefs) => void;
 }
 
 const NotificationSettings: React.FC<NotificationSettingsProps> = ({ initialPrefs, onUpdate }) => {
@@ -18,7 +21,7 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({ initialPref
   const [saved, setSaved] = useState(false);
 
   const handleToggle = (key: keyof typeof prefs) => {
-    setPrefs(prev => ({ ...prev, [key]: !prev[key] }));
+    setPrefs((prev) => ({ ...prev, [key]: !prev[key] }));
     setSaved(false);
   };
 
@@ -26,9 +29,13 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({ initialPref
     setLoading(true);
     try {
       const updatedUser = await updateProfile({
-        notificacoesPreferencias: prefs
+        notificacoesPreferencias: prefs,
       });
-      onUpdate(updatedUser.notificacoesPreferencias);
+      if (updatedUser?.notificacoesPreferencias) {
+        onUpdate(updatedUser.notificacoesPreferencias);
+      } else {
+        onUpdate(prefs);
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (error) {
@@ -48,60 +55,59 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({ initialPref
       <div className={styles.settingsGrid}>
         <div className={styles.settingItem}>
           <div className={styles.settingInfo}>
-            <div className={styles.settingIcon}><Bell size={20} /></div>
+            <div className={styles.settingIcon}>
+              <Bell size={20} />
+            </div>
             <div>
               <span className={styles.settingTitle}>No Portal Escolar</span>
-              <p className={styles.settingDesc}>Visualizar alertas e contador no sino do sistema.</p>
+              <p className={styles.settingDesc}>
+                Visualizar alertas e contador no sino do sistema.
+              </p>
             </div>
           </div>
           <label className={styles.switch}>
-            <input 
-              type="checkbox" 
-              checked={prefs.portal} 
-              onChange={() => handleToggle('portal')} 
-            />
+            <input type="checkbox" checked={prefs.portal} onChange={() => handleToggle('portal')} />
             <span className={styles.slider} />
           </label>
         </div>
 
         <div className={styles.settingItem}>
           <div className={styles.settingInfo}>
-            <div className={styles.settingIcon}><Smartphone size={20} /></div>
+            <div className={styles.settingIcon}>
+              <Smartphone size={20} />
+            </div>
             <div>
               <span className={styles.settingTitle}>Notificações Push</span>
               <p className={styles.settingDesc}>Receber avisos na tela do celular ou computador.</p>
             </div>
           </div>
           <label className={styles.switch}>
-            <input 
-              type="checkbox" 
-              checked={prefs.push} 
-              onChange={() => handleToggle('push')} 
-            />
+            <input type="checkbox" checked={prefs.push} onChange={() => handleToggle('push')} />
             <span className={styles.slider} />
           </label>
         </div>
 
         <div className={styles.settingItem}>
           <div className={styles.settingInfo}>
-            <div className={styles.settingIcon}><Mail size={20} /></div>
+            <div className={styles.settingIcon}>
+              <Mail size={20} />
+            </div>
             <div>
               <span className={styles.settingTitle}>E-mail Automático</span>
-              <p className={styles.settingDesc}>Enviar resumo de comunicados para seu e-mail cadastrado.</p>
+              <p className={styles.settingDesc}>
+                Enviar resumo de comunicados para seu e-mail cadastrado.
+              </p>
             </div>
           </div>
           <label className={styles.switch}>
-            <input 
-              type="checkbox" 
-              checked={prefs.email} 
-              onChange={() => handleToggle('email')} 
-            />
+            <input type="checkbox" checked={prefs.email} onChange={() => handleToggle('email')} />
             <span className={styles.slider} />
           </label>
         </div>
       </div>
 
-      <button 
+      <button
+        type="button"
         className={`${styles.saveSettingsBtn} ${saved ? styles.saved : ''}`}
         onClick={handleSave}
         disabled={loading}
@@ -109,9 +115,13 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({ initialPref
         {loading ? (
           <span className={styles.spinnerSm} />
         ) : saved ? (
-          <><ShieldCheck size={18} /> Preferências Salvas!</>
+          <>
+            <ShieldCheck size={18} /> Preferências Salvas!
+          </>
         ) : (
-          <><Save size={18} /> Salvar Alterações</>
+          <>
+            <Save size={18} /> Salvar Alterações
+          </>
         )}
       </button>
     </div>

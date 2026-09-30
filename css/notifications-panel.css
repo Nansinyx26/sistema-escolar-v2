@@ -37,7 +37,8 @@
     top: calc(100% + 10px);
     right: 0;
     width: 380px;
-    max-height: 520px;
+    max-width: calc(100vw - 24px);
+    max-height: min(520px, calc(100dvh - 80px));
     background: var(--ui-surface, #1a1d27);
     color: var(--ui-text, #f1f5f9);
     border: 1px solid var(--ui-line-strong, rgba(255,255,255,0.08));
@@ -374,6 +375,28 @@
     /* Comentários: replies menos recuados */
     .replies-thread { margin-left: 14px !important; }
     .reply-input-wrapper { margin-left: 14px !important; }
+
+    /* Painel de notificações em tablet */
+    #notif-panel {
+        max-width: min(380px, calc(100vw - 24px));
+        max-height: calc(100dvh - 80px - env(safe-area-inset-bottom, 0px));
+    }
+}
+
+/* Mobile intermediário (≤ 640px) */
+@media (max-width: 640px) {
+    #notif-panel {
+        position: fixed !important;
+        top: 64px !important;
+        left: 12px !important;
+        right: 12px !important;
+        width: auto !important;
+        max-width: calc(100vw - 24px) !important;
+        max-height: calc(100dvh - 84px - env(safe-area-inset-bottom, 0px)) !important;
+        transform-origin: top center !important;
+        border-radius: 16px !important;
+        z-index: 10000 !important;
+    }
 }
 
 /* Mobile pequeno (≤ 480px) */
@@ -392,7 +415,57 @@
     .action-btn-legacy { font-size: 0.75rem; padding: 4px 10px; }
 
     /* Painel de notificações */
-    #notif-panel { width: calc(100vw - 1rem); right: -0.5rem; }
+    #notif-panel {
+        position: fixed !important;
+        top: 60px !important;
+        left: 10px !important;
+        right: 10px !important;
+        width: auto !important;
+        max-width: calc(100vw - 20px) !important;
+        max-height: calc(100dvh - 74px - env(safe-area-inset-bottom, 0px)) !important;
+        transform-origin: top center !important;
+        border-radius: 14px !important;
+        z-index: 10000 !important;
+    }
+
+    .notif-header {
+        padding: 0.75rem 0.85rem !important;
+    }
+    .notif-header h4 {
+        font-size: 0.9rem !important;
+    }
+    .notif-header .notif-marcar-btn {
+        font-size: 0.72rem !important;
+        padding: 0.25rem 0.5rem !important;
+        min-height: 28px !important;
+    }
+    .notif-header .notif-fechar-btn {
+        width: 28px !important;
+        height: 28px !important;
+        border-radius: 8px !important;
+    }
+    .notif-item {
+        padding: 0.75rem 0.85rem !important;
+        gap: 0.65rem !important;
+    }
+    .notif-icon-wrap {
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 1rem !important;
+        border-radius: 8px !important;
+    }
+    .notif-titulo {
+        font-size: 0.84rem !important;
+    }
+    .notif-desc {
+        font-size: 0.78rem !important;
+    }
+    .notif-footer {
+        padding: 0.65rem 0.85rem !important;
+        font-size: 0.75rem !important;
+        flex-wrap: wrap !important;
+        gap: 0.4rem !important;
+    }
 
     /* voice-settings-panel */
     #voice-settings-panel { width: calc(100vw - 2rem) !important; right: 0 !important; }
@@ -401,3 +474,28 @@
     .feed-filters-bar { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
     .feed-filter-tab { flex-shrink: 0; }
 }
+
+/* Telas muito estreitas (≤ 360px) */
+@media (max-width: 360px) {
+    #notif-panel {
+        left: 6px !important;
+        right: 6px !important;
+        max-width: calc(100vw - 12px) !important;
+        top: 56px !important;
+    }
+    .notif-header {
+        padding: 0.6rem 0.65rem !important;
+    }
+    .notif-header h4 {
+        font-size: 0.82rem !important;
+    }
+    .notif-footer {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        text-align: center !important;
+    }
+    .notif-footer a {
+        justify-content: center !important;
+    }
+}
+
