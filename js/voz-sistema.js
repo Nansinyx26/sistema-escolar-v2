@@ -6,6 +6,11 @@
  * dispositivo oferece, prioriza pt-BR, guarda uma escolha por conta e expõe a
  * leitura pela Web Speech API. Separar regra de interface evita que Dashboard,
  * Direção, Secretaria e Portal acabem com fallbacks diferentes.
+ *
+ * EVENTOS DISPARADOS
+ * ------------------
+ *   'voz-sistema:alterada'          — preferências mudaram (detail.preferencias)
+ *   'voz-sistema:vozes-atualizadas' — lista de vozes (re)carregada pelo navegador
  */
 (function () {
     'use strict';
@@ -87,6 +92,66 @@
         return 3;
     }
 
+    /**
+     * Classifica a voz em uma categoria para apresentação na interface.
+     *
+     * Não há como detectar gênero com certeza a partir do nome, mas os
+     * rótulos mais comuns dos navegadores permitem um palpite útil: nomes
+     * como "Google brasileiro", "Microsoft Maria" e similares são
+     * reconhecidos pelos padrões abaixo.
+     *
+     * @param {SpeechSynthesisVoice} voz
+     * @returns {'feminina'|'masculina'|'neutra'}
+     */
+    function classificarVoz(voz) {
+        var nome = String(voz.name || '').toLowerCase();
+        // Nomes femininos comuns nas engines dos navegadores
+        var femininos = [
+            'female',
+            'mulher',
+            'feminina',
+            'maria',
+            'vitoria',
+            'vitória',
+            'francisca',
+            'alice',
+            'google brasileiro',
+            'luciana',
+            'helena',
+            'camila',
+            'fernanda',
+            'samantha',
+            'zira',
+            'sabina',
+            'monica',
+            'raquel',
+        ];
+        var masculinos = [
+            'male',
+            'homem',
+            'masculin',
+            'daniel',
+            'ricardo',
+            'tiago',
+            'thiago',
+            'antonio',
+            'antônio',
+            'pedro',
+            'carlos',
+            'miguel',
+            'david',
+            'mark',
+        ];
+
+        for (var i = 0; i < femininos.length; i++) {
+            if (nome.indexOf(femininos[i]) !== -1) return 'feminina';
+        }
+        for (var j = 0; j < masculinos.length; j++) {
+            if (nome.indexOf(masculinos[j]) !== -1) return 'masculina';
+        }
+        return 'neutra';
+    }
+
     function listarVozes() {
         if (!sinteseDisponivel()) return [];
         return window.speechSynthesis
@@ -104,6 +169,7 @@
                     idioma: String(voz.lang || ''),
                     padrao: voz.default === true,
                     local: voz.localService !== false,
+                    categoria: classificarVoz(voz),
                 };
             });
     }
@@ -132,18 +198,42 @@
         );
     }
 
-    function falar(texto) {
+    /**
+     * Fala o texto usando a voz nativa configurada pelo usuário.
+     *
+     * @param {string} texto — o conteúdo a ser falado
+     * @param {object} [opcoes] — opções opcionais
+     * @param {number} [opcoes.rate] — sobrescreve a velocidade salva
+     * @param {number} [opcoes.volume] — sobrescreve o volume salvo
+     * @param {string} [opcoes.voiceURI] — sobrescreve a voz salva
+     * @returns {boolean} true se a fala foi iniciada
+     */
+    function falar(texto, opcoes) {
         if (!texto || !sinteseDisponivel()) return false;
 
         var preferencias = lerPreferencias();
+        var overrides = opcoes && typeof opcoes === 'object' ? opcoes : {};
+
         var utterance = new window.SpeechSynthesisUtterance(String(texto));
-        var voz = vozNativa(preferencias);
+        var prefComOverride = {
+            voiceURI: overrides.voiceURI || preferencias.voiceURI,
+            rate: overrides.rate || preferencias.rate,
+            volume: overrides.volume !== undefined ? overrides.volume : preferencias.volume,
+        };
+        var voz = vozNativa(prefComOverride);
         if (voz) utterance.voice = voz;
-        utterance.rate = preferencias.rate;
-        utterance.volume = preferencias.volume;
+        utterance.rate = prefComOverride.rate;
+        utterance.volume = prefComOverride.volume;
         window.speechSynthesis.cancel();
         window.speechSynthesis.speak(utterance);
         return true;
+    }
+
+    /** Para qualquer fala nativa em andamento. */
+    function parar() {
+        if (sinteseDisponivel()) {
+            window.speechSynthesis.cancel();
+        }
     }
 
     function definirConta(id) {
@@ -157,6 +247,18 @@
         };
     }
 
+    // Vincula automaticamente à conta do auth quando ele estiver pronto.
+    // `auth:ready` vem de js/auth.js após reconciliar o token.
+    window.addEventListener('auth:updated', function () {
+        try {
+            var usuario = window.auth && window.auth.getCurrentUser && window.auth.getCurrentUser();
+            var id = usuario && (usuario._id || usuario.id);
+            if (id) definirConta(id);
+        } catch (_e) {
+            // noop
+        }
+    });
+
     window.VozDoSistema = {
         FRASE_PREVIA: FRASE_PREVIA,
         disponivel: sinteseDisponivel,
@@ -165,8 +267,10 @@
         preferencias: lerPreferencias,
         salvarPreferencias: gravarPreferencias,
         falar: falar,
-        ouvirPrevia: function () {
-            return falar(FRASE_PREVIA);
+        parar: parar,
+        classificarVoz: classificarVoz,
+        ouvirPrevia: function (voiceURI) {
+            return falar(FRASE_PREVIA, voiceURI ? { voiceURI: voiceURI } : undefined);
         },
     };
 })();

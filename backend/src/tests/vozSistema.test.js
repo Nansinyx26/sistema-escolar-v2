@@ -92,5 +92,50 @@ describe('VozDoSistema', () => {
         expect(window.VozDoSistema.disponivel()).toBe(false);
         expect(window.VozDoSistema.listarVozes()).toEqual([]);
         expect(window.VozDoSistema.falar('teste')).toBe(false);
+        expect(() => window.VozDoSistema.parar()).not.toThrow();
+    });
+
+    it('classifica vozes em feminina, masculina e neutra', () => {
+        const voz = carregar(VOZES);
+        expect(voz.classificarVoz({ name: 'Microsoft Maria Desktop - Portuguese(Brazil)' })).toBe(
+            'feminina'
+        );
+        expect(voz.classificarVoz({ name: 'Google português do Brasil Daniel' })).toBe('masculina');
+        expect(voz.classificarVoz({ name: 'Voz Sintetizada Generica' })).toBe('neutra');
+    });
+
+    it('permite parar fala em andamento', () => {
+        const voz = carregar(VOZES);
+        voz.parar();
+        expect(window.speechSynthesis.cancel).toHaveBeenCalledTimes(1);
+    });
+
+    it('permite ouvir prévia de voz específica sem persistir', () => {
+        const voz = carregar(VOZES);
+        voz.definirConta('conta-teste');
+        voz.salvarPreferencias({ voiceURI: 'pt-br' });
+
+        expect(voz.ouvirPrevia('pt')).toBe(true);
+        const utterance = window.SpeechSynthesisUtterance.mock.instances[0];
+        expect(utterance.voice.voiceURI).toBe('pt');
+        // Preferência salva não foi alterada
+        expect(voz.preferencias().voiceURI).toBe('pt-br');
+    });
+
+    it('sincroniza conta ao receber evento auth:updated', () => {
+        window.auth = {
+            getCurrentUser: () => ({ _id: 'usuario-auth-123' }),
+        };
+        const voz = carregar(VOZES);
+        voz.definirConta('usuario-auth-123');
+        voz.salvarPreferencias({ voiceURI: 'pt-br', rate: 1.5, volume: 0.8 });
+
+        // Muda para outra conta
+        voz.definirConta('outra-conta');
+        expect(voz.preferencias().rate).toBe(1);
+
+        // Dispara auth:updated
+        window.dispatchEvent(new Event('auth:updated'));
+        expect(voz.preferencias().rate).toBe(1.5);
     });
 });
