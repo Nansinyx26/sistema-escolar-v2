@@ -29,7 +29,15 @@ async function gerarCodigoDisponivel(escolas) {
 }
 
 async function garantirIndiceUnico(escolas) {
-    const indiceAtual = (await escolas.indexes()).find((indice) => indice.name === NOME_INDICE);
+    let indiceAtual;
+    try {
+        indiceAtual = (await escolas.indexes()).find((indice) => indice.name === NOME_INDICE);
+    } catch (erro) {
+        // Em uma instalação nova a collection ainda não existe. `createIndex`
+        // cria a collection junto com o índice, então não há índice legado para
+        // reconciliar neste caso.
+        if (erro.codeName !== 'NamespaceNotFound') throw erro;
+    }
     if (indiceAtual && (!indiceAtual.unique || !indiceAtual.sparse)) {
         await escolas.dropIndex(NOME_INDICE);
     }
