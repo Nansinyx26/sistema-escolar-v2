@@ -14,6 +14,18 @@ beforeEach(async () => {
 });
 
 describe('migration de códigos secretos exclusivos por escola', () => {
+    it('cria o índice em uma collection de escolas ainda inexistente', async () => {
+        const escolas = mongoose.connection.collection('escolas');
+        await escolas.drop().catch((erro) => {
+            if (erro.codeName !== 'NamespaceNotFound') throw erro;
+        });
+
+        await expect(migration.up()).resolves.toEqual({ atualizadas: 0 });
+
+        const indice = (await escolas.indexes()).find((item) => item.name === 'codigoSecreto_1');
+        expect(indice).toMatchObject({ unique: true, sparse: true });
+    });
+
     it('separa duplicados, preenche ausentes e impede uma nova duplicidade', async () => {
         const escolas = mongoose.connection.collection('escolas');
         await escolas.dropIndex('codigoSecreto_1').catch((erro) => {
