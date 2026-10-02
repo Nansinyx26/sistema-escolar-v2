@@ -153,12 +153,18 @@
         // evento — o RealtimeNotification (lista `#notifList`, campos em inglês)
         // e o aviso do mural (Notificacao, `titulo`/`mensagem`, sino do
         // changelog.js). Cada um vai para a sua lista; som e toast valem para os dois.
+        // Os dois também saem como evento de DOM, para a Central de
+        // Notificações (js/notificacoes-page.js) não depender de `window.socket`
+        // existir quando ela carrega.
         socket.on('notification:new', (data) => {
             const notification = data?.notification;
             if (!notification) return;
             if (notification.title !== undefined) {
                 addNotificationToUI(notification);
                 if (typeof data.unreadCount === 'number') updateNotifBadge(data.unreadCount);
+                document.dispatchEvent(
+                    new CustomEvent('notificacao-pessoal:nova', { detail: notification })
+                );
             } else {
                 document.dispatchEvent(
                     new CustomEvent('notificacao:nova', { detail: notification })

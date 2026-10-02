@@ -13,6 +13,7 @@ router.get('/', NotificacaoController.getAll);
 router.post('/', gestao, NotificacaoController.create);
 router.put('/marcar-todas-lidas', NotificacaoController.marcarTodasComoLidas);
 router.put('/:id/ler', NotificacaoController.marcarComoLida);
+router.delete('/:id/ler', NotificacaoController.marcarComoNaoLida);
 router.delete('/:id', gestao, NotificacaoController.delete);
 
 module.exports = router;
