@@ -213,6 +213,17 @@ function initTrocarEscola(user) {
     }
     secao.classList.remove('hidden');
 
+    // A troca por código secreto é só do professor (Issue #575): direção e
+    // secretaria mudam de escola por convite. Elas continuam vendo a escola
+    // ativa, mas não o campo de código, que o servidor recusaria.
+    if (user.perfil !== 'professor') {
+        document
+            .getElementById('novoCodigoEscola')
+            ?.closest('.form-group')
+            ?.classList.add('hidden');
+        document.getElementById('btnMudarEscola')?.classList.add('hidden');
+    }
+
     // Carrega a escola ativa atual
     const nomeEl = document.getElementById('escolaAtivaPerfil');
     fetch(`${apiBaseUrl()}/escolas/minhas`, { credentials: 'include' })
