@@ -19,10 +19,14 @@
     let contextAlunoId = null; // Contexto conversacional: aluno ativo
     // Forçar configurações fixas conforme solicitado
     localStorage.setItem('user_tts_provider', 'elevenlabs');
-    localStorage.setItem('user_voice_preference', 'male');
+    // Liga/desliga legado: o gênero da voz escolhida (Issue #564).
+    localStorage.setItem(
+        'user_voice_preference',
+        window.Vozes ? window.Vozes.generoDe(window.Vozes.atual()) : 'male'
+    );
 
     const audioSettings = {
-        voice: 'male',
+        voice: window.Vozes ? window.Vozes.atual() : 'brian',
         speed: parseFloat(localStorage.getItem('user_voice_speed') || '1.0'),
         provider: 'elevenlabs',
         autoPlay: localStorage.getItem('user_preferencia_narracao') !== 'texto',

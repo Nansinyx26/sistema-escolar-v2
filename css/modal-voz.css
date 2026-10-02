@@ -1,0 +1,332 @@
+/**
+ * modal-voz.css — modal "Voz e Acessibilidade" (js/modal-voz.js, Issue #564).
+ *
+ * Herda os tokens do visual `ui3` (css/ui-base.css) quando a página os tem, e
+ * cai em valores próprios equivalentes onde não tem (Painel de Direção).
+ *
+ * Motion (docs/MOTION.md, Emil primário): abrir é ação ocasional — entrada de
+ * 200ms com opacity + translateY(8px) + blur(4px); saída mais sutil, 140ms.
+ * Trocar de voz, filtro ou modo NÃO anima: é escolha repetida, e o retorno é
+ * a prévia sonora.
+ */
+
+.mv-dialogo {
+    --mv-bg: var(--ui-surface, #0d1214);
+    --mv-bg-2: var(--ui-surface-2, #121a1d);
+    --mv-bg-3: var(--ui-surface-3, #182226);
+    --mv-linha: var(--ui-line, rgba(170, 255, 232, 0.08));
+    --mv-linha-forte: var(--ui-line-strong, rgba(170, 255, 232, 0.16));
+    --mv-texto: var(--ui-text, #e9f2f0);
+    --mv-texto-2: var(--ui-text-2, #a9b8b5);
+    --mv-texto-3: var(--ui-text-3, #809189);
+    --mv-acento: var(--ui-accent, #2ee6b6);
+    --mv-acento-tinta: var(--ui-accent-ink, #032019);
+    --mv-acento-suave: var(--ui-accent-soft, rgba(46, 230, 182, 0.12));
+    --mv-acento-linha: var(--ui-accent-line, rgba(46, 230, 182, 0.35));
+    /* Preenchimento do item escolhido. No claro é verde-água com texto preto:
+       a varredura de css/variables.css pinta todo texto de preto, e preto
+       sobre o verde-tinta ficaria abaixo de 4.5:1. */
+    --mv-preenchido: var(--mv-acento);
+    --mv-preenchido-texto: var(--mv-acento-tinta);
+    --mv-sombra: var(
+        --ui-shadow-pop,
+        0 24px 60px -20px rgba(0, 0, 0, 0.85),
+        0 0 0 1px rgba(170, 255, 232, 0.16)
+    );
+    --mv-r: var(--ui-r, 12px);
+    --mv-r-lg: var(--ui-r-lg, 18px);
+    --mv-ease-out: var(--motion-ease-out, var(--ui-ease-out, cubic-bezier(0.16, 1, 0.3, 1)));
+    --mv-ease-in: var(--motion-ease-in, var(--ui-ease-in, cubic-bezier(0.4, 0, 1, 1)));
+
+    width: min(560px, calc(100vw - 32px));
+    max-height: calc(100dvh - 32px);
+    margin: auto;
+    padding: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    border: 1px solid var(--mv-linha-forte);
+    border-radius: var(--mv-r-lg);
+    background: var(--mv-bg);
+    color: var(--mv-texto);
+    box-shadow: var(--mv-sombra);
+    font-family: var(--ui-font, 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);
+    color-scheme: dark;
+}
+
+:root[data-theme='light'] .mv-dialogo {
+    --mv-bg: #ffffff;
+    --mv-bg-2: #f2f6f5;
+    --mv-bg-3: #e8efed;
+    --mv-linha: #e2eae8;
+    --mv-linha-forte: #cfdbd8;
+    --mv-texto: #07110f;
+    --mv-texto-2: #2f3d3a;
+    --mv-texto-3: #52625e;
+    --mv-acento: #0a7d62;
+    --mv-acento-tinta: #ffffff;
+    --mv-acento-suave: rgba(10, 125, 98, 0.08);
+    --mv-acento-linha: rgba(10, 125, 98, 0.4);
+    --mv-preenchido: #c9eee3;
+    --mv-preenchido-texto: #07110f;
+    --mv-sombra: 0 24px 60px -24px rgba(7, 17, 15, 0.35), 0 0 0 1px #cfdbd8;
+    color-scheme: light;
+}
+
+.mv-dialogo::backdrop {
+    background: rgba(3, 6, 7, 0.62);
+    backdrop-filter: blur(2px);
+}
+
+.mv-dialogo[open] {
+    animation: mv-entrar 200ms var(--mv-ease-out) both;
+}
+
+.mv-dialogo[open]::backdrop {
+    animation: mv-fundo-entrar 200ms var(--mv-ease-out) both;
+}
+
+.mv-dialogo.mv-saindo {
+    animation: mv-sair 140ms var(--mv-ease-in) both;
+}
+
+.mv-dialogo.mv-saindo::backdrop {
+    animation: mv-fundo-sair 140ms var(--mv-ease-in) both;
+}
+
+@keyframes mv-entrar {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+        filter: blur(4px);
+    }
+}
+
+@keyframes mv-sair {
+    to {
+        opacity: 0;
+        transform: translateY(-4px);
+        filter: blur(2px);
+    }
+}
+
+@keyframes mv-fundo-entrar {
+    from {
+        opacity: 0;
+    }
+}
+
+@keyframes mv-fundo-sair {
+    to {
+        opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .mv-dialogo[open],
+    .mv-dialogo[open]::backdrop,
+    .mv-dialogo.mv-saindo,
+    .mv-dialogo.mv-saindo::backdrop {
+        animation: none;
+    }
+}
+
+html.reduce-motion .mv-dialogo[open],
+html.reduce-motion .mv-dialogo[open]::backdrop {
+    animation: none;
+}
+
+/* ───────────────────────────── Estrutura ───────────────────────────── */
+
+.mv-cabecalho {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 20px 4px;
+}
+
+.mv-titulo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-family: var(--ui-font-display, inherit);
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--mv-texto);
+}
+
+.mv-titulo i {
+    color: var(--mv-acento);
+}
+
+.mv-descricao {
+    margin: 4px 0 0;
+    font-size: 0.875rem;
+    color: var(--mv-texto-2);
+}
+
+.mv-fechar {
+    flex-shrink: 0;
+    display: inline-grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--mv-linha);
+    border-radius: var(--mv-r);
+    background: transparent;
+    color: var(--mv-texto-2);
+    cursor: pointer;
+}
+
+.mv-fechar:hover {
+    background: var(--mv-bg-2);
+    color: var(--mv-texto);
+}
+
+.mv-secao {
+    padding: 16px 20px;
+    border-top: 1px solid var(--mv-linha);
+}
+
+.mv-cabecalho + .mv-secao {
+    border-top: 0;
+}
+
+.mv-secao:last-child {
+    padding-bottom: 20px;
+}
+
+.mv-secao-topo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+}
+
+.mv-secao-titulo {
+    margin: 0;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--mv-texto-2);
+}
+
+.mv-ajuda {
+    margin: 6px 0 12px;
+    font-size: 0.8125rem;
+    color: var(--mv-texto-3);
+}
+
+.mv-modos {
+    margin-top: 10px;
+}
+
+/* ───────────────────────────── Segmentos ───────────────────────────── */
+
+.mv-segmentos {
+    display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    border: 1px solid var(--mv-linha);
+    border-radius: 999px;
+    background: var(--mv-bg-2);
+}
+
+.mv-segmento {
+    min-height: 32px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--mv-texto-2);
+    font: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.mv-segmento:hover {
+    color: var(--mv-texto);
+}
+
+.mv-segmento[aria-pressed='true'] {
+    background: var(--mv-preenchido);
+    color: var(--mv-preenchido-texto);
+}
+
+/* ───────────────────────────── Vozes do narrador ───────────────────────────── */
+
+.mv-vozes {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.mv-voz {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    min-height: 64px;
+    padding: 12px 14px;
+    border: 1px solid var(--mv-linha-forte);
+    border-radius: var(--mv-r);
+    background: var(--mv-bg-2);
+    color: var(--mv-texto);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.mv-voz:hover {
+    border-color: var(--mv-acento-linha);
+}
+
+.mv-voz[aria-pressed='true'] {
+    border-color: var(--mv-acento);
+    background: var(--mv-acento-suave);
+    box-shadow: inset 0 0 0 1px var(--mv-acento);
+}
+
+.mv-voz-nome {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9375rem;
+    font-weight: 700;
+}
+
+.mv-voz-desc {
+    font-size: 0.8125rem;
+    color: var(--mv-texto-2);
+}
+
+.mv-selo {
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--mv-preenchido);
+    color: var(--mv-preenchido-texto);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.mv-dialogo :focus-visible {
+    outline: 2px solid var(--mv-acento);
+    outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+    .mv-vozes {
+        grid-template-columns: 1fr;
+    }
+
+    .mv-cabecalho,
+    .mv-secao {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+}
