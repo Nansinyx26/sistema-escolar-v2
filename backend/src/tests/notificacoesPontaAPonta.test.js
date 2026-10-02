@@ -29,6 +29,7 @@ const Comunicado = require('../models/Comunicado');
 const Usuario = require('../models/Usuario');
 
 const ESCOLA = 'ESC_A';
+const RESUMO = { mesNome: 'setembro', itens: [] };
 
 beforeAll(async () => {
     await conectarBanco();
@@ -322,13 +323,17 @@ describe('aviso interno não alcança responsável', () => {
             destinatarios: ['todos'],
             paraResponsavel: false,
         });
+        // O resumo mensal é o único que vai por e-mail; com ele o recorte por
+        // perfil também vale para o e-mail.
         await NotificationService.entregarForaDoPortal(n, {
             destList: ['todos'],
             escolaId: ESCOLA,
             alcancaResponsavel: false,
+            tipo: 'atualizacao_sistema',
             titulo: 'Interno',
             mensagem: 'corpo',
             link: null,
+            resumoEmail: RESUMO,
         });
 
         const emails = EmailService.sendNotificationEmail.mock.calls.map((c) => c[0]);
@@ -379,12 +384,66 @@ describe('aviso interno não alcança responsável', () => {
             destList: ['professores'],
             escolaId: ESCOLA,
             alcancaResponsavel: false,
+            tipo: 'atualizacao_sistema',
             titulo: 'Geral',
             mensagem: 'corpo',
             link: null,
+            resumoEmail: RESUMO,
         });
 
         expect(resultado).toEqual({ entregues: 1, falhas: 1 });
+    });
+});
+
+describe('e-mail só no resumo mensal (Issue #566)', () => {
+    it('notificação comum fica no sininho e no push — não vai para o e-mail', async () => {
+        const inscricao = { endpoint: 'https://push.exemplo/c', keys: { p256dh: 'p', auth: 'a' } };
+        await criarUsuario({
+            perfil: 'professor',
+            escolaId: ESCOLA,
+            pushSubscriptions: [inscricao],
+        });
+
+        for (const tipo of ['informativo', 'resumo_diario', 'comentario']) {
+            const n = await gravada({ titulo: tipo, destinatarios: ['professores'] });
+            await NotificationService.entregarForaDoPortal(n, {
+                destList: ['professores'],
+                escolaId: ESCOLA,
+                alcancaResponsavel: false,
+                tipo,
+                titulo: tipo,
+                mensagem: 'corpo',
+                link: null,
+            });
+        }
+
+        expect(EmailService.sendNotificationEmail).not.toHaveBeenCalled();
+        expect(WebPushService.sendPushNotification).toHaveBeenCalledTimes(3);
+    });
+
+    it('o resumo mensal vai para o e-mail de quem não desligou', async () => {
+        const quer = await criarUsuario({ perfil: 'professor', escolaId: ESCOLA });
+        const naoQuer = await criarUsuario({
+            perfil: 'professor',
+            escolaId: ESCOLA,
+            notificacoesPreferencias: { portal: true, push: true, email: false },
+        });
+
+        const n = await gravada({ titulo: 'Novidades de setembro', destinatarios: ['todos'] });
+        await NotificationService.entregarForaDoPortal(n, {
+            destList: ['todos'],
+            escolaId: ESCOLA,
+            alcancaResponsavel: true,
+            tipo: 'atualizacao_sistema',
+            titulo: 'Novidades de setembro',
+            mensagem: 'corpo',
+            link: null,
+            resumoEmail: RESUMO,
+        });
+
+        const emails = EmailService.sendNotificationEmail.mock.calls.map((c) => c[0]);
+        expect(emails).toEqual([quer.email]);
+        expect(emails).not.toContain(naoQuer.email);
     });
 });
 
@@ -454,5 +513,97 @@ describe('POST /api/notifications/realtime/subscribe — inscrição de push', (
         const salvo = await Usuario.findById(user._id).lean();
         expect(salvo.pushSubscriptions).toHaveLength(1);
         expect(salvo.pushSubscriptions[0].endpoint).toBe(valida.endpoint);
+    });
+});
+
+// Issue #565: a Central de Notificações oferecia "Marcar como não lida" sem
+// rota por trás — o estado voltava no recarregar.
+describe('marcar como não lida — as duas coleções', () => {
+    it('DELETE /notificacoes/:id/ler tira só a leitura de quem pediu', async () => {
+        const diretor = await criarUsuario({ perfil: 'diretor', escolaId: ESCOLA });
+        const outro = await criarUsuario({ perfil: 'diretor', escolaId: ESCOLA });
+        const a = await aviso({ titulo: 'A', destinatarios: 'diretor' });
+        await Notificacao.updateOne(
+            { _id: a._id },
+            { $set: { lido: [String(diretor._id), String(outro._id)] } }
+        );
+
+        const res = await chamar(NotificacaoController.marcarComoNaoLida, {
+            user: sessao(diretor),
+            params: { id: a.id },
+        });
+
+        expect(res.statusCode).toBe(200);
+        const salva = await Notificacao.findById(a._id).lean();
+        expect(salva.lido).toEqual([String(outro._id)]);
+        const vista = await chamar(NotificacaoController.getAll, { user: sessao(diretor) });
+        expect(vista.body.data.find((n) => n.id === a.id).lidoPorMim).toBe(false);
+    });
+
+    it('não alcança aviso que a pessoa não enxerga', async () => {
+        const professor = await criarUsuario({ perfil: 'professor', escolaId: ESCOLA });
+        const soDirecao = await aviso({ titulo: 'Interno', destinatarios: 'diretores' });
+
+        const res = await chamar(NotificacaoController.marcarComoNaoLida, {
+            user: sessao(professor),
+            params: { id: soDirecao.id },
+        });
+
+        expect(res.statusCode).toBe(404);
+    });
+
+    it('exige sessão', async () => {
+        const res = await chamar(NotificacaoController.marcarComoNaoLida, {
+            user: undefined,
+            params: { id: 'notif_qualquer' },
+        });
+        expect(res.statusCode).toBe(401);
+    });
+
+    it('PUT /notifications/realtime/unread/:id volta a pendente e recalcula o total', async () => {
+        const RealtimeNotification = require('../models/RealtimeNotification');
+        const user = await criarUsuario({ perfil: 'professor', escolaId: ESCOLA });
+        const n = await RealtimeNotification.create({
+            receiverId: user._id,
+            receiverType: 'professor',
+            title: 'Reação',
+            message: 'Alguém reagiu',
+            read: true,
+        });
+
+        const res = await chamar(RealtimeNotificationController.markAsUnread, {
+            user: sessao(user),
+            params: { id: String(n._id) },
+        });
+
+        expect(res.statusCode).toBe(200);
+        expect(res.body.unreadCount).toBe(1);
+        expect((await RealtimeNotification.findById(n._id).lean()).read).toBe(false);
+    });
+
+    it('notificação de outra pessoa ou id malformado é 404', async () => {
+        const RealtimeNotification = require('../models/RealtimeNotification');
+        const dono = await criarUsuario({ perfil: 'professor', escolaId: ESCOLA });
+        const intruso = await criarUsuario({ perfil: 'professor', escolaId: ESCOLA });
+        const n = await RealtimeNotification.create({
+            receiverId: dono._id,
+            receiverType: 'professor',
+            title: 'Reação',
+            message: 'Alguém reagiu',
+            read: true,
+        });
+
+        const alheia = await chamar(RealtimeNotificationController.markAsUnread, {
+            user: sessao(intruso),
+            params: { id: String(n._id) },
+        });
+        const malformado = await chamar(RealtimeNotificationController.markAsRead, {
+            user: sessao(dono),
+            params: { id: 'nao-e-objectid' },
+        });
+
+        expect(alheia.statusCode).toBe(404);
+        expect(malformado.statusCode).toBe(404);
+        expect((await RealtimeNotification.findById(n._id).lean()).read).toBe(true);
     });
 });

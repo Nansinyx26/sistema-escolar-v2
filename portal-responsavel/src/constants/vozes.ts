@@ -12,21 +12,41 @@
  * 'brian'; o backend sabe o resto.
  */
 
+export type GeneroVoz = 'feminina' | 'masculina';
+
 export interface Voz {
   nome: VozNome;
   rotulo: string;
   descricao: string;
+  genero: GeneroVoz;
 }
 
-export type VozNome = 'brian' | 'adam' | 'eric' | 'george';
+export type VozNome =
+  | 'brian'
+  | 'adam'
+  | 'eric'
+  | 'george'
+  | 'sarah'
+  | 'alice'
+  | 'matilda'
+  | 'jessica';
 
 /** A ordem é a de exibição, e a primeira é a padrão. */
 export const VOZES: readonly Voz[] = [
-  { nome: 'brian', rotulo: 'Brian', descricao: 'Grave e tranquila' },
-  { nome: 'adam', rotulo: 'Adam', descricao: 'Firme e direta' },
-  { nome: 'eric', rotulo: 'Eric', descricao: 'Suave e natural' },
-  { nome: 'george', rotulo: 'George', descricao: 'Calorosa e pausada' },
+  { nome: 'brian', rotulo: 'Brian', descricao: 'Grave e tranquila', genero: 'masculina' },
+  { nome: 'adam', rotulo: 'Adam', descricao: 'Firme e direta', genero: 'masculina' },
+  { nome: 'eric', rotulo: 'Eric', descricao: 'Suave e natural', genero: 'masculina' },
+  { nome: 'george', rotulo: 'George', descricao: 'Calorosa e pausada', genero: 'masculina' },
+  { nome: 'sarah', rotulo: 'Sarah', descricao: 'Madura e acolhedora', genero: 'feminina' },
+  { nome: 'alice', rotulo: 'Alice', descricao: 'Clara e didática', genero: 'feminina' },
+  { nome: 'matilda', rotulo: 'Matilda', descricao: 'Serena e precisa', genero: 'feminina' },
+  { nome: 'jessica', rotulo: 'Jessica', descricao: 'Leve e alegre', genero: 'feminina' },
 ] as const;
+
+export const GENEROS_VOZ: readonly { genero: GeneroVoz; rotulo: string }[] = [
+  { genero: 'feminina', rotulo: 'Femininas' },
+  { genero: 'masculina', rotulo: 'Masculinas' },
+];
 
 /**
  * Brian, e não Adam.
@@ -64,6 +84,20 @@ export function vozAtual(): VozNome {
   }
 }
 
+export function vozPorNome(nome: string | null | undefined): Voz {
+  const alvo = normalizarVoz(nome);
+  return VOZES.find((v) => v.nome === alvo) ?? VOZES[0];
+}
+
+/**
+ * O gênero no vocabulário do servidor. Vai em `voicePreference`, que o
+ * controller copia para o legado `voiceGender` (enum 'female'|'male'), e fica
+ * em `user_voice_preference`, lida como "narração ligada" quando não é 'off'.
+ */
+export function generoDaVoz(nome: string | null | undefined): 'female' | 'male' {
+  return vozPorNome(nome).genero === 'feminina' ? 'female' : 'male';
+}
+
 export function rotuloDaVoz(nome: string | null | undefined): string {
   const alvo = normalizarVoz(nome);
   return VOZES.find((v) => v.nome === alvo)?.rotulo ?? VOZES[0].rotulo;
@@ -79,7 +113,7 @@ const FRASE_PREVIA = 'Voz alterada com sucesso!';
 /**
  * Toca uma frase curta na voz recém-escolhida.
  *
- * Escolher entre Brian, Adam, Eric e George por nome próprio é escolher no
+ * Escolher entre Brian, Sarah, Alice e as demais por nome próprio é escolher no
  * escuro: a descrição ao lado ajuda, mas nenhuma palavra descreve um timbre.
  * Os três perfis em HTML puro já devolviam som ao trocar de voz; o portal do
  * responsável era o único que trocava em silêncio.
@@ -124,9 +158,9 @@ export async function definirVoz(nome: string): Promise<VozNome> {
   try {
     localStorage.setItem(CHAVE_VOZ, escolhida);
     localStorage.setItem('user_tts_provider', 'elevenlabs');
-    // O backend só tem vozes masculinas; esta chave legada guarda o
-    // liga/desliga da narração e ficaria em 'off' ou 'female' num migrado.
-    localStorage.setItem('user_voice_preference', 'male');
+    // Chave legada de liga/desliga: qualquer valor diferente de 'off' é
+    // narração ligada. Guarda o gênero da voz escolhida.
+    localStorage.setItem('user_voice_preference', generoDaVoz(escolhida));
   } catch {
     // Sem armazenamento a escolha vale só nesta aba — ainda assim vale.
   }
@@ -152,8 +186,8 @@ export async function definirVoz(nome: string): Promise<VozNome> {
         // O controller copia `voicePreference` para o campo legado
         // `voiceGender`, cujo enum só aceita 'male'/'female'. Mandar o nome da
         // voz aqui reprovava o documento e o update inteiro voltava 500 — sem
-        // gravar NENHUMA das preferências.
-        voicePreference: 'male',
+        // gravar NENHUMA das preferências. Vai o gênero da voz (Issue #564).
+        voicePreference: generoDaVoz(escolhida),
         ttsProvider: 'elevenlabs',
       }),
     });

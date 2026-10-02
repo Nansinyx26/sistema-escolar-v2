@@ -951,3 +951,24 @@ input:checked + .notif-slider:before {
     }
 }
 
+
+/* Issue #565 — marca de prioridade e de origem nos cartões. */
+.notif-tag-importante {
+    background: rgba(239, 68, 68, 0.14);
+    color: var(--error, #f87171);
+}
+
+.notif-card-origem {
+    font-size: 0.72rem;
+    color: var(--text-tertiary, #a1a1aa);
+    margin-right: auto;
+}
+
+/* No celular a origem ocupa a linha dela; sem isso ela espreme os botões e
+   "Marcar como lida" quebrava em três linhas. */
+@media (max-width: 640px) {
+    .notif-card-origem {
+        width: 100%;
+        margin-right: 0;
+    }
+}

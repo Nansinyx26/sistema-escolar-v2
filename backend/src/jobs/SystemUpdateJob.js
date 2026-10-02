@@ -1,6 +1,6 @@
 /**
  * SystemUpdateJob.js
- * Executa no dia 1 de cada mês, às 7h (horário de Brasília), e envia UM resumo
+ * Executa no dia 1 de cada mês, às 16h (horário de Brasília), e envia UM resumo
  * com as novidades, melhorias e correções do mês anterior (config/changelog.js)
  * para todos os usuários de todas as escolas ativas via NotificationService.
  *
@@ -105,11 +105,12 @@ async function anunciarAtualizacao(opcoesTrava = {}) {
 }
 
 /**
- * Inicializa o job: dia 1 de cada mês, às 07:00 (horário de Brasília).
+ * Inicializa o job: dia 1 de cada mês, às 16:00 (horário de Brasília). É o
+ * único e-mail de notificação do sistema — ver `vaiPorEmail` no NotificationService.
  */
 function iniciarSystemUpdateJob() {
     cron.schedule(
-        '0 7 1 * *',
+        '0 16 1 * *',
         () => {
             anunciarAtualizacao();
         },
@@ -118,7 +119,7 @@ function iniciarSystemUpdateJob() {
         }
     );
 
-    logger.info('[SystemUpdate] Job agendado: resumo mensal de novidades no dia 1, às 7h (BRT).');
+    logger.info('[SystemUpdate] Job agendado: resumo mensal de novidades no dia 1, às 16h (BRT).');
 }
 
 module.exports = { iniciarSystemUpdateJob, anunciarAtualizacao };

@@ -272,6 +272,11 @@ const PortalResponsavel: React.FC = () => {
                 <Icon name={item.icon} aria-hidden="true" /> {item.label}
               </button>
             ))}
+            {/* Fora do NAV_ITEMS: a Central de Notificações é página de
+                /html, não aba deste app (Issue #565). */}
+            <a href="/html/notificacoes.html" className={styles.desktopSidebarNavLink}>
+              <Icon name="bell" aria-hidden="true" /> Notificações
+            </a>
           </nav>
 
           <LgpdConsentWidget

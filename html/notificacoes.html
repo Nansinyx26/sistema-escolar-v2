@@ -78,7 +78,7 @@
                     </div>
                     <div class="notif-stat-info">
                         <div class="notif-stat-label">Não Lidas</div>
-                        <h2 class="notif-stat-value" id="statNaoLidas">0</h2>
+                        <h2 class="notif-stat-value" id="statNaoLidas">—</h2>
                         <div class="notif-stat-sub">Mensagens pendentes</div>
                     </div>
                 </div>
@@ -110,9 +110,9 @@
                         <i class="bi bi-inbox-fill"></i>
                     </div>
                     <div class="notif-stat-info">
-                        <div class="notif-stat-label">Total de Avisos</div>
-                        <h2 class="notif-stat-value" id="statTotal">0</h2>
-                        <div class="notif-stat-sub">Histórico geral</div>
+                        <div class="notif-stat-label">Total</div>
+                        <h2 class="notif-stat-value" id="statTotal">—</h2>
+                        <div class="notif-stat-sub">Avisos da escola e para você</div>
                     </div>
                 </div>
             </section>
@@ -132,33 +132,38 @@
             <div id="viewListaNotificacoes" style="display: block;">
                 <!-- Controls & Filters Bar -->
                 <div class="notif-controls-bar">
-                    <div class="notif-filter-group">
-                        <button type="button" class="notif-pill-filter active" data-filtro="todas">Todas</button>
-                        <button type="button" class="notif-pill-filter" data-filtro="nao-lidas">Não Lidas</button>
-                        <button type="button" class="notif-pill-filter" data-filtro="aviso">Avisos & Comunicados</button>
-                        <button type="button" class="notif-pill-filter" data-filtro="frequencia">Frequência & Notas</button>
-                        <button type="button" class="notif-pill-filter" data-filtro="sistema">Sistema</button>
+                    <!-- Os filtros usam o que o banco grava: lida, prioridade, origem
+                         (Notificacao × RealtimeNotification) e categoria. -->
+                    <div class="notif-filter-group" role="group" aria-label="Filtrar notificações">
+                        <button type="button" class="notif-pill-filter active" data-filtro="todas" aria-pressed="true">Todas</button>
+                        <button type="button" class="notif-pill-filter" data-filtro="nao-lidas" aria-pressed="false">Não Lidas</button>
+                        <button type="button" class="notif-pill-filter" data-filtro="importantes" aria-pressed="false">Importantes</button>
+                        <button type="button" class="notif-pill-filter" data-filtro="escola" aria-pressed="false">Avisos da Escola</button>
+                        <button type="button" class="notif-pill-filter" data-filtro="academico" aria-pressed="false">Acadêmico</button>
+                        <button type="button" class="notif-pill-filter" data-filtro="interacoes" aria-pressed="false">Interações</button>
+                        <button type="button" class="notif-pill-filter" data-filtro="sistema" aria-pressed="false">Sistema</button>
                     </div>
 
                     <div class="notif-search-container">
                         <i class="bi bi-search notif-search-icon"></i>
-                        <input type="text" id="notifSearch" placeholder="Buscar avisos..." class="ui-input notif-search-input">
+                        <input type="search" id="notifSearch" placeholder="Buscar notificações..." aria-label="Buscar notificações" class="ui-input notif-search-input">
                     </div>
 
                     <div class="notif-actions-group">
-                        <button type="button" class="notif-btn-action" onclick="window.NotificacoesPage.marcarTodasComoLidas()" title="Marcar todas como lidas">
+                        <button type="button" class="notif-btn-action" data-acao="marcar-todas" title="Marcar todas como lidas">
                             <i class="bi bi-check2-all"></i> <span class="notif-btn-txt">Marcar tudo como lido</span>
                         </button>
-                        <button type="button" class="notif-btn-action" onclick="window.NotificacoesPage.recarregar()" title="Atualizar notificações">
+                        <button type="button" class="notif-btn-action" data-acao="recarregar" title="Atualizar notificações">
                             <i class="bi bi-arrow-clockwise"></i> <span class="notif-btn-txt">Atualizar</span>
                         </button>
                     </div>
                 </div>
 
                 <!-- Lista de Notificações -->
-                <div id="notifList" class="notif-list-container" style="margin-top: 1rem;">
-                    <!-- Preenchido via JavaScript -->
+                <div id="centralNotifList" class="notif-list-container" style="margin-top: 1rem;" aria-live="polite">
+                    <!-- Preenchido via js/notificacoes-page.js. O id não é `notifList`: esse é o da lista do sino, que o js/realtime.js preenche. -->
                 </div>
+                <p id="notifAvisoStatus" class="sr-only" role="status" aria-live="polite"></p>
             </div>
 
             <!-- VIEW 2: Configurações & Sons -->
@@ -190,12 +195,12 @@
                         <span style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; color: var(--text-tertiary); display: block; margin-bottom: 0.6rem;">
                             Selecione o Som Desejado
                         </span>
-                        <div id="soundOptionsContainer" class="notif-sound-selector">
+                        <div id="soundOptionsContainer" class="notif-sound-selector" role="radiogroup" aria-label="Som das notificações">
                             <!-- Preenchido via som-notificacao.js -->
                         </div>
                     </div>
 
-                    <button type="button" class="notif-btn-action" onclick="window.NotificacoesPage.testarPush()" style="justify-content: center; padding: 0.6rem;">
+                    <button type="button" class="notif-btn-action" data-acao="testar-push" style="justify-content: center; padding: 0.6rem;">
                         <i class="bi bi-play-circle"></i> Testar Notificação com Som
                     </button>
                 </div>
@@ -220,10 +225,10 @@
                     </div>
 
                     <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                        <button type="button" id="btnAtivarPush" class="notif-btn-action primary" onclick="window.NotificacoesPage.ativarPush()" style="justify-content: center; padding: 0.75rem;">
+                        <button type="button" id="btnAtivarPush" class="notif-btn-action primary" data-acao="ativar-push" style="justify-content: center; padding: 0.75rem;">
                             <i class="bi bi-bell"></i> Ativar Notificações Push
                         </button>
-                        <button type="button" class="notif-btn-action" onclick="window.NotificacoesPage.testarPush()" style="justify-content: center; padding: 0.75rem;">
+                        <button type="button" class="notif-btn-action" data-acao="testar-push" style="justify-content: center; padding: 0.75rem;">
                             <i class="bi bi-broadcast"></i> Disparar Notificação de Teste
                         </button>
                     </div>
@@ -233,7 +238,7 @@
                             <span style="font-size: 0.9rem; font-weight: 600;">Status do Dispositivo</span>
                             <p style="font-size: 0.8rem; color: var(--text-tertiary); margin: 0.1rem 0 0;">Inscrição criptográfica segura (P-256)</p>
                         </div>
-                        <span class="notif-tag" style="background: rgba(16, 185, 129, 0.15); color: var(--success, #10b981);">Conectado</span>
+                        <span class="notif-tag" id="tagStatusDispositivo" style="background: rgba(148, 163, 184, 0.12);">Verificando</span>
                     </div>
                 </div>
             </div>

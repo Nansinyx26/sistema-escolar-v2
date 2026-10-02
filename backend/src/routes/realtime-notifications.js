@@ -4,6 +4,7 @@ const RealtimeNotificationController = require('../controllers/RealtimeNotificat
 
 router.get('/', RealtimeNotificationController.getMyNotifications);
 router.put('/read/:id', RealtimeNotificationController.markAsRead);
+router.put('/unread/:id', RealtimeNotificationController.markAsUnread);
 router.put('/read-all', RealtimeNotificationController.markAllAsRead);
 router.post('/subscribe', RealtimeNotificationController.subscribe);
 router.get('/vapid-public-key', RealtimeNotificationController.getVapidPublicKey);

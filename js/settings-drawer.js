@@ -262,11 +262,27 @@
         // do assistente, e quem trocava de tela achava que eram vozes
         // diferentes.
         '<select id="sd-voice-name" class="select-sm" style="width:196px;">' +
+        '<optgroup label="Femininas">' +
+        '<option value="sarah">Sarah — Madura e acolhedora</option>' +
+        '<option value="alice">Alice — Clara e didática</option>' +
+        '<option value="matilda">Matilda — Serena e precisa</option>' +
+        '<option value="jessica">Jessica — Leve e alegre</option>' +
+        '</optgroup>' +
+        '<optgroup label="Masculinas">' +
         '<option value="brian">Brian — Grave e tranquila</option>' +
         '<option value="adam">Adam — Firme e direta</option>' +
         '<option value="eric">Eric — Suave e natural</option>' +
         '<option value="george">George — Calorosa e pausada</option>' +
+        '</optgroup>' +
         '</select></div>' +
+        // Só aparece onde `js/modal-voz.js` foi carregado (os painéis): lá o
+        // modal mostra as vozes lado a lado, com prévia de cada uma.
+        '<div class="sd-item" id="sd-open-voice-modal-row" style="display:none">' +
+        '<i class="bi bi-soundwave" aria-hidden="true"></i>' +
+        '<span class="sd-item-label">Todas as opções de voz</span>' +
+        '<button type="button" class="sd-step" id="sd-open-voice-modal" aria-label="Abrir Voz e Acessibilidade">' +
+        '<i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>' +
+        '</button></div>' +
         '<div class="sd-item">' +
         '<i class="bi bi-speedometer2" aria-hidden="true"></i>' +
         '<label class="sd-item-label" for="sd-voice-speed">Velocidade</label>' +
@@ -473,6 +489,16 @@
      * Falha em silêncio: a voz já está gravada no navegador quando isto roda,
      * então a escolha vale nesta sessão de qualquer forma.
      */
+    /** Vozes femininas do narrador; as demais são masculinas. Espelha `window.Vozes`. */
+    var VOZES_FEMININAS = ['sarah', 'alice', 'matilda', 'jessica'];
+
+    function generoDaVoz(voz) {
+        if (window.Vozes && typeof window.Vozes.generoDe === 'function') {
+            return window.Vozes.generoDe(voz);
+        }
+        return VOZES_FEMININAS.indexOf(voz) !== -1 ? 'female' : 'male';
+    }
+
     function persistirVoz(voz) {
         if (typeof window.saveAccessibilityPreference === 'function') {
             window.saveAccessibilityPreference({ elevenlabsVoice: voz });
@@ -487,13 +513,13 @@
                 ? { 'Content-Type': 'application/json', 'X-CSRF-Token': decodeURIComponent(csrf) }
                 : { 'Content-Type': 'application/json' },
             credentials: 'include',
-            // `voicePreference` vai como 'male', e não como o nome da voz: o
+            // `voicePreference` vai como o GÊNERO da voz, e não como o nome: o
             // controller copia esse campo para o legado `voiceGender`, cujo
             // enum é ['female','male'] — com o nome da voz ali, o update
             // inteiro voltava 500 e NENHUMA preferência era gravada.
             body: JSON.stringify({
                 elevenlabsVoice: voz,
-                voicePreference: 'male',
+                voicePreference: generoDaVoz(voz),
                 ttsProvider: 'elevenlabs',
             }),
         }).then(
@@ -645,7 +671,7 @@
                 window.Vozes.definir(chosen, { previa: true });
             } else {
                 write('user_elevenlabs_voice', chosen);
-                write('user_voice_preference', 'male'); // backend só tem vozes masculinas
+                write('user_voice_preference', generoDaVoz(chosen)); // liga/desliga legado
                 // Sem isto a escolha morria neste navegador: quem trocasse a voz
                 // no computador da escola voltava a ouvir Brian no celular.
                 persistirVoz(chosen);
@@ -685,6 +711,16 @@
 
         // ----- Voz Nativa do Sistema (Web Speech API via voz-sistema.js) -----
         initNativeVoiceSection();
+
+        // ----- Atalho para o modal de voz (js/modal-voz.js) -----
+        var voiceModalRow = document.getElementById('sd-open-voice-modal-row');
+        if (voiceModalRow && window.ModalVoz) {
+            voiceModalRow.style.display = '';
+            document.getElementById('sd-open-voice-modal').addEventListener('click', function () {
+                closeSettings();
+                window.ModalVoz.abrir();
+            });
+        }
 
         // ----- Som dos Cliques -----
         var clickSoundToggle = document.getElementById('sd-click-sound-toggle');

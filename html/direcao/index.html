@@ -40,6 +40,7 @@
     <link rel="stylesheet" href="../../css/parallax-glass.css">
     <link rel="stylesheet" href="../../css/neo-brutal.css">
     <link rel="stylesheet" href="../../css/voice-panel.css">
+    <link rel="stylesheet" href="../../css/modal-voz.css?v=1.0">
     <!-- Tailwind CSS Play CDN — preflight desabilitado para nao conflitar com CSS existente -->
     <!-- Offline Compiled Tailwind CSS -->
     <link rel="stylesheet" href="../../css/tailwind-built.css">
@@ -125,7 +126,7 @@
             </a>
             <a href="/html/notificacoes.html" class="sidebar-item" data-page="central-notificacoes">
                 <i class="bi bi-bell-fill"></i>
-                <span>Minhas Notificações</span>
+                <span>Notificações</span>
             </a>
             <a href="/direcao/horario-jaguari.html" class="sidebar-item" data-page="horarios">
                 <i class="bi bi-calendar3"></i>
@@ -222,59 +223,12 @@
                             <i class="bi bi-download"></i> Relatório
                         </button>
                         
-                        <!-- Seletor de Voz (Eleven Labs) -->
-                        <div class="voice-selector-wrapper" style="position: relative; margin-left: 0.5rem;">
-                            <button class="btn btn-outline" id="btn-voice-settings" title="Preferências de Voz & Leitura" style="width: 44px; padding: 0; display: flex; align-items: center; justify-content: center;">
-                                <i class="bi bi-volume-up"></i>
-                            </button>
-                            <div id="voice-settings-panel" class="glass-strong" style="position: absolute; top: calc(100% + 10px); right: 0; width: 240px; padding: 1.2rem; border-radius: 14px; display: none; flex-direction: column; gap: 0.8rem; z-index: 1000; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.5); background: rgba(15, 12, 28, 0.95); backdrop-filter: blur(20px);">
-                                <h5 style="margin: 0; font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Voz & Acessibilidade</h5>
-
-                                <div style="display: flex; flex-direction: column; gap: 4px;">
-                                    <label style="font-size: 0.75rem; color: #94a3b8;">Narrador Premium:</label>
-                                    <button class="voice-opt-btn" data-voice="male" style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.2); color: #c4b5fd; padding: 0.4rem 0.6rem; border-radius: 8px; font-size: 0.8rem; cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px; width: 100%;">
-                                        <i class="bi bi-person-standing"></i> Voz Masculina
-                                    </button>
-                                    <button class="voice-opt-btn" data-voice="off" style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); color: #94a3b8; padding: 0.4rem 0.6rem; border-radius: 8px; font-size: 0.8rem; cursor: pointer; text-align: left; display: flex; align-items: center; gap: 8px; width: 100%;">
-                                        <i class="bi bi-volume-mute"></i> Desativado
-                                    </button>
-                                </div>
-
-                                <div style="display: flex; flex-direction: column; gap: 4px;">
-                                    <label for="voice-provider-select" style="font-size: 0.75rem; color: #94a3b8;">Provedor de Voz:</label>
-                                    <select id="voice-provider-select" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px; border-radius: 8px; font-size: 0.8rem; cursor: pointer; outline: none; width: 100%;">
-                                        <option value="auto">Auto (Smart)</option>
-                                        <option value="elevenlabs">ElevenLabs (HD)</option>
-                                        <option value="google-cloud">Google Cloud (Neural2)</option>
-                                    </select>
-                                </div>
-
-                                <div style="display: flex; align-items: center; gap: 6px; padding: 0.4rem 0.6rem; background: rgba(16, 185, 129, 0.08); border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.15);">
-                                    <i class="bi bi-speedometer" style="color: #10b981; font-size: 0.8rem;"></i>
-                                    <span style="font-size: 0.75rem; color: #94a3b8;">Velocidade:</span>
-                                    <span style="font-size: 0.75rem; color: #10b981; font-weight: 700;">1.0x (Normal)</span>
-                                </div>
-
-                                <div style="display: flex; flex-direction: column; gap: 4px;">
-                                    <label for="voice-mode-select" style="font-size: 0.75rem; color: #94a3b8;">Modo de Leitura:</label>
-                                    <select id="voice-mode-select" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 6px; border-radius: 8px; font-size: 0.8rem; cursor: pointer; outline: none; width: 100%;">
-                                        <option value="texto_audio" selected>Texto + Áudio</option>
-                                        <option value="texto">Apenas Texto</option>
-                                        <option value="audio">Apenas Áudio</option>
-                                    </select>
-                                </div>
-
-                                <hr style="border:0; border-top: 1px solid rgba(255,255,255,0.06); margin: 0.2rem 0;">
-                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                                    <button id="btn-diag-voice" style="flex: 1; background: rgba(59, 130, 246, 0.1); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.2); padding: 0.5rem; border-radius: 8px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
-                                        <i class="bi bi-activity"></i> Diagnóstico
-                                    </button>
-                                    <button id="btn-activate-voice" style="flex: 1.5; background: #8b5cf6; color: white; border: none; padding: 0.5rem; border-radius: 8px; font-weight: 600; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                                        <i class="bi bi-play-circle-fill"></i> Ativar Voz
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                        <!-- Voz e Acessibilidade: js/modal-voz.js abre o modal com as
+                             vozes femininas e masculinas, a voz do dispositivo e o modo
+                             de leitura. O id é o alvo do tour de boas-vindas. -->
+                        <button type="button" class="btn btn-outline" id="btn-voice-settings" data-abrir-modal-voz aria-haspopup="dialog" aria-label="Voz e Acessibilidade" title="Voz e Acessibilidade" style="margin-left: 0.5rem;">
+                            <i class="bi bi-soundwave" aria-hidden="true"></i> Voz
+                        </button>
                     </div>
                 </div>
 
@@ -419,6 +373,7 @@
     <script defer src="../../js/push-notifications.js"></script>
     <script defer src="../../js/pwa-install.js"></script>
     <script defer src="../../js/voz-sistema.js"></script>
+    <script defer src="../../js/modal-voz.js?v=1.0"></script>
     <script defer src="../../js/settings-drawer.js"></script>
     <!-- Lucide line icons (padronização) + shim de compatibilidade Bootstrap Icons -->
     <script src="../../js/libs/lucide.min.js"></script>
