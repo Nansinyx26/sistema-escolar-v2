@@ -19,7 +19,7 @@
 // linha, e o CI roda essa verificação. O script lê a lista daqui de baixo —
 // não mantém cópia — então acrescentar um asset já o coloca sob a regra.
 // Detalhes em docs/QUALITY.md, seção "Service worker: o bump do VERSION".
-const VERSION = 'v41';
+const VERSION = 'v42';
 const STATIC_CACHE = `escola-static-${VERSION}`;
 const PAGES_CACHE = `escola-pages-${VERSION}`;
 const CURRENT_CACHES = [STATIC_CACHE, PAGES_CACHE];
@@ -62,6 +62,7 @@ const STATIC_ASSETS = [
     '/js/utils.js',
     '/js/api-config.js',
     '/js/theme.js',
+    '/js/voz-sistema.js',
     '/js/settings-drawer.js',
     '/js/libs/bootstrap-icons.min.css',
     // A fonte precisa entrar aqui explicitamente: o preload da página usa
