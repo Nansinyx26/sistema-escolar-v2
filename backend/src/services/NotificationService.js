@@ -67,6 +67,16 @@ function linkPara(link, perfil) {
     return perfil === 'responsavel' ? LINK_PADRAO.responsavel : LINK_PADRAO.equipe;
 }
 
+/**
+ * Notificação não vai para o e-mail: fica no sininho e no push. A única que
+ * sai por e-mail é o resumo mensal de correções e novidades
+ * (jobs/SystemUpdateJob.js, dia 1 às 16h). Antes todo aviso — inclusive o
+ * resumo diário das 16h — virava e-mail.
+ */
+function vaiPorEmail(tipo, resumoEmail) {
+    return tipo === 'atualizacao_sistema' && Boolean(resumoEmail);
+}
+
 /** `usuario:<id>` é endereçamento a uma pessoa, não a um público. */
 function ehUsuario(dest) {
     return String(dest).startsWith('usuario:');
@@ -256,7 +266,7 @@ async function entregar(
             };
             const destino = linkPara(link, user.perfil);
 
-            if (prefs.email && user.email) {
+            if (vaiPorEmail(tipo, resumoEmail) && prefs.email && user.email) {
                 const sent = await EmailService.sendNotificationEmail(
                     user.email,
                     titulo,
