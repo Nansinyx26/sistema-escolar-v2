@@ -35,8 +35,8 @@
     );
     --mv-r: var(--ui-r, 12px);
     --mv-r-lg: var(--ui-r-lg, 18px);
-    --mv-ease-out: var(--ui-ease-out, cubic-bezier(0.16, 1, 0.3, 1));
-    --mv-ease-in: var(--ui-ease-in, cubic-bezier(0.4, 0, 1, 1));
+    --mv-ease-out: var(--motion-ease-out, var(--ui-ease-out, cubic-bezier(0.16, 1, 0.3, 1)));
+    --mv-ease-in: var(--motion-ease-in, var(--ui-ease-in, cubic-bezier(0.4, 0, 1, 1)));
 
     width: min(560px, calc(100vw - 32px));
     max-height: calc(100dvh - 32px);
