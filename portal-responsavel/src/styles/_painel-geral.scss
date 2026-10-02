@@ -495,6 +495,8 @@ $ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   font-size: 1rem;
   font-weight: 500;
   text-align: left;
+  // Também serve a <a> (Notificações, Issue #565).
+  text-decoration: none;
   transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
   @include focus-ring;
 

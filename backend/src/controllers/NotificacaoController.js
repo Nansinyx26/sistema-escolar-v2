@@ -1,6 +1,7 @@
 const Notificacao = require('../models/Notificacao');
 const Professor = require('../models/Professor');
 const Aluno = require('../models/Aluno');
+const obs = require('../observability');
 const { escolaMatch } = require('../middleware/filtrarPorEscola');
 const { extrairPaginacao } = require('../middleware/pagination');
 const escapeRegex = require('../utils/escapeRegex');
@@ -199,6 +200,35 @@ module.exports = {
         } catch (error) {
             console.error('Erro em NotificacaoController.marcarComoLida:', error);
             res.status(500).json({ success: false, error: 'Erro ao marcar como lida' });
+        }
+    },
+
+    /**
+     * Desfaz a leitura. A Central de Notificações oferecia "Marcar como não
+     * lida" sem rota nenhuma por trás: a mudança ficava só na tela e voltava
+     * no recarregar (Issue #565). Mesmo escopo da leitura e de `marcarComoLida`.
+     */
+    async marcarComoNaoLida(req, res) {
+        try {
+            const { id } = req.params;
+            const userId = req.user?._id || req.user?.id;
+            if (!userId) {
+                return res.status(401).json({ success: false, error: 'Não autenticado' });
+            }
+            const atualizada = await Notificacao.findOneAndUpdate(
+                { $and: [filtroPorId(id), await filtroDaSessao(req)] },
+                { $pull: { lido: String(userId) } },
+                { new: true }
+            );
+            if (!atualizada) {
+                return res
+                    .status(404)
+                    .json({ success: false, error: 'Notificação não encontrada.' });
+            }
+            res.json({ success: true, message: 'Notificação marcada como não lida.' });
+        } catch (error) {
+            obs.captureException(error, { tipo: 'notificacao.marcar-nao-lida' });
+            res.status(500).json({ success: false, error: 'Erro ao marcar como não lida' });
         }
     },
 
