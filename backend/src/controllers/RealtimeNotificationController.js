@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const RealtimeNotification = require('../models/RealtimeNotification');
 
 exports.getMyNotifications = async (req, res) => {
@@ -16,14 +17,23 @@ exports.getMyNotifications = async (req, res) => {
     }
 };
 
-exports.markAsRead = async (req, res) => {
+/**
+ * Marca uma notificação da própria pessoa como lida ou não lida e devolve o
+ * total de não lidas. O "não lida" existe para a Central de Notificações, que
+ * oferecia o botão sem rota por trás (Issue #565). Id malformado é 404, não
+ * um CastError virando 500.
+ */
+async function alterarLeitura(req, res, read) {
     try {
         const { id } = req.params;
         const receiverId = req.user.id || req.user._id;
+        if (!mongoose.isValidObjectId(id)) {
+            return res.status(404).json({ success: false, error: 'Notificação não encontrada.' });
+        }
 
         const notification = await RealtimeNotification.findOneAndUpdate(
             { _id: id, receiverId },
-            { read: true },
+            { read },
             { new: true }
         );
 
@@ -41,7 +51,11 @@ exports.markAsRead = async (req, res) => {
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
-};
+}
+
+exports.markAsRead = (req, res) => alterarLeitura(req, res, true);
+
+exports.markAsUnread = (req, res) => alterarLeitura(req, res, false);
 
 exports.markAllAsRead = async (req, res) => {
     try {
