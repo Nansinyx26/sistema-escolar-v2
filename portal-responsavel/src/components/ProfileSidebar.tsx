@@ -368,6 +368,11 @@ export default function ProfileSidebar({
                 >
                   <Icon name="clipboard-list" /> Ficha &amp; Autorizações
                 </button>
+                {/* A Central de Notificações vive em /html, fora deste app,
+                    como a tela de conversas (ver Header.tsx). Issue #565. */}
+                <a href="/html/notificacoes.html" className={styles.sidebarNavLink}>
+                  <Icon name="bell" /> Notificações
+                </a>
                 <button
                   type="button"
                   onClick={() => {
