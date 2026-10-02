@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const RealtimeNotification = require('../models/RealtimeNotification');
+const obs = require('../observability');
 
 exports.getMyNotifications = async (req, res) => {
     try {
@@ -49,6 +50,9 @@ async function alterarLeitura(req, res, read) {
 
         res.json({ success: true, data: notification, unreadCount });
     } catch (error) {
+        obs.captureException(error, {
+            tipo: read ? 'notificacao.marcar-lida' : 'notificacao.marcar-nao-lida',
+        });
         res.status(500).json({ success: false, error: error.message });
     }
 }

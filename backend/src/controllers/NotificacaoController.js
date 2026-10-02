@@ -1,6 +1,7 @@
 const Notificacao = require('../models/Notificacao');
 const Professor = require('../models/Professor');
 const Aluno = require('../models/Aluno');
+const obs = require('../observability');
 const { escolaMatch } = require('../middleware/filtrarPorEscola');
 const { extrairPaginacao } = require('../middleware/pagination');
 const escapeRegex = require('../utils/escapeRegex');
@@ -226,7 +227,7 @@ module.exports = {
             }
             res.json({ success: true, message: 'Notificação marcada como não lida.' });
         } catch (error) {
-            console.error('Erro em NotificacaoController.marcarComoNaoLida:', error);
+            obs.captureException(error, { tipo: 'notificacao.marcar-nao-lida' });
             res.status(500).json({ success: false, error: 'Erro ao marcar como não lida' });
         }
     },
