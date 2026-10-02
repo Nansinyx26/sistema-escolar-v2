@@ -29,6 +29,7 @@ const Comunicado = require('../models/Comunicado');
 const Usuario = require('../models/Usuario');
 
 const ESCOLA = 'ESC_A';
+const RESUMO = { mesNome: 'setembro', itens: [] };
 
 beforeAll(async () => {
     await conectarBanco();
@@ -322,13 +323,17 @@ describe('aviso interno não alcança responsável', () => {
             destinatarios: ['todos'],
             paraResponsavel: false,
         });
+        // O resumo mensal é o único que vai por e-mail; com ele o recorte por
+        // perfil também vale para o e-mail.
         await NotificationService.entregarForaDoPortal(n, {
             destList: ['todos'],
             escolaId: ESCOLA,
             alcancaResponsavel: false,
+            tipo: 'atualizacao_sistema',
             titulo: 'Interno',
             mensagem: 'corpo',
             link: null,
+            resumoEmail: RESUMO,
         });
 
         const emails = EmailService.sendNotificationEmail.mock.calls.map((c) => c[0]);
@@ -379,12 +384,66 @@ describe('aviso interno não alcança responsável', () => {
             destList: ['professores'],
             escolaId: ESCOLA,
             alcancaResponsavel: false,
+            tipo: 'atualizacao_sistema',
             titulo: 'Geral',
             mensagem: 'corpo',
             link: null,
+            resumoEmail: RESUMO,
         });
 
         expect(resultado).toEqual({ entregues: 1, falhas: 1 });
+    });
+});
+
+describe('e-mail só no resumo mensal (Issue #566)', () => {
+    it('notificação comum fica no sininho e no push — não vai para o e-mail', async () => {
+        const inscricao = { endpoint: 'https://push.exemplo/c', keys: { p256dh: 'p', auth: 'a' } };
+        await criarUsuario({
+            perfil: 'professor',
+            escolaId: ESCOLA,
+            pushSubscriptions: [inscricao],
+        });
+
+        for (const tipo of ['informativo', 'resumo_diario', 'comentario']) {
+            const n = await gravada({ titulo: tipo, destinatarios: ['professores'] });
+            await NotificationService.entregarForaDoPortal(n, {
+                destList: ['professores'],
+                escolaId: ESCOLA,
+                alcancaResponsavel: false,
+                tipo,
+                titulo: tipo,
+                mensagem: 'corpo',
+                link: null,
+            });
+        }
+
+        expect(EmailService.sendNotificationEmail).not.toHaveBeenCalled();
+        expect(WebPushService.sendPushNotification).toHaveBeenCalledTimes(3);
+    });
+
+    it('o resumo mensal vai para o e-mail de quem não desligou', async () => {
+        const quer = await criarUsuario({ perfil: 'professor', escolaId: ESCOLA });
+        const naoQuer = await criarUsuario({
+            perfil: 'professor',
+            escolaId: ESCOLA,
+            notificacoesPreferencias: { portal: true, push: true, email: false },
+        });
+
+        const n = await gravada({ titulo: 'Novidades de setembro', destinatarios: ['todos'] });
+        await NotificationService.entregarForaDoPortal(n, {
+            destList: ['todos'],
+            escolaId: ESCOLA,
+            alcancaResponsavel: true,
+            tipo: 'atualizacao_sistema',
+            titulo: 'Novidades de setembro',
+            mensagem: 'corpo',
+            link: null,
+            resumoEmail: RESUMO,
+        });
+
+        const emails = EmailService.sendNotificationEmail.mock.calls.map((c) => c[0]);
+        expect(emails).toEqual([quer.email]);
+        expect(emails).not.toContain(naoQuer.email);
     });
 });
 
