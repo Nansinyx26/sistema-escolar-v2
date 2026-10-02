@@ -30,12 +30,30 @@
 window.Vozes = (function () {
     'use strict';
 
-    /** Ordem importa: é a ordem em que aparecem, e a primeira é a padrão. */
+    /**
+     * Ordem importa: é a ordem em que aparecem, e a primeira é a padrão.
+     * `genero` usa as mesmas palavras de `VozDoSistema.classificarVoz`, para o
+     * modal de voz agrupar narrador e voz do dispositivo do mesmo jeito.
+     */
     var LISTA = [
-        { nome: 'brian', rotulo: 'Brian', descricao: 'Grave e tranquila' },
-        { nome: 'adam', rotulo: 'Adam', descricao: 'Firme e direta' },
-        { nome: 'eric', rotulo: 'Eric', descricao: 'Suave e natural' },
-        { nome: 'george', rotulo: 'George', descricao: 'Calorosa e pausada' },
+        { nome: 'brian', rotulo: 'Brian', descricao: 'Grave e tranquila', genero: 'masculina' },
+        { nome: 'adam', rotulo: 'Adam', descricao: 'Firme e direta', genero: 'masculina' },
+        { nome: 'eric', rotulo: 'Eric', descricao: 'Suave e natural', genero: 'masculina' },
+        { nome: 'george', rotulo: 'George', descricao: 'Calorosa e pausada', genero: 'masculina' },
+        { nome: 'sarah', rotulo: 'Sarah', descricao: 'Madura e acolhedora', genero: 'feminina' },
+        { nome: 'alice', rotulo: 'Alice', descricao: 'Clara e didática', genero: 'feminina' },
+        {
+            nome: 'matilda',
+            rotulo: 'Matilda',
+            descricao: 'Serena e profissional',
+            genero: 'feminina',
+        },
+        { nome: 'jessica', rotulo: 'Jessica', descricao: 'Leve e alegre', genero: 'feminina' },
+    ];
+
+    var GRUPOS = [
+        { genero: 'feminina', rotulo: 'Femininas' },
+        { genero: 'masculina', rotulo: 'Masculinas' },
     ];
 
     var PADRAO = 'brian';
@@ -89,6 +107,18 @@ window.Vozes = (function () {
     }
 
     /**
+     * O gênero da voz no vocabulário do servidor ('female'|'male').
+     *
+     * É o que vai em `voicePreference` — o controller copia esse campo para o
+     * legado `voiceGender`, cujo enum só aceita esses dois valores — e o que
+     * fica em `user_voice_preference`, que as telas leem como "ligada" sempre
+     * que não for 'off'.
+     */
+    function generoDe(nome) {
+        return porNome(nome).genero === 'feminina' ? 'female' : 'male';
+    }
+
+    /**
      * Registra a escolha e avisa o resto da página.
      *
      * Grava no navegador PRIMEIRO e no servidor depois, sem esperar: a próxima
@@ -103,9 +133,9 @@ window.Vozes = (function () {
     function definir(nome, opcoes) {
         var escolhida = normalizar(nome);
         gravar(CHAVE, escolhida);
-        // O backend só tem vozes masculinas; esta chave legada é lida por telas
-        // antigas e continuaria em 'female' num usuário migrado.
-        gravar('user_voice_preference', 'male');
+        // Chave legada lida por telas antigas como liga/desliga: qualquer valor
+        // diferente de 'off' é narração ligada. Guarda o gênero da voz nova.
+        gravar('user_voice_preference', generoDe(escolhida));
 
         window.dispatchEvent(new CustomEvent('voiceChanged', { detail: { voice: escolhida } }));
 
@@ -119,30 +149,40 @@ window.Vozes = (function () {
         return escolhida;
     }
 
-    /** Preenche um `<select>` com as vozes e marca a que está em uso. */
+    /**
+     * Preenche um `<select>` com as vozes, agrupadas em Femininas e
+     * Masculinas, e marca a que está em uso.
+     */
     function preencherSelect(select) {
         if (!select) return;
-        select.innerHTML = LISTA.map(function (v) {
-            return (
-                '<option value="' +
-                v.nome +
-                '" data-elevenlabs-voice="1">' +
-                v.rotulo +
-                ' — ' +
-                v.descricao +
-                '</option>'
-            );
+        select.innerHTML = GRUPOS.map(function (grupo) {
+            var opcoes = LISTA.filter(function (v) {
+                return v.genero === grupo.genero;
+            }).map(function (v) {
+                return (
+                    '<option value="' +
+                    v.nome +
+                    '" data-elevenlabs-voice="1">' +
+                    v.rotulo +
+                    ' — ' +
+                    v.descricao +
+                    '</option>'
+                );
+            });
+            return '<optgroup label="' + grupo.rotulo + '">' + opcoes.join('') + '</optgroup>';
         }).join('');
         select.value = atual();
     }
 
     return {
         LISTA: LISTA,
+        GRUPOS: GRUPOS,
         PADRAO: PADRAO,
         CHAVE: CHAVE,
         normalizar: normalizar,
         atual: atual,
         porNome: porNome,
+        generoDe: generoDe,
         definir: definir,
         preencherSelect: preencherSelect,
     };
@@ -430,8 +470,11 @@ function initSidebarProfile() {
         if (!localStorage.getItem('user_elevenlabs_voice')) {
             localStorage.setItem('user_elevenlabs_voice', 'brian');
         }
-        // Gênero fixo Masculino
-        localStorage.setItem('user_voice_preference', 'male');
+        // Liga/desliga legado: guarda o gênero da voz em uso (nunca 'off' aqui).
+        localStorage.setItem(
+            'user_voice_preference',
+            window.Vozes.generoDe(localStorage.getItem('user_elevenlabs_voice'))
+        );
 
         // --- ENSURE VISIBILITY ---
         // Ensure voice selector is never hidden by "Apenas Texto" mode initialization
@@ -459,7 +502,7 @@ function initSidebarProfile() {
  * Global Voice Synthesis (TTS) Helper
  *
  * Preferências salvas no localStorage:
- *   user_voice_preference  → 'female' | 'male' | 'off'
+ *   user_voice_preference  → 'female' | 'male' (ligada) | 'off' (desligada)
  *   user_tts_provider      → 'auto' | 'gemini' | 'elevenlabs'
  *
  * O campo `provider` é enviado ao backend que tenta o provedor escolhido
@@ -485,7 +528,7 @@ window.speak = async (text, forceSpeak = false) => {
             },
             body: JSON.stringify({
                 text: text,
-                voice: 'male',
+                voice: window.Vozes.generoDe(localStorage.getItem('user_elevenlabs_voice')),
                 provider: 'elevenlabs',
                 voiceId: localStorage.getItem('user_elevenlabs_voice') || 'brian',
             }),
@@ -663,10 +706,6 @@ function initVoiceToggles() {
     const updateVoiceUI = () => {
         optBtns.forEach((btn) => {
             const v = btn.getAttribute('data-voice');
-            if (v === 'female') {
-                btn.style.display = 'none';
-                return;
-            }
             if (v === 'male') {
                 btn.style.borderColor = '#10b981';
                 btn.style.background = 'rgba(16, 185, 129, 0.1)';
@@ -684,7 +723,7 @@ function initVoiceToggles() {
 
     if (btnActivate) {
         btnActivate.addEventListener('click', () => {
-            window.speak('Voz masculina ativada. Posso te ajudar?');
+            window.speak('Voz ativada. Posso te ajudar?');
         });
     }
 
@@ -717,8 +756,9 @@ async function saveAccessibilityPreference(prefs = {}) {
         corpo.elevenlabsVoice = prefs.elevenlabsVoice;
         // O controller copia `voicePreference` para o campo legado `voiceGender`
         // apenas quando ele é 'male'/'female'; mandar o NOME da voz aqui fazia
-        // o update inteiro voltar 500 e nenhuma preferência era gravada.
-        corpo.voicePreference = 'male';
+        // o update inteiro voltar 500 e nenhuma preferência era gravada. Vai o
+        // GÊNERO da voz, para o legado acompanhar a escolha (Issue #564).
+        corpo.voicePreference = window.Vozes.generoDe(prefs.elevenlabsVoice);
         corpo.ttsProvider = 'elevenlabs';
     }
     if (prefs.voicePreference) corpo.voicePreference = prefs.voicePreference;

@@ -39,6 +39,22 @@ const DESCRICOES = {
     adam: 'Firme e direta',
     eric: 'Suave e natural',
     george: 'Calorosa e pausada',
+    sarah: 'Madura e acolhedora',
+    alice: 'Clara e didática',
+    matilda: 'Serena e profissional',
+    jessica: 'Leve e alegre',
+};
+
+/** Gênero de cada voz no catálogo (Issue #564). */
+const GENEROS = {
+    brian: 'masculina',
+    adam: 'masculina',
+    eric: 'masculina',
+    george: 'masculina',
+    sarah: 'feminina',
+    alice: 'feminina',
+    matilda: 'feminina',
+    jessica: 'feminina',
 };
 
 describe('Telas de escolha de voz', () => {
@@ -102,8 +118,9 @@ describe('Telas de escolha de voz', () => {
             expect(catalogo).toContain('void tocarPrevia()');
             expect(catalogo).toContain("await import('../services/ttsService')");
 
+            // O cabeçalho delega a escolha ao modal de voz (Issue #564).
             for (const tela of [
-                'portal-responsavel/src/components/Header.tsx',
+                'portal-responsavel/src/components/VozModal.tsx',
                 'portal-responsavel/src/components/ChatbotIA.tsx',
             ]) {
                 expect(fonte(tela)).toContain('definirVoz(');
@@ -113,14 +130,11 @@ describe('Telas de escolha de voz', () => {
 
     describe('rótulos iguais para a mesma voz', () => {
         it.each(Object.entries(DESCRICOES))(
-            '%s tem a mesma descrição no catálogo e no portal',
+            '%s tem a mesma descrição e o mesmo gênero no catálogo e no portal',
             (nome, descricao) => {
-                expect(fonte('js/sidebar-voice.js')).toContain(
-                    `{ nome: '${nome}', rotulo: '${nome[0].toUpperCase()}${nome.slice(1)}', descricao: '${descricao}' }`
-                );
-                expect(fonte('portal-responsavel/src/constants/vozes.ts')).toContain(
-                    `{ nome: '${nome}', rotulo: '${nome[0].toUpperCase()}${nome.slice(1)}', descricao: '${descricao}' }`
-                );
+                const entrada = `{ nome: '${nome}', rotulo: '${nome[0].toUpperCase()}${nome.slice(1)}', descricao: '${descricao}', genero: '${GENEROS[nome]}' }`;
+                expect(fonte('js/sidebar-voice.js')).toContain(entrada);
+                expect(fonte('portal-responsavel/src/constants/vozes.ts')).toContain(entrada);
             }
         );
 
@@ -135,5 +149,45 @@ describe('Telas de escolha de voz', () => {
                 expect(fonte('html/direcao/ia-assistant.html')).toContain(rotulo);
             }
         );
+    });
+
+    describe('vozes femininas (Issue #564)', () => {
+        const TTSService = require('../services/TTSService');
+
+        it('o catálogo do servidor e o do front têm as mesmas vozes, com o mesmo gênero', () => {
+            const doServidor = Object.fromEntries(
+                TTSService.catalogo().map((v) => [
+                    v.nome,
+                    v.genero === 'female' ? 'feminina' : 'masculina',
+                ])
+            );
+            expect(doServidor).toEqual(GENEROS);
+        });
+
+        it('a gaveta e a página do assistente separam Femininas e Masculinas', () => {
+            for (const arquivo of ['js/settings-drawer.js', 'html/direcao/ia-assistant.html']) {
+                const texto = fonte(arquivo);
+                expect(texto).toContain('label="Femininas"');
+                expect(texto).toContain('label="Masculinas"');
+            }
+        });
+
+        it('nenhuma tela grava mais "male" fixo como voicePreference ao trocar de voz', () => {
+            for (const arquivo of [
+                'js/sidebar-voice.js',
+                'js/settings-drawer.js',
+                'portal-responsavel/src/constants/vozes.ts',
+            ]) {
+                expect(fonte(arquivo)).not.toMatch(/voicePreference\s*[:=]\s*'male'/);
+            }
+        });
+
+        it('a página do assistente reconhece as vozes femininas e grava o gênero', () => {
+            const pagina = fonte('js/ia/pagina-ia-assistant.js');
+            for (const nome of ['sarah', 'alice', 'matilda', 'jessica']) {
+                expect(pagina).toContain(`'${nome}'`);
+            }
+            expect(pagina).toContain("VOZES_FEMININAS.includes(voz) ? 'female' : 'male'");
+        });
     });
 });

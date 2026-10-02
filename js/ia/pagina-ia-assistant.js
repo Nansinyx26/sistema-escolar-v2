@@ -200,7 +200,20 @@ function perfilProvavel() {
 // anterior desta página, para não invalidar a preferência de quem já usava.
 
 /** Vozes que o backend sabe resolver. Serve para descartar valor legado. */
-const VOZES_VALIDAS = ['adam', 'brian', 'eric', 'george', 'off'];
+const VOZES_VALIDAS = [
+    'adam',
+    'brian',
+    'eric',
+    'george',
+    'sarah',
+    'alice',
+    'matilda',
+    'jessica',
+    'off',
+];
+
+/** Vozes femininas do narrador — espelha o `genero` de `window.Vozes.LISTA`. */
+const VOZES_FEMININAS = ['sarah', 'alice', 'matilda', 'jessica'];
 
 /**
  * Normaliza a voz salva. Instalações antigas gravaram 'male' (nomenclatura do
@@ -252,8 +265,8 @@ function carregarConfig() {
 }
 
 /**
- * `user_voice_preference` guarda o LIGA/DESLIGA da narração — 'male' quando há
- * voz, 'off' quando não há. Nunca o nome da voz.
+ * `user_voice_preference` guarda o LIGA/DESLIGA da narração — o gênero da voz
+ * ('female'/'male') quando há voz, 'off' quando não há. Nunca o nome da voz.
  *
  * Esta página gravava `cfg.voice` ali ('eric', 'george'…), e mandava o mesmo
  * valor ao servidor em `voicePreference`. Duas consequências, nenhuma delas
@@ -266,7 +279,10 @@ function carregarConfig() {
  * envia como `voiceId`.
  */
 function preferenciaDeNarracao(voz) {
-    return voz === 'off' ? 'off' : 'male';
+    if (voz === 'off') return 'off';
+    // Ligada: guarda o GÊNERO da voz, o único valor que o `voiceGender` legado
+    // aceita além de não mudar o significado de "diferente de off" (Issue #564).
+    return VOZES_FEMININAS.includes(voz) ? 'female' : 'male';
 }
 
 function salvarConfig() {

@@ -1,19 +1,45 @@
 // Node 22+ provides native fetch — no need for node-fetch
 const logger = require('../utils/logger');
 
-// ─── Vozes ElevenLabs PT-BR (Masculinas) ──────────────────────────────────────
+// ─── Vozes ElevenLabs PT-BR ────────────────────────────────────────────────────
 // Verificado em 2026-06-25 via API /v1/voices — 22 vozes premade disponíveis
 // Ordem de prioridade: Brian (padrão) → Adam → Eric → George
 //
 // Brian é a voz do assistente da escola: das quatro premade é a mais grave e
 // pausada em português, e é a que a página do assistente narra por padrão.
 // Trocar esta ordem troca a voz de TODA narração do sistema, não só a do chat.
+//
+// As femininas (Issue #564) também são premade do `eleven_multilingual_v2`,
+// que narra português com qualquer uma delas. Acrescentar uma voz aqui exige
+// acrescentá-la em `window.Vozes` (js/sidebar-voice.js) e no portal
+// (portal-responsavel/src/constants/vozes.ts) — `telasDeVoz.test.js` cobra.
 const ELEVENLABS_VOICES = {
     adam: 'pNInz6obpgDQGcFmaJgB', // Adam - Dominant, Firm (premade ✅)
     brian: 'nPczCjzI2devNBz1zQrb', // Brian - Deep, Resonant and Comforting (premade ✅)
     eric: 'cjVigY5qzO86Huf0OWal', // Eric - Smooth, Trustworthy (premade ✅)
     george: 'JBFqnCBsd6RMkjVDRZzb', // George - Warm, Captivating Storyteller (premade ✅)
+    sarah: 'EXAVITQu4vr4xnSDxMaL', // Sarah - Mature, Reassuring, Confident (premade ✅)
+    alice: 'Xb7hH8MSUJpSbSDYk0k2', // Alice - Clear, Engaging Educator (premade ✅)
+    matilda: 'XrExE9yKIg1WjnnlVkGX', // Matilda - Knowledgable, Professional (premade ✅)
+    jessica: 'cgSgspJ2msm6clMCkdW9', // Jessica - Playful, Bright, Warm (premade ✅)
 };
+
+/** Gênero de cada voz, para o fallback não trocar uma voz feminina por masculina. */
+const GENERO_DA_VOZ = {
+    adam: 'male',
+    brian: 'male',
+    eric: 'male',
+    george: 'male',
+    sarah: 'female',
+    alice: 'female',
+    matilda: 'female',
+    jessica: 'female',
+};
+
+function generoDoId(voiceId) {
+    const nome = Object.keys(ELEVENLABS_VOICES).find((n) => ELEVENLABS_VOICES[n] === voiceId);
+    return nome ? GENERO_DA_VOZ[nome] : null;
+}
 
 // Lista de fallback: tenta cada voz na ordem até encontrar uma que funcione
 // (será atualizada dinamicamente por validateAndUpdateVoices)
@@ -22,7 +48,24 @@ let VOICE_FALLBACK_ORDER = [
     ELEVENLABS_VOICES.adam,
     ELEVENLABS_VOICES.eric,
     ELEVENLABS_VOICES.george,
+    ELEVENLABS_VOICES.sarah,
+    ELEVENLABS_VOICES.alice,
+    ELEVENLABS_VOICES.matilda,
+    ELEVENLABS_VOICES.jessica,
 ];
+
+/**
+ * A ordem de fallback com as vozes do gênero pedido na frente.
+ *
+ * Quem escolheu Sarah e a encontra indisponível deve ouvir outra voz feminina
+ * antes de ouvir Brian. A ordem relativa dentro de cada gênero é preservada.
+ */
+function ordemPorGenero(gender) {
+    if (gender !== 'female' && gender !== 'male') return VOICE_FALLBACK_ORDER;
+    const mesmo = VOICE_FALLBACK_ORDER.filter((id) => generoDoId(id) === gender);
+    const outros = VOICE_FALLBACK_ORDER.filter((id) => generoDoId(id) !== gender);
+    return mesmo.concat(outros);
+}
 
 let DEFAULT_VOICE_ID = ELEVENLABS_VOICES.brian;
 const ELEVENLABS_MODEL = 'eleven_multilingual_v2';
@@ -48,9 +91,9 @@ class TTSService {
             `[TTS] Backend - ElevenLabs: ${apiKey ? 'Present' : 'MISSING'}. Gerando áudio via ElevenLabs.`
         );
 
-        // Tenta cada voz na ordem de fallback
+        // Tenta cada voz na ordem de fallback, começando pelo gênero pedido
         let lastError = null;
-        for (const voiceId of VOICE_FALLBACK_ORDER) {
+        for (const voiceId of ordemPorGenero(gender)) {
             try {
                 console.log(`[TTS] Tentando voz: ${voiceId}`);
                 const result = await this._synthesizeElevenLabs(text, voiceId);
@@ -73,8 +116,9 @@ class TTSService {
     }
 
     /**
-     * Sintetiza com uma voz específica pelo nome (adam, brian, eric, george).
-     * Se o nome não for encontrado, usa fallback automático.
+     * Sintetiza com uma voz específica pelo nome (brian, sarah, ...).
+     * Se o nome não for encontrado, usa fallback automático — do mesmo gênero
+     * primeiro.
      */
     async synthesizeWithVoice(text, voiceName = 'brian') {
         const apiKey = process.env.ELEVENLABS_API_KEY || process.env.ELEVEN_LABS_API_KEY;
@@ -92,7 +136,7 @@ class TTSService {
             return result;
         } catch (error) {
             console.warn(`[TTS] Voz "${voiceName}" falhou (${error.message}), usando fallback...`);
-            return await this.synthesize(text);
+            return await this.synthesize(text, GENERO_DA_VOZ[voiceName] || 'male');
         }
     }
 
@@ -134,6 +178,19 @@ class TTSService {
             name: v.name,
             voice_id: v.voice_id,
             category: v.category,
+        }));
+    }
+
+    /**
+     * O catálogo de nomes com o gênero de cada voz. Os ids do provedor ficam
+     * de fora: o front só conhece nomes.
+     *
+     * @returns {{ nome: string, genero: 'female'|'male' }[]}
+     */
+    catalogo() {
+        return Object.keys(ELEVENLABS_VOICES).map((nome) => ({
+            nome,
+            genero: GENERO_DA_VOZ[nome],
         }));
     }
 

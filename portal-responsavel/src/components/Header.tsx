@@ -7,7 +7,7 @@
 
 import type React from 'react';
 import { useEffect, useState } from 'react';
-import { definirVoz, normalizarVoz, VOZES, type VozNome, vozAtual } from '../constants/vozes';
+import { normalizarVoz, rotuloDaVoz, type VozNome, vozAtual } from '../constants/vozes';
 import { useTheme } from '../hooks/useTheme';
 import { getChatNaoLidas } from '../services/apiService';
 import styles from '../styles/portal.module.scss';
@@ -15,6 +15,7 @@ import type { GmailUser, Notification } from '../types';
 import { getPhotoUrl } from '../utils/photoUtils';
 import CanalDenuncia from './CanalDenuncia';
 import Icon from './ui/Icon';
+import VozModal from './VozModal';
 
 interface TtsSettingsResponse {
   success?: boolean;
@@ -50,6 +51,7 @@ const VoiceSelector: React.FC = () => {
   );
   const [mode, setMode] = useState(localStorage.getItem('user_narration_mode') || 'texto_audio');
   const [isOpen, setIsOpen] = useState(false);
+  const [modalVozAberto, setModalVozAberto] = useState(false);
 
   useEffect(() => {
     const aoTrocar = (e: Event) => {
@@ -84,11 +86,13 @@ const VoiceSelector: React.FC = () => {
     }
   };
 
-  /** Escolha de uma das vozes nomeadas. Religa a narração se estava desligada. */
-  const handleVoiceSelect = (nome: VozNome) => {
-    setVoice(nome);
-    setNarracaoDesligada(false);
-    void definirVoz(nome);
+  /**
+   * Abre o modal de voz (Issue #564). Escolher uma voz lá dispara
+   * `voiceChanged`, que religa a narração aqui pelo efeito acima.
+   */
+  const abrirModalVoz = () => {
+    setIsOpen(false);
+    setModalVozAberto(true);
   };
 
   /** Desligar não apaga a voz escolhida — ela volta ao religar. */
@@ -159,37 +163,31 @@ const VoiceSelector: React.FC = () => {
             >
               Voz do Sistema
             </p>
-            {VOZES.map((v) => {
-              const ativa = !narracaoDesligada && voice === v.nome;
-              return (
-                <button
-                  type="button"
-                  key={v.nome}
-                  onClick={() => handleVoiceSelect(v.nome)}
-                  style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '8px',
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                    textAlign: 'left',
-                    background: ativa ? 'rgba(var(--accent-rgb), 0.1)' : 'transparent',
-                    color: ativa ? 'var(--accent)' : 'var(--text-secondary)',
-                    border: 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  <i className="ti ti-man" style={{ fontSize: '1.1rem' }} />
-                  <span>
-                    {v.rotulo}
-                    <span style={{ opacity: 0.6, fontWeight: 400 }}> · {v.descricao}</span>
-                  </span>
-                </button>
-              );
-            })}
+            <button
+              type="button"
+              onClick={abrirModalVoz}
+              aria-haspopup="dialog"
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                textAlign: 'left',
+                background: narracaoDesligada ? 'transparent' : 'rgba(var(--accent-rgb), 0.1)',
+                color: narracaoDesligada ? 'var(--text-secondary)' : 'var(--accent)',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              <i className="ti ti-microphone" style={{ fontSize: '1.1rem' }} />
+              <span>
+                Escolher voz
+                <span style={{ opacity: 0.6, fontWeight: 400 }}> · {rotuloDaVoz(voice)}</span>
+              </span>
+            </button>
             <button
               type="button"
               onClick={handleVoiceOff}
@@ -255,6 +253,8 @@ const VoiceSelector: React.FC = () => {
           </div>
         </div>
       )}
+
+      <VozModal open={modalVozAberto} onOpenChange={setModalVozAberto} />
     </div>
   );
 };

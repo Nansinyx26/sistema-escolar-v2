@@ -335,6 +335,10 @@
 
     function ouvirTexto(texto) {
         if (!texto) return;
+        // A voz, a velocidade e o volume que a conta escolheu em "Voz e
+        // Acessibilidade" (js/voz-sistema.js). Sem o módulo, segue a voz pt-BR
+        // padrão do navegador.
+        if (window.VozDoSistema && window.VozDoSistema.falar(texto)) return;
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(texto);

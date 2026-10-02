@@ -35,6 +35,15 @@
         } catch (_erro) {
             // A voz continua disponível para telas públicas e durante o login.
         }
+        try {
+            // Telas que não carregam js/auth.js (ex.: notificações) ainda têm o
+            // usuário que ele gravou na sessão da aba.
+            var salvo = JSON.parse(sessionStorage.getItem('currentUser') || 'null');
+            var idSalvo = salvo && (salvo._id || salvo.id);
+            if (idSalvo) return String(idSalvo);
+        } catch (_erro) {
+            // Sessão ilegível ou bloqueada: cai na conta anônima.
+        }
         return CONTA_ANONIMA;
     }
 
@@ -117,6 +126,18 @@
             'alice',
             'google brasileiro',
             'luciana',
+            'joana',
+            'catarina',
+            // Edge: vozes neurais pt-BR ("Microsoft Thalita Online (Natural)").
+            'thalita',
+            'brenda',
+            'elza',
+            'giovanna',
+            'leila',
+            'leticia',
+            'letícia',
+            'manuela',
+            'yara',
             'helena',
             'camila',
             'fernanda',
@@ -141,6 +162,16 @@
             'miguel',
             'david',
             'mark',
+            'felipe',
+            'donato',
+            'fabio',
+            'fábio',
+            'humberto',
+            'julio',
+            'júlio',
+            'nicolau',
+            'valerio',
+            'valério',
         ];
 
         for (var i = 0; i < femininos.length; i++) {
@@ -149,6 +180,9 @@
         for (var j = 0; j < masculinos.length; j++) {
             if (nome.indexOf(masculinos[j]) !== -1) return 'masculina';
         }
+        // Chrome: "Google português do Brasil" é feminina. Fica por último
+        // porque um nome próprio na mesma etiqueta (ex.: "... Daniel") vence.
+        if (/google portugu[eê]s do brasil/.test(nome)) return 'feminina';
         return 'neutra';
     }
 
