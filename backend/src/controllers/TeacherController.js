@@ -43,7 +43,7 @@ const CAMPOS_GESTAO = [
 
 /** Restringe a consulta à escola ativa (Professor usa vinculos[].escolaId). */
 function escopoEscola(req) {
-    if (!req.escolaId || req.user?.perfil === 'admin') return null;
+    if (!req.escolaId) return null;
     return { 'vinculos.escolaId': String(req.escolaId) };
 }
 
@@ -337,8 +337,17 @@ exports.statusOnline = async (req, res) => {
         const Diretor = require('../models/Diretor');
         const ChatDireto = require('../models/ChatDireto');
 
+        const escolaId = req.escolaId ? String(req.escolaId) : null;
+
+        // O card de equipe nunca pode cair no fallback global: em uma rede que
+        // já tem escolas, sessão sem escola ativa não revela integrantes de
+        // outro tenant. O sistema sem nenhuma escola ainda mantém o caminho de
+        // pré-migração, em que não existe um tenant para recortar.
+        if (!escolaId && (await Escola.exists({}))) {
+            return res.json({ success: true, data: [], online: 0, total: 0 });
+        }
+
         const escopo = escopoEscola(req) || {};
-        const escolaId = req.escolaId;
 
         // Busca professores da escola
         const profsBrutos = await Professor.find(escopo)
@@ -346,7 +355,7 @@ exports.statusOnline = async (req, res) => {
             .lean();
 
         // Busca diretores da escola
-        const escopoDiretores = escolaId ? { 'vinculos.escolaId': String(escolaId) } : {};
+        const escopoDiretores = escolaId ? { 'vinculos.escolaId': escolaId } : {};
         const diretoresBrutos = await Diretor.find(escopoDiretores)
             .select('nome foto idUsuario escola vinculos')
             .lean();

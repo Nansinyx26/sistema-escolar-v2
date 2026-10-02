@@ -20,11 +20,11 @@ class SecurityController {
     /**
      * ESCOPO DO CÓDIGO — por que diretor e admin veem coisas diferentes
      * ================================================================
-     * `CONFIG_GERAL` é o código GLOBAL de transição: `validateCode` o aceita
-     * para criar conta de diretor E de secretaria na escola ativa. Enquanto
-     * getStatus/forceRotate operavam nele para qualquer perfil, o diretor de
-     * QUALQUER escola lia e rotacionava a credencial que cria contas de nível
-     * gestor — e a rotação afetava a rede inteira.
+     * `CONFIG_GERAL` é uma configuração administrativa legada. Ela só serve
+     * para a instalação anterior ao cadastro de escolas; quando existe uma
+     * escola, `validateCode` aceita exclusivamente o `codigoSecreto` dela.
+     * Enquanto getStatus/forceRotate operavam nela para qualquer perfil, o
+     * diretor de QUALQUER escola lia e rotacionava a credencial da rede.
      *
      * Agora: admin continua no código global; diretor/secretaria operam no
      * `codigoSecreto` da PRÓPRIA escola (mesmo campo que o painel do admin
@@ -193,21 +193,6 @@ class SecurityController {
         await config.save();
         console.log(`🔐 [SECURITY] Código rotacionado por ${autor}.`);
 
-        // Multi-escola (transição): mantém o código da escola ativa única em
-        // sincronia com o código global, para os dois continuarem válidos.
-        try {
-            const Escola = require('../models/Escola');
-            const ativas = await Escola.find({ ativo: true }).select('_id').limit(2);
-            if (ativas.length === 1) {
-                await Escola.updateOne(
-                    { _id: ativas[0]._id },
-                    { $set: { codigoSecreto: novoCodigo } }
-                );
-            }
-        } catch (e) {
-            console.error('[SECURITY] Falha ao sincronizar código com a escola ativa:', e.message);
-        }
-
         // Notifica admins
         try {
             const admins = await Usuario.find({ perfil: 'admin', ativo: true })
@@ -247,7 +232,7 @@ class SecurityController {
                 success: true,
                 valid: !!result,
                 // Nome da escola identificada pelo código (para feedback no cadastro)
-                escolaNome: (result && result.escola && result.escola.nome) || null,
+                escolaNome: result?.escola?.nome || null,
             });
         } catch (e) {
             res.status(500).json({ success: false, error: e.message });

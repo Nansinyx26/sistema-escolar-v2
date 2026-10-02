@@ -34,7 +34,7 @@
         try {
             var v = localStorage.getItem('theme');
             return v === 'light' || v === 'dark' ? v : 'dark';
-        } catch (e) {
+        } catch (_e) {
             return 'dark';
         }
     }
@@ -48,7 +48,7 @@
         if (persist) {
             try {
                 localStorage.setItem('theme', theme);
-            } catch (e) {}
+            } catch (_e) {}
         }
         var effective = lockedTheme() || theme;
         document.documentElement.setAttribute('data-theme', effective);
@@ -77,7 +77,7 @@
 
     // Chaves que NUNCA podem ser apagadas por "Limpar Cache": sessão, escola
     // selecionada e preferências do próprio usuário.
-    var PRESERVED_PREFIXES = ['sd_', 'user_', 'pwa_'];
+    var PRESERVED_PREFIXES = ['sd_', 'user_', 'pwa_', 'voz-sistema:'];
     var PRESERVED_KEYS = [
         'theme',
         'escolaSelecionada',
@@ -282,6 +282,36 @@
         toggleRow('sd-click-sound-toggle', 'bi-mouse', 'Som dos Cliques') +
         toggleRow('sd-auto-read-toggle', 'bi-play-circle', 'Leitura Automática') +
         '</div>' +
+        // VOZ NATIVA DO SISTEMA
+        '<div class="sd-section" id="sd-native-voice-section">' +
+        '<h3 class="sd-section-title">🎙️ Voz Nativa do Sistema</h3>' +
+        '<div class="sd-item">' +
+        '<i class="bi bi-mic" aria-hidden="true"></i>' +
+        '<label class="sd-item-label" for="sd-native-voice">Voz do dispositivo</label>' +
+        '<select id="sd-native-voice" class="select-sm" style="width:196px;">' +
+        '<option value="">Padrão do sistema</option>' +
+        '</select></div>' +
+        '<div class="sd-item">' +
+        '<i class="bi bi-speedometer" aria-hidden="true"></i>' +
+        '<label class="sd-item-label" for="sd-native-speed">Velocidade</label>' +
+        '<span class="sd-item-value" id="sd-native-speed-value" aria-live="polite">1.0x</span>' +
+        '<input type="range" class="sd-range" id="sd-native-speed" min="0.5" max="2" step="0.1" value="1.0">' +
+        '</div>' +
+        '<div class="sd-item">' +
+        '<i class="bi bi-volume-up" aria-hidden="true"></i>' +
+        '<label class="sd-item-label" for="sd-native-volume">Volume</label>' +
+        '<span class="sd-item-value" id="sd-native-volume-value" aria-live="polite">100%</span>' +
+        '<input type="range" class="sd-range" id="sd-native-volume" min="0" max="1" step="0.05" value="1">' +
+        '</div>' +
+        '<div class="sd-item">' +
+        '<i class="bi bi-play-btn" aria-hidden="true"></i>' +
+        '<span class="sd-item-label">Pré-visualizar</span>' +
+        '<button type="button" class="sd-step" id="sd-native-preview" aria-label="Ouvir prévia da voz selecionada">' +
+        '<i class="bi bi-play-fill" aria-hidden="true"></i>' +
+        '</button></div>' +
+        '<p style="font-size:.72rem;color:#71717a;padding:0 .75rem;margin:.25rem 0 0;">' +
+        'Esta voz é usada nas leituras do sistema (acessibilidade). Vozes pt-BR são priorizadas.</p>' +
+        '</div>' +
         // NOTIFICAÇÕES
         '<div class="sd-section">' +
         '<h3 class="sd-section-title">Notificações</h3>' +
@@ -414,7 +444,7 @@
         try {
             var v = localStorage.getItem(key);
             return v === null ? fallback : v;
-        } catch (e) {
+        } catch (_e) {
             return fallback;
         }
     }
@@ -422,7 +452,7 @@
     function write(key, value) {
         try {
             localStorage.setItem(key, String(value));
-        } catch (e) {
+        } catch (_e) {
             /* storage cheio/bloqueado */
         }
     }
@@ -653,6 +683,9 @@
 
         bindToggle('sd-auto-read-toggle', 'sd_auto_read');
 
+        // ----- Voz Nativa do Sistema (Web Speech API via voz-sistema.js) -----
+        initNativeVoiceSection();
+
         // ----- Som dos Cliques -----
         var clickSoundToggle = document.getElementById('sd-click-sound-toggle');
         if (clickSoundToggle) {
@@ -771,6 +804,12 @@
         });
 
         mountTrigger();
+
+        // Recarrega vozes quando o navegador as disponibilizar (assíncrono em
+        // Chrome/Edge). O evento vem de voz-sistema.js.
+        window.addEventListener('voz-sistema:vozes-atualizadas', function () {
+            recarregarVozesNativas();
+        });
     }
 
     // ---------- GATILHO NO HEADER ----------
@@ -809,6 +848,129 @@
             btn.classList.add('settings-trigger--floating');
             document.body.appendChild(btn);
         }
+    }
+
+    // ---------- VOZ NATIVA: inicialização e bind ----------
+    function preencherSelectVozesNativas(select) {
+        if (!select || !window.VozDoSistema) return;
+        var vozes = window.VozDoSistema.listarVozes();
+        var prefs = window.VozDoSistema.preferencias();
+
+        // Agrupa por categoria para melhor organização
+        var porCategoria = { feminina: [], masculina: [], neutra: [] };
+        vozes.forEach(function (v) {
+            var cat = v.categoria || 'neutra';
+            if (!porCategoria[cat]) porCategoria[cat] = [];
+            porCategoria[cat].push(v);
+        });
+
+        var html = '<option value="">Padrão do sistema</option>';
+
+        var categorias = [
+            { chave: 'feminina', rotulo: '👩 Femininas' },
+            { chave: 'masculina', rotulo: '👨 Masculinas' },
+            { chave: 'neutra', rotulo: '🔊 Outras vozes' },
+        ];
+
+        categorias.forEach(function (cat) {
+            var lista = porCategoria[cat.chave];
+            if (!lista || !lista.length) return;
+            html += '<optgroup label="' + cat.rotulo + '">';
+            lista.forEach(function (v) {
+                var sel = prefs.voiceURI === v.voiceURI ? ' selected' : '';
+                var idiomaTxt = v.idioma ? ' (' + v.idioma + ')' : '';
+                html +=
+                    '<option value="' +
+                    v.voiceURI.replace(/"/g, '&quot;') +
+                    '"' +
+                    sel +
+                    '>' +
+                    v.nome +
+                    idiomaTxt +
+                    '</option>';
+            });
+            html += '</optgroup>';
+        });
+
+        select.innerHTML = html;
+        if (prefs.voiceURI) select.value = prefs.voiceURI;
+    }
+
+    function recarregarVozesNativas() {
+        var select = document.getElementById('sd-native-voice');
+        preencherSelectVozesNativas(select);
+    }
+
+    function initNativeVoiceSection() {
+        var section = document.getElementById('sd-native-voice-section');
+        if (!section) return;
+
+        // Se o navegador não suporta Web Speech API, esconde toda a seção.
+        if (!window.VozDoSistema || !window.VozDoSistema.disponivel()) {
+            section.style.display = 'none';
+            return;
+        }
+
+        var select = document.getElementById('sd-native-voice');
+        var speedRange = document.getElementById('sd-native-speed');
+        var speedValue = document.getElementById('sd-native-speed-value');
+        var volumeRange = document.getElementById('sd-native-volume');
+        var volumeValue = document.getElementById('sd-native-volume-value');
+        var previewBtn = document.getElementById('sd-native-preview');
+
+        // Carrega preferências salvas
+        var prefs = window.VozDoSistema.preferencias();
+
+        // Preenche vozes
+        preencherSelectVozesNativas(select);
+
+        // Velocidade
+        speedRange.value = prefs.rate;
+        speedValue.textContent = parseFloat(prefs.rate).toFixed(1) + 'x';
+
+        // Volume
+        volumeRange.value = prefs.volume;
+        volumeValue.textContent = Math.round(parseFloat(prefs.volume) * 100) + '%';
+
+        // --- Listeners ---
+
+        select.addEventListener('change', function () {
+            var uri = select.value || null;
+            window.VozDoSistema.salvarPreferencias({ voiceURI: uri });
+            // Prévia automática na troca de voz
+            window.VozDoSistema.ouvirPrevia(uri);
+        });
+
+        speedRange.addEventListener('input', function () {
+            var val = parseFloat(speedRange.value);
+            speedValue.textContent = val.toFixed(1) + 'x';
+            window.VozDoSistema.salvarPreferencias({ rate: val });
+        });
+
+        volumeRange.addEventListener('input', function () {
+            var val = parseFloat(volumeRange.value);
+            volumeValue.textContent = Math.round(val * 100) + '%';
+            window.VozDoSistema.salvarPreferencias({ volume: val });
+        });
+
+        previewBtn.addEventListener('click', function () {
+            window.VozDoSistema.ouvirPrevia(select.value || null);
+        });
+
+        // Escuta mudanças externas para manter sincronizado
+        window.addEventListener('voz-sistema:alterada', function (e) {
+            var p = e.detail && e.detail.preferencias;
+            if (!p) return;
+            if (select.value !== (p.voiceURI || '')) select.value = p.voiceURI || '';
+            if (parseFloat(speedRange.value) !== p.rate) {
+                speedRange.value = p.rate;
+                speedValue.textContent = parseFloat(p.rate).toFixed(1) + 'x';
+            }
+            if (parseFloat(volumeRange.value) !== p.volume) {
+                volumeRange.value = p.volume;
+                volumeValue.textContent = Math.round(p.volume * 100) + '%';
+            }
+        });
     }
 
     // Expõe a API para os botões já existentes no HTML.

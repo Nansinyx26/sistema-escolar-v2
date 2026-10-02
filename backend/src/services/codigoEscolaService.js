@@ -17,8 +17,8 @@
  * em que alguém ligasse as rotas do UserController refatorado, o cadastro de
  * professor aceitaria qualquer código.
  *
- * A regra não podia descer para `utils/` porque precisa dos models Escola e
- * SecurityConfig, e `transversal-nao-desce` proíbe `utils/` importar `models/`.
+ * A regra não podia descer para `utils/` porque precisa do model Escola, e
+ * `transversal-nao-desce` proíbe `utils/` importar `models/`.
  * `services/` é a única camada que pode ler model E ser lida por controller.
  *
  * `SecurityController.generateCode` e `.validateCode` continuam existindo e
@@ -26,7 +26,6 @@
  * index.js, testes) não mudaram uma linha.
  */
 
-const SecurityConfig = require('../models/SecurityConfig');
 const Escola = require('../models/Escola');
 const crypto = require('node:crypto');
 
@@ -69,29 +68,17 @@ function gerarCodigo(length = 10) {
  *   (evita inconsistência entre a escola clicada no modal e o código digitado).
  * - Sem `escolaId`: o código identifica a escola automaticamente
  *   (busca Escola por codigoSecreto).
- * - Transição/legado: o código global (CONFIG_GERAL, rotação diária)
- *   continua aceito e resolve para a escola ativa única (Jaguari).
+ * - Compatibilidade pré-multi-escola: o código global só é aceito quando a
+ *   base ainda não possui NENHUMA escola. Assim que existe uma escola, apenas
+ *   `Escola.codigoSecreto` autoriza cadastro ou troca de escola.
  *
  * Retorno: `false` se inválido; senão um objeto `{ escola }` onde
- * `escola` é o doc da Escola resolvida (ou `null` no modo legado puro,
- * quando ainda não há escolas cadastradas). Truthy = válido, preservando
- * os callers que fazem `if (!isValidCode)`.
+ * `escola` é o doc da Escola resolvida (ou `null` no modo pré-multi-escola,
+ * quando ainda não há escolas cadastradas). Truthy = válido, preservando os
+ * callers que fazem `if (!isValidCode)`.
  */
 async function validarCodigoEscola(code, escolaId = null) {
     const codeStr = String(code);
-
-    // Código global legado (rotacionado diariamente)
-    let config = await SecurityConfig.findOne({ chave: 'CONFIG_GERAL' });
-    if (!config) {
-        const novoCodigo = gerarCodigo();
-        config = await SecurityConfig.create({
-            codigoSecretoEscola: novoCodigo,
-            dataUltimaRotacao: new Date(),
-            rotacaoAutomatica: true,
-        });
-        console.log('🔑 [SECURITY] Código secreto global criado.');
-    }
-    const matchGlobal = config.codigoSecretoEscola === codeStr;
 
     // 1. Escola pré-selecionada (clique no modal): código deve ser DELA
     if (escolaId) {
@@ -100,11 +87,6 @@ async function validarCodigoEscola(code, escolaId = null) {
             .catch(() => null);
         if (!escola?.ativo) return false;
         if (escola.codigoSecreto === codeStr) return { escola };
-        // Transição: código global vale para a escola ativa única
-        if (matchGlobal) {
-            const ativas = await Escola.countDocuments({ ativo: true });
-            if (ativas === 1) return { escola };
-        }
         return false;
     }
 
@@ -114,11 +96,13 @@ async function validarCodigoEscola(code, escolaId = null) {
     );
     if (escolaPorCodigo) return { escola: escolaPorCodigo };
 
-    // 3. Legado: código global → escola ativa única (ou nenhuma escola cadastrada)
-    if (matchGlobal) {
-        const ativas = await Escola.find({ ativo: true }).select('nome').limit(2);
-        if (ativas.length === 1) return { escola: ativas[0] };
-        if (ativas.length === 0) return { escola: null }; // pré-migração
+    // 3. Compatibilidade estrita para uma instalação anterior ao recurso de
+    // escolas. Esse caminho não pode escolher uma escola nem coexistir com
+    // uma, portanto não reintroduz um código compartilhado entre escolas.
+    if ((await Escola.exists({})) === null) {
+        const SecurityConfig = require('../models/SecurityConfig');
+        const config = await SecurityConfig.findOne({ chave: 'CONFIG_GERAL' });
+        if (config?.codigoSecretoEscola === codeStr) return { escola: null };
     }
     return false;
 }

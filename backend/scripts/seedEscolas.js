@@ -35,7 +35,7 @@ const ESCOLAS = [
     { nome: 'CIEP Profª Oniva de Moura Brizola', tipo: 'CIEP', endereco: '', bairro: 'Antônio Zanaga' },
     { nome: ESCOLA_JAGUARI, tipo: 'CIEP', endereco: '', bairro: 'Residencial Jaguari' },
     { nome: 'CIEP Prof. Anísio Spínola Teixeira', tipo: 'CIEP', endereco: '', bairro: 'Parque São Jerônimo' },
-    { nome: 'CIEP Profª Philomena Magaly Makluf Rossetti', tipo: 'CIEP', endereco: '', bairro: 'Americana/SP' },
+    { nome: 'CIEP Profª Philomena Magaly Makluf Rossetti', tipo: 'CIEP', endereco: '', bairro: 'São Vito' },
 ];
 
 function gerarCodigo(length = 10) {
