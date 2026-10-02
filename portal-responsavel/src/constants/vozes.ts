@@ -39,7 +39,7 @@ export const VOZES: readonly Voz[] = [
   { nome: 'george', rotulo: 'George', descricao: 'Calorosa e pausada', genero: 'masculina' },
   { nome: 'sarah', rotulo: 'Sarah', descricao: 'Madura e acolhedora', genero: 'feminina' },
   { nome: 'alice', rotulo: 'Alice', descricao: 'Clara e didática', genero: 'feminina' },
-  { nome: 'matilda', rotulo: 'Matilda', descricao: 'Serena e profissional', genero: 'feminina' },
+  { nome: 'matilda', rotulo: 'Matilda', descricao: 'Serena e precisa', genero: 'feminina' },
   { nome: 'jessica', rotulo: 'Jessica', descricao: 'Leve e alegre', genero: 'feminina' },
 ] as const;
 

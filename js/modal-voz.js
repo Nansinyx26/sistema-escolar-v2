@@ -7,14 +7,11 @@
  *     js/sidebar-voice.js), separadas em Femininas e Masculinas. Escolher toca
  *     a prévia e grava no navegador e no servidor — é o mesmo `Vozes.definir`
  *     que a gaveta, o chatbot e a barra lateral usam.
- *   - Voz do dispositivo: as vozes da Web Speech API (`window.VozDoSistema`,
- *     em js/voz-sistema.js), com filtro por gênero, velocidade, volume e
- *     prévia. A preferência é por conta.
  *   - Modo de leitura: texto, texto + áudio ou só áudio.
  *
- * Este arquivo só monta interface. Regra de voz mora nos dois módulos acima;
- * se um deles faltar na página, a seção correspondente simplesmente não
- * aparece, e o resto do modal continua funcionando.
+ * Só vozes do narrador do servidor: a voz sintetizada pelo navegador fica de
+ * fora de propósito — muda de aparelho para aparelho e soa pior que a do
+ * provedor. Este arquivo só monta interface; a regra de voz mora no catálogo.
  *
  * Abre por qualquer elemento com `data-abrir-modal-voz` ou por
  * `window.ModalVoz.abrir()`.
@@ -27,8 +24,6 @@
         { chave: 'masculina', rotulo: 'Masculinas' },
     ];
 
-    var FILTROS_DISPOSITIVO = [{ chave: 'todas', rotulo: 'Todas' }].concat(GENEROS);
-
     var MODOS = [
         { chave: 'texto_audio', rotulo: 'Texto + áudio' },
         { chave: 'texto', rotulo: 'Só texto' },
@@ -38,7 +33,6 @@
     var dialogo = null;
     var ultimoFoco = null;
     var abaNarrador = null;
-    var filtroDispositivo = 'todas';
 
     function ler(chave, alternativa) {
         try {
@@ -65,10 +59,6 @@
 
     function temNarrador() {
         return !!(window.Vozes && window.Vozes.LISTA);
-    }
-
-    function temVozDoDispositivo() {
-        return !!(window.VozDoSistema && window.VozDoSistema.disponivel());
     }
 
     function movimentoReduzido() {
@@ -126,36 +116,11 @@
             '<p class="mv-ajuda">Narra avisos, o assistente e o chatbot. Toque numa voz para ouvir e usar.</p>' +
             '<div class="mv-vozes" id="mv-vozes" role="group" aria-label="Vozes do narrador"></div>' +
             '</section>' +
-            '<section class="mv-secao" id="mv-secao-dispositivo" aria-labelledby="mv-dispositivo-titulo">' +
-            '<div class="mv-secao-topo">' +
-            '<h3 class="mv-secao-titulo" id="mv-dispositivo-titulo">Voz do dispositivo</h3>' +
-            '<div id="mv-filtros-dispositivo"></div>' +
-            '</div>' +
-            '<p class="mv-ajuda">Usada nas leituras de acessibilidade. Funciona sem internet; as vozes dependem do navegador.</p>' +
-            '<div class="mv-campo">' +
-            '<label for="mv-voz-dispositivo">Voz</label>' +
-            '<div class="mv-linha">' +
-            '<select id="mv-voz-dispositivo" class="mv-select"></select>' +
-            '<button type="button" class="mv-botao" id="mv-previa-dispositivo"><i class="bi bi-play-fill" aria-hidden="true"></i> Ouvir</button>' +
-            '</div>' +
-            '<p class="mv-aviso" id="mv-aviso-dispositivo" hidden></p>' +
-            '</div>' +
-            '<div class="mv-grade">' +
-            '<div class="mv-campo">' +
-            '<label for="mv-velocidade">Velocidade <output id="mv-velocidade-valor" for="mv-velocidade">1.0x</output></label>' +
-            '<input type="range" id="mv-velocidade" class="mv-range" min="0.5" max="2" step="0.1" value="1">' +
-            '</div>' +
-            '<div class="mv-campo">' +
-            '<label for="mv-volume">Volume <output id="mv-volume-valor" for="mv-volume">100%</output></label>' +
-            '<input type="range" id="mv-volume" class="mv-range" min="0" max="1" step="0.05" value="1">' +
-            '</div>' +
-            '</div>' +
-            '</section>' +
             '<section class="mv-secao" aria-labelledby="mv-modo-titulo">' +
             '<div class="mv-secao-topo">' +
             '<h3 class="mv-secao-titulo" id="mv-modo-titulo">Modo de leitura</h3>' +
             '</div>' +
-            '<div id="mv-modos"></div>' +
+            '<div id="mv-modos" class="mv-modos"></div>' +
             '</section>';
 
         document.body.appendChild(dialogo);
@@ -204,82 +169,6 @@
             .join('');
     }
 
-    // ---------- Voz do dispositivo ----------
-    function renderizarDispositivo() {
-        var secao = dialogo.querySelector('#mv-secao-dispositivo');
-        if (!temVozDoDispositivo()) {
-            secao.hidden = true;
-            return;
-        }
-        secao.hidden = false;
-
-        dialogo.querySelector('#mv-filtros-dispositivo').innerHTML = segmentos(
-            'mv-filtro',
-            'Filtrar vozes do dispositivo',
-            FILTROS_DISPOSITIVO,
-            filtroDispositivo
-        );
-
-        var prefs = window.VozDoSistema.preferencias();
-        var vozes = window.VozDoSistema.listarVozes();
-        var visiveis = vozes.filter(function (v) {
-            return filtroDispositivo === 'todas' || v.categoria === filtroDispositivo;
-        });
-
-        var html = '<option value="">Padrão do sistema (pt-BR)</option>';
-        var grupos =
-            filtroDispositivo === 'todas'
-                ? GENEROS.concat([{ chave: 'neutra', rotulo: 'Outras vozes' }])
-                : GENEROS.filter(function (g) {
-                      return g.chave === filtroDispositivo;
-                  });
-        grupos.forEach(function (g) {
-            var lista = visiveis.filter(function (v) {
-                return (v.categoria || 'neutra') === g.chave;
-            });
-            if (!lista.length) return;
-            html += '<optgroup label="' + escapar(g.rotulo) + '">';
-            lista.forEach(function (v) {
-                html +=
-                    '<option value="' +
-                    escapar(v.voiceURI) +
-                    '">' +
-                    escapar(v.nome) +
-                    (v.idioma ? ' (' + escapar(v.idioma) + ')' : '') +
-                    '</option>';
-            });
-            html += '</optgroup>';
-        });
-
-        var select = dialogo.querySelector('#mv-voz-dispositivo');
-        select.innerHTML = html;
-        var salvaVisivel = visiveis.some(function (v) {
-            return v.voiceURI === prefs.voiceURI;
-        });
-        // A voz salva fora do filtro continua salva; o select só não a mostra.
-        select.value = salvaVisivel ? prefs.voiceURI : '';
-
-        var aviso = dialogo.querySelector('#mv-aviso-dispositivo');
-        if (filtroDispositivo !== 'todas' && !visiveis.length) {
-            aviso.textContent =
-                'Este navegador não oferece vozes ' +
-                (filtroDispositivo === 'feminina' ? 'femininas' : 'masculinas') +
-                ' reconhecíveis. As do narrador do sistema funcionam em qualquer aparelho.';
-            aviso.hidden = false;
-        } else {
-            aviso.hidden = true;
-        }
-
-        var velocidade = dialogo.querySelector('#mv-velocidade');
-        var volume = dialogo.querySelector('#mv-volume');
-        velocidade.value = prefs.rate;
-        volume.value = prefs.volume;
-        dialogo.querySelector('#mv-velocidade-valor').textContent =
-            Number(prefs.rate).toFixed(1) + 'x';
-        dialogo.querySelector('#mv-volume-valor').textContent =
-            Math.round(Number(prefs.volume) * 100) + '%';
-    }
-
     // ---------- Modo de leitura ----------
     function renderizarModos() {
         dialogo.querySelector('#mv-modos').innerHTML = segmentos(
@@ -310,7 +199,6 @@
 
     function renderizar() {
         renderizarNarrador();
-        renderizarDispositivo();
         renderizarModos();
     }
 
@@ -334,35 +222,10 @@
                 window.Vozes.definir(alvo.dataset.mvVoz, { previa: true });
                 renderizarNarrador();
                 focarNoGrupo('[data-mv-voz="' + alvo.dataset.mvVoz + '"]');
-            } else if (alvo.dataset.mvFiltro) {
-                filtroDispositivo = alvo.dataset.mvFiltro;
-                renderizarDispositivo();
-                focarNoGrupo('[data-mv-filtro="' + filtroDispositivo + '"]');
             } else if (alvo.dataset.mvModo) {
                 definirModo(alvo.dataset.mvModo);
                 focarNoGrupo('[data-mv-modo="' + alvo.dataset.mvModo + '"]');
-            } else if (alvo.id === 'mv-previa-dispositivo') {
-                var uri = dialogo.querySelector('#mv-voz-dispositivo').value || null;
-                window.VozDoSistema.ouvirPrevia(uri);
             }
-        });
-
-        dialogo.querySelector('#mv-voz-dispositivo').addEventListener('change', function (e) {
-            var uri = e.target.value || null;
-            window.VozDoSistema.salvarPreferencias({ voiceURI: uri });
-            window.VozDoSistema.ouvirPrevia(uri);
-        });
-
-        dialogo.querySelector('#mv-velocidade').addEventListener('input', function (e) {
-            var v = Number(e.target.value);
-            dialogo.querySelector('#mv-velocidade-valor').textContent = v.toFixed(1) + 'x';
-            window.VozDoSistema.salvarPreferencias({ rate: v });
-        });
-
-        dialogo.querySelector('#mv-volume').addEventListener('input', function (e) {
-            var v = Number(e.target.value);
-            dialogo.querySelector('#mv-volume-valor').textContent = Math.round(v * 100) + '%';
-            window.VozDoSistema.salvarPreferencias({ volume: v });
         });
 
         // Esc: o navegador dispara `cancel`; fechamos pelo mesmo caminho para
@@ -381,11 +244,7 @@
             if (e.key === 'Tab') prenderFoco(e);
         });
 
-        // A lista de vozes do dispositivo chega depois em Chrome/Edge, e a voz
-        // pode ser trocada em outra tela com o modal aberto.
-        window.addEventListener('voz-sistema:vozes-atualizadas', function () {
-            if (estaAberto()) renderizarDispositivo();
-        });
+        // A voz pode ser trocada em outra tela (chatbot) com o modal aberto.
         window.addEventListener('voiceChanged', function () {
             if (estaAberto()) renderizarNarrador();
         });
@@ -399,7 +258,7 @@
 
     function focaveis() {
         return Array.prototype.filter.call(
-            dialogo.querySelectorAll('button, select, input, [tabindex]:not([tabindex="-1"])'),
+            dialogo.querySelectorAll('button, [tabindex]:not([tabindex="-1"])'),
             function (el) {
                 return !el.disabled && !el.closest('[hidden]');
             }

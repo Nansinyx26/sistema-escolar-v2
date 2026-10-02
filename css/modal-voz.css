@@ -23,7 +23,6 @@
     --mv-acento-tinta: var(--ui-accent-ink, #032019);
     --mv-acento-suave: var(--ui-accent-soft, rgba(46, 230, 182, 0.12));
     --mv-acento-linha: var(--ui-accent-line, rgba(46, 230, 182, 0.35));
-    --mv-aviso: var(--ui-amber, #f6c34a);
     /* Preenchimento do item escolhido. No claro é verde-água com texto preto:
        a varredura de css/variables.css pinta todo texto de preto, e preto
        sobre o verde-tinta ficaria abaixo de 4.5:1. */
@@ -67,7 +66,6 @@
     --mv-acento-tinta: #ffffff;
     --mv-acento-suave: rgba(10, 125, 98, 0.08);
     --mv-acento-linha: rgba(10, 125, 98, 0.4);
-    --mv-aviso: #8a5a00;
     --mv-preenchido: #c9eee3;
     --mv-preenchido-texto: #07110f;
     --mv-sombra: 0 24px 60px -24px rgba(7, 17, 15, 0.35), 0 0 0 1px #cfdbd8;
@@ -222,6 +220,10 @@ html.reduce-motion .mv-dialogo[open]::backdrop {
     color: var(--mv-texto-3);
 }
 
+.mv-modos {
+    margin-top: 10px;
+}
+
 /* ───────────────────────────── Segmentos ───────────────────────────── */
 
 .mv-segmentos {
@@ -312,92 +314,13 @@ html.reduce-motion .mv-dialogo[open]::backdrop {
     letter-spacing: 0.02em;
 }
 
-/* ───────────────────────────── Campos ───────────────────────────── */
-
-.mv-campo {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    min-width: 0;
-}
-
-.mv-campo label {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: var(--mv-texto-2);
-}
-
-.mv-campo output {
-    font-variant-numeric: tabular-nums;
-    color: var(--mv-texto);
-}
-
-.mv-linha {
-    display: flex;
-    gap: 8px;
-}
-
-.mv-select {
-    flex: 1;
-    min-width: 0;
-    min-height: 40px;
-    padding: 0 10px;
-    border: 1px solid var(--mv-linha-forte);
-    border-radius: var(--mv-r);
-    background: var(--mv-bg-2);
-    color: var(--mv-texto);
-    font: inherit;
-    font-size: 0.875rem;
-}
-
-.mv-botao {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    min-height: 40px;
-    padding: 0 14px;
-    border: 1px solid var(--mv-acento-linha);
-    border-radius: var(--mv-r);
-    background: var(--mv-acento-suave);
-    color: var(--mv-texto);
-    font: inherit;
-    font-size: 0.875rem;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.mv-botao:hover {
-    border-color: var(--mv-acento);
-}
-
-.mv-aviso {
-    margin: 2px 0 0;
-    font-size: 0.8125rem;
-    color: var(--mv-aviso);
-}
-
-.mv-grade {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-    margin-top: 14px;
-}
-
-.mv-range {
-    width: 100%;
-    accent-color: var(--mv-acento);
-}
-
 .mv-dialogo :focus-visible {
     outline: 2px solid var(--mv-acento);
     outline-offset: 2px;
 }
 
 @media (max-width: 480px) {
-    .mv-vozes,
-    .mv-grade {
+    .mv-vozes {
         grid-template-columns: 1fr;
     }
 

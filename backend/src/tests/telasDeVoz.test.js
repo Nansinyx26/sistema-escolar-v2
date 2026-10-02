@@ -41,7 +41,7 @@ const DESCRICOES = {
     george: 'Calorosa e pausada',
     sarah: 'Madura e acolhedora',
     alice: 'Clara e didática',
-    matilda: 'Serena e profissional',
+    matilda: 'Serena e precisa',
     jessica: 'Leve e alegre',
 };
 

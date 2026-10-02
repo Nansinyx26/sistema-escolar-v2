@@ -265,7 +265,7 @@
         '<optgroup label="Femininas">' +
         '<option value="sarah">Sarah — Madura e acolhedora</option>' +
         '<option value="alice">Alice — Clara e didática</option>' +
-        '<option value="matilda">Matilda — Serena e profissional</option>' +
+        '<option value="matilda">Matilda — Serena e precisa</option>' +
         '<option value="jessica">Jessica — Leve e alegre</option>' +
         '</optgroup>' +
         '<optgroup label="Masculinas">' +

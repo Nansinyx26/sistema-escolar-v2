@@ -5,52 +5,29 @@
 /**
  * modalVoz.test.js — modal "Voz e Acessibilidade" dos painéis (Issue #564).
  *
- * Carrega os três módulos reais do navegador — o catálogo do narrador
- * (`js/sidebar-voice.js`), o serviço de voz do dispositivo (`js/voz-sistema.js`)
- * e o modal — para que o teste meça o caminho que roda em produção, e não uma
+ * Carrega os módulos reais — o catálogo do narrador (`js/sidebar-voice.js`) e
+ * o modal — para que o teste meça o caminho que roda em produção, e não uma
  * cópia: escolher Sarah no modal tem de gravar Sarah, o gênero e chamar o
  * servidor exatamente como a gaveta e o chatbot fazem.
+ *
+ * O modal só oferece vozes do narrador do servidor; a voz do navegador (Web
+ * Speech API) fica de fora por decisão de produto.
  */
 
 const path = require('node:path');
 
 const RAIZ = path.join(__dirname, '../../..');
 
-const VOZES_DISPOSITIVO = [
-    { voiceURI: 'google-br', name: 'Google português do Brasil', lang: 'pt-BR' },
-    { voiceURI: 'ms-antonio', name: 'Microsoft Antonio Online (Natural)', lang: 'pt-BR' },
-    { voiceURI: 'ms-thalita', name: 'Microsoft Thalita Online (Natural)', lang: 'pt-BR' },
-    { voiceURI: 'generica', name: 'Voz Sintetizada', lang: 'en-US' },
-];
-
-function instalarSintese() {
-    Object.defineProperty(window, 'speechSynthesis', {
-        configurable: true,
-        value: {
-            cancel: jest.fn(),
-            speak: jest.fn(),
-            getVoices: jest.fn(() => VOZES_DISPOSITIVO),
-            onvoiceschanged: null,
-        },
-    });
-    window.SpeechSynthesisUtterance = jest.fn(function (texto) {
-        this.text = texto;
-    });
-}
-
-function carregar({ comSintese = true } = {}) {
+function carregar() {
     jest.resetModules();
     document.body.innerHTML =
         '<button type="button" id="gatilho" data-abrir-modal-voz>Voz</button>';
     // A saída animada é coberta pelo CSS; aqui o fechamento é imediato.
     document.documentElement.classList.add('reduce-motion');
-    if (comSintese) instalarSintese();
     global.fetch = jest.fn(() => Promise.resolve({ ok: true }));
     require(path.join(RAIZ, 'js/sidebar-voice.js'));
-    require(path.join(RAIZ, 'js/voz-sistema.js'));
     require(path.join(RAIZ, 'js/modal-voz.js'));
     window.speak = jest.fn();
-    window.VozDoSistema.definirConta('conta-professora');
 }
 
 function abrirPeloGatilho() {
@@ -73,9 +50,6 @@ afterEach(() => {
     window.ModalVoz?.fechar();
     delete window.ModalVoz;
     delete window.Vozes;
-    delete window.VozDoSistema;
-    delete window.speechSynthesis;
-    delete window.SpeechSynthesisUtterance;
     document.documentElement.classList.remove('reduce-motion');
 });
 
@@ -122,43 +96,22 @@ describe('Modal de voz', () => {
         );
     });
 
-    it('filtra as vozes do dispositivo por gênero e salva a escolha na conta', () => {
+    it('não oferece nem usa a voz do navegador', () => {
+        const falar = jest.fn();
+        Object.defineProperty(window, 'speechSynthesis', {
+            configurable: true,
+            value: { speak: falar, cancel: jest.fn(), getVoices: () => [] },
+        });
         carregar();
         const dialogo = abrirPeloGatilho();
 
-        dialogo.querySelector('[data-mv-filtro="feminina"]').click();
-        const select = dialogo.querySelector('#mv-voz-dispositivo');
-        const opcoes = [...select.options].map((o) => o.value).filter(Boolean);
-        expect(opcoes.sort()).toEqual(['google-br', 'ms-thalita']);
-
-        select.value = 'ms-thalita';
-        select.dispatchEvent(new Event('change'));
-        expect(window.VozDoSistema.preferencias().voiceURI).toBe('ms-thalita');
-
-        // Outra conta no mesmo aparelho não herda a escolha.
-        window.VozDoSistema.definirConta('outra-conta');
-        expect(window.VozDoSistema.preferencias().voiceURI).toBeNull();
-    });
-
-    it('avisa quando o navegador não tem voz do gênero filtrado', () => {
-        carregar();
-        window.speechSynthesis.getVoices.mockReturnValue([
-            { voiceURI: 'ms-antonio', name: 'Microsoft Antonio', lang: 'pt-BR' },
-        ]);
-        const dialogo = abrirPeloGatilho();
-
-        dialogo.querySelector('[data-mv-filtro="feminina"]').click();
-        const aviso = dialogo.querySelector('#mv-aviso-dispositivo');
-        expect(aviso.hidden).toBe(false);
-        expect(aviso.textContent).toContain('femininas');
-    });
-
-    it('sem Web Speech API esconde só a voz do dispositivo', () => {
-        carregar({ comSintese: false });
-        const dialogo = abrirPeloGatilho();
-
-        expect(dialogo.querySelector('#mv-secao-dispositivo').hidden).toBe(true);
-        expect(dialogo.querySelector('#mv-secao-narrador').hidden).toBe(false);
+        expect(dialogo.querySelector('select, input[type="range"]')).toBeNull();
+        dialogo.querySelector('[data-mv-aba="feminina"]').click();
+        dialogo.querySelector('[data-mv-voz="alice"]').click();
+        // A prévia vai pelo narrador do servidor (window.speak), nunca pelo navegador.
+        expect(window.speak).toHaveBeenCalled();
+        expect(falar).not.toHaveBeenCalled();
+        delete window.speechSynthesis;
     });
 
     it('troca o modo de leitura', () => {
