@@ -44,7 +44,16 @@ async function estadoEscolas() {
 // Permite invalidar o cache (ex.: ao ativar uma escola)
 function invalidarCacheEscolas() {
     escolasCache.at = 0;
+    conferenciasDaSessao.clear();
 }
+
+// Resultado da conferência "esta escola da sessão ainda vale para esta conta
+// de equipe", por 60 s — o mesmo horizonte do cache de escolas acima. Sem ele,
+// toda requisição de equipe pagaria a consulta de vínculo. Teto de entradas
+// para não crescer sem limite num processo de vida longa.
+const conferenciasDaSessao = new Map();
+const CONFERENCIA_TTL_MS = 60_000;
+const CONFERENCIA_MAX = 5000;
 
 async function vinculosDoUsuario(user) {
     if (!user) return [];
@@ -86,6 +95,62 @@ function definirEscola(req, escolaId) {
     logContext.set({ escolaId: escolaId ? String(escolaId) : undefined });
 }
 
+function idDoUsuario(user) {
+    return String(user?.id || user?._id || '');
+}
+
+/** Grava a escola na sessão SEMPRE junto com o dono dela (Issue #576). */
+function gravarNaSessao(req) {
+    if (!req.session) return;
+    req.session.escolaAtivaId = req.escolaId;
+    req.session.usuarioId = idDoUsuario(req.user);
+}
+
+/**
+ * A escola guardada na sessão ainda vale para quem está fazendo a requisição?
+ * (Issue #576)
+ *
+ * O cookie da sessão (`escola_sess`) é independente do JWT. A escola ficava lá
+ * e era usada por quem viesse depois no mesmo navegador — o login só a
+ * sobrescrevia quando resolvia outra, e login com Google nem tocava a sessão.
+ * E quem perdia o vínculo com a escola continuava operando nela até a sessão
+ * expirar.
+ *
+ * Vale quando:
+ *   1. a sessão é DESTA conta (`usuarioId` igual ao do token). Sessão sem dono
+ *      (criada antes desta regra) também é descartada: a resolução abaixo a
+ *      refaz, agora com dono;
+ *   2. para equipe, a escola é uma que a própria resolução aceitaria — um dos
+ *      vínculos; sem vínculo, a escola da conta; sem as duas, a ativa única.
+ *      Admin (rede) e responsável (acesso pelo filho) não têm vínculo de
+ *      equipe: para eles basta o item 1.
+ */
+async function escolaDaSessaoVale(req) {
+    const meuId = idDoUsuario(req.user);
+    if (!meuId || String(req.session.usuarioId || '') !== meuId) return false;
+
+    const perfil = String(req.user?.perfil || '').toLowerCase();
+    if (!PERFIS_DE_EQUIPE.includes(perfil)) return true;
+
+    const escola = String(req.session.escolaAtivaId);
+    const chave = `${meuId}:${escola}`;
+    const guardada = conferenciasDaSessao.get(chave);
+    if (guardada && Date.now() - guardada.em < CONFERENCIA_TTL_MS) return guardada.ok;
+
+    const vinculos = await vinculosDoUsuario(req.user);
+    let ok;
+    if (vinculos.length > 0) {
+        ok = vinculos.some((v) => String(v.escolaId) === escola);
+    } else {
+        const daConta = await escolaIdDaConta(req.user);
+        ok = daConta ? daConta === escola : (await estadoEscolas()).ativaUnicaId === escola;
+    }
+
+    if (conferenciasDaSessao.size >= CONFERENCIA_MAX) conferenciasDaSessao.clear();
+    conferenciasDaSessao.set(chave, { ok, em: Date.now() });
+    return ok;
+}
+
 /**
  * Segue adiante, a menos que a escola resolvida esteja bloqueada (Issue #463).
  * É aqui que se pega a escola que só o VÍNCULO revela — o authJWT conhece
@@ -100,10 +165,23 @@ async function seguirSeEscolaLiberada(req, res, next) {
 
 module.exports = async function filtrarPorEscola(req, res, next) {
     try {
-        // 1. Sessão já tem escola ativa
+        // 1. Sessão já tem escola ativa — e ela é desta conta (Issue #576)
         if (req.session && req.session.escolaAtivaId) {
-            definirEscola(req, req.session.escolaAtivaId);
-            return seguirSeEscolaLiberada(req, res, next);
+            if (await escolaDaSessaoVale(req)) {
+                definirEscola(req, req.session.escolaAtivaId);
+                return seguirSeEscolaLiberada(req, res, next);
+            }
+            logger.warn('[filtrarPorEscola] escola da sessão descartada', {
+                perfil: req.user?.perfil,
+                motivo:
+                    String(req.session.usuarioId || '') === idDoUsuario(req.user)
+                        ? 'sem_vinculo'
+                        : 'outra_conta',
+                action: 'tenant.sessaoDescartada',
+            });
+            req.session.escolaAtivaId = undefined;
+            req.session.usuarioId = undefined;
+            req.session.superAdminContexto = undefined;
         }
 
         const estado = await estadoEscolas();
@@ -115,7 +193,7 @@ module.exports = async function filtrarPorEscola(req, res, next) {
         const vinculos = await vinculosDoUsuario(req.user);
         if (vinculos.length === 1) {
             definirEscola(req, vinculos[0].escolaId);
-            if (req.session) req.session.escolaAtivaId = req.escolaId;
+            gravarNaSessao(req);
             return seguirSeEscolaLiberada(req, res, next);
         }
         if (vinculos.length > 1) {
@@ -132,14 +210,14 @@ module.exports = async function filtrarPorEscola(req, res, next) {
         const escolaDaConta = await escolaIdDaConta(req.user);
         if (escolaDaConta) {
             definirEscola(req, escolaDaConta);
-            if (req.session) req.session.escolaAtivaId = req.escolaId;
+            gravarNaSessao(req);
             return seguirSeEscolaLiberada(req, res, next);
         }
 
         // 4. Rede com uma única escola ativa: é ela, para qualquer perfil.
         if (estado.ativaUnicaId) {
             definirEscola(req, estado.ativaUnicaId);
-            if (req.session) req.session.escolaAtivaId = req.escolaId;
+            gravarNaSessao(req);
             return seguirSeEscolaLiberada(req, res, next);
         }
 

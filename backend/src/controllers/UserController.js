@@ -915,7 +915,9 @@ exports.login = async (req, res) => {
                     descricao: `Login 2FA (fixo) exigido para ${user.email}`,
                 });
 
-                if (req.session && escolaAtivaId) req.session.escolaPendenteId = escolaAtivaId;
+                // Sempre sobrescreve: sem escola resolvida, fica vazio — nunca a
+                // pendência de um login anterior neste navegador (Issue #576).
+                if (req.session) req.session.escolaPendenteId = escolaAtivaId || undefined;
 
                 // Prova de senha validada — sem ela o /2fa/verify não aceita nada.
                 // O _id do usuário NÍO é mais devolvido: era o único "segredo"
@@ -986,7 +988,8 @@ exports.login = async (req, res) => {
                 descricao: `Login 2FA exigido para ${user.email}`,
             });
 
-            if (req.session && escolaAtivaId) req.session.escolaPendenteId = escolaAtivaId;
+            // Sempre sobrescreve (Issue #576): ver o caminho do 2FA fixo acima.
+            if (req.session) req.session.escolaPendenteId = escolaAtivaId || undefined;
 
             emitirPreAuthToken(res, user);
 
@@ -1015,7 +1018,11 @@ exports.login = async (req, res) => {
         // Sessão multi-escola
         if (req.session) {
             req.session.usuarioId = String(user._id);
-            if (escolaAtivaId) req.session.escolaAtivaId = escolaAtivaId;
+            // Sempre sobrescreve (Issue #576). Só gravar quando havia escola
+            // resolvida deixava a do usuário anterior neste navegador valendo
+            // para a conta que acabou de entrar.
+            req.session.escolaAtivaId = escolaAtivaId || undefined;
+            req.session.superAdminContexto = undefined;
         }
 
         // Atualiza ultimoLogin apenas aqui (sem 2FA)
