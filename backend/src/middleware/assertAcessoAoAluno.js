@@ -20,6 +20,22 @@ const { contaPrecisaConfirmar } = require('../services/verificacaoEmail');
 const { restritoPara } = require('../utils/restricaoAcesso');
 
 const PERFIS_GESTAO = ['admin', 'diretor', 'secretaria'];
+// Quem opera DENTRO de uma escola: o acesso deles depende da escola do aluno.
+const PERFIS_DE_EQUIPE = ['diretor', 'secretaria', 'professor'];
+
+/**
+ * Aluno sem escola: `escolaId` ausente, null ou ''. O legado 'default' não
+ * entra aqui porque é texto: já cai na conferência de "outra escola".
+ */
+function semEscola(aluno) {
+    const escola = aluno.escolaId;
+    return escola === undefined || escola === null || String(escola) === '';
+}
+
+/** Mesma flag de transição da listagem (`filtrarPorEscola.escolaMatch`). */
+function toleraLegados() {
+    return String(process.env.ESCOLA_INCLUIR_LEGADOS || '').toLowerCase() === 'true';
+}
 
 /** Monta um filtro que aceita _id, id legado ou matrícula sem quebrar em CastError. */
 function buildAlunoQuery(alunoId) {
@@ -75,6 +91,20 @@ async function assertAcessoAoAluno(req, alunoId, opts = {}) {
     // Multi-escola: ninguém, fora o admin, cruza a fronteira da escola ativa.
     if (req.escolaId && aluno.escolaId && String(aluno.escolaId) !== String(req.escolaId)) {
         return { ok: false, status: 403, error: 'Este aluno pertence a outra escola.' };
+    }
+
+    // Aluno sem escola (Issue #602). A conferência acima só valia quando os
+    // dois lados tinham escola: o cadastro sem `escolaId` ficava aberto à
+    // equipe de QUALQUER escola — ao professor bastava o nome da turma
+    // coincidir, e "1A" existe em toda escola. A listagem (`escolaMatch`) já
+    // deixava esses registros de fora; aqui vale a mesma regra, com a mesma
+    // flag de transição. Responsável e aluno seguem decididos pelo vínculo.
+    if (req.escolaId && PERFIS_DE_EQUIPE.includes(perfil) && semEscola(aluno) && !toleraLegados()) {
+        return {
+            ok: false,
+            status: 403,
+            error: 'Este aluno não está vinculado a nenhuma escola. Procure a administração do sistema.',
+        };
     }
 
     if (PERFIS_GESTAO.includes(perfil)) return { ok: true, aluno };
