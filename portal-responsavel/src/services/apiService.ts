@@ -142,6 +142,17 @@ export async function reenviarVerificacaoEmail(): Promise<void> {
   await apiFetch<void>('/auth/reenviar-verificacao', { method: 'POST' });
 }
 
+/**
+ * Pede a troca do e-mail da conta (Issue #609). O link de confirmação vai só
+ * para o endereço novo; a resposta é a mesma quando o endereço já tem conta.
+ */
+export async function solicitarTrocaEmail(novoEmail: string, senhaAtual: string): Promise<void> {
+  await apiFetch<void>('/auth/email/solicitar-troca', {
+    method: 'POST',
+    body: JSON.stringify({ novoEmail, senhaAtual }),
+  });
+}
+
 export async function logout(): Promise<void> {
   await apiFetch<void>('/auth/logout', { method: 'POST' });
 }
