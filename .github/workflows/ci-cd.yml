@@ -194,6 +194,14 @@ jobs:
       - name: 🔷 Tipos do portal (tsc)
         run: npm run typecheck:portal
 
+      # O Render serve o `portal-responsavel/dist/` que está no git: build
+      # quebrado não reprova teste nenhum, só aparece no dia de regenerar o
+      # dist. Foi assim que o modal de voz do #564 ficou fora da produção
+      # (Issue #621). Gera numa pasta temporária, sem tocar no dist versionado.
+      - name: 🧱 Build do portal (vite)
+        working-directory: ./portal-responsavel
+        run: npx vite build --outDir "$RUNNER_TEMP/portal-build" --emptyOutDir
+
       # Contrato de camadas: routes → controllers → services → models.
       - name: 🏛️ Contrato de arquitetura (dependency-cruiser)
         run: npm run arch
