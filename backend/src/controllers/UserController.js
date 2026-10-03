@@ -1893,6 +1893,67 @@ exports.forgotPassword = async (req, res) => {
     }
 };
 
+const TENTATIVAS_CODIGO_RECUPERACAO = 5;
+const ERRO_CODIGO_BLOQUEADO =
+    'Código bloqueado por excesso de tentativas. Solicite um novo código.';
+
+/**
+ * Confere o código de recuperação de `usuarioId` (Issue #596).
+ *
+ * A tentativa é GASTA ANTES da comparação, num único `findOneAndUpdate`. O
+ * fluxo antigo lia o pedido, comparava o hash (assíncrono, demora) e só depois
+ * gravava `tentativas += 1`: dez palpites em paralelo liam `tentativas: 0`,
+ * passavam todos pelo teto e gravavam todos `1`. O limite de 5 por código —
+ * o que segura a adivinhação de 6 dígitos — não valia sob concorrência.
+ *
+ * Quem acerta recebe a tentativa de volta: verificar e depois redefinir são
+ * duas conferências do mesmo código, e acertar não pode esgotar o teto.
+ *
+ * @returns {Promise<{ok: true, recovery: object} | {ok: false, error: string}>}
+ */
+async function conferirCodigoDeRecuperacao(usuarioId, codigo) {
+    const agora = new Date();
+    const recovery = await RecuperacaoSenha.findOneAndUpdate(
+        {
+            usuarioId,
+            status: 'ativo',
+            expiraEm: { $gt: agora },
+            tentativas: { $lt: TENTATIVAS_CODIGO_RECUPERACAO },
+        },
+        { $inc: { tentativas: 1 } },
+        { new: true }
+    );
+
+    if (!recovery) {
+        // Não reservou: sem pedido ativo, vencido ou sem tentativa sobrando.
+        const ativo = await RecuperacaoSenha.findOneAndUpdate(
+            { usuarioId, status: 'ativo' },
+            { $set: { status: 'expirado' } }
+        );
+        if (!ativo) return { ok: false, error: 'Código inválido ou expirado.' };
+        if (ativo.expiraEm <= agora) {
+            return { ok: false, error: 'Código expirado. Solicite um novo código.' };
+        }
+        return { ok: false, error: ERRO_CODIGO_BLOQUEADO };
+    }
+
+    // Compara por HASH (o banco não guarda o código em texto puro).
+    const { conferirSegredo } = require('../utils/codigosBackup');
+    if (!(await conferirSegredo(String(codigo).trim(), recovery.codigo))) {
+        if (recovery.tentativas >= TENTATIVAS_CODIGO_RECUPERACAO) {
+            await RecuperacaoSenha.updateOne(
+                { _id: recovery._id, status: 'ativo' },
+                { $set: { status: 'expirado' } }
+            );
+            return { ok: false, error: ERRO_CODIGO_BLOQUEADO };
+        }
+        return { ok: false, error: 'Código inválido.' };
+    }
+
+    await RecuperacaoSenha.updateOne({ _id: recovery._id }, { $inc: { tentativas: -1 } });
+    return { ok: true, recovery };
+}
+
 exports.verifyRecoveryCode = async (req, res) => {
     const { email, codigo } = req.body;
     try {
@@ -1907,51 +1968,9 @@ exports.verifyRecoveryCode = async (req, res) => {
             return res.status(400).json({ success: false, error: 'Código inválido ou expirado.' });
         }
 
-        // Busca código ativo para este usuário
-        const recovery = await RecuperacaoSenha.findOne({
-            usuarioId: user._id,
-            status: 'ativo',
-        });
-
-        if (!recovery) {
-            return res.status(400).json({ success: false, error: 'Código inválido ou expirado.' });
-        }
-
-        // Verifica expiração
-        if (recovery.expiraEm < Date.now()) {
-            recovery.status = 'expirado';
-            await recovery.save();
-            return res
-                .status(400)
-                .json({ success: false, error: 'Código expirado. Solicite um novo código.' });
-        }
-
-        // Verifica limite de tentativas antes do código
-        if (recovery.tentativas >= 5) {
-            recovery.status = 'expirado';
-            await recovery.save();
-            return res.status(400).json({
-                success: false,
-                error: 'Código bloqueado por excesso de tentativas. Solicite um novo código.',
-            });
-        }
-
-        // Compara por HASH (o banco não guarda mais o código em texto puro).
-        const { conferirSegredo } = require('../utils/codigosBackup');
-        if (!(await conferirSegredo(String(codigo).trim(), recovery.codigo))) {
-            recovery.tentativas += 1;
-            await recovery.save();
-
-            if (recovery.tentativas >= 5) {
-                recovery.status = 'expirado';
-                await recovery.save();
-                return res.status(400).json({
-                    success: false,
-                    error: 'Código bloqueado por excesso de tentativas. Solicite um novo código.',
-                });
-            }
-
-            return res.status(400).json({ success: false, error: 'Código inválido.' });
+        const conferencia = await conferirCodigoDeRecuperacao(user._id, codigo);
+        if (!conferencia.ok) {
+            return res.status(400).json({ success: false, error: conferencia.error });
         }
 
         res.json({ success: true, message: 'Código verificado com sucesso.' });
@@ -1992,51 +2011,20 @@ exports.resetPassword = async (req, res) => {
             return res.status(400).json({ success: false, error: 'Código inválido ou expirado.' });
         }
 
-        // Busca o código ativo
-        const recovery = await RecuperacaoSenha.findOne({
-            usuarioId: user._id,
-            status: 'ativo',
-        });
+        const conferencia = await conferirCodigoDeRecuperacao(user._id, codigo);
+        if (!conferencia.ok) {
+            return res.status(400).json({ success: false, error: conferencia.error });
+        }
 
-        if (!recovery) {
+        // Consome o código ANTES de trocar a senha, num passo só (Issue #596).
+        // Marcar `utilizado` depois da troca deixava duas redefinições
+        // simultâneas com o mesmo código passarem as duas.
+        const consumido = await RecuperacaoSenha.findOneAndUpdate(
+            { _id: conferencia.recovery._id, status: 'ativo' },
+            { $set: { status: 'utilizado' } }
+        );
+        if (!consumido) {
             return res.status(400).json({ success: false, error: 'Código inválido ou expirado.' });
-        }
-
-        // Verifica expiração
-        if (recovery.expiraEm < Date.now()) {
-            recovery.status = 'expirado';
-            await recovery.save();
-            return res
-                .status(400)
-                .json({ success: false, error: 'Código expirado. Solicite um novo código.' });
-        }
-
-        // Verifica limite de tentativas
-        if (recovery.tentativas >= 5) {
-            recovery.status = 'expirado';
-            await recovery.save();
-            return res.status(400).json({
-                success: false,
-                error: 'Código bloqueado por excesso de tentativas. Solicite um novo código.',
-            });
-        }
-
-        // Valida se o código confere
-        const { conferirSegredo: conferirCodigoRecuperacao } = require('../utils/codigosBackup');
-        if (!(await conferirCodigoRecuperacao(String(codigo).trim(), recovery.codigo))) {
-            recovery.tentativas += 1;
-            await recovery.save();
-
-            if (recovery.tentativas >= 5) {
-                recovery.status = 'expirado';
-                await recovery.save();
-                return res.status(400).json({
-                    success: false,
-                    error: 'Código bloqueado por excesso de tentativas. Solicite um novo código.',
-                });
-            }
-
-            return res.status(400).json({ success: false, error: 'Código inválido.' });
         }
 
         // Atualiza a senha do usuário
@@ -2049,10 +2037,6 @@ exports.resetPassword = async (req, res) => {
                 $unset: { resetToken: '', resetTokenExpiry: '' },
             }
         );
-
-        // Marca como utilizado
-        recovery.status = 'utilizado';
-        await recovery.save();
 
         // Registra a atividade no log de auditoria
         await logAction(req, 'RESET_PASSWORD_SUCCESS', 'Usuarios', {
