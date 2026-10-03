@@ -2491,11 +2491,35 @@ exports.updateProfile = async (req, res) => {
         const isResponsavel = req.user.perfil === 'responsavel';
         const updateData = {};
 
+        // ============================================
+        // E-MAIL NÃO SE TROCA POR AQUI (Issue #571)
+        // ============================================
+        // O responsável podia mandar `email` e o endereço novo era gravado sem
+        // confirmação, mantendo `emailVerificado: true`. Como o vínculo
+        // responsável → aluno é decidido pelo e-mail, bastava trocar para o
+        // endereço que a escola cadastrou como responsável de outra criança
+        // (ainda sem conta) e entrar de novo para ler e alterar os dados dela.
+        // Nenhuma tela do portal envia `email`; o mesmo valor atual é aceito em
+        // silêncio, qualquer outro é recusado.
+        if (body.email !== undefined && body.email !== null && body.email !== '') {
+            const atual = String(req.user.email || '').toLowerCase();
+            if (String(body.email).trim().toLowerCase() !== atual) {
+                await logAction(req, 'TROCA_EMAIL_RECUSADA', 'Segurança', {
+                    recursoId: userId,
+                    descricao: 'Tentativa de trocar o e-mail da conta pelo perfil.',
+                });
+                return res.status(400).json({
+                    success: false,
+                    codigo: 'EMAIL_NAO_ALTERAVEL',
+                    error: 'O e-mail da conta não pode ser alterado por aqui. Procure a secretaria da escola.',
+                });
+            }
+        }
+
         // Atributos base permitidos
         if (body.nome) updateData.nome = body.nome;
         if (body.telefone) updateData.telefone = body.telefone;
         if (body.preferenciaNarracao) updateData.preferenciaNarracao = body.preferenciaNarracao;
-        if (body.email && isResponsavel) updateData.email = body.email.toLowerCase();
         // Foto de perfil (ID do GridFS ou string vazia para remover)
         if (body.foto !== undefined) updateData.foto = body.foto;
 
