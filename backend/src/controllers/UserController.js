@@ -915,7 +915,9 @@ exports.login = async (req, res) => {
                     descricao: `Login 2FA (fixo) exigido para ${user.email}`,
                 });
 
-                if (req.session && escolaAtivaId) req.session.escolaPendenteId = escolaAtivaId;
+                // Sempre sobrescreve: sem escola resolvida, fica vazio — nunca a
+                // pendência de um login anterior neste navegador (Issue #576).
+                if (req.session) req.session.escolaPendenteId = escolaAtivaId || undefined;
 
                 // Prova de senha validada — sem ela o /2fa/verify não aceita nada.
                 // O _id do usuário NÍO é mais devolvido: era o único "segredo"
@@ -986,7 +988,8 @@ exports.login = async (req, res) => {
                 descricao: `Login 2FA exigido para ${user.email}`,
             });
 
-            if (req.session && escolaAtivaId) req.session.escolaPendenteId = escolaAtivaId;
+            // Sempre sobrescreve (Issue #576): ver o caminho do 2FA fixo acima.
+            if (req.session) req.session.escolaPendenteId = escolaAtivaId || undefined;
 
             emitirPreAuthToken(res, user);
 
@@ -1015,7 +1018,11 @@ exports.login = async (req, res) => {
         // Sessão multi-escola
         if (req.session) {
             req.session.usuarioId = String(user._id);
-            if (escolaAtivaId) req.session.escolaAtivaId = escolaAtivaId;
+            // Sempre sobrescreve (Issue #576). Só gravar quando havia escola
+            // resolvida deixava a do usuário anterior neste navegador valendo
+            // para a conta que acabou de entrar.
+            req.session.escolaAtivaId = escolaAtivaId || undefined;
+            req.session.superAdminContexto = undefined;
         }
 
         // Atualiza ultimoLogin apenas aqui (sem 2FA)
@@ -1468,19 +1475,13 @@ exports.update = async (req, res) => {
         // são alteradas por admin.
         const podeDefinirPerfilInicial = isSelfEdit && !oldData.perfil;
 
-        // A senha só entra na lista quando a conta é a de quem está pedindo —
-        // inclusive para o admin.
+        // `senha` não entra em lista nenhuma, nem para o próprio titular nem
+        // para o admin (Issue #590) — ver a recusa logo abaixo.
         const userWhitelist = isAdmin
-            ? [
-                  ...CAMPOS_PROPRIOS,
-                  ...CAMPOS_PRIVILEGIO,
-                  'perfilDefinidoEm',
-                  ...(isSelfEdit ? ['senha'] : []),
-              ]
+            ? [...CAMPOS_PROPRIOS, ...CAMPOS_PRIVILEGIO, 'perfilDefinidoEm']
             : isSelfEdit
               ? [
                     ...CAMPOS_PROPRIOS,
-                    'senha',
                     ...(podeDefinirPerfilInicial ? ['perfil', 'perfilDefinidoEm'] : []),
                 ]
               : // Diretor gerenciando secretaria/professor: pode ativar/desativar, não muda perfil.
@@ -1500,14 +1501,30 @@ exports.update = async (req, res) => {
             });
         }
 
+        // TROCA DE SENHA NÃO É EDIÇÃO DE PERFIL (Issue #590).
+        // Aqui bastava a sessão: sem a senha atual, sem regra de força, e um
+        // valor com cara de hash bcrypt era gravado como veio. Quem tivesse a
+        // sessão (8h; cookie roubado, computador compartilhado) fixava uma
+        // senha nova e ficava com a conta. Nenhuma tela troca senha por aqui:
+        // o caminho é a recuperação, que prova a posse do e-mail.
+        // Um hash vindo de ida e volta (cliente que devolve o objeto inteiro) é
+        // ignorado — nunca gravado.
+        if (req.body.senha !== undefined && !isHashed(req.body.senha)) {
+            await logAction(req, 'TROCA_SENHA_SEM_PROVA_RECUSADA', 'Usuarios', {
+                recursoId: String(targetId),
+                descricao: 'Tentativa de trocar a senha pela edição de perfil.',
+            });
+            return res.status(400).json({
+                success: false,
+                codigo: 'SENHA_PELA_RECUPERACAO',
+                error: 'Para trocar a senha, use "Esqueci minha senha": enviamos um código para o e-mail da conta.',
+            });
+        }
+
         const filteredBody = {};
         userWhitelist.forEach((field) => {
             if (req.body[field] !== undefined) filteredBody[field] = req.body[field];
         });
-
-        if (filteredBody.senha && !isHashed(filteredBody.senha)) {
-            filteredBody.senha = await bcrypt.hash(filteredBody.senha, SALT_ROUNDS);
-        }
 
         // Proteção: apenas admin muda o perfil de uma conta que já tem perfil
         if (filteredBody.perfil && filteredBody.perfil !== oldData.perfil) {
@@ -1534,7 +1551,6 @@ exports.update = async (req, res) => {
         const mudouPrivilegio =
             (filteredBody.perfil !== undefined && filteredBody.perfil !== oldData.perfil) ||
             (filteredBody.ativo !== undefined && filteredBody.ativo !== oldData.ativo) ||
-            filteredBody.senha !== undefined ||
             (filteredBody.email !== undefined && filteredBody.email !== oldData.email);
 
         const updateOps = { $set: filteredBody };
@@ -1877,6 +1893,67 @@ exports.forgotPassword = async (req, res) => {
     }
 };
 
+const TENTATIVAS_CODIGO_RECUPERACAO = 5;
+const ERRO_CODIGO_BLOQUEADO =
+    'Código bloqueado por excesso de tentativas. Solicite um novo código.';
+
+/**
+ * Confere o código de recuperação de `usuarioId` (Issue #596).
+ *
+ * A tentativa é GASTA ANTES da comparação, num único `findOneAndUpdate`. O
+ * fluxo antigo lia o pedido, comparava o hash (assíncrono, demora) e só depois
+ * gravava `tentativas += 1`: dez palpites em paralelo liam `tentativas: 0`,
+ * passavam todos pelo teto e gravavam todos `1`. O limite de 5 por código —
+ * o que segura a adivinhação de 6 dígitos — não valia sob concorrência.
+ *
+ * Quem acerta recebe a tentativa de volta: verificar e depois redefinir são
+ * duas conferências do mesmo código, e acertar não pode esgotar o teto.
+ *
+ * @returns {Promise<{ok: true, recovery: object} | {ok: false, error: string}>}
+ */
+async function conferirCodigoDeRecuperacao(usuarioId, codigo) {
+    const agora = new Date();
+    const recovery = await RecuperacaoSenha.findOneAndUpdate(
+        {
+            usuarioId,
+            status: 'ativo',
+            expiraEm: { $gt: agora },
+            tentativas: { $lt: TENTATIVAS_CODIGO_RECUPERACAO },
+        },
+        { $inc: { tentativas: 1 } },
+        { new: true }
+    );
+
+    if (!recovery) {
+        // Não reservou: sem pedido ativo, vencido ou sem tentativa sobrando.
+        const ativo = await RecuperacaoSenha.findOneAndUpdate(
+            { usuarioId, status: 'ativo' },
+            { $set: { status: 'expirado' } }
+        );
+        if (!ativo) return { ok: false, error: 'Código inválido ou expirado.' };
+        if (ativo.expiraEm <= agora) {
+            return { ok: false, error: 'Código expirado. Solicite um novo código.' };
+        }
+        return { ok: false, error: ERRO_CODIGO_BLOQUEADO };
+    }
+
+    // Compara por HASH (o banco não guarda o código em texto puro).
+    const { conferirSegredo } = require('../utils/codigosBackup');
+    if (!(await conferirSegredo(String(codigo).trim(), recovery.codigo))) {
+        if (recovery.tentativas >= TENTATIVAS_CODIGO_RECUPERACAO) {
+            await RecuperacaoSenha.updateOne(
+                { _id: recovery._id, status: 'ativo' },
+                { $set: { status: 'expirado' } }
+            );
+            return { ok: false, error: ERRO_CODIGO_BLOQUEADO };
+        }
+        return { ok: false, error: 'Código inválido.' };
+    }
+
+    await RecuperacaoSenha.updateOne({ _id: recovery._id }, { $inc: { tentativas: -1 } });
+    return { ok: true, recovery };
+}
+
 exports.verifyRecoveryCode = async (req, res) => {
     const { email, codigo } = req.body;
     try {
@@ -1891,51 +1968,9 @@ exports.verifyRecoveryCode = async (req, res) => {
             return res.status(400).json({ success: false, error: 'Código inválido ou expirado.' });
         }
 
-        // Busca código ativo para este usuário
-        const recovery = await RecuperacaoSenha.findOne({
-            usuarioId: user._id,
-            status: 'ativo',
-        });
-
-        if (!recovery) {
-            return res.status(400).json({ success: false, error: 'Código inválido ou expirado.' });
-        }
-
-        // Verifica expiração
-        if (recovery.expiraEm < Date.now()) {
-            recovery.status = 'expirado';
-            await recovery.save();
-            return res
-                .status(400)
-                .json({ success: false, error: 'Código expirado. Solicite um novo código.' });
-        }
-
-        // Verifica limite de tentativas antes do código
-        if (recovery.tentativas >= 5) {
-            recovery.status = 'expirado';
-            await recovery.save();
-            return res.status(400).json({
-                success: false,
-                error: 'Código bloqueado por excesso de tentativas. Solicite um novo código.',
-            });
-        }
-
-        // Compara por HASH (o banco não guarda mais o código em texto puro).
-        const { conferirSegredo } = require('../utils/codigosBackup');
-        if (!(await conferirSegredo(String(codigo).trim(), recovery.codigo))) {
-            recovery.tentativas += 1;
-            await recovery.save();
-
-            if (recovery.tentativas >= 5) {
-                recovery.status = 'expirado';
-                await recovery.save();
-                return res.status(400).json({
-                    success: false,
-                    error: 'Código bloqueado por excesso de tentativas. Solicite um novo código.',
-                });
-            }
-
-            return res.status(400).json({ success: false, error: 'Código inválido.' });
+        const conferencia = await conferirCodigoDeRecuperacao(user._id, codigo);
+        if (!conferencia.ok) {
+            return res.status(400).json({ success: false, error: conferencia.error });
         }
 
         res.json({ success: true, message: 'Código verificado com sucesso.' });
@@ -1976,51 +2011,20 @@ exports.resetPassword = async (req, res) => {
             return res.status(400).json({ success: false, error: 'Código inválido ou expirado.' });
         }
 
-        // Busca o código ativo
-        const recovery = await RecuperacaoSenha.findOne({
-            usuarioId: user._id,
-            status: 'ativo',
-        });
+        const conferencia = await conferirCodigoDeRecuperacao(user._id, codigo);
+        if (!conferencia.ok) {
+            return res.status(400).json({ success: false, error: conferencia.error });
+        }
 
-        if (!recovery) {
+        // Consome o código ANTES de trocar a senha, num passo só (Issue #596).
+        // Marcar `utilizado` depois da troca deixava duas redefinições
+        // simultâneas com o mesmo código passarem as duas.
+        const consumido = await RecuperacaoSenha.findOneAndUpdate(
+            { _id: conferencia.recovery._id, status: 'ativo' },
+            { $set: { status: 'utilizado' } }
+        );
+        if (!consumido) {
             return res.status(400).json({ success: false, error: 'Código inválido ou expirado.' });
-        }
-
-        // Verifica expiração
-        if (recovery.expiraEm < Date.now()) {
-            recovery.status = 'expirado';
-            await recovery.save();
-            return res
-                .status(400)
-                .json({ success: false, error: 'Código expirado. Solicite um novo código.' });
-        }
-
-        // Verifica limite de tentativas
-        if (recovery.tentativas >= 5) {
-            recovery.status = 'expirado';
-            await recovery.save();
-            return res.status(400).json({
-                success: false,
-                error: 'Código bloqueado por excesso de tentativas. Solicite um novo código.',
-            });
-        }
-
-        // Valida se o código confere
-        const { conferirSegredo: conferirCodigoRecuperacao } = require('../utils/codigosBackup');
-        if (!(await conferirCodigoRecuperacao(String(codigo).trim(), recovery.codigo))) {
-            recovery.tentativas += 1;
-            await recovery.save();
-
-            if (recovery.tentativas >= 5) {
-                recovery.status = 'expirado';
-                await recovery.save();
-                return res.status(400).json({
-                    success: false,
-                    error: 'Código bloqueado por excesso de tentativas. Solicite um novo código.',
-                });
-            }
-
-            return res.status(400).json({ success: false, error: 'Código inválido.' });
         }
 
         // Atualiza a senha do usuário
@@ -2034,10 +2038,6 @@ exports.resetPassword = async (req, res) => {
             }
         );
 
-        // Marca como utilizado
-        recovery.status = 'utilizado';
-        await recovery.save();
-
         // Registra a atividade no log de auditoria
         await logAction(req, 'RESET_PASSWORD_SUCCESS', 'Usuarios', {
             recursoId: user._id,
@@ -2050,29 +2050,66 @@ exports.resetPassword = async (req, res) => {
     }
 };
 
+/** Mesma regra de força da recuperação de senha. Devolve o motivo ou null. */
+function motivoSenhaFraca(senha) {
+    if (typeof senha !== 'string' || senha.length < 8) {
+        return 'A senha deve ter no mínimo 8 caracteres.';
+    }
+    if (!/[A-Z]/.test(senha)) return 'A senha deve conter pelo menos uma letra maiúscula.';
+    if (!/[0-9]/.test(senha)) return 'A senha deve conter pelo menos um número.';
+    return null;
+}
+
 /**
  * Atualização de senha obrigatória (quando criado por Admin)
+ *
+ * SÓ PARA A TROCA OBRIGATÓRIA (Issue #590). A rota não conferia
+ * `deveMudarSenha`: qualquer conta logada trocava a senha por aqui, sem a
+ * senha atual, com regra de força mais fraca que a da recuperação, e sem
+ * derrubar as outras sessões. Agora ela só existe para quem o sistema mandou
+ * trocar; a troca derruba as demais sessões (tokenVersion) e reemite o
+ * cookie desta, para a pessoa seguir logada.
  */
 exports.updatePasswordForce = async (req, res) => {
     const { password } = req.body;
     const userId = req.user.id;
 
     try {
-        // Validação de força de senha
-        if (!password || password.length < 8) {
-            return res
-                .status(400)
-                .json({ success: false, error: 'A senha deve ter no mínimo 8 caracteres.' });
+        const conta = await Usuario.findById(userId).select('deveMudarSenha').lean();
+        if (!conta) {
+            return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
         }
+        if (conta.deveMudarSenha !== true) {
+            await logAction(req, 'TROCA_SENHA_FORCADA_RECUSADA', 'Usuarios', {
+                recursoId: userId,
+                descricao: 'Troca obrigatória de senha pedida por conta que não precisa trocar.',
+            });
+            return res.status(403).json({
+                success: false,
+                codigo: 'TROCA_OBRIGATORIA_INEXISTENTE',
+                error: 'Esta conta não tem troca de senha pendente. Para mudar a senha, use "Esqueci minha senha".',
+            });
+        }
+
+        const motivo = motivoSenhaFraca(password);
+        if (motivo) return res.status(400).json({ success: false, error: motivo });
 
         const senhaHash = await bcrypt.hash(password, SALT_ROUNDS);
 
-        await Usuario.findByIdAndUpdate(userId, {
-            $set: {
-                senha: senhaHash,
-                deveMudarSenha: false, // Libera o acesso
+        const atualizado = await Usuario.findByIdAndUpdate(
+            userId,
+            {
+                $set: {
+                    senha: senhaHash,
+                    deveMudarSenha: false, // Libera o acesso
+                },
+                $inc: { tokenVersion: 1 },
             },
-        });
+            { new: true }
+        );
+
+        // As outras sessões morrem pelo tokenVersion; esta segue com um token novo.
+        emitirTokenSessao(res, atualizado);
 
         await logAction(req, 'FORCE_CHANGE_PASSWORD', 'Usuarios', {
             recursoId: userId,
@@ -2484,11 +2521,35 @@ exports.updateProfile = async (req, res) => {
         const isResponsavel = req.user.perfil === 'responsavel';
         const updateData = {};
 
+        // ============================================
+        // E-MAIL NÃO SE TROCA POR AQUI (Issue #571)
+        // ============================================
+        // O responsável podia mandar `email` e o endereço novo era gravado sem
+        // confirmação, mantendo `emailVerificado: true`. Como o vínculo
+        // responsável → aluno é decidido pelo e-mail, bastava trocar para o
+        // endereço que a escola cadastrou como responsável de outra criança
+        // (ainda sem conta) e entrar de novo para ler e alterar os dados dela.
+        // Nenhuma tela do portal envia `email`; o mesmo valor atual é aceito em
+        // silêncio, qualquer outro é recusado.
+        if (body.email !== undefined && body.email !== null && body.email !== '') {
+            const atual = String(req.user.email || '').toLowerCase();
+            if (String(body.email).trim().toLowerCase() !== atual) {
+                await logAction(req, 'TROCA_EMAIL_RECUSADA', 'Segurança', {
+                    recursoId: userId,
+                    descricao: 'Tentativa de trocar o e-mail da conta pelo perfil.',
+                });
+                return res.status(400).json({
+                    success: false,
+                    codigo: 'EMAIL_NAO_ALTERAVEL',
+                    error: 'O e-mail da conta não pode ser alterado por aqui. Procure a secretaria da escola.',
+                });
+            }
+        }
+
         // Atributos base permitidos
         if (body.nome) updateData.nome = body.nome;
         if (body.telefone) updateData.telefone = body.telefone;
         if (body.preferenciaNarracao) updateData.preferenciaNarracao = body.preferenciaNarracao;
-        if (body.email && isResponsavel) updateData.email = body.email.toLowerCase();
         // Foto de perfil (ID do GridFS ou string vazia para remover)
         if (body.foto !== undefined) updateData.foto = body.foto;
 

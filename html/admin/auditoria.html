@@ -202,6 +202,15 @@
     <script src="../../js/auth.js"></script>
     <script src="../../js/utils.js"></script>
     <script>
+        // Valor do banco interpolado em atributo HTML: escapa aspas, < > e crase,
+        // mas não o `&`, que o servidor já grava codificado (Issue #583). Ver
+        // js/escape-html.js (escapeAttr). Declaração `function`, e não `const`, para
+        // poder conviver com outra cópia carregada na mesma página.
+        function escAttr(v) {
+            if (v === null || v === undefined) return '';
+            return String(v).replace(/["'<>`]/g, (c) => ({ '"': '&quot;', "'": '&#39;', '<': '&lt;', '>': '&gt;', '`': '&#96;' })[c]);
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             await db.init();
             await auth.init();
@@ -248,18 +257,18 @@
                         <tr>
                             <td class="text-secondary">${date}</td>
                             <td>
-                                <strong>${log.usuarioNome || 'Sistema'}</strong><br>
-                                <small>${log.usuarioEmail || '-'}</small>
+                                <strong>${escAttr(log.usuarioNome || 'Sistema')}</strong><br>
+                                <small>${escAttr(log.usuarioEmail || '-')}</small>
                             </td>
-                            <td class="${isCritical ? 'critical-action' : ''}">${log.acao}</td>
-                            <td>${log.recurso || '-'}</td>
+                            <td class="${isCritical ? 'critical-action' : ''}">${escAttr(log.acao)}</td>
+                            <td>${escAttr(log.recurso || '-')}</td>
                             <td>
-                                <small>${log.ip}</small><br>
-                                <small class="text-secondary">${log.dispositivo}</small>
+                                <small>${escAttr(log.ip)}</small><br>
+                                <small class="text-secondary">${escAttr(log.dispositivo)}</small>
                             </td>
                             <td>
-                                <div class="log-details" title="${log.detalhes?.descricao || ''}">
-                                    ${log.detalhes?.descricao || 'Sem descrição'}
+                                <div class="log-details" title="${escAttr(log.detalhes?.descricao || '')}">
+                                    ${escAttr(log.detalhes?.descricao || 'Sem descrição')}
                                 </div>
                             </td>
                         </tr>

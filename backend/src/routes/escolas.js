@@ -124,10 +124,18 @@ router.post('/trocar/:escolaId', authJWT, async (req, res) => {
 
 /**
  * POST /api/escolas/mudar
- * Autenticada — MUDA a escola do usuário de equipe (professor/diretor/secretaria)
- * quando ele passa a trabalhar em outra escola. Valida pelo CÓDIGO SECRETO da
- * nova escola (mesma prova de vínculo usada no cadastro), cria o vínculo se não
- * existir, atualiza o escolaId da conta e ativa a nova escola na sessão.
+ * Autenticada — MUDA a escola do PROFESSOR quando ele passa a trabalhar em
+ * outra escola. Valida pelo CÓDIGO SECRETO da nova escola (mesma prova de
+ * vínculo usada no cadastro de professor), cria o vínculo se não existir,
+ * atualiza o escolaId da conta e ativa a nova escola na sessão.
+ *
+ * SÓ PROFESSOR (Issue #575). O código secreto é o que a escola entrega aos
+ * professores para o cadastro — ele prova "sou professor desta escola", e só
+ * isso. Aceitá-lo de diretor e secretaria gravava o vínculo com o cargo de
+ * quem chamava: um diretor da escola A que conseguisse o código da escola B
+ * (basta um professor repassar) virava diretor em B, com acesso a todos os
+ * alunos. Direção e secretaria entram numa escola por convite de uso único
+ * (services/convitesEquipe.js), nunca pelo código.
  *
  * Body: { codigoEscola, escolaId? }
  */
@@ -139,6 +147,17 @@ router.post('/mudar', authJWT, async (req, res) => {
             return res.status(403).json({
                 success: false,
                 error: 'Apenas professor, diretor ou secretaria podem trocar de escola por aqui.',
+            });
+        }
+        if (perfil !== 'professor') {
+            await logAction(req, 'TROCA_ESCOLA_POR_CODIGO_RECUSADA', 'Segurança', {
+                recursoId: String(req.user.id || req.user._id || ''),
+                descricao: `Troca de escola por código recusada para perfil ${perfil}.`,
+            });
+            return res.status(403).json({
+                success: false,
+                codigo: 'TROCA_ESCOLA_POR_CONVITE',
+                error: 'Direção e secretaria entram em outra escola por convite. Peça ao administrador do sistema.',
             });
         }
 

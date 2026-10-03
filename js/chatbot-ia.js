@@ -8,6 +8,35 @@
 (function () {
     'use strict';
 
+    // Valor do banco interpolado em atributo HTML: escapa aspas, < > e crase,
+    // mas não o `&`, que o servidor já grava codificado (Issue #582). Ver
+    // js/escape-html.js (escapeAttr).
+    function escAttr(v) {
+        if (v === null || v === undefined) return '';
+        return String(v).replace(
+            /["'<>`]/g,
+            (c) => ({ '"': '&quot;', "'": '&#39;', '<': '&lt;', '>': '&gt;', '`': '&#96;' })[c]
+        );
+    }
+
+    // Argumento de handler inline (onclick="f(${argJs(x)})"): vira string JS e
+    // passa por escape de HTML COMPLETO, `&` incluído — o navegador decodifica
+    // as entidades antes de rodar o JS, então `&quot;` voltaria a ser aspa.
+    function argJs(v) {
+        return JSON.stringify(String(v ?? '')).replace(
+            /[&<>"'`]/g,
+            (c) =>
+                ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;',
+                    '`': '&#96;',
+                })[c]
+        );
+    }
+
     const CONFIG = {
         apiBase: (window.API_BASE_URL || '/api') + '/ia/chatbot',
         ttsBase: (window.API_BASE_URL || '/api') + '/tts',
@@ -294,7 +323,7 @@
             const foto = getUserPhoto(user);
             const initials = getInitials(user?.nome);
             avatarHtml = foto
-                ? `<img src="${foto}" class="chat-avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"><div class="chat-avatar-initials" style="display:none">${initials}</div>`
+                ? `<img src="${escAttr(foto)}" class="chat-avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"><div class="chat-avatar-initials" style="display:none">${initials}</div>`
                 : `<div class="chat-avatar-initials">${initials}</div>`;
         }
 
@@ -323,11 +352,11 @@
             if (options && options.length > 0) {
                 html += `<div class="chatbot-options" style="display:flex;flex-direction:column;gap:6px;margin-top:10px;">`;
                 options.forEach((opt, oi) => {
-                    const safeLabel = opt.label.replace(/'/g, "\\'");
-                    const safeValue = (opt.value || opt.alunoId || '').replace(/'/g, "\\'");
+                    // O rótulo é nome de aluno vindo do servidor. Trocar só `'`
+                    // por `\'` deixava o `"` fechar o atributo (Issue #582).
                     html += `<button
                         class="chatbot-option-btn"
-                        onclick="window.chatbotIA.selectOption('${safeLabel}','${safeValue}')"
+                        onclick="window.chatbotIA.selectOption(${argJs(opt.label)},${argJs(opt.value || opt.alunoId || '')})"
                         style="padding:8px 14px;border-radius:10px;font-size:0.82rem;font-weight:600;cursor:pointer;background:rgba(16,185,129,0.12);color:#10b981;border:1px solid rgba(16,185,129,0.35);text-align:left;transition:all 0.15s;"
                         onmouseover="this.style.background='rgba(16,185,129,0.25)'"
                         onmouseout="this.style.background='rgba(16,185,129,0.12)'"

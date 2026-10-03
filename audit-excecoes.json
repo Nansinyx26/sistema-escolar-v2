@@ -1,0 +1,12 @@
+{
+    "_leia": "Exceções do gate de dependências (scripts/auditar-dependencias.js). Cada entrada aceita UM alerta até a data de revisão; depois dela o gate volta a reprovar. Toda entrada nova precisa de Issue, motivo e data. Ver Issue #588.",
+    "excecoes": [
+        {
+            "id": "GHSA-vfj7-8cjw-p6xm",
+            "pacote": "braces",
+            "motivo": "Negação de serviço por padrão muito aninhado no braces <=3.0.3. Sem versão corrigida publicada (3.0.3 é a última). Chega só por ferramentas de desenvolvimento — jest e nodemon no backend, tailwindcss na raiz —, que expandem padrões de arquivo do próprio repositório, nunca entrada de usuário. Nas dependências de produção `npm audit --omit=dev` dá zero.",
+            "revisarAte": "2026-11-02",
+            "issue": 588
+        }
+    ]
+}

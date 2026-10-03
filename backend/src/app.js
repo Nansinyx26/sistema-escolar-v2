@@ -582,6 +582,11 @@ app.use((req, res, next) => {
     next();
 });
 
+// O sanitizador acima deixa aspas passarem, e `foto` vira `src="..."` no
+// front. Formato fora do esperado é recusado aqui, para todas as rotas.
+// Issue #572 — ver middleware/validarFoto.js.
+app.use('/api', require('./middleware/validarFoto').recusarFotoInvalida);
+
 /**
  * Remove chaves iniciadas por '$' e achata objetos aninhados em query/params.
  * `req.query` é getter-only no Express 5 — por isso mutamos no lugar.
