@@ -1,3 +1,4 @@
+// biome-ignore lint/suspicious/noRedundantUseStrict: CommonJS — aqui a diretiva vale (docs/QUALITY.md)
 'use strict';
 
 /**
@@ -18,20 +19,22 @@ const MAX_RESULTADOS = 25;
 
 module.exports = {
     name: 'listarEventos',
-    description: 'Lista eventos do calendário escolar (provas, reuniões, feriados, recessos) num intervalo de dias a partir de hoje. Use para "o que vem pela frente", "quando é a reunião", "tem prova essa semana".',
+    description:
+        'Lista eventos do calendário escolar (provas, reuniões, feriados, recessos) num intervalo de dias a partir de hoje. Use para "o que vem pela frente", "quando é a reunião", "tem prova essa semana".',
 
     schema: {
         type: 'object',
         properties: {
             dias: {
                 type: 'number',
-                description: `Quantos dias à frente considerar. Padrão: ${DIAS_PADRAO}.`
+                description: `Quantos dias à frente considerar. Padrão: ${DIAS_PADRAO}.`,
             },
             tipo: {
                 type: 'string',
-                description: 'Filtrar por tipo de evento, como "prova", "reuniao" ou "feriado". Omita para trazer todos.'
-            }
-        }
+                description:
+                    'Filtrar por tipo de evento, como "prova", "reuniao" ou "feriado". Omita para trazer todos.',
+            },
+        },
     },
 
     cargosPermitidos: ['diretor', 'secretaria', 'professor', 'responsavel'],
@@ -50,7 +53,7 @@ module.exports = {
             ativo: { $ne: false },
             // Pega também o evento que começou antes mas ainda está em curso.
             dataFim: { $gte: hoje },
-            dataInicio: { $lte: limite }
+            dataInicio: { $lte: limite },
         };
         if (tipo) filtro.tipo = new RegExp(`^${String(tipo).trim()}`, 'i');
 
@@ -62,28 +65,29 @@ module.exports = {
 
         // Recorte dos eventos de turma para quem não é gestão.
         if (!ehGestao(ctx)) {
-            const minhas = ctx.perfil === 'professor'
-                ? new Set((turmasPermitidas(ctx) || []).map(t => String(t)))
-                : null;
+            const minhas =
+                ctx.perfil === 'professor'
+                    ? new Set((turmasPermitidas(ctx) || []).map((t) => String(t)))
+                    : null;
 
-            eventos = eventos.filter(e => {
-                if (e.abrangencia !== 'turma') return true;          // evento da escola
-                if (!minhas) return false;                            // responsável: só os gerais
-                return (e.turmasIds || []).some(id => minhas.has(String(id)));
+            eventos = eventos.filter((e) => {
+                if (e.abrangencia !== 'turma') return true; // evento da escola
+                if (!minhas) return false; // responsável: só os gerais
+                return (e.turmasIds || []).some((id) => minhas.has(String(id)));
             });
         }
 
         return {
             janelaDias: janela,
             total: eventos.length,
-            eventos: eventos.map(e => ({
+            eventos: eventos.map((e) => ({
                 titulo: e.titulo,
                 tipo: e.tipo,
                 inicio: e.dataInicio,
                 fim: e.dataFim,
                 descricao: e.descricao || undefined,
-                abrangencia: e.abrangencia
-            }))
+                abrangencia: e.abrangencia,
+            })),
         };
-    }
+    },
 };

@@ -1,3 +1,4 @@
+// biome-ignore lint/suspicious/noRedundantUseStrict: CommonJS — aqui a diretiva vale (docs/QUALITY.md)
 'use strict';
 
 /**
@@ -12,20 +13,25 @@ const Aluno = require('../../../models/Aluno');
 const { filtroDaEscola, turmasPermitidas, ehGestao } = require('../PermissionGuard');
 
 /** "1ºA" e "1A" são a mesma turma para efeito de comparação. */
-const normalizar = (t) => String(t || '').replace('º', '').toUpperCase();
+const normalizar = (t) =>
+    String(t || '')
+        .replace('º', '')
+        .toUpperCase();
 
 module.exports = {
     name: 'listarTurmas',
-    description: 'Lista as turmas da escola com nome, período e quantidade de alunos. Use para "quais turmas existem", "quantas turmas temos" ou quando precisar do identificador de uma turma antes de outra consulta.',
+    description:
+        'Lista as turmas da escola com nome, período e quantidade de alunos. Use para "quais turmas existem", "quantas turmas temos" ou quando precisar do identificador de uma turma antes de outra consulta.',
 
     schema: {
         type: 'object',
         properties: {
             periodo: {
                 type: 'string',
-                description: 'Filtrar por período, como "manha", "tarde" ou "integral". Omita para trazer todos.'
-            }
-        }
+                description:
+                    'Filtrar por período, como "manha", "tarde" ou "integral". Omita para trazer todos.',
+            },
+        },
     },
 
     cargosPermitidos: ['diretor', 'secretaria', 'professor'],
@@ -46,28 +52,28 @@ module.exports = {
         const permitidas = turmasPermitidas(ctx);
         if (permitidas !== null) {
             const meu = new Set(permitidas.map(normalizar));
-            turmas = turmas.filter(t => meu.has(normalizar(t.nome || t.id)));
+            turmas = turmas.filter((t) => meu.has(normalizar(t.nome || t.id)));
         }
 
         // Contagem por turma em UMA agregação — evita N+1 numa escola com
         // dezenas de turmas.
         const contagens = await Aluno.aggregate([
             { $match: { ...filtroDaEscola(ctx), ativo: { $ne: false } } },
-            { $group: { _id: '$turma', total: { $sum: 1 } } }
+            { $group: { _id: '$turma', total: { $sum: 1 } } },
         ]);
-        const porTurma = new Map(contagens.map(c => [normalizar(c._id), c.total]));
+        const porTurma = new Map(contagens.map((c) => [normalizar(c._id), c.total]));
 
         return {
             total: turmas.length,
             escopo: ehGestao(ctx) ? 'escola inteira' : 'suas turmas',
-            turmas: turmas.map(t => ({
+            turmas: turmas.map((t) => ({
                 nome: t.nome || t.id,
                 ano: t.ano,
                 periodo: t.periodo,
                 sala: t.sala,
                 capacidade: t.capacidade,
-                alunos: porTurma.get(normalizar(t.nome || t.id)) || 0
-            }))
+                alunos: porTurma.get(normalizar(t.nome || t.id)) || 0,
+            })),
         };
-    }
+    },
 };

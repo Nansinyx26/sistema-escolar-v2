@@ -1,3 +1,4 @@
+// biome-ignore lint/suspicious/noRedundantUseStrict: CommonJS — aqui a diretiva vale (docs/QUALITY.md)
 'use strict';
 
 /**
@@ -12,20 +13,25 @@ const { filtroDaEscola, turmasPermitidas, ehGestao } = require('../PermissionGua
 
 const MAX_RESULTADOS = 25;
 
-const normalizar = (t) => String(t || '').replace('º', '').trim().toUpperCase();
+const normalizar = (t) =>
+    String(t || '')
+        .replace('º', '')
+        .trim()
+        .toUpperCase();
 
 module.exports = {
     name: 'atividadesPendentesCorrecao',
-    description: 'Lista as atividades com entregas aguardando correção. Use para "o que falta corrigir", "tenho entregas pendentes", "quais atividades preciso avaliar".',
+    description:
+        'Lista as atividades com entregas aguardando correção. Use para "o que falta corrigir", "tenho entregas pendentes", "quais atividades preciso avaliar".',
 
     schema: {
         type: 'object',
         properties: {
             turma: {
                 type: 'string',
-                description: 'Filtrar por uma turma específica. Omita para ver todas as suas.'
-            }
-        }
+                description: 'Filtrar por uma turma específica. Omita para ver todas as suas.',
+            },
+        },
     },
 
     cargosPermitidos: ['diretor', 'secretaria', 'professor'],
@@ -41,10 +47,7 @@ module.exports = {
         // disciplina aplicou na mesma turma.
         if (!ehGestao(ctx)) {
             const permitidas = turmasPermitidas(ctx);
-            filtro.$and = [
-                { criadoPor: String(ctx.usuarioId) },
-                { turma: { $in: permitidas } }
-            ];
+            filtro.$and = [{ criadoPor: String(ctx.usuarioId) }, { turma: { $in: permitidas } }];
         }
 
         const atividades = await Atividade.find(filtro)
@@ -54,9 +57,9 @@ module.exports = {
             .lean();
 
         const pendentes = atividades
-            .map(a => {
+            .map((a) => {
                 const entregas = a.entregas || [];
-                const aguardando = entregas.filter(e => !e.corrigida).length;
+                const aguardando = entregas.filter((e) => !e.corrigida).length;
                 return {
                     titulo: a.titulo,
                     turma: a.turma,
@@ -65,16 +68,16 @@ module.exports = {
                     prazo: a.dataEntrega,
                     entregas: entregas.length,
                     aguardandoCorrecao: aguardando,
-                    professor: ehGestao(ctx) ? a.criadoPorNome : undefined
+                    professor: ehGestao(ctx) ? a.criadoPorNome : undefined,
                 };
             })
-            .filter(a => a.aguardandoCorrecao > 0);
+            .filter((a) => a.aguardandoCorrecao > 0);
 
         return {
             escopo: ehGestao(ctx) ? 'escola inteira' : 'suas atividades',
             total: pendentes.length,
             totalEntregasAguardando: pendentes.reduce((s, a) => s + a.aguardandoCorrecao, 0),
-            atividades: pendentes
+            atividades: pendentes,
         };
-    }
+    },
 };
