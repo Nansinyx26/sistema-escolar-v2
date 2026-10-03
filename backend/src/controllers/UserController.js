@@ -12,6 +12,7 @@ const ImageProcessor = require('../utils/imageProcessor');
 const crypto = require('node:crypto');
 const ACTUAL_JWT_SECRET = require('../utils/jwtConfig');
 const RecuperacaoSenha = require('../models/RecuperacaoSenha');
+const { hostDoGoogle } = require('../middleware/validarFoto');
 const EmailService = require('../services/EmailService');
 const logger = require('../utils/logger');
 const { emitirParaPerfis } = require('../utils/realtime');
@@ -1126,7 +1127,7 @@ function validarUrlFoto(url) {
     try {
         const u = new URL(url);
         if (u.protocol !== 'https:') return '';
-        if (!/(^|\.)googleusercontent\.com$/.test(u.hostname)) return '';
+        if (!hostDoGoogle(u.hostname)) return '';
         // Aspas/sinais de menor nunca aparecem numa URL legítima do Google e
         // são exatamente o que quebraria `src="..."`.
         if (/["'<>]/.test(url)) return '';
