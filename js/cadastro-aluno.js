@@ -3,6 +3,18 @@
  * Integração com /api/alunos + log de auditoria em tempo real
  */
 
+// Valor do banco interpolado em atributo HTML: escapa aspas, < > e crase,
+// mas não o `&`, que o servidor já grava codificado (Issue #582). Ver
+// js/escape-html.js (escapeAttr). Declaração `function`, e não `const`, para
+// poder conviver com outra cópia carregada na mesma página.
+function escAttr(v) {
+    if (v === null || v === undefined) return '';
+    return String(v).replace(
+        /["'<>`]/g,
+        (c) => ({ '"': '&quot;', "'": '&#39;', '<': '&lt;', '>': '&gt;', '`': '&#96;' })[c]
+    );
+}
+
 const _debounce = {};
 let _auditCount = 0;
 let _docs = [];
@@ -195,14 +207,14 @@ function renderPessoasAutorizadas() {
             (p, i) => `
         <div class="ca-grid ca-grid-4" style="margin-bottom:.5rem;align-items:end">
             <div class="ca-field"><label>Nome</label>
-                <input type="text" value="${p.nome}" onchange="_pessoasAutorizadas[${i}].nome=this.value"></div>
+                <input type="text" value="${escAttr(p.nome)}" onchange="_pessoasAutorizadas[${i}].nome=this.value"></div>
             <div class="ca-field"><label>Parentesco</label>
-                <input type="text" value="${p.parentesco}" onchange="_pessoasAutorizadas[${i}].parentesco=this.value"></div>
+                <input type="text" value="${escAttr(p.parentesco)}" onchange="_pessoasAutorizadas[${i}].parentesco=this.value"></div>
             <div class="ca-field"><label>Telefone</label>
-                <input type="tel" value="${p.telefone}" oninput="maskTel(this);_pessoasAutorizadas[${i}].telefone=this.value"></div>
+                <input type="tel" value="${escAttr(p.telefone)}" oninput="maskTel(this);_pessoasAutorizadas[${i}].telefone=this.value"></div>
             <div class="ca-field"><label>Documento</label>
                 <div style="display:flex;gap:.5rem">
-                    <input type="text" value="${p.documento}" onchange="_pessoasAutorizadas[${i}].documento=this.value" style="flex:1">
+                    <input type="text" value="${escAttr(p.documento)}" onchange="_pessoasAutorizadas[${i}].documento=this.value" style="flex:1">
                     <button type="button" class="doc-item-remove" onclick="removePessoaAutorizada(${i})"><i class="bi bi-x"></i></button>
                 </div></div>
         </div>`
