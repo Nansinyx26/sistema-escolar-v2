@@ -297,9 +297,15 @@ jobs:
       #
       # Reavalie quando o backend migrar para ESM, ou quando o sanitize-html
       # publicar a correção numa linha CJS.
+      #
+      # O passo roda `npm audit` pelo scripts/auditar-dependencias.js (Issue
+      # #588): mesmo nível `high`, produção E desenvolvimento, mas com exceção
+      # por alerta em audit-excecoes.json — uma entrada por ID, com motivo e
+      # data de revisão; vencida a data, volta a reprovar. Existe porque o
+      # `npm audit` não ignora alerta específico, e um alerta sem versão
+      # corrigida (braces, GHSA-vfj7-8cjw-p6xm) travou todo PR e o deploy.
       - name: 🔐 Dependency Check (npm audit)
-        working-directory: ./backend
-        run: npm audit --audit-level=high
+        run: node scripts/auditar-dependencias.js --dir backend
 
       # A raiz tem `dependencies: {}` — tudo aqui é de desenvolvimento e nada vai
       # para produção. Mas é o que roda no CI e na máquina de quem desenvolve, e
@@ -307,15 +313,14 @@ jobs:
       # CVEs altas, e o `tmp` do Stryker 8 ficou com uma alta invisível. O
       # `npm audit` lê só o lockfile, então não precisa de `npm ci` antes.
       - name: 🔐 Dependency Check (npm audit — raiz)
-        run: npm audit --audit-level=high
+        run: node scripts/auditar-dependencias.js --dir .
 
       # O portal é o que produção serve aos responsáveis: o `dompurify` e o
       # `socket.io-client` vão dentro do bundle em `portal-responsavel/dist/`.
       # Até a #279 nenhum gate olhava para ele, e ele tinha duas vulnerabilidades
       # altas e uma XSS no `dompurify`.
       - name: 🔐 Dependency Check (npm audit — portal)
-        working-directory: ./portal-responsavel
-        run: npm audit --audit-level=high
+        run: node scripts/auditar-dependencias.js --dir portal-responsavel
 
       # O resultado precisa aparecer no LOG, e não só num arquivo .sarif.
       # Antes, a única saída do Trivy era o arquivo enviado para a aba Security
@@ -332,6 +337,8 @@ jobs:
           scan-ref: "."
           format: "table"
           severity: "CRITICAL,HIGH"
+          # Mesmas exceções do npm audit, com prazo (`exp:`) — Issue #588.
+          trivyignores: ".trivyignore"
           # Agora é gate. A triagem que faltava foi feita: `npm audit fix`
           # resolveu as 4 high e 1 moderate das dependências do backend, e a
           # moderate restante (sanitize-html) está justificada no passo acima.
@@ -481,8 +488,7 @@ jobs:
       # auditoria cujo resultado é ignorado na porta da produção é pior que
       # não ter auditoria, porque dá a impressão de que alguém está olhando.
       - name: 🔐 Security audit
-        working-directory: ./backend
-        run: npm audit --audit-level=high
+        run: node scripts/auditar-dependencias.js --dir backend
 
       # Mesmo script do job de dev, e por isso mesmo: o erro da Issue #108 vivia
       # nos DOIS lugares porque o bloco era copiado. Com a lógica em um arquivo

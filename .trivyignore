@@ -1,0 +1,7 @@
+# Exceções do Trivy — espelham audit-excecoes.json (gate do npm audit).
+# Cada linha aceita UM alerta até a data em `exp:`; depois o Trivy volta a
+# reprovar. Toda entrada nova precisa de Issue, motivo e data.
+
+# braces <=3.0.3 — negação de serviço por padrão aninhado, sem versão corrigida.
+# Só via ferramentas de desenvolvimento (jest, nodemon, tailwindcss). Issue #588.
+GHSA-vfj7-8cjw-p6xm exp:2026-11-02
