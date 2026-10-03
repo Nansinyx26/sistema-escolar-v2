@@ -306,4 +306,5 @@ function escolaMatch(escolaId) {
 
 module.exports.invalidarCacheEscolas = invalidarCacheEscolas;
 module.exports.vinculosDoUsuario = vinculosDoUsuario;
+module.exports.escolaIdDaConta = escolaIdDaConta;
 module.exports.escolaMatch = escolaMatch;
