@@ -10,6 +10,7 @@
 
 const Atividade = require('../../../models/Atividade');
 const { filtroDaEscola, turmasPermitidas, ehGestao } = require('../PermissionGuard');
+const escapeRegex = require('../../../utils/escapeRegex');
 
 const MAX_RESULTADOS = 25;
 
@@ -40,7 +41,9 @@ module.exports = {
     async handler({ turma }, ctx) {
         const filtro = { ...filtroDaEscola(ctx), ativo: { $ne: false } };
 
-        if (turma) filtro.turma = new RegExp(`^${normalizar(turma)}$`, 'i');
+        // Argumento do modelo = texto do usuário: escapado antes de virar
+        // $regex no banco (Issue #594).
+        if (turma) filtro.turma = new RegExp(`^${escapeRegex(normalizar(turma))}$`, 'i');
 
         // Professor vê as próprias atividades. Restringir por `criadoPor` (e
         // não só por turma) evita listar a prova que o colega de outra

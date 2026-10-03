@@ -13,6 +13,7 @@
 
 const CalendarioEscolar = require('../../../models/CalendarioEscolar');
 const { filtroDaEscola, ehGestao, turmasPermitidas } = require('../PermissionGuard');
+const escapeRegex = require('../../../utils/escapeRegex');
 
 const DIAS_PADRAO = 30;
 const MAX_RESULTADOS = 25;
@@ -55,7 +56,9 @@ module.exports = {
             dataFim: { $gte: hoje },
             dataInicio: { $lte: limite },
         };
-        if (tipo) filtro.tipo = new RegExp(`^${String(tipo).trim()}`, 'i');
+        // Argumento do modelo = texto do usuário: escapado antes de virar
+        // $regex no banco (Issue #594).
+        if (tipo) filtro.tipo = new RegExp(`^${escapeRegex(String(tipo).trim())}`, 'i');
 
         let eventos = await CalendarioEscolar.find(filtro)
             .select('titulo descricao tipo dataInicio dataFim abrangencia turmasIds cor')

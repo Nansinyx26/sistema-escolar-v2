@@ -11,6 +11,7 @@
 const Turma = require('../../../models/Turma');
 const Aluno = require('../../../models/Aluno');
 const { filtroDaEscola, turmasPermitidas, ehGestao } = require('../PermissionGuard');
+const escapeRegex = require('../../../utils/escapeRegex');
 
 /** "1ºA" e "1A" são a mesma turma para efeito de comparação. */
 const normalizar = (t) =>
@@ -39,7 +40,10 @@ module.exports = {
 
     async handler({ periodo }, ctx) {
         const filtro = { ...filtroDaEscola(ctx), ativo: { $ne: false } };
-        if (periodo) filtro.periodo = new RegExp(`^${String(periodo).trim()}`, 'i');
+        // O argumento vem do modelo, que copia o que a pessoa escreveu: sem
+        // escapar, um padrão com retrocesso exponencial rodava no MongoDB
+        // (Issue #594).
+        if (periodo) filtro.periodo = new RegExp(`^${escapeRegex(String(periodo).trim())}`, 'i');
 
         let turmas = await Turma.find(filtro)
             .select('id nome ano periodo sala capacidade')
