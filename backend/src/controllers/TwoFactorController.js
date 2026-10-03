@@ -108,12 +108,15 @@ exports.sendCode = async (req, res) => {
         // (e reinicia o contador de tentativas) na conta que quiser.
         const pre = validarPreAuthToken(req);
         if (!pre.ok) {
-            return res.status(401).json({ success: false, ok: false, codigo: 'PREAUTH_INVALIDO', error: pre.error });
+            return res
+                .status(401)
+                .json({ success: false, ok: false, codigo: 'PREAUTH_INVALIDO', error: pre.error });
         }
         const userId = pre.userId;
 
-        const usuario = await Usuario.findById(userId)
-            .select('+twoFactorEnabled +twoFactorPendingToken +twoFactorPendingExpiry');
+        const usuario = await Usuario.findById(userId).select(
+            '+twoFactorEnabled +twoFactorPendingToken +twoFactorPendingExpiry'
+        );
 
         if (!usuario) {
             return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
@@ -124,7 +127,9 @@ exports.sendCode = async (req, res) => {
         // pede codigo mas o reenvio insiste que 2FA esta ativo".
         const exige2FA = require('../utils/politica2FA').exigeSegundoFator(usuario);
         if (!exige2FA) {
-            return res.status(400).json({ success: false, error: '2FA não está ativo nesta conta.' });
+            return res
+                .status(400)
+                .json({ success: false, error: '2FA não está ativo nesta conta.' });
         }
 
         const codigo = gerarCodigo6Digitos();
@@ -136,7 +141,7 @@ exports.sendCode = async (req, res) => {
         await Usuario.findByIdAndUpdate(userId, {
             twoFactorPendingToken: codigoHash,
             twoFactorPendingExpiry: expiry,
-            twoFactorAttempts: 0
+            twoFactorAttempts: 0,
         });
 
         // Falta de e-mail no cadastro é a falha mais silenciosa do fluxo: o
@@ -144,12 +149,15 @@ exports.sendCode = async (req, res) => {
         // ninguém ficava sabendo — a tela dizia "código enviado" do mesmo jeito.
         if (!usuario.email || !usuario.email.includes('@')) {
             logger.error('[2FA] Conta sem e-mail válido no cadastro', {
-                usuarioId: String(usuario._id), perfil: usuario.perfil,
+                usuarioId: String(usuario._id),
+                perfil: usuario.perfil,
                 action: 'auth.2fa.semEmail',
             });
             return res.status(422).json({
-                success: false, ok: false, codigo: 'SEM_EMAIL_CADASTRADO',
-                error: 'Esta conta não tem um e-mail válido cadastrado. Fale com o administrador.'
+                success: false,
+                ok: false,
+                codigo: 'SEM_EMAIL_CADASTRADO',
+                error: 'Esta conta não tem um e-mail válido cadastrado. Fale com o administrador.',
             });
         }
 
@@ -160,9 +168,12 @@ exports.sendCode = async (req, res) => {
             // 502: a falha é do canal de entrega, não da requisição. O código
             // segue válido no banco, então um retry entrega sem refazer o login.
             return res.status(502).json({
-                success: false, ok: false, codigo: 'FALHA_ENVIO_EMAIL',
-                canal: 'email', destinoMascarado,
-                error: 'Não foi possível enviar o código agora. Tente novamente em instantes.'
+                success: false,
+                ok: false,
+                codigo: 'FALHA_ENVIO_EMAIL',
+                canal: 'email',
+                destinoMascarado,
+                error: 'Não foi possível enviar o código agora. Tente novamente em instantes.',
             });
         }
 
@@ -171,9 +182,8 @@ exports.sendCode = async (req, res) => {
             ok: true,
             canal: 'email',
             destinoMascarado,
-            message: `Código de 6 dígitos enviado para ${destinoMascarado}`
+            message: `Código de 6 dígitos enviado para ${destinoMascarado}`,
         });
-
     } catch (err) {
         console.error('[2FA] Erro ao enviar código:', err);
         return res.status(500).json({ success: false, error: 'Erro ao enviar código 2FA.' });
@@ -189,17 +199,25 @@ exports.verifyCode = async (req, res) => {
         // 1. Prova de que a senha foi validada nesta sessão de login.
         const pre = validarPreAuthToken(req);
         if (!pre.ok) {
-            return res.status(401).json({ success: false, ok: false, codigo: 'PREAUTH_INVALIDO', error: pre.error });
+            return res
+                .status(401)
+                .json({ success: false, ok: false, codigo: 'PREAUTH_INVALIDO', error: pre.error });
         }
         const userId = pre.userId;
 
         const { codigo } = req.body;
         if (!codigo) {
-            return res.status(400).json({ success: false, ok: false, codigo: 'CODIGO_AUSENTE', error: 'O código é obrigatório.' });
+            return res.status(400).json({
+                success: false,
+                ok: false,
+                codigo: 'CODIGO_AUSENTE',
+                error: 'O código é obrigatório.',
+            });
         }
 
-        const usuario = await Usuario.findById(userId)
-            .select('+twoFactorPendingToken +twoFactorPendingExpiry +twoFactorFixedCode +twoFactorAttempts +twoFactorLockUntil +twoFactorBackupCodes');
+        const usuario = await Usuario.findById(userId).select(
+            '+twoFactorPendingToken +twoFactorPendingExpiry +twoFactorFixedCode +twoFactorAttempts +twoFactorLockUntil +twoFactorBackupCodes'
+        );
 
         if (!usuario) {
             return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
@@ -216,7 +234,7 @@ exports.verifyCode = async (req, res) => {
                 ok: false,
                 codigo: 'MUITAS_TENTATIVAS',
                 retryEmSegundos: Math.ceil((usuario.twoFactorLockUntil - now) / 1000),
-                error: `Muitas tentativas incorretas. Tente novamente em ${minutos} minuto(s).`
+                error: `Muitas tentativas incorretas. Tente novamente em ${minutos} minuto(s).`,
             });
         }
 
@@ -234,7 +252,10 @@ exports.verifyCode = async (req, res) => {
         // de backup não é uma porta que escapa do limite de força bruta.
         const backup = require('../utils/codigosBackup');
         if (backup.pareceCodigoBackup(codigo) && (usuario.twoFactorBackupCodes || []).length) {
-            const lote = usuario.twoFactorBackupCodes.map((c) => ({ hash: c.hash, usadoEm: c.usadoEm }));
+            const lote = usuario.twoFactorBackupCodes.map((c) => ({
+                hash: c.hash,
+                usadoEm: c.usadoEm,
+            }));
             const indice = await backup.conferir(codigo, lote);
 
             if (indice >= 0) {
@@ -244,28 +265,40 @@ exports.verifyCode = async (req, res) => {
                 const campo = `twoFactorBackupCodes.${indice}.usadoEm`;
                 const consumo = await Usuario.updateOne(
                     { _id: userId, [campo]: null },
-                    { $set: { [campo]: new Date(), twoFactorAttempts: 0, twoFactorLockUntil: null, ultimoLogin: new Date() } }
+                    {
+                        $set: {
+                            [campo]: new Date(),
+                            twoFactorAttempts: 0,
+                            twoFactorLockUntil: null,
+                            ultimoLogin: new Date(),
+                        },
+                    }
                 );
 
                 if (consumo.modifiedCount !== 1) {
                     // Perdeu a corrida: o código foi consumido por outra
                     // requisição no intervalo. Trata como inválido.
                     return res.status(401).json({
-                        success: false, ok: false, codigo: 'CODIGO_INVALIDO',
-                        error: 'Código inválido.'
+                        success: false,
+                        ok: false,
+                        codigo: 'CODIGO_INVALIDO',
+                        error: 'Código inválido.',
                     });
                 }
 
-                const restantes = usuario.twoFactorBackupCodes.filter((c, i) => !c.usadoEm && i !== indice).length;
+                const restantes = usuario.twoFactorBackupCodes.filter(
+                    (c, i) => !c.usadoEm && i !== indice
+                ).length;
 
                 limparPreAuthToken(res);
                 require('../utils/sessionToken').emitirTokenSessao(res, usuario);
                 if (req.session) {
                     req.session.usuarioId = String(usuario._id);
-                    if (req.session.escolaPendenteId) {
-                        req.session.escolaAtivaId = req.session.escolaPendenteId;
-                        delete req.session.escolaPendenteId;
-                    }
+                    // Sempre sobrescreve (Issue #576): sem pendência, a escola
+                    // fica vazia em vez de herdar a do login anterior.
+                    req.session.escolaAtivaId = req.session.escolaPendenteId || undefined;
+                    req.session.superAdminContexto = undefined;
+                    delete req.session.escolaPendenteId;
                 }
 
                 // Uso de código de backup é evento de auditoria por si só: ele
@@ -273,21 +306,27 @@ exports.verifyCode = async (req, res) => {
                 // caminho de exceção.
                 await logAction(req, 'LOGIN_2FA_BACKUP', 'Segurança', {
                     recursoId: usuario._id,
-                    descricao: `Login com código de backup (${restantes} restantes) — ${usuario.email}`
+                    descricao: `Login com código de backup (${restantes} restantes) — ${usuario.email}`,
                 });
                 logger.warn('[2FA] Login com código de backup', {
-                    usuarioId: String(usuario._id), perfil: usuario.perfil, restantes,
+                    usuarioId: String(usuario._id),
+                    perfil: usuario.perfil,
+                    restantes,
                     action: 'auth.2fa.backupUsado',
                 });
 
                 return res.json({
-                    success: true, ok: true,
+                    success: true,
+                    ok: true,
                     usouCodigoBackup: true,
                     codigosBackupRestantes: restantes,
-                    aviso: restantes === 0
-                        ? 'Este era o seu último código de backup. Peça ao administrador um lote novo.'
-                        : `Você usou um código de backup. Restam ${restantes}.`,
-                    redirect_to: destinoGuardado(req, res) || require('./UserController').getRedirectPath(usuario),
+                    aviso:
+                        restantes === 0
+                            ? 'Este era o seu último código de backup. Peça ao administrador um lote novo.'
+                            : `Você usou um código de backup. Restam ${restantes}.`,
+                    redirect_to:
+                        destinoGuardado(req, res) ||
+                        require('./UserController').getRedirectPath(usuario),
                 });
             }
             // Não bateu: cai no fluxo normal, que contabiliza a tentativa
@@ -298,7 +337,12 @@ exports.verifyCode = async (req, res) => {
         //    Antes, twoFactorFixedCode pulava a checagem e o login gravava uma
         //    validade de 1 ano, deixando o código eternamente utilizável.
         if (!usuario.twoFactorPendingExpiry || now > usuario.twoFactorPendingExpiry) {
-            return res.status(401).json({ success: false, ok: false, codigo: 'CODIGO_INVALIDO', error: 'Código expirado. Solicite um novo.' });
+            return res.status(401).json({
+                success: false,
+                ok: false,
+                codigo: 'CODIGO_INVALIDO',
+                error: 'Código expirado. Solicite um novo.',
+            });
         }
 
         // Compara hash (proteção contra timing attacks via crypto.timingSafeEqual)
@@ -309,7 +353,10 @@ exports.verifyCode = async (req, res) => {
         try {
             const hashBuf = Buffer.from(codigoHash, 'hex');
             const esperadoBuf = Buffer.from(hashEsperado.padEnd(codigoHash.length, '0'), 'hex');
-            valido = hashBuf.length === esperadoBuf.length && crypto.timingSafeEqual(hashBuf, esperadoBuf) && codigoHash === hashEsperado;
+            valido =
+                hashBuf.length === esperadoBuf.length &&
+                crypto.timingSafeEqual(hashBuf, esperadoBuf) &&
+                codigoHash === hashEsperado;
         } catch (e) {
             valido = false;
         }
@@ -330,7 +377,8 @@ exports.verifyCode = async (req, res) => {
                 // em repositório público, e aceitá-lo manteria vivo justamente
                 // o problema que o hash existe para resolver.
                 logger.error('[2FA] Código fixo em formato legado (texto puro) — recusado', {
-                    usuarioId: String(usuario._id), perfil: usuario.perfil,
+                    usuarioId: String(usuario._id),
+                    perfil: usuario.perfil,
                     action: 'auth.2fa.codigoFixoLegado',
                 });
             } else {
@@ -354,7 +402,7 @@ exports.verifyCode = async (req, res) => {
             await Usuario.findByIdAndUpdate(userId, update);
             await logAction(req, 'LOGIN_2FA_FAILED', 'Auth', {
                 recursoId: usuario._id,
-                descricao: `Código 2FA incorreto para ${usuario.email} (tentativa ${tentativas}/${MAX_TENTATIVAS_2FA})`
+                descricao: `Código 2FA incorreto para ${usuario.email} (tentativa ${tentativas}/${MAX_TENTATIVAS_2FA})`,
             });
 
             if (tentativas >= MAX_TENTATIVAS_2FA) {
@@ -364,10 +412,15 @@ exports.verifyCode = async (req, res) => {
                     ok: false,
                     codigo: 'MUITAS_TENTATIVAS',
                     retryEmSegundos: Math.ceil(BLOQUEIO_2FA_MS / 1000),
-                    error: 'Muitas tentativas incorretas. O código foi invalidado — faça login novamente.'
+                    error: 'Muitas tentativas incorretas. O código foi invalidado — faça login novamente.',
                 });
             }
-            return res.status(401).json({ success: false, ok: false, codigo: 'CODIGO_INVALIDO', error: 'Código inválido.' });
+            return res.status(401).json({
+                success: false,
+                ok: false,
+                codigo: 'CODIGO_INVALIDO',
+                error: 'Código inválido.',
+            });
         }
 
         // Limpa o token pendente e o contador de tentativas
@@ -376,7 +429,7 @@ exports.verifyCode = async (req, res) => {
             twoFactorPendingExpiry: null,
             twoFactorAttempts: 0,
             twoFactorLockUntil: null,
-            ultimoLogin: new Date()
+            ultimoLogin: new Date(),
         });
 
         // Auditoria do sucesso. Havia registro de LOGIN_2FA_REQUIRED e de
@@ -385,7 +438,7 @@ exports.verifyCode = async (req, res) => {
         // qualquer investigação.
         await logAction(req, 'LOGIN_2FA_SUCESSO', 'Auth', {
             recursoId: usuario._id,
-            descricao: `Login concluido com segundo fator (${usuario.perfil}) — ${usuario.email}`
+            descricao: `Login concluido com segundo fator (${usuario.perfil}) — ${usuario.email}`,
         });
 
         // O pré-auth é de uso único: consumido, some.
@@ -399,15 +452,16 @@ exports.verifyCode = async (req, res) => {
         // Sessão multi-escola: confirma a escola resolvida no passo de senha
         if (req.session) {
             req.session.usuarioId = String(usuario._id);
-            if (req.session.escolaPendenteId) {
-                req.session.escolaAtivaId = req.session.escolaPendenteId;
-                delete req.session.escolaPendenteId;
-            }
+            // Sempre sobrescreve (Issue #576): sem pendência, a escola fica
+            // vazia em vez de herdar a do login anterior neste navegador.
+            req.session.escolaAtivaId = req.session.escolaPendenteId || undefined;
+            req.session.superAdminContexto = undefined;
+            delete req.session.escolaPendenteId;
         }
 
         await logAction(req, 'LOGIN_2FA_SUCCESS', 'Auth', {
             recursoId: usuario._id,
-            descricao: `Login 2FA concluído para ${usuario.email}`
+            descricao: `Login 2FA concluído para ${usuario.email}`,
         });
 
         // Reusa a mesma tabela de redirecionamento por perfil do login normal
@@ -423,10 +477,9 @@ exports.verifyCode = async (req, res) => {
                 nome: usuario.nome,
                 email: usuario.email,
                 perfil: usuario.perfil,
-                deveMudarSenha: usuario.deveMudarSenha
-            }
+                deveMudarSenha: usuario.deveMudarSenha,
+            },
         });
-
     } catch (err) {
         console.error('[2FA] Erro ao verificar código:', err);
         return res.status(500).json({ success: false, error: 'Erro ao verificar código 2FA.' });
@@ -454,11 +507,10 @@ exports.enable = async (req, res) => {
 
         await logAction(req, '2FA_ENABLED', 'Auth', {
             recursoId: userId,
-            descricao: `2FA ativado para ${usuario.email}`
+            descricao: `2FA ativado para ${usuario.email}`,
         });
 
         return res.json({ success: true, message: '2FA ativado com sucesso.' });
-
     } catch (err) {
         console.error('[2FA] Erro ao ativar:', err);
         return res.status(500).json({ success: false, error: 'Erro ao ativar 2FA.' });
@@ -486,16 +538,15 @@ exports.disable = async (req, res) => {
             twoFactorEnabled: false,
             twoFactorSecret: null,
             twoFactorPendingToken: null,
-            twoFactorPendingExpiry: null
+            twoFactorPendingExpiry: null,
         });
 
         await logAction(req, '2FA_DISABLED', 'Auth', {
             recursoId: userId,
-            descricao: `2FA desativado para ${usuario.email}`
+            descricao: `2FA desativado para ${usuario.email}`,
         });
 
         return res.json({ success: true, message: '2FA desativado.' });
-
     } catch (err) {
         console.error('[2FA] Erro ao desativar:', err);
         return res.status(500).json({ success: false, error: 'Erro ao desativar 2FA.' });
@@ -513,9 +564,8 @@ exports.status = async (req, res) => {
         return res.json({
             success: true,
             twoFactorEnabled: usuario?.twoFactorEnabled || false,
-            perfil: usuario?.perfil
+            perfil: usuario?.perfil,
         });
-
     } catch (err) {
         console.error('[2FA] Erro ao consultar status:', err);
         return res.status(500).json({ success: false, error: 'Erro ao consultar status 2FA.' });

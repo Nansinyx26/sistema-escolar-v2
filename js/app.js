@@ -3,12 +3,12 @@
  * Inicializa e coordena todos os módulos
  */
 
-import db from './db.js';
 import auth from './auth-module.js';
-import ui from './ui.js';
-import students from './students.js';
-import notes from './notes.js';
+import db from './db.js';
 import exportManager from './export.js';
+import notes from './notes.js';
+import students from './students.js';
+import ui from './ui.js';
 
 // ============================================
 // ESCAPE DE HTML
@@ -16,10 +16,33 @@ import exportManager from './export.js';
 // Nome de professor, matéria, turma e escola vêm do cadastro (dados de um
 // usuário, exibidos para outros) e eram interpolados crus em innerHTML.
 // Ver js/escape-html.js.
-const _ESC_MAP_APP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' };
+const _ESC_MAP_APP = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+    '`': '&#96;',
+};
 function escHtml(v) {
     if (v === null || v === undefined) return '';
-    return String(v).replace(/[&<>"'`]/g, c => _ESC_MAP_APP[c]);
+    return String(v).replace(/[&<>"'`]/g, (c) => _ESC_MAP_APP[c]);
+}
+
+// Valor interpolado DENTRO DE ATRIBUTO (alt, value, src, data-*) — Issue #582.
+// Aspa literal no valor fechava o atributo e, com `script-src-attr
+// 'unsafe-inline'` na CSP, o resto virava handler executável. Este escape troca
+// aspas, < > e crase, mas NÃO o `&`: o backend já grava `&` como `&amp;`
+// (utils/sanitize.js) e escapar de novo faria "Pedro &amp; Maria" aparecer
+// literal num value. Uma entidade dentro do valor é decodificada nele e não
+// fecha o atributo. Atributo de EVENTO (onclick) é outro caso — o navegador
+// decodifica antes de rodar o JS: lá use escHtml(JSON.stringify(valor)).
+function escAttr(v) {
+    if (v === null || v === undefined) return '';
+    return String(v).replace(
+        /["'<>`]/g,
+        (c) => ({ '"': '&quot;', "'": '&#39;', '<': '&lt;', '>': '&gt;', '`': '&#96;' })[c]
+    );
 }
 
 // ============================================
@@ -31,7 +54,7 @@ function escHtml(v) {
 
 const REL_MATERIA_PADRAO = 'Sala Principal';
 const REL_DIAS_NA_QUINZENA = 15;
-const REL_LIMITE_CONTEUDO = 8000;   // mesmo teto do backend
+const REL_LIMITE_CONTEUDO = 8000; // mesmo teto do backend
 const REL_DEBOUNCE_MS = 1200;
 const REL_DIAS_SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 const REL_ROTULOS_ESTADO = {
@@ -87,9 +110,10 @@ async function relBuscarQuinzena({ turma, materia, de, ate }) {
 
 async function relGravarDia({ turma, materia, dia, conteudo }) {
     // Sem o X-CSRF-Token o backend devolve 403 e nada é gravado.
-    const headers = typeof window.csrfHeaders === 'function'
-        ? window.csrfHeaders(true)
-        : { 'Content-Type': 'application/json' };
+    const headers =
+        typeof window.csrfHeaders === 'function'
+            ? window.csrfHeaders(true)
+            : { 'Content-Type': 'application/json' };
 
     const res = await fetch(`${window.API_BASE_URL}/relatorios/diarios`, {
         method: 'PUT',
@@ -266,10 +290,11 @@ class App {
         const updatedUser = await auth.refreshUser();
         const userToUpdate = updatedUser || user;
 
-        let nomeExibir = userToUpdate.nome || 'Usuário';
-        
+        const nomeExibir = userToUpdate.nome || 'Usuário';
+
         // Atualizar nome na navbar
-        const navUserName = document.getElementById('navUserName') || document.getElementById('userNameSelecionar');
+        const navUserName =
+            document.getElementById('navUserName') || document.getElementById('userNameSelecionar');
         if (navUserName) {
             navUserName.textContent = nomeExibir;
         }
@@ -280,11 +305,13 @@ class App {
         }
 
         // Fallback para elementos que não possuem imagem mas precisam de iniciais
-        ['userAvatar', 'userAvatarSelecionar'].forEach(id => {
+        ['userAvatar', 'userAvatarSelecionar'].forEach((id) => {
             const el = document.getElementById(id);
             if (el && !el.querySelector('img')) {
                 el.classList.add('avatar-placeholder');
-                el.textContent = window.utils?.getInitials ? window.utils.getInitials(nomeExibir) : (nomeExibir.charAt(0)?.toUpperCase() || 'U');
+                el.textContent = window.utils?.getInitials
+                    ? window.utils.getInitials(nomeExibir)
+                    : nomeExibir.charAt(0)?.toUpperCase() || 'U';
             }
         });
     }
@@ -309,7 +336,9 @@ class App {
             if (sessionData) {
                 try {
                     const userData = JSON.parse(sessionData);
-                    const turmasPermitidas = await this.getTurmasPermitidasProfessor(userData._id || userData.id);
+                    const turmasPermitidas = await this.getTurmasPermitidasProfessor(
+                        userData._id || userData.id
+                    );
 
                     if (turmasPermitidas && turmasPermitidas.length > 0) {
                         const mapName = (name) => {
@@ -323,13 +352,16 @@ class App {
                             return n;
                         };
 
-                        const turmasNormalizadas = turmasPermitidas.map(t => mapName(t));
+                        const turmasNormalizadas = turmasPermitidas.map((t) => mapName(t));
 
                         // Strict filter
-                        myTurmas = turmas.filter(turma => {
+                        myTurmas = turmas.filter((turma) => {
                             const turmaIdNorm = mapName(turma.id);
                             // Check both exact match and mapped match
-                            return turmasNormalizadas.includes(turma.id) || turmasNormalizadas.includes(turmaIdNorm);
+                            return (
+                                turmasNormalizadas.includes(turma.id) ||
+                                turmasNormalizadas.includes(turmaIdNorm)
+                            );
                         });
                         filtered = true;
                     }
@@ -357,7 +389,10 @@ class App {
 
             const stats = await notes.getStatsTurma(turma.id);
             turma.media = stats.media;
-            const profsDaTurma = professoresCadastrados[turma.id] || { regente: null, especiais: [] };
+            const profsDaTurma = professoresCadastrados[turma.id] || {
+                regente: null,
+                especiais: [],
+            };
             turma.professorRegente = profsDaTurma.regente;
             turma.professoresEspeciais = profsDaTurma.especiais;
             turmasPorAno[turma.ano].push(turma);
@@ -374,22 +409,40 @@ class App {
                 </div>
             `;
         } else {
-            Object.keys(turmasPorAno).sort().forEach(ano => {
-                html += `
+            Object.keys(turmasPorAno)
+                .sort()
+                .forEach((ano) => {
+                    html += `
                     <div class="ano-section">
                         <h3 class="ano-title">${ano}º Ano</h3>
                         <div class="turmas-row">
-                            ${turmasPorAno[ano].map(turma => {
-                    const mediaClass = turma.media !== null ? ui.getNotaClass(turma.media) : '';
-                    const mediaDisplay = turma.media !== null ? ui.formatNota(turma.media) : '-';
-                    const nomeRegente = turma.professorRegente ? turma.professorRegente.nome : (turma.professor || 'Sem Professor');
-                    const fotoRegente = turma.professorRegente && turma.professorRegente.foto ? turma.professorRegente.foto : null;
+                            ${turmasPorAno[ano]
+                                .map((turma) => {
+                                    const mediaClass =
+                                        turma.media !== null ? ui.getNotaClass(turma.media) : '';
+                                    const mediaDisplay =
+                                        turma.media !== null ? ui.formatNota(turma.media) : '-';
+                                    const nomeRegente = turma.professorRegente
+                                        ? turma.professorRegente.nome
+                                        : turma.professor || 'Sem Professor';
+                                    const fotoRegente =
+                                        turma.professorRegente && turma.professorRegente.foto
+                                            ? turma.professorRegente.foto
+                                            : null;
 
-                    // Materias buttons
-                    const materias = ['Sala Principal', 'Artes', 'Inglês', 'Educação Física', 'SEBRAE', 'Oficina de Leitura', 'Of. Maker'];
+                                    // Materias buttons
+                                    const materias = [
+                                        'Sala Principal',
+                                        'Artes',
+                                        'Inglês',
+                                        'Educação Física',
+                                        'SEBRAE',
+                                        'Oficina de Leitura',
+                                        'Of. Maker',
+                                    ];
 
-                    return `
-                        <div class="turma-card" id="card-${turma.id}">
+                                    return `
+                        <div class="turma-card" id="card-${escAttr(turma.id)}">
                             <!-- Header do Card (Clicável para expandir via delegation) -->
                             <div class="turma-card-content">
                                 <div class="turma-card-header" style="display:flex; justify-content:space-between; align-items:flex-start; width:100%;">
@@ -403,9 +456,12 @@ class App {
                                     <p>${turma.turno}</p>
                                     <div class="professor-info" style="display:flex; align-items:center; gap:8px; margin-top:5px;">
                                         <div class="foto-mini" style="width:24px; height:24px; border-radius:50%; overflow:hidden; background:#eee;">
-                                            ${window.getPhotoUrl(fotoRegente) !== '/img/default-avatar.png'
-                            ? `<img src="${window.getPhotoUrl(fotoRegente)}" style="width:100%; height:100%; object-fit:cover;">`
-                            : `<div style="display:flex; align-items:center; justify-content:center; width:100%; height:100%; font-size:10px; color:#666;">${nomeRegente.charAt(0)}</div>`}
+                                            ${
+                                                window.getPhotoUrl(fotoRegente) !==
+                                                '/img/default-avatar.png'
+                                                    ? `<img src="${escAttr(window.getPhotoUrl(fotoRegente))}" style="width:100%; height:100%; object-fit:cover;">`
+                                                    : `<div style="display:flex; align-items:center; justify-content:center; width:100%; height:100%; font-size:10px; color:#666;">${nomeRegente.charAt(0)}</div>`
+                                            }
                                         </div>
                                         <p class="professor" style="margin:0;">${nomeRegente}</p>
                                     </div>
@@ -414,20 +470,26 @@ class App {
                             </div>
 
                             <!-- Abas Expansíveis -->
-                            <div class="turma-expand-tabs" id="tabs-${turma.id}">
-                                ${materias.map(mat => `
+                            <div class="turma-expand-tabs" id="tabs-${escAttr(turma.id)}">
+                                ${materias
+                                    .map(
+                                        (mat) => `
                                     <button class="turma-tab-btn ${mat === 'Sala Principal' ? 'sala-principal' : ''}" 
-                                            data-turma="${turma.id}" data-materia="${mat}">
+                                            data-turma="${escAttr(turma.id)}" data-materia="${mat}">
                                         <i class="bi ${this.getMateriaIcon(mat)}"></i> ${mat}
                                     </button>
-                                `).join('')}
+                                `
+                                    )
+                                    .join('')}
                             </div>
                         </div>
-                    `}).join('')}
+                    `;
+                                })
+                                .join('')}
                         </div>
                     </div>
                 `;
-            });
+                });
         }
 
         container.innerHTML = html;
@@ -437,12 +499,12 @@ class App {
     getMateriaIcon(mat) {
         const icons = {
             'Sala Principal': 'bi-people-fill',
-            'Artes': 'bi-palette-fill',
-            'Inglês': 'bi-translate',
+            Artes: 'bi-palette-fill',
+            Inglês: 'bi-translate',
             'Educação Física': 'bi-bicycle',
-            'SEBRAE': 'bi-lightbulb-fill',
+            SEBRAE: 'bi-lightbulb-fill',
             'Oficina de Leitura': 'bi-book-half',
-            'Of. Maker': 'bi-tools'
+            'Of. Maker': 'bi-tools',
         };
         return icons[mat] || 'bi-book';
     }
@@ -454,7 +516,7 @@ class App {
         const card = document.getElementById(`card-${turmaId}`);
         if (card) {
             // Fecha outros abertos
-            document.querySelectorAll('.turma-card.expanded').forEach(c => {
+            document.querySelectorAll('.turma-card.expanded').forEach((c) => {
                 if (c.id !== `card-${turmaId}`) c.classList.remove('expanded');
             });
             card.classList.toggle('expanded');
@@ -476,9 +538,17 @@ class App {
                 console.log('  -> Professor:', prof.nome, '| Sala:', prof.salaPrincipal);
 
                 // Verifica se é professor especial (Artes, Ed. Física, Inglês)
-                const materiasEspeciais = ['Inglês', 'Educação Física', 'Artes', 'SEBRAE', 'Oficina de Leitura', 'Of. Maker'];
-                const ehEspecial = prof.tipoEspecial ||
-                    (prof.materias && prof.materias.some(m => materiasEspeciais.includes(m)));
+                const materiasEspeciais = [
+                    'Inglês',
+                    'Educação Física',
+                    'Artes',
+                    'SEBRAE',
+                    'Oficina de Leitura',
+                    'Of. Maker',
+                ];
+                const ehEspecial =
+                    prof.tipoEspecial ||
+                    (prof.materias && prof.materias.some((m) => materiasEspeciais.includes(m)));
 
                 if (ehEspecial) {
                     // Professor especial - adiciona a todas as turmas que ele selecionou
@@ -490,7 +560,7 @@ class App {
                         }
                         resultado[turmaIdNormalizado].especiais.push({
                             nome: prof.nome,
-                            materias: prof.materias || []
+                            materias: prof.materias || [],
                         });
                     }
                 } else {
@@ -504,7 +574,7 @@ class App {
                         resultado[salaPrincipal].regente = {
                             nome: prof.nome,
                             foto: prof.foto || null,
-                            materias: prof.materias || []
+                            materias: prof.materias || [],
                         };
                     }
                 }
@@ -530,9 +600,13 @@ class App {
             console.log('Professores no banco:', professores.length);
 
             // Tenta encontrar por ID ou Email
-            const professor = professores.find(p =>
-                (p.idUsuario && (p.idUsuario === userId || p.idUsuario === user?.id || p.idUsuario === user?._id)) ||
-                (userEmail && p.email === userEmail)
+            const professor = professores.find(
+                (p) =>
+                    (p.idUsuario &&
+                        (p.idUsuario === userId ||
+                            p.idUsuario === user?.id ||
+                            p.idUsuario === user?._id)) ||
+                    (userEmail && p.email === userEmail)
             );
 
             console.log('Professor encontrado:', professor ? professor.nome : 'NENHUM');
@@ -583,7 +657,9 @@ class App {
                     e.stopPropagation();
                     e.preventDefault();
                     // Suporte tanto para dataset quanto para atributos legados se a renderização antiga persistir
-                    const turmaId = tabBtn.dataset.turma || tabBtn.getAttribute('onclick')?.match(/'([^']+)'/)[1];
+                    const turmaId =
+                        tabBtn.dataset.turma ||
+                        tabBtn.getAttribute('onclick')?.match(/'([^']+)'/)[1];
                     const materia = tabBtn.dataset.materia || tabBtn.innerText.trim();
 
                     // Fallback se o regex falhar ou attributes não existirem (caso do render antigo)
@@ -674,7 +750,7 @@ class App {
 
         if (!turmaId) {
             ui.error('Turma não especificada');
-            setTimeout(() => window.location.href = 'selecionar.html', 2000);
+            setTimeout(() => (window.location.href = 'selecionar.html'), 2000);
             return;
         }
 
@@ -717,15 +793,17 @@ class App {
             icone.textContent = turmaId;
         }
 
-        document.getElementById('bimestreTitle')?.textContent &&
-            (document.getElementById('bimestreTitle').textContent = `${bimestre}º Bimestre`);
+        const tituloBimestre = document.getElementById('bimestreTitle');
+        if (tituloBimestre?.textContent) tituloBimestre.textContent = `${bimestre}º Bimestre`;
 
         const professoresPorTurma = await this.getProfessoresPorTurma();
         const profDaTurma = professoresPorTurma[turmaId] || { regente: null };
-        const nomeProfessor = profDaTurma.regente ? profDaTurma.regente.nome : (turma?.professor || '');
+        const nomeProfessor = profDaTurma.regente
+            ? profDaTurma.regente.nome
+            : turma?.professor || '';
 
-        document.getElementById('professorName')?.textContent &&
-            (document.getElementById('professorName').textContent = nomeProfessor);
+        const campoProfessor = document.getElementById('professorName');
+        if (campoProfessor?.textContent) campoProfessor.textContent = nomeProfessor;
 
         // Sempre mantém o usuário logado na navbar
         this.updateUserNavbar();
@@ -746,11 +824,15 @@ class App {
         if (!container) return;
 
         const bimestres = [1, 2, 3, 4];
-        container.innerHTML = bimestres.map(bim => `
+        container.innerHTML = bimestres
+            .map(
+                (bim) => `
             <button class="bimestre-tab ${bim === bimestreAtual ? 'active' : ''}" data-bimestre="${bim}">
                 ${bim}º Bim
             </button>
-        `).join('');
+        `
+            )
+            .join('');
     }
 
     /**
@@ -766,8 +848,8 @@ class App {
         // Dynamic Headers
         const theadRow = document.querySelector('.alunos-table thead tr');
         if (theadRow) {
-            let mediaHeader = theadRow.querySelector('.col-media');
-            let mediaGeralHeader = theadRow.querySelector('.col-media-geral');
+            const mediaHeader = theadRow.querySelector('.col-media');
+            const mediaGeralHeader = theadRow.querySelector('.col-media-geral');
 
             if (materia === 'Sala Principal') {
                 if (mediaHeader) mediaHeader.textContent = 'Média Interna';
@@ -803,13 +885,19 @@ class App {
         let html = '';
 
         for (const [index, aluno] of alunos.entries()) {
-            let media, mediaGeral = null;
+            let media,
+                mediaGeral = null;
 
             if (materia === 'Sala Principal') {
                 media = await notes.getMediaSalaPrincipal(aluno.id, bimestre, preloadedNotas);
                 mediaGeral = await notes.getMediaGeralAluno(aluno.id, bimestre, preloadedNotas);
             } else {
-                media = await notes.getMediaAlunoMateria(aluno.id, materia, bimestre, preloadedNotas);
+                media = await notes.getMediaAlunoMateria(
+                    aluno.id,
+                    materia,
+                    bimestre,
+                    preloadedNotas
+                );
             }
 
             const mediaClass = media !== null ? ui.getNotaClass(media) : '';
@@ -820,34 +908,47 @@ class App {
                     <td class="col-num">${index + 1}</td>
                     <td class="col-foto">
                         <div class="foto-container" onclick="app.triggerPhotoUpload('${aluno.id}')" style="cursor: pointer;">
-                            ${window.getPhotoUrl(aluno.foto) !== '/img/default-avatar.png'
-                    ? `<img src="${window.getPhotoUrl(aluno.foto)}" alt="${aluno.nome}" class="foto-aluno">`
-                    : `<div class="foto-placeholder">${aluno.nome.charAt(0)}</div>`
-                }
+                            ${
+                                window.getPhotoUrl(aluno.foto) !== '/img/default-avatar.png'
+                                    ? `<img src="${escAttr(window.getPhotoUrl(aluno.foto))}" alt="${escAttr(aluno.nome)}" class="foto-aluno">`
+                                    : `<div class="foto-placeholder">${aluno.nome.charAt(0)}</div>`
+                            }
                         </div>
                     </td>
                     <td class="col-nome">
                         <div class="nome-wrapper">
                             <span class="nome">${aluno.nome}</span>
-                            ${aluno.deficiencia ? `<span class="badge-deficiencia" title="${aluno.deficiencia}">PCD</span>` : ''}
+                            ${aluno.deficiencia ? `<span class="badge-deficiencia" title="${escAttr(aluno.deficiencia)}">PCD</span>` : ''}
                         </div>
-                        ${(aluno.observacoesBimestre)
-                    ? (aluno.observacoesBimestre[bimestre] ? `<small class="observacoes">${aluno.observacoesBimestre[bimestre]}</small>` : '')
-                    : (aluno.observacoes ? `<small class="observacoes">${aluno.observacoes}</small>` : '')}
+                        ${
+                            aluno.observacoesBimestre
+                                ? aluno.observacoesBimestre[bimestre]
+                                    ? `<small class="observacoes">${aluno.observacoesBimestre[bimestre]}</small>`
+                                    : ''
+                                : aluno.observacoes
+                                  ? `<small class="observacoes">${aluno.observacoes}</small>`
+                                  : ''
+                        }
                     </td>
                     <td class="col-nivel">
                         <div class="level-badge-container">
                             ${(() => {
-                    const niv = (aluno.nivelBimestre && aluno.nivelBimestre[bimestre]) ? aluno.nivelBimestre[bimestre] : '-';
-                    let circleClass = '';
-                    if (niv === 'PS' || niv === '1') circleClass = 'level-red';
-                    else if (niv === 'SSV' || niv === 'S' || niv === 'S/V/S') circleClass = 'level-orange';
-                    else if (niv === 'SCV' || niv === '2') circleClass = 'level-yellow';
-                    else if (niv === 'SA' || niv === '3') circleClass = 'level-blue';
-                    else if (niv === 'A' || niv === '4') circleClass = 'level-green';
+                                const niv =
+                                    aluno.nivelBimestre && aluno.nivelBimestre[bimestre]
+                                        ? aluno.nivelBimestre[bimestre]
+                                        : '-';
+                                let circleClass = '';
+                                if (niv === 'PS' || niv === '1') circleClass = 'level-red';
+                                else if (niv === 'SSV' || niv === 'S' || niv === 'S/V/S')
+                                    circleClass = 'level-orange';
+                                else if (niv === 'SCV' || niv === '2') circleClass = 'level-yellow';
+                                else if (niv === 'SA' || niv === '3') circleClass = 'level-blue';
+                                else if (niv === 'A' || niv === '4') circleClass = 'level-green';
 
-                    return circleClass ? `<span class="level-circle ${circleClass}"></span><span>${niv}</span>` : niv;
-                })()}
+                                return circleClass
+                                    ? `<span class="level-circle ${circleClass}"></span><span>${niv}</span>`
+                                    : niv;
+                            })()}
                         </div>
                     </td>
                     <td class="col-condicao">${aluno.condicao || aluno.deficiencia || '-'}</td>
@@ -855,28 +956,34 @@ class App {
                     <td class="col-faltas" style="font-weight: 500; text-align: center;">${(aluno.faltasBimestre && aluno.faltasBimestre[bimestre]) !== undefined ? aluno.faltasBimestre[bimestre] : '0'}</td>
                     <td class="col-recuperacao">
                         ${(() => {
-                    if (aluno.recuperacaoBimestre && aluno.recuperacaoBimestre[bimestre]) {
-                        const rec = aluno.recuperacaoBimestre[bimestre];
-                        let tags = [];
-                        if (rec.lp) tags.push('<span class="badge badge-warning">LP</span>');
-                        if (rec.mat) tags.push('<span class="badge badge-warning">Mat</span>');
-                        return tags.length ? tags.join(' ') : '-';
-                    }
-                    return '-';
-                })()}
+                            if (aluno.recuperacaoBimestre && aluno.recuperacaoBimestre[bimestre]) {
+                                const rec = aluno.recuperacaoBimestre[bimestre];
+                                const tags = [];
+                                if (rec.lp)
+                                    tags.push('<span class="badge badge-warning">LP</span>');
+                                if (rec.mat)
+                                    tags.push('<span class="badge badge-warning">Mat</span>');
+                                return tags.length ? tags.join(' ') : '-';
+                            }
+                            return '-';
+                        })()}
                     </td>
                     <td class="col-media">
                         <span class="media-valor ${mediaClass}">
                             ${media !== null ? ui.formatNota(media) : '-'}
                         </span>
                     </td>
-                    ${materia === 'Sala Principal' ? `
+                    ${
+                        materia === 'Sala Principal'
+                            ? `
                     <td class="col-media col-media-geral">
                         <span class="media-valor ${mediaGeralClass}">
                             ${mediaGeral !== null ? ui.formatNota(mediaGeral) : '-'}
                         </span>
                     </td>
-                    ` : ''}
+                    `
+                            : ''
+                    }
                     <td class="col-acoes">
                         <button class="btn-icon btn-editar" title="Editar" data-action="editar">
                             <i class="bi bi-pencil-fill"></i>
@@ -913,9 +1020,9 @@ class App {
 
         // Abas de visão (Alunos, Faltas, Relatórios)
         const viewTabs = document.querySelectorAll('#viewTabs button');
-        viewTabs.forEach(btn => {
+        viewTabs.forEach((btn) => {
             btn.addEventListener('click', (e) => {
-                viewTabs.forEach(b => {
+                viewTabs.forEach((b) => {
                     b.classList.remove('active');
                     b.setAttribute('aria-selected', 'false');
                     b.setAttribute('tabindex', '-1');
@@ -948,7 +1055,9 @@ class App {
         // `pagehide` (e não `beforeunload`) é o que dispara também no iOS.
         if (!this.relatoriosDescargaLigada) {
             this.relatoriosDescargaLigada = true;
-            window.addEventListener('pagehide', () => { this.salvarRelatoriosPendentes(); });
+            window.addEventListener('pagehide', () => {
+                this.salvarRelatoriosPendentes();
+            });
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'hidden') this.salvarRelatoriosPendentes();
             });
@@ -1009,10 +1118,11 @@ class App {
                 case 'grafico':
                     window.location.href = `../graficos/index.html?aluno=${alunoId}`;
                     break;
-                case 'excluir':
+                case 'excluir': {
                     const alunoNomeExcluir = row.querySelector('.nome')?.textContent || 'Aluno';
                     this.confirmDeleteAluno(alunoId, alunoNomeExcluir);
                     break;
+                }
             }
         });
     }
@@ -1041,7 +1151,9 @@ class App {
                 if (user.perfil === 'professor') {
                     // Busca perfil completo para ter a escola
                     const professores = await db.getAll('professores');
-                    const professor = professores.find(p => p.idUsuario === user._id || p.email === user.email);
+                    const professor = professores.find(
+                        (p) => p.idUsuario === user._id || p.email === user.email
+                    );
                     if (professor) {
                         nomeProfessor = professor.nome || user.nome;
                         nomeEscola = professor.escola || 'Escola não informada';
@@ -1049,11 +1161,11 @@ class App {
                 } else if (user.perfil === 'diretor') {
                     // Busca perfil completo do diretor
                     const diretores = await db.getAll('diretores');
-                    const diretor = diretores.find(d => d.idUsuario === user._id);
+                    const diretor = diretores.find((d) => d.idUsuario === user._id);
                     if (diretor) {
-                        nomeProfessor = user.nome; // No caso de diretor vendo, mostra nome dele ou generic? 
+                        nomeProfessor = user.nome; // No caso de diretor vendo, mostra nome dele ou generic?
                         // O user pediu "nome do professor". Se for diretor vendo a turma, deveria ser o prof da turma?
-                        // Por simplificação e segurança no momento, assumimos o usuário logado se for prof. 
+                        // Por simplificação e segurança no momento, assumimos o usuário logado se for prof.
                         // Se for diretor, talvez quisesse ver o prof da turma.
                         // Vamos tentar pegar o prof da turma se possível.
                         nomeEscola = diretor.escola || 'Escola não informada';
@@ -1087,8 +1199,8 @@ class App {
                         data: data,
                         materia: materia,
                         nomeProfessor: nomeProfessor, // Necessário para validação de grade
-                        presencas: presencas // [{ alunoId, presente }]
-                    })
+                        presencas: presencas, // [{ alunoId, presente }]
+                    }),
                 });
                 const json = await response.json();
                 if (!json.success) throw new Error(json.error);
@@ -1102,13 +1214,15 @@ class App {
 
         const carregarFaltas = async (data) => {
             try {
-                const response = await fetch(`${db.baseUrl}/faltas?turma=${turmaId}&data=${data}`, { credentials: 'include' });
+                const response = await fetch(`${db.baseUrl}/faltas?turma=${turmaId}&data=${data}`, {
+                    credentials: 'include',
+                });
                 const json = await response.json();
                 if (json.success) {
                     // Filtra apenas as faltas (presente: false) para manter compatibilidade com a lógica visual
-                    return json.data.filter(a => !a.presente && a.materia === materia).map(a =>
-                        (typeof a.aluno === 'string' ? a.aluno : a.aluno._id)
-                    );
+                    return json.data
+                        .filter((a) => !a.presente && a.materia === materia)
+                        .map((a) => (typeof a.aluno === 'string' ? a.aluno : a.aluno._id));
                 }
                 return [];
             } catch (e) {
@@ -1127,7 +1241,7 @@ class App {
             const totalPresentes = totalAlunos - totalFaltas;
 
             // Atualizar checkboxes e visual
-            document.querySelectorAll('.falta-check').forEach(chk => {
+            document.querySelectorAll('.falta-check').forEach((chk) => {
                 const isAbsent = faltasSalvas.includes(chk.dataset.alunoId);
                 chk.checked = isAbsent;
                 const card = document.getElementById(`card-aluno-${chk.dataset.alunoId}`);
@@ -1144,7 +1258,6 @@ class App {
             if (marcadorPresentes) marcadorPresentes.textContent = totalPresentes;
             if (marcadorFaltas) marcadorFaltas.textContent = totalFaltas;
         };
-
 
         container.innerHTML = `
             <div class="faltas-content">
@@ -1188,13 +1301,19 @@ class App {
 
                 <!-- Lista de Alunos (Grid) -->
                 <div class="attendance-grid">
-                    ${alunos.length > 0 ? alunos.map(aluno => `
+                    ${
+                        alunos.length > 0
+                            ? alunos
+                                  .map(
+                                      (aluno) => `
                         <div class="student-attendance-card" id="card-aluno-${aluno.id}" onclick="document.getElementById('check-${aluno.id}').click()">
                             <div class="student-data">
                                 <div class="student-mini-avatar">
-                                    ${aluno.foto
-                ? `<img src="${aluno.foto}">`
-                : aluno.nome.charAt(0)}
+                                    ${
+                                        aluno.foto
+                                            ? `<img src="${escAttr(aluno.foto)}">`
+                                            : aluno.nome.charAt(0)
+                                    }
                                 </div>
                                 <div class="student-names">
                                     <h4>${aluno.nome.split(' ')[0]} ${aluno.nome.split(' ')[1] || ''}</h4>
@@ -1207,7 +1326,11 @@ class App {
                                 <span class="slider"></span>
                             </label>
                         </div>
-                    `).join('') : '<div class="empty-state"><p>Nenhum aluno encontrado para esta turma.</p></div>'}
+                    `
+                                  )
+                                  .join('')
+                            : '<div class="empty-state"><p>Nenhum aluno encontrado para esta turma.</p></div>'
+                    }
                 </div>
 
                 <!-- Botão Flutuante Salvar -->
@@ -1223,7 +1346,7 @@ class App {
         await atualizarMarcadores();
 
         // Atualizar marcadores ao marcar/desmarcar checkbox
-        document.querySelectorAll('.falta-check').forEach(chk => {
+        document.querySelectorAll('.falta-check').forEach((chk) => {
             chk.addEventListener('change', (e) => {
                 const isAbsent = e.target.checked;
                 const card = document.getElementById(`card-aluno-${e.target.dataset.alunoId}`);
@@ -1254,10 +1377,10 @@ class App {
 
             // Prepara presenças de TODOS os alunos
             const presencas = [];
-            document.querySelectorAll('.falta-check').forEach(chk => {
+            document.querySelectorAll('.falta-check').forEach((chk) => {
                 presencas.push({
                     alunoId: chk.dataset.alunoId,
-                    presente: !chk.checked
+                    presente: !chk.checked,
                 });
             });
 
@@ -1266,10 +1389,12 @@ class App {
             ui.loading(false);
 
             if (sucesso) {
-                const faltasCount = presencas.filter(p => !p.presente).length;
-                ui.success(`✅ Chamada salva e sincronizada! ${new Date(data + 'T00:00:00').toLocaleDateString('pt-BR')} - ${faltasCount} falta(s).`);
+                const faltasCount = presencas.filter((p) => !p.presente).length;
+                ui.success(
+                    `✅ Chamada salva e sincronizada! ${new Date(data + 'T00:00:00').toLocaleDateString('pt-BR')} - ${faltasCount} falta(s).`
+                );
 
-                // Avançar para o próximo dia? 
+                // Avançar para o próximo dia?
                 // Talvez melhor deixar o usuário ver o feedback, mas vou manter a lógica original de avançar.
                 // Mas geralmente professores lançam um dia por vez.
                 const dataAtual = new Date(data + 'T00:00:00');
@@ -1336,10 +1461,22 @@ class App {
             turma: turmaId,
             materia,
             offset,
-            dias: new Map(dias.map(d => {
-                const chave = relChaveDoDia(d);
-                return [chave, { chave, texto: '', gravado: '', falhou: false, timer: null, fila: Promise.resolve() }];
-            }))
+            dias: new Map(
+                dias.map((d) => {
+                    const chave = relChaveDoDia(d);
+                    return [
+                        chave,
+                        {
+                            chave,
+                            texto: '',
+                            gravado: '',
+                            falhou: false,
+                            timer: null,
+                            fila: Promise.resolve(),
+                        },
+                    ];
+                })
+            ),
         };
         this.relatoriosEstado = estado;
 
@@ -1392,7 +1529,12 @@ class App {
 
         let salvos;
         try {
-            salvos = await relBuscarQuinzena({ turma: turmaId, materia, de: chaveInicio, ate: chaveFim });
+            salvos = await relBuscarQuinzena({
+                turma: turmaId,
+                materia,
+                de: chaveInicio,
+                ate: chaveFim,
+            });
         } catch (erro) {
             const conteudoErro = `
                 <div class="relatorios-falha" role="alert">
@@ -1409,14 +1551,15 @@ class App {
             if (window.Motion) window.Motion.ready(corpo, conteudoErro);
             else corpo.innerHTML = conteudoErro;
             contagem.textContent = 'Os relatórios desta quinzena não foram carregados.';
-            corpo.querySelector('#btnRelatoriosTentarDeNovo')
+            corpo
+                .querySelector('#btnRelatoriosTentarDeNovo')
                 ?.addEventListener('click', () => this.renderRelatorios(turmaId, bimestre, offset));
             container.querySelector('#btnSalvarTodos')?.setAttribute('disabled', 'disabled');
             this.ligarNavegacaoRelatorios(container, turmaId, bimestre, offset);
             return;
         }
 
-        salvos.forEach(registro => {
+        salvos.forEach((registro) => {
             const item = estado.dias.get(registro.dia);
             if (item) {
                 item.texto = registro.conteudo || '';
@@ -1424,18 +1567,19 @@ class App {
             }
         });
 
-        const cartoes = dias.map((data, i) => {
-            const chave = relChaveDoDia(data);
-            const item = estado.dias.get(chave);
-            const fimDeSemana = data.getDay() === 0 || data.getDay() === 6;
-            const ehHoje = chave === chaveHoje;
-            const rotulo = relDataPorExtenso(data);
-            // O mês só aparece onde ele muda. Repeti-lo nos quinze cartões era
-            // ruído: o que distingue um dia do outro é o número e o dia da
-            // semana, não "agosto de 2026" quinze vezes.
-            const novoMes = i === 0 || data.getMonth() !== dias[i - 1].getMonth();
+        const cartoes = dias
+            .map((data, i) => {
+                const chave = relChaveDoDia(data);
+                const item = estado.dias.get(chave);
+                const fimDeSemana = data.getDay() === 0 || data.getDay() === 6;
+                const ehHoje = chave === chaveHoje;
+                const rotulo = relDataPorExtenso(data);
+                // O mês só aparece onde ele muda. Repeti-lo nos quinze cartões era
+                // ruído: o que distingue um dia do outro é o número e o dia da
+                // semana, não "agosto de 2026" quinze vezes.
+                const novoMes = i === 0 || data.getMonth() !== dias[i - 1].getMonth();
 
-            return `
+                return `
                 <article class="relatorio-dia${fimDeSemana ? ' e-fim-de-semana' : ''}${ehHoje ? ' e-hoje' : ''}"
                     data-dia="${chave}" data-preenchido="${item.texto ? 'sim' : 'nao'}">
                     <header class="relatorio-dia-topo">
@@ -1455,7 +1599,8 @@ class App {
                         placeholder="O que foi trabalhado com a turma neste dia?"></textarea>
                 </article>
             `;
-        }).join('');
+            })
+            .join('');
 
         const grade = `<div class="relatorios-grade">${cartoes}</div>`;
         if (window.Motion) window.Motion.ready(corpo, grade);
@@ -1463,18 +1608,20 @@ class App {
 
         // Texto vai por `value`, nunca por innerHTML: é conteúdo escrito por um
         // usuário e lido por outros.
-        corpo.querySelectorAll('.relatorio-texto').forEach(caixa => {
+        corpo.querySelectorAll('.relatorio-texto').forEach((caixa) => {
             const item = estado.dias.get(caixa.dataset.dia);
             if (item) caixa.value = item.texto;
         });
 
-        medidor.innerHTML = dias.map(data => {
-            const chave = relChaveDoDia(data);
-            const classes = ['relatorios-marca'];
-            if (chave === chaveHoje) classes.push('e-hoje');
-            if (data.getDay() === 0 || data.getDay() === 6) classes.push('e-fim-de-semana');
-            return `<button type="button" class="${classes.join(' ')}" data-ir-para="${chave}"></button>`;
-        }).join('');
+        medidor.innerHTML = dias
+            .map((data) => {
+                const chave = relChaveDoDia(data);
+                const classes = ['relatorios-marca'];
+                if (chave === chaveHoje) classes.push('e-hoje');
+                if (data.getDay() === 0 || data.getDay() === 6) classes.push('e-fim-de-semana');
+                return `<button type="button" class="${classes.join(' ')}" data-ir-para="${chave}"></button>`;
+            })
+            .join('');
 
         // O medidor é montado uma vez e depois só troca de classe e de rótulo.
         // Recriar o innerHTML a cada save tirava o foco de quem navegava por
@@ -1495,9 +1642,10 @@ class App {
                 marca.setAttribute('aria-label', rotulo);
             });
 
-            contagem.textContent = preenchidos === REL_DIAS_NA_QUINZENA
-                ? `Quinzena completa: ${REL_DIAS_NA_QUINZENA} de ${REL_DIAS_NA_QUINZENA} dias escritos.`
-                : `${preenchidos} de ${REL_DIAS_NA_QUINZENA} dias escritos nesta quinzena.`;
+            contagem.textContent =
+                preenchidos === REL_DIAS_NA_QUINZENA
+                    ? `Quinzena completa: ${REL_DIAS_NA_QUINZENA} de ${REL_DIAS_NA_QUINZENA} dias escritos.`
+                    : `${preenchidos} de ${REL_DIAS_NA_QUINZENA} dias escritos nesta quinzena.`;
         };
         atualizarMedidor();
 
@@ -1528,11 +1676,13 @@ class App {
                     item.gravado = texto;
                     item.falhou = false;
                     marcarEstado(chave, texto.trim() ? 'salvo' : 'vazio');
-                    if (aviso && texto.trim()) aviso.textContent = `Relatório de ${relDataPorExtenso(new Date(`${chave}T12:00:00`))} salvo.`;
+                    if (aviso && texto.trim())
+                        aviso.textContent = `Relatório de ${relDataPorExtenso(new Date(`${chave}T12:00:00`))} salvo.`;
                 } catch (erro) {
                     item.falhou = true;
                     marcarEstado(chave, 'erro', 'Não salvou');
-                    if (aviso) aviso.textContent = `O relatório de ${relDataPorExtenso(new Date(`${chave}T12:00:00`))} não foi salvo: ${erro.message}`;
+                    if (aviso)
+                        aviso.textContent = `O relatório de ${relDataPorExtenso(new Date(`${chave}T12:00:00`))} não foi salvo: ${erro.message}`;
                     console.error(`[relatorios] falha ao salvar ${chave}:`, erro);
                 } finally {
                     atualizarMedidor();
@@ -1567,7 +1717,10 @@ class App {
 
             // Um timer POR DIA. Um timer compartilhado fazia o dia anterior
             // perder o save quando o professor pulava para o dia seguinte.
-            item.timer = setTimeout(() => { item.timer = null; gravarDia(chave); }, REL_DEBOUNCE_MS);
+            item.timer = setTimeout(() => {
+                item.timer = null;
+                gravarDia(chave);
+            }, REL_DEBOUNCE_MS);
         });
 
         // Sair do campo grava na hora: esperar o debounce quando o professor já
@@ -1585,9 +1738,14 @@ class App {
         medidor.addEventListener('click', (e) => {
             const marca = e.target.closest('[data-ir-para]');
             if (!marca) return;
-            const caixa = corpo.querySelector(`.relatorio-texto[data-dia="${marca.dataset.irPara}"]`);
+            const caixa = corpo.querySelector(
+                `.relatorio-texto[data-dia="${marca.dataset.irPara}"]`
+            );
             if (!caixa) return;
-            caixa.scrollIntoView({ block: 'center', behavior: window.Motion?.enabled ? 'smooth' : 'auto' });
+            caixa.scrollIntoView({
+                block: 'center',
+                behavior: window.Motion?.enabled ? 'smooth' : 'auto',
+            });
             caixa.focus({ preventScroll: true });
         });
 
@@ -1598,8 +1756,12 @@ class App {
             if (window.Motion) window.Motion.busy(botaoSalvarTodos, false);
 
             if (resultado.pendentes === 0) ui.success('Tudo já estava salvo.');
-            else if (resultado.falhas === 0) ui.success(`${resultado.pendentes} relatório(s) salvos.`);
-            else ui.error(`${resultado.falhas} relatório(s) não foram salvos. Confira os dias marcados.`);
+            else if (resultado.falhas === 0)
+                ui.success(`${resultado.pendentes} relatório(s) salvos.`);
+            else
+                ui.error(
+                    `${resultado.falhas} relatório(s) não foram salvos. Confira os dias marcados.`
+                );
         });
 
         this.ligarNavegacaoRelatorios(container, turmaId, bimestre, offset);
@@ -1627,12 +1789,15 @@ class App {
         const estado = this.relatoriosEstado;
         if (!estado || !estado.gravarDia) return { pendentes: 0, falhas: 0 };
 
-        const pendentes = [...estado.dias.values()].filter(item => item.texto !== item.gravado);
-        pendentes.forEach(item => { clearTimeout(item.timer); item.timer = null; });
+        const pendentes = [...estado.dias.values()].filter((item) => item.texto !== item.gravado);
+        pendentes.forEach((item) => {
+            clearTimeout(item.timer);
+            item.timer = null;
+        });
 
-        await Promise.all(pendentes.map(item => estado.gravarDia(item.chave)));
+        await Promise.all(pendentes.map((item) => estado.gravarDia(item.chave)));
 
-        const falhas = pendentes.filter(item => item.falhou).length;
+        const falhas = pendentes.filter((item) => item.falhou).length;
         return { pendentes: pendentes.length, falhas };
     }
 
@@ -1693,7 +1858,9 @@ class App {
      * @param {string} alunoNome - Nome do aluno para exibição
      */
     async confirmDeleteAluno(alunoId, alunoNome) {
-        const confirmado = confirm(`⚠️ ATENÇÃO!\n\nDeseja realmente excluir o aluno "${alunoNome}"?\n\nEsta ação é IRREVERSÍVEL e removerá:\n• Todos os dados do aluno\n• Todas as notas\n• Todas as faltas\n\nClique OK para confirmar.`);
+        const confirmado = confirm(
+            `⚠️ ATENÇÃO!\n\nDeseja realmente excluir o aluno "${alunoNome}"?\n\nEsta ação é IRREVERSÍVEL e removerá:\n• Todos os dados do aluno\n• Todas as notas\n• Todas as faltas\n\nClique OK para confirmar.`
+        );
 
         if (confirmado) {
             try {
@@ -1708,7 +1875,6 @@ class App {
                 setTimeout(() => {
                     location.reload();
                 }, 1000);
-
             } catch (error) {
                 console.error('Erro ao excluir aluno:', error);
                 ui.error('Erro ao excluir aluno: ' + error.message);
@@ -1716,7 +1882,6 @@ class App {
             }
         }
     }
-
 
     // ... (ShowEditAlunoModal mantido igual até showNotasModal)
 
@@ -1726,7 +1891,6 @@ class App {
      * @param {string} turmaId - ID da turma
      * @param {number} bimestre - Bimestre
      */
-
 
     /**
      * Helper: File to Base64 (com conversão para WebP)
@@ -1740,7 +1904,7 @@ class App {
                     const canvas = document.createElement('canvas');
                     let width = img.width;
                     let height = img.height;
-                    
+
                     // Dimensões máximas
                     const maxSize = 800;
                     if (width > height && width > maxSize) {
@@ -1755,14 +1919,14 @@ class App {
                     canvas.height = height;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
-                    
+
                     // Converte para WebP com 80% de qualidade
                     resolve(canvas.toDataURL('image/webp', 0.8));
                 };
-                img.onerror = error => reject(error);
+                img.onerror = (error) => reject(error);
                 img.src = e.target.result;
             };
-            reader.onerror = error => reject(error);
+            reader.onerror = (error) => reject(error);
             reader.readAsDataURL(file);
         });
     }
@@ -1823,7 +1987,7 @@ class App {
                     text: 'Cancelar',
                     class: 'btn-secondary',
                     action: 'cancel',
-                    onClick: () => ui.closeModal('modal-add-aluno')
+                    onClick: () => ui.closeModal('modal-add-aluno'),
                 },
                 {
                     text: 'Salvar',
@@ -1831,9 +1995,9 @@ class App {
                     action: 'save',
                     onClick: async () => {
                         await this.saveNewAluno(turmaId);
-                    }
-                }
-            ]
+                    },
+                },
+            ],
         });
     }
 
@@ -1858,7 +2022,7 @@ class App {
             telefone: document.getElementById('alunoTelefone')?.value || '',
             email: document.getElementById('alunoEmail')?.value || '',
             deficiencia: document.getElementById('alunoDeficiencia')?.value || '',
-            observacoes: document.getElementById('alunoObservacoes')?.value || ''
+            observacoes: document.getElementById('alunoObservacoes')?.value || '',
         };
 
         try {
@@ -1912,23 +2076,23 @@ class App {
                     <label>Foto do Aluno</label>
                     <div style="display:flex; gap:10px; align-items:center;">
                         <div class="foto-preview" style="width:50px; height:50px; border-radius:50%; overflow:hidden; border:1px solid #ccc;">
-                            ${aluno.foto ? `<img src="${aluno.foto}" style="width:100%; height:100%; object-fit:cover;">` : '<div style="width:100%; height:100%; background:#eee;"></div>'}
+                            ${aluno.foto ? `<img src="${escAttr(aluno.foto)}" style="width:100%; height:100%; object-fit:cover;">` : '<div style="width:100%; height:100%; background:#eee;"></div>'}
                         </div>
                         <input type="file" id="editAlunoFoto" class="form-input" accept="image/*">
                     </div>
                 </div>
                 <div class="form-group">
                     <label for="editAlunoNome">Nome Completo *</label>
-                    <input type="text" id="editAlunoNome" class="form-input" value="${aluno.nome}" required>
+                    <input type="text" id="editAlunoNome" class="form-input" value="${escAttr(aluno.nome)}" required>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label for="editAlunoNascimento">Data de Nascimento</label>
-                        <input type="date" id="editAlunoNascimento" class="form-input" value="${aluno.dataNascimento}">
+                        <input type="date" id="editAlunoNascimento" class="form-input" value="${escAttr(aluno.dataNascimento)}">
                     </div>
                     <div class="form-group">
                         <label for="editAlunoMatricula">Matrícula</label>
-                        <input type="text" id="editAlunoMatricula" class="form-input" value="${aluno.matricula}">
+                        <input type="text" id="editAlunoMatricula" class="form-input" value="${escAttr(aluno.matricula)}">
                     </div>
                 </div>
                 <!-- ... other fields ... -->
@@ -1953,7 +2117,7 @@ class App {
                         </div>
                         <div style="flex: 1;">
                             <label style="font-size: 0.8rem; color: #aaa; margin-bottom: 2px; display: block;">Faltas</label>
-                            <input type="number" id="editAlunoFaltas" class="form-input" min="0" value="${faltasVal}" placeholder="Faltas no bimestre...">
+                            <input type="number" id="editAlunoFaltas" class="form-input" min="0" value="${escAttr(faltasVal)}" placeholder="Faltas no bimestre...">
                         </div>
                         <div style="flex: 1;">
                             <label style="font-size: 0.8rem; color: #aaa; margin-bottom: 2px; display: block;">Condição</label>
@@ -1962,21 +2126,21 @@ class App {
                                 <option value="TDAH" ${aluno.condicao === 'TDAH' ? 'selected' : ''}>TDAH</option>
                                 <option value="TOD" ${aluno.condicao === 'TOD' ? 'selected' : ''}>TOD</option>
                                 <option value="Autismo" ${aluno.condicao === 'Autismo' ? 'selected' : ''}>Autismo</option>
-                                <option value="Outros" ${(aluno.condicao && !['TDAH', 'TOD', 'Autismo'].includes(aluno.condicao)) ? 'selected' : ''}>Outros</option>
+                                <option value="Outros" ${aluno.condicao && !['TDAH', 'TOD', 'Autismo'].includes(aluno.condicao) ? 'selected' : ''}>Outros</option>
                             </select>
-                            <div id="editAlunoCondicaoOutroContainer" style="display: ${(aluno.condicao && !['TDAH', 'TOD', 'Autismo'].includes(aluno.condicao)) ? 'block' : 'none'}; margin-top: 5px;">
-                                <input type="text" id="editAlunoCondicaoOutro" class="form-input" placeholder="Especifique a condição..." value="${(aluno.condicao && !['TDAH', 'TOD', 'Autismo'].includes(aluno.condicao)) ? aluno.condicao : ''}">
+                            <div id="editAlunoCondicaoOutroContainer" style="display: ${aluno.condicao && !['TDAH', 'TOD', 'Autismo'].includes(aluno.condicao) ? 'block' : 'none'}; margin-top: 5px;">
+                                <input type="text" id="editAlunoCondicaoOutro" class="form-input" placeholder="Especifique a condição..." value="${escAttr(aluno.condicao && !['TDAH', 'TOD', 'Autismo'].includes(aluno.condicao) ? aluno.condicao : '')}">
                             </div>
                         </div>
                     </div>
                     
                     <div style="margin-bottom: 15px; display: flex; gap: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
                         <label style="display:flex; align-items:center; gap: 10px; cursor:pointer; flex: 1; user-select: none;">
-                            <input type="checkbox" id="editAlunoRecupLP" style="transform: scale(1.6); cursor: pointer; margin: 5px;" ${(aluno.recuperacaoBimestre && aluno.recuperacaoBimestre[currentBimestre] && aluno.recuperacaoBimestre[currentBimestre].lp) ? 'checked' : ''}>
+                            <input type="checkbox" id="editAlunoRecupLP" style="transform: scale(1.6); cursor: pointer; margin: 5px;" ${aluno.recuperacaoBimestre && aluno.recuperacaoBimestre[currentBimestre] && aluno.recuperacaoBimestre[currentBimestre].lp ? 'checked' : ''}>
                             <span style="font-size:1rem; font-weight: 500; color: #333;">Recuperação em Português</span>
                         </label>
                         <label style="display:flex; align-items:center; gap: 10px; cursor:pointer; flex: 1; user-select: none;">
-                            <input type="checkbox" id="editAlunoRecupMat" style="transform: scale(1.6); cursor: pointer; margin: 5px;" ${(aluno.recuperacaoBimestre && aluno.recuperacaoBimestre[currentBimestre] && aluno.recuperacaoBimestre[currentBimestre].mat) ? 'checked' : ''}>
+                            <input type="checkbox" id="editAlunoRecupMat" style="transform: scale(1.6); cursor: pointer; margin: 5px;" ${aluno.recuperacaoBimestre && aluno.recuperacaoBimestre[currentBimestre] && aluno.recuperacaoBimestre[currentBimestre].mat ? 'checked' : ''}>
                             <span style="font-size:1rem; font-weight: 500; color: #333;">Recuperação em Matemática</span>
                         </label>
                     </div>
@@ -1997,7 +2161,7 @@ class App {
                     text: 'Cancelar',
                     class: 'btn-secondary',
                     action: 'cancel',
-                    onClick: () => ui.closeModal('modal-edit-aluno')
+                    onClick: () => ui.closeModal('modal-edit-aluno'),
                 },
                 {
                     text: 'Salvar',
@@ -2005,9 +2169,9 @@ class App {
                     action: 'save',
                     onClick: async () => {
                         await this.saveEditedAluno(alunoId, currentBimestre);
-                    }
-                }
-            ]
+                    },
+                },
+            ],
         });
     }
 
@@ -2081,7 +2245,7 @@ class App {
 
         // Filter by materia if not Sala Principal
         if (materia !== 'Sala Principal') {
-            notasAluno = notasAluno.filter(n => n.materiaId === materia);
+            notasAluno = notasAluno.filter((n) => n.materiaId === materia);
         }
 
         const materias = db.getMaterias();
@@ -2102,16 +2266,22 @@ class App {
                                 <label>Matéria *</label>
                                 <select id="notaMateria" class="form-input" required>
                                     <option value="">Selecione...</option>
-                                    ${materias.map(m => {
-            const selected = (materia !== 'Sala Principal' && (m.nome === materia || m.id === materia)) ? 'selected' : '';
-            return `<option value="${m.id}" ${selected}>${m.icone} ${m.nome}</option>`;
-        }).join('')}
+                                    ${materias
+                                        .map((m) => {
+                                            const selected =
+                                                materia !== 'Sala Principal' &&
+                                                (m.nome === materia || m.id === materia)
+                                                    ? 'selected'
+                                                    : '';
+                                            return `<option value="${escAttr(m.id)}" ${selected}>${m.icone} ${m.nome}</option>`;
+                                        })
+                                        .join('')}
                                 </select>
                             </div>
                             <div class="form-group">
                                 <label>Tipo *</label>
                                 <select id="notaTipo" class="form-input" required>
-                                    ${tiposAvaliacao.map(t => `<option value="${t.id}" data-peso="${t.pesoDefault}">${t.nome}</option>`).join('')}
+                                    ${tiposAvaliacao.map((t) => `<option value="${escAttr(t.id)}" data-peso="${escAttr(t.pesoDefault)}">${t.nome}</option>`).join('')}
                                 </select>
                             </div>
                         </div>
@@ -2139,9 +2309,10 @@ class App {
 
                 <div class="notas-lista">
                     <h5>Notas Registradas</h5>
-                    ${notasAluno.length === 0
-                ? '<p class="empty-notas">Nenhuma nota registrada neste bimestre.</p>'
-                : `<table class="table-notas">
+                    ${
+                        notasAluno.length === 0
+                            ? '<p class="empty-notas">Nenhuma nota registrada neste bimestre.</p>'
+                            : `<table class="table-notas">
                             <thead>
                                 <tr>
                                     <th>Matéria</th>
@@ -2154,9 +2325,12 @@ class App {
                                 </tr>
                             </thead>
                             <tbody>
-                                ${notasAluno.map(nota => {
-                    const materia = materias.find(m => m.id === nota.materiaId);
-                    return `
+                                ${notasAluno
+                                    .map((nota) => {
+                                        const materia = materias.find(
+                                            (m) => m.id === nota.materiaId
+                                        );
+                                        return `
                                         <tr data-nota-id="${nota.id}">
                                             <td>${materia?.icone || ''} ${materia?.nome || nota.materiaId}</td>
                                             <td>${nota.tipo}</td>
@@ -2169,10 +2343,11 @@ class App {
                                             </td>
                                         </tr>
                                     `;
-                }).join('')}
+                                    })
+                                    .join('')}
                             </tbody>
                         </table>`
-            }
+                    }
                 </div>
             </div>
         `;
@@ -2191,9 +2366,9 @@ class App {
                         ui.closeModal('modal-notas');
                         // Recarrega tabela para atualizar médias
                         this.renderTurmaPage(turmaId, bimestre);
-                    }
-                }
-            ]
+                    },
+                },
+            ],
         });
 
         // Eventos do modal
@@ -2209,7 +2384,7 @@ class App {
         });
 
         // Excluir nota
-        modal.querySelectorAll('.btn-delete-nota').forEach(btn => {
+        modal.querySelectorAll('.btn-delete-nota').forEach((btn) => {
             btn.addEventListener('click', async () => {
                 const notaId = parseInt(btn.dataset.notaId);
                 const confirmado = await ui.confirm('Deseja realmente excluir esta nota?');
@@ -2248,8 +2423,10 @@ class App {
                 tipo,
                 nota: parseFloat(valor),
                 peso: parseInt(document.getElementById('notaPeso')?.value) || 1,
-                data: document.getElementById('notaData')?.value || new Date().toISOString().split('T')[0],
-                descricao: document.getElementById('notaDescricao')?.value || ''
+                data:
+                    document.getElementById('notaData')?.value ||
+                    new Date().toISOString().split('T')[0],
+                descricao: document.getElementById('notaDescricao')?.value || '',
             });
 
             // Recarrega modal

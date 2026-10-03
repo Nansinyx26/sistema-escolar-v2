@@ -5,6 +5,22 @@ import db from '../js/db.js';
 import students from '../js/students.js';
 import ui from '../js/ui.js';
 
+// Valor do banco interpolado em atributo HTML: escapa aspas, < > e crase,
+// mas não o `&`, que o servidor já grava codificado (Issue #583). Ver
+// js/escape-html.js (escapeAttr). Declaração `function`, e não `const`, para
+// poder conviver com outra cópia carregada na mesma página.
+function escAttr(v) {
+    if (v === null || v === undefined) return '';
+    return String(v).replace(/["'<>`]/g, (c) => ({ '"': '&quot;', "'": '&#39;', '<': '&lt;', '>': '&gt;', '`': '&#96;' })[c]);
+}
+
+// Argumento de handler inline (onclick="f(${argJs(x)})"): vira string JS e
+// passa por escape de HTML COMPLETO, `&` incluído — o navegador decodifica as
+// entidades antes de rodar o JS, então `&quot;` voltaria a ser aspa (Issue #583).
+function argJs(v) {
+    return JSON.stringify(String(v ?? '')).replace(/[&<>"'`]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[c]);
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     await init();
 });
@@ -177,7 +193,7 @@ function mostrarAvisoSelecao() {
 
         // Criar uma lista vertical de turmas
         let turmasHtml = turmas.map(t => `
-            <div onclick="document.getElementById('filtroTurma').value='${t.id}'; document.getElementById('filtroTurma').dispatchEvent(new Event('change'));"
+            <div onclick="document.getElementById('filtroTurma').value=${argJs(t.id)}; document.getElementById('filtroTurma').dispatchEvent(new Event('change'));"
                  style="background: var(--bg-elevated); padding: 15px 25px; border-radius: 12px; border: 1px solid var(--border-secondary); cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s ease; margin-bottom: 10px;">
                 <div style="display: flex; align-items: center; gap: 15px;">
                     <i class="bi bi-people-fill" style="font-size: 1.5rem; color: var(--primary);"></i>
@@ -317,7 +333,7 @@ async function loadAlunos() {
                 }
 
                 tr.innerHTML = `
-                    <td><input type="checkbox" class="student-select" value="${aluno.id || aluno._id}"></td>
+                    <td><input type="checkbox" class="student-select" value="${escAttr(aluno.id || aluno._id)}"></td>
                     <td>
                         <div style="font-weight: 500; color: var(--text-white);">${aluno.nome}</div>
                         <div style="font-size: 0.8rem; margin-top: 4px; color: ${aluno.responsavel ? '#22c55e' : '#ef4444'};">
@@ -330,10 +346,10 @@ async function loadAlunos() {
                     <td><span class="badge badge-turma">${nomeTurma}</span></td>
                     <td>${statusHtml}</td>
                     <td style="text-align: right; display: flex; gap: 5px; justify-content: flex-end;">
-                         <button class="btn btn-ghost btn-sm btn-edit" data-id="${aluno.id || aluno._id}" title="Editar Aluno">
+                         <button class="btn btn-ghost btn-sm btn-edit" data-id="${escAttr(aluno.id || aluno._id)}" title="Editar Aluno">
                             <i class="bi bi-pencil"></i>
                         </button>
-                         <a href="../html/turma.html?turma=${aluno.turmaId}" class="btn btn-ghost btn-sm" title="Ver na Turma">
+                         <a href="../html/turma.html?turma=${escAttr(aluno.turmaId)}" class="btn btn-ghost btn-sm" title="Ver na Turma">
                             <i class="bi bi-eye"></i>
                         </a>
                     </td>
@@ -639,7 +655,7 @@ async function carregarAutorizacoesEDocumentos(alunoId) {
                     const dataEnvioFormatada = doc.dataEnvio ? new Date(doc.dataEnvio).toLocaleString('pt-BR') : '-';
                     const dataAtualizacaoFormatada = doc.ultimaAtualizacao ? new Date(doc.ultimaAtualizacao).toLocaleString('pt-BR') : dataEnvioFormatada;
                     const docId = doc._id;
-                    const nomeDocSafe = (doc.nomeDocumento || doc.tipoDocumento || 'Documento').replace(/'/g, "\\'");
+                    const nomeDoc = doc.nomeDocumento || doc.tipoDocumento || 'Documento';
 
                     let statusColor = '#94a3b8';
                     if (doc.status === 'Conferido') statusColor = '#10b981';
@@ -658,7 +674,7 @@ async function carregarAutorizacoesEDocumentos(alunoId) {
                             </span>
                         </td>
                         <td style="text-align: right; white-space: nowrap;">
-                            <button type="button" class="btn btn-outline btn-sm" onclick="abrirVisualizacaoDoc('${docId}', '${mimeType}', '${nomeDocSafe}')" style="padding: 3px 8px; font-size: 0.75rem;">
+                            <button type="button" class="btn btn-outline btn-sm" onclick="abrirVisualizacaoDoc(${argJs(docId)}, ${argJs(mimeType)}, ${argJs(nomeDoc)})" style="padding: 3px 8px; font-size: 0.75rem;">
                                 <i class="bi bi-eye"></i> Ver
                             </button>
                             <a href="${apiBase}/documentos-responsaveis/${docId}/download" class="btn btn-primary btn-sm" download style="padding: 3px 8px; font-size: 0.75rem;">
@@ -873,7 +889,7 @@ async function carregarTodosDocumentosAssinados() {
             const responsavelNome = doc.responsavelId?.nome || 'Responsável';
             const turmaNome = doc.turmaId || '-';
             const docId = doc._id;
-            const nomeDocSafe = (doc.nomeDocumento || doc.tipoDocumento || 'Documento').replace(/'/g, "\\'");
+            const nomeDoc = doc.nomeDocumento || doc.tipoDocumento || 'Documento';
 
             tr.innerHTML = `
                 <td style="text-align: center; vertical-align: middle;">${iconHtml}</td>
@@ -899,7 +915,7 @@ async function carregarTodosDocumentosAssinados() {
                     </select>
                 </td>
                 <td style="text-align: right; white-space: nowrap;">
-                    <button type="button" class="btn btn-outline btn-sm" onclick="abrirVisualizacaoDoc('${docId}', '${mimeType}', '${nomeDocSafe}')" title="Visualizar documento">
+                    <button type="button" class="btn btn-outline btn-sm" onclick="abrirVisualizacaoDoc(${argJs(docId)}, ${argJs(mimeType)}, ${argJs(nomeDoc)})" title="Visualizar documento">
                         <i class="bi bi-eye"></i> Visualizar
                     </button>
                     <a href="${apiBase}/documentos-responsaveis/${docId}/download" class="btn btn-ghost btn-sm" download title="Baixar arquivo">
@@ -971,11 +987,11 @@ function abrirVisualizacaoDoc(docId, mimeType, nome) {
 
     if (isPdf) {
         corpo.innerHTML = `
-            <iframe src="${previewUrl}" style="width: 100%; height: 100%; border: none; border-radius: 8px;" title="${nome}"></iframe>
+            <iframe src="${previewUrl}" style="width: 100%; height: 100%; border: none; border-radius: 8px;" title="${escAttr(nome)}"></iframe>
         `;
     } else {
         corpo.innerHTML = `
-            <img src="${previewUrl}" alt="${nome}" style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px;" />
+            <img src="${previewUrl}" alt="${escAttr(nome)}" style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px;" />
         `;
     }
 

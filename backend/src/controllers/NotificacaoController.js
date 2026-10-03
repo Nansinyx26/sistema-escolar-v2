@@ -94,7 +94,6 @@ module.exports = {
             res.status(500).json({
                 success: false,
                 error: 'Erro ao buscar notificações',
-                details: error.message,
             });
         }
     },
@@ -131,7 +130,6 @@ module.exports = {
             res.status(400).json({
                 success: false,
                 error: 'Erro ao criar notificação',
-                details: error.message,
             });
         }
     },
@@ -167,7 +165,6 @@ module.exports = {
             res.status(500).json({
                 success: false,
                 error: 'Erro ao deletar notificação',
-                details: error.message,
             });
         }
     },

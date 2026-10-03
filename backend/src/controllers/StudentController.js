@@ -9,10 +9,50 @@ const assertAcessoAoAluno = require('../middleware/assertAcessoAoAluno');
 const urlFotoAluno = require('../utils/urlFotoAluno');
 const { projetarAluno } = require('../utils/projecaoAluno');
 const { limparCamposSemFinalidade } = require('../utils/camposSemFinalidade');
+const { vinculosDoUsuario, escolaIdDaConta } = require('../middleware/filtrarPorEscola');
 const {
     podeAnonimizar,
     planoDeAnonimizacao,
 } = require('../services/conformidade/anonimizacaoAluno');
+
+/**
+ * Confere a escola para onde a equipe quer transferir um aluno (Issue #592).
+ *
+ * O `escolaId` do corpo era gravado como veio: a direção da Escola A mandava o
+ * aluno — e, pela sincronização do responsável no `update`, a conta dele junto
+ * — para qualquer escola da rede, ou para um id que não existe, e o aluno
+ * sumia de todas. Agora o destino precisa existir e, para diretor e
+ * secretaria, ser uma escola em que a pessoa trabalha: um dos vínculos; sem
+ * vínculo, a escola da própria conta. O admin é da rede: basta existir.
+ */
+async function conferirEscolaDeDestino(req, destino) {
+    const Escola = require('../models/Escola');
+    const existe = /^[a-f0-9]{24}$/i.test(destino) && (await Escola.exists({ _id: destino }));
+    if (!existe) {
+        return {
+            ok: false,
+            status: 400,
+            codigo: 'ESCOLA_DESTINO_INEXISTENTE',
+            error: 'Escola de destino não encontrada.',
+        };
+    }
+    if (req.user.perfil === 'admin') return { ok: true };
+
+    const vinculos = await vinculosDoUsuario(req.user);
+    const minhas =
+        vinculos.length > 0
+            ? vinculos.map((v) => String(v.escolaId))
+            : [await escolaIdDaConta(req.user)].filter(Boolean);
+    if (!minhas.includes(destino)) {
+        return {
+            ok: false,
+            status: 403,
+            codigo: 'ESCOLA_DESTINO_SEM_VINCULO',
+            error: 'Você só pode transferir alunos para escolas em que trabalha.',
+        };
+    }
+    return { ok: true };
+}
 
 // Encerramento do cadastro (#409): 'inativar' (padrão) ou 'anonimizar'.
 // A escola decide; o padrão é o que preserva mais.
@@ -419,10 +459,34 @@ exports.update = async (req, res) => {
         // -------------------------------------------------------------------------
 
         // Multi-escola: transferir o aluno para outra escola é permitido apenas
-        // à equipe gestora (admin/diretor/secretaria). Professores nunca alteram
-        // escolaId. O nome do campo NÃO está na whitelist geral de propósito.
+        // à equipe gestora (admin/diretor/secretaria), e só para uma escola que
+        // ela alcança (Issue #592). Professores nunca alteram escolaId. O nome
+        // do campo NÃO está na whitelist geral de propósito.
+        const escolaAnterior = existingStudent.escolaId ? String(existingStudent.escolaId) : '';
+        let transferencia = null;
         if (req.body.escolaId && ['admin', 'diretor', 'secretaria'].includes(req.user?.perfil)) {
-            filteredBody.escolaId = String(req.body.escolaId);
+            const destino = String(req.body.escolaId);
+            if (destino !== escolaAnterior) {
+                const conferencia = await conferirEscolaDeDestino(req, destino);
+                if (!conferencia.ok) {
+                    if (conferencia.status === 403) {
+                        const { logAction } = require('../utils/auditHelper');
+                        await logAction(req, 'TRANSFERENCIA_ALUNO_RECUSADA', 'Alunos', {
+                            recursoId: String(existingStudent._id),
+                            valorAnterior: escolaAnterior,
+                            valorNovo: destino,
+                            descricao: 'Transferência para escola sem vínculo com quem pediu',
+                        });
+                    }
+                    return res.status(conferencia.status).json({
+                        success: false,
+                        codigo: conferencia.codigo,
+                        error: conferencia.error,
+                    });
+                }
+                filteredBody.escolaId = destino;
+                transferencia = { de: escolaAnterior, para: destino };
+            }
         }
 
         // ── Foto: só agora, com o aluno já autorizado ────────────────────────
@@ -473,13 +537,31 @@ exports.update = async (req, res) => {
         if (!student)
             return res.status(404).json({ success: false, error: 'Aluno não encontrado' });
 
+        if (transferencia) {
+            const { logAction } = require('../utils/auditHelper');
+            await logAction(req, 'ALUNO_TRANSFERIDO_DE_ESCOLA', 'Alunos', {
+                recursoId: String(student._id),
+                valorAnterior: transferencia.de,
+                valorNovo: transferencia.para,
+                descricao: 'Aluno transferido de escola',
+            });
+        }
+
         // Mantém a escola do RESPONSÁVEL em sincronia com a do aluno: se o aluno
         // mudou de escola, o responsável vinculado passa a pertencer à mesma escola.
+        //
+        // Só acompanha o aluno a conta que estava sem escola ou na escola
+        // anterior dele (Issue #592). Sem esse filtro, gravar em `responsavel` o
+        // e-mail de um responsável de outra escola puxava a conta dele para cá.
         try {
             if (student.escolaId && student.responsavel) {
                 const Usuario = require('../models/Usuario');
                 await Usuario.updateOne(
-                    { email: String(student.responsavel).toLowerCase(), perfil: 'responsavel' },
+                    {
+                        email: String(student.responsavel).toLowerCase(),
+                        perfil: 'responsavel',
+                        escolaId: { $in: [null, '', 'default', escolaAnterior] },
+                    },
                     { $set: { escolaId: String(student.escolaId) } }
                 );
             }

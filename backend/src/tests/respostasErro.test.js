@@ -14,7 +14,12 @@
 const express = require('express');
 const request = require('supertest');
 const app = require('../app');
-const { padronizadorResposta, MENSAGEM_PADRAO_500 } = require('../middleware/padronizadorResposta');
+const {
+    padronizadorResposta,
+    pareceErroInterno,
+    MENSAGEM_PADRAO_500,
+    MENSAGEM_PADRAO_4XX,
+} = require('../middleware/padronizadorResposta');
 const { extrairRequestIdValido } = require('../middleware/requestLogger');
 const { obterIdInstancia } = require('../utils/instanciaId');
 const logger = require('../utils/logger');
@@ -306,6 +311,148 @@ describe('Padronização e Blindagem de Respostas de Erro (Issue #337)', () => {
             expect(res.body.error).toBe(MENSAGEM_PADRAO_500);
             expect(res.body.codigo).toBe('ERRO_INTERNO');
             expect(res.body.requestId).toBe('req-global-err');
+        });
+    });
+
+    // Issue #599: a blindagem cobria só o 500. Um `catch` genérico que responde
+    // 400 com `e.message` mandava o texto do Mongoose ao cliente, um 503 de
+    // health levava `ECONNREFUSED host:porta` e um 500 vazava por `details`.
+    describe('Blindagem além do 500 (Issue #599)', () => {
+        const envOriginal = process.env.NODE_ENV;
+        afterEach(() => {
+            process.env.NODE_ENV = envOriginal;
+        });
+
+        /** App mínimo que responde `corpo` com `status` em GET /r. */
+        function appQueResponde(status, corpo) {
+            const testApp = express();
+            testApp.use((req, _res, next) => {
+                req.requestId = 'req-599';
+                next();
+            });
+            testApp.use(padronizadorResposta);
+            testApp.get('/r', (_req, res) => res.status(status).json(corpo));
+            return testApp;
+        }
+
+        const CAST =
+            'Cast to ObjectId failed for value "abc" (type string) at path "_id" for model "Aluno"';
+        const DUPLICADO =
+            'E11000 duplicate key error collection: escola.usuarios index: email_1 dup key: { email: "maria.silva@gmail.com" }';
+
+        it.each([
+            ['CastError do Mongoose', CAST],
+            ['índice único do Mongo', DUPLICADO],
+            [
+                'ValidationError do Mongoose',
+                'Aluno validation failed: nome: Path `nome` is required.',
+            ],
+            ['erro de JavaScript', "Cannot read properties of undefined (reading 'turma')"],
+        ])('400 com %s é mascarado em produção', async (_caso, mensagem) => {
+            process.env.NODE_ENV = 'production';
+            let res;
+            const log = await capturarLogs(async () => {
+                res = await request(appQueResponde(400, { success: false, error: mensagem })).get(
+                    '/r'
+                );
+            });
+
+            expect(res.status).toBe(400);
+            expect(res.body.error).toBe(MENSAGEM_PADRAO_4XX);
+            expect(res.body.message).toBe(MENSAGEM_PADRAO_4XX);
+            expect(res.body.codigo).toBe('REQUISICAO_INVALIDA');
+            expect(res.body.requestId).toBe('req-599');
+            expect(JSON.stringify(res.body)).not.toContain(mensagem.slice(0, 20));
+            // O original vai para o log, com requestId — e sem o e-mail em claro.
+            expect(log).toContain('req-599');
+            expect(log).toContain('Blindagem 4xx');
+            expect(log).not.toContain('maria.silva@gmail.com');
+        });
+
+        it('400 de negócio passa intacto em produção', async () => {
+            process.env.NODE_ENV = 'production';
+            const res = await request(
+                appQueResponde(400, { success: false, error: 'Campo nome é obrigatório' })
+            ).get('/r');
+
+            expect(res.body.error).toBe('Campo nome é obrigatório');
+        });
+
+        it('fora de produção o 400 interno continua visível para depuração', async () => {
+            process.env.NODE_ENV = 'development';
+            const res = await request(appQueResponde(400, { success: false, error: CAST })).get(
+                '/r'
+            );
+
+            expect(res.body.error).toBe(CAST);
+        });
+
+        it('503 com erro de conexão é mascarado; 503 de negócio passa', async () => {
+            process.env.NODE_ENV = 'production';
+            const interno = await capturarLogs(async () => {
+                const res = await request(
+                    appQueResponde(503, { ok: false, error: 'connect ECONNREFUSED 10.0.3.7:27017' })
+                ).get('/r');
+                expect(res.body.error).toBe(MENSAGEM_PADRAO_500);
+                expect(JSON.stringify(res.body)).not.toContain('10.0.3.7');
+            });
+            expect(interno).toContain('Blindagem 5xx');
+
+            const negocio = await request(
+                appQueResponde(503, {
+                    error: 'Serviço de geração de PDF temporariamente indisponível',
+                })
+            ).get('/r');
+            expect(negocio.body.error).toBe(
+                'Serviço de geração de PDF temporariamente indisponível'
+            );
+        });
+
+        it('500 em produção não leva details nem stack', async () => {
+            process.env.NODE_ENV = 'production';
+            let res;
+            await capturarLogs(async () => {
+                res = await request(
+                    appQueResponde(500, {
+                        error: 'Erro ao buscar notificações',
+                        details: 'MongoNetworkError: connection 3 to 10.0.3.7:27017 closed',
+                        stack: 'Error: x\n    at getAll (/app/src/controllers/NotificacaoController.js:80:5)',
+                    })
+                ).get('/r');
+            });
+
+            expect(res.body.error).toBe(MENSAGEM_PADRAO_500);
+            expect(res.body).not.toHaveProperty('details');
+            expect(res.body).not.toHaveProperty('stack');
+        });
+
+        it('details com erro interno em 4xx some; details de negócio fica', async () => {
+            process.env.NODE_ENV = 'production';
+            let res;
+            await capturarLogs(async () => {
+                res = await request(
+                    appQueResponde(400, { error: 'Erro ao criar notificação', details: CAST })
+                ).get('/r');
+            });
+            expect(res.body.error).toBe('Erro ao criar notificação');
+            expect(res.body).not.toHaveProperty('details');
+
+            const negocio = await request(
+                appQueResponde(400, { error: 'Dados inválidos', details: 'Informe a turma' })
+            ).get('/r');
+            expect(negocio.body.details).toBe('Informe a turma');
+        });
+
+        it('mensagem de negócio em português não casa com os padrões', () => {
+            for (const texto of [
+                'Campo nome é obrigatório',
+                'Aluno não encontrado',
+                'Turma não definida para este aluno',
+                'Este aluno já possui um responsável vinculado.',
+                'Código inválido ou expirado.',
+            ]) {
+                expect(pareceErroInterno(texto)).toBe(false);
+            }
         });
     });
 
