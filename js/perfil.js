@@ -3,6 +3,18 @@
  * Permite editar foto e dados pessoais
  */
 
+// Valor do banco interpolado em atributo HTML: escapa aspas, < > e crase,
+// mas não o `&`, que o servidor já grava codificado (Issue #582). Ver
+// js/escape-html.js (escapeAttr). Declaração `function`, e não `const`, para
+// poder conviver com outra cópia carregada na mesma página.
+function escAttr(v) {
+    if (v === null || v === undefined) return '';
+    return String(v).replace(
+        /["'<>`]/g,
+        (c) => ({ '"': '&quot;', "'": '&#39;', '<': '&lt;', '>': '&gt;', '`': '&#96;' })[c]
+    );
+}
+
 let fotoBase64 = '';
 let perfilAtual = null;
 let tipoPerfilAtual = null;
@@ -119,7 +131,7 @@ function preencherFormulario(user, perfil) {
     const fotoUrl = window.getPhotoUrl(perfil.foto, user.fotoGoogle);
 
     if (photoPreview) {
-        photoPreview.innerHTML = `<img src="${fotoUrl}" alt="Foto" class="user-avatar avatar-xxl">`;
+        photoPreview.innerHTML = `<img src="${escAttr(fotoUrl)}" alt="Foto" class="user-avatar avatar-xxl">`;
         if (perfil.foto || (user.fotoGoogle && fotoUrl === user.fotoGoogle)) {
             removeFotoBtn.classList.remove('hidden');
         }
@@ -386,7 +398,7 @@ function setupPhotoUpload() {
                     ? window.getPhotoUrl(perfilAtual?.foto, auth.getCurrentUser()?.fotoGoogle)
                     : '';
                 if (fotoUrl) {
-                    photoPreview.innerHTML = `<img src="${fotoUrl}" alt="Foto" class="user-avatar avatar-xxl">`;
+                    photoPreview.innerHTML = `<img src="${escAttr(fotoUrl)}" alt="Foto" class="user-avatar avatar-xxl">`;
                 } else {
                     photoPreview.innerHTML = '<i class="bi bi-person-circle"></i>';
                 }
@@ -435,7 +447,7 @@ function setupPhotoUpload() {
 
                 const fotoGoogle = user?.fotoGoogle;
                 if (fotoGoogle) {
-                    photoPreview.innerHTML = `<img src="${fotoGoogle}" alt="Foto Google" class="user-avatar avatar-xxl">`;
+                    photoPreview.innerHTML = `<img src="${escAttr(fotoGoogle)}" alt="Foto Google" class="user-avatar avatar-xxl">`;
                 } else {
                     photoPreview.innerHTML = '<i class="bi bi-person-circle"></i>';
                 }

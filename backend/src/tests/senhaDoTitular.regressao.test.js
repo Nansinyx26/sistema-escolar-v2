@@ -95,16 +95,18 @@ describe('ninguém grava a senha de outra pessoa', () => {
         expect(await hashDe(professor._id)).toBe(antes);
     });
 
-    it('o titular troca a própria senha normalmente', async () => {
+    // Até a Issue #590 o titular trocava a própria senha por aqui só com a
+    // sessão — sem a senha atual. Agora a troca é pela recuperação por e-mail.
+    it('nem o titular troca a senha pela edição de perfil (Issue #590)', async () => {
+        const antes = await hashDe(professor._id);
         const res = await request(app)
             .put(`/api/usuarios/${professor._id}`)
             .set('Cookie', cookieDe(professor))
             .send({ senha: SENHA_TESTE_NOVA });
 
-        expect(res.status).toBeLessThan(300);
-        const agora = await hashDe(professor._id);
-        expect(await bcrypt.compare(SENHA_TESTE_NOVA, agora)).toBe(true);
-        expect(await bcrypt.compare(SENHA_TESTE, agora)).toBe(false);
+        expect(res.status).toBe(400);
+        expect(res.body.codigo).toBe('SENHA_PELA_RECUPERACAO');
+        expect(await hashDe(professor._id)).toBe(antes);
     });
 
     it('a direção continua editando o resto da conta da equipe', async () => {

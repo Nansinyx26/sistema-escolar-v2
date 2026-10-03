@@ -1475,19 +1475,13 @@ exports.update = async (req, res) => {
         // são alteradas por admin.
         const podeDefinirPerfilInicial = isSelfEdit && !oldData.perfil;
 
-        // A senha só entra na lista quando a conta é a de quem está pedindo —
-        // inclusive para o admin.
+        // `senha` não entra em lista nenhuma, nem para o próprio titular nem
+        // para o admin (Issue #590) — ver a recusa logo abaixo.
         const userWhitelist = isAdmin
-            ? [
-                  ...CAMPOS_PROPRIOS,
-                  ...CAMPOS_PRIVILEGIO,
-                  'perfilDefinidoEm',
-                  ...(isSelfEdit ? ['senha'] : []),
-              ]
+            ? [...CAMPOS_PROPRIOS, ...CAMPOS_PRIVILEGIO, 'perfilDefinidoEm']
             : isSelfEdit
               ? [
                     ...CAMPOS_PROPRIOS,
-                    'senha',
                     ...(podeDefinirPerfilInicial ? ['perfil', 'perfilDefinidoEm'] : []),
                 ]
               : // Diretor gerenciando secretaria/professor: pode ativar/desativar, não muda perfil.
@@ -1507,14 +1501,30 @@ exports.update = async (req, res) => {
             });
         }
 
+        // TROCA DE SENHA NÃO É EDIÇÃO DE PERFIL (Issue #590).
+        // Aqui bastava a sessão: sem a senha atual, sem regra de força, e um
+        // valor com cara de hash bcrypt era gravado como veio. Quem tivesse a
+        // sessão (8h; cookie roubado, computador compartilhado) fixava uma
+        // senha nova e ficava com a conta. Nenhuma tela troca senha por aqui:
+        // o caminho é a recuperação, que prova a posse do e-mail.
+        // Um hash vindo de ida e volta (cliente que devolve o objeto inteiro) é
+        // ignorado — nunca gravado.
+        if (req.body.senha !== undefined && !isHashed(req.body.senha)) {
+            await logAction(req, 'TROCA_SENHA_SEM_PROVA_RECUSADA', 'Usuarios', {
+                recursoId: String(targetId),
+                descricao: 'Tentativa de trocar a senha pela edição de perfil.',
+            });
+            return res.status(400).json({
+                success: false,
+                codigo: 'SENHA_PELA_RECUPERACAO',
+                error: 'Para trocar a senha, use "Esqueci minha senha": enviamos um código para o e-mail da conta.',
+            });
+        }
+
         const filteredBody = {};
         userWhitelist.forEach((field) => {
             if (req.body[field] !== undefined) filteredBody[field] = req.body[field];
         });
-
-        if (filteredBody.senha && !isHashed(filteredBody.senha)) {
-            filteredBody.senha = await bcrypt.hash(filteredBody.senha, SALT_ROUNDS);
-        }
 
         // Proteção: apenas admin muda o perfil de uma conta que já tem perfil
         if (filteredBody.perfil && filteredBody.perfil !== oldData.perfil) {
@@ -1541,7 +1551,6 @@ exports.update = async (req, res) => {
         const mudouPrivilegio =
             (filteredBody.perfil !== undefined && filteredBody.perfil !== oldData.perfil) ||
             (filteredBody.ativo !== undefined && filteredBody.ativo !== oldData.ativo) ||
-            filteredBody.senha !== undefined ||
             (filteredBody.email !== undefined && filteredBody.email !== oldData.email);
 
         const updateOps = { $set: filteredBody };
@@ -2057,29 +2066,66 @@ exports.resetPassword = async (req, res) => {
     }
 };
 
+/** Mesma regra de força da recuperação de senha. Devolve o motivo ou null. */
+function motivoSenhaFraca(senha) {
+    if (typeof senha !== 'string' || senha.length < 8) {
+        return 'A senha deve ter no mínimo 8 caracteres.';
+    }
+    if (!/[A-Z]/.test(senha)) return 'A senha deve conter pelo menos uma letra maiúscula.';
+    if (!/[0-9]/.test(senha)) return 'A senha deve conter pelo menos um número.';
+    return null;
+}
+
 /**
  * Atualização de senha obrigatória (quando criado por Admin)
+ *
+ * SÓ PARA A TROCA OBRIGATÓRIA (Issue #590). A rota não conferia
+ * `deveMudarSenha`: qualquer conta logada trocava a senha por aqui, sem a
+ * senha atual, com regra de força mais fraca que a da recuperação, e sem
+ * derrubar as outras sessões. Agora ela só existe para quem o sistema mandou
+ * trocar; a troca derruba as demais sessões (tokenVersion) e reemite o
+ * cookie desta, para a pessoa seguir logada.
  */
 exports.updatePasswordForce = async (req, res) => {
     const { password } = req.body;
     const userId = req.user.id;
 
     try {
-        // Validação de força de senha
-        if (!password || password.length < 8) {
-            return res
-                .status(400)
-                .json({ success: false, error: 'A senha deve ter no mínimo 8 caracteres.' });
+        const conta = await Usuario.findById(userId).select('deveMudarSenha').lean();
+        if (!conta) {
+            return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
         }
+        if (conta.deveMudarSenha !== true) {
+            await logAction(req, 'TROCA_SENHA_FORCADA_RECUSADA', 'Usuarios', {
+                recursoId: userId,
+                descricao: 'Troca obrigatória de senha pedida por conta que não precisa trocar.',
+            });
+            return res.status(403).json({
+                success: false,
+                codigo: 'TROCA_OBRIGATORIA_INEXISTENTE',
+                error: 'Esta conta não tem troca de senha pendente. Para mudar a senha, use "Esqueci minha senha".',
+            });
+        }
+
+        const motivo = motivoSenhaFraca(password);
+        if (motivo) return res.status(400).json({ success: false, error: motivo });
 
         const senhaHash = await bcrypt.hash(password, SALT_ROUNDS);
 
-        await Usuario.findByIdAndUpdate(userId, {
-            $set: {
-                senha: senhaHash,
-                deveMudarSenha: false, // Libera o acesso
+        const atualizado = await Usuario.findByIdAndUpdate(
+            userId,
+            {
+                $set: {
+                    senha: senhaHash,
+                    deveMudarSenha: false, // Libera o acesso
+                },
+                $inc: { tokenVersion: 1 },
             },
-        });
+            { new: true }
+        );
+
+        // As outras sessões morrem pelo tokenVersion; esta segue com um token novo.
+        emitirTokenSessao(res, atualizado);
 
         await logAction(req, 'FORCE_CHANGE_PASSWORD', 'Usuarios', {
             recursoId: userId,
