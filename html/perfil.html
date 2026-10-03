@@ -49,6 +49,7 @@
     <script src="../js/scroll-lock.js?v=1.0"></script>
     <!-- Acessibilidade (LBI/eMAG) — ver docs/CONFORMIDADE-LEGAL.md -->
     <link rel="stylesheet" href="../css/acessibilidade.css">
+    <link rel="stylesheet" href="../css/trocar-email.css">
 </head>
 
 <body>
@@ -195,8 +196,13 @@
 
                             <div class="form-group">
                                 <label for="email" class="form-label">Email</label>
-                                <input type="email" id="email" class="form-input" disabled>
-                                <small class="text-secondary">O email não pode ser alterado</small>
+                                <div class="te-linha-email">
+                                    <input type="email" id="email" class="form-input" disabled>
+                                    <button type="button" id="btn-trocar-email" class="btn btn-secondary te-abrir">
+                                        <i class="bi bi-envelope" aria-hidden="true"></i> Trocar e-mail
+                                    </button>
+                                </div>
+                                <small class="text-secondary">A troca é confirmada por um link enviado ao endereço novo.</small>
                             </div>
 
                             <div class="form-group">
@@ -403,6 +409,33 @@
     <!-- Toast Container -->
     <div id="toastContainer" class="toast-container"></div>
 
+    <!-- Troca de e-mail (Issue #611). Fora do formulário do perfil: tem o
+         próprio. O <dialog> nativo prende o foco e fecha com Esc. -->
+    <dialog id="dialogo-trocar-email" class="te-dialogo" aria-labelledby="te-titulo" aria-describedby="te-descricao">
+        <div class="te-cabecalho">
+            <h2 id="te-titulo"><i class="bi bi-envelope" aria-hidden="true"></i> Trocar e-mail</h2>
+            <button type="button" class="te-fechar" data-te-fechar aria-label="Fechar">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+        </div>
+        <p id="te-descricao" class="te-texto">Enviaremos um link de confirmação para o endereço novo. A troca só acontece quando você abrir o link com esta conta conectada, em até 2 horas.</p>
+
+        <form id="form-trocar-email" class="te-etapa" novalidate>
+            <p id="te-erro" class="te-erro" role="alert" hidden></p>
+            <label class="form-label" for="te-novo-email">E-mail novo</label>
+            <input id="te-novo-email" class="form-input" type="email" inputmode="email" autocomplete="email" placeholder="nome@exemplo.com" required>
+            <label class="form-label" for="te-senha">Senha atual</label>
+            <input id="te-senha" class="form-input" type="password" autocomplete="current-password" required>
+            <button type="submit" id="te-enviar" class="btn btn-primary">Enviar link de confirmação</button>
+        </form>
+
+        <div id="te-enviado" class="te-etapa" role="status" hidden>
+            <p class="te-texto">Se <strong id="te-endereco"></strong> puder ser usado, o link de confirmação chega nele em instantes. Abra o link neste aparelho, com esta conta conectada, em até 2 horas.</p>
+            <p class="te-nota">Até lá, nada muda: você continua entrando com o e-mail atual.</p>
+            <button type="button" class="btn btn-primary" data-te-fechar>Entendi</button>
+        </div>
+    </dialog>
+
     <!-- Scripts -->
     <script defer src="../js/botao-voltar.js"></script>
     <script src="../js/api-config.js"></script>
@@ -417,6 +450,8 @@
     <script defer src="../js/parallax.js"></script>
     <script src="../js/vendor.js"></script>
     <script defer src="../js/events/perfil-events.js"></script>
+    <script src="../js/csrf-helper.js"></script>
+    <script defer src="../js/trocar-email-perfil.js?v=1.0"></script>
     <script defer src="../js/reactions.js"></script>
     <script defer src="../js/onboarding-tour.js"></script>
 
