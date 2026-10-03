@@ -11,7 +11,7 @@ const SelecionarPage = {
             await db.init();
 
             // 2. Verifica autenticação
-            const user = auth.getCurrentUser() || await auth.checkSession();
+            const user = auth.getCurrentUser() || (await auth.checkSession());
             if (!user) {
                 console.warn('⚠️ Usuário não autenticado, redirecionando...');
                 window.location.href = 'login.html';
@@ -34,14 +34,15 @@ const SelecionarPage = {
         } catch (error) {
             console.error('❌ Erro fatal na inicialização:', error);
             alert('Erro ao carregar o sistema: ' + error.message);
-            if (typeof showToast === 'function') showToast('Erro ao carregar dados. Tente atualizar a página.', 'error');
+            if (typeof showToast === 'function')
+                showToast('Erro ao carregar dados. Tente atualizar a página.', 'error');
         }
     },
 
     updateUI(user) {
-        // O perfil agora é centralizado na sidebar. 
+        // O perfil agora é centralizado na sidebar.
         // Se precisar atualizar o nome em algum lugar específico (como boas-vindas), faça-o aqui.
-        const welcomeName = document.getElementById('userName'); 
+        const welcomeName = document.getElementById('userName');
         if (welcomeName) welcomeName.textContent = user.nome;
 
         const cardFerramentas = document.getElementById('cardFerramentasSelecionar');
@@ -56,27 +57,24 @@ const SelecionarPage = {
 
     async renderStats(user) {
         try {
-            let [alunos, notas] = await Promise.all([
-                db.getAll('alunos'),
-                db.getAll('notas')
-            ]);
+            let [alunos, notas] = await Promise.all([db.getAll('alunos'), db.getAll('notas')]);
 
             let turmas = await db.getAll('turmas');
 
             // Filtra notas órfãs (alunos deletados)
-            const alunoIds = new Set(alunos.map(a => a.id || a._id));
-            notas = notas.filter(n => alunoIds.has(n.alunoId || n.aluno));
+            const alunoIds = new Set(alunos.map((a) => a.id || a._id));
+            notas = notas.filter((n) => alunoIds.has(n.alunoId || n.aluno));
 
             // Aplica filtros APENAS se for professor
             if (user && user.perfil === 'professor') {
                 const turmasFiltradas = await this.getTurmasFiltradas(user, turmas);
 
                 // Filtra alunos das turmas do professor
-                const turmaIds = turmasFiltradas.map(t => t.id);
-                alunos = alunos.filter(a => turmaIds.includes(a.turma));
+                const turmaIds = turmasFiltradas.map((t) => t.id);
+                alunos = alunos.filter((a) => turmaIds.includes(a.turma));
 
                 // Filtra notas das turmas do professor
-                notas = notas.filter(n => turmaIds.includes(n.turma));
+                notas = notas.filter((n) => turmaIds.includes(n.turma));
 
                 // Usa turmas filtradas
                 turmas = turmasFiltradas;
@@ -86,13 +84,13 @@ const SelecionarPage = {
                 totalAlunos: document.getElementById('statTotalAlunos'),
                 turmasAtivas: document.getElementById('statTurmasAtivas'),
                 avaliacoes: document.getElementById('statAvaliacoes'),
-                pcd: document.getElementById('statPCD')
+                pcd: document.getElementById('statPCD'),
             };
 
             if (els.totalAlunos) els.totalAlunos.textContent = alunos.length;
             if (els.turmasAtivas) els.turmasAtivas.textContent = turmas.length;
             if (els.avaliacoes) els.avaliacoes.textContent = notas.length;
-            if (els.pcd) els.pcd.textContent = alunos.filter(a => a.deficiencia).length;
+            if (els.pcd) els.pcd.textContent = alunos.filter((a) => a.deficiencia).length;
         } catch (e) {
             console.error('Erro ao renderizar estatísticas:', e);
         }
@@ -103,7 +101,7 @@ const SelecionarPage = {
         try {
             const professores = await db.getAll('professores');
 
-            const prof = professores.find(p => {
+            const prof = professores.find((p) => {
                 const pEmail = String(p.email || '').toLowerCase();
                 const uEmail = String(user.email || '').toLowerCase();
                 const emailMatch = pEmail === uEmail && uEmail !== '';
@@ -123,10 +121,15 @@ const SelecionarPage = {
             }
             if (prof.salasAdicionais) permitidas.push(...prof.salasAdicionais);
 
-            const normalizeTurma = (n) => String(n || '').replace('º', '').replace(/\s+/g, '').toUpperCase().trim();
-            const permitidasNorm = permitidas.map(t => normalizeTurma(t));
+            const normalizeTurma = (n) =>
+                String(n || '')
+                    .replace('º', '')
+                    .replace(/\s+/g, '')
+                    .toUpperCase()
+                    .trim();
+            const permitidasNorm = permitidas.map((t) => normalizeTurma(t));
 
-            return turmasBase.filter(t => {
+            return turmasBase.filter((t) => {
                 const tIdNorm = normalizeTurma(t.id);
                 return permitidasNorm.includes(tIdNorm) || permitidas.includes(t.id);
             });
@@ -152,7 +155,9 @@ const SelecionarPage = {
                 console.log('✂️ Turmas após filtro:', turmas.length);
 
                 if (turmas.length === 0) {
-                    console.warn('⚠️ Cadastro de professor NÍO encontrado! Verifique se o email no cadastro de professores coincide com o email de login.');
+                    console.warn(
+                        '⚠️ Cadastro de professor NÍO encontrado! Verifique se o email no cadastro de professores coincide com o email de login.'
+                    );
                 }
             }
 
@@ -165,7 +170,8 @@ const SelecionarPage = {
                     submsg = `Verifique se seu email (${user.email}) está cadastrado corretamente na lista de professores.`;
                 } else if (user.perfil === 'diretor') {
                     msg = 'Nenhuma turma encontrada.';
-                    submsg = 'Como diretor, você deveria ver todas as turmas. Verifique se o arquivo data/turmas.json está populado.';
+                    submsg =
+                        'Como diretor, você deveria ver todas as turmas. Verifique se o arquivo data/turmas.json está populado.';
                 }
 
                 container.innerHTML = `
@@ -181,7 +187,7 @@ const SelecionarPage = {
 
             // Agrupa por ano
             const porAno = {};
-            turmas.forEach(t => {
+            turmas.forEach((t) => {
                 const ano = t.ano || 'Outros';
                 if (!porAno[ano]) porAno[ano] = [];
                 porAno[ano].push(t);
@@ -191,27 +197,30 @@ const SelecionarPage = {
             const profsPorTurma = await this.getMapaProfessores();
 
             let html = '';
-            Object.keys(porAno).sort().forEach(ano => {
-                const turmasDoAno = porAno[ano].sort((a, b) => {
-                    const idA = String(a.id || a._id || '');
-                    const idB = String(b.id || b._id || '');
-                    return idA.localeCompare(idB, undefined, { numeric: true });
-                });
+            Object.keys(porAno)
+                .sort()
+                .forEach((ano) => {
+                    const turmasDoAno = porAno[ano].sort((a, b) => {
+                        const idA = String(a.id || a._id || '');
+                        const idB = String(b.id || b._id || '');
+                        return idA.localeCompare(idB, undefined, { numeric: true });
+                    });
 
-                html += `
+                    html += `
                     <div class="ano-section">
                         <h3 class="ano-title">${ano}º Ano</h3>
                         <div class="turmas-row">
-                            ${turmasDoAno.map(t => this.renderTurmaCard(t, profsPorTurma[t.id])).join('')}
+                            ${turmasDoAno.map((t) => this.renderTurmaCard(t, profsPorTurma[t.id])).join('')}
                         </div>
                     </div>
                 `;
-            });
+                });
 
             container.innerHTML = html;
         } catch (error) {
             console.error('Erro ao renderizar grid:', error);
-            container.innerHTML = '<p class="error">Erro ao carregar as turmas. Recarregue a página.</p>';
+            container.innerHTML =
+                '<p class="error">Erro ao carregar as turmas. Recarregue a página.</p>';
         }
     },
 
@@ -219,10 +228,15 @@ const SelecionarPage = {
         const mapa = {}; // { turmaId: { principal: prof, outros: [prof, prof] } }
         try {
             const professores = await db.getAll('professores');
-            
-            const normalize = (t) => String(t || '').replace('º', '').replace(/\s+/g, '').toUpperCase().trim();
 
-            professores.forEach(p => {
+            const normalize = (t) =>
+                String(t || '')
+                    .replace('º', '')
+                    .replace(/\s+/g, '')
+                    .toUpperCase()
+                    .trim();
+
+            professores.forEach((p) => {
                 // Processar Sala Principal
                 if (p.salaPrincipal && p.salaPrincipal !== 'VARIADOS') {
                     const tId = normalize(p.salaPrincipal);
@@ -232,12 +246,14 @@ const SelecionarPage = {
 
                 // Processar Salas Adicionais
                 if (p.salasAdicionais && Array.isArray(p.salasAdicionais)) {
-                    p.salasAdicionais.forEach(sala => {
+                    p.salasAdicionais.forEach((sala) => {
                         const tId = normalize(sala);
                         if (!mapa[tId]) mapa[tId] = { principal: null, outros: [] };
-                        
+
                         // Evita duplicar se for o principal
-                        const isPrincipal = mapa[tId].principal && (mapa[tId].principal.id === p.id || mapa[tId].principal._id === p._id);
+                        const isPrincipal =
+                            mapa[tId].principal &&
+                            (mapa[tId].principal.id === p.id || mapa[tId].principal._id === p._id);
                         if (!isPrincipal) {
                             mapa[tId].outros.push(p);
                         }
@@ -254,8 +270,16 @@ const SelecionarPage = {
         // profs é { principal: prof, outros: [] }
         const principal = profs ? profs.principal : null;
         const outros = profs ? profs.outros : [];
-        
-        const materias = ['Sala Principal', 'Artes', 'Inglês', 'Educação Física', 'SEBRAE', 'Oficina de Leitura', 'Of. Maker'];
+
+        const materias = [
+            'Sala Principal',
+            'Artes',
+            'Inglês',
+            'Educação Física',
+            'SEBRAE',
+            'Oficina de Leitura',
+            'Of. Maker',
+        ];
 
         // Helper para renderizar a linha do professor
         const renderProfLine = (p, label) => {
@@ -289,18 +313,22 @@ const SelecionarPage = {
                         
                         <div class="professores-container" style="width:100%;">
                             ${renderProfLine(principal, 'Sala Principal')}
-                            ${outros.map(p => renderProfLine(p, 'Professor Auxiliar/Materia')).join('')}
-                            ${(!principal && outros.length === 0) ? `<p style="font-size:0.8rem; color:var(--text-tertiary); margin-top:10px;">Sem professor atribuído</p>` : ''}
+                            ${outros.map((p) => renderProfLine(p, 'Professor Auxiliar/Materia')).join('')}
+                            ${!principal && outros.length === 0 ? `<p style="font-size:0.8rem; color:var(--text-tertiary); margin-top:10px;">Sem professor atribuído</p>` : ''}
                         </div>
                     </div>
                 </div>
                 <div class="turma-expand-tabs" id="tabs-${turma.id}">
-                    ${materias.map(m => `
+                    ${materias
+                        .map(
+                            (m) => `
                         <button class="turma-tab-btn ${m === 'Sala Principal' ? 'sala-principal' : ''}" 
                                 data-turma="${turma.id}" data-materia="${m}">
                             <i class="bi ${this.getIcon(m)}"></i> ${m}
                         </button>
-                    `).join('')}
+                    `
+                        )
+                        .join('')}
                 </div>
             </div>
         `;
@@ -309,18 +337,18 @@ const SelecionarPage = {
     getIcon(m) {
         const icons = {
             'Sala Principal': 'bi-people-fill',
-            'Artes': 'bi-palette-fill',
-            'Inglês': 'bi-translate',
+            Artes: 'bi-palette-fill',
+            Inglês: 'bi-translate',
             'Educação Física': 'bi-bicycle',
-            'SEBRAE': 'bi-lightbulb-fill',
+            SEBRAE: 'bi-lightbulb-fill',
             'Oficina de Leitura': 'bi-book-half',
-            'Of. Maker': 'bi-tools'
+            'Of. Maker': 'bi-tools',
         };
         return icons[m] || 'bi-book';
     },
 
     toggleCard(id) {
-        document.querySelectorAll('.turma-card').forEach(c => {
+        document.querySelectorAll('.turma-card').forEach((c) => {
             if (c.id !== `card-${id}`) c.classList.remove('expanded');
         });
         document.getElementById(`card-${id}`)?.classList.toggle('expanded');
@@ -368,7 +396,7 @@ const SelecionarPage = {
                 }
             });
         }
-    }
+    },
 };
 
 // Torna global para acesso via onclick no HTML

@@ -4,17 +4,37 @@
  */
 
 const todasSalas = [
-    '1ºA', '1ºB', '1ºC', '1ºD',
-    '2ºA', '2ºB', '2ºC', '2ºD',
-    '3ºA', '3ºB', '3ºC', '3ºD',
-    '4ºA', '4ºB', '4ºC', '4ºD',
-    '5ºA', '5ºB', '5ºC', '5ºD'
+    '1ºA',
+    '1ºB',
+    '1ºC',
+    '1ºD',
+    '2ºA',
+    '2ºB',
+    '2ºC',
+    '2ºD',
+    '3ºA',
+    '3ºB',
+    '3ºC',
+    '3ºD',
+    '4ºA',
+    '4ºB',
+    '4ºC',
+    '4ºD',
+    '5ºA',
+    '5ºB',
+    '5ºC',
+    '5ºD',
 ];
 
 let todosProfessores = [];
 
 // Helper para normalizar nomes de salas (ex: 5ºD -> 5D, 1 A -> 1A)
-const normalize = (t) => String(t || '').replace('º', '').replace(/\s+/g, '').toUpperCase().trim();
+const normalize = (t) =>
+    String(t || '')
+        .replace('º', '')
+        .replace(/\s+/g, '')
+        .toUpperCase()
+        .trim();
 
 // === INICIALIZAÇÍO ===
 document.addEventListener('DOMContentLoaded', async () => {
@@ -54,7 +74,7 @@ function renderizarSalas(filtro = '') {
     const grid = document.getElementById('salasGrid');
     grid.innerHTML = '';
 
-    const salasFiltradas = todasSalas.filter(sala => 
+    const salasFiltradas = todasSalas.filter((sala) =>
         sala.toLowerCase().includes(filtro.toLowerCase())
     );
 
@@ -65,12 +85,13 @@ function renderizarSalas(filtro = '') {
 
     salasFiltradas.forEach((sala, index) => {
         // Encontra professores vinculados a esta sala usando normalização
-        const professoresNaSala = todosProfessores.filter(p => {
+        const professoresNaSala = todosProfessores.filter((p) => {
             const salaNorm = normalize(sala);
             const pPrincipalNorm = normalize(p.salaPrincipal);
             const ehPrincipal = pPrincipalNorm === salaNorm;
-            
-            const ehAdicional = p.salasAdicionais && p.salasAdicionais.some(s => normalize(s) === salaNorm);
+
+            const ehAdicional =
+                p.salasAdicionais && p.salasAdicionais.some((s) => normalize(s) === salaNorm);
             return ehPrincipal || ehAdicional;
         });
 
@@ -83,13 +104,16 @@ function renderizarSalas(filtro = '') {
             professoresHtml = '<div class="empty-sala">Nenhum professor atribuído</div>';
         } else {
             // Ordena: Principal primeiro
-            professoresNaSala.sort((a, b) => (normalize(a.salaPrincipal) === normalize(sala) ? -1 : 1));
+            professoresNaSala.sort((a, b) =>
+                normalize(a.salaPrincipal) === normalize(sala) ? -1 : 1
+            );
 
             professoresHtml = `
                 <div class="professores-list">
-                    ${professoresNaSala.map(p => {
-                        const ehPrincipal = normalize(p.salaPrincipal) === normalize(sala);
-                        return `
+                    ${professoresNaSala
+                        .map((p) => {
+                            const ehPrincipal = normalize(p.salaPrincipal) === normalize(sala);
+                            return `
                             <div class="professor-item">
                                 <div class="professor-avatar">
                                     ${p.foto ? `<img src="${p.foto}" alt="${p.nome}">` : '<i class="bi bi-person-fill"></i>'}
@@ -106,7 +130,8 @@ function renderizarSalas(filtro = '') {
                                 </div>
                             </div>
                         `;
-                    }).join('')}
+                        })
+                        .join('')}
                 </div>
             `;
         }
@@ -132,7 +157,7 @@ function renderizarSalas(filtro = '') {
 
 // === REMOVER ATRIBUIÇÍO ===
 async function removerAtribuicao(professorId, sala, ehPrincipal) {
-    const professor = todosProfessores.find(p => (p._id || p.id) === professorId);
+    const professor = todosProfessores.find((p) => (p._id || p.id) === professorId);
     if (!professor) return;
 
     const acao = ehPrincipal ? 'remover o cargo de Regente' : `remover da sala ${sala}`;
@@ -141,21 +166,21 @@ async function removerAtribuicao(professorId, sala, ehPrincipal) {
     }
 
     try {
-        let novosDados = { ...professor };
+        const novosDados = { ...professor };
 
         if (ehPrincipal) {
             // Se remover o principal, fica sem sala principal
             novosDados.salaPrincipal = '';
         } else {
             // Se remover de adicional, filtra o array
-            novosDados.salasAdicionais = professor.salasAdicionais.filter(s => s !== sala);
+            novosDados.salasAdicionais = professor.salasAdicionais.filter((s) => s !== sala);
         }
 
         // Atualiza no banco
         await db.update('professores', novosDados);
-        
+
         showToast('Atribuição removida com sucesso!', 'success');
-        
+
         // Recarrega dados localmente para atualizar a tela
         await carregarDados();
     } catch (error) {
@@ -170,20 +195,20 @@ let salaSelecionada = '';
 function abrirModalAtribuicao(sala) {
     salaSelecionada = sala;
     document.getElementById('modalSalaNome').querySelector('strong').textContent = sala;
-    
+
     const select = document.getElementById('selectProfessor');
     select.innerHTML = '<option value="">Selecione um professor...</option>';
-    
+
     // Ordena professores por nome
     const listaOrdenada = [...todosProfessores].sort((a, b) => a.nome.localeCompare(b.nome));
-    
-    listaOrdenada.forEach(p => {
+
+    listaOrdenada.forEach((p) => {
         const option = document.createElement('option');
         option.value = p._id || p.id;
         option.textContent = p.nome;
         select.appendChild(option);
     });
-    
+
     document.getElementById('modalAtribuicao').classList.add('active');
 }
 
@@ -195,22 +220,22 @@ function fecharModal() {
     // Reset dos elementos dinâmicos do formulário
     const radPrincipal = document.querySelector('input[name="tipoAtribuicao"][value="principal"]');
     if (radPrincipal) radPrincipal.checked = true;
-    
+
     const radPeb2 = document.querySelector('input[name="categoriaMateria"][value="peb2"]');
     if (radPeb2) radPeb2.checked = true;
-    
+
     const subGrupo = document.getElementById('subGrupoMateria');
     if (subGrupo) {
         subGrupo.classList.add('hidden');
         subGrupo.style.display = 'none';
     }
-    
+
     const grupoPeb2 = document.getElementById('grupoPeb2');
     if (grupoPeb2) {
         grupoPeb2.classList.remove('hidden');
         grupoPeb2.style.display = 'block';
     }
-    
+
     const grupoOficina = document.getElementById('grupoOficina');
     if (grupoOficina) {
         grupoOficina.classList.add('hidden');
@@ -221,29 +246,35 @@ function fecharModal() {
 async function salvarAtribuicao() {
     const profId = document.getElementById('selectProfessor').value;
     const tipo = document.querySelector('input[name="tipoAtribuicao"]:checked').value;
-    
+
     if (!profId) {
         showToast('Selecione um professor', 'warning');
         return;
     }
-    
-    const professor = todosProfessores.find(p => (p._id || p.id) === profId);
+
+    const professor = todosProfessores.find((p) => (p._id || p.id) === profId);
     if (!professor) return;
 
     try {
-        let novosDados = { ...professor };
+        const novosDados = { ...professor };
         const salaNormalizada = normalize(salaSelecionada);
 
         if (tipo === 'principal') {
             // Verifica se já tem regente na sala
-            const regenteAtual = todosProfessores.find(p => normalize(p.salaPrincipal) === salaNormalizada);
+            const regenteAtual = todosProfessores.find(
+                (p) => normalize(p.salaPrincipal) === salaNormalizada
+            );
             if (regenteAtual && regenteAtual._id !== professor._id) {
-                if (!confirm(`A sala ${salaSelecionada} já possui ${regenteAtual.nome} como Regente. Deseja substituí-lo?`)) {
+                if (
+                    !confirm(
+                        `A sala ${salaSelecionada} já possui ${regenteAtual.nome} como Regente. Deseja substituí-lo?`
+                    )
+                ) {
                     return;
                 }
                 // Limpa a regência do antigo professor regente
                 try {
-                    let dadosAntigoRegente = { ...regenteAtual };
+                    const dadosAntigoRegente = { ...regenteAtual };
                     dadosAntigoRegente.salaPrincipal = 'VARIADOS';
                     await db.update('professores', dadosAntigoRegente);
                 } catch (err) {
@@ -253,14 +284,16 @@ async function salvarAtribuicao() {
             novosDados.salaPrincipal = salaSelecionada;
             novosDados.tipoAtuacao = 'principal';
             novosDados.tipoEspecial = false;
-            
+
             // Garante que a matéria principal é 'Sala Principal'
             if (!novosDados.materias) novosDados.materias = [];
             if (!novosDados.materias.includes('Sala Principal')) {
                 novosDados.materias.push('Sala Principal');
             }
             if (novosDados.salasAdicionais) {
-                novosDados.salasAdicionais = novosDados.salasAdicionais.filter(s => normalize(s) !== salaNormalizada);
+                novosDados.salasAdicionais = novosDados.salasAdicionais.filter(
+                    (s) => normalize(s) !== salaNormalizada
+                );
             }
         } else {
             // Adicional (Professor de Matéria)
@@ -272,28 +305,30 @@ async function salvarAtribuicao() {
                 fecharModal();
                 return;
             }
-            
+
             novosDados.tipoAtuacao = 'materia';
             novosDados.tipoEspecial = true;
-            
+
             // Lê dinamicamente a matéria selecionada com base na categoria
-            const categoria = document.querySelector('input[name="categoriaMateria"]:checked').value;
+            const categoria = document.querySelector(
+                'input[name="categoriaMateria"]:checked'
+            ).value;
             let discValida = 'Artes';
             if (categoria === 'peb2') {
                 discValida = document.getElementById('selectPeb2').value;
             } else if (categoria === 'oficina') {
                 discValida = document.getElementById('selectOficina').value;
             }
-            
+
             novosDados.disciplina = discValida;
-            
+
             if (!novosDados.materias) novosDados.materias = [];
             // Remove 'Sala Principal' para que ele seja tratado 100% como professor de matéria
-            novosDados.materias = novosDados.materias.filter(m => m !== 'Sala Principal');
+            novosDados.materias = novosDados.materias.filter((m) => m !== 'Sala Principal');
             if (!novosDados.materias.includes(discValida)) {
                 novosDados.materias.push(discValida);
             }
-            
+
             // Se ele for adicionado como matéria nessa sala, ele não pode ser o regente (salaPrincipal)
             if (normalize(novosDados.salaPrincipal) === salaNormalizada) {
                 novosDados.salaPrincipal = 'VARIADOS';

@@ -35,12 +35,14 @@
         '>': '&gt;',
         '"': '&quot;',
         "'": '&#39;',
-        '`': '&#96;'
+        '`': '&#96;',
     };
 
     function escapeHtml(valor) {
         if (valor === null || valor === undefined) return '';
-        return String(valor).replace(/[&<>"'`]/g, function (c) { return MAPA[c]; });
+        return String(valor).replace(/[&<>"'`]/g, function (c) {
+            return MAPA[c];
+        });
     }
 
     global.escapeHtml = escapeHtml;
