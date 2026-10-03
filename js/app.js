@@ -29,6 +29,22 @@ function escHtml(v) {
     return String(v).replace(/[&<>"'`]/g, (c) => _ESC_MAP_APP[c]);
 }
 
+// Valor interpolado DENTRO DE ATRIBUTO (alt, value, src, data-*) — Issue #582.
+// Aspa literal no valor fechava o atributo e, com `script-src-attr
+// 'unsafe-inline'` na CSP, o resto virava handler executável. Este escape troca
+// aspas, < > e crase, mas NÃO o `&`: o backend já grava `&` como `&amp;`
+// (utils/sanitize.js) e escapar de novo faria "Pedro &amp; Maria" aparecer
+// literal num value. Uma entidade dentro do valor é decodificada nele e não
+// fecha o atributo. Atributo de EVENTO (onclick) é outro caso — o navegador
+// decodifica antes de rodar o JS: lá use escHtml(JSON.stringify(valor)).
+function escAttr(v) {
+    if (v === null || v === undefined) return '';
+    return String(v).replace(
+        /["'<>`]/g,
+        (c) => ({ '"': '&quot;', "'": '&#39;', '<': '&lt;', '>': '&gt;', '`': '&#96;' })[c]
+    );
+}
+
 // ============================================
 // RELATÓRIOS DIÁRIOS
 // ============================================
@@ -426,7 +442,7 @@ class App {
                                     ];
 
                                     return `
-                        <div class="turma-card" id="card-${turma.id}">
+                        <div class="turma-card" id="card-${escAttr(turma.id)}">
                             <!-- Header do Card (Clicável para expandir via delegation) -->
                             <div class="turma-card-content">
                                 <div class="turma-card-header" style="display:flex; justify-content:space-between; align-items:flex-start; width:100%;">
@@ -443,7 +459,7 @@ class App {
                                             ${
                                                 window.getPhotoUrl(fotoRegente) !==
                                                 '/img/default-avatar.png'
-                                                    ? `<img src="${window.getPhotoUrl(fotoRegente)}" style="width:100%; height:100%; object-fit:cover;">`
+                                                    ? `<img src="${escAttr(window.getPhotoUrl(fotoRegente))}" style="width:100%; height:100%; object-fit:cover;">`
                                                     : `<div style="display:flex; align-items:center; justify-content:center; width:100%; height:100%; font-size:10px; color:#666;">${nomeRegente.charAt(0)}</div>`
                                             }
                                         </div>
@@ -454,12 +470,12 @@ class App {
                             </div>
 
                             <!-- Abas Expansíveis -->
-                            <div class="turma-expand-tabs" id="tabs-${turma.id}">
+                            <div class="turma-expand-tabs" id="tabs-${escAttr(turma.id)}">
                                 ${materias
                                     .map(
                                         (mat) => `
                                     <button class="turma-tab-btn ${mat === 'Sala Principal' ? 'sala-principal' : ''}" 
-                                            data-turma="${turma.id}" data-materia="${mat}">
+                                            data-turma="${escAttr(turma.id)}" data-materia="${mat}">
                                         <i class="bi ${this.getMateriaIcon(mat)}"></i> ${mat}
                                     </button>
                                 `
@@ -894,7 +910,7 @@ class App {
                         <div class="foto-container" onclick="app.triggerPhotoUpload('${aluno.id}')" style="cursor: pointer;">
                             ${
                                 window.getPhotoUrl(aluno.foto) !== '/img/default-avatar.png'
-                                    ? `<img src="${window.getPhotoUrl(aluno.foto)}" alt="${aluno.nome}" class="foto-aluno">`
+                                    ? `<img src="${escAttr(window.getPhotoUrl(aluno.foto))}" alt="${escAttr(aluno.nome)}" class="foto-aluno">`
                                     : `<div class="foto-placeholder">${aluno.nome.charAt(0)}</div>`
                             }
                         </div>
@@ -902,7 +918,7 @@ class App {
                     <td class="col-nome">
                         <div class="nome-wrapper">
                             <span class="nome">${aluno.nome}</span>
-                            ${aluno.deficiencia ? `<span class="badge-deficiencia" title="${aluno.deficiencia}">PCD</span>` : ''}
+                            ${aluno.deficiencia ? `<span class="badge-deficiencia" title="${escAttr(aluno.deficiencia)}">PCD</span>` : ''}
                         </div>
                         ${
                             aluno.observacoesBimestre
@@ -1295,7 +1311,7 @@ class App {
                                 <div class="student-mini-avatar">
                                     ${
                                         aluno.foto
-                                            ? `<img src="${aluno.foto}">`
+                                            ? `<img src="${escAttr(aluno.foto)}">`
                                             : aluno.nome.charAt(0)
                                     }
                                 </div>
@@ -2060,23 +2076,23 @@ class App {
                     <label>Foto do Aluno</label>
                     <div style="display:flex; gap:10px; align-items:center;">
                         <div class="foto-preview" style="width:50px; height:50px; border-radius:50%; overflow:hidden; border:1px solid #ccc;">
-                            ${aluno.foto ? `<img src="${aluno.foto}" style="width:100%; height:100%; object-fit:cover;">` : '<div style="width:100%; height:100%; background:#eee;"></div>'}
+                            ${aluno.foto ? `<img src="${escAttr(aluno.foto)}" style="width:100%; height:100%; object-fit:cover;">` : '<div style="width:100%; height:100%; background:#eee;"></div>'}
                         </div>
                         <input type="file" id="editAlunoFoto" class="form-input" accept="image/*">
                     </div>
                 </div>
                 <div class="form-group">
                     <label for="editAlunoNome">Nome Completo *</label>
-                    <input type="text" id="editAlunoNome" class="form-input" value="${aluno.nome}" required>
+                    <input type="text" id="editAlunoNome" class="form-input" value="${escAttr(aluno.nome)}" required>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label for="editAlunoNascimento">Data de Nascimento</label>
-                        <input type="date" id="editAlunoNascimento" class="form-input" value="${aluno.dataNascimento}">
+                        <input type="date" id="editAlunoNascimento" class="form-input" value="${escAttr(aluno.dataNascimento)}">
                     </div>
                     <div class="form-group">
                         <label for="editAlunoMatricula">Matrícula</label>
-                        <input type="text" id="editAlunoMatricula" class="form-input" value="${aluno.matricula}">
+                        <input type="text" id="editAlunoMatricula" class="form-input" value="${escAttr(aluno.matricula)}">
                     </div>
                 </div>
                 <!-- ... other fields ... -->
@@ -2101,7 +2117,7 @@ class App {
                         </div>
                         <div style="flex: 1;">
                             <label style="font-size: 0.8rem; color: #aaa; margin-bottom: 2px; display: block;">Faltas</label>
-                            <input type="number" id="editAlunoFaltas" class="form-input" min="0" value="${faltasVal}" placeholder="Faltas no bimestre...">
+                            <input type="number" id="editAlunoFaltas" class="form-input" min="0" value="${escAttr(faltasVal)}" placeholder="Faltas no bimestre...">
                         </div>
                         <div style="flex: 1;">
                             <label style="font-size: 0.8rem; color: #aaa; margin-bottom: 2px; display: block;">Condição</label>
@@ -2113,7 +2129,7 @@ class App {
                                 <option value="Outros" ${aluno.condicao && !['TDAH', 'TOD', 'Autismo'].includes(aluno.condicao) ? 'selected' : ''}>Outros</option>
                             </select>
                             <div id="editAlunoCondicaoOutroContainer" style="display: ${aluno.condicao && !['TDAH', 'TOD', 'Autismo'].includes(aluno.condicao) ? 'block' : 'none'}; margin-top: 5px;">
-                                <input type="text" id="editAlunoCondicaoOutro" class="form-input" placeholder="Especifique a condição..." value="${aluno.condicao && !['TDAH', 'TOD', 'Autismo'].includes(aluno.condicao) ? aluno.condicao : ''}">
+                                <input type="text" id="editAlunoCondicaoOutro" class="form-input" placeholder="Especifique a condição..." value="${escAttr(aluno.condicao && !['TDAH', 'TOD', 'Autismo'].includes(aluno.condicao) ? aluno.condicao : '')}">
                             </div>
                         </div>
                     </div>
@@ -2257,7 +2273,7 @@ class App {
                                                 (m.nome === materia || m.id === materia)
                                                     ? 'selected'
                                                     : '';
-                                            return `<option value="${m.id}" ${selected}>${m.icone} ${m.nome}</option>`;
+                                            return `<option value="${escAttr(m.id)}" ${selected}>${m.icone} ${m.nome}</option>`;
                                         })
                                         .join('')}
                                 </select>
@@ -2265,7 +2281,7 @@ class App {
                             <div class="form-group">
                                 <label>Tipo *</label>
                                 <select id="notaTipo" class="form-input" required>
-                                    ${tiposAvaliacao.map((t) => `<option value="${t.id}" data-peso="${t.pesoDefault}">${t.nome}</option>`).join('')}
+                                    ${tiposAvaliacao.map((t) => `<option value="${escAttr(t.id)}" data-peso="${escAttr(t.pesoDefault)}">${t.nome}</option>`).join('')}
                                 </select>
                             </div>
                         </div>

@@ -7,6 +7,17 @@
 (function () {
     'use strict';
 
+    // Valor do banco interpolado em atributo HTML: escapa aspas, < > e crase,
+    // mas não o `&`, que o servidor já grava codificado (Issue #582). Ver
+    // js/escape-html.js (escapeAttr).
+    function escAttr(v) {
+        if (v === null || v === undefined) return '';
+        return String(v).replace(
+            /["'<>`]/g,
+            (c) => ({ '"': '&quot;', "'": '&#39;', '<': '&lt;', '>': '&gt;', '`': '&#96;' })[c]
+        );
+    }
+
     // Estado da Aplicação
     const state = {
         alunos: [],
@@ -201,7 +212,7 @@
         const valorAtual = dom.selectTurma.value;
         const opts = ['<option value="">Todas as Turmas</option>'];
         state.turmas.forEach((t) => {
-            opts.push(`<option value="${t}">${t}</option>`);
+            opts.push(`<option value="${escAttr(t)}">${t}</option>`);
         });
         dom.selectTurma.innerHTML = opts.join('');
         dom.selectTurma.value = valorAtual;

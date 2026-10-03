@@ -3,6 +3,18 @@
  * Gerencia a renderização e lógica da página selecionar.html usando o sistema global.
  */
 
+// Valor do banco interpolado em atributo HTML: escapa aspas, < > e crase,
+// mas não o `&`, que o servidor já grava codificado (Issue #582). Ver
+// js/escape-html.js (escapeAttr). Declaração `function`, e não `const`, para
+// poder conviver com outra cópia carregada na mesma página.
+function escAttr(v) {
+    if (v === null || v === undefined) return '';
+    return String(v).replace(
+        /["'<>`]/g,
+        (c) => ({ '"': '&quot;', "'": '&#39;', '<': '&lt;', '>': '&gt;', '`': '&#96;' })[c]
+    );
+}
+
 const SelecionarPage = {
     async init() {
         console.log('🚀 Inicializando página de seleção de turmas...');
@@ -288,7 +300,7 @@ const SelecionarPage = {
             return `
                 <div class="professor-row" style="display:flex; align-items:center; gap:10px; margin-top:8px; padding:6px; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
                     <div class="foto-mini" style="width:30px; height:30px; border-radius:50%; background:var(--bg-elevated); overflow:hidden; display:flex; align-items:center; justify-content:center; border:1px solid var(--border-secondary); flex-shrink:0;">
-                        ${p.foto ? `<img src="${window.getPhotoUrl(p.foto)}" style="width:100%; height:100%; object-fit:cover;">` : `<span style="font-size:12px; color:var(--primary); font-weight:bold;">${inicial}</span>`}
+                        ${p.foto ? `<img src="${escAttr(window.getPhotoUrl(p.foto))}" style="width:100%; height:100%; object-fit:cover;">` : `<span style="font-size:12px; color:var(--primary); font-weight:bold;">${inicial}</span>`}
                     </div>
                     <div style="display:flex; flex-direction:column; align-items:flex-start;">
                         <span style="font-size:0.85rem; font-weight:600; color:var(--text-primary); line-height:1.2;">${p.nome}</span>
@@ -299,8 +311,8 @@ const SelecionarPage = {
         };
 
         return `
-            <div class="turma-card" id="card-${turma.id}" data-turma="${turma.id}">
-                <div class="turma-card-content" data-turma="${turma.id}" style="width:100%;">
+            <div class="turma-card" id="card-${escAttr(turma.id)}" data-turma="${escAttr(turma.id)}">
+                <div class="turma-card-content" data-turma="${escAttr(turma.id)}" style="width:100%;">
                     <div class="turma-card-header" style="display:flex; justify-content:space-between; align-items:flex-start; width:100%;">
                         <div class="turma-icon">${turma.ano}${turma.sala}</div>
                         <div class="expand-icon" style="color:var(--primary); font-size:1.5rem; transition:transform 0.3s; z-index:2;">
@@ -318,12 +330,12 @@ const SelecionarPage = {
                         </div>
                     </div>
                 </div>
-                <div class="turma-expand-tabs" id="tabs-${turma.id}">
+                <div class="turma-expand-tabs" id="tabs-${escAttr(turma.id)}">
                     ${materias
                         .map(
                             (m) => `
                         <button class="turma-tab-btn ${m === 'Sala Principal' ? 'sala-principal' : ''}" 
-                                data-turma="${turma.id}" data-materia="${m}">
+                                data-turma="${escAttr(turma.id)}" data-materia="${m}">
                             <i class="bi ${this.getIcon(m)}"></i> ${m}
                         </button>
                     `

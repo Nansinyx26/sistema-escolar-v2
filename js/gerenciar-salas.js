@@ -3,6 +3,18 @@
  * Permite ao Diretor/Admin gerenciar quais professores estão em quais salas
  */
 
+// Valor do banco interpolado em atributo HTML: escapa aspas, < > e crase,
+// mas não o `&`, que o servidor já grava codificado (Issue #582). Ver
+// js/escape-html.js (escapeAttr). Declaração `function`, e não `const`, para
+// poder conviver com outra cópia carregada na mesma página.
+function escAttr(v) {
+    if (v === null || v === undefined) return '';
+    return String(v).replace(
+        /["'<>`]/g,
+        (c) => ({ '"': '&quot;', "'": '&#39;', '<': '&lt;', '>': '&gt;', '`': '&#96;' })[c]
+    );
+}
+
 const todasSalas = [
     '1ºA',
     '1ºB',
@@ -116,7 +128,7 @@ function renderizarSalas(filtro = '') {
                             return `
                             <div class="professor-item">
                                 <div class="professor-avatar">
-                                    ${p.foto ? `<img src="${p.foto}" alt="${p.nome}">` : '<i class="bi bi-person-fill"></i>'}
+                                    ${p.foto ? `<img src="${escAttr(p.foto)}" alt="${escAttr(p.nome)}">` : '<i class="bi bi-person-fill"></i>'}
                                 </div>
                                 <div class="professor-info">
                                     <strong>${p.nome}</strong>
