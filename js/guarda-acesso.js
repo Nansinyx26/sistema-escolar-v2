@@ -138,6 +138,7 @@
             '/html/login-secretaria.html',
             '/html/primeiro-acesso.html',
             '/html/reset-password.html',
+            '/html/confirmar-email.html',
             '/html/politica-privacidade.html',
             '/html/escolher-perfil.html',
             '/html/selecionar.html',

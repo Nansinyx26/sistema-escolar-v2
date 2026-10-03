@@ -5,7 +5,12 @@ const UserController = require('../controllers/UserController');
 const ClassController = require('../controllers/ClassController');
 const SecurityController = require('../controllers/SecurityController');
 const TwoFactorController = require('../controllers/TwoFactorController');
+const TrocaEmailController = require('../controllers/TrocaEmailController');
 const authJWT = require('../middleware/authJWT');
+const {
+    trocaEmailPedidoLimiter,
+    trocaEmailConfirmacaoLimiter,
+} = require('../middleware/rateLimiters');
 
 // --- Autenticação Pública ---
 router.post('/login', UserController.login);
@@ -57,6 +62,9 @@ router.get('/me', authJWT, async (req, res) => {
             'superAdmin',
             'foto',
             'fotoGoogle',
+            // Conta do Google não troca o e-mail (Issue #609): as telas de perfil
+            // explicam isso antes de a pessoa preencher o pedido.
+            'loginGoogle',
             'escola',
             'escolaId',
             'disciplina',
@@ -179,5 +187,21 @@ router.get('/verify-email/:token', UserController.verifyEmail);
 // Issue #412: quem ainda não confirmou pede o link de novo (sem ele, a
 // conta ficaria presa fora do portal se o primeiro e-mail não chegasse).
 router.post('/reenviar-verificacao', authJWT, UserController.reenviarVerificacao);
+
+// --- Troca do e-mail da conta (Issue #609) ---
+// Pedido com a senha atual; o link vai para o endereço novo e só confirma na
+// mesma conta, logada. Ver services/trocaEmail.js.
+router.post(
+    '/email/solicitar-troca',
+    authJWT,
+    trocaEmailPedidoLimiter,
+    TrocaEmailController.solicitar
+);
+router.post(
+    '/email/confirmar-troca',
+    authJWT,
+    trocaEmailConfirmacaoLimiter,
+    TrocaEmailController.confirmar
+);
 
 module.exports = router;
