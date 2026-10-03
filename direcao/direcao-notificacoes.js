@@ -5,6 +5,15 @@
 
 'use strict';
 
+// Valor do banco interpolado em atributo HTML: escapa aspas, < > e crase,
+// mas não o `&`, que o servidor já grava codificado (Issue #583). Ver
+// js/escape-html.js (escapeAttr). Declaração `function`, e não `const`, para
+// poder conviver com outra cópia carregada na mesma página.
+function escAttr(v) {
+    if (v === null || v === undefined) return '';
+    return String(v).replace(/["'<>`]/g, (c) => ({ '"': '&quot;', "'": '&#39;', '<': '&lt;', '>': '&gt;', '`': '&#96;' })[c]);
+}
+
 let comunicados = [];
 let imagensSelecionadas = [];
 let arquivosSelecionados = [];
@@ -322,12 +331,12 @@ async function carregarListaTurmas() {
             const res = await fetch(`${window.API_BASE_URL}/turmas`, { credentials: 'include' });
             const json = await res.json();
             if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-                select.innerHTML = '<option value="">Todas as turmas</option>' + json.data.map(t => `<option value="${t._id || t.nome}">${t.nome || t._id}</option>`).join('');
+                select.innerHTML = '<option value="">Todas as turmas</option>' + json.data.map(t => `<option value="${escAttr(t._id || t.nome)}">${t.nome || t._id}</option>`).join('');
                 return;
             }
         } catch (_) {}
         const turmas = (await db.getAll?.('turmas')) || [];
-        select.innerHTML = '<option value="">Todas as turmas</option>' + turmas.map(t => `<option value="${t.nome || t.id}">${t.nome || t.id}</option>`).join('');
+        select.innerHTML = '<option value="">Todas as turmas</option>' + turmas.map(t => `<option value="${escAttr(t.nome || t.id)}">${t.nome || t.id}</option>`).join('');
     } catch (e) { console.warn('[Mural] Não foi possível carregar turmas:', e); }
 }
 

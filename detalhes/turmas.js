@@ -3,6 +3,15 @@
  * Migrado para usar sistema API global
  */
 
+// Valor do banco interpolado em atributo HTML: escapa aspas, < > e crase,
+// mas não o `&`, que o servidor já grava codificado (Issue #583). Ver
+// js/escape-html.js (escapeAttr). Declaração `function`, e não `const`, para
+// poder conviver com outra cópia carregada na mesma página.
+function escAttr(v) {
+    if (v === null || v === undefined) return '';
+    return String(v).replace(/["'<>`]/g, (c) => ({ '"': '&quot;', "'": '&#39;', '<': '&lt;', '>': '&gt;', '`': '&#96;' })[c]);
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🏫 Página de Turmas carregando...');
     console.log('✅ Verificando dependências globais:', { db: typeof db, auth: typeof auth });
@@ -117,7 +126,7 @@ async function loadTurmas(user) {
             <td><strong>${t.totalAlunos}</strong> alunos</td>
             <td>${mediaHtml}</td>
             <td style="text-align: right;">
-                 <a href="../html/turma.html?turma=${t.id}" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.8rem;">
+                 <a href="../html/turma.html?turma=${escAttr(t.id)}" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.8rem;">
                     Acessar Turma <i class="bi bi-arrow-right"></i>
                 </a>
             </td>

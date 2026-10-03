@@ -318,6 +318,13 @@
     <script defer src="../../js/utils.js"></script>
     <script>
 
+        // Argumento de handler inline (onclick="f(${argJs(x)})"): vira string JS e
+        // passa por escape de HTML COMPLETO, `&` incluído — o navegador decodifica as
+        // entidades antes de rodar o JS, então `&quot;` voltaria a ser aspa (Issue #583).
+        function argJs(v) {
+            return JSON.stringify(String(v ?? '')).replace(/[&<>"'`]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[c]);
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             const usersTable = document.getElementById('usersTable');
             const newUserForm = document.getElementById('newUserForm');
@@ -531,26 +538,26 @@
                         <td><span class="badge ${u.source === 'MongoDB' ? 'badge-success' : 'badge-info'}">${u.source}</span></td>
                         <td class="actions">
                             ${(u.source !== 'MongoDB' && !u.isDuplicate) ? `
-                                <button class="btn-icon" onclick="migrateUser('${u.id}', '${u.source}', '${u.email}')" title="Subir para Nuvem" style="color: var(--primary-color)">
+                                <button class="btn-icon" onclick="migrateUser(${argJs(u.id)}, ${argJs(u.source)}, ${argJs(u.email)})" title="Subir para Nuvem" style="color: var(--primary-color)">
                                     <i class="bi bi-cloud-upload-fill"></i>
                                 </button>
                             ` : ''}
                             ${u.source === 'LocalStorage' ? `
-                                <button class="btn-icon" onclick="deleteUser('${u.id}', '${u.source}', '${u.email}')" title="Limpar Sessão Local" style="color: var(--text-secondary)">
+                                <button class="btn-icon" onclick="deleteUser(${argJs(u.id)}, ${argJs(u.source)}, ${argJs(u.email)})" title="Limpar Sessão Local" style="color: var(--text-secondary)">
                                     <i class="bi bi-broom"></i>
                                 </button>
                             ` : `
                                 ${u.source === 'MongoDB' ? `
-                                    <button class="btn-icon" onclick="anonymizeUser('${u.id}')" title="Anonimizar (LGPD)" style="color: var(--warning-color, #f59e0b)">
+                                    <button class="btn-icon" onclick="anonymizeUser(${argJs(u.id)})" title="Anonimizar (LGPD)" style="color: var(--warning-color, #f59e0b)">
                                         <i class="bi bi-shield-lock"></i>
                                     </button>
                                 ` : ''}
                                 ${(u.source === 'MongoDB' && (['admin','diretor','secretaria'].indexOf(u.perfil) !== -1 || u.twoFactorEnabled)) ? `
-                                    <button class="btn-icon" onclick="abrirCodigosBackup('${u.id}')" title="Códigos de backup 2FA" style="color: #34e0a1">
+                                    <button class="btn-icon" onclick="abrirCodigosBackup(${argJs(u.id)})" title="Códigos de backup 2FA" style="color: #34e0a1">
                                         <i class="bi bi-key-fill"></i>
                                     </button>
                                 ` : ''}
-                                <button class="btn-icon" onclick="deleteUser('${u.id}', '${u.source}', '${u.email}')" title="Excluir Permanentemente" style="color: #ef4444">
+                                <button class="btn-icon" onclick="deleteUser(${argJs(u.id)}, ${argJs(u.source)}, ${argJs(u.email)})" title="Excluir Permanentemente" style="color: #ef4444">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             `}
