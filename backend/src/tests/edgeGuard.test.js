@@ -473,9 +473,20 @@ describe('edgeGuard — privacidade do log', () => {
     afterEach(() => jest.restoreAllMocks());
 
     it('o IP nunca aparece em claro no identificador logado', () => {
-        const hash = hashDoIp('203.0.113.9');
+        const ip = '203.0.113.9';
+        const hash = hashDoIp(ip);
         expect(hash).toMatch(/^[0-9a-f]{12}$/);
-        expect(hash).not.toContain('203');
+        expect(hash).not.toContain(ip);
+        // O que impede voltar ao IP é o sal: sem ele, os 2^32 endereços IPv4
+        // saem por tabela. Conferir isso, e não "não contém 203" — com o sal
+        // aleatório, o hexadecimal trazia "203" por acaso em ~0,2% das
+        // execuções e derrubava o CI de qualquer PR (Issue #625).
+        const semSal = require('node:crypto')
+            .createHash('sha256')
+            .update(ip)
+            .digest('hex')
+            .slice(0, 12);
+        expect(hash).not.toBe(semSal);
     });
 
     it('o mesmo IP gera o mesmo hash dentro da execucao (correlacionavel)', () => {
