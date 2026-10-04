@@ -190,13 +190,13 @@
 
     <div class="abas nao-imprimir" role="tablist">
         <button type="button" class="aba ativa" id="abaBackup" role="tab" aria-selected="true"
-                aria-controls="painelBackup" onclick="trocarAba('backup')">Códigos de uso único</button>
+                aria-controls="painelBackup" data-acao="trocarAba" data-aba="backup">Códigos de uso único</button>
         <button type="button" class="aba" id="abaFixo" role="tab" aria-selected="false"
-                aria-controls="painelFixo" onclick="trocarAba('fixo')">Código fixo<span class="selo">exceção</span></button>
+                aria-controls="painelFixo" data-acao="trocarAba" data-aba="fixo">Código fixo<span class="selo">exceção</span></button>
         <button type="button" class="aba" id="abaSenha" role="tab" aria-selected="false"
-                aria-controls="painelSenha" onclick="trocarAba('senha')">Recuperar senha</button>
+                aria-controls="painelSenha" data-acao="trocarAba" data-aba="senha">Recuperar senha</button>
         <button type="button" class="aba" id="abaAtivar" role="tab" aria-selected="false"
-                aria-controls="painelAtivar" onclick="trocarAba('ativar')">Ativar 2FA</button>
+                aria-controls="painelAtivar" data-acao="trocarAba" data-aba="ativar">Ativar 2FA</button>
     </div>
 
     <div class="cartao nao-imprimir">
@@ -291,6 +291,8 @@
     </div>
 </div>
 
+<!-- Delegação por data-acao (épico #612). -->
+<script src="../../js/acoes.js"></script>
 <script>
 (function () {
     'use strict';
@@ -467,7 +469,7 @@
                   + '<div class="codigo-unico">' + escapar(d.codigo) + '</div>'
                   + aviso(d.aviso, 'ok')
                   + '<div class="rodape-acoes nao-imprimir">'
-                  +   '<button type="button" class="secundario" onclick="window.print()">Imprimir</button>'
+                  +   '<button type="button" class="secundario" data-acao="imprimir">Imprimir</button>'
                   + '</div></div>';
                 consultarFixo();
             })
@@ -594,7 +596,7 @@
                   + '</div>'
                   + aviso(d.proximoPasso)
                   + '<div class="rodape-acoes nao-imprimir">'
-                  +   '<button type="button" class="secundario" onclick="window.print()">Imprimir</button>'
+                  +   '<button type="button" class="secundario" data-acao="imprimir">Imprimir</button>'
                   + '</div></div>';
             })
             .catch(function () {
@@ -712,6 +714,14 @@
                 elResultado.innerHTML = aviso('Falha de conexão ao gerar os códigos.', 'erro');
             });
     });
+
+    // Ações da página (épico #612). Ver js/acoes.js.
+    if (window.Acoes) {
+        window.Acoes.registrar({
+            trocarAba: (_evento, el) => window.trocarAba(el.dataset.aba),
+            imprimir: () => window.print(),
+        });
+    }
 })();
 </script>
     <script defer src="../../js/acessibilidade.js"></script>

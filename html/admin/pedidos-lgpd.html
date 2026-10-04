@@ -225,7 +225,7 @@
                     <a href="auditoria.html" class="btn btn-secondary btn-sm" style="text-decoration:none;">
                         <i class="bi bi-journal-text"></i> Auditoria
                     </a>
-                    <button class="btn btn-primary btn-sm" onclick="carregarPedidos()">
+                    <button class="btn btn-primary btn-sm" data-acao="recarregarPedidos">
                         <i class="bi bi-arrow-clockwise"></i> Atualizar
                     </button>
                 </div>
@@ -327,13 +327,13 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3 style="margin:0; font-size:1.15rem; font-weight:700;"><i class="bi bi-file-earmark-check"></i> Despachar Pedido LGPD</h3>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="fecharModal()">&times;</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-acao="fecharModal">&times;</button>
             </div>
             <div id="modalDetalhesCorpo" style="font-size: 0.88rem; margin-bottom: 1rem;">
                 <!-- Carregado via JS -->
             </div>
 
-            <form id="formDespacho" onsubmit="salvarDespacho(event)">
+            <form id="formDespacho" data-acao-submit="salvarDespacho">
                 <input type="hidden" id="despachoPedidoId">
                 <div style="margin-bottom: 1rem;">
                     <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.25rem;">Novo Status:</label>
@@ -365,7 +365,7 @@
                 </div>
 
                 <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
-                    <button type="button" class="btn btn-secondary" onclick="fecharModal()">Cancelar</button>
+                    <button type="button" class="btn btn-secondary" data-acao="fecharModal">Cancelar</button>
                     <button type="submit" class="btn btn-primary" id="btnSalvarDespacho">
                         <i class="bi bi-check-lg"></i> Salvar Despacho
                     </button>
@@ -376,8 +376,15 @@
 
     <!-- Scripts -->
     <script defer src="/js/botao-voltar.js"></script>
+    <!-- Delegação por data-acao (épico #612). -->
+    <script src="../../js/acoes.js"></script>
     <script src="../../js/api-config.js"></script>
     <script>
+
+        // Valor que vai para atributo `data-*`: escape completo, `&` incluído.
+        function attrHtml(v) {
+            return String(v ?? '').replace(/[&<>"'`]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[c]);
+        }
         const API = () => window.API_BASE_URL ||
             ((location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname === '' || location.protocol === 'file:')
                 ? `http://${location.hostname || 'localhost'}:3001/api`
@@ -490,7 +497,7 @@
                         <td class="${classePrazo}"><i class="bi bi-calendar-event"></i> ${textoPrazo}</td>
                         <td style="font-size:0.8rem;">${fmtDate(p.createdAt)}</td>
                         <td>
-                            <button class="btn btn-secondary btn-sm" onclick="abrirModal('${p.id}')">
+                            <button class="btn btn-secondary btn-sm" data-acao="abrirModal" data-id="${attrHtml(p.id)}">
                                 <i class="bi bi-pencil-square"></i> Despachar
                             </button>
                         </td>
@@ -587,6 +594,16 @@
         });
 
         document.addEventListener('DOMContentLoaded', carregarPedidos);
+
+        // Ações da página (épico #612). Ver js/acoes.js.
+        if (window.Acoes) {
+            window.Acoes.registrar({
+                recarregarPedidos: () => carregarPedidos(),
+                abrirModal: (_evento, el) => abrirModal(el.dataset.id),
+                fecharModal: () => fecharModal(),
+                salvarDespacho: (evento) => salvarDespacho(evento),
+            });
+        }
     </script>
 </body>
 
