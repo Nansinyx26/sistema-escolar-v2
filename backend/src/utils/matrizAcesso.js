@@ -230,6 +230,11 @@ const PAGINAS_PUBLICAS = Object.freeze([
     '/html/login-secretaria.html',
     '/html/primeiro-acesso.html',
     '/html/reset-password.html',
+    // Confirmação da troca de e-mail (Issue #609). Pública porque quem chega
+    // sem sessão precisa escolher a porta certa: o gate mandaria todo mundo
+    // para o login da escola, que recusa conta de família. A página é só a
+    // casca — quem decide é a API, que exige sessão da conta que pediu.
+    '/html/confirmar-email.html',
     '/html/politica-privacidade.html',
     '/html/escolher-perfil.html',
     '/html/selecionar.html',

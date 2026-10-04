@@ -7,6 +7,8 @@
  *   notificarBruteForce(adminEmails, emailAlvo, tentativas)
  *   notificarRotacaoCodigo(adminEmails, novoCodigo, autor)
  *   notificarVerificacaoEmail(email, nome, url)
+ *   notificarPedidoTrocaEmail(novoEmail, nome, url, validadeHoras)
+ *   notificarEmailTrocado(antigoEmail, nome, novoMascarado)
  *
  * USO: require('./emailNotifications')
  */
@@ -16,6 +18,7 @@
 // o default `noreply@escola.com` que existia aqui é um domínio não verificado,
 // e Resend/Brevo recusam a mensagem inteira por causa dele.
 const { enviarEmail } = require('../services/EnvioEmail');
+const { sanitizeInput } = require('./sanitize');
 
 const APP_NAME = 'Sistema Escolar';
 
@@ -73,7 +76,11 @@ async function notificarBruteForce(adminEmails, emailAlvo, ip) {
     const html = templateBase('⚠️ Alerta de Segurança — Brute Force', '#dc3545', '🛡️', corpo);
 
     try {
-        await enviarEmail(adminEmails.join(', '), `[SEGURANÇA] Tentativa de brute force detectada — ${emailAlvo}`, html);
+        await enviarEmail(
+            adminEmails.join(', '),
+            `[SEGURANÇA] Tentativa de brute force detectada — ${emailAlvo}`,
+            html
+        );
     } catch (err) {
         console.error('[NOTIF] Erro ao enviar alerta brute force:', err.message);
     }
@@ -100,7 +107,11 @@ async function notificarRotacaoCodigo(adminEmails, novoCodigo, autor) {
     const html = templateBase('🔐 Código Secreto Rotacionado', '#1a56db', '🔑', corpo);
 
     try {
-        await enviarEmail(adminEmails.join(', '), `Novo código secreto da escola: ${novoCodigo}`, html);
+        await enviarEmail(
+            adminEmails.join(', '),
+            `Novo código secreto da escola: ${novoCodigo}`,
+            html
+        );
     } catch (err) {
         console.error('[NOTIF] Erro ao notificar rotação:', err.message);
     }
@@ -134,4 +145,53 @@ async function notificarVerificacaoEmail(email, nome, tokenUrl) {
     }
 }
 
-module.exports = { notificarBruteForce, notificarRotacaoCodigo, notificarVerificacaoEmail };
+// --------------------------------------------------
+// Troca de e-mail da conta (Issue #609)
+// --------------------------------------------------
+// O nome vem da própria conta e entra no HTML: sem limpar, um nome com tag
+// virava conteúdo do e-mail. Nenhum dos dois loga o link — ele é a prova de
+// posse do endereço.
+
+/** Link de confirmação, enviado ao endereço NOVO. Devolve o `{ ok }` do envio. */
+async function notificarPedidoTrocaEmail(novoEmail, nome, url, validadeHoras) {
+    const nomeSeguro = sanitizeInput(String(nome || ''));
+    const corpo = `
+        <p style="color:#333;">Olá${nomeSeguro ? `, <strong>${nomeSeguro}</strong>` : ''}!</p>
+        <p style="color:#555;">Recebemos um pedido para que este endereço passe a ser o e-mail da sua conta no ${APP_NAME}.</p>
+        <p style="color:#555;">Para confirmar, abra o link <strong>no aparelho em que você está conectado à conta</strong> e toque em "Confirmar troca".</p>
+        <div style="text-align:center;margin:24px 0;">
+            <a href="${url}"
+               style="display:inline-block;padding:14px 32px;background:#1a56db;color:#fff;text-decoration:none;border-radius:8px;font-size:1rem;font-weight:600;">
+                Confirmar o novo e-mail
+            </a>
+        </div>
+        <p style="color:#888;font-size:0.85rem;">Link direto: <a href="${url}" style="color:#1a56db;">${url}</a></p>
+        <p style="color:#aaa;font-size:0.8rem;margin-top:16px;">O link vale por <strong>${validadeHoras} horas</strong>. Se você não pediu esta troca, ignore este e-mail: nada muda sem a confirmação.</p>
+    `;
+    const html = templateBase('Confirme o novo e-mail', '#1a56db', '✉️', corpo);
+    return enviarEmail(novoEmail, `Confirme o novo e-mail da sua conta — ${APP_NAME}`, html);
+}
+
+/** Aviso ao endereço ANTIGO depois da troca, com o caminho caso não tenha sido a pessoa. */
+async function notificarEmailTrocado(antigoEmail, nome, novoMascarado) {
+    const nomeSeguro = sanitizeInput(String(nome || ''));
+    const corpo = `
+        <p style="color:#333;">Olá${nomeSeguro ? `, <strong>${nomeSeguro}</strong>` : ''}.</p>
+        <p style="color:#555;">O e-mail da sua conta no ${APP_NAME} foi trocado para <strong>${sanitizeInput(String(novoMascarado || ''))}</strong>. A partir de agora, o login e os avisos usam o endereço novo.</p>
+        <table style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:16px 20px;margin:16px 0;width:100%;">
+            <tr><td style="color:#7a5b00;">
+                <strong>Não foi você?</strong> Procure a secretaria da escola o quanto antes: ela consegue devolver a conta ao seu endereço.
+            </td></tr>
+        </table>
+    `;
+    const html = templateBase('O e-mail da sua conta mudou', '#b45309', '🔔', corpo);
+    return enviarEmail(antigoEmail, `O e-mail da sua conta foi trocado — ${APP_NAME}`, html);
+}
+
+module.exports = {
+    notificarBruteForce,
+    notificarRotacaoCodigo,
+    notificarVerificacaoEmail,
+    notificarPedidoTrocaEmail,
+    notificarEmailTrocado,
+};

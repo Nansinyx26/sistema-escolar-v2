@@ -39,6 +39,8 @@ const EXCECOES = {
     'html/offline.html': 'página de fallback do service worker',
     // Fluxos que não podem ser abandonados por um Voltar genérico.
     'html/mudar-senha.html': 'troca de senha obrigatória: voltar pularia a troca',
+    'html/confirmar-email.html':
+        'aberta pelo link do e-mail da troca de endereço: não há tela anterior para voltar (Issue #609)',
     'html/admin/cadastro-secretaria.html':
         'o Voltar do formulário pede confirmação antes de descartar os dados; um botão genérico pularia a confirmação',
     // Voltar com destino por perfil, que o histórico da sessão não cobre.

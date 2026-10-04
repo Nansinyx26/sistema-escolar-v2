@@ -458,6 +458,35 @@ const chatIpLimiter = limiterPorIp({
     },
 });
 
+// ── Troca de e-mail da conta (Issue #609) ────────────────────────────────────
+// O pedido confere a senha atual e dispara um e-mail para um endereço que a
+// própria pessoa escolhe: sem teto, a rota serviria para testar senhas de uma
+// sessão aberta e para mandar e-mail do sistema para qualquer caixa postal.
+// Ninguém troca de e-mail cinco vezes numa hora.
+const trocaEmailPedidoLimiter = limiterPorUsuario({
+    nome: 'troca-email-pedido',
+    windowMs: UMA_HORA,
+    maxProd: tetoEnv('RATE_LIMIT_TROCA_EMAIL', 5),
+    maxDev: 100,
+    mensagem: {
+        success: false,
+        error: 'Muitos pedidos de troca de e-mail. Tente novamente em uma hora.',
+    },
+});
+
+// A confirmação compara um token de 256 bits — não há o que adivinhar —, mas
+// cada tentativa grava auditoria. O teto só impede que um laço a encha.
+const trocaEmailConfirmacaoLimiter = limiterPorUsuario({
+    nome: 'troca-email-confirmacao',
+    windowMs: UMA_HORA,
+    maxProd: tetoEnv('RATE_LIMIT_TROCA_EMAIL_CONFIRMACAO', 10),
+    maxDev: 100,
+    mensagem: {
+        success: false,
+        error: 'Muitas tentativas de confirmação. Tente novamente em uma hora.',
+    },
+});
+
 // ── Copiloto de IA ───────────────────────────────────────────────────────────
 // Mesma natureza do TTS: cada mensagem gasta cota de uma API externa PAGA, e o
 // custo pertence ao projeto. Por isso o teto principal é por CONTA — o
@@ -561,6 +590,8 @@ module.exports = {
     chatIpLimiter,
     iaChatUsuarioLimiter,
     iaChatIpLimiter,
+    trocaEmailPedidoLimiter,
+    trocaEmailConfirmacaoLimiter,
     // exportados para teste
     chaveIp,
     identificadorDaConta,

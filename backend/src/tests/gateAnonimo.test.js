@@ -79,6 +79,9 @@ const PUBLICAS = [
     '/html/login-secretaria.html',
     '/html/primeiro-acesso.html',
     '/html/reset-password.html',
+    // Link da troca de e-mail (Issue #609): sem sessão, a página mostra as
+    // duas portas de entrada em vez de cair no login da escola.
+    '/html/confirmar-email.html',
     '/html/politica-privacidade.html',
     '/html/escolher-perfil.html',
     '/html/selecionar.html',
