@@ -34,6 +34,13 @@
             // Carrega tabela
             carregarHistorico();
 
+            // Excluir pela tabela. Era um `onclick` inline em cada linha; um
+            // ouvinte no corpo da tabela vale para todo re-render (épico #612).
+            document.getElementById('muralHistoricoBody')?.addEventListener('click', (e) => {
+                const btn = e.target.closest('[data-excluir]');
+                if (btn) window._muralExcluir(btn.dataset.excluir);
+            });
+
             // Filtros
             document.querySelectorAll('.hist-filter-btn').forEach((btn) => {
                 btn.addEventListener('click', function () {
@@ -134,7 +141,7 @@
                         }[cat] || '#a1a1aa';
 
                     return `
-                    <tr style="border-bottom:1px solid rgba(255,255,255,0.04);transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+                    <tr class="mural-hist-linha" style="border-bottom:1px solid rgba(255,255,255,0.04);transition:background 0.15s;">
                         <td data-label="Título" style="padding:0.9rem 1.25rem;">
                             <div style="font-weight:600;color:#fff;font-size:0.87rem;">${escapeHtml(c.titulo)}</div>
                             <div style="margin-top:3px;">
@@ -148,7 +155,7 @@
                         <td data-label="Status" style="padding:0.9rem 1rem;text-align:center;">${statusPill}</td>
                         <td data-label="Ações" style="padding:0.9rem 1rem;text-align:center;">
                             <div style="display:flex;gap:8px;justify-content:center;">
-                                <button onclick="window._muralExcluir && window._muralExcluir('${c._id}')" title="Excluir" style="background:transparent;border:none;color:#f87171;cursor:pointer;font-size:1.05rem;opacity:0.7;transition:opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
+                                <button type="button" class="mural-hist-excluir" data-excluir="${escapeHtml(c._id)}" title="Excluir" style="background:transparent;border:none;color:#f87171;cursor:pointer;font-size:1.05rem;transition:opacity 0.2s;">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </div>

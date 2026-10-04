@@ -306,7 +306,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <td>${escHtml(DIAS[item.diaSemana])}</td>
                 <td>${escHtml(item.horaInicio)} - ${escHtml(item.horaFim)}</td>
                 <td>
-                    <button class="btn btn-outline btn-sm" onclick="deletarGrade('${item._id}')" style="color: var(--error-color); border-color: var(--error-color);">
+                    <button type="button" class="btn btn-outline btn-sm" data-excluir-grade="${escHtml(item._id)}" style="color: var(--error-color); border-color: var(--error-color);">
                         <i class="bi bi-trash"></i>
                     </button>
                 </td>
@@ -362,6 +362,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // 4. Deletar (Exposed global function)
+    // O botão de cada linha era um `onclick` inline; um ouvinte na tabela vale
+    // para toda linha montada depois (épico #612).
+    tabelaBody?.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-excluir-grade]');
+        if (btn) window.deletarGrade(btn.dataset.excluirGrade);
+    });
+
     window.deletarGrade = async (id) => {
         if (!confirm('Tem certeza que deseja remover este horário?')) return;
 

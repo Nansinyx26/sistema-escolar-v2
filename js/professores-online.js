@@ -50,7 +50,7 @@
             .map((w) => w[0] || '')
             .join('')
             .toUpperCase();
-        // As iniciais entram num atributo onerror — fora de [A-Z0-9] nada passa.
+        // As iniciais entram num atributo (`data-iniciais`) — fora de [A-Z0-9] nada passa.
         return letras.replace(/[^A-Z0-9]/g, '') || '?';
     }
 
@@ -99,7 +99,7 @@
         const unreadCount = Number(p.unreadsCount || 0);
 
         const avatar = url
-            ? `<img src="${esc(url)}" alt="" class="po-avatar" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'po-avatar po-avatar-fallback',textContent:'${initials(p.nome)}'}))">`
+            ? `<img src="${esc(url)}" alt="" class="po-avatar" data-iniciais="${initials(p.nome)}">`
             : `<div class="po-avatar po-avatar-fallback">${initials(p.nome)}</div>`;
 
         const unreadBadge =
@@ -182,6 +182,25 @@
         });
     }
 
+    /**
+     * Foto que não carrega vira as iniciais. Era um `onerror` inline; o evento
+     * `error` de imagem não borbulha, então o ouvinte vai em cada foto.
+     */
+    function trocarFotoQuebrada(container) {
+        container.querySelectorAll('img.po-avatar[data-iniciais]').forEach((img) => {
+            img.addEventListener(
+                'error',
+                () => {
+                    const fallback = document.createElement('div');
+                    fallback.className = 'po-avatar po-avatar-fallback';
+                    fallback.textContent = img.dataset.iniciais;
+                    img.replaceWith(fallback);
+                },
+                { once: true }
+            );
+        });
+    }
+
     function render(list) {
         const html =
             !Array.isArray(list) || list.length === 0
@@ -194,14 +213,20 @@
         // Renderiza no card embutido (se existir na página)
         const elCard = document.getElementById(LIST_ID);
         const countCard = document.getElementById(COUNT_ID);
-        if (elCard) elCard.innerHTML = html;
+        if (elCard) {
+            elCard.innerHTML = html;
+            trocarFotoQuebrada(elCard);
+        }
         if (countCard) countCard.textContent = onlineText;
 
         // Renderiza no painel flutuante (se existir na página)
         const elPanel = document.getElementById('profsPanelList');
         const countPanel = document.getElementById('profsPanelCount');
         const fabBadge = document.getElementById('profsFabBadge');
-        if (elPanel) elPanel.innerHTML = html;
+        if (elPanel) {
+            elPanel.innerHTML = html;
+            trocarFotoQuebrada(elPanel);
+        }
         if (countPanel) countPanel.textContent = onlineText;
         if (fabBadge) fabBadge.textContent = String(online);
 

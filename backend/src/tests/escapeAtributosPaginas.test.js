@@ -13,6 +13,9 @@
  *     `sec-ch-ua-platform`, que qualquer cliente HTTP manda como quiser, e ia
  *     cru para o innerHTML da auditoria do admin;
  *   - html/admin/usuarios.html: o e-mail entrava em onclick entre aspas simples.
+ * Desde o épico #612 (Issue #618) os argumentos de detalhes/alunos.js vão em
+ * atributos `data-*`, escapados por `attrHtml`; o caso abaixo cobre a mesma
+ * garantia.
  */
 
 const fs = require('node:fs');
@@ -77,36 +80,57 @@ describe('cópias locais de escAttr', () => {
     });
 });
 
-describe.each(['detalhes/alunos.js', 'html/admin/usuarios.html'])(
-    'argJs de %s (argumento de handler inline)',
-    (rel) => {
-        let argJs;
-        beforeAll(() => {
-            argJs = extrairFuncao(rel, 'argJs');
-        });
+describe.each(['detalhes/alunos.js'])('attrHtml de %s (argumento em data-*, Issue #618)', (rel) => {
+    let attrHtml;
+    beforeAll(() => {
+        attrHtml = extrairFuncao(rel, 'attrHtml');
+    });
 
-        it.each([
-            ['aspas duplas', NOME_MALICIOSO],
-            ['aspa simples', "x'); window.__xss=1; ('"],
-            ['entidade crua que decodificaria para aspa', 'x&quot;); window.__xss=1; ("'],
-            ['e-mail com apóstrofo', "o'brien@exemplo.test"],
-        ])('%s chega intacto e não executa nada', (_nome, valor) => {
-            let recebido;
-            window.__receber = (v) => {
-                recebido = v;
-            };
-            const div = document.createElement('div');
-            div.innerHTML = `<button onclick="window.__receber(${argJs(valor)})"></button>`;
-            document.body.appendChild(div);
-            const botao = div.querySelector('button');
-            expect(botao.getAttributeNames()).toEqual(['onclick']);
-            botao.click();
-            expect(window.__xss).toBeUndefined();
-            expect(recebido).toBe(valor);
-            delete window.__receber;
-        });
-    }
-);
+    it.each([
+        ['aspas duplas', NOME_MALICIOSO],
+        ['aspa simples', "x' data-acao='outra"],
+        ['entidade crua que decodificaria para aspa', 'x&quot; data-acao=&quot;outra'],
+        ['nome de documento com apóstrofo', NOME_APOSTROFO],
+        ['& já codificado pelo servidor', NOME_COM_E],
+    ])('%s chega intacto pelo dataset e não cria atributo', (_nome, valor) => {
+        const div = document.createElement('div');
+        div.innerHTML = `<button data-acao="verDocumento" data-nome="${attrHtml(valor)}"></button>`;
+        document.body.appendChild(div);
+        const botao = div.querySelector('button');
+        expect(botao.getAttributeNames()).toEqual(['data-acao', 'data-nome']);
+        expect(botao.dataset.acao).toBe('verDocumento');
+        expect(botao.dataset.nome).toBe(valor);
+        expect(window.__xss).toBeUndefined();
+    });
+});
+
+describe.each(['html/admin/usuarios.html'])('argJs de %s (argumento de handler inline)', (rel) => {
+    let argJs;
+    beforeAll(() => {
+        argJs = extrairFuncao(rel, 'argJs');
+    });
+
+    it.each([
+        ['aspas duplas', NOME_MALICIOSO],
+        ['aspa simples', "x'); window.__xss=1; ('"],
+        ['entidade crua que decodificaria para aspa', 'x&quot;); window.__xss=1; ("'],
+        ['e-mail com apóstrofo', "o'brien@exemplo.test"],
+    ])('%s chega intacto e não executa nada', (_nome, valor) => {
+        let recebido;
+        window.__receber = (v) => {
+            recebido = v;
+        };
+        const div = document.createElement('div');
+        div.innerHTML = `<button onclick="window.__receber(${argJs(valor)})"></button>`;
+        document.body.appendChild(div);
+        const botao = div.querySelector('button');
+        expect(botao.getAttributeNames()).toEqual(['onclick']);
+        botao.click();
+        expect(window.__xss).toBeUndefined();
+        expect(recebido).toBe(valor);
+        delete window.__receber;
+    });
+});
 
 describe('detalhes/alunos.js — pré-visualização de documento', () => {
     let abrirVisualizacaoDoc;

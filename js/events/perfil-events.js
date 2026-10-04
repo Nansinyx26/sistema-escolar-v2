@@ -20,6 +20,12 @@ document.addEventListener('DOMContentLoaded', function () {
         btnFerr.addEventListener('click', function () {
             if (typeof abrirFerramentas === 'function') abrirFerramentas();
         });
+    // Era um `onclick` inline (épico #612).
+    const btnTutorial = document.getElementById('btn-ver-tutorial');
+    if (btnTutorial)
+        btnTutorial.addEventListener('click', function () {
+            if (window.OnboardingTour) window.OnboardingTour.restart();
+        });
     const btnSair = document.getElementById('btn-sair-perfil');
     if (btnSair)
         btnSair.addEventListener('click', function () {

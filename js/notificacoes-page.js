@@ -759,6 +759,22 @@
         }
     }
 
+    /**
+     * Logo que não carrega cai na imagem de reserva. Era um `onerror` inline
+     * (épico #612); o script roda com `defer`, então confere também a que já
+     * falhou antes dele. Troca uma vez só, para a reserva quebrada não girar.
+     */
+    function usarImagemDeReserva(img) {
+        const reserva = img.dataset.reserva;
+        if (!reserva) return;
+        delete img.dataset.reserva;
+        img.src = reserva;
+    }
+    document.querySelectorAll('img[data-reserva]').forEach((img) => {
+        if (img.complete && img.naturalWidth === 0) usarImagemDeReserva(img);
+        else img.addEventListener('error', () => usarImagemDeReserva(img), { once: true });
+    });
+
     // Inicialização da Página
     document.addEventListener('DOMContentLoaded', () => {
         carregarUsuario();

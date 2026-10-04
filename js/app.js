@@ -907,7 +907,7 @@ class App {
                 <tr data-aluno-id="${aluno.id}">
                     <td class="col-num">${index + 1}</td>
                     <td class="col-foto">
-                        <div class="foto-container" onclick="app.triggerPhotoUpload('${aluno.id}')" style="cursor: pointer;">
+                        <div class="foto-container" style="cursor: pointer;">
                             ${
                                 window.getPhotoUrl(aluno.foto) !== '/img/default-avatar.png'
                                     ? `<img src="${escAttr(window.getPhotoUrl(aluno.foto))}" alt="${escAttr(aluno.nome)}" class="foto-aluno">`
@@ -1306,7 +1306,7 @@ class App {
                             ? alunos
                                   .map(
                                       (aluno) => `
-                        <div class="student-attendance-card" id="card-aluno-${aluno.id}" onclick="document.getElementById('check-${aluno.id}').click()">
+                        <div class="student-attendance-card" id="card-aluno-${aluno.id}">
                             <div class="student-data">
                                 <div class="student-mini-avatar">
                                     ${
@@ -1321,7 +1321,7 @@ class App {
                                 </div>
                             </div>
                             
-                            <label class="attendance-toggle" onclick="event.stopPropagation()">
+                            <label class="attendance-toggle">
                                 <input type="checkbox" class="falta-check" id="check-${aluno.id}" data-aluno-id="${aluno.id}">
                                 <span class="slider"></span>
                             </label>
@@ -1341,6 +1341,13 @@ class App {
                 </div>
             </div>
         `;
+
+        // Clicar no cartão marca a falta. O interruptor marca sozinho: o clique
+        // nele, e o que o navegador repassa ao checkbox, não contam de novo.
+        document.querySelector('.attendance-grid')?.addEventListener('click', (e) => {
+            if (e.target.closest('.attendance-toggle')) return;
+            e.target.closest('.student-attendance-card')?.querySelector('.falta-check')?.click();
+        });
 
         // Carregar dados da data atual
         await atualizarMarcadores();
@@ -2121,7 +2128,7 @@ class App {
                         </div>
                         <div style="flex: 1;">
                             <label style="font-size: 0.8rem; color: #aaa; margin-bottom: 2px; display: block;">Condição</label>
-                            <select id="editAlunoCondicao" class="form-input" onchange="document.getElementById('editAlunoCondicaoOutroContainer').style.display = (this.value === 'Outros' ? 'block' : 'none')">
+                            <select id="editAlunoCondicao" class="form-input">
                                 <option value="" ${!aluno.condicao ? 'selected' : ''}>Nenhuma</option>
                                 <option value="TDAH" ${aluno.condicao === 'TDAH' ? 'selected' : ''}>TDAH</option>
                                 <option value="TOD" ${aluno.condicao === 'TOD' ? 'selected' : ''}>TOD</option>
@@ -2172,6 +2179,12 @@ class App {
                     },
                 },
             ],
+        });
+
+        // "Outros" abre o campo para escrever a condição.
+        document.getElementById('editAlunoCondicao')?.addEventListener('change', (e) => {
+            document.getElementById('editAlunoCondicaoOutroContainer').style.display =
+                e.target.value === 'Outros' ? 'block' : 'none';
         });
     }
 

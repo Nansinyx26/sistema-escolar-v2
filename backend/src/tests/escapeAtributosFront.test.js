@@ -11,6 +11,8 @@
  * aspa fechava o atributo e, com `script-src-attr 'unsafe-inline'` na CSP, o
  * resto virava handler executável. O caso confirmado era a tela de salas: o
  * professor edita o próprio nome e o script roda no navegador do diretor.
+ * Desde o épico #612 (Issue #618) o chatbot põe o rótulo em `data-*`,
+ * escapado por `attrHtml`; o caso abaixo cobre a mesma garantia.
  */
 
 const fs = require('node:fs');
@@ -102,32 +104,27 @@ describe('escapeAttr / escAttr', () => {
     });
 });
 
-describe('argJs do chatbot (argumento de handler inline)', () => {
-    let argJs;
+describe('attrHtml do chatbot (rótulo em data-*, Issue #618)', () => {
+    let attrHtml;
     beforeAll(() => {
-        argJs = extrairFuncao('js/chatbot-ia.js', 'argJs');
+        attrHtml = extrairFuncao('js/chatbot-ia.js', 'attrHtml');
     });
 
     it.each([
         ['aspas duplas', 'Ana "Bia" Souza'],
         ['aspa simples', "Maria D'Ávila"],
-        ['tentativa de fechar a string', "x'); window.__xss=1; ('"],
-        ['entidade crua que decodificaria para aspa', 'x&quot;); window.__xss=1; ("'],
+        ['tentativa de fechar o atributo', NOME_MALICIOSO],
+        ['entidade crua que decodificaria para aspa', 'x&quot; onerror=&quot;window.__xss=1'],
+        ['& já codificado pelo servidor', NOME_COM_E],
         ['barra invertida', 'a\\b'],
-    ])('%s chega intacto à função e não executa nada', (_nome, valor) => {
-        let recebido;
-        window.__selecionar = (v) => {
-            recebido = v;
-        };
+    ])('%s chega intacto pelo dataset e não cria atributo', (_nome, valor) => {
         const div = document.createElement('div');
-        div.innerHTML = `<button onclick="window.__selecionar(${argJs(valor)})"></button>`;
+        div.innerHTML = `<button class="chatbot-option-btn" data-rotulo="${attrHtml(valor)}"></button>`;
         document.body.appendChild(div);
         const botao = div.querySelector('button');
-        expect(botao.getAttributeNames()).toEqual(['onclick']);
-        botao.click();
+        expect(botao.getAttributeNames()).toEqual(['class', 'data-rotulo']);
+        expect(botao.dataset.rotulo).toBe(valor);
         expect(window.__xss).toBeUndefined();
-        expect(recebido).toBe(valor);
-        delete window.__selecionar;
     });
 });
 

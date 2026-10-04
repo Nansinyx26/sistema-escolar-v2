@@ -281,6 +281,17 @@
     color: white;
 }
 
+/* Botões de escolha de aluno. O hover era um `onmouseover` inline (épico #612). */
+.chatbot-option-btn {
+    background: rgba(16, 185, 129, 0.12);
+}
+
+@media (hover: hover) {
+    .chatbot-option-btn:hover {
+        background: rgba(16, 185, 129, 0.25);
+    }
+}
+
 .chat-avatar-img {
     width: 32px;
     height: 32px;
