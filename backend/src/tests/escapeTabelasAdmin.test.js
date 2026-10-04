@@ -102,7 +102,9 @@ describe('html/admin/usuarios.html — tabela de usuários', () => {
         expect(celulas[1].textContent).toBe(EMAIL_MALICIOSO);
         expect(celulas[2].textContent).toBe('<b>diretor</b>');
         // As ações continuam recebendo o id intacto pelo dataset.
-        expect(tbody.querySelector('[data-acao="excluirUsuario"]').dataset.email).toBe(EMAIL_MALICIOSO);
+        expect(tbody.querySelector('[data-acao="excluirUsuario"]').dataset.email).toBe(
+            EMAIL_MALICIOSO
+        );
     });
 });
 
