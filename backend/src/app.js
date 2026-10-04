@@ -251,6 +251,12 @@ app.use(
     })
 );
 
+// A mesma CSP sem handler inline, só em modo relatório (Issue #613, épico
+// #612): o navegador não bloqueia nada e avisa em POST /api/csp-relatorio cada
+// `onclick=` que a política nova barraria. Ver middleware/cspRelatorio.js.
+const cspRelatorio = require('./middleware/cspRelatorio');
+app.use(cspRelatorio.politicaEmRelatorio);
+
 // Cabeçalhos anti-clickjacking também nas respostas de arquivo estático e nas
 // páginas de erro, que em alguns caminhos não passam pela cadeia acima.
 app.use((req, res, next) => {
@@ -386,6 +392,7 @@ const {
     codeIpLimiter,
     codeContaLimiter,
     authPrefixLimiter,
+    cspRelatorioLimiter,
 } = require('./middleware/rateLimiters');
 
 // ============================================
@@ -660,6 +667,9 @@ function removerOperadoresMongoProfundo(alvo, profundidade = 0) {
 // ============================================
 // 1. Define o cookie CSRF em toda resposta
 app.use(csrfCookieSetter);
+// Relatório de violação da CSP (Issue #613): o navegador manda sozinho, sem
+// token CSRF — por isso fica antes do validador, com teto próprio por IP.
+app.post(cspRelatorio.ROTA, cspRelatorioLimiter, ...cspRelatorio.receberRelatorioCsp);
 // 2. Valida o token CSRF em rotas que mudam estado (POST/PUT/DELETE)
 app.use('/api', csrfValidator);
 
