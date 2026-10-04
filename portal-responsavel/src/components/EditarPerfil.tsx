@@ -9,6 +9,7 @@ import {
 import styles from '../styles/portal.module.scss';
 import type { AuthUser, Student } from '../types';
 import { getPhotoUrl } from '../utils/photoUtils';
+import TrocarEmail from './TrocarEmail';
 import Icon from './ui/Icon';
 
 interface EditarPerfilProps {
@@ -597,6 +598,9 @@ export default function EditarPerfil({ user, onSuccess }: EditarPerfilProps) {
           </button>
         </div>
       </form>
+
+      {/* Fora do <form> acima: o pedido de troca tem formulário próprio. */}
+      {activeTab === 'responsavel' && <TrocarEmail user={user} />}
     </article>
   );
 }
