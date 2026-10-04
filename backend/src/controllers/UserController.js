@@ -2545,7 +2545,8 @@ exports.updateProfile = async (req, res) => {
                 return res.status(400).json({
                     success: false,
                     codigo: 'EMAIL_NAO_ALTERAVEL',
-                    error: 'O e-mail da conta não pode ser alterado por aqui. Procure a secretaria da escola.',
+                    // O caminho é a troca com confirmação por link (Issue #609).
+                    error: 'O e-mail não muda por aqui. Use "Trocar e-mail" no perfil: enviamos um link de confirmação para o endereço novo.',
                 });
             }
         }
