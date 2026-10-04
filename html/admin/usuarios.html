@@ -327,6 +327,16 @@
             return String(v ?? '').replace(/[&<>"'`]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[c]);
         }
 
+        // Texto vindo do banco no innerHTML (Issue #631). Escapa < > e aspas,
+        // mas não o `&`: o servidor já grava `&`, `<` e `>` codificados, e
+        // codificar de novo mostraria "&amp;" na tela (ver escapeAttr em
+        // js/escape-html.js). Sem `<` literal, nenhum elemento novo nasce —
+        // vale também para o nome do login com Google, que não passa pelo
+        // filtro do servidor.
+        function textoHtml(v) {
+            return String(v ?? '').replace(/[<>"'`]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[c]);
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             const usersTable = document.getElementById('usersTable');
             const newUserForm = document.getElementById('newUserForm');
@@ -534,10 +544,10 @@
 
                 usersTable.innerHTML = users.map(u => `
                     <tr style="${u.isDuplicate ? 'opacity: 0.6;' : ''}">
-                        <td>${u.nome || 'Sem nome'} ${u.isDuplicate ? '<br><small>(Local/Duplicado)</small>' : ''}</td>
-                        <td>${u.email}</td>
-                        <td><span class="badge ${u.perfil === 'admin' ? 'badge-primary' : 'badge-secondary'}">${u.perfil || 'Indefinido'}</span></td>
-                        <td><span class="badge ${u.source === 'MongoDB' ? 'badge-success' : 'badge-info'}">${u.source}</span></td>
+                        <td>${textoHtml(u.nome || 'Sem nome')} ${u.isDuplicate ? '<br><small>(Local/Duplicado)</small>' : ''}</td>
+                        <td>${textoHtml(u.email)}</td>
+                        <td><span class="badge ${u.perfil === 'admin' ? 'badge-primary' : 'badge-secondary'}">${textoHtml(u.perfil || 'Indefinido')}</span></td>
+                        <td><span class="badge ${u.source === 'MongoDB' ? 'badge-success' : 'badge-info'}">${textoHtml(u.source)}</span></td>
                         <td class="actions">
                             ${(u.source !== 'MongoDB' && !u.isDuplicate) ? `
                                 <button class="btn-icon" data-acao="migrarUsuario" data-id="${attrHtml(u.id)}" data-origem="${attrHtml(u.source)}" data-email="${attrHtml(u.email)}" title="Subir para Nuvem" style="color: var(--primary-color)">
