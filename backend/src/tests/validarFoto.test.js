@@ -21,6 +21,13 @@ const ATAQUES = [
     'gridfs:abc def',
     'foto`x`',
     '<img src=x>',
+    // Issue #604: endereço de outro servidor só por https de host permitido.
+    'https://evil.example.com/rastreio.png',
+    'https://lh3.googleusercontent.com.evil.example.com/a.png',
+    'http://lh3.googleusercontent.com/a.png',
+    'http://evil.example.com/x.png',
+    '//evil.example.com/x.png',
+    'ftp://evil.example.com/x.png',
 ];
 
 const LEGITIMOS = [
@@ -31,7 +38,6 @@ const LEGITIMOS = [
     '65f1a2b3c4d5e6f708192a3b',
     '/api/files/65f1a2b3c4d5e6f708192a3b',
     'https://lh3.googleusercontent.com/a/ACg8ocK-abc=s96-c',
-    'https://sistema-escolar-bfty.onrender.com/api/files/65f1a2b3c4d5e6f708192a3b',
     'data:image/webp;base64,UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAwA0JaQAA3AA/vuUAAA=',
     'data:image/jpeg;base64,/9j/4AAQSkZJRg==',
     'foto_prof_123.webp',
@@ -44,6 +50,27 @@ describe('fotoValida (Issue #572)', () => {
 
     it.each(LEGITIMOS)('aceita %s', (valor) => {
         expect(fotoValida(valor)).toBe(true);
+    });
+
+    describe('URL do próprio sistema (Issue #604)', () => {
+        const PROPRIA =
+            'https://sistema-escolar-bfty.onrender.com/api/files/65f1a2b3c4d5e6f708192a3b';
+        const original = process.env.FRONTEND_URL;
+        afterEach(() => {
+            if (original === undefined) delete process.env.FRONTEND_URL;
+            else process.env.FRONTEND_URL = original;
+        });
+
+        it('aceita o host de FRONTEND_URL', () => {
+            process.env.FRONTEND_URL = 'https://sistema-escolar-bfty.onrender.com';
+            expect(fotoValida(PROPRIA)).toBe(true);
+        });
+
+        it('sem FRONTEND_URL, só o Google passa', () => {
+            delete process.env.FRONTEND_URL;
+            expect(fotoValida(PROPRIA)).toBe(false);
+            expect(fotoValida('https://lh5.googleusercontent.com/a/x')).toBe(true);
+        });
     });
 
     it('recusa tipos que não são string', () => {

@@ -10,7 +10,9 @@
  * Aqui só passa o que uma foto legítima do sistema é:
  *   - vazio/null (remove a foto);
  *   - data URI base64 de imagem raster (sem SVG, que carrega script);
- *   - URL https sem espaço, aspas, sinais de menor/maior ou crase;
+ *   - URL https sem espaço, aspas, sinais de menor/maior ou crase, de um host
+ *     que a CSP deixa carregar em `img-src`: o Google (foto do login) ou o
+ *     próprio sistema (`FRONTEND_URL`) — Issue #604;
  *   - referência interna: `gridfs:<id>`, id do GridFS, `/api/files/<id>`,
  *     nome de arquivo legado — só letras, dígitos e `:/_.-`, sem esquema
  *     executável (`javascript:`, `vbscript:`) nem `data:` fora do formato acima.
@@ -21,11 +23,46 @@ const URL_HTTPS = /^https:\/\/[^\s"'<>`\\]+$/i;
 const REFERENCIA_INTERNA = /^[A-Za-z0-9:/_.-]+$/;
 const ESQUEMA_PROIBIDO = /^\s*(javascript|vbscript|data|file|blob):/i;
 
+/** Foto do Google (login): o mesmo domínio que a CSP libera em `img-src`. */
+function hostDoGoogle(hostname) {
+    return /(^|\.)googleusercontent\.com$/i.test(String(hostname || ''));
+}
+
+function hostDoProprioSistema() {
+    try {
+        const url = process.env.FRONTEND_URL;
+        return url ? new URL(url).hostname.toLowerCase() : null;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * URL https de host permitido (Issue #604). Qualquer host passava: o navegador
+ * já recusava a imagem pela CSP, mas o banco guardava um valor que nunca
+ * aparece, e a única barreira contra o vazamento do IP de quem vê a foto
+ * ficava sendo a CSP.
+ */
+function urlHttpsPermitida(valor) {
+    if (!URL_HTTPS.test(valor)) return false;
+    let host;
+    try {
+        host = new URL(valor).hostname.toLowerCase();
+    } catch {
+        return false;
+    }
+    return hostDoGoogle(host) || host === hostDoProprioSistema();
+}
+
 function fotoValida(valor) {
     if (valor === undefined || valor === null || valor === '') return true;
     if (typeof valor !== 'string') return false;
     if (DATA_URI_IMAGEM.test(valor)) return true;
-    if (URL_HTTPS.test(valor)) return true;
+    // Endereço de outro servidor só por URL https de host permitido. Sem isto,
+    // `http://host/x.png` e `//host/x.png` passavam como "referência interna"
+    // (só têm letras, `:`, `/` e `.`) e escapavam da lista acima.
+    if (/^https:/i.test(valor)) return urlHttpsPermitida(valor);
+    if (valor.includes('://') || valor.startsWith('//')) return false;
     if (ESQUEMA_PROIBIDO.test(valor)) return false;
     return REFERENCIA_INTERNA.test(valor);
 }
@@ -50,4 +87,4 @@ function recusarFotoInvalida(req, res, next) {
     next();
 }
 
-module.exports = { fotoValida, recusarFotoInvalida };
+module.exports = { fotoValida, recusarFotoInvalida, hostDoGoogle };
