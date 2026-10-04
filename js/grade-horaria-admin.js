@@ -3,10 +3,17 @@
 // ============================================
 // Nome de professor, turma e disciplina são cadastrados por um usuário e
 // exibidos para outros. Ver js/escape-html.js.
-const _ESC_MAP_GH = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' };
+const _ESC_MAP_GH = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+    '`': '&#96;',
+};
 function escHtml(v) {
     if (v === null || v === undefined) return '';
-    return String(v).replace(/[&<>"'`]/g, c => _ESC_MAP_GH[c]);
+    return String(v).replace(/[&<>"'`]/g, (c) => _ESC_MAP_GH[c]);
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -40,20 +47,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Mapeamento de Ícones de Matérias
     const MATERIAS_ICONS = {
-        'Português': 'bi-book-fill',
-        'Matemática': 'bi-calculator-fill',
-        'Ciências': 'bi-flask',
-        'História': 'bi-clock-history',
-        'Geografia': 'bi-globe',
-        'Inglês': 'bi-translate',
+        Português: 'bi-book-fill',
+        Matemática: 'bi-calculator-fill',
+        Ciências: 'bi-flask',
+        História: 'bi-clock-history',
+        Geografia: 'bi-globe',
+        Inglês: 'bi-translate',
         'Educação Física': 'bi-trophy',
-        'Artes': 'bi-palette',
-        'Física': 'bi-magnet',
-        'Química': 'bi-radioactive',
-        'Biologia': 'bi-dna',
-        'Filosofia': 'bi-lightbulb',
-        'Sociologia': 'bi-people-fill',
-        'Ensino Religioso': 'bi-book-half'
+        Artes: 'bi-palette',
+        Física: 'bi-magnet',
+        Química: 'bi-radioactive',
+        Biologia: 'bi-dna',
+        Filosofia: 'bi-lightbulb',
+        Sociologia: 'bi-people-fill',
+        'Ensino Religioso': 'bi-book-half',
     };
 
     // Lista Padrão de Matérias (Fallback)
@@ -73,7 +80,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             selProf.innerHTML = '<option value="">Selecione o Professor...</option>';
             filterProf.innerHTML = '<option value="">Todos os Professores</option>';
 
-            allProfessors.forEach(p => {
+            allProfessors.forEach((p) => {
                 const opt = document.createElement('option');
                 opt.value = p._id; // ID do Teacher
                 const emailInfo = p.email ? ` - ${p.email}` : ' (Sem email)';
@@ -92,7 +99,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return idA.localeCompare(idB, undefined, { numeric: true, sensitivity: 'base' });
             });
             selTurma.innerHTML = '<option value="">Selecione a Turma...</option>';
-            allTurmas.forEach(t => {
+            allTurmas.forEach((t) => {
                 const opt = document.createElement('option');
                 opt.value = t._id;
                 // Fallback para nome da turma (t.nome ou t.id)
@@ -100,7 +107,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 opt.textContent = `${tNome} (${t.periodo || ''})`;
                 selTurma.appendChild(opt);
             });
-
         } catch (e) {
             console.error(e);
             showToast('Erro ao carregar listas.', 'error');
@@ -119,7 +125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             materiasDisponiveis = MATERIAS_PADRAO;
         }
 
-        materiasDisponiveis.forEach(materia => {
+        materiasDisponiveis.forEach((materia) => {
             const label = document.createElement('label');
             label.className = 'checkbox-card';
             label.style.padding = '0'; // Small adjustment if needed
@@ -155,17 +161,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     selProf.addEventListener('change', () => {
         const profId = selProf.value;
         if (!profId) {
-            document.getElementById('materiasGrid').innerHTML = '<p class="text-secondary" style="grid-column: 1/-1; padding: 1rem; text-align: center;">Selecione um professor.</p>';
+            document.getElementById('materiasGrid').innerHTML =
+                '<p class="text-secondary" style="grid-column: 1/-1; padding: 1rem; text-align: center;">Selecione um professor.</p>';
             return;
         }
 
-        const professor = allProfessors.find(p => p._id === profId || p.id === profId);
+        const professor = allProfessors.find((p) => p._id === profId || p.id === profId);
 
         if (professor) {
             // Se tiver matérias cadastradas, usa. Se não, usa padrão.
-            const materias = (professor.materias && professor.materias.length > 0)
-                ? professor.materias
-                : MATERIAS_PADRAO;
+            const materias =
+                professor.materias && professor.materias.length > 0
+                    ? professor.materias
+                    : MATERIAS_PADRAO;
 
             renderMaterias(materias);
         }
@@ -237,7 +245,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return a.horaInicio.localeCompare(b.horaInicio);
         });
 
-        lista.forEach(item => {
+        lista.forEach((item) => {
             // Lógica de Fallback para exibir nomes:
 
             // --- Professor ---
@@ -246,17 +254,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             // 1. Tenta pegar do objeto populado (virtual ou legacy)
             if (item.professorDetails && item.professorDetails.nome) {
                 nomeProf = item.professorDetails.nome;
-            } else if (item.professorId && typeof item.professorId === 'object' && item.professorId.nome) {
+            } else if (
+                item.professorId &&
+                typeof item.professorId === 'object' &&
+                item.professorId.nome
+            ) {
                 nomeProf = item.professorId.nome;
             } else {
                 // 2. Lookup manual no array de cache (allProfessors)
-                const idProcurado = String(item.professorId?._id || item.professorId?.id || item.professorId || '');
+                const idProcurado = String(
+                    item.professorId?._id || item.professorId?.id || item.professorId || ''
+                );
 
                 if (idProcurado) {
-                    const found = allProfessors.find(p =>
-                        String(p._id) === idProcurado ||
-                        String(p.id) === idProcurado ||
-                        String(p.idUsuario) === idProcurado
+                    const found = allProfessors.find(
+                        (p) =>
+                            String(p._id) === idProcurado ||
+                            String(p.id) === idProcurado ||
+                            String(p.idUsuario) === idProcurado
                     );
                     if (found) nomeProf = found.nome;
                     else nomeProf = 'ID: ' + idProcurado.substring(0, 8) + '...';
@@ -270,12 +285,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else if (item.turmaId && typeof item.turmaId === 'object' && item.turmaId.nome) {
                 nomeTurma = item.turmaId.nome;
             } else {
-                const idProcurado = String(item.turmaId?._id || item.turmaId?.id || item.turmaId || '');
+                const idProcurado = String(
+                    item.turmaId?._id || item.turmaId?.id || item.turmaId || ''
+                );
 
                 if (idProcurado) {
-                    const found = allTurmas.find(t =>
-                        String(t._id) === idProcurado ||
-                        String(t.id) === idProcurado
+                    const found = allTurmas.find(
+                        (t) => String(t._id) === idProcurado || String(t.id) === idProcurado
                     );
                     if (found) nomeTurma = found.nome || found.id || 'Sem Nome';
                     else nomeTurma = 'ID: ' + idProcurado;
@@ -310,7 +326,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             diaSemana: parseInt(diaSelect.value),
             horaInicio: document.getElementById('horaInicio').value,
             horaFim: document.getElementById('horaFim').value,
-            aulasSeguidas: parseInt(document.getElementById('aulasSeguidas').value)
+            aulasSeguidas: parseInt(document.getElementById('aulasSeguidas').value),
         };
 
         try {
@@ -328,7 +344,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
-                credentials: 'include'
+                credentials: 'include',
             });
             const json = await res.json();
 
@@ -339,7 +355,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
                 showToast(json.error || 'Erro ao salvar', 'error');
             }
-
         } catch (error) {
             console.error(error);
             showToast(error.message || 'Erro ao salvar', 'error');
