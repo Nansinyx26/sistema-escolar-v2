@@ -166,8 +166,8 @@ function renderHistorico() {
             <td data-label="Data" style="color:#71717a;white-space:nowrap;font-size:.82rem;">${data}</td>
             <td data-label="Status" style="text-align:center;">${statusBadge}</td>
             <td data-label="Ações" style="text-align:center;"><div style="display:flex;gap:4px;justify-content:center;">
-                <button class="mn-btn-icon view" onclick="verDetalhe('${c._id}')" title="Ver detalhes"><i class="bi bi-eye"></i></button>
-                <button class="mn-btn-icon" onclick="excluirComunicado('${c._id}')" title="Remover aviso"><i class="bi bi-trash"></i></button>
+                <button class="mn-btn-icon view" data-acao="verDetalhe" data-id="${escapeHtml(c._id)}" title="Ver detalhes"><i class="bi bi-eye"></i></button>
+                <button class="mn-btn-icon" data-acao="excluirComunicado" data-id="${escapeHtml(c._id)}" title="Remover aviso"><i class="bi bi-trash"></i></button>
             </div></td>
         </tr>`;
     }).join('');
@@ -311,13 +311,13 @@ window.converterParaWebP = _comprimirImagem;
 function renderPreviewImg() {
     const container = document.getElementById('previewImagens');
     if (!container) return;
-    container.innerHTML = imagensSelecionadas.map((src, i) => `<div class="mn-preview-item"><img src="${src}" alt="Preview"><button type="button" onclick="removeImg(${i})" title="Remover">&times;</button></div>`).join('');
+    container.innerHTML = imagensSelecionadas.map((src, i) => `<div class="mn-preview-item"><img src="${src}" alt="Preview"><button type="button" data-acao="removerImagem" data-indice="${i}" title="Remover">&times;</button></div>`).join('');
 }
 
 function renderPreviewFiles() {
     const container = document.getElementById('previewArquivos');
     if (!container) return;
-    container.innerHTML = arquivosSelecionados.map((f, i) => `<span class="mn-file-pill"><i class="bi bi-file-earmark-pdf"></i>${escapeHtml(f.nome)}<button type="button" onclick="removeFile(${i})">×</button></span>`).join('');
+    container.innerHTML = arquivosSelecionados.map((f, i) => `<span class="mn-file-pill"><i class="bi bi-file-earmark-pdf"></i>${escapeHtml(f.nome)}<button type="button" data-acao="removerArquivo" data-indice="${i}">×</button></span>`).join('');
 }
 
 window.removeImg = (i) => { imagensSelecionadas.splice(i, 1); renderPreviewImg(); };
@@ -360,3 +360,42 @@ window.showToast = showToast;
 function debounce(fn, ms) { let t; return function(...args) { clearTimeout(t); t = setTimeout(() => fn.apply(this, args), ms); }; }
 function escapeHtml(str) { if (!str) return ''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function getCsrfHeaders() { const m = document.cookie.match(/csrf_token=([^;]+)/); return m ? { 'X-CSRF-Token': decodeURIComponent(m[1]) } : {}; }
+
+// ─── Ações da página (épico #612) ─────────────────────────────────────────────
+// Ver js/acoes.js. Os comandos do editor e os campos de arquivo são listas
+// fechadas: o valor vem de um atributo.
+const COMANDOS_DO_EDITOR = ['bold', 'italic', 'underline', 'insertUnorderedList'];
+const ENTRADAS_DE_ARQUIVO = ['inputImagens', 'inputArquivos'];
+
+if (window.Acoes) {
+    window.Acoes.registrar({
+        formatar(_evento, el) {
+            if (COMANDOS_DO_EDITOR.includes(el.dataset.comando)) window.formatDoc(el.dataset.comando);
+        },
+        inserirEmoji: (_evento, el) => window.inserirEmoji(el.dataset.emoji),
+        escolherArquivo(evento, el) {
+            const entrada = ENTRADAS_DE_ARQUIVO.includes(el.dataset.entrada)
+                ? document.getElementById(el.dataset.entrada)
+                : null;
+            // O clique do próprio seletor sobe até a caixa: não reabre.
+            if (!entrada || evento.target === entrada) return;
+            entrada.click();
+        },
+        verDetalhe: (_evento, el) => window.verDetalhe(el.dataset.id),
+        excluirComunicado: (_evento, el) => window.excluirComunicado(el.dataset.id),
+        removerImagem: (_evento, el) => window.removeImg(Number(el.dataset.indice)),
+        removerArquivo: (_evento, el) => window.removeFile(Number(el.dataset.indice)),
+    });
+}
+
+// Logo que não carregou some (era o `onerror` inline). O evento `error` de
+// imagem não borbulha: escuta na captura, e confere a que já falhou antes.
+function ocultarImagemQuebrada(img) {
+    if (img && img.matches && img.matches('img[data-oculta-se-falhar]')) img.style.display = 'none';
+}
+document.addEventListener('error', (evento) => ocultarImagemQuebrada(evento.target), true);
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('img[data-oculta-se-falhar]').forEach((img) => {
+        if (img.complete && img.naturalWidth === 0) ocultarImagemQuebrada(img);
+    });
+});

@@ -53,7 +53,7 @@
 <header class="mn-header">
     <div class="mn-header-brand">
         <button type="button" id="btnVoltar" class="btn-voltar-global" data-fallback="/html/direcao/index.html" aria-label="Voltar para a página anterior"><i class="bi bi-arrow-left"></i><span>Voltar</span></button>
-        <img src="../../img/logo.svg" alt="Logo" onerror="this.style.display='none'" decoding="async" loading="eager" fetchpriority="high">
+        <img src="../../img/logo.svg" alt="Logo" data-oculta-se-falhar decoding="async" loading="eager" fetchpriority="high">
         <div>
             <h1>Mural Escolar <span id="liveBadge" class="mn-live-badge">● AO VIVO</span></h1>
             <p id="notifCount" class="mn-header-count">Carregando avisos...</p>
@@ -97,20 +97,20 @@
                 </div>
                 <div class="mn-editor-wrap">
                     <div class="mn-editor-toolbar">
-                        <button type="button" onclick="formatDoc('bold')" title="Negrito"><i class="bi bi-type-bold"></i></button>
-                        <button type="button" onclick="formatDoc('italic')" title="Itálico"><i class="bi bi-type-italic"></i></button>
-                        <button type="button" onclick="formatDoc('underline')" title="Sublinhado"><i class="bi bi-type-underline"></i></button>
-                        <button type="button" onclick="formatDoc('insertUnorderedList')" title="Lista"><i class="bi bi-list-ul"></i></button>
-                        <button type="button" onclick="inserirEmoji('📢')" title="Megafone">📢</button>
-                        <button type="button" onclick="inserirEmoji('⚠️')" title="Atenção">⚠️</button>
-                        <button type="button" onclick="inserirEmoji('✅')" title="OK">✅</button>
+                        <button type="button" data-acao="formatar" data-comando="bold" title="Negrito"><i class="bi bi-type-bold"></i></button>
+                        <button type="button" data-acao="formatar" data-comando="italic" title="Itálico"><i class="bi bi-type-italic"></i></button>
+                        <button type="button" data-acao="formatar" data-comando="underline" title="Sublinhado"><i class="bi bi-type-underline"></i></button>
+                        <button type="button" data-acao="formatar" data-comando="insertUnorderedList" title="Lista"><i class="bi bi-list-ul"></i></button>
+                        <button type="button" data-acao="inserirEmoji" data-emoji="📢" title="Megafone">📢</button>
+                        <button type="button" data-acao="inserirEmoji" data-emoji="⚠️" title="Atenção">⚠️</button>
+                        <button type="button" data-acao="inserirEmoji" data-emoji="✅" title="OK">✅</button>
                         <span class="mn-editor-char-count"><span id="charCount">0</span>/2000</span>
                     </div>
                     <div id="editorComunicado" contenteditable="true" placeholder="Escreva o conteúdo do aviso aqui..."></div>
                 </div>
                 <div class="mn-upload-row">
-                    <div class="mn-upload-box" onclick="document.getElementById('inputImagens').click()"><i class="bi bi-camera"></i> Adicionar Fotos<input type="file" id="inputImagens" multiple accept="image/*" style="display:none;"></div>
-                    <div class="mn-upload-box" onclick="document.getElementById('inputArquivos').click()"><i class="bi bi-paperclip"></i> Adicionar Anexos<input type="file" id="inputArquivos" multiple accept=".pdf,.doc,.docx" style="display:none;"></div>
+                    <div class="mn-upload-box" data-acao="escolherArquivo" data-entrada="inputImagens"><i class="bi bi-camera"></i> Adicionar Fotos<input type="file" id="inputImagens" multiple accept="image/*" style="display:none;"></div>
+                    <div class="mn-upload-box" data-acao="escolherArquivo" data-entrada="inputArquivos"><i class="bi bi-paperclip"></i> Adicionar Anexos<input type="file" id="inputArquivos" multiple accept=".pdf,.doc,.docx" style="display:none;"></div>
                 </div>
                 <div id="previewImagens" class="mn-preview-grid"></div>
                 <div id="previewArquivos"></div>
@@ -195,6 +195,8 @@
 <script src="../../js/filtro-palavroes.js?v=1.0"></script>
 <script src="../../js/filtro-palavroes-ui.js?v=1.0"></script>
 <script src="../../js/announcement-feed-react.js?v=3.1"></script>
+<!-- Delegação por data-acao (épico #612). -->
+<script src="../js/acoes.js"></script>
 <script src="direcao-notificacoes.js?v=4"></script>
 <script defer src="../../js/reactions.js"></script>
 

@@ -116,7 +116,7 @@
                 <p class="step-hint">
                     Aceita <strong>CSV / planilha</strong>. Para o <strong>PDF da SEDUC</strong>, use a importação na <a href="turma-alunos.html" style="color:#10b981;text-decoration:underline;">tela da turma</a>, que lê o arquivo no próprio servidor.
                     Colunas reconhecidas: nome, sobrenome, matricula, turma, nascimento, responsavel, telefone, cpfAluno.
-                    <a href="#" onclick="baixarModeloCSV(event)" style="color:#10b981;text-decoration:underline;">Baixar modelo CSV</a>.
+                    <a href="#" data-acao="baixarModeloCSV" style="color:#10b981;text-decoration:underline;">Baixar modelo CSV</a>.
                 </p>
                 <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Selecionar arquivo">
                     <i class="bi bi-file-earmark-arrow-up"></i>
@@ -144,11 +144,11 @@
                     </table>
                 </div>
                 <div style="margin-top:1.2rem;display:flex;gap:0.6rem;flex-wrap:wrap;">
-                    <button class="sec-btn sec-btn-primary" id="btnConfirmar" onclick="confirmarImportacao()">
+                    <button class="sec-btn sec-btn-primary" id="btnConfirmar" data-acao="confirmarImportacao">
                         <i class="bi bi-check-lg"></i> Salvar alunos no banco
                     </button>
-                    <button class="sec-btn sec-btn-outline" onclick="adicionarLinhaVazia()"><i class="bi bi-plus-lg"></i> Adicionar linha</button>
-                    <button class="sec-btn sec-btn-outline" onclick="resetarTudo()"><i class="bi bi-x-lg"></i> Cancelar</button>
+                    <button class="sec-btn sec-btn-outline" data-acao="adicionarLinhaVazia"><i class="bi bi-plus-lg"></i> Adicionar linha</button>
+                    <button class="sec-btn sec-btn-outline" data-acao="resetarTudo"><i class="bi bi-x-lg"></i> Cancelar</button>
                 </div>
             </div>
 
@@ -167,6 +167,8 @@
 <script defer src="../../js/database.js?v=3"></script>
 <script defer src="../../js/auth.js?v=3"></script>
 <script defer src="../../js/utils.js?v=3"></script>
+<!-- Delegação por data-acao (épico #612). -->
+<script src="../../js/acoes.js"></script>
 <script>
 const API = () => window.API_BASE_URL || '/api';
 const COLS = ['nome','sobrenome','matricula','turma','nascimento','responsavel','telefone','cpfAluno'];
@@ -298,7 +300,7 @@ function renderPreview() {
     const body = document.getElementById('previewBody');
     body.innerHTML = linhas.map((l, idx) => `<tr>${
         COLS.map(c => `<td><input class="sec-input" data-idx="${idx}" data-col="${c}" value="${escaparAttr(l[c])}"></td>`).join('')
-    }<td><button class="sec-btn sec-btn-danger" onclick="removerLinha(${idx})" aria-label="Remover linha"><i class="bi bi-trash"></i></button></td></tr>`).join('');
+    }<td><button class="sec-btn sec-btn-danger" data-acao="removerLinha" data-indice="${idx}" aria-label="Remover linha"><i class="bi bi-trash"></i></button></td></tr>`).join('');
     body.querySelectorAll('input').forEach(inp => {
         inp.addEventListener('input', () => { linhas[+inp.dataset.idx][inp.dataset.col] = inp.value; });
     });
@@ -369,6 +371,17 @@ function mostrarResultado(data) {
     document.getElementById('reviewCard').style.display = 'none';
     document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
     toast(`${data.totalCriados} aluno(s) salvos no banco.`);
+}
+
+// Ações da página (épico #612). Ver js/acoes.js.
+if (window.Acoes) {
+    window.Acoes.registrar({
+        baixarModeloCSV: (evento) => baixarModeloCSV(evento),
+        confirmarImportacao: () => confirmarImportacao(),
+        adicionarLinhaVazia: () => adicionarLinhaVazia(),
+        resetarTudo: () => resetarTudo(),
+        removerLinha: (_evento, el) => removerLinha(Number(el.dataset.indice)),
+    });
 }
 </script>
 
