@@ -101,15 +101,15 @@
                         <p class="page-header-ref">Ref: 25/02/2026</p>
                     </div>
                     <div class="header-actions header-actions-grid">
-                        <button class="btn btn-primary btn-mobile-full" onclick="mostrarTabela('GERAL', 'geral')">
+                        <button class="btn btn-primary btn-mobile-full" data-acao="mostrarTabela" data-tabela="GERAL" data-tipo="geral">
                             <i class="bi bi-table"></i> Visão Geral
                         </button>
                         <label for="input-excel-header" class="btn btn-outline btn-mobile-full" style="cursor:pointer;margin:0;">
                             <i class="bi bi-file-earmark-excel"></i> Importar Excel
-                            <input type="file" id="input-excel-header" accept=".xlsx,.xls" style="display:none" onchange="handleExcelImport(this)">
+                            <input type="file" id="input-excel-header" accept=".xlsx,.xls" style="display:none" data-acao-change="importarExcel">
                         </label>
                         <button id="btn-seed-db-header" class="btn btn-outline btn-mobile-full" title="Sincronizar banco" style="display:none;"
-                            onclick="HorarioSync.seed().then(r => alert(r.data ? r.data.message : 'Erro no seed'))">
+                            data-acao="sincronizarHorario">
                             <i class="bi bi-cloud-upload"></i> Sincronizar
                         </button>
                         <a href="../Horario Jaguari 2026/HORARIO_JAGUARI_2026_CONSOLIDADO.xlsx" download class="btn btn-outline btn-mobile-full">
@@ -122,7 +122,7 @@
                     <div class="filtros-grid">
                         <div class="filtro-group">
                             <label for="sel-turma"><i class="bi bi-people"></i> Por Turma:</label>
-                            <select id="sel-turma" class="form-input" onchange="mostrarTabela(this.value, 'turma')">
+                            <select id="sel-turma" class="form-input" data-acao-change="mostrarTabelaEscolhida" data-tipo="turma">
                                 <option value="">Selecione a turma...</option>
                                 <option value="1A">1º Ano A</option>
                                 <option value="1B">1º Ano B</option>
@@ -145,7 +145,7 @@
                         <div class="filtro-divider">ou</div>
                         <div class="filtro-group">
                             <label for="sel-prof"><i class="bi bi-person-badge"></i> Por Professor:</label>
-                            <select id="sel-prof" class="form-input" onchange="mostrarTabela(this.value, 'prof')">
+                            <select id="sel-prof" class="form-input" data-acao-change="mostrarTabelaEscolhida" data-tipo="prof">
                                 <option value="">Selecione o professor...</option>
                                 <option value="EDILENE">Edilene (P.A. Aux. Dir.)</option>
                                 <option value="MARCOS">Marcos (Ed. Física)</option>
@@ -163,12 +163,12 @@
                             </select>
                         </div>
                         <div class="filtro-group filtro-actions">
-                            <button class="btn btn-primary btn-mobile-full" onclick="mostrarTabela('GERAL', 'geral')">
+                            <button class="btn btn-primary btn-mobile-full" data-acao="mostrarTabela" data-tabela="GERAL" data-tipo="geral">
                                 <i class="bi bi-table"></i> Visão Geral
                             </button>
                             <label for="input-excel" class="btn btn-outline btn-mobile-full" style="cursor: pointer; margin: 0;">
                                 <i class="bi bi-file-earmark-excel"></i> Importar Excel
-                                <input type="file" id="input-excel" accept=".xlsx, .xls" style="display: none;" onchange="handleExcelImport(this)">
+                                <input type="file" id="input-excel" accept=".xlsx, .xls" style="display: none;" data-acao-change="importarExcel">
                             </label>
                         </div>
                     </div>
@@ -197,41 +197,41 @@
                                 <i class="bi bi-grid-3x3-gap-fill" style="color: var(--primary);"></i> Horários por Turma
                             </h4>
                             <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 2rem;">
-                                <button onclick="mostrarTabela('1A', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">1º A</button>
-                                <button onclick="mostrarTabela('1B', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">1º B</button>
-                                <button onclick="mostrarTabela('1C', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">1º C</button>
-                                <button onclick="mostrarTabela('2A', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">2º A</button>
-                                <button onclick="mostrarTabela('2B', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">2º B</button>
-                                <button onclick="mostrarTabela('2C', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">2º C</button>
-                                <button onclick="mostrarTabela('3A', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">3º A</button>
-                                <button onclick="mostrarTabela('3B', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">3º B</button>
-                                <button onclick="mostrarTabela('3C', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">3º C</button>
-                                <button onclick="mostrarTabela('4A', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">4º A</button>
-                                <button onclick="mostrarTabela('4B', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">4º B</button>
-                                <button onclick="mostrarTabela('4C', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">4º C</button>
-                                <button onclick="mostrarTabela('5A', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">5º A</button>
-                                <button onclick="mostrarTabela('5B', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">5º B</button>
-                                <button onclick="mostrarTabela('5C', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">5º C</button>
-                                <button onclick="mostrarTabela('5D', 'turma')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">5º D</button>
+                                <button data-acao="mostrarTabela" data-tabela="1A" data-tipo="turma" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">1º A</button>
+                                <button data-acao="mostrarTabela" data-tabela="1B" data-tipo="turma" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">1º B</button>
+                                <button data-acao="mostrarTabela" data-tabela="1C" data-tipo="turma" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">1º C</button>
+                                <button data-acao="mostrarTabela" data-tabela="2A" data-tipo="turma" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">2º A</button>
+                                <button data-acao="mostrarTabela" data-tabela="2B" data-tipo="turma" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">2º B</button>
+                                <button data-acao="mostrarTabela" data-tabela="2C" data-tipo="turma" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">2º C</button>
+                                <button data-acao="mostrarTabela" data-tabela="3A" data-tipo="turma" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">3º A</button>
+                                <button data-acao="mostrarTabela" data-tabela="3B" data-tipo="turma" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">3º B</button>
+                                <button data-acao="mostrarTabela" data-tabela="3C" data-tipo="turma" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">3º C</button>
+                                <button data-acao="mostrarTabela" data-tabela="4A" data-tipo="turma" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">4º A</button>
+                                <button data-acao="mostrarTabela" data-tabela="4B" data-tipo="turma" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">4º B</button>
+                                <button data-acao="mostrarTabela" data-tabela="4C" data-tipo="turma" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">4º C</button>
+                                <button data-acao="mostrarTabela" data-tabela="5A" data-tipo="turma" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">5º A</button>
+                                <button data-acao="mostrarTabela" data-tabela="5B" data-tipo="turma" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">5º B</button>
+                                <button data-acao="mostrarTabela" data-tabela="5C" data-tipo="turma" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">5º C</button>
+                                <button data-acao="mostrarTabela" data-tabela="5D" data-tipo="turma" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">5º D</button>
                             </div>
                             
                             <h4 style="margin-bottom: 1rem; color: var(--text-primary); font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
                                 <i class="bi bi-person-badge-fill" style="color: var(--primary);"></i> Horários por Professor / Especialista
                             </h4>
                             <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                                <button onclick="mostrarTabela('EDILENE', 'prof')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Edilene (PA Aux. Dir)</button>
-                                <button onclick="mostrarTabela('MARCOS', 'prof')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Marcos (Ed. Física)</button>
-                                <button onclick="mostrarTabela('MARJORIE', 'prof')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Marjorie (Ed. Física)</button>
-                                <button onclick="mostrarTabela('MIRIAN', 'prof')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Mirian (Artes)</button>
-                                <button onclick="mostrarTabela('ARTES1ANO', 'prof')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Bianca (Artes 1º)</button>
-                                <button onclick="mostrarTabela('INGLS', 'prof')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Marcelo (Inglês)</button>
-                                <button onclick="mostrarTabela('OFLEITURA', 'prof')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Raquel (Leitura)</button>
-                                <button onclick="mostrarTabela('OFMAKER', 'prof')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Sirlene (Of. Maker)</button>
-                                <button onclick="mostrarTabela('OFSEBRAE', 'prof')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Cherlane (Sebrae)</button>
-                                <button onclick="mostrarTabela('PAMARCIA', 'prof')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Marcia (PA)</button>
-                                <button onclick="mostrarTabela('PADIRCEU', 'prof')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Dirceu (PA)</button>
-                                <button onclick="mostrarTabela('PALOURDES', 'prof')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Lourdes (PA)</button>
-                                <button onclick="mostrarTabela('PAPIPOCA', 'prof')" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Pipoca (PA)</button>
+                                <button data-acao="mostrarTabela" data-tabela="EDILENE" data-tipo="prof" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Edilene (PA Aux. Dir)</button>
+                                <button data-acao="mostrarTabela" data-tabela="MARCOS" data-tipo="prof" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Marcos (Ed. Física)</button>
+                                <button data-acao="mostrarTabela" data-tabela="MARJORIE" data-tipo="prof" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Marjorie (Ed. Física)</button>
+                                <button data-acao="mostrarTabela" data-tabela="MIRIAN" data-tipo="prof" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Mirian (Artes)</button>
+                                <button data-acao="mostrarTabela" data-tabela="ARTES1ANO" data-tipo="prof" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Bianca (Artes 1º)</button>
+                                <button data-acao="mostrarTabela" data-tabela="INGLS" data-tipo="prof" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Marcelo (Inglês)</button>
+                                <button data-acao="mostrarTabela" data-tabela="OFLEITURA" data-tipo="prof" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Raquel (Leitura)</button>
+                                <button data-acao="mostrarTabela" data-tabela="OFMAKER" data-tipo="prof" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Sirlene (Of. Maker)</button>
+                                <button data-acao="mostrarTabela" data-tabela="OFSEBRAE" data-tipo="prof" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Cherlane (Sebrae)</button>
+                                <button data-acao="mostrarTabela" data-tabela="PAMARCIA" data-tipo="prof" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Marcia (PA)</button>
+                                <button data-acao="mostrarTabela" data-tabela="PADIRCEU" data-tipo="prof" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Dirceu (PA)</button>
+                                <button data-acao="mostrarTabela" data-tabela="PALOURDES" data-tipo="prof" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Lourdes (PA)</button>
+                                <button data-acao="mostrarTabela" data-tabela="PAPIPOCA" data-tipo="prof" class="btn btn-outline btn-sm" style="font-size: 0.8rem; padding: 6px 12px;">Pipoca (PA)</button>
                             </div>
                         </div>
                     </div>
@@ -250,6 +250,8 @@
     <script src="../../js/api-config.js"></script>
     <script src="../../js/database.js"></script>
     <script src="../../js/auth.js"></script>
+    <!-- Delegação por data-acao (épico #612): os handlers saíram do HTML. -->
+    <script src="../../js/acoes.js"></script>
     <script src="../../direcao/horario-jaguari.js"></script>
     <script src="../../direcao/horario-sync.js"></script>
     <script src="../../direcao/horario-editor.js"></script>
