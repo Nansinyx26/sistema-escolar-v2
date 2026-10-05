@@ -157,11 +157,12 @@ function addDocs(files) {
         const item = document.createElement('div');
         item.className = 'doc-item';
         item.id = 'doc_' + id;
+        // O nome do arquivo vem de quem escolheu o arquivo: entra escapado.
         item.innerHTML = `
             <i class="bi bi-file-earmark-text"></i>
-            <span class="doc-item-name">${file.name}</span>
+            <span class="doc-item-name">${escAttr(file.name)}</span>
             <span class="doc-item-size">${(file.size / 1024).toFixed(0)} KB</span>
-            <button class="doc-item-remove" onclick="removeDoc('${id}')" title="Remover">
+            <button type="button" class="doc-item-remove" data-acao="removerDocumento" data-id="${id}" title="Remover">
                 <i class="bi bi-x"></i>
             </button>`;
         list.appendChild(item);
@@ -207,15 +208,15 @@ function renderPessoasAutorizadas() {
             (p, i) => `
         <div class="ca-grid ca-grid-4" style="margin-bottom:.5rem;align-items:end">
             <div class="ca-field"><label>Nome</label>
-                <input type="text" value="${escAttr(p.nome)}" onchange="_pessoasAutorizadas[${i}].nome=this.value"></div>
+                <input type="text" value="${escAttr(p.nome)}" data-acao-change="editarPessoaAutorizada" data-indice="${i}" data-atributo="nome"></div>
             <div class="ca-field"><label>Parentesco</label>
-                <input type="text" value="${escAttr(p.parentesco)}" onchange="_pessoasAutorizadas[${i}].parentesco=this.value"></div>
+                <input type="text" value="${escAttr(p.parentesco)}" data-acao-change="editarPessoaAutorizada" data-indice="${i}" data-atributo="parentesco"></div>
             <div class="ca-field"><label>Telefone</label>
-                <input type="tel" value="${escAttr(p.telefone)}" oninput="maskTel(this);_pessoasAutorizadas[${i}].telefone=this.value"></div>
+                <input type="tel" value="${escAttr(p.telefone)}" data-acao-input="editarPessoaAutorizada" data-indice="${i}" data-atributo="telefone" data-mascara="tel"></div>
             <div class="ca-field"><label>Documento</label>
                 <div style="display:flex;gap:.5rem">
-                    <input type="text" value="${escAttr(p.documento)}" onchange="_pessoasAutorizadas[${i}].documento=this.value" style="flex:1">
-                    <button type="button" class="doc-item-remove" onclick="removePessoaAutorizada(${i})"><i class="bi bi-x"></i></button>
+                    <input type="text" value="${escAttr(p.documento)}" data-acao-change="editarPessoaAutorizada" data-indice="${i}" data-atributo="documento" style="flex:1">
+                    <button type="button" class="doc-item-remove" data-acao="removerPessoaAutorizada" data-indice="${i}" aria-label="Remover pessoa autorizada"><i class="bi bi-x"></i></button>
                 </div></div>
         </div>`
         )
@@ -526,3 +527,70 @@ async function buscarCEP(cep) {
         // ViaCEP indisponível — usuário preenche manualmente
     }
 }
+
+// ─── Ações da página (épico #612) ─────────────────────────────────────────────
+// Os handlers inline (`oninput="onFieldEdit(...)"`) viraram `data-acao*` no
+// HTML; aqui está o que cada ação faz. Ver js/acoes.js.
+
+const MASCARAS = { cpf: maskCPF, tel: maskTel, cep: maskCEP };
+const CAMPOS_DA_PESSOA = ['nome', 'parentesco', 'telefone', 'documento'];
+
+function aplicarMascara(el) {
+    const mascara = MASCARAS[el.dataset.mascara];
+    if (mascara) mascara(el);
+}
+
+if (window.Acoes) {
+    window.Acoes.registrar({
+        editarCampo(_evento, el) {
+            aplicarMascara(el);
+            onFieldEdit(el.dataset.secao, el.dataset.campo);
+        },
+        editarPcd(_evento, el) {
+            onFieldEdit(el.dataset.secao, el.dataset.campo);
+            togglePcd(el.value);
+        },
+        mascarar(_evento, el) {
+            aplicarMascara(el);
+        },
+        adicionarPessoaAutorizada() {
+            addPessoaAutorizada();
+        },
+        editarPessoaAutorizada(_evento, el) {
+            const pessoa = _pessoasAutorizadas[Number(el.dataset.indice)];
+            const atributo = el.dataset.atributo;
+            if (!pessoa || !CAMPOS_DA_PESSOA.includes(atributo)) return;
+            aplicarMascara(el);
+            pessoa[atributo] = el.value;
+        },
+        removerPessoaAutorizada(_evento, el) {
+            removePessoaAutorizada(Number(el.dataset.indice));
+        },
+        alternarConducao() {
+            toggleConducaoFields();
+        },
+        alternarAntitermico() {
+            toggleAntitermicoFields();
+        },
+        escolherDocumentos(evento) {
+            // O clique do próprio seletor sobe até a zona: não reabre.
+            if (evento.target.id === 'docInput') return;
+            document.getElementById('docInput').click();
+        },
+        adicionarDocumentos(_evento, el) {
+            addDocs(el.files);
+        },
+        removerDocumento(_evento, el) {
+            removeDoc(el.dataset.id);
+        },
+        conferirConsentimentos() {
+            checkConsents();
+        },
+    });
+}
+
+// `blur` não borbulha; `focusout` sim — e o CEP busca o endereço ao sair do campo.
+document.addEventListener('focusout', (evento) => {
+    const el = evento.target;
+    if (el && el.matches && el.matches('[data-busca-cep]')) buscarCEP(el.value);
+});
