@@ -165,6 +165,7 @@ ninguém perceber. Valor inválido volta para o padrão com aviso no log.
 | `RATE_LIMIT_LOGIN_IP` | `15` | Teto por IP de forgot/reset-password (15 min) |
 | `RATE_LIMIT_TROCA_EMAIL` | `5` | Pedidos de troca de e-mail por conta, por hora (`POST /api/auth/email/solicitar-troca`) |
 | `RATE_LIMIT_TROCA_EMAIL_CONFIRMACAO` | `10` | Confirmações de troca de e-mail por conta, por hora |
+| `RATE_LIMIT_CSP_RELATORIO` | `60` | Avisos de violação da CSP por IP, por minuto (`POST /api/csp-relatorio`) |
 
 Fora de produção os tetos globais são 10 vezes maiores, para o desenvolvimento
 local não esbarrar neles. Em teste os limitadores ficam desligados; a suíte que
