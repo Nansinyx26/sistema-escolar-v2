@@ -183,16 +183,7 @@ async function gerarDocumento() {
 function imprimirDoc() {
     const content = document.getElementById('docContent').innerHTML;
     const w = window.open('', '_blank');
-    w.document.write(`<html><head><title>Documento</title><style>body{font-family:serif;padding:2rem;line-height:1.6;}table{width:100%;border-collapse:collapse;}th,td{border:1px solid #333;padding:8px;text-align:left;}</style></head><body>${content}
-<script src="../../js/click-sound.js" defer></script>
-    <script defer src="../../js/reactions.js"></script>
-    <script defer src="../../js/push-notifications.js"></script>
-    <script defer src="../../js/pwa-install.js"></script>
-    <script defer src="../../js/settings-drawer.js"></script>
-    <script defer src="../../js/observability.js"></script>
-    <script defer src="../../js/motion.js"></script>
-    <script defer src="../../js/acessibilidade.js"></script>
-</body></html>`);
+    w.document.write(`<html><head><title>Documento</title><style>body{font-family:serif;padding:2rem;line-height:1.6;}table{width:100%;border-collapse:collapse;}th,td{border:1px solid #333;padding:8px;text-align:left;}</style></head><body>${content}</body></html>`);
     w.document.close();
     w.print();
 }
@@ -222,5 +213,15 @@ async function carregarHistorico() {
     <!-- Lucide line icons (padronização) + shim de compatibilidade Bootstrap Icons -->
     <script src="../../js/libs/lucide.min.js"></script>
     <script src="../../js/libs/lucide-init.js"></script>
+    <!-- Estavam DENTRO da string do imprimirDoc(), onde cortavam o script da
+         página (Issue #632). O lugar delas é aqui, como nas outras páginas. -->
+    <script src="../../js/click-sound.js" defer></script>
+    <script defer src="../../js/reactions.js"></script>
+    <script defer src="../../js/push-notifications.js"></script>
+    <script defer src="../../js/pwa-install.js"></script>
+    <script defer src="../../js/settings-drawer.js"></script>
+    <script defer src="../../js/observability.js"></script>
+    <script defer src="../../js/motion.js"></script>
+    <script defer src="../../js/acessibilidade.js"></script>
 </body>
 </html>
