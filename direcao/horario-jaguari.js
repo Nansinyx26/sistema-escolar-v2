@@ -3507,13 +3507,13 @@ function gerarTabelaGeralHTML() {
             </table>
         </div>
 
-        <button type="button" class="mobile-toggle-table" id="btn-toggle-table" onclick="toggleMobileTableView()">
+        <button type="button" class="mobile-toggle-table" id="btn-toggle-table" data-acao="alternarTabelaMobile">
             <i class="bi bi-table"></i> Ver Tabela Completa
         </button>
         <div class="horario-cards-mobile" id="horario-cards-mobile"></div>
         
         <div class="legenda-accordion">
-            <button type="button" class="legenda-accordion-btn" onclick="toggleLegendaAccordion(this)" aria-expanded="false">
+            <button type="button" class="legenda-accordion-btn" data-acao="alternarLegenda" aria-expanded="false">
                 <span>▼ Legenda</span>
             </button>
             <div class="legenda-accordion-content" hidden>
@@ -3534,7 +3534,7 @@ function gerarTabelaGeralHTML() {
             </div>
         </div>
             </div>
-            <button type="button" class="legenda-accordion-btn" onclick="toggleLegendaAccordion(this)" aria-expanded="false">
+            <button type="button" class="legenda-accordion-btn" data-acao="alternarLegenda" aria-expanded="false">
                 <span>▼ Reunião de Pares</span>
             </button>
             <div class="legenda-accordion-content" hidden>
@@ -3549,7 +3549,7 @@ function gerarTabelaGeralHTML() {
                 <p>Educação Física - Segunda - 6ª aula</p>
             </div>
             </div>
-            <button type="button" class="legenda-accordion-btn" onclick="toggleLegendaAccordion(this)" aria-expanded="false">
+            <button type="button" class="legenda-accordion-btn" data-acao="alternarLegenda" aria-expanded="false">
                 <span>▼ Salas e Professores</span>
             </button>
             <div class="legenda-accordion-content" hidden>
@@ -3587,41 +3587,41 @@ function gerarTabelaGeralHTML() {
                 <i class="bi bi-lightning-charge-fill"></i> Acesso Rápido - Horários por Turma
             </h3>
             <div class="quick-access-scroll">
-                <button onclick="mostrarTabela('1A', 'turma')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">1º A</button>
-                <button onclick="mostrarTabela('1B', 'turma')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">1º B</button>
-                <button onclick="mostrarTabela('1C', 'turma')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">1º C</button>
-                <button onclick="mostrarTabela('2A', 'turma')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">2º A</button>
-                <button onclick="mostrarTabela('2B', 'turma')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">2º B</button>
-                <button onclick="mostrarTabela('2C', 'turma')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">2º C</button>
-                <button onclick="mostrarTabela('3A', 'turma')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">3º A</button>
-                <button onclick="mostrarTabela('3B', 'turma')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">3º B</button>
-                <button onclick="mostrarTabela('3C', 'turma')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">3º C</button>
-                <button onclick="mostrarTabela('4A', 'turma')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">4º A</button>
-                <button onclick="mostrarTabela('4B', 'turma')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">4º B</button>
-                <button onclick="mostrarTabela('4C', 'turma')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">4º C</button>
-                <button onclick="mostrarTabela('5A', 'turma')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">5º A</button>
-                <button onclick="mostrarTabela('5B', 'turma')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">5º B</button>
-                <button onclick="mostrarTabela('5C', 'turma')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">5º C</button>
-                <button onclick="mostrarTabela('5D', 'turma')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">5º D</button>
+                <button data-acao="mostrarTabela" data-tabela="1A" data-tipo="turma" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">1º A</button>
+                <button data-acao="mostrarTabela" data-tabela="1B" data-tipo="turma" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">1º B</button>
+                <button data-acao="mostrarTabela" data-tabela="1C" data-tipo="turma" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">1º C</button>
+                <button data-acao="mostrarTabela" data-tabela="2A" data-tipo="turma" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">2º A</button>
+                <button data-acao="mostrarTabela" data-tabela="2B" data-tipo="turma" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">2º B</button>
+                <button data-acao="mostrarTabela" data-tabela="2C" data-tipo="turma" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">2º C</button>
+                <button data-acao="mostrarTabela" data-tabela="3A" data-tipo="turma" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">3º A</button>
+                <button data-acao="mostrarTabela" data-tabela="3B" data-tipo="turma" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">3º B</button>
+                <button data-acao="mostrarTabela" data-tabela="3C" data-tipo="turma" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">3º C</button>
+                <button data-acao="mostrarTabela" data-tabela="4A" data-tipo="turma" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">4º A</button>
+                <button data-acao="mostrarTabela" data-tabela="4B" data-tipo="turma" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">4º B</button>
+                <button data-acao="mostrarTabela" data-tabela="4C" data-tipo="turma" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">4º C</button>
+                <button data-acao="mostrarTabela" data-tabela="5A" data-tipo="turma" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">5º A</button>
+                <button data-acao="mostrarTabela" data-tabela="5B" data-tipo="turma" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">5º B</button>
+                <button data-acao="mostrarTabela" data-tabela="5C" data-tipo="turma" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">5º C</button>
+                <button data-acao="mostrarTabela" data-tabela="5D" data-tipo="turma" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">5º D</button>
             </div>
             
             <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; color: #a78bfa; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid rgba(124, 58, 237, 0.1); padding-bottom: 0.5rem;">
                 <i class="bi bi-person-badge-fill"></i> Horários por Professor / Especialista
             </h3>
             <div class="quick-access-scroll">
-                <button onclick="mostrarTabela('EDILENE', 'prof')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Edilene (PA Aux. Dir)</button>
-                <button onclick="mostrarTabela('MARCOS', 'prof')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Marcos (Ed. Física)</button>
-                <button onclick="mostrarTabela('MARJORIE', 'prof')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Marjorie (Ed. Física)</button>
-                <button onclick="mostrarTabela('MIRIAN', 'prof')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Mirian (Artes)</button>
-                <button onclick="mostrarTabela('ARTES1ANO', 'prof')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Bianca (Artes 1º)</button>
-                <button onclick="mostrarTabela('INGLS', 'prof')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Marcelo (Inglês)</button>
-                <button onclick="mostrarTabela('OFLEITURA', 'prof')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Raquel (Leitura)</button>
-                <button onclick="mostrarTabela('OFMAKER', 'prof')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Sirlene (Of. Maker)</button>
-                <button onclick="mostrarTabela('OFSEBRAE', 'prof')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Cherlane (Sebrae)</button>
-                <button onclick="mostrarTabela('PAMARCIA', 'prof')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Marcia (PA)</button>
-                <button onclick="mostrarTabela('PADIRCEU', 'prof')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Dirceu (PA)</button>
-                <button onclick="mostrarTabela('PALOURDES', 'prof')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Lourdes (PA)</button>
-                <button onclick="mostrarTabela('PAPIPOCA', 'prof')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Pipoca (PA)</button>
+                <button data-acao="mostrarTabela" data-tabela="EDILENE" data-tipo="prof" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Edilene (PA Aux. Dir)</button>
+                <button data-acao="mostrarTabela" data-tabela="MARCOS" data-tipo="prof" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Marcos (Ed. Física)</button>
+                <button data-acao="mostrarTabela" data-tabela="MARJORIE" data-tipo="prof" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Marjorie (Ed. Física)</button>
+                <button data-acao="mostrarTabela" data-tabela="MIRIAN" data-tipo="prof" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Mirian (Artes)</button>
+                <button data-acao="mostrarTabela" data-tabela="ARTES1ANO" data-tipo="prof" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Bianca (Artes 1º)</button>
+                <button data-acao="mostrarTabela" data-tabela="INGLS" data-tipo="prof" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Marcelo (Inglês)</button>
+                <button data-acao="mostrarTabela" data-tabela="OFLEITURA" data-tipo="prof" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Raquel (Leitura)</button>
+                <button data-acao="mostrarTabela" data-tabela="OFMAKER" data-tipo="prof" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Sirlene (Of. Maker)</button>
+                <button data-acao="mostrarTabela" data-tabela="OFSEBRAE" data-tipo="prof" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Cherlane (Sebrae)</button>
+                <button data-acao="mostrarTabela" data-tabela="PAMARCIA" data-tipo="prof" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Marcia (PA)</button>
+                <button data-acao="mostrarTabela" data-tabela="PADIRCEU" data-tipo="prof" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Dirceu (PA)</button>
+                <button data-acao="mostrarTabela" data-tabela="PALOURDES" data-tipo="prof" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Lourdes (PA)</button>
+                <button data-acao="mostrarTabela" data-tabela="PAPIPOCA" data-tipo="prof" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.85rem;">Pipoca (PA)</button>
             </div>
         </div>
     </div>`;
@@ -3715,7 +3715,7 @@ function renderMobileCards() {
 
         const turmaDisplay = id.replace(/(\d)([A-D])/, '$1º $2');
         html += `
-            <div class="horario-card-turma" onclick="mostrarTabela('${id}', 'turma')">
+            <div class="horario-card-turma" data-acao="mostrarTabela" data-tabela="${id}" data-tipo="turma">
                 <div class="horario-card-header">
                     ${turmaDisplay}
                     <div style="font-size:0.75rem;opacity:0.85;font-weight:400;margin-top:2px">Profª ${profName}</div>
@@ -3790,4 +3790,27 @@ function toggleLegendaAccordion(btn) {
     } else {
         span.innerHTML = span.innerHTML.replace('▼', '▲');
     }
+}
+
+// ─── Ações da página (épico #612) ─────────────────────────────────────────────
+// Os handlers inline viraram `data-acao*` no HTML e nas strings da grade; aqui
+// está o que cada ação faz. Ver js/acoes.js.
+if (window.Acoes) {
+    window.Acoes.registrar({
+        mostrarTabela(_evento, el) {
+            mostrarTabela(el.dataset.tabela, el.dataset.tipo);
+        },
+        mostrarTabelaEscolhida(_evento, el) {
+            mostrarTabela(el.value, el.dataset.tipo);
+        },
+        alternarTabelaMobile() {
+            toggleMobileTableView();
+        },
+        alternarLegenda(_evento, el) {
+            toggleLegendaAccordion(el);
+        },
+        sincronizarHorario() {
+            window.HorarioSync.seed().then((r) => alert(r.data ? r.data.message : 'Erro no seed'));
+        },
+    });
 }
