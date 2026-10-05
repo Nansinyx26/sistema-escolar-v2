@@ -307,6 +307,49 @@ describe('a tela real, com a API simulada', () => {
     });
 });
 
+describe('?aluno= abre a ficha pedida (link da edição do aluno, Issue #636)', () => {
+    const OUTRO_ID = '65f0000000000000000000a2';
+    const rotas = {
+        '/api/secretaria/autorizacoes/aluno/': detalhe(TIPOS.map(() => null)),
+        '/api/secretaria/autorizacoes': {
+            success: true,
+            alunos: [
+                { id: ALUNO_ID, nome: 'Bruno Alves', turma: '3ºB', pendentes: 7 },
+                { id: OUTRO_ID, nome: 'Carla Dias', turma: '5ºA', pendentes: 7 },
+            ],
+        },
+        '/api/documentos-responsaveis': { success: true, data: [] },
+        '/api/alunos': { success: true, data: [] },
+        '/api/turmas': { success: true, data: [] },
+    };
+    const nomeNaFicha = () => document.getElementById('detailStudentName').textContent.trim();
+    const pediuDetalheDe = (id) =>
+        global.fetch.mock.calls.some(([url]) =>
+            String(url).startsWith(`/api/secretaria/autorizacoes/aluno/${id}`)
+        );
+
+    afterEach(() => {
+        window.history.replaceState({}, '', '/');
+    });
+
+    it('com o id de um aluno da lista, abre esse aluno', async () => {
+        window.history.replaceState({}, '', `/?aluno=${OUTRO_ID}`);
+        await abrirTela(rotas);
+        expect(nomeNaFicha()).toBe('Carla Dias');
+        expect(pediuDetalheDe(OUTRO_ID)).toBe(true);
+        expect(pediuDetalheDe(ALUNO_ID)).toBe(false);
+    });
+
+    it.each([
+        ['sem o parâmetro', '/'],
+        ['com um id fora da lista', '/?aluno=65f00000000000000000ffff'],
+    ])('%s, abre o primeiro, como antes', async (_caso, url) => {
+        window.history.replaceState({}, '', url);
+        await abrirTela(rotas);
+        expect(nomeNaFicha()).toBe('Bruno Alves');
+    });
+});
+
 describe('foto do aluno que não carrega', () => {
     it('vira as iniciais, na lista e no cartão do aluno, em vez de ícone quebrado', async () => {
         await abrirTela({

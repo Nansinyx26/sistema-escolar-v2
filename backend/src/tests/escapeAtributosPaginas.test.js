@@ -18,6 +18,8 @@
  * Desde o épico #612 (Issue #618) os argumentos de detalhes/alunos.js também
  * vão em `data-*` com `attrHtml`. Sem handler inline em nenhuma das duas
  * páginas, o caso do `argJs` saiu.
+ * A pré-visualização de documento saiu de detalhes/alunos.js (Issue #636): não
+ * tinha tela, e a de Autorizações dos Pais é a que vale.
  */
 
 const fs = require('node:fs');
@@ -126,51 +128,6 @@ describe.each(['detalhes/alunos.js'])('attrHtml de %s (argumento em data-*, Issu
         expect(botao.dataset.acao).toBe('verDocumento');
         expect(botao.dataset.nome).toBe(valor);
         expect(window.__xss).toBeUndefined();
-    });
-});
-
-describe('detalhes/alunos.js — pré-visualização de documento', () => {
-    let abrirVisualizacaoDoc;
-    beforeAll(() => {
-        abrirVisualizacaoDoc = extrairFuncao(
-            'detalhes/alunos.js',
-            'escAttr',
-            'abrirVisualizacaoDoc'
-        );
-    });
-
-    function montarModal() {
-        document.body.innerHTML = `
-            <div id="modalVisualizarDoc" class="hidden">
-                <h3 id="previewDocTitulo"></h3>
-                <a id="previewDocDownloadBtn"></a>
-                <div id="previewDocCorpo"></div>
-            </div>`;
-        return document.getElementById('previewDocCorpo');
-    }
-
-    it.each([
-        ['imagem', 'image/png', 'img', 'alt'],
-        ['PDF', 'application/pdf', 'iframe', 'title'],
-    ])('%s: o nome do documento não cria atributo', (_tipo, mime, tag, attr) => {
-        const corpo = montarModal();
-        abrirVisualizacaoDoc('65f1a2b3c4d5e6f708192a3b', mime, NOME_MALICIOSO);
-        const el = corpo.querySelector(tag);
-        expect(el.hasAttribute('onerror')).toBe(false);
-        expect(el.hasAttribute('data-x')).toBe(false);
-        expect(el.getAttribute(attr)).toBe(NOME_MALICIOSO);
-    });
-
-    it('nome com apóstrofo aparece como veio', () => {
-        const corpo = montarModal();
-        abrirVisualizacaoDoc('65f1a2b3c4d5e6f708192a3b', 'application/pdf', NOME_APOSTROFO);
-        expect(corpo.querySelector('iframe').getAttribute('title')).toBe(NOME_APOSTROFO);
-    });
-
-    it('o botão de visualizar não leva mais o nome com o escape antigo', () => {
-        const src = fonte('detalhes/alunos.js');
-        expect(src).not.toMatch(/abrirVisualizacaoDoc\('\$\{/);
-        expect(src).not.toMatch(/nomeDocSafe/);
     });
 });
 
