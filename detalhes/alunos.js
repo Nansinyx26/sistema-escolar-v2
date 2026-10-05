@@ -482,12 +482,18 @@ function abrirModalEdicao(aluno) {
     if (modal) {
         modal.style.display = 'flex';
         modal.classList.remove('hidden');
+        // `.modal-overlay` (css/components.css) só fica visível com `.show`
+        // (Issue #642). Ler o layout antes faz a entrada animar a partir do
+        // estado invisível, já que `.hidden` tirava o modal do fluxo.
+        modal.getBoundingClientRect();
+        modal.classList.add('show');
     }
 }
 
 window.fecharModal = function() {
     const modal = document.getElementById('modalEditAluno');
     if (modal) {
+        modal.classList.remove('show');
         modal.style.display = 'none';
         modal.classList.add('hidden');
     }
