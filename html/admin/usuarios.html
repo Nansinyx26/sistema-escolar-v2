@@ -149,25 +149,25 @@
                                 <span class="text-secondary" style="display: block; font-size: 0.65rem; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">Código Secreto do Dia</span>
                                 <span id="dailyCodeDisplay" data-code="------" style="font-family: monospace; font-size: 1.4rem; font-weight: 700; color: var(--text-primary); letter-spacing: 2px;">••••••</span>
                             </div>
-                            <button type="button" onclick="toggleSecretVisibility('dailyCodeDisplay', this)" aria-label="Mostrar ou ocultar o código" class="btn-icon" style="color: var(--text-secondary); margin-top: 5px;">
+                            <button type="button" data-acao="alternarSegredo" data-alvo="dailyCodeDisplay" aria-label="Mostrar ou ocultar o código" class="btn-icon" style="color: var(--text-secondary); margin-top: 5px;">
                                 <i class="bi bi-eye"></i>
                             </button>
                         </div>
                         
-                        <button id="btnRotateCode" class="btn btn-secondary btn-sm" onclick="rotateSecretCode()" title="Gerar Novo Código" style="display: none; height: 42px;">
+                        <button id="btnRotateCode" class="btn btn-secondary btn-sm" data-acao="rotacionarCodigo" title="Gerar Novo Código" style="display: none; height: 42px;">
                             <i class="bi bi-arrow-repeat"></i>
                         </button>
                     </div>
 
                     <!-- Lado Direito: Ações -->
                     <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
-                        <button class="btn btn-primary btn-sm" onclick="openNewUserModal()" style="height: 42px;">
+                        <button class="btn btn-primary btn-sm" data-acao="abrirNovoUsuario" style="height: 42px;">
                             <i class="bi bi-person-plus-fill"></i> Novo Usuário
                         </button>
-                        <button class="btn btn-secondary btn-sm" onclick="window.location.href='codigos-backup.html'" style="height: 42px;" title="Códigos de backup 2FA (tela cheia)">
+                        <button class="btn btn-secondary btn-sm" data-acao="irPara" data-destino="codigos-backup.html" style="height: 42px;" title="Códigos de backup 2FA (tela cheia)">
                             <i class="bi bi-key"></i>
                         </button>
-                        <button class="btn btn-secondary btn-sm" onclick="window.location.href='auditoria.html'" style="height: 42px;" title="Ver Logs de Auditoria">
+                        <button class="btn btn-secondary btn-sm" data-acao="irPara" data-destino="auditoria.html" style="height: 42px;" title="Ver Logs de Auditoria">
                             <i class="bi bi-journal-text"></i> Auditoria
                         </button>
                     </div>
@@ -215,7 +215,7 @@
                     <h3 style="margin: 0; display:flex; align-items:center; gap:.55rem;">
                         <i class="bi bi-key-fill" style="color:#34e0a1;"></i> Códigos de Backup 2FA
                     </h3>
-                    <button class="btn-icon" onclick="fecharCodigosBackup()" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
+                    <button class="btn-icon" data-acao="fecharCodigosBackup" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
                 </div>
                 <p id="backupConta" style="color:#8b98a5; font-size:.88rem; margin:0 0 1.2rem;"></p>
 
@@ -267,7 +267,7 @@
             <div class="glass-strong" style="max-width: 500px; width: 90%; padding: 2rem; border-radius: var(--radius-lg);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                     <h3 style="margin: 0;"><i class="bi bi-person-plus-fill"></i> Cadastrar Usuário</h3>
-                    <button class="btn-icon" onclick="closeNewUserModal()"><i class="bi bi-x-lg"></i></button>
+                    <button class="btn-icon" data-acao="fecharNovoUsuario"><i class="bi bi-x-lg"></i></button>
                 </div>
                 
                 <form id="newUserForm">
@@ -283,7 +283,7 @@
                         <label>Senha Inicial</label>
                         <div style="position: relative;">
                             <input type="password" id="newUserPass" class="form-control" value="123456" required style="padding-right: 40px;">
-                            <button type="button" onclick="togglePass('newUserPass', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;">
+                            <button type="button" data-acao="alternarSenha" data-alvo="newUserPass" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-secondary); cursor: pointer;">
                                 <i class="bi bi-eye"></i>
                             </button>
                         </div>
@@ -297,7 +297,7 @@
                         </select>
                     </div>
                     <div style="display: flex; gap: 1rem;">
-                        <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="window.location.href='../login.html'">Cancelar</button>
+                        <button type="button" class="btn btn-secondary" style="flex: 1;" data-acao="irPara" data-destino="../login.html">Cancelar</button>
                         <button type="submit" class="btn btn-primary" style="flex: 1;">Criar Conta</button>
                     </div>
                 </form>
@@ -306,6 +306,8 @@
     </div>
 
     <div id="toastContainer" class="toast-container"></div>
+    <!-- Delegação por data-acao (épico #612). -->
+    <script src="../../js/acoes.js"></script>
     <script src="../../js/api-config.js"></script>
     <!--
       csrf-helper.js define window.csrfHeaders(). Sem ele, o backend
@@ -318,11 +320,11 @@
     <script defer src="../../js/utils.js"></script>
     <script>
 
-        // Argumento de handler inline (onclick="f(${argJs(x)})"): vira string JS e
-        // passa por escape de HTML COMPLETO, `&` incluído — o navegador decodifica as
-        // entidades antes de rodar o JS, então `&quot;` voltaria a ser aspa (Issue #583).
-        function argJs(v) {
-            return JSON.stringify(String(v ?? '')).replace(/[&<>"'`]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[c]);
+        // Os argumentos das ações saíram do `onclick` para atributos `data-*`
+        // (épico #612). Valor em atributo: escape completo, `&` incluído — o
+        // navegador decodifica as entidades ao ler o atributo (Issue #583).
+        function attrHtml(v) {
+            return String(v ?? '').replace(/[&<>"'`]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[c]);
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
@@ -538,26 +540,26 @@
                         <td><span class="badge ${u.source === 'MongoDB' ? 'badge-success' : 'badge-info'}">${u.source}</span></td>
                         <td class="actions">
                             ${(u.source !== 'MongoDB' && !u.isDuplicate) ? `
-                                <button class="btn-icon" onclick="migrateUser(${argJs(u.id)}, ${argJs(u.source)}, ${argJs(u.email)})" title="Subir para Nuvem" style="color: var(--primary-color)">
+                                <button class="btn-icon" data-acao="migrarUsuario" data-id="${attrHtml(u.id)}" data-origem="${attrHtml(u.source)}" data-email="${attrHtml(u.email)}" title="Subir para Nuvem" style="color: var(--primary-color)">
                                     <i class="bi bi-cloud-upload-fill"></i>
                                 </button>
                             ` : ''}
                             ${u.source === 'LocalStorage' ? `
-                                <button class="btn-icon" onclick="deleteUser(${argJs(u.id)}, ${argJs(u.source)}, ${argJs(u.email)})" title="Limpar Sessão Local" style="color: var(--text-secondary)">
+                                <button class="btn-icon" data-acao="excluirUsuario" data-id="${attrHtml(u.id)}" data-origem="${attrHtml(u.source)}" data-email="${attrHtml(u.email)}" title="Limpar Sessão Local" style="color: var(--text-secondary)">
                                     <i class="bi bi-broom"></i>
                                 </button>
                             ` : `
                                 ${u.source === 'MongoDB' ? `
-                                    <button class="btn-icon" onclick="anonymizeUser(${argJs(u.id)})" title="Anonimizar (LGPD)" style="color: var(--warning-color, #f59e0b)">
+                                    <button class="btn-icon" data-acao="anonimizarUsuario" data-id="${attrHtml(u.id)}" title="Anonimizar (LGPD)" style="color: var(--warning-color, #f59e0b)">
                                         <i class="bi bi-shield-lock"></i>
                                     </button>
                                 ` : ''}
                                 ${(u.source === 'MongoDB' && (['admin','diretor','secretaria'].indexOf(u.perfil) !== -1 || u.twoFactorEnabled)) ? `
-                                    <button class="btn-icon" onclick="abrirCodigosBackup(${argJs(u.id)})" title="Códigos de backup 2FA" style="color: #34e0a1">
+                                    <button class="btn-icon" data-acao="abrirCodigosBackup" data-id="${attrHtml(u.id)}" title="Códigos de backup 2FA" style="color: #34e0a1">
                                         <i class="bi bi-key-fill"></i>
                                     </button>
                                 ` : ''}
-                                <button class="btn-icon" onclick="deleteUser(${argJs(u.id)}, ${argJs(u.source)}, ${argJs(u.email)})" title="Excluir Permanentemente" style="color: #ef4444">
+                                <button class="btn-icon" data-acao="excluirUsuario" data-id="${attrHtml(u.id)}" data-origem="${attrHtml(u.source)}" data-email="${attrHtml(u.email)}" title="Excluir Permanentemente" style="color: #ef4444">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             `}
@@ -610,7 +612,7 @@
 
             const botoesGerar = () => `
                 <div class="nao-imprimir" style="display:flex;gap:.6rem;flex-wrap:wrap;">
-                    <button type="button" class="mint-btn" onclick="gerarCodigosBackup()">Gerar 8 códigos</button>
+                    <button type="button" class="mint-btn" data-acao="gerarCodigosBackup">Gerar 8 códigos</button>
                 </div>`;
 
             function renderSaldoBackup(d) {
@@ -652,9 +654,9 @@
                             ${d.codigos.map(c => `<div class="codigo">${esc(c)}</div>`).join('')}
                         </div>
                         <div class="nao-imprimir" style="display:flex;gap:.6rem;flex-wrap:wrap;">
-                            <button type="button" class="mint-btn secundario" onclick="copiarCodigosBackup(this)">Copiar todos</button>
-                            <button type="button" class="mint-btn secundario" onclick="window.print()">Imprimir</button>
-                            <button type="button" class="mint-btn" onclick="fecharCodigosBackup()">Concluir</button>
+                            <button type="button" class="mint-btn secundario" data-acao="copiarCodigosBackup">Copiar todos</button>
+                            <button type="button" class="mint-btn secundario" data-acao="imprimir">Imprimir</button>
+                            <button type="button" class="mint-btn" data-acao="fecharCodigosBackup">Concluir</button>
                         </div>`;
 
                     // Guardado só em memória, para o botão de copiar. Sai da
@@ -778,6 +780,30 @@
                 });
             }
         });
+
+        // Ações da página (épico #612). Ver js/acoes.js. A navegação só vai para
+        // páginas conhecidas: o destino vem de um atributo.
+        if (window.Acoes) {
+            const DESTINOS = ['codigos-backup.html', 'auditoria.html', '../login.html'];
+            window.Acoes.registrar({
+                alternarSegredo: (_evento, el) => toggleSecretVisibility(el.dataset.alvo, el),
+                rotacionarCodigo: () => window.rotateSecretCode(),
+                abrirNovoUsuario: () => window.openNewUserModal(),
+                fecharNovoUsuario: () => window.closeNewUserModal(),
+                alternarSenha: (_evento, el) => togglePass(el.dataset.alvo, el),
+                irPara: (_evento, el) => {
+                    if (DESTINOS.includes(el.dataset.destino)) window.location.href = el.dataset.destino;
+                },
+                migrarUsuario: (_evento, el) => window.migrateUser(el.dataset.id, el.dataset.origem, el.dataset.email),
+                excluirUsuario: (_evento, el) => window.deleteUser(el.dataset.id, el.dataset.origem, el.dataset.email),
+                anonimizarUsuario: (_evento, el) => window.anonymizeUser(el.dataset.id),
+                abrirCodigosBackup: (_evento, el) => window.abrirCodigosBackup(el.dataset.id),
+                gerarCodigosBackup: () => window.gerarCodigosBackup(),
+                copiarCodigosBackup: (_evento, el) => window.copiarCodigosBackup(el),
+                fecharCodigosBackup: () => window.fecharCodigosBackup(),
+                imprimir: () => window.print(),
+            });
+        }
     </script>
     <script defer src="../../js/parallax.js"></script>
     <script src="../../js/vendor.js"></script>
