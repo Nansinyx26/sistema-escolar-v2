@@ -15,6 +15,23 @@ function escAttr(v) {
     );
 }
 
+// Valor que vai para `data-*` e volta pelo `dataset` (épico #612): escape
+// COMPLETO, `&` incluído, para o `dataset` devolver o valor exato.
+function attrHtml(v) {
+    return String(v ?? '').replace(
+        /[&<>"'`]/g,
+        (c) =>
+            ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;',
+                '`': '&#96;',
+            })[c]
+    );
+}
+
 const todasSalas = [
     '1ºA',
     '1ºB',
@@ -67,7 +84,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await carregarDados();
     setupSearch();
+    ligarAcoesDasSalas();
 });
+
+// === AÇÕES DOS CARDS ===
+// Eram `onclick` inline em cada card (épico #612). Um ouvinte no grid vale
+// para todo re-render, e os dados voltam intactos pelo `dataset`.
+function ligarAcoesDasSalas() {
+    document.getElementById('salasGrid')?.addEventListener('click', (e) => {
+        const remover = e.target.closest('.btn-remove-atrib[data-professor]');
+        if (remover) {
+            const { professor, sala, principal } = remover.dataset;
+            removerAtribuicao(professor, sala, principal === 'true');
+            return;
+        }
+        const atribuir = e.target.closest('.btn-add-prof[data-sala]');
+        if (atribuir) abrirModalAtribuicao(atribuir.dataset.sala);
+    });
+}
 
 // === CARREGAR DADOS ===
 async function carregarDados() {
@@ -135,8 +169,8 @@ function renderizarSalas(filtro = '') {
                                     <span>${ehPrincipal ? '<i class="bi bi-star-fill text-warning"></i> Regente' : 'Professor(a) de Matéria'}</span>
                                 </div>
                                 <div class="professor-actions">
-                                    <button class="btn-remove-atrib" title="Remover desta sala" 
-                                            onclick="removerAtribuicao('${p._id || p.id}', '${sala}', ${ehPrincipal})">
+                                    <button type="button" class="btn-remove-atrib" title="Remover desta sala"
+                                            data-professor="${attrHtml(p._id || p.id)}" data-sala="${attrHtml(sala)}" data-principal="${ehPrincipal}">
                                         <i class="bi bi-person-dash"></i>
                                     </button>
                                 </div>
@@ -154,7 +188,7 @@ function renderizarSalas(filtro = '') {
                     <h3>${sala}</h3>
                     <span class="badge">${professoresNaSala.length} Prof.</span>
                 </div>
-                <button class="btn-add-prof" title="Atribuir novo professor" onclick="abrirModalAtribuicao('${sala}')">
+                <button type="button" class="btn-add-prof" title="Atribuir novo professor" data-sala="${attrHtml(sala)}">
                     <i class="bi bi-person-plus-fill"></i>
                 </button>
             </div>

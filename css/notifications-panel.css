@@ -499,3 +499,10 @@
     }
 }
 
+
+/* Histórico do mural no dashboard. O hover era `onmouseover` inline (épico #612). */
+#muralHistoricoBody .mural-hist-excluir { opacity: 0.7; }
+@media (hover: hover) {
+    #muralHistoricoBody .mural-hist-linha:hover { background: rgba(255,255,255,0.03); }
+    #muralHistoricoBody .mural-hist-excluir:hover { opacity: 1; }
+}

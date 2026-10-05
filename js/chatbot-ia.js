@@ -19,11 +19,12 @@
         );
     }
 
-    // Argumento de handler inline (onclick="f(${argJs(x)})"): vira string JS e
-    // passa por escape de HTML COMPLETO, `&` incluído — o navegador decodifica
-    // as entidades antes de rodar o JS, então `&quot;` voltaria a ser aspa.
-    function argJs(v) {
-        return JSON.stringify(String(v ?? '')).replace(
+    // Valor que vai para atributo `data-*` e volta pelo `dataset` (épico #612):
+    // escape de HTML COMPLETO, `&` incluído. O navegador decodifica as
+    // entidades do atributo, então o `dataset` devolve exatamente o valor
+    // original — inclusive o `&amp;` que o servidor já gravou codificado.
+    function attrHtml(v) {
+        return String(v ?? '').replace(
             /[&<>"'`]/g,
             (c) =>
                 ({
@@ -303,6 +304,19 @@
     fab.addEventListener('mousedown', (e) => e.stopPropagation());
     fab.addEventListener('pointerdown', (e) => e.stopPropagation());
 
+    // Botões das mensagens (áudio e escolha de aluno). Eram `onclick` inline;
+    // um ouvinte só no corpo do chat cobre as mensagens que ainda vão chegar.
+    body.addEventListener('click', (e) => {
+        const audio = e.target.closest('.audio-btn[data-audio]');
+        if (audio) {
+            if (audio.dataset.audio === 'tocar') playAudio(Number(audio.dataset.indice));
+            else stopAudio();
+            return;
+        }
+        const opcao = e.target.closest('.chatbot-option-btn[data-rotulo]');
+        if (opcao) selectOption(opcao.dataset.rotulo, opcao.dataset.valor);
+    });
+
     // --- MESSAGE RENDERING ---
     function formatBold(text) {
         return text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
@@ -323,7 +337,7 @@
             const foto = getUserPhoto(user);
             const initials = getInitials(user?.nome);
             avatarHtml = foto
-                ? `<img src="${escAttr(foto)}" class="chat-avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"><div class="chat-avatar-initials" style="display:none">${initials}</div>`
+                ? `<img src="${escAttr(foto)}" class="chat-avatar-img"><div class="chat-avatar-initials" style="display:none">${initials}</div>`
                 : `<div class="chat-avatar-initials">${initials}</div>`;
         }
 
@@ -339,10 +353,10 @@
         if (isAi) {
             html += `
                     <div class="audio-controls">
-                        <button class="audio-btn" onclick="window.chatbotIA.playAudio(${index})" title="Ouvir resposta">
+                        <button type="button" class="audio-btn" data-audio="tocar" data-indice="${index}" title="Ouvir resposta">
                             <i class="bi bi-volume-up-fill" id="play-icon-${index}"></i>
                         </button>
-                        <button class="audio-btn" onclick="window.chatbotIA.stopAudio()" title="Parar">
+                        <button type="button" class="audio-btn" data-audio="parar" title="Parar">
                             <i class="bi bi-stop-fill"></i>
                         </button>
                     </div>
@@ -352,15 +366,17 @@
             if (options && options.length > 0) {
                 html += `<div class="chatbot-options" style="display:flex;flex-direction:column;gap:6px;margin-top:10px;">`;
                 options.forEach((opt, oi) => {
-                    // O rótulo é nome de aluno vindo do servidor. Trocar só `'`
-                    // por `\'` deixava o `"` fechar o atributo (Issue #582).
+                    // O rótulo é nome de aluno vindo do servidor: vai para
+                    // `data-*` com escape completo e volta intacto pelo
+                    // `dataset` (Issue #582, épico #612). O fundo e o hover
+                    // estão em css/chatbot-ia.css.
                     html += `<button
+                        type="button"
                         class="chatbot-option-btn"
-                        onclick="window.chatbotIA.selectOption(${argJs(opt.label)},${argJs(opt.value || opt.alunoId || '')})"
-                        style="padding:8px 14px;border-radius:10px;font-size:0.82rem;font-weight:600;cursor:pointer;background:rgba(16,185,129,0.12);color:#10b981;border:1px solid rgba(16,185,129,0.35);text-align:left;transition:all 0.15s;"
-                        onmouseover="this.style.background='rgba(16,185,129,0.25)'"
-                        onmouseout="this.style.background='rgba(16,185,129,0.12)'"
-                    >${opt.label}</button>`;
+                        data-rotulo="${attrHtml(opt.label)}"
+                        data-valor="${attrHtml(opt.value || opt.alunoId || '')}"
+                        style="padding:8px 14px;border-radius:10px;font-size:0.82rem;font-weight:600;cursor:pointer;color:#10b981;border:1px solid rgba(16,185,129,0.35);text-align:left;transition:all 0.15s;"
+                    >${escAttr(opt.label)}</button>`;
                 });
                 html += `</div>`;
             }
@@ -373,6 +389,15 @@
         `;
 
         div.innerHTML = html;
+        // Foto que não carrega dá lugar às iniciais (era um `onerror` inline).
+        div.querySelector('img.chat-avatar-img')?.addEventListener(
+            'error',
+            (e) => {
+                e.currentTarget.style.display = 'none';
+                e.currentTarget.nextElementSibling.style.display = 'flex';
+            },
+            { once: true }
+        );
         body.appendChild(div);
         body.scrollTop = body.scrollHeight;
 

@@ -23,10 +23,11 @@ function showToast(message, type = 'info', duration = 3000) {
         <div class="toast-content">
             <div class="toast-message">${message}</div>
         </div>
-        <button type="button" class="toast-close" onclick="this.parentElement.remove()" aria-label="Fechar aviso">
+        <button type="button" class="toast-close" aria-label="Fechar aviso">
             <i class="bi bi-x" aria-hidden="true"></i>
         </button>
     `;
+    toast.querySelector(':scope > .toast-close').addEventListener('click', () => toast.remove());
 
     container.appendChild(toast);
 
@@ -67,11 +68,14 @@ function showModalAlert(title, message, type = 'info') {
             </div>
             <h2 style="margin-bottom: 0.8rem; color: var(--text-primary); font-size: 1.5rem;">${title}</h2>
             <p style="margin-bottom: 2rem; color: var(--text-secondary); line-height: 1.5; font-size: 1rem;">${message}</p>
-            <button class="btn btn-primary" style="width: 100%; padding: 1rem; border-radius: 14px; font-weight: 600; font-size: 1rem; box-shadow: var(--shadow-md);" onclick="document.getElementById('customModalAlert').remove()">
+            <button type="button" class="btn btn-primary" data-fechar-alerta style="width: 100%; padding: 1rem; border-radius: 14px; font-weight: 600; font-size: 1rem; box-shadow: var(--shadow-md);">
                 Entendi, vou fazer
             </button>
         </div>
     `;
+    backdrop
+        .querySelector(':scope > .glass-strong > [data-fechar-alerta]')
+        .addEventListener('click', () => backdrop.remove());
 
     document.body.appendChild(backdrop);
 }

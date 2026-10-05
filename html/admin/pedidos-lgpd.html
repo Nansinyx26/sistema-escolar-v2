@@ -385,6 +385,16 @@
         function attrHtml(v) {
             return String(v ?? '').replace(/[&<>"'`]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[c]);
         }
+
+        // Texto vindo do banco no innerHTML (Issue #631). Escapa < > e aspas,
+        // mas não o `&`: o servidor já grava `&`, `<` e `>` codificados, e
+        // codificar de novo mostraria "&amp;" na tela (ver escapeAttr em
+        // js/escape-html.js). Sem `<` literal, nenhum elemento novo nasce —
+        // vale também para o nome do login com Google, que não passa pelo
+        // filtro do servidor.
+        function textoHtml(v) {
+            return String(v ?? '').replace(/[<>"'`]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[c]);
+        }
         const API = () => window.API_BASE_URL ||
             ((location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname === '' || location.protocol === 'file:')
                 ? `http://${location.hostname || 'localhost'}:3001/api`
@@ -403,7 +413,7 @@
                 case 'em_analise': return '<span class="badge-status badge-blue"><i class="bi bi-search"></i> Em análise</span>';
                 case 'concluido': return '<span class="badge-status badge-green"><i class="bi bi-check-circle"></i> Concluído</span>';
                 case 'rejeitado': return '<span class="badge-status badge-red"><i class="bi bi-x-circle"></i> Rejeitado</span>';
-                default: return `<span class="badge-status badge-blue">${st}</span>`;
+                default: return `<span class="badge-status badge-blue">${textoHtml(st)}</span>`;
             }
         }
 
@@ -414,7 +424,7 @@
                 retificacao: 'Retificação',
                 informacao: 'Informação',
             };
-            return map[t] || t;
+            return map[t] || textoHtml(t);
         }
 
         async function carregarPedidos() {
@@ -486,12 +496,12 @@
 
                 return `
                     <tr>
-                        <td><strong>${p.protocolo}</strong></td>
+                        <td><strong>${textoHtml(p.protocolo)}</strong></td>
                         <td>
-                            <div>${p.usuarioNome || '—'}</div>
-                            <div style="font-size:0.75rem; color:var(--text-secondary);">${p.usuarioEmail}</div>
+                            <div>${textoHtml(p.usuarioNome || '—')}</div>
+                            <div style="font-size:0.75rem; color:var(--text-secondary);">${textoHtml(p.usuarioEmail)}</div>
                         </td>
-                        <td><span class="badge-status badge-blue">${p.perfil || '—'}</span></td>
+                        <td><span class="badge-status badge-blue">${textoHtml(p.perfil || '—')}</span></td>
                         <td>${tipoLabel(p.tipo)}</td>
                         <td>${badgeStatus(p.status)}</td>
                         <td class="${classePrazo}"><i class="bi bi-calendar-event"></i> ${textoPrazo}</td>
@@ -527,8 +537,8 @@
                         <ul class="history-list">
                             ${p.historico.map(h => `
                                 <li class="history-item">
-                                    <strong>${badgeStatus(h.status)}</strong> por <em>${h.alteradoPor || 'admin'}</em> em ${fmtDate(h.alteradoEm)}<br>
-                                    ${h.observacao || '—'}
+                                    <strong>${badgeStatus(h.status)}</strong> por <em>${textoHtml(h.alteradoPor || 'admin')}</em> em ${fmtDate(h.alteradoEm)}<br>
+                                    ${textoHtml(h.observacao || '—')}
                                 </li>
                             `).join('')}
                         </ul>
@@ -538,10 +548,10 @@
 
             document.getElementById('modalDetalhesCorpo').innerHTML = `
                 <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:6px; padding:0.75rem; margin-bottom:0.75rem;">
-                    <div><strong>Protocolo:</strong> ${p.protocolo}</div>
-                    <div><strong>Titular:</strong> ${p.usuarioNome || '—'} (${p.usuarioEmail})</div>
+                    <div><strong>Protocolo:</strong> ${textoHtml(p.protocolo)}</div>
+                    <div><strong>Titular:</strong> ${textoHtml(p.usuarioNome || '—')} (${textoHtml(p.usuarioEmail)})</div>
                     <div><strong>Tipo:</strong> ${tipoLabel(p.tipo)}</div>
-                    <div><strong>Motivo:</strong> ${p.motivo || 'Nenhum motivo adicional informado.'}</div>
+                    <div><strong>Motivo:</strong> ${textoHtml(p.motivo || 'Nenhum motivo adicional informado.')}</div>
                     <div><strong>Prazo Limite:</strong> ${fmtDate(p.prazoAtendimento)}</div>
                 </div>
                 ${historicoHtml}
