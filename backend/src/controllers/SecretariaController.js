@@ -75,6 +75,25 @@ function escolaAtual(req) {
  * Retorna null quando não existe OU quando é de outra escola — o handler
  * responde 404 nos dois casos para não confirmar a existência do registro.
  */
+/**
+ * Valor do banco dentro do HTML de um documento (Issue #639). Escapa < > e
+ * aspas, mas não o `&`: o sanitize.js já grava `&`, `<` e `>` codificados, e
+ * codificar de novo imprimiria "&amp;" no documento. O filtro de entrada não
+ * basta: dado anterior a ele, ou que entrou por outro caminho, sairia como
+ * marcação na prévia e na impressão.
+ */
+function textoDoc(v) {
+    return String(v ?? '').replace(
+        /[<>"'`]/g,
+        (c) => ({ '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[c]
+    );
+}
+
+/** Nome e sobrenome do aluno, escapados para o documento. */
+function nomeDoAlunoNoDoc(aluno) {
+    return textoDoc([aluno.nome, aluno.sobrenome].filter(Boolean).join(' '));
+}
+
 async function carregarAlunoDaEscola(req, alunoId, projecao) {
     if (!alunoId) return null;
     const query = escopo(req, { _id: String(alunoId) });
@@ -614,10 +633,10 @@ exports.gerarDeclaracaoMatricula = async (req, res) => {
 
         const conteudoHTML = `
             <h2 style="text-align:center">DECLARAÇÃO DE MATRÍCULA</h2>
-            <p>Declaramos, para os devidos fins, que <strong>${aluno.nome}${aluno.sobrenome ? ` ${aluno.sobrenome}` : ''}</strong>,
+            <p>Declaramos, para os devidos fins, que <strong>${nomeDoAlunoNoDoc(aluno)}</strong>,
             encontra-se devidamente matriculado(a) nesta instituição de ensino,
-            na turma <strong>${turma}</strong>, referente ao ano letivo de <strong>${anoLetivo}</strong>.</p>
-            ${matricula ? `<p>Número de matrícula: <strong>${matricula.matriculaNumero || 'N/A'}</strong></p>` : ''}
+            na turma <strong>${textoDoc(turma)}</strong>, referente ao ano letivo de <strong>${textoDoc(anoLetivo)}</strong>.</p>
+            ${matricula ? `<p>Número de matrícula: <strong>${textoDoc(matricula.matriculaNumero || 'N/A')}</strong></p>` : ''}
             <p>Por ser expressão da verdade, firmamos a presente declaração.</p>
             <p style="margin-top:40px;">Data: ${new Date().toLocaleDateString('pt-BR')}</p>
             <p style="margin-top:60px;">____________________________________<br/>Secretaria Escolar</p>
@@ -670,8 +689,8 @@ exports.gerarDeclaracaoFrequencia = async (req, res) => {
 
         const conteudoHTML = `
             <h2 style="text-align:center">DECLARAÇÃO DE FREQUÊNCIA</h2>
-            <p>Declaramos que o(a) aluno(a) <strong>${aluno.nome}${aluno.sobrenome ? ` ${aluno.sobrenome}` : ''}</strong>,
-            turma <strong>${aluno.turma || 'N/A'}</strong>, possui a seguinte frequência escolar:</p>
+            <p>Declaramos que o(a) aluno(a) <strong>${nomeDoAlunoNoDoc(aluno)}</strong>,
+            turma <strong>${textoDoc(aluno.turma || 'N/A')}</strong>, possui a seguinte frequência escolar:</p>
             <ul>
                 <li>Total de registros: <strong>${totalRegistros}</strong></li>
                 <li>Presenças: <strong>${totalPresencas}</strong></li>
@@ -723,17 +742,17 @@ exports.gerarHistoricoEscolar = async (req, res) => {
         for (const m of matriculas) {
             const turma = await Turma.findById(String(m.turmaId)).lean();
             historicoRows += `<tr>
-                <td>${m.anoLetivo}</td>
-                <td>${turma ? turma.nome : m.turmaId}</td>
-                <td>${m.matriculaNumero || 'N/A'}</td>
-                <td>${m.status}</td>
+                <td>${textoDoc(m.anoLetivo)}</td>
+                <td>${textoDoc(turma ? turma.nome : m.turmaId)}</td>
+                <td>${textoDoc(m.matriculaNumero || 'N/A')}</td>
+                <td>${textoDoc(m.status)}</td>
             </tr>`;
         }
 
         const conteudoHTML = `
             <h2 style="text-align:center">HISTÓRICO ESCOLAR</h2>
-            <p><strong>Aluno(a):</strong> ${aluno.nome}${aluno.sobrenome ? ` ${aluno.sobrenome}` : ''}</p>
-            <p><strong>RA:</strong> ${aluno.matricula || 'N/A'}</p>
+            <p><strong>Aluno(a):</strong> ${nomeDoAlunoNoDoc(aluno)}</p>
+            <p><strong>RA:</strong> ${textoDoc(aluno.matricula || 'N/A')}</p>
             <p><strong>Data de Nascimento:</strong> ${aluno.nascimento ? new Date(aluno.nascimento).toLocaleDateString('pt-BR') : 'N/A'}</p>
             <table border="1" cellpadding="8" cellspacing="0" style="width:100%; border-collapse: collapse; margin-top: 20px;">
                 <thead><tr><th>Ano Letivo</th><th>Turma</th><th>Matrícula</th><th>Status</th></tr></thead>
