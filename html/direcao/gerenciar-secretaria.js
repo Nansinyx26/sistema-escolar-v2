@@ -522,3 +522,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         await carregarSecretarias();
     })();
 });
+
+// Ações da página (épico #612). Ver js/acoes.js.
+if (window.Acoes) {
+    window.Acoes.registrar({
+        fecharModal: () => window.fecharModal(),
+        fecharModalSenha: () => window.fecharModalSenha(),
+    });
+}

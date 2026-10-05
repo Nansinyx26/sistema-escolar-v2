@@ -167,7 +167,7 @@ function showSilentError(containerId, detail) {
             <i class="bi bi-robot" style="font-size: 1.8rem; display: block; margin-bottom: 0.75rem; opacity: 0.5;"></i>
             <p style="font-size: 0.85rem; margin-bottom: 0.5rem;">Insights indisponíveis no momento.</p>
             ${extraInfo}
-            <button onclick="initBI()" style="margin-top: 1rem; padding: 6px 16px; background: rgba(99,102,241,0.2); border: 1px solid rgba(99,102,241,0.4); border-radius: 8px; color: #a5b4fc; cursor: pointer; font-size: 0.8rem;">
+            <button data-acao="recarregarBI" style="margin-top: 1rem; padding: 6px 16px; background: rgba(99,102,241,0.2); border: 1px solid rgba(99,102,241,0.4); border-radius: 8px; color: #a5b4fc; cursor: pointer; font-size: 0.8rem;">
                 <i class="bi bi-arrow-clockwise"></i> Tentar Novamente
             </button>
         </div>
@@ -184,7 +184,7 @@ function showErrorState(containerId, message) {
         <div style="text-align: center; color: #94a3b8; padding: 3rem 0; border: 1px dashed rgba(255,255,255,0.1); border-radius: 12px;">
             <i class="bi bi-exclamation-triangle" style="font-size: 2rem; display: block; margin-bottom: 1rem; opacity: 0.5;"></i>
             <p style="font-size: 0.9rem;">${message}</p>
-            <button onclick="initBI()" style="margin-top: 1rem; padding: 8px 20px; background: rgba(99,102,241,0.2); border: 1px solid rgba(99,102,241,0.4); border-radius: 8px; color: #a5b4fc; cursor: pointer; font-size: 0.85rem;">
+            <button data-acao="recarregarBI" style="margin-top: 1rem; padding: 8px 20px; background: rgba(99,102,241,0.2); border: 1px solid rgba(99,102,241,0.4); border-radius: 8px; color: #a5b4fc; cursor: pointer; font-size: 0.85rem;">
                 <i class="bi bi-arrow-clockwise"></i> Tentar Novamente
             </button>
         </div>
@@ -702,3 +702,6 @@ function setupEventListeners() {
         }
     });
 }
+
+// Ações da página (épico #612). Ver js/acoes.js.
+if (window.Acoes) window.Acoes.registrar({ recarregarBI: () => initBI() });

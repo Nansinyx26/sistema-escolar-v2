@@ -123,7 +123,7 @@
                         <div style="flex:1;"><label for="comPrioridade" style="font-size:0.75rem;color:#94a3b8;">Prioridade</label>
                             <select id="comPrioridade" class="sec-select"><option>Normal</option><option>Importante</option><option>Urgente</option></select>
                         </div>
-                        <button class="sec-btn sec-btn-primary" onclick="enviarComunicado()"><i class="bi bi-send"></i> Enviar</button>
+                        <button class="sec-btn sec-btn-primary" data-acao="enviarComunicado"><i class="bi bi-send"></i> Enviar</button>
                     </div>
                 </div>
             </div>
@@ -143,6 +143,8 @@
 <script defer src="../../js/database.js?v=3"></script>
 <script defer src="../../js/auth.js?v=3"></script>
 <script defer src="../../js/utils.js?v=3"></script>
+<!-- Delegação por data-acao (épico #612). -->
+<script src="../../js/acoes.js"></script>
 <script>
 const API = () => window.API_BASE_URL || '/api';
 function toast(m,t='success'){const d=document.createElement('div');d.className=`sec-toast sec-toast-${t}`;d.textContent=m;document.body.appendChild(d);setTimeout(()=>d.remove(),3000);}
@@ -192,6 +194,13 @@ async function carregarComunicados() {
             `).join('');
         } else list.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:2rem;">Nenhum comunicado encontrado</div>';
     } catch(e) { console.error(e); }
+}
+
+// Ações da página (épico #612). Ver js/acoes.js.
+if (window.Acoes) {
+    window.Acoes.registrar({
+        enviarComunicado: () => enviarComunicado(),
+    });
 }
 </script>
 <script src="../../js/sidebar-voice.js?v=5.0"></script>

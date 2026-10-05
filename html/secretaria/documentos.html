@@ -120,8 +120,8 @@
                     </div>
                 </div>
                 <div style="margin-top:1rem;display:flex;gap:0.5rem;">
-                    <button class="sec-btn sec-btn-primary" onclick="gerarDocumento()"><i class="bi bi-file-earmark-plus"></i> Gerar</button>
-                    <button class="sec-btn sec-btn-blue" id="btnPrint" style="display:none;" onclick="imprimirDoc()"><i class="bi bi-printer"></i> Imprimir</button>
+                    <button class="sec-btn sec-btn-primary" data-acao="gerarDocumento"><i class="bi bi-file-earmark-plus"></i> Gerar</button>
+                    <button class="sec-btn sec-btn-blue" id="btnPrint" style="display:none;" data-acao="imprimirDoc"><i class="bi bi-printer"></i> Imprimir</button>
                 </div>
             </div>
 
@@ -136,7 +136,7 @@
                 <h3><i class="bi bi-clock-history" style="color:#8b5cf6;"></i> Documentos Emitidos do Aluno</h3>
                 <div class="sec-form-grid" style="grid-template-columns:1fr auto;">
                     <input id="histAlunoId" class="sec-input" placeholder="ID do aluno para ver histórico">
-                    <button class="sec-btn sec-btn-primary" onclick="carregarHistorico()"><i class="bi bi-search"></i> Buscar</button>
+                    <button class="sec-btn sec-btn-primary" data-acao="carregarHistorico"><i class="bi bi-search"></i> Buscar</button>
                 </div>
                 <div style="overflow-x:auto;margin-top:1rem;">
                     <table class="sec-table">
@@ -155,6 +155,8 @@
 <script defer src="../../js/database.js?v=3"></script>
 <script defer src="../../js/auth.js?v=3"></script>
 <script defer src="../../js/utils.js?v=3"></script>
+<!-- Delegação por data-acao (épico #612). -->
+<script src="../../js/acoes.js"></script>
 <script>
 const API = () => window.API_BASE_URL || '/api';
 function toast(m,t='success'){const d=document.createElement('div');d.className=`sec-toast sec-toast-${t}`;d.textContent=m;document.body.appendChild(d);setTimeout(()=>d.remove(),3000);}
@@ -205,6 +207,15 @@ async function carregarHistorico() {
             </tr>`).join('');
         } else body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#94a3b8;">Nenhum documento encontrado</td></tr>';
     } catch(e) { toast('Erro ao buscar histórico', 'error'); }
+}
+
+// Ações da página (épico #612). Ver js/acoes.js.
+if (window.Acoes) {
+    window.Acoes.registrar({
+        gerarDocumento: () => gerarDocumento(),
+        imprimirDoc: () => imprimirDoc(),
+        carregarHistorico: () => carregarHistorico(),
+    });
 }
 </script>
 <script src="../../js/sidebar-voice.js?v=5.0"></script>

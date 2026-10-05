@@ -212,6 +212,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Delegação por data-acao (épico #612). -->
+    <script src="../js/acoes.js"></script>
     <script>
         async function fetchLogs() {
             const user = document.getElementById('filterUser').value;
@@ -234,9 +236,15 @@
             }
         }
 
+        // Os detalhes iam serializados dentro do `onclick`, entre aspas simples:
+        // uma aspa num campo do log quebrava o atributo. Agora a linha guarda só
+        // o índice, e os detalhes saem desta lista (épico #612).
+        let logsExibidos = [];
+
         function renderLogs(logs) {
             const tbody = document.querySelector('#auditTable tbody');
-            tbody.innerHTML = logs.map(log => {
+            logsExibidos = logs;
+            tbody.innerHTML = logs.map((log, indice) => {
                 const date = new Date(log.data).toLocaleString('pt-BR');
                 const actionClass = log.acao.includes('CREATE') ? 'badge-create' : 
                                   log.acao.includes('DELETE') ? 'badge-delete' :
@@ -254,7 +262,7 @@
                         <td style="font-size: 0.85rem;">${log.recurso}</td>
                         <td style="font-size: 0.8rem; color: #64748b;">${log.ip || 'Local'}</td>
                         <td>
-                            <button class="details-btn" onclick='showDetails(${JSON.stringify(log.detalhes)})'>
+                            <button class="details-btn" data-acao="verDetalhes" data-indice="${indice}">
                                 <i class="bi bi-info-circle"></i>
                             </button>
                         </td>
@@ -276,6 +284,16 @@
 
         document.getElementById('btnSearch').addEventListener('click', fetchLogs);
         window.addEventListener('load', fetchLogs);
+
+        // Ações da página (épico #612). Ver js/acoes.js.
+        if (window.Acoes) {
+            window.Acoes.registrar({
+                verDetalhes(_evento, el) {
+                    const log = logsExibidos[Number(el.dataset.indice)];
+                    if (log) showDetails(log.detalhes);
+                },
+            });
+        }
     </script>
 
 <script src="../js/click-sound.js" defer></script>

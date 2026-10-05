@@ -526,3 +526,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const dashboard = new DirecaoDashboard();
     dashboard.init();
 });
+
+// Ações da página (épico #612). Ver js/acoes.js. O destino é o próprio href
+// do link: sem JavaScript, ele ainda leva ao mesmo lugar.
+if (window.Acoes) {
+    window.Acoes.registrar({
+        voltarInteligente(evento, el) {
+            if (typeof window.smartBack !== 'function') return;
+            evento.preventDefault();
+            window.smartBack(el.getAttribute('href'));
+        },
+    });
+}
