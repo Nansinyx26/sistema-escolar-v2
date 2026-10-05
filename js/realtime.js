@@ -247,9 +247,10 @@
                 statsEl.innerHTML = `
                     <div class="review-stats" style="flex-direction:column;gap:0.5rem;align-items:center;background:rgba(239,68,68,0.04);border-color:rgba(239,68,68,0.15);">
                         <span style="font-size:0.8rem;color:#f87171;font-weight:600;"><i class="bi bi-exclamation-triangle-fill"></i> Erro ao carregar dados</span>
-                        <button class="btn btn-outline btn-xs" onclick="window.RealtimeSystem.loadReviews()" style="font-size:0.7rem;padding:2px 8px;border-color:rgba(239,68,68,0.3);color:#f87171;background:transparent;"><i class="bi bi-arrow-clockwise"></i> Repetir</button>
+                        <button type="button" class="btn btn-outline btn-xs" style="font-size:0.7rem;padding:2px 8px;border-color:rgba(239,68,68,0.3);color:#f87171;background:transparent;"><i class="bi bi-arrow-clockwise"></i> Repetir</button>
                     </div>
                 `;
+                statsEl.querySelector('button')?.addEventListener('click', () => loadReviews());
             }
             if (listEl) {
                 listEl.innerHTML =
@@ -278,9 +279,10 @@
                 formEl.innerHTML = `
                     <div style="padding:1rem;text-align:center;background:rgba(239,68,68,0.03);border:1px dashed rgba(239,68,68,0.15);border-radius:12px;margin-bottom:0.75rem;">
                         <span style="font-size:0.78rem;color:#f87171;display:block;margin-bottom:0.4rem;">Não foi possível carregar seu formulário.</span>
-                        <button class="btn btn-outline btn-xs" onclick="window.RealtimeSystem.loadMyReview()" style="font-size:0.7rem;padding:2px 8px;border-color:rgba(239,68,68,0.3);color:#f87171;background:transparent;"><i class="bi bi-arrow-clockwise"></i> Tentar Novamente</button>
+                        <button type="button" class="btn btn-outline btn-xs" style="font-size:0.7rem;padding:2px 8px;border-color:rgba(239,68,68,0.3);color:#f87171;background:transparent;"><i class="bi bi-arrow-clockwise"></i> Tentar Novamente</button>
                     </div>
                 `;
+                formEl.querySelector('button')?.addEventListener('click', () => loadMyReview());
             }
         }
     }
@@ -626,9 +628,20 @@
         }
     }
 
+    /** Um ouvinte na lista: vale para os itens de agora e para os que chegam depois. */
+    function ligarCliqueDasNotificacoes(list) {
+        if (list.dataset.cliqueLigado) return;
+        list.dataset.cliqueLigado = '1';
+        list.addEventListener('click', (e) => {
+            const item = e.target.closest('.notif-item[data-id]');
+            if (item) markRead(item.dataset.id);
+        });
+    }
+
     function renderNotificationList(notifications) {
         const list = document.getElementById('notifList');
         if (!list) return;
+        ligarCliqueDasNotificacoes(list);
 
         if (!notifications || notifications.length === 0) {
             list.innerHTML =
@@ -639,7 +652,7 @@
         list.innerHTML = notifications
             .map(
                 (n) => `
-            <div class="notif-item ${n.read ? '' : 'unread'}" data-id="${n._id}" onclick="window.RealtimeSystem.markRead('${n._id}')">
+            <div class="notif-item ${n.read ? '' : 'unread'}" data-id="${escapeHtml(n._id)}">
                 <div class="notif-icon">${n.icon || '🔔'}</div>
                 <div class="notif-body">
                     <div class="notif-title">${escapeHtml(n.title)}</div>
@@ -655,12 +668,13 @@
     function addNotificationToUI(notification) {
         const list = document.getElementById('notifList');
         if (!list) return;
+        ligarCliqueDasNotificacoes(list);
 
         // Remove empty state
         const empty = list.querySelector('.notif-empty');
         if (empty) empty.remove();
 
-        const html = `<div class="notif-item unread" data-id="${notification._id}" onclick="window.RealtimeSystem.markRead('${notification._id}')" style="animation: reviewSlideIn 0.3s ease;">
+        const html = `<div class="notif-item unread" data-id="${escapeHtml(notification._id)}" style="animation: reviewSlideIn 0.3s ease;">
             <div class="notif-icon">${notification.icon || '🔔'}</div>
             <div class="notif-body">
                 <div class="notif-title">${escapeHtml(notification.title)}</div>

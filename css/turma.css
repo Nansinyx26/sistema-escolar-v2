@@ -1137,3 +1137,10 @@ input:checked + .slider:before {
 :root[data-theme="light"] .turma-details h1 {
     color: #0f172a !important;
 }
+
+/* Nome no topo, que leva ao perfil. O hover era `onmouseover` inline (épico #612). */
+@media (hover: hover) {
+    #navUserName:hover {
+        color: #3498db;
+    }
+}

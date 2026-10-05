@@ -665,7 +665,7 @@
             const status = this.targetUserData.status || 'offline';
 
             const avatarHtml = avatarUrl
-                ? `<img src="${esc(avatarUrl)}" class="chat-header-avatar" alt="" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'chat-header-avatar-fallback',textContent:'${initials}'}))">`
+                ? `<img src="${esc(avatarUrl)}" class="chat-header-avatar" alt="">`
                 : `<div class="chat-header-avatar-fallback">${esc(initials)}</div>`;
 
             w.innerHTML = `
@@ -765,6 +765,18 @@
                  accept="image/*,video/*,audio/*,application/pdf,.docx,.xlsx,.pptx,.txt,.csv,.rtf">
         </div>
       `;
+
+            // Foto que não carrega vira as iniciais (era um `onerror` inline).
+            w.querySelector('img.chat-header-avatar')?.addEventListener(
+                'error',
+                (e) => {
+                    const fallback = document.createElement('div');
+                    fallback.className = 'chat-header-avatar-fallback';
+                    fallback.textContent = initials;
+                    e.currentTarget.replaceWith(fallback);
+                },
+                { once: true }
+            );
 
             this.manager.container.appendChild(w);
             this.el = w;

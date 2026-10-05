@@ -14,11 +14,11 @@ function escAttr(v) {
     return String(v).replace(/["'<>`]/g, (c) => ({ '"': '&quot;', "'": '&#39;', '<': '&lt;', '>': '&gt;', '`': '&#96;' })[c]);
 }
 
-// Argumento de handler inline (onclick="f(${argJs(x)})"): vira string JS e
-// passa por escape de HTML COMPLETO, `&` incluído — o navegador decodifica as
-// entidades antes de rodar o JS, então `&quot;` voltaria a ser aspa (Issue #583).
-function argJs(v) {
-    return JSON.stringify(String(v ?? '')).replace(/[&<>"'`]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[c]);
+// Valor que vai para atributo `data-*` e volta pelo `dataset` (Issue #583,
+// épico #612): escape de HTML COMPLETO, `&` incluído. O navegador decodifica
+// as entidades do atributo, e o `dataset` devolve o valor exato do servidor.
+function attrHtml(v) {
+    return String(v ?? '').replace(/[&<>"'`]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[c]);
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -93,7 +93,7 @@ async function init() {
                         <i class="bi bi-exclamation-triangle" style="font-size: 3rem;"></i>
                         <h3 style="margin-top: 1rem;">O servidor está demorando para acordar</h3>
                         <p>${error.message}</p>
-                        <button onclick="window.location.reload()" class="btn btn-primary" style="margin-top: 1rem;">Tentar Novamente</button>
+                        <button type="button" data-acao="recarregarPagina" class="btn btn-primary" style="margin-top: 1rem;">Tentar Novamente</button>
                     </td>
                 </tr>
             `;
@@ -193,7 +193,7 @@ function mostrarAvisoSelecao() {
 
         // Criar uma lista vertical de turmas
         let turmasHtml = turmas.map(t => `
-            <div onclick="document.getElementById('filtroTurma').value=${argJs(t.id)}; document.getElementById('filtroTurma').dispatchEvent(new Event('change'));"
+            <div data-acao="escolherTurma" data-turma="${attrHtml(t.id)}"
                  style="background: var(--bg-elevated); padding: 15px 25px; border-radius: 12px; border: 1px solid var(--border-secondary); cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s ease; margin-bottom: 10px;">
                 <div style="display: flex; align-items: center; gap: 15px;">
                     <i class="bi bi-people-fill" style="font-size: 1.5rem; color: var(--primary);"></i>
@@ -674,7 +674,7 @@ async function carregarAutorizacoesEDocumentos(alunoId) {
                             </span>
                         </td>
                         <td style="text-align: right; white-space: nowrap;">
-                            <button type="button" class="btn btn-outline btn-sm" onclick="abrirVisualizacaoDoc(${argJs(docId)}, ${argJs(mimeType)}, ${argJs(nomeDoc)})" style="padding: 3px 8px; font-size: 0.75rem;">
+                            <button type="button" class="btn btn-outline btn-sm" data-acao="verDocumento" data-doc="${attrHtml(docId)}" data-tipo="${attrHtml(mimeType)}" data-nome="${attrHtml(nomeDoc)}" style="padding: 3px 8px; font-size: 0.75rem;">
                                 <i class="bi bi-eye"></i> Ver
                             </button>
                             <a href="${apiBase}/documentos-responsaveis/${docId}/download" class="btn btn-primary btn-sm" download style="padding: 3px 8px; font-size: 0.75rem;">
@@ -899,7 +899,7 @@ async function carregarTodosDocumentosAssinados() {
                 </td>
                 <td><span class="badge" style="background: rgba(59,130,246,0.12); color: #60a5fa; font-size: 0.75rem;">${doc.tipoDocumento}</span></td>
                 <td>
-                    <a href="javascript:void(0)" onclick="abrirAlunoPeloId('${doc.alunoId?._id || doc.alunoId}')" style="color: #38bdf8; text-decoration: none; font-weight: 500;">
+                    <a href="#" data-acao="abrirAluno" data-aluno="${attrHtml(doc.alunoId?._id || doc.alunoId)}" style="color: #38bdf8; text-decoration: none; font-weight: 500;">
                         ${alunoNome}
                     </a>
                 </td>
@@ -908,14 +908,14 @@ async function carregarTodosDocumentosAssinados() {
                 <td style="font-size: 0.8rem; color: #94a3b8;">${dataEnvioFormatada}</td>
                 <td style="font-size: 0.8rem; color: #94a3b8;">${dataAtualizacaoFormatada}</td>
                 <td>
-                    <select onchange="atualizarStatusDoc('${docId}', this.value)" style="background: rgba(15,23,42,0.8); border: 1px solid ${statusColor}; color: ${statusColor}; border-radius: 20px; font-size: 0.75rem; padding: 2px 8px; font-weight: 600; cursor: pointer;">
+                    <select data-acao-change="mudarStatusDoc" data-doc="${attrHtml(docId)}" style="background: rgba(15,23,42,0.8); border: 1px solid ${statusColor}; color: ${statusColor}; border-radius: 20px; font-size: 0.75rem; padding: 2px 8px; font-weight: 600; cursor: pointer;">
                         <option value="Enviado" ${doc.status === 'Enviado' ? 'selected' : ''}>Enviado</option>
                         <option value="Em Análise" ${doc.status === 'Em Análise' ? 'selected' : ''}>Em Análise</option>
                         <option value="Conferido" ${doc.status === 'Conferido' ? 'selected' : ''}>Conferido</option>
                     </select>
                 </td>
                 <td style="text-align: right; white-space: nowrap;">
-                    <button type="button" class="btn btn-outline btn-sm" onclick="abrirVisualizacaoDoc(${argJs(docId)}, ${argJs(mimeType)}, ${argJs(nomeDoc)})" title="Visualizar documento">
+                    <button type="button" class="btn btn-outline btn-sm" data-acao="verDocumento" data-doc="${attrHtml(docId)}" data-tipo="${attrHtml(mimeType)}" data-nome="${attrHtml(nomeDoc)}" title="Visualizar documento">
                         <i class="bi bi-eye"></i> Visualizar
                     </button>
                     <a href="${apiBase}/documentos-responsaveis/${docId}/download" class="btn btn-ghost btn-sm" download title="Baixar arquivo">
@@ -1142,4 +1142,27 @@ function salasIguais(a, b) {
     const x = normalizarSala(a);
     const y = normalizarSala(b);
     return !!x && x === y;
+}
+
+// === AÇÕES DA PÁGINA (épico #612) ===
+// Eram `onclick`/`onchange` inline. Ver js/acoes.js: os argumentos vêm dos
+// atributos `data-*`, escapados por `attrHtml`.
+if (window.Acoes) {
+    window.Acoes.registrar({
+        recarregarPagina: () => window.location.reload(),
+        escolherTurma(_evento, el) {
+            const filtro = document.getElementById('filtroTurma');
+            filtro.value = el.dataset.turma;
+            filtro.dispatchEvent(new Event('change'));
+        },
+        verDocumento: (_evento, el) =>
+            abrirVisualizacaoDoc(el.dataset.doc, el.dataset.tipo, el.dataset.nome),
+        abrirAluno(evento, el) {
+            evento.preventDefault();
+            window.abrirAlunoPeloId(el.dataset.aluno);
+        },
+        mudarStatusDoc: (_evento, el) => window.atualizarStatusDoc(el.dataset.doc, el.value),
+        executarTransferenciaMassa: () => executarTransferenciaMassa(),
+        fecharModal: () => window.fecharModal(),
+    });
 }
