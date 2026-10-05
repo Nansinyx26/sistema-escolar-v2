@@ -146,7 +146,22 @@
 <!-- Delegação por data-acao (épico #612). -->
 <script src="../../js/acoes.js"></script>
 <script>
+// Texto vindo da API no innerHTML (Issue #634). Escapa < > e aspas, mas
+// não o `&`: o servidor já grava `&`, `<` e `>` codificados, e codificar de
+// novo mostraria "&amp;" na tela (ver escapeAttr em js/escape-html.js).
+function textoHtml(v) {
+    return String(v ?? '').replace(/[<>"'`]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[c]);
+}
 const API = () => window.API_BASE_URL || '/api';
+/**
+ * Prévia do comunicado, só texto. Tirar as tags com regex não basta: uma tag
+ * sem o `>` final passava pelo filtro e virava elemento no innerHTML. O
+ * resultado ainda é escapado por quem chama (Issue #634).
+ */
+function resumoDoConteudo(conteudo) {
+    const texto = String(conteudo || '').replace(/<[^>]*>/g, '');
+    return texto.length > 200 ? `${texto.substring(0, 200)}...` : texto;
+}
 function toast(m,t='success'){const d=document.createElement('div');d.className=`sec-toast sec-toast-${t}`;d.textContent=m;document.body.appendChild(d);setTimeout(()=>d.remove(),3000);}
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -184,12 +199,12 @@ async function carregarComunicados() {
                 <div class="sec-com-card">
                     <div class="sec-com-header">
                         <div>
-                            <div class="sec-com-title">${c.titulo}</div>
-                            <div class="sec-com-meta">${c.autorNome || c.diretorNome || 'Secretaria'} · ${new Date(c.dataCriacao).toLocaleDateString('pt-BR')}</div>
+                            <div class="sec-com-title">${textoHtml(c.titulo)}</div>
+                            <div class="sec-com-meta">${textoHtml(c.autorNome || c.diretorNome || 'Secretaria')} · ${new Date(c.dataCriacao).toLocaleDateString('pt-BR')}</div>
                         </div>
-                        <span class="sec-badge sec-badge-green">${c.categoria || 'Secretaria'}</span>
+                        <span class="sec-badge sec-badge-green">${textoHtml(c.categoria || 'Secretaria')}</span>
                     </div>
-                    <div class="sec-com-body">${c.conteudo.replace(/<[^>]*>/g, '').substring(0, 200)}${c.conteudo.length > 200 ? '...' : ''}</div>
+                    <div class="sec-com-body">${textoHtml(resumoDoConteudo(c.conteudo))}</div>
                 </div>
             `).join('');
         } else list.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:2rem;">Nenhum comunicado encontrado</div>';

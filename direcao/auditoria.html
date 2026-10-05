@@ -215,6 +215,13 @@
     <!-- Delegação por data-acao (épico #612). -->
     <script src="../js/acoes.js"></script>
     <script>
+        // Texto vindo da API no innerHTML (Issue #634). Escapa < > e aspas, mas
+        // não o `&`: o servidor já grava `&`, `<` e `>` codificados, e codificar de
+        // novo mostraria "&amp;" na tela (ver escapeAttr em js/escape-html.js).
+        function textoHtml(v) {
+            return String(v ?? '').replace(/[<>"'`]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[c]);
+        }
+
         async function fetchLogs() {
             const user = document.getElementById('filterUser').value;
             const action = document.getElementById('filterAction').value;
@@ -254,13 +261,13 @@
                     <tr>
                         <td style="font-size: 0.8rem; color: #94a3b8;">${date}</td>
                         <td>
-                            <div style="font-weight: 500;">${log.usuarioNome}</div>
-                            <div style="font-size: 0.75rem; color: #64748b;">${log.usuarioEmail || ''}</div>
+                            <div style="font-weight: 500;">${textoHtml(log.usuarioNome)}</div>
+                            <div style="font-size: 0.75rem; color: #64748b;">${textoHtml(log.usuarioEmail)}</div>
                         </td>
-                        <td style="text-transform: capitalize;">${log.perfil}</td>
-                        <td><span class="badge ${actionClass}">${log.acao}</span></td>
-                        <td style="font-size: 0.85rem;">${log.recurso}</td>
-                        <td style="font-size: 0.8rem; color: #64748b;">${log.ip || 'Local'}</td>
+                        <td style="text-transform: capitalize;">${textoHtml(log.perfil)}</td>
+                        <td><span class="badge ${actionClass}">${textoHtml(log.acao)}</span></td>
+                        <td style="font-size: 0.85rem;">${textoHtml(log.recurso)}</td>
+                        <td style="font-size: 0.8rem; color: #64748b;">${textoHtml(log.ip || 'Local')}</td>
                         <td>
                             <button class="details-btn" data-acao="verDetalhes" data-indice="${indice}">
                                 <i class="bi bi-info-circle"></i>
@@ -272,9 +279,14 @@
         }
 
         function showDetails(detalhes) {
+            // Os detalhes vão como texto: o JSON pode trazer qualquer valor que
+            // passou pela ação auditada (Issue #634).
+            const pre = document.createElement('pre');
+            pre.style.cssText = 'text-align: left; font-size: 0.8rem; background: #f1f5f9; padding: 1rem; border-radius: 0.5rem; overflow: auto; max-height: 400px;';
+            pre.textContent = JSON.stringify(detalhes, null, 2);
             Swal.fire({
                 title: 'Detalhes da Ação',
-                html: `<pre style="text-align: left; font-size: 0.8rem; background: #f1f5f9; padding: 1rem; border-radius: 0.5rem; overflow: auto; max-height: 400px;">${JSON.stringify(detalhes, null, 2)}</pre>`,
+                html: pre,
                 confirmButtonText: 'Fechar',
                 confirmButtonColor: '#3b82f6',
                 background: '#ffffff',

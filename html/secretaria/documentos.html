@@ -158,6 +158,12 @@
 <!-- Delegação por data-acao (épico #612). -->
 <script src="../../js/acoes.js"></script>
 <script>
+// Texto vindo da API no innerHTML (Issue #634). Escapa < > e aspas, mas
+// não o `&`: o servidor já grava `&`, `<` e `>` codificados, e codificar de
+// novo mostraria "&amp;" na tela (ver escapeAttr em js/escape-html.js).
+function textoHtml(v) {
+    return String(v ?? '').replace(/[<>"'`]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[c]);
+}
 const API = () => window.API_BASE_URL || '/api';
 function toast(m,t='success'){const d=document.createElement('div');d.className=`sec-toast sec-toast-${t}`;d.textContent=m;document.body.appendChild(d);setTimeout(()=>d.remove(),3000);}
 
@@ -199,11 +205,11 @@ async function carregarHistorico() {
         const body = document.getElementById('histBody');
         if (json.success && json.data.length > 0) {
             body.innerHTML = json.data.map(d => `<tr>
-                <td>${d.titulo}</td>
-                <td><span class="sec-badge sec-badge-blue">${d.tipo.replace(/_/g,' ')}</span></td>
-                <td>${d.numeroDocumento || '-'}</td>
+                <td>${textoHtml(d.titulo)}</td>
+                <td><span class="sec-badge sec-badge-blue">${textoHtml(String(d.tipo || '').replace(/_/g,' '))}</span></td>
+                <td>${textoHtml(d.numeroDocumento || '-')}</td>
                 <td>${new Date(d.createdAt).toLocaleDateString('pt-BR')}</td>
-                <td>${d.emitidoPorNome || '-'}</td>
+                <td>${textoHtml(d.emitidoPorNome || '-')}</td>
             </tr>`).join('');
         } else body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#94a3b8;">Nenhum documento encontrado</td></tr>';
     } catch(e) { toast('Erro ao buscar histórico', 'error'); }
