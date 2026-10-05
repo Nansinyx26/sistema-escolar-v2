@@ -135,6 +135,12 @@
 function escAttrAcao(v) {
     return String(v ?? '').replace(/[&<>"'`]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[c]);
 }
+// Texto vindo da API no innerHTML (Issue #634). Escapa < > e aspas, mas
+// não o `&`: o servidor já grava `&`, `<` e `>` codificados, e codificar de
+// novo mostraria "&amp;" na tela (ver escapeAttr em js/escape-html.js).
+function textoHtml(v) {
+    return String(v ?? '').replace(/[<>"'`]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[c]);
+}
 const API = () => window.API_BASE_URL || '/api';
 let currentFilter = '';
 function toast(m,t='success'){const d=document.createElement('div');d.className=`sec-toast sec-toast-${t}`;d.textContent=m;document.body.appendChild(d);setTimeout(()=>d.remove(),3000);}
@@ -164,13 +170,13 @@ async function carregarJustificativas() {
                 const acoes = j.status === 'pendente' ? `
                     <button class="sec-btn sec-btn-primary" style="padding:0.3rem 0.8rem;font-size:0.75rem;" data-acao="analisar" data-id="${escAttrAcao(j._id)}" data-status="aprovada"><i class="bi bi-check"></i></button>
                     <button class="sec-btn sec-btn-danger" style="padding:0.3rem 0.8rem;font-size:0.75rem;" data-acao="analisar" data-id="${escAttrAcao(j._id)}" data-status="rejeitada"><i class="bi bi-x"></i></button>
-                ` : `<span style="color:#64748b;font-size:0.75rem;">${j.analisadoPorNome || '-'}</span>`;
+                ` : `<span style="color:#64748b;font-size:0.75rem;">${textoHtml(j.analisadoPorNome || '-')}</span>`;
                 return `<tr>
-                    <td><strong>${j.alunoNome}</strong></td>
+                    <td><strong>${textoHtml(j.alunoNome)}</strong></td>
                     <td style="font-size:0.8rem;">${new Date(j.dataInicio).toLocaleDateString('pt-BR')} - ${new Date(j.dataFim).toLocaleDateString('pt-BR')}</td>
-                    <td>${j.motivo}</td>
-                    <td>${j.categoria || '-'}</td>
-                    <td><span class="sec-badge ${badgeClass}">${j.status}</span></td>
+                    <td>${textoHtml(j.motivo)}</td>
+                    <td>${textoHtml(j.categoria || '-')}</td>
+                    <td><span class="sec-badge ${badgeClass}">${textoHtml(j.status)}</span></td>
                     <td style="display:flex;gap:0.3rem;">${acoes}</td>
                 </tr>`;
             }).join('');

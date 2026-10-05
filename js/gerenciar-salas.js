@@ -165,7 +165,7 @@ function renderizarSalas(filtro = '') {
                                     ${p.foto ? `<img src="${escAttr(p.foto)}" alt="${escAttr(p.nome)}">` : '<i class="bi bi-person-fill"></i>'}
                                 </div>
                                 <div class="professor-info">
-                                    <strong>${p.nome}</strong>
+                                    <strong>${escAttr(p.nome)}</strong>
                                     <span>${ehPrincipal ? '<i class="bi bi-star-fill text-warning"></i> Regente' : 'Professor(a) de Matéria'}</span>
                                 </div>
                                 <div class="professor-actions">
@@ -185,7 +185,7 @@ function renderizarSalas(filtro = '') {
         card.innerHTML = `
             <div class="sala-card-header">
                 <div>
-                    <h3>${sala}</h3>
+                    <h3>${escAttr(sala)}</h3>
                     <span class="badge">${professoresNaSala.length} Prof.</span>
                 </div>
                 <button type="button" class="btn-add-prof" title="Atribuir novo professor" data-sala="${attrHtml(sala)}">

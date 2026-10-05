@@ -197,7 +197,7 @@ function mostrarAvisoSelecao() {
                  style="background: var(--bg-elevated); padding: 15px 25px; border-radius: 12px; border: 1px solid var(--border-secondary); cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s ease; margin-bottom: 10px;">
                 <div style="display: flex; align-items: center; gap: 15px;">
                     <i class="bi bi-people-fill" style="font-size: 1.5rem; color: var(--primary);"></i>
-                    <span style="font-size: 1.2rem; font-weight: 600; color: var(--text-primary);">Turma ${t.id}</span>
+                    <span style="font-size: 1.2rem; font-weight: 600; color: var(--text-primary);">Turma ${escAttr(t.id)}</span>
                 </div>
                 <i class="bi bi-chevron-right" style="color: var(--text-muted);"></i>
             </div>
@@ -324,7 +324,7 @@ async function loadAlunos() {
                     statusHtml = `
                         <div style="display:flex; flex-direction:column; gap:2px;">
                             <span class="badge badge-pcd" style="width: fit-content;">PCD</span>
-                            <span style="font-size: 0.8rem; color: var(--text-muted);">${aluno.deficiencia}</span>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">${escAttr(aluno.deficiencia)}</span>
                         </div>
                     `;
                 } else {
@@ -335,15 +335,15 @@ async function loadAlunos() {
                 tr.innerHTML = `
                     <td><input type="checkbox" class="student-select" value="${escAttr(aluno.id || aluno._id)}"></td>
                     <td>
-                        <div style="font-weight: 500; color: var(--text-white);">${aluno.nome}</div>
+                        <div style="font-weight: 500; color: var(--text-white);">${escAttr(aluno.nome)}</div>
                         <div style="font-size: 0.8rem; margin-top: 4px; color: ${aluno.responsavel ? '#22c55e' : '#ef4444'};">
                             ${aluno.responsavel
-                                ? `<i class="bi bi-person-check-fill"></i> ${aluno.responsavel}`
+                                ? `<i class="bi bi-person-check-fill"></i> ${escAttr(aluno.responsavel)}`
                                 : `<i class="bi bi-person-x-fill"></i> Nenhum responsável vinculado`}
                         </div>
                     </td>
-                    <td><code style="background:rgba(255,255,255,0.1); padding: 2px 5px; border-radius: 4px;">${aluno.matricula || '-'}</code></td>
-                    <td><span class="badge badge-turma">${nomeTurma}</span></td>
+                    <td><code style="background:rgba(255,255,255,0.1); padding: 2px 5px; border-radius: 4px;">${escAttr(aluno.matricula || '-')}</code></td>
+                    <td><span class="badge badge-turma">${escAttr(nomeTurma)}</span></td>
                     <td>${statusHtml}</td>
                     <td style="text-align: right; display: flex; gap: 5px; justify-content: flex-end;">
                          <button class="btn btn-ghost btn-sm btn-edit" data-id="${escAttr(aluno.id || aluno._id)}" title="Editar Aluno">
@@ -609,8 +609,8 @@ async function carregarAutorizacoesEDocumentos(alunoId) {
                             <div style="font-weight: 600; color: #fff; font-size: 0.9rem;">${item.nome}</div>
                             <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 2px;">${item.descricao}</div>
                             <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px;">
-                                <span>Resp: ${responsavelNome}</span> &bull; <span>Data: ${item.data}</span>
-                                ${item.obs !== '-' ? ` &bull; <span style="color: #fbbf24;">Obs: ${item.obs}</span>` : ''}
+                                <span>Resp: ${escAttr(responsavelNome)}</span> &bull; <span>Data: ${escAttr(item.data)}</span>
+                                ${item.obs !== '-' ? ` &bull; <span style="color: #fbbf24;">Obs: ${escAttr(item.obs)}</span>` : ''}
                             </div>
                         </div>
                         <div>
@@ -664,13 +664,13 @@ async function carregarAutorizacoesEDocumentos(alunoId) {
 
                     tr.innerHTML = `
                         <td style="text-align: center;">${iconHtml}</td>
-                        <td style="font-weight: 500; color: #fff;">${doc.nomeDocumento || doc.tipoDocumento}</td>
-                        <td><span class="badge" style="background: rgba(59,130,246,0.12); color: #60a5fa; font-size: 0.72rem;">${doc.tipoDocumento}</span></td>
+                        <td style="font-weight: 500; color: #fff;">${escAttr(doc.nomeDocumento || doc.tipoDocumento)}</td>
+                        <td><span class="badge" style="background: rgba(59,130,246,0.12); color: #60a5fa; font-size: 0.72rem;">${escAttr(doc.tipoDocumento)}</span></td>
                         <td style="font-size: 0.8rem; color: #94a3b8;">${dataEnvioFormatada}</td>
                         <td style="font-size: 0.8rem; color: #94a3b8;">${dataAtualizacaoFormatada}</td>
                         <td>
                             <span class="badge" style="background: rgba(255,255,255,0.05); color: ${statusColor}; border: 1px solid ${statusColor}44; font-size: 0.72rem;">
-                                ${doc.status}
+                                ${escAttr(doc.status)}
                             </span>
                         </td>
                         <td style="text-align: right; white-space: nowrap;">
@@ -894,17 +894,17 @@ async function carregarTodosDocumentosAssinados() {
             tr.innerHTML = `
                 <td style="text-align: center; vertical-align: middle;">${iconHtml}</td>
                 <td>
-                    <div style="font-weight: 600; color: #fff;">${doc.nomeDocumento || doc.tipoDocumento}</div>
-                    <small style="color: #64748b;">${doc.arquivo?.nomeOriginal || ''}</small>
+                    <div style="font-weight: 600; color: #fff;">${escAttr(doc.nomeDocumento || doc.tipoDocumento)}</div>
+                    <small style="color: #64748b;">${escAttr(doc.arquivo?.nomeOriginal)}</small>
                 </td>
-                <td><span class="badge" style="background: rgba(59,130,246,0.12); color: #60a5fa; font-size: 0.75rem;">${doc.tipoDocumento}</span></td>
+                <td><span class="badge" style="background: rgba(59,130,246,0.12); color: #60a5fa; font-size: 0.75rem;">${escAttr(doc.tipoDocumento)}</span></td>
                 <td>
                     <a href="#" data-acao="abrirAluno" data-aluno="${attrHtml(doc.alunoId?._id || doc.alunoId)}" style="color: #38bdf8; text-decoration: none; font-weight: 500;">
-                        ${alunoNome}
+                        ${escAttr(alunoNome)}
                     </a>
                 </td>
-                <td style="color: #cbd5e1;">${responsavelNome}</td>
-                <td><span class="badge badge-turma">${turmaNome}</span></td>
+                <td style="color: #cbd5e1;">${escAttr(responsavelNome)}</td>
+                <td><span class="badge badge-turma">${escAttr(turmaNome)}</span></td>
                 <td style="font-size: 0.8rem; color: #94a3b8;">${dataEnvioFormatada}</td>
                 <td style="font-size: 0.8rem; color: #94a3b8;">${dataAtualizacaoFormatada}</td>
                 <td>
