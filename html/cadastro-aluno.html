@@ -143,7 +143,7 @@
                 <div class="ca-field">
                     <label>Nome<span class="req-mark">*</span></label>
                     <input type="text" id="nome" placeholder="Nome completo do aluno"
-                        oninput="onFieldEdit('dados-basicos','nome')" required>
+                        data-acao-input="editarCampo" data-secao="dados-basicos" data-campo="nome" required>
                 </div>
                 <div class="ca-field">
                     <label>RA / Matrícula</label>
@@ -155,17 +155,17 @@
                 <div class="ca-field">
                     <label for="nascimento">Data de Nascimento<span class="req-mark">*</span></label>
                     <input type="date" id="nascimento"
-                        onchange="onFieldEdit('dados-basicos','nascimento')" required>
+                        data-acao-change="editarCampo" data-secao="dados-basicos" data-campo="nascimento" required>
                 </div>
                 <div class="ca-field">
                     <label for="turmaId">Turma<span class="req-mark">*</span></label>
-                    <select id="turmaId" onchange="onFieldEdit('dados-basicos','turma')" required>
+                    <select id="turmaId" data-acao-change="editarCampo" data-secao="dados-basicos" data-campo="turma" required>
                         <option value="">Selecionar turma</option>
                     </select>
                 </div>
                 <div class="ca-field">
                     <label for="nivel">Nível</label>
-                    <select id="nivel" onchange="onFieldEdit('dados-basicos','nivel')">
+                    <select id="nivel" data-acao-change="editarCampo" data-secao="dados-basicos" data-campo="nivel">
                         <option value="">Selecionar</option>
                         <option value="Básico">Básico</option>
                         <option value="Intermediário">Intermediário</option>
@@ -178,12 +178,12 @@
                 <div class="ca-field">
                     <label>CPF do Aluno</label>
                     <input type="text" id="cpfAluno" placeholder="000.000.000-00"
-                        oninput="onFieldEdit('dados-basicos','cpf');maskCPF(this)">
+                        data-acao-input="editarCampo" data-secao="dados-basicos" data-campo="cpf" data-mascara="cpf">
                 </div>
                 <div class="ca-field">
                     <label for="nacionalidade">Nacionalidade</label>
                     <input type="text" id="nacionalidade" value="Brasileira"
-                        oninput="onFieldEdit('dados-basicos','nacionalidade')">
+                        data-acao-input="editarCampo" data-secao="dados-basicos" data-campo="nacionalidade">
                 </div>
             </div>
 
@@ -193,7 +193,7 @@
                         Cor/Etnia
                         <span class="sensitive-tag"><i class="bi bi-lock-fill"></i> Sensível</span>
                     </label>
-                    <select id="etnia" onchange="onFieldEdit('dados-basicos','etnia')">
+                    <select id="etnia" data-acao-change="editarCampo" data-secao="dados-basicos" data-campo="etnia">
                         <option value="">Prefere não informar</option>
                         <option value="Branca">Branca</option>
                         <option value="Preta">Preta</option>
@@ -227,41 +227,41 @@
                 <div class="ca-field">
                     <label>CEP<span class="req-mark">*</span></label>
                     <input type="text" id="cep" placeholder="00000-000"
-                        oninput="onFieldEdit('endereco','cep');maskCEP(this)"
-                        onblur="buscarCEP(this.value)">
+                        data-acao-input="editarCampo" data-secao="endereco" data-campo="cep" data-mascara="cep"
+                        data-busca-cep>
                 </div>
                 <div class="ca-field" style="grid-column: span 2">
                     <label>Logradouro<span class="req-mark">*</span></label>
                     <input type="text" id="logradouro" placeholder="Rua, Avenida..."
-                        oninput="onFieldEdit('endereco','logradouro')">
+                        data-acao-input="editarCampo" data-secao="endereco" data-campo="logradouro">
                 </div>
             </div>
             <div class="ca-grid ca-grid-4">
                 <div class="ca-field">
                     <label>Número</label>
                     <input type="text" id="numero" placeholder="Nº"
-                        oninput="onFieldEdit('endereco','numero')">
+                        data-acao-input="editarCampo" data-secao="endereco" data-campo="numero">
                 </div>
                 <div class="ca-field" style="grid-column: span 2">
                     <label>Complemento</label>
                     <input type="text" id="complemento" placeholder="Apto, Bloco..."
-                        oninput="onFieldEdit('endereco','complemento')">
+                        data-acao-input="editarCampo" data-secao="endereco" data-campo="complemento">
                 </div>
                 <div class="ca-field">
                     <label>Bairro</label>
                     <input type="text" id="bairro" placeholder="Bairro"
-                        oninput="onFieldEdit('endereco','bairro')">
+                        data-acao-input="editarCampo" data-secao="endereco" data-campo="bairro">
                 </div>
             </div>
             <div class="ca-grid ca-grid-2" style="margin-top:1rem">
                 <div class="ca-field">
                     <label>Cidade<span class="req-mark">*</span></label>
                     <input type="text" id="cidade" placeholder="Cidade"
-                        oninput="onFieldEdit('endereco','cidade')">
+                        data-acao-input="editarCampo" data-secao="endereco" data-campo="cidade">
                 </div>
                 <div class="ca-field">
                     <label for="estado">Estado</label>
-                    <select id="estado" onchange="onFieldEdit('endereco','estado')">
+                    <select id="estado" data-acao-change="editarCampo" data-secao="endereco" data-campo="estado">
                         <option value="">UF</option>
                         <option>AC</option><option>AL</option><option>AM</option><option>AP</option>
                         <option>BA</option><option>CE</option><option>DF</option><option>ES</option>
@@ -288,11 +288,11 @@
                 <div class="ca-field">
                     <label>Nome do Responsável<span class="req-mark">*</span></label>
                     <input type="text" id="respNome" placeholder="Nome completo"
-                        oninput="onFieldEdit('responsavel','nome')">
+                        data-acao-input="editarCampo" data-secao="responsavel" data-campo="nome">
                 </div>
                 <div class="ca-field">
                     <label for="respParentesco">Parentesco / Tipo</label>
-                    <select id="respParentesco" onchange="onFieldEdit('responsavel','parentesco')">
+                    <select id="respParentesco" data-acao-change="editarCampo" data-secao="responsavel" data-campo="parentesco">
                         <option value="Mãe">Mãe</option>
                         <option value="Pai">Pai</option>
                         <option value="Responsável Legal">Responsável Legal</option>
@@ -307,23 +307,23 @@
                 <div class="ca-field">
                     <label>CPF do Responsável<span class="req-mark">*</span></label>
                     <input type="text" id="respCPF" placeholder="000.000.000-00"
-                        oninput="onFieldEdit('responsavel','cpf');maskCPF(this)">
+                        data-acao-input="editarCampo" data-secao="responsavel" data-campo="cpf" data-mascara="cpf">
                 </div>
                 <div class="ca-field">
                     <label>Telefone<span class="req-mark">*</span></label>
                     <input type="tel" id="respTelefone" placeholder="(11) 99999-9999"
-                        oninput="onFieldEdit('responsavel','telefone');maskTel(this)">
+                        data-acao-input="editarCampo" data-secao="responsavel" data-campo="telefone" data-mascara="tel">
                 </div>
                 <div class="ca-field">
                     <label>E-mail</label>
                     <input type="email" id="respEmail" placeholder="email@exemplo.com"
-                        oninput="onFieldEdit('responsavel','email')">
+                        data-acao-input="editarCampo" data-secao="responsavel" data-campo="email">
                 </div>
             </div>
             <div class="ca-grid ca-grid-2">
                 <div class="ca-field">
                     <label for="respBusca">Autorizado a Buscar</label>
-                    <select id="respBusca" onchange="onFieldEdit('responsavel','busca')">
+                    <select id="respBusca" data-acao-change="editarCampo" data-secao="responsavel" data-campo="busca">
                         <option value="Sim">Sim</option>
                         <option value="Não">Não</option>
                     </select>
@@ -360,15 +360,15 @@
             <div class="ca-grid ca-grid-3">
                 <div class="ca-field">
                     <label>CPF</label>
-                    <input type="text" id="resp2CPF" placeholder="000.000.000-00" oninput="maskCPF(this)">
+                    <input type="text" id="resp2CPF" placeholder="000.000.000-00" data-acao-input="mascarar" data-mascara="cpf">
                 </div>
                 <div class="ca-field">
                     <label>Telefone</label>
-                    <input type="tel" id="resp2Telefone" placeholder="(11) 99999-9999" oninput="maskTel(this)">
+                    <input type="tel" id="resp2Telefone" placeholder="(11) 99999-9999" data-acao-input="mascarar" data-mascara="tel">
                 </div>
                 <div class="ca-field">
                     <label>WhatsApp</label>
-                    <input type="tel" id="resp2Whatsapp" placeholder="(11) 99999-9999" oninput="maskTel(this)">
+                    <input type="tel" id="resp2Whatsapp" placeholder="(11) 99999-9999" data-acao-input="mascarar" data-mascara="tel">
                 </div>
             </div>
             <div class="ca-grid ca-grid-2" style="margin-top:1rem">
@@ -389,11 +389,11 @@
                 <div class="ca-field">
                     <label>WhatsApp do Responsável 1</label>
                     <input type="tel" id="respWhatsapp" placeholder="(11) 99999-9999"
-                        oninput="onFieldEdit('responsavel','whatsapp');maskTel(this)">
+                        data-acao-input="editarCampo" data-secao="responsavel" data-campo="whatsapp" data-mascara="tel">
                 </div>
                 <div class="ca-field">
                     <label for="guardaLegal">Quem possui a guarda legal?</label>
-                    <select id="guardaLegal" onchange="onFieldEdit('responsavel','guardaLegal')">
+                    <select id="guardaLegal" data-acao-change="editarCampo" data-secao="responsavel" data-campo="guardaLegal">
                         <option value="">— Selecione —</option>
                         <option value="Mãe">Mãe</option>
                         <option value="Pai">Pai</option>
@@ -412,7 +412,7 @@
                 Pessoas Autorizadas a Retirar o Aluno
             </div>
             <div id="listaAutorizadosRetirada"></div>
-            <button type="button" class="btn btn-outline btn-sm" style="margin-top:.75rem" onclick="addPessoaAutorizada()">
+            <button type="button" class="btn btn-outline btn-sm" style="margin-top:.75rem" data-acao="adicionarPessoaAutorizada">
                 <i class="bi bi-plus-lg"></i> Adicionar Pessoa
             </button>
         </div>
@@ -440,7 +440,7 @@
             <div class="ca-grid ca-grid-2" style="margin-bottom:1rem">
                 <div class="ca-field">
                     <label for="pcd">Possui Deficiência (PCD)?</label>
-                    <select id="pcd" onchange="onFieldEdit('saude','pcd');togglePcd(this.value)">
+                    <select id="pcd" data-acao-change="editarPcd" data-secao="saude" data-campo="pcd">
                         <option value="Não">Não</option>
                         <option value="Sim">Sim</option>
                     </select>
@@ -448,7 +448,7 @@
                 <div class="ca-field pcd-toggle-section" id="pcdTipoSection">
                     <label>Tipo de Deficiência</label>
                     <input type="text" id="pcdTipo" placeholder="Ex: Visual, Auditiva, Física..."
-                        oninput="onFieldEdit('saude','pcd-tipo')">
+                        data-acao-input="editarCampo" data-secao="saude" data-campo="pcd-tipo">
                 </div>
             </div>
 
@@ -456,12 +456,12 @@
                 <div class="ca-field">
                     <label>Alergias Alimentares</label>
                     <input type="text" id="alergiasAlimentos" placeholder="Ex: Lactose, Glúten..."
-                        oninput="onFieldEdit('saude','alergia-alimentos')">
+                        data-acao-input="editarCampo" data-secao="saude" data-campo="alergia-alimentos">
                 </div>
                 <div class="ca-field">
                     <label>Alergias Medicamentosas</label>
                     <input type="text" id="alergiasRemedio" placeholder="Ex: Penicilina..."
-                        oninput="onFieldEdit('saude','alergia-remedio')">
+                        data-acao-input="editarCampo" data-secao="saude" data-campo="alergia-remedio">
                 </div>
             </div>
 
@@ -469,11 +469,11 @@
                 <div class="ca-field">
                     <label>Plano de Saúde</label>
                     <input type="text" id="planoSaude" placeholder="Nome do plano ou 'Nenhum'"
-                        oninput="onFieldEdit('saude','plano')">
+                        data-acao-input="editarCampo" data-secao="saude" data-campo="plano">
                 </div>
                 <div class="ca-field">
                     <label for="condicao">Condição Especial</label>
-                    <select id="condicao" onchange="onFieldEdit('saude','condicao')">
+                    <select id="condicao" data-acao-change="editarCampo" data-secao="saude" data-campo="condicao">
                         <option value="">Nenhuma</option>
                         <option value="Recuperação">Recuperação</option>
                         <option value="Transferido">Transferido</option>
@@ -485,7 +485,7 @@
             <div class="ca-field">
                 <label>Observações Pedagógicas</label>
                 <textarea id="observacoes" placeholder="Informações relevantes para educadores..."
-                    oninput="onFieldEdit('saude','observacoes')"></textarea>
+                    data-acao-input="editarCampo" data-secao="saude" data-campo="observacoes"></textarea>
             </div>
         </div>
 
@@ -520,17 +520,17 @@
             <h4 style="font-size:.85rem;color:#10b981;margin:1rem 0 .5rem">Condução Escolar</h4>
             <div class="ca-grid ca-grid-2" style="margin-bottom:.75rem">
                 <div class="ca-field"><label for="authConducao">Autoriza condução escolar contratada?</label>
-                    <select id="authConducao" onchange="toggleConducaoFields()"><option value="">—</option><option value="sim">SIM</option><option value="nao">NÃO</option></select></div>
+                    <select id="authConducao" data-acao-change="alternarConducao"><option value="">—</option><option value="sim">SIM</option><option value="nao">NÃO</option></select></div>
             </div>
             <div id="conducaoFields" class="ca-grid ca-grid-2" style="display:none;margin-bottom:.75rem">
                 <div class="ca-field"><label>Nome do Motorista</label><input type="text" id="motoristaNome" placeholder="Nome completo"></div>
-                <div class="ca-field"><label>Telefone do Motorista</label><input type="tel" id="motoristaTelefone" placeholder="(11) 99999-9999" oninput="maskTel(this)"></div>
+                <div class="ca-field"><label>Telefone do Motorista</label><input type="tel" id="motoristaTelefone" placeholder="(11) 99999-9999" data-acao-input="mascarar" data-mascara="tel"></div>
             </div>
 
             <h4 style="font-size:.85rem;color:#10b981;margin:1rem 0 .5rem">Autorização de Antitérmico</h4>
             <div class="ca-grid ca-grid-2" style="margin-bottom:.75rem">
                 <div class="ca-field"><label for="authAntitermico">Autoriza administrar antitérmico?</label>
-                    <select id="authAntitermico" onchange="toggleAntitermicoFields()"><option value="">—</option><option value="sim">SIM</option><option value="nao">NÃO</option></select></div>
+                    <select id="authAntitermico" data-acao-change="alternarAntitermico"><option value="">—</option><option value="sim">SIM</option><option value="nao">NÃO</option></select></div>
             </div>
             <div id="antitermicoFields" class="ca-grid ca-grid-2" style="display:none">
                 <div class="ca-field"><label>Nome do Medicamento</label><input type="text" id="medicamentoNome" placeholder="Ex: Dipirona"></div>
@@ -555,9 +555,9 @@
                     escolar; cada envio é registrado e a versão anterior é preservada.</span>
             </div>
 
-            <div class="doc-upload-zone" onclick="document.getElementById('docInput').click()">
+            <div class="doc-upload-zone" data-acao="escolherDocumentos">
                 <input type="file" id="docInput" accept=".pdf,.jpg,.jpeg,.png"
-                    multiple onchange="addDocs(this.files)" style="display:none">
+                    multiple data-acao-change="adicionarDocumentos" style="display:none">
                 <i class="bi bi-cloud-upload"></i>
                 <p>Clique ou arraste arquivos aqui</p>
                 <span>PDF, JPG ou PNG — máx. 10 MB cada</span>
@@ -631,7 +631,7 @@
 
             <!-- Consentimento 1 — Dados do menor -->
             <div class="consent-item" id="ci1">
-                <input aria-label="Autorização para tratamento de dados do menor" type="checkbox" id="c1" onchange="checkConsents()">
+                <input aria-label="Autorização para tratamento de dados do menor" type="checkbox" id="c1" data-acao-change="conferirConsentimentos">
                 <div class="consent-item-body">
                     <div class="consent-item-title">
                         Autorização para tratamento de dados do menor
@@ -647,7 +647,7 @@
 
             <!-- Consentimento 2 — Dados sensíveis -->
             <div class="consent-item" id="ci2">
-                <input aria-label="Autorização para dados sensíveis de saúde e identidade" type="checkbox" id="c2" onchange="checkConsents()">
+                <input aria-label="Autorização para dados sensíveis de saúde e identidade" type="checkbox" id="c2" data-acao-change="conferirConsentimentos">
                 <div class="consent-item-body">
                     <div class="consent-item-title">
                         Autorização para dados sensíveis de saúde e identidade
@@ -663,7 +663,7 @@
 
             <!-- Consentimento 3 — Comunicações -->
             <div class="consent-item" id="ci3">
-                <input aria-label="Autorização para comunicações institucionais" type="checkbox" id="c3" onchange="checkConsents()">
+                <input aria-label="Autorização para comunicações institucionais" type="checkbox" id="c3" data-acao-change="conferirConsentimentos">
                 <div class="consent-item-body">
                     <div class="consent-item-title">
                         Autorização para comunicações institucionais
@@ -678,7 +678,7 @@
 
             <!-- Consentimento 4 — Política e direitos -->
             <div class="consent-item" id="ci4">
-                <input aria-label="Ciência da Política de Privacidade e direitos LGPD" type="checkbox" id="c4" onchange="checkConsents()">
+                <input aria-label="Ciência da Política de Privacidade e direitos LGPD" type="checkbox" id="c4" data-acao-change="conferirConsentimentos">
                 <div class="consent-item-body">
                     <div class="consent-item-title">
                         Ciência da Política de Privacidade e direitos LGPD
@@ -758,6 +758,8 @@
 
     <script defer src="../js/botao-voltar.js"></script>
     <script src="../js/api-config.js"></script>
+    <!-- Delegação por data-acao (épico #612): os handlers saíram do HTML. -->
+    <script src="../js/acoes.js"></script>
     <script src="../js/cadastro-aluno.js"></script>
     <script src="../js/vendor.js"></script>
     <script defer src="../js/events/cadastro-aluno-events.js"></script>

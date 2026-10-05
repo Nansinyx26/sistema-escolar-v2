@@ -2,16 +2,12 @@
     "direcao/auditoria.html": 1,
     "direcao/direcao-notificacoes.html": 10,
     "direcao/direcao-notificacoes.js": 4,
-    "direcao/horario-editor.js": 4,
-    "direcao/horario-jaguari.html": 36,
-    "direcao/horario-jaguari.js": 34,
     "html/admin/auditoria.html": 2,
     "html/admin/codigos-backup.html": 6,
     "html/admin/codigos-escolas.html": 4,
     "html/admin/diagnostico.html": 1,
     "html/admin/pedidos-lgpd.html": 5,
     "html/admin/usuarios.html": 18,
-    "html/cadastro-aluno.html": 43,
     "html/direcao/bi-pedagogico.js": 2,
     "html/direcao/gerenciar-secretaria.html": 4,
     "html/direcao/index.html": 1,
@@ -20,6 +16,5 @@
     "html/secretaria/importar-alunos.html": 5,
     "html/secretaria/justificativas.html": 6,
     "html/secretaria/matriculas.html": 2,
-    "html/secretaria/relatorios.html": 5,
-    "js/cadastro-aluno.js": 6
+    "html/secretaria/relatorios.html": 5
 }
