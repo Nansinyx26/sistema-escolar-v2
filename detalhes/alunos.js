@@ -346,7 +346,7 @@ async function loadAlunos() {
                          <button class="btn btn-ghost btn-sm btn-edit" data-id="${escAttr(aluno.id || aluno._id)}" title="Editar Aluno">
                             <i class="bi bi-pencil"></i>
                         </button>
-                         <a href="../html/turma.html?turma=${escAttr(aluno.turmaId)}" class="btn btn-ghost btn-sm" title="Ver na Turma">
+                         <a href="../html/turma.html?turma=${escAttr(encodeURIComponent(aluno.turmaId ?? ''))}" class="btn btn-ghost btn-sm" title="Ver na Turma">
                             <i class="bi bi-eye"></i>
                         </a>
                     </td>
