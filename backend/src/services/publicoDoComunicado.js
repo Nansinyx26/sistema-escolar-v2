@@ -14,13 +14,15 @@
  * alunos dela — menos o e-mail bloqueado por decisão judicial (Issue #491).
  */
 const Aluno = require('../models/Aluno');
+const Professor = require('../models/Professor');
 const Usuario = require('../models/Usuario');
 const { emitirParaEscola, emitirParaPerfis, emitirParaUsuario } = require('../utils/realtime');
 const { restritoPara } = require('../utils/restricaoAcesso');
 
 const EVENTO = 'comunicado:new';
 const GESTAO = ['admin', 'diretor', 'secretaria'];
-const PUBLICOS = ['todos', 'professores', 'responsaveis'];
+// `diretores` e `diretor` são públicos das notificações (NotificationService).
+const PUBLICOS = ['todos', 'professores', 'responsaveis', 'diretores', 'diretor'];
 
 /** Turmas citadas nos destinatários, com ou sem o prefixo `turma:`. */
 function turmasDosDestinatarios(destinatarios) {
@@ -30,11 +32,27 @@ function turmasDosDestinatarios(destinatarios) {
         .filter(Boolean);
 }
 
+/**
+ * "1A" e "1ºA" são a mesma turma nos cadastros (mesma normalização do
+ * `horizontalFilter`).
+ */
+function variantesDasTurmas(turmas) {
+    const lista = new Set();
+    for (const t of turmas) {
+        const norm = String(t).replace('º', '');
+        lista.add(String(t));
+        lista.add(norm);
+        if (norm.length >= 2) lista.add(`${norm[0]}º${norm.slice(1)}`);
+    }
+    return [...lista];
+}
+
 /** Contas de responsável dos alunos das turmas, na escola. */
 async function responsaveisDasTurmas(escolaId, turmas) {
+    const nomes = variantesDasTurmas(turmas);
     const alunos = await Aluno.find({
         escolaId: String(escolaId),
-        $or: [{ turma: { $in: turmas } }, { turmaId: { $in: turmas } }],
+        $or: [{ turma: { $in: nomes } }, { turmaId: { $in: nomes } }],
     })
         .select('responsavel responsavelDados.email responsaveis.email restricoesAcesso')
         .lean();
@@ -56,6 +74,41 @@ async function responsaveisDasTurmas(escolaId, turmas) {
         .select('_id')
         .lean();
     return contas.map((c) => String(c._id));
+}
+
+/** Contas dos professores que dão aula nas turmas, na escola. */
+async function professoresDasTurmas(escolaId, turmas) {
+    const nomes = variantesDasTurmas(turmas);
+    const professores = await Professor.find({
+        ativo: { $ne: false },
+        $and: [
+            { $or: [{ escolaId: String(escolaId) }, { 'vinculos.escolaId': String(escolaId) }] },
+            {
+                $or: [
+                    { salaPrincipal: { $in: nomes } },
+                    { salasAdicionais: { $in: nomes } },
+                    { turmas: { $in: nomes } },
+                ],
+            },
+        ],
+    })
+        .select('idUsuario')
+        .lean();
+    return professores.map((p) => String(p.idUsuario)).filter(Boolean);
+}
+
+/**
+ * Contas que um aviso endereçado às turmas alcança (Issue #686): os
+ * professores delas e, se o aviso for às famílias, os responsáveis dos alunos.
+ * Sem escola não há como saber de quem é a turma, e ninguém é alcançado.
+ */
+async function contasDasTurmas(escolaId, turmas, { incluirResponsaveis = true } = {}) {
+    if (!escolaId || !turmas.length) return [];
+    const contas = new Set(await professoresDasTurmas(escolaId, turmas));
+    if (incluirResponsaveis) {
+        for (const id of await responsaveisDasTurmas(escolaId, turmas)) contas.add(id);
+    }
+    return [...contas];
 }
 
 /**
@@ -114,4 +167,4 @@ async function emitirComunicadoNovo(comunicado, escolaPadrao) {
     }
 }
 
-module.exports = { emitirComunicadoNovo, turmasDosDestinatarios };
+module.exports = { emitirComunicadoNovo, turmasDosDestinatarios, contasDasTurmas };
