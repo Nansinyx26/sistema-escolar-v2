@@ -401,7 +401,7 @@ class UIManager {
                             <div class="spinner"></div>
                             <div class="timer-lateral" id="timer-lateral" style="font-family: monospace; font-size: 1.5rem; color: var(--primary); font-weight: bold; background: rgba(0,0,0,0.3); padding: 5px 10px; border-radius: 8px; border: 1px solid var(--primary); min-width: 60px; text-align: center;">00s</div>
                         </div>
-                        <p id="loading-text" style="margin-top: 20px; color: #ffffff; font-size: 1.4rem; font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">${message}</p>
+                        <p id="loading-text" style="margin-top: 20px; color: #ffffff; font-size: 1.4rem; font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">${textoDaMensagem(message)}</p>
                     </div>
                 `;
                 document.body.appendChild(loading);

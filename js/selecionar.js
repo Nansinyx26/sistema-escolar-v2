@@ -56,15 +56,6 @@ const SelecionarPage = {
         // Se precisar atualizar o nome em algum lugar específico (como boas-vindas), faça-o aqui.
         const welcomeName = document.getElementById('userName');
         if (welcomeName) welcomeName.textContent = user.nome;
-
-        const cardFerramentas = document.getElementById('cardFerramentasSelecionar');
-        if (cardFerramentas) {
-            if (user.perfil === 'admin') {
-                cardFerramentas.classList.remove('hidden');
-            } else {
-                cardFerramentas.classList.add('hidden');
-            }
-        }
     },
 
     async renderStats(user) {

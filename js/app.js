@@ -718,12 +718,6 @@ class App {
         if (userNameEl && user) {
             userNameEl.textContent = user.nome;
         }
-
-        // Mostra card Ferramentas apenas para administradores
-        const cardFerramentas = document.getElementById('cardFerramentasSelecionar');
-        if (cardFerramentas && user && user.perfil === 'admin') {
-            cardFerramentas.classList.remove('hidden');
-        }
     }
 
     /**
