@@ -1,24 +1,40 @@
 /**
  * DailyDigestJob.js
  * Executa todos os dias às 16h (horário de Brasília).
- * Cria uma Notificacao de resumo do dia para todos os usuários via NotificationService
- * (enviando via Socket.IO para o sininho e Web Push para celulares).
+ * Cria, para cada escola ativa, uma Notificacao de resumo do dia via NotificationService
+ * (Socket.IO para o sininho e Web Push para celulares), só para quem é da escola.
  */
 
 const cron = require('node-cron');
 const Comunicado = require('../models/Comunicado');
+const Escola = require('../models/Escola');
 const Notificacao = require('../models/Notificacao');
 const NotificationService = require('../services/NotificationService');
 const logger = require('../utils/logger');
 const { executarComTravaJanela, formatarJanelaDia } = require('../utils/travaDistribuida');
 
 /**
- * Gera o texto do resumo diário com base nos comunicados publicados hoje.
+ * Início e fim do dia corrente (horário do servidor).
  */
-async function gerarResumo() {
+function limitesDoDia(hoje = new Date()) {
+    return {
+        inicioDia: new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 0, 0, 0),
+        fimDia: new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59),
+    };
+}
+
+/**
+ * Gera o texto do resumo diário de UMA escola (Issue #685).
+ *
+ * Entram só os comunicados da escola endereçados a `todos` e já publicados. O
+ * resumo vai para a escola inteira, famílias incluídas: um comunicado interno,
+ * de turma ou de família tem público próprio e já foi avisado a ele quando
+ * saiu. Antes o resumo juntava os títulos de TODAS as escolas e de todos os
+ * públicos e mandava para a rede inteira; e o agendado aparecia antes da hora.
+ */
+async function gerarResumo(escolaId) {
     const hoje = new Date();
-    const inicioDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 0, 0, 0);
-    const fimDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59);
+    const { inicioDia, fimDia } = limitesDoDia(hoje);
 
     const dataFormatada = hoje.toLocaleDateString('pt-BR', {
         day: '2-digit',
@@ -26,10 +42,12 @@ async function gerarResumo() {
         year: 'numeric',
     });
 
-    // Comunicados publicados hoje
     const comunicados = await Comunicado.find({
+        escolaId: String(escolaId),
         ativo: true,
+        destinatarios: 'todos',
         dataCriacao: { $gte: inicioDia, $lte: fimDia },
+        $or: [{ dataAgendada: null }, { dataAgendada: { $lte: hoje } }],
     })
         .select('titulo categoria')
         .lean();
@@ -54,7 +72,8 @@ async function gerarResumo() {
 }
 
 /**
- * Cria a notificação de resumo no banco e dispara no sininho / celular.
+ * Cria a notificação de resumo de cada escola ativa e dispara no sininho e no
+ * celular de quem é daquela escola.
  */
 async function enviarDigest(opcoesTrava = {}) {
     const janela = formatarJanelaDia();
@@ -65,47 +84,38 @@ async function enviarDigest(opcoesTrava = {}) {
             try {
                 logger.info('[DailyDigest] Iniciando resumo diário das 16h...');
 
-                const resumo = await gerarResumo();
-                if (!resumo) {
-                    logger.info('[DailyDigest] Nenhum comunicado novo hoje. Resumo não enviado.');
-                    return;
+                const { inicioDia } = limitesDoDia();
+                const escolas = await Escola.find({ ativo: true }).select('_id').lean();
+
+                for (const escola of escolas) {
+                    const escolaId = String(escola._id);
+
+                    // Evita duplicata: um resumo por escola por dia.
+                    const jaExiste = await Notificacao.findOne({
+                        tipo: 'resumo_diario',
+                        escolaId,
+                        dataCriacao: { $gte: inicioDia },
+                    });
+                    if (jaExiste) continue;
+
+                    const resumo = await gerarResumo(escolaId);
+                    await NotificationService.notify({
+                        tipo: 'resumo_diario',
+                        categoria: 'direcao',
+                        prioridade: 'normal',
+                        titulo: resumo.titulo,
+                        mensagem: resumo.mensagem,
+                        destinatarios: 'todos',
+                        paraResponsavel: true,
+                        criadoPor: 'Sistema',
+                        escolaId,
+                    });
+
+                    logger.info('[DailyDigest] Resumo diário enviado', {
+                        escolaId,
+                        comunicados: resumo.total,
+                    });
                 }
-
-                // Evita duplicata: verifica se já foi enviado hoje
-                const hoje = new Date();
-                const inicioDia = new Date(
-                    hoje.getFullYear(),
-                    hoje.getMonth(),
-                    hoje.getDate(),
-                    0,
-                    0,
-                    0
-                );
-                const jaExiste = await Notificacao.findOne({
-                    tipo: 'resumo_diario',
-                    dataCriacao: { $gte: inicioDia },
-                });
-
-                if (jaExiste) {
-                    logger.info('[DailyDigest] Resumo diário já enviado hoje. Ignorando.');
-                    return;
-                }
-
-                await NotificationService.notify({
-                    tipo: 'resumo_diario',
-                    categoria: 'direcao',
-                    prioridade: 'normal',
-                    titulo: resumo.titulo,
-                    mensagem: resumo.mensagem,
-                    destinatarios: 'todos', // Todos os usuários
-                    paraResponsavel: true, // Visível também para responsáveis
-                    criadoPor: 'Sistema',
-                    escolaId: null, // Visível globalmente para todas as escolas
-                });
-
-                logger.info(
-                    `[DailyDigest] Resumo diário enviado com ${resumo.total} comunicado(s).`
-                );
             } catch (err) {
                 logger.error(`[DailyDigest] Erro ao enviar resumo diário: ${err.message}`);
             }
@@ -132,4 +142,4 @@ function iniciarDailyDigest() {
     logger.info('[DailyDigest] Job agendado: resumo diário às 16h (BRT).');
 }
 
-module.exports = { iniciarDailyDigest, enviarDigest };
+module.exports = { iniciarDailyDigest, enviarDigest, gerarResumo };
