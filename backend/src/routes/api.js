@@ -278,7 +278,9 @@ router.use('/security', authJWT, filtrarPorEscola, require('./security'));
 router.use('/audit', authJWT, filtrarPorEscola, require('./audit'));
 router.use('/usuarios', authJWT, filtrarPorEscola, require('./usuarios'));
 router.use('/meus-dados', authJWT, require('./meus-dados'));
-router.use('/atribuicoes', authJWT, require('./atribuicoes'));
+// `filtrarPorEscola` resolve req.escolaId: sem ele o escopo do controller vira
+// no-op e o sync de uma escola apagava as atribuições das outras (Issue #660).
+router.use('/atribuicoes', authJWT, filtrarPorEscola, require('./atribuicoes'));
 router.use('/alunos', authJWT, horizontalFilter, filtrarPorEscola, require('./alunos'));
 router.use('/professores', authJWT, horizontalFilter, filtrarPorEscola, require('./professores'));
 // `filtrarPorEscola` é o que resolve req.escolaId — sem ele o escopo de escola
@@ -290,6 +292,7 @@ router.use(
     '/frequencia-professores',
     authJWT,
     horizontalFilter,
+    filtrarPorEscola, // Issue #660: sem ele, a lista e o registro ignoravam a escola
     require('./frequencia-professores')
 );
 // Planilha de faltas dos funcionários — `filtrarPorEscola` é obrigatório: é ele

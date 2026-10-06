@@ -657,8 +657,11 @@ exports.getFrequencia = async (req, res) => {
 
         // 3. Determinar a quantidade total de aulas/dias letivos a serem considerados
         const turmasBusca = [aluno.turma, aluno.turmaId].filter(Boolean);
+        // Só as aulas da escola do aluno: turma de mesmo nome em outra escola
+        // entrava no total (Issue #660).
         const aulasProfessor = await FrequenciaProfessor.find({
             classe: { $in: turmasBusca },
+            ...(aluno.escolaId ? { escolaId: String(aluno.escolaId) } : {}),
         }).lean();
 
         let totalAulas = 0;

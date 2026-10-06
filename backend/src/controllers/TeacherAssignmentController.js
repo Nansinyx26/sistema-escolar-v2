@@ -51,7 +51,9 @@ class TeacherAssignmentController {
                 }
             }
 
-            const atribuicoes = await AtribuicaoProfessor.find().sort({ nome: 1 });
+            // Sem o escopo, a lista final trazia as atribuições da rede inteira
+            // (Issue #660).
+            const atribuicoes = await AtribuicaoProfessor.find(escopo(req)).sort({ nome: 1 });
             return res.status(200).json({ success: true, data: atribuicoes });
         } catch (error) {
             console.error('❌ Erro ao listar atribuições:', error);
@@ -98,10 +100,13 @@ class TeacherAssignmentController {
                 const dados = { ...item };
                 delete dados._id;
                 delete dados.id;
+                // A escola vem da sessão, nunca do corpo (Issue #660).
+                delete dados.escolaId;
 
                 if (id && mongoose.Types.ObjectId.isValid(id)) {
-                    // Update
-                    await AtribuicaoProfessor.findByIdAndUpdate(id, dados, {
+                    // Update — só dentro da escola: por id puro, a lista de uma
+                    // escola reescrevia o registro de outra.
+                    await AtribuicaoProfessor.findOneAndUpdate(escopo(req, { _id: id }), dados, {
                         new: true,
                         runValidators: true,
                     });
@@ -134,7 +139,7 @@ class TeacherAssignmentController {
             if (!mongoose.Types.ObjectId.isValid(id)) {
                 return res.status(400).json({ success: false, error: 'ID inválido' });
             }
-            await AtribuicaoProfessor.findByIdAndDelete(id);
+            await AtribuicaoProfessor.findOneAndDelete(escopo(req, { _id: id }));
             return res
                 .status(200)
                 .json({ success: true, message: 'Atribuição removida com sucesso' });
