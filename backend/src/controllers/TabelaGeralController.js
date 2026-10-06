@@ -10,111 +10,138 @@
  */
 
 const TabelaGeral = require('../models/TabelaGeral');
+const { escolaMatch } = require('../middleware/filtrarPorEscola');
 
 // ─── Dados originais da grade (mesmo que horario-jaguari.js) ─────────────────
 const TURMAS = [
-    '1ºA','1ºB','1ºC','2ºA','2ºB','2ºC',
-    '3ºA','3ºB','3ºC','4ºA','4ºB','4ºC',
-    '5ºA','5ºB','5ºC','5ºD'
+    '1ºA',
+    '1ºB',
+    '1ºC',
+    '2ºA',
+    '2ºB',
+    '2ºC',
+    '3ºA',
+    '3ºB',
+    '3ºC',
+    '4ºA',
+    '4ºB',
+    '4ºC',
+    '5ºA',
+    '5ºB',
+    '5ºC',
+    '5ºD',
 ];
 const TURMAS_IDS = [
-    '1A','1B','1C','2A','2B','2C',
-    '3A','3B','3C','4A','4B','4C',
-    '5A','5B','5C','5D'
+    '1A',
+    '1B',
+    '1C',
+    '2A',
+    '2B',
+    '2C',
+    '3A',
+    '3B',
+    '3C',
+    '4A',
+    '4B',
+    '4C',
+    '5A',
+    '5B',
+    '5C',
+    '5D',
 ];
-const DIAS = ['SEGUNDA','TERÇA','QUARTA','QUINTA','SEXTA'];
+const DIAS = ['SEGUNDA', 'TERÇA', 'QUARTA', 'QUINTA', 'SEXTA'];
 
 const DADOS = {
     SEGUNDA: [
-        ['','I','OL','','','',''],
-        ['','','EF','I','','',''],
-        ['','MK','I','','','',''],
-        ['','','','','','A','A'],
-        ['EF','EF','','','','','I'],
-        ['I','A','','EF','','',''],
-        ['','','','','','I',''],
-        ['A','','','','','PEF','EF'],
-        ['','','','','','','DSE'],
-        ['','','','MK','','',''],
-        ['','','','','','MK',''],
-        ['','','MK','','','',''],
-        ['EF','EF','','','A','',''],
-        ['','','','','I','',''],
-        ['','','','','EF','',''],
-        ['','','A','A','OL','','']
+        ['', 'I', 'OL', '', '', '', ''],
+        ['', '', 'EF', 'I', '', '', ''],
+        ['', 'MK', 'I', '', '', '', ''],
+        ['', '', '', '', '', 'A', 'A'],
+        ['EF', 'EF', '', '', '', '', 'I'],
+        ['I', 'A', '', 'EF', '', '', ''],
+        ['', '', '', '', '', 'I', ''],
+        ['A', '', '', '', '', 'PEF', 'EF'],
+        ['', '', '', '', '', '', 'DSE'],
+        ['', '', '', 'MK', '', '', ''],
+        ['', '', '', '', '', 'MK', ''],
+        ['', '', 'MK', '', '', '', ''],
+        ['EF', 'EF', '', '', 'A', '', ''],
+        ['', '', '', '', 'I', '', ''],
+        ['', '', '', '', 'EF', '', ''],
+        ['', '', 'A', 'A', 'OL', '', ''],
     ],
     TERÇA: [
-        ['','','','','','EF','DSE'],
-        ['','','MK','','','',''],
-        ['','','','EF','','',''],
-        ['EF','EF','','','','',''],
-        ['','','','','','',''],
-        ['','','','','','DSE','EF'],
-        ['','','EF','','','A','A'],
-        ['OL','DSE','I','','','',''],
-        ['','','A','A','','',''],
-        ['','','','','EF','OL','I'],
-        ['','','','','','I','EF'],
-        ['','','','I','','',''],
-        ['','','','MK','I','',''],
-        ['A','A','EF','','','',''],
-        ['DSE','I','OL','','','',''],
-        ['I','EF','DSE','','','MK','']
+        ['', '', '', '', '', 'EF', 'DSE'],
+        ['', '', 'MK', '', '', '', ''],
+        ['', '', '', 'EF', '', '', ''],
+        ['EF', 'EF', '', '', '', '', ''],
+        ['', '', '', '', '', '', ''],
+        ['', '', '', '', '', 'DSE', 'EF'],
+        ['', '', 'EF', '', '', 'A', 'A'],
+        ['OL', 'DSE', 'I', '', '', '', ''],
+        ['', '', 'A', 'A', '', '', ''],
+        ['', '', '', '', 'EF', 'OL', 'I'],
+        ['', '', '', '', '', 'I', 'EF'],
+        ['', '', '', 'I', '', '', ''],
+        ['', '', '', 'MK', 'I', '', ''],
+        ['A', 'A', 'EF', '', '', '', ''],
+        ['DSE', 'I', 'OL', '', '', '', ''],
+        ['I', 'EF', 'DSE', '', '', 'MK', ''],
     ],
     QUARTA: [
-        ['','','','EF','','',''],
-        ['','','EF','','','',''],
-        ['','','','','','DSE','OL'],
-        ['','','','','OL','I','DSE'],
-        ['','','A','A','EF','MK',''],
-        ['','','','','A','',''],
-        ['','','MK','','','',''],
-        ['','','','','','EF','EF'],
-        ['','','','','','','I'],
-        ['','','','','','',''],
-        ['A','A','','OL','','',''],
-        ['','','','','DSE','A','A'],
-        ['','EF','','','','',''],
-        ['','','','','','EF','EF'],
-        ['','','EF','EF','','',''],
-        ['','','','','','','']
+        ['', '', '', 'EF', '', '', ''],
+        ['', '', 'EF', '', '', '', ''],
+        ['', '', '', '', '', 'DSE', 'OL'],
+        ['', '', '', '', 'OL', 'I', 'DSE'],
+        ['', '', 'A', 'A', 'EF', 'MK', ''],
+        ['', '', '', '', 'A', '', ''],
+        ['', '', 'MK', '', '', '', ''],
+        ['', '', '', '', '', 'EF', 'EF'],
+        ['', '', '', '', '', '', 'I'],
+        ['', '', '', '', '', '', ''],
+        ['A', 'A', '', 'OL', '', '', ''],
+        ['', '', '', '', 'DSE', 'A', 'A'],
+        ['', 'EF', '', '', '', '', ''],
+        ['', '', '', '', '', 'EF', 'EF'],
+        ['', '', 'EF', 'EF', '', '', ''],
+        ['', '', '', '', '', '', ''],
     ],
     QUINTA: [
-        ['A','A','EF','','','',''],
-        ['','','PAR','A','A','DSE','OL'],
-        ['','EF','','','','A','A'],
-        ['','','','EF','','',''],
-        ['','','','','','',''],
-        ['EF','OL','','','','',''],
-        ['','','','','EF','',''],
-        ['','','','A','','',''],
-        ['','','','MK','OL','EF','EF'],
-        ['A','A','EF','EF','','',''],
-        ['','','DSE','','','',''],
-        ['EF','EF','OL','','','',''],
-        ['','','','','A','OL','DSE'],
-        ['OL','DSE','MK','','','',''],
-        ['','MK','','','','A','A'],
-        ['','','','','','','']
+        ['A', 'A', 'EF', '', '', '', ''],
+        ['', '', 'PAR', 'A', 'A', 'DSE', 'OL'],
+        ['', 'EF', '', '', '', 'A', 'A'],
+        ['', '', '', 'EF', '', '', ''],
+        ['', '', '', '', '', '', ''],
+        ['EF', 'OL', '', '', '', '', ''],
+        ['', '', '', '', 'EF', '', ''],
+        ['', '', '', 'A', '', '', ''],
+        ['', '', '', 'MK', 'OL', 'EF', 'EF'],
+        ['A', 'A', 'EF', 'EF', '', '', ''],
+        ['', '', 'DSE', '', '', '', ''],
+        ['EF', 'EF', 'OL', '', '', '', ''],
+        ['', '', '', '', 'A', 'OL', 'DSE'],
+        ['OL', 'DSE', 'MK', '', '', '', ''],
+        ['', 'MK', '', '', '', 'A', 'A'],
+        ['', '', '', '', '', '', ''],
     ],
     SEXTA: [
-        ['','','','','','MK',''],
-        ['','','EF','','','',''],
-        ['','','','EF','','',''],
-        ['','','MK','','','',''],
-        ['','','','','','DSE','OL'],
-        ['','','','MK','','',''],
-        ['EF','','','','','OL','DSE'],
-        ['','MK','','','','',''],
-        ['','EF','','','','',''],
-        ['','DSE','','','','',''],
-        ['','','EF','EF','','',''],
-        ['','EF','','','','',''],
-        ['','Lima','','','','',''],
-        ['','','Lima','','','',''],
-        ['','','','Lima','','',''],
-        ['','','','','Lima','EF','EF']
-    ]
+        ['', '', '', '', '', 'MK', ''],
+        ['', '', 'EF', '', '', '', ''],
+        ['', '', '', 'EF', '', '', ''],
+        ['', '', 'MK', '', '', '', ''],
+        ['', '', '', '', '', 'DSE', 'OL'],
+        ['', '', '', 'MK', '', '', ''],
+        ['EF', '', '', '', '', 'OL', 'DSE'],
+        ['', 'MK', '', '', '', '', ''],
+        ['', 'EF', '', '', '', '', ''],
+        ['', 'DSE', '', '', '', '', ''],
+        ['', '', 'EF', 'EF', '', '', ''],
+        ['', 'EF', '', '', '', '', ''],
+        ['', 'Lima', '', '', '', '', ''],
+        ['', '', 'Lima', '', '', '', ''],
+        ['', '', '', 'Lima', '', '', ''],
+        ['', '', '', '', 'Lima', 'EF', 'EF'],
+    ],
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -130,14 +157,35 @@ function buildResponseError(status, message, extra = {}) {
     return { success: false, error: message, ...extra };
 }
 
+/**
+ * Leitura: só a tabela da escola da sessão (Issue #679). Sem o recorte, a
+ * tabela era uma só para a rede inteira.
+ */
+function daEscola(req, filtro = {}) {
+    const escopo = escolaMatch(req.escolaId);
+    return Object.keys(escopo).length ? { $and: [filtro, escopo] } : filtro;
+}
+
+/**
+ * Escrita: a escola da sessão entra no filtro de toda gravação. Sem escola
+ * ativa não há em qual tabela gravar, e a resposta já foi enviada.
+ */
+function escolaParaGravar(req, res) {
+    if (req.escolaId && req.escolaId !== 'default') return String(req.escolaId);
+    res.status(400).json(
+        buildResponseError(400, 'Escolha a escola ativa antes de alterar a tabela geral.')
+    );
+    return null;
+}
+
 // ─── GET /api/tabela-geral ───────────────────────────────────────────────────
 exports.list = async (req, res) => {
     try {
-        const cells = await TabelaGeral.find({}).lean();
+        const cells = await TabelaGeral.find(daEscola(req)).lean();
 
         // Agrupar por turmaId → dia → aulaIdx para facilitar o frontend
         const grouped = {};
-        cells.forEach(c => {
+        cells.forEach((c) => {
             if (!grouped[c.turmaId]) grouped[c.turmaId] = {};
             if (!grouped[c.turmaId][c.dia]) grouped[c.turmaId][c.dia] = [];
             grouped[c.turmaId][c.dia][c.aulaIdx] = c.abrev || '';
@@ -153,11 +201,13 @@ exports.list = async (req, res) => {
 exports.getSala = async (req, res) => {
     try {
         const { turmaId } = req.params;
-        const cells = await TabelaGeral.find({ turmaId }).sort({ dia: 1, aulaIdx: 1 }).lean();
+        const cells = await TabelaGeral.find(daEscola(req, { turmaId }))
+            .sort({ dia: 1, aulaIdx: 1 })
+            .lean();
 
         // Agrupar por dia
         const byDia = {};
-        cells.forEach(c => {
+        cells.forEach((c) => {
             if (!byDia[c.dia]) byDia[c.dia] = new Array(7).fill('');
             byDia[c.dia][c.aulaIdx] = c.abrev || '';
         });
@@ -172,22 +222,22 @@ exports.getSala = async (req, res) => {
 exports.getProfessor = async (req, res) => {
     try {
         const { professorKey } = req.params;
-        if (!professorKey) return res.status(400).json(buildResponseError(400, 'professorKey obrigatório'));
+        if (!professorKey)
+            return res.status(400).json(buildResponseError(400, 'professorKey obrigatório'));
 
-        const cells = await TabelaGeral.find({
-            professorKey,
-            abrev: { $ne: '' }
-        }).sort({ dia: 1, aulaIdx: 1 }).lean();
+        const cells = await TabelaGeral.find(daEscola(req, { professorKey, abrev: { $ne: '' } }))
+            .sort({ dia: 1, aulaIdx: 1 })
+            .lean();
 
         // Agrupar por dia → aulaIdx → [{ turmaId, turmaNome, abrev, horarioLabel }]
         const byDia = {};
-        cells.forEach(c => {
+        cells.forEach((c) => {
             if (!byDia[c.dia]) byDia[c.dia] = {};
             byDia[c.dia][c.aulaIdx] = {
                 turmaId: c.turmaId,
                 turmaNome: c.turmaNome,
                 abrev: c.abrev,
-                horarioLabel: c.horarioLabel
+                horarioLabel: c.horarioLabel,
             };
         });
 
@@ -215,7 +265,9 @@ exports.updateCell = async (req, res) => {
 
         // Validações básicas
         if (!turmaId || !dia || aulaIdx === undefined) {
-            return res.status(400).json(buildResponseError(400, 'turmaId, dia e aulaIdx são obrigatórios'));
+            return res
+                .status(400)
+                .json(buildResponseError(400, 'turmaId, dia e aulaIdx são obrigatórios'));
         }
         if (!TabelaGeral.DIAS_VALIDOS.includes(dia)) {
             return res.status(400).json(buildResponseError(400, `Dia inválido: ${dia}`));
@@ -223,19 +275,23 @@ exports.updateCell = async (req, res) => {
         if (aulaIdx < 0 || aulaIdx > 6) {
             return res.status(400).json(buildResponseError(400, `aulaIdx deve ser 0–6`));
         }
+        const escolaId = escolaParaGravar(req, res);
+        if (!escolaId) return;
 
         // Determina professorKey (vem do body ou calculado pelo model)
-        const professorKey = req.body.professorKey !== undefined
-            ? req.body.professorKey
-            : TabelaGeral.getProfessorKey(abrev, turmaId);
+        const professorKey =
+            req.body.professorKey !== undefined
+                ? req.body.professorKey
+                : TabelaGeral.getProfessorKey(abrev, turmaId);
 
         // ── Validação de conflito ──────────────────────────────────────────
         if (professorKey && !SEM_CONFLITO.has(professorKey)) {
             const conflito = await TabelaGeral.findOne({
+                escolaId,
                 professorKey,
                 dia,
                 aulaIdx: Number(aulaIdx),
-                turmaId: { $ne: turmaId }   // outra sala, mesmo professor
+                turmaId: { $ne: turmaId }, // outra sala, mesmo professor
             }).lean();
 
             if (conflito) {
@@ -249,27 +305,29 @@ exports.updateCell = async (req, res) => {
                         horario: conflito.horarioLabel,
                         professor: nomeProfessor,
                         disciplina: conflito.abrev,
-                        dia
-                    }
+                        dia,
+                    },
                 });
             }
         }
 
         // ── Salva / Atualiza no banco ──────────────────────────────────────
         const horarioLabel = TabelaGeral.HORARIO_LABELS[aulaIdx] || '';
-        const turmaIdx     = TURMAS_IDS.indexOf(turmaId);
-        const turmaNome    = turmaIdx >= 0 ? TURMAS[turmaIdx] : turmaId;
+        const turmaIdx = TURMAS_IDS.indexOf(turmaId);
+        const turmaNome = turmaIdx >= 0 ? TURMAS[turmaIdx] : turmaId;
 
+        // `escolaId` no filtro: o upsert grava a célula na escola da sessão, e a
+        // gestão de uma escola não reescreve a célula de outra.
         const updated = await TabelaGeral.findOneAndUpdate(
-            { turmaId, dia, aulaIdx: Number(aulaIdx) },
+            { escolaId, turmaId, dia, aulaIdx: Number(aulaIdx) },
             {
                 $set: {
                     turmaNome,
                     horarioLabel,
                     abrev: abrev || '',
                     professorKey: professorKey || '',
-                    updatedAt: new Date()
-                }
+                    updatedAt: new Date(),
+                },
             },
             { upsert: true, new: true }
         );
@@ -291,32 +349,34 @@ exports.updateCell = async (req, res) => {
  */
 exports.seed = async (req, res) => {
     try {
+        const escolaId = escolaParaGravar(req, res);
+        if (!escolaId) return;
         const ops = [];
 
-        DIAS.forEach(dia => {
+        DIAS.forEach((dia) => {
             const diaRows = DADOS[dia];
             TURMAS.forEach((turmaNome, turmaIdx) => {
                 const turmaId = TURMAS_IDS[turmaIdx];
-                const aulas   = diaRows[turmaIdx] || [];
+                const aulas = diaRows[turmaIdx] || [];
 
                 aulas.forEach((abrev, aulaIdx) => {
-                    const professorKey   = TabelaGeral.getProfessorKey(abrev, turmaId);
-                    const horarioLabel   = TabelaGeral.HORARIO_LABELS[aulaIdx] || '';
+                    const professorKey = TabelaGeral.getProfessorKey(abrev, turmaId);
+                    const horarioLabel = TabelaGeral.HORARIO_LABELS[aulaIdx] || '';
 
                     ops.push({
                         updateOne: {
-                            filter: { turmaId, dia, aulaIdx },
+                            filter: { escolaId, turmaId, dia, aulaIdx },
                             update: {
                                 $set: {
                                     turmaNome,
                                     horarioLabel,
                                     abrev: abrev || '',
                                     professorKey: professorKey || '',
-                                    updatedAt: new Date()
-                                }
+                                    updatedAt: new Date(),
+                                },
                             },
-                            upsert: true
-                        }
+                            upsert: true,
+                        },
                     });
                 });
             });
@@ -324,12 +384,14 @@ exports.seed = async (req, res) => {
 
         const result = await TabelaGeral.bulkWrite(ops, { ordered: false });
 
-        res.json(buildResponseOk({
-            message: `Seed concluído: ${result.upsertedCount} inseridos, ${result.modifiedCount} atualizados`,
-            total: ops.length,
-            upserted: result.upsertedCount,
-            modified: result.modifiedCount
-        }));
+        res.json(
+            buildResponseOk({
+                message: `Seed concluído: ${result.upsertedCount} inseridos, ${result.modifiedCount} atualizados`,
+                total: ops.length,
+                upserted: result.upsertedCount,
+                modified: result.modifiedCount,
+            })
+        );
     } catch (err) {
         res.status(500).json(buildResponseError(500, err.message));
     }
@@ -338,7 +400,10 @@ exports.seed = async (req, res) => {
 // ─── DELETE /api/tabela-geral/reset ──────────────────────────────────────────
 exports.reset = async (req, res) => {
     try {
-        const r = await TabelaGeral.deleteMany({});
+        // Só a tabela da escola da sessão; antes apagava a da rede inteira.
+        const escolaId = escolaParaGravar(req, res);
+        if (!escolaId) return;
+        const r = await TabelaGeral.deleteMany({ escolaId });
         res.json(buildResponseOk({ message: `${r.deletedCount} registros removidos` }));
     } catch (err) {
         res.status(500).json(buildResponseError(500, err.message));
