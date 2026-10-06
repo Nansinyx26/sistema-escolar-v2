@@ -15,7 +15,7 @@ const CalendarioEscolar = require('../models/CalendarioEscolar');
 const AuditLog = require('../models/AuditLog');
 const logger = require('../utils/logger');
 const busca = require('../utils/buscaAluno');
-const { emitirParaEscola } = require('../utils/realtime');
+const { emitirComunicadoNovo } = require('../services/publicoDoComunicado');
 const { extrairPaginacao } = require('../middleware/pagination');
 
 // ─── Helper: registrar auditoria ─────────────────────────────────────────────
@@ -1172,9 +1172,9 @@ exports.criarComunicado = async (req, res) => {
 
         await comunicado.save();
 
-        // Broadcast restrito à escola — `io.emit` alcançava todos os sockets
-        // conectados, entregando o comunicado a outras escolas da rede.
-        emitirParaEscola(comunicado.escolaId, 'comunicado:new', comunicado.toObject());
+        // Só para o público do comunicado (Issue #663): a sala da escola
+        // entregava o comunicado de turma ou interno a todos os conectados.
+        emitirComunicadoNovo(comunicado, escolaAtual(req));
 
         await audit(req, 'CREATE_ANNOUNCEMENT', 'Comunicados', comunicado._id, {
             descricao: `Comunicado '${titulo}' criado pela secretaria`,
