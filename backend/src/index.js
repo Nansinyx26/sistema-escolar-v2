@@ -398,6 +398,7 @@ const startServer = async () => {
             socket.on('join:message', async (messageId) => {
                 if (!socket.user || !messageId) return;
                 try {
+                    const { podeAcessarMensagem } = require('./realtime/acessoAMensagem');
                     const permitido = await podeAcessarMensagem(socket, String(messageId));
                     if (!permitido) {
                         logger.debug('[Socket.IO] join:message negado', { messageId });
@@ -504,81 +505,6 @@ const startServer = async () => {
         setTimeout(() => process.exit(1), ATRASO_SAIDA_BOOT_MS);
     }
 };
-
-/**
- * Autoriza a entrada numa sala `message:<id>`.
- *
- * A sala carrega comentários e reações (nome e perfil de quem reagiu) de um
- * comunicado ou de uma notificação. O usuário só entra se o documento
- * pertencer à sua escola e for endereçado a ele.
- */
-async function podeAcessarMensagem(socket, messageId) {
-    const perfil = String(socket.user?.perfil || '').toLowerCase();
-    if (perfil === 'admin') return true;
-
-    const mongoose = require('mongoose');
-    const Comunicado = require('./models/Comunicado');
-    const Notificacao = require('./models/Notificacao');
-
-    const filtroId = mongoose.Types.ObjectId.isValid(messageId)
-        ? { $or: [{ _id: messageId }, { id: messageId }] }
-        : { id: messageId };
-
-    const doc =
-        (await Comunicado.findOne(filtroId).select('escolaId destinatarios').lean()) ||
-        (await Notificacao.findOne(filtroId)
-            .select('escolaId destinatarios paraResponsavel')
-            .lean());
-
-    if (!doc) return false;
-
-    // Fronteira de escola
-    if (socket.escolaId && doc.escolaId && String(doc.escolaId) !== String(socket.escolaId)) {
-        return false;
-    }
-
-    // Gestão acompanha qualquer mensagem da própria escola
-    if (['diretor', 'secretaria'].includes(perfil)) return true;
-
-    // Responsável nunca entra em sala de aviso interno de funcionários
-    if (perfil === 'responsavel' && doc.paraResponsavel === false) return false;
-
-    const destinatarios = Array.isArray(doc.destinatarios)
-        ? doc.destinatarios
-        : [doc.destinatarios].filter(Boolean);
-
-    const alvos = ['todos', `usuario:${socket.user.id || socket.user._id}`];
-    if (perfil === 'professor') alvos.push('professores');
-
-    if (perfil === 'responsavel' && socket.user.email) {
-        alvos.push('responsaveis');
-        // Avisos endereçados à turma ou diretamente ao aluno vinculado
-        const Aluno = require('./models/Aluno');
-        const escapeRegex = require('./utils/escapeRegex');
-        const emailRegex = new RegExp(`^${escapeRegex(String(socket.user.email))}$`, 'i');
-        const { semRestricaoPara } = require('./utils/restricaoAcesso');
-        const alunos = await Aluno.find({
-            $or: [
-                { responsavel: emailRegex },
-                { 'responsavelDados.email': emailRegex },
-                { 'responsaveis.email': emailRegex },
-            ],
-            // Bloqueio por decisão judicial (Issue #491).
-            ...semRestricaoPara(socket.user.email),
-        })
-            .select('turma turmaId id')
-            .lean();
-
-        alunos.forEach((a) => {
-            const t = a.turma || a.turmaId;
-            if (t) alvos.push(t, `turma:${t}`);
-            alvos.push(String(a._id));
-            if (a.id) alvos.push(String(a.id));
-        });
-    }
-
-    return destinatarios.some((d) => alvos.includes(String(d)));
-}
 
 /**
  * Migração silenciosa de preferências de voz/TTS/acessibilidade.
