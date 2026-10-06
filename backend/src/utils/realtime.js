@@ -67,6 +67,18 @@ async function emitirParaPerfis(escolaId, perfis, evento, payload) {
     }
 }
 
+/**
+ * Presença online (`presence:professor`) — só para a equipe da escola
+ * (Issue #688). Ia para a sala `escola:<id>`, onde estão também os
+ * responsáveis: cada família via o status online da equipe e das outras
+ * famílias. A presença de qualquer conta continua chegando à equipe, que a usa
+ * no chat direto.
+ */
+const PERFIS_DA_EQUIPE = ['admin', 'diretor', 'secretaria', 'professor'];
+function emitirPresenca(escolaId, payload) {
+    return emitirParaPerfis(escolaId, PERFIS_DA_EQUIPE, 'presence:professor', payload);
+}
+
 /** Emite para um usuário específico. */
 function emitirParaUsuario(usuarioId, evento, payload) {
     if (!global.io || !usuarioId) return;
@@ -114,4 +126,5 @@ module.exports = {
     emitirParaPerfis,
     emitirParaUsuario,
     emitirParaMensagem,
+    emitirPresenca,
 };

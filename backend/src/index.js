@@ -50,6 +50,7 @@ const logger = require('./utils/logger');
 const { startHealthMonitor } = require('./utils/healthMonitor');
 const { criarEncerrador } = require('./utils/encerramento');
 const { marcarEncerrando } = require('./utils/prontidao');
+const { emitirPresenca } = require('./utils/realtime');
 const { desconectarDB } = connectDB;
 
 const PORT = process.env.PORT || 3001;
@@ -326,7 +327,8 @@ const startServer = async () => {
             // escola × perfil para não vazar eventos entre tenants
             if (socket.escolaId) socket.join(`escola:${socket.escolaId}`);
 
-            // Presença online: a equipe (professores e diretores) é notificada em tempo real.
+            // Presença online: a equipe é notificada em tempo real, e só ela
+            // (Issue #688): a sala da escola tem também os responsáveis.
             if (socket.escolaId) {
                 presence.marcarSocket(socket, socket.escolaId, uid);
                 const ficouOnline = presence.addUser(socket.escolaId, uid, socket.id);
@@ -334,7 +336,7 @@ const startServer = async () => {
                     // Sem await: os handlers abaixo precisam ser registrados já,
                     // senão os primeiros eventos do cliente se perdem.
                     statusGlobal(socket.escolaId, uid).then((status) => {
-                        io.to(`escola:${socket.escolaId}`).emit('presence:professor', {
+                        emitirPresenca(socket.escolaId, {
                             userId: String(uid),
                             online: true,
                             status,
@@ -384,7 +386,7 @@ const startServer = async () => {
                 presence.marcarAusenteNoSocket(socket, ausente);
                 const mudou = presence.setAusente(socket.escolaId, uid, socket.id, ausente);
                 if (mudou) {
-                    io.to(`escola:${socket.escolaId}`).emit('presence:professor', {
+                    emitirPresenca(socket.escolaId, {
                         userId: String(uid),
                         online: true,
                         // Outra aba ativa em outra instância mantém o usuário online.
@@ -419,7 +421,7 @@ const startServer = async () => {
                         // conectado em outra. No 'disconnect' o socket já
                         // deixou as salas, então a consulta não o conta.
                         const status = await statusGlobal(socket.escolaId, uid);
-                        io.to(`escola:${socket.escolaId}`).emit('presence:professor', {
+                        emitirPresenca(socket.escolaId, {
                             userId: String(uid),
                             online: status !== 'offline',
                             status,
