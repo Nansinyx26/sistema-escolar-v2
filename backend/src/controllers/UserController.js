@@ -903,10 +903,11 @@ exports.login = async (req, res) => {
                 // de 5 minutos continua valendo, gravada em `PendingExpiry`.
                 const expiry = new Date(Date.now() + 5 * 60 * 1000);
 
+                // O contador de tentativas do 2FA não zera aqui (Issue #669):
+                // senha certa + 4 palpites + novo login repetiam sem bloqueio.
                 await Usuario.findByIdAndUpdate(user._id, {
                     twoFactorPendingToken: null,
                     twoFactorPendingExpiry: expiry,
-                    twoFactorAttempts: 0,
                 });
 
                 logger.info('[2FA] Código fixo aplicado', {
@@ -945,10 +946,10 @@ exports.login = async (req, res) => {
             const codigoHash = crypto.createHash('sha256').update(codigo).digest('hex');
             const expiry = new Date(Date.now() + 5 * 60 * 1000);
 
+            // O contador de tentativas do 2FA não zera aqui (Issue #669).
             await Usuario.findByIdAndUpdate(user._id, {
                 twoFactorPendingToken: codigoHash,
                 twoFactorPendingExpiry: expiry,
-                twoFactorAttempts: 0,
             });
 
             // ============================================
