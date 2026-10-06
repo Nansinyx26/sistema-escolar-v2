@@ -4,6 +4,7 @@ const EmailService = require('./EmailService');
 const WebPushService = require('./WebPushService');
 const logger = require('../utils/logger');
 const obs = require('../observability');
+const { contasDasTurmas, turmasDosDestinatarios } = require('./publicoDoComunicado');
 
 /**
  * Hub central de notificações.
@@ -97,13 +98,11 @@ function salasDePerfil(destList, paraResponsavel) {
         else if (d === 'diretores' || d === 'diretor') {
             salas.add('role:diretor');
             salas.add('role:admin');
-        } else if (d && !ehUsuario(d)) {
-            // `turma:<id>` ou o id cru de turma/aluno que o comunicado também
-            // aceita: alcança os professores e — se o aviso for às famílias —
-            // os responsáveis da escola.
-            salas.add('role:professor');
-            salas.add('role:responsavel');
         }
+        // `turma:<id>` (ou o id cru de turma) não abre sala de perfil: virava
+        // `role:professor` e `role:responsavel` da escola INTEIRA, e o aviso de
+        // uma turma chegava, com o conteúdo, a todas as famílias (Issue #686).
+        // As contas da turma são resolvidas em `contasDasTurmas`.
     }
     if (!paraResponsavel) salas.delete('role:responsavel');
     return salas;
@@ -198,10 +197,18 @@ exports.notify = async ({
                 link: link || null,
                 escolaId: escolaId || null,
             };
+            const usuarios = new Set(
+                destList.filter(ehUsuario).map((d) => String(d).split(':')[1])
+            );
+            for (const id of await contasDasTurmas(escolaId, turmasDosDestinatarios(destList), {
+                incluirResponsaveis: alcancaResponsavel,
+            })) {
+                usuarios.add(id);
+            }
             await emitirNotificacao({
                 escolaId,
                 salas: salasDePerfil(destList, alcancaResponsavel),
-                usuarios: destList.filter(ehUsuario).map((d) => String(d).split(':')[1]),
+                usuarios: [...usuarios],
                 payload,
             });
         }
@@ -381,6 +388,16 @@ exports.getTargetUsers = async (
     const destList = Array.isArray(destinatarios) ? destinatarios : [destinatarios];
     const userMap = new Map();
 
+    // Turma: as contas dela, na escola (Issue #686). `query.turma` não casava
+    // com conta nenhuma, e o id cru de turma era ignorado.
+    const daTurma = await contasDasTurmas(escolaId, turmasDosDestinatarios(destList.map(String)), {
+        incluirResponsaveis,
+    });
+    if (daTurma.length) {
+        const contas = await Usuario.find({ _id: { $in: daTurma }, ativo: true }).lean();
+        for (const u of contas) userMap.set(String(u._id), u);
+    }
+
     for (const dest of destList) {
         const query = { ativo: true };
         // Multi-tenant: prioriza usuários da mesma escola, mas inclui os
@@ -400,8 +417,6 @@ exports.getTargetUsers = async (
             query.perfil = { $in: ['diretor', 'admin'] };
         } else if (String(dest).startsWith('usuario:')) {
             query._id = String(dest).split(':')[1];
-        } else if (String(dest).startsWith('turma:')) {
-            query.turma = String(dest).split(':')[1];
         } else {
             continue;
         }
