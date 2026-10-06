@@ -49,6 +49,10 @@
     const COMPRIMIR_ACIMA_DE = 300 * 1024; // só comprime imagem maior que isso
 
     const REACOES_RAPIDAS = ['👍', '❤️', '😂', '😮', '😢', '👏', '🎉'];
+    // O id da conversa vira parte de `id="…_<id>"` e de seletores
+    // (`#chatBody_<id>`) em toda a janela. Pelo `?chat=` da URL ele é de quem
+    // mandou o link (Issue #645): só passa o formato de id.
+    const ID_CONVERSA = /^[A-Za-z0-9_-]{1,64}$/;
 
     /* ------------------------------------------------------------------ *
      * Utilitários
@@ -2351,6 +2355,7 @@
         openChat(targetUserId, targetUserData) {
             if (!targetUserId) return;
             const uid = String(targetUserId);
+            if (!ID_CONVERSA.test(uid)) return;
 
             // O id só é conhecido depois do login carregar; revalida a cada abertura.
             if (!this.meuId) this.meuId = this.getMeuId();

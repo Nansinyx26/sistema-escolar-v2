@@ -1214,9 +1214,12 @@ class App {
 
         const carregarFaltas = async (data) => {
             try {
-                const response = await fetch(`${db.baseUrl}/faltas?turma=${turmaId}&data=${data}`, {
-                    credentials: 'include',
-                });
+                const response = await fetch(
+                    `${db.baseUrl}/faltas?turma=${encodeURIComponent(turmaId)}&data=${encodeURIComponent(data)}`,
+                    {
+                        credentials: 'include',
+                    }
+                );
                 const json = await response.json();
                 if (json.success) {
                     // Filtra apenas as faltas (presente: false) para manter compatibilidade com a lógica visual
@@ -2268,7 +2271,7 @@ class App {
             <div class="notas-modal">
                 <div class="notas-header">
                     <h4>${aluno.nome}</h4>
-                    <p>Turma ${turmaId} - ${bimestre}º Bimestre</p>
+                    <p>Turma ${escHtml(turmaId)} - ${escHtml(bimestre)}º Bimestre</p>
                 </div>
 
                 <div class="notas-add">
