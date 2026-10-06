@@ -3281,9 +3281,21 @@ function formatAulaCell(aula) {
     return '<span class="disciplina">' + aula + '</span>';
 }
 
+/**
+ * Texto seguro para o HTML montado por string. O id da turma pode vir de
+ * `?turma=`/`?prof=` na URL, que é de quem mandou o link (Issue #645).
+ */
+function textoHorario(valor) {
+    return String(valor ?? '').replace(
+        /[&<>"']/g,
+        (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
+    );
+}
+
 function gerarTabelaHTML(turmaId) {
-    const data = turmasData[turmaId];
-    if (!data) return '<p style="color:red">Turma não encontrada: ' + turmaId + '</p>';
+    // Só chave própria: `?turma=constructor` não pode achar o protótipo.
+    const data = Object.prototype.hasOwnProperty.call(turmasData, turmaId) ? turmasData[turmaId] : null;
+    if (!data) return '<p style="color:red">Turma não encontrada: ' + textoHorario(turmaId) + '</p>';
 
     // Horas que devem ser fundidas no bloco REUNIÍO 15h–18h
     const HORAS_SKIP = new Set(['16h–17h', '17h–18h']);
@@ -3292,7 +3304,7 @@ function gerarTabelaHTML(turmaId) {
     let html = '<div class="tabela-horario">' +
         '<h2>' + data.turma + '</h2>' +
         '<h3>' + data.prof + '</h3>' +
-        '<div class="table-responsive"><table data-turma="' + turmaId + '"><thead><tr>' +
+        '<div class="table-responsive"><table data-turma="' + textoHorario(turmaId) + '"><thead><tr>' +
         '<th>HORÁRIO</th>' +
         data.dias.map(d => '<th>' + d.toUpperCase() + '</th>').join('') +
         '</tr></thead><tbody>';
@@ -3312,7 +3324,7 @@ function gerarTabelaHTML(turmaId) {
 
             html += '<tr><td class="hora-col">' + horaLabel + '</td>' +
                 linha.aulas.map((aula, diaIdx) =>
-                    `<td class="aula-cell ${getColorClass(aula, turmaId)}" data-turma="${turmaId}" data-dia="${diaIdx}" data-horario="${data.horarios.indexOf(linha)}">${formatAulaCell(aula)}</td>`
+                    `<td class="aula-cell ${getColorClass(aula, turmaId)}" data-turma="${textoHorario(turmaId)}" data-dia="${diaIdx}" data-horario="${data.horarios.indexOf(linha)}">${formatAulaCell(aula)}</td>`
                 ).join('') +
                 '</tr>';
         }
