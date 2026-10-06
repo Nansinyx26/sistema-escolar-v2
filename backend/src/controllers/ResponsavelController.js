@@ -27,6 +27,21 @@ const { limparCamposSemFinalidade } = require('../utils/camposSemFinalidade');
 const { mascarar } = require('../services/vinculosResponsavel');
 const { escolaMatch } = require('../middleware/filtrarPorEscola');
 
+/**
+ * Casamento de nota e falta pela matrícula, restrito à escola do aluno
+ * (Issue #661). Matrícula não é única entre escolas: sem a escola, o portal
+ * juntava a nota de outra criança com o mesmo número. Sem matrícula, não casa
+ * nada — `{ matriculaId: undefined }` pegaria todo registro sem matrícula.
+ */
+function pelaMatriculaNaEscola(aluno) {
+    if (!aluno.matricula) return [];
+    return [
+        aluno.escolaId
+            ? { matriculaId: aluno.matricula, escolaId: String(aluno.escolaId) }
+            : { matriculaId: aluno.matricula },
+    ];
+}
+
 // Trava por conta contra varredura do código secreto do aluno
 const MAX_TENTATIVAS_VINCULO = 5;
 const BLOQUEIO_VINCULO_MS = 60 * 60 * 1000; // 1 hora
@@ -492,7 +507,7 @@ exports.getNotas = async (req, res) => {
                 { alunoId: String(aluno._id) },
                 { alunoId: aluno._id },
                 { alunoId: aluno.id },
-                { matriculaId: aluno.matricula },
+                ...pelaMatriculaNaEscola(aluno),
             ],
         })
             .sort({ materiaId: 1, bimestre: 1 })
@@ -582,7 +597,7 @@ exports.getFrequencia = async (req, res) => {
                 { alunoId: String(aluno._id) },
                 { alunoId: aluno._id },
                 { alunoId: aluno.id },
-                { matriculaId: aluno.matricula },
+                ...pelaMatriculaNaEscola(aluno),
             ],
         };
         const faltas = await Falta.find(queryFaltas).lean();
