@@ -312,7 +312,8 @@ router.use(
     require('./avaliacoesEscolares')
 );
 router.use('/reviews', authJWT, require('./reviews'));
-router.use('/reactions', authJWT, require('./reactions'));
+// `filtrarPorEscola` resolve o req.escolaId que recorta a lista de quem reagiu.
+router.use('/reactions', authJWT, filtrarPorEscola, require('./reactions'));
 router.use('/notifications/realtime', authJWT, require('./realtime-notifications'));
 router.use('/comunicados', authJWT, filtrarPorEscola, require('./comunicados'));
 // `filtrarPorEscola` aqui pelo mesmo motivo de /comunicados: sem req.escolaId

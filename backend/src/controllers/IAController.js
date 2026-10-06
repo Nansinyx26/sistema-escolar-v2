@@ -257,7 +257,8 @@ class AnalyticsController {
 
             const relatorio = await AnalyticsService.relatorioTurma(
                 turmaId,
-                parseInt(bimestre, 10) || 1
+                parseInt(bimestre, 10) || 1,
+                req.escolaId
             );
 
             if (!relatorio.success) {

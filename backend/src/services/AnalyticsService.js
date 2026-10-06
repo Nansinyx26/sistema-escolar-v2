@@ -13,6 +13,7 @@ const Nota = require('../models/Nota');
 const Falta = require('../models/Falta');
 const Turma = require('../models/Turma');
 const { CacheService } = require('./CacheService');
+const { escolaMatch } = require('../middleware/filtrarPorEscola');
 const logger = require('../utils/logger');
 
 class AnalyticsService {
@@ -149,9 +150,9 @@ class AnalyticsService {
     /**
      * Relatório de turma (agregado)
      */
-    static async relatorioTurma(turmaId, bimestre) {
+    static async relatorioTurma(turmaId, bimestre, escolaId) {
         try {
-            const cacheKey = CacheService.keys.relatorioBimestral(turmaId, bimestre);
+            const cacheKey = CacheService.keys.relatorioBimestral(turmaId, bimestre, escolaId);
 
             let relatorio = await CacheService.get(cacheKey);
             if (relatorio) return relatorio;
@@ -160,8 +161,13 @@ class AnalyticsService {
             // O :turmaId pode chegar como _id da Turma (Aluno.turmaId) ou como código
             // de turma (Aluno.turma). Antes usava `turma_id`, campo inexistente no
             // schema — nenhum aluno casava e o relatório vinha vazio.
+            // A escola ativa recorta os alunos: "1A" existe em toda escola, e sem
+            // o filtro o relatório somava alunos de turmas homônimas de outras.
             const alunos = await Aluno.find({
-                $or: [{ turmaId: String(turmaId) }, { turma: String(turmaId) }],
+                $and: [
+                    { $or: [{ turmaId: String(turmaId) }, { turma: String(turmaId) }] },
+                    escolaMatch(escolaId),
+                ],
             });
 
             const analises = await Promise.all(

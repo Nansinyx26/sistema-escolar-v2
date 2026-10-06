@@ -7,6 +7,18 @@ const { extrairPaginacao } = require('../middleware/pagination');
 const escapeRegex = require('../utils/escapeRegex');
 const { filtroPorId, filtroDoPerfil, paraTurmas } = require('../utils/visibilidadeNotificacao');
 
+/** O que a gestão pode gravar numa notificação (Issue #675). */
+const CAMPOS_NOTIFICACAO = [
+    'tipo',
+    'categoria',
+    'prioridade',
+    'titulo',
+    'mensagem',
+    'destinatarios',
+    'status',
+    'dataEnvio',
+];
+
 /** Regex ancorada e escapada para casar e-mail exato. */
 function emailRegexExato(email) {
     return new RegExp(`^${escapeRegex(String(email || ''))}$`, 'i');
@@ -101,9 +113,17 @@ module.exports = {
     async create(req, res) {
         try {
             const userPerfil = req.user?.perfil || '';
-            const data = { ...req.body };
-            // `id` é gerado pelo model; aceitar do corpo abria colisão no índice único.
-            delete data.id;
+            // Lista fechada de campos (Issue #675). Com `{...req.body}`, o corpo
+            // gravava `lido`, `ocultadoPor`, `dataCriacao`, `id`... O
+            // `paraResponsavel` só vale como booleano de verdade: `"true"` em
+            // texto passava pela checagem abaixo e o Mongoose convertia.
+            const data = {};
+            for (const campo of CAMPOS_NOTIFICACAO) {
+                if (req.body[campo] !== undefined) data[campo] = req.body[campo];
+            }
+            if (req.body.paraResponsavel !== undefined) {
+                data.paraResponsavel = req.body.paraResponsavel === true;
+            }
 
             // Regra 6: Professores NÃO podem enviar notificações diretamente para responsáveis.
             if (

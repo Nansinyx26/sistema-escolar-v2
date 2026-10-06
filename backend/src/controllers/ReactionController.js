@@ -2,6 +2,23 @@ const MessageReaction = require('../models/MessageReaction');
 const RealtimeNotification = require('../models/RealtimeNotification');
 const { emitirParaMensagem } = require('../utils/realtime');
 
+/**
+ * Reações da mensagem dentro da escola da sessão. A lista leva nome, perfil e
+ * nome do aluno de quem reagiu; sem o recorte, qualquer `messageId` de outra
+ * escola devolvia isso. Registro antigo sem escola continua visível.
+ */
+function reacoesDaMensagem(req, messageId) {
+    const filtro = { messageId };
+    if (req.escolaId) {
+        filtro.$or = [
+            { escolaId: String(req.escolaId) },
+            { escolaId: { $in: [null, ''] } },
+            { escolaId: { $exists: false } },
+        ];
+    }
+    return MessageReaction.find(filtro);
+}
+
 exports.addOrUpdate = async (req, res) => {
     try {
         const { messageId, emoji, parentName, studentName } = req.body;
@@ -41,7 +58,7 @@ exports.addOrUpdate = async (req, res) => {
         const isNew = reaction.createdAt.getTime() === reaction.updatedAt.getTime();
 
         // Buscar todas as reações desta mensagem para retornar
-        const allReactions = await MessageReaction.find({ messageId }).lean();
+        const allReactions = await reacoesDaMensagem(req, messageId).lean();
         const summary = buildReactionSummary(allReactions);
 
         // Emitir apenas na sala da mensagem. O emit global adicional entregava
@@ -76,7 +93,7 @@ exports.remove = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Reação não encontrada.' });
         }
 
-        const allReactions = await MessageReaction.find({ messageId }).lean();
+        const allReactions = await reacoesDaMensagem(req, messageId).lean();
 
         emitirParaMensagem(messageId, 'reaction:remove', {
             messageId,
@@ -94,7 +111,7 @@ exports.remove = async (req, res) => {
 exports.getByMessage = async (req, res) => {
     try {
         const { messageId } = req.params;
-        const reactions = await MessageReaction.find({ messageId }).sort({ createdAt: -1 }).lean();
+        const reactions = await reacoesDaMensagem(req, messageId).sort({ createdAt: -1 }).lean();
         res.json({
             success: true,
             data: reactions,
