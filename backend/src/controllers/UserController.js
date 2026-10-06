@@ -271,84 +271,183 @@ exports.create = async (req, res) => {
 };
 
 /**
- * OPÇÍO A — PRIMEIRO ACESSO
- * Valida CPF/Email e permite definir senha se ainda não tiver conta
+ * PRIMEIRO ACESSO do professor pré-cadastrado pela direção — em duas etapas
+ * (Issue #659).
+ *
+ *   1. `{ emailOrCpf }` → manda um código de 6 dígitos para o e-mail do
+ *      PRÉ-CADASTRO;
+ *   2. `{ emailOrCpf, codigo, password }` → confere o código e só então grava
+ *      a senha e abre a sessão.
+ *
+ * Antes era uma etapa só: bastava saber o e-mail (ou o CPF) de um professor
+ * pré-cadastrado para definir a senha dele e entrar na escola, com acesso aos
+ * alunos das turmas. O código no e-mail é a prova de posse que faltava — a
+ * mesma da recuperação de senha, com as mesmas 5 tentativas e 15 minutos.
  */
 exports.firstAccess = async (req, res) => {
-    const { emailOrCpf, password } = req.body;
+    const { emailOrCpf, codigo, password } = req.body;
 
     try {
-        // SEGURANÇA: Validação de força de senha
-        if (!password || password.length < 8) {
+        if (typeof emailOrCpf !== 'string' || !emailOrCpf.trim()) {
             return res
                 .status(400)
-                .json({ success: false, error: 'A senha deve ter no mínimo 8 caracteres.' });
+                .json({ success: false, error: 'Informe o e-mail ou o CPF do pré-cadastro.' });
         }
-
-        // 1. Procura na coleção de Professores (pré-cadastrados pela direção)
-        const prof = await Professor.findOne({
-            $or: [{ email: emailOrCpf.toLowerCase() }, { cpf: emailOrCpf.replace(/\D/g, '') }],
-        });
-
-        if (!prof) {
-            return res.status(404).json({
-                success: false,
-                error: 'Dados não encontrados no pré-cadastro da escola.',
-            });
+        if (codigo === undefined || codigo === null || codigo === '') {
+            return await pedirCodigoDePrimeiroAcesso(res, emailOrCpf.trim());
         }
-
-        // 2. Verifica se já existe um Usuário (Login) para este professor.
-        // `+senha`: o campo é `select: false` no schema; aqui precisamos saber
-        // se a conta já tem senha definida (não o valor dela).
-        const existingUser = await Usuario.findOne({ email: prof.email.toLowerCase() }).select(
-            '+senha'
-        );
-        if (existingUser && existingUser.senha) {
-            return res.status(400).json({
-                success: false,
-                error: 'Este e-mail já possui uma conta ativa. Use a recuperação de senha.',
-            });
-        }
-
-        // 3. Cria ou Atualiza o Usuário com a nova senha
-        const senhaHash = await bcrypt.hash(password, SALT_ROUNDS);
-        let user;
-
-        if (existingUser) {
-            existingUser.senha = senhaHash;
-            existingUser.ativo = true;
-            await existingUser.save();
-            user = existingUser;
-        } else {
-            user = await Usuario.create({
-                nome: prof.nome,
-                email: prof.email.toLowerCase(),
-                senha: senhaHash,
-                cpf: prof.cpf || '000.000.000-00', // Fallback para evitar ValidationError
-                telefone: prof.telefone || '(00) 00000-0000', // Fallback para evitar ValidationError
-                perfil: 'professor',
-                ativo: true,
-            });
-        }
-
-        await logAction(req, 'FIRST_ACCESS_ACTIVATE', 'Usuarios', {
-            recursoId: user._id,
-            descricao: `Professor ${prof._id} ativou sua conta via Primeiro Acesso.`,
-        });
-
-        // Logar automaticamente gerando cookie JWT (mesmo padrão dos demais cadastros)
-        emitirTokenSessao(res, user);
-
-        res.json({
-            success: true,
-            message: 'Conta ativada com sucesso!',
-            user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email },
-            redirect_to: getRedirectPath(user),
-        });
+        return await concluirPrimeiroAcesso(req, res, emailOrCpf.trim(), codigo, password);
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
 };
+
+/**
+ * A mesma resposta para pré-cadastro existente, inexistente e conta que já
+ * tem senha: a etapa 1 não pode servir para descobrir quem é professor.
+ */
+const RESPOSTA_PEDIDO_PRIMEIRO_ACESSO = {
+    success: true,
+    etapa: 'codigo',
+    message:
+        'Se os dados estiverem no pré-cadastro da escola e a conta ainda não tiver senha, ' +
+        'enviamos um código para o e-mail cadastrado. Se você já tem senha, use "Esqueci minha senha".',
+};
+
+/** Pré-cadastro ativo pelo e-mail ou, com 11 dígitos, pelo CPF. */
+async function preCadastroDoProfessor(identificacao) {
+    const filtros = [{ email: identificacao.toLowerCase() }];
+    // Sem esta guarda, digitar um e-mail virava `{ cpf: '' }` e casava com
+    // qualquer pré-cadastro sem CPF.
+    const cpf = identificacao.replace(/\D/g, '');
+    if (cpf.length === 11) filtros.push({ cpf });
+    const prof = await Professor.findOne({ $or: filtros, ativo: { $ne: false } });
+    return prof?.email ? prof : null;
+}
+
+/**
+ * A conta do pré-cadastro, se já existir. `+senha` porque o campo é
+ * `select: false`: aqui importa saber SE tem senha, não o valor.
+ */
+function contaDoPreCadastro(prof) {
+    return Usuario.findOne({ email: prof.email.toLowerCase() }).select('+senha');
+}
+
+/**
+ * O primeiro acesso só serve a quem ainda não tem senha. Conta inativa não é
+ * reativada por aqui: quem desativou foi a escola, e é ela quem reativa.
+ */
+function contaAceitaPrimeiroAcesso(conta) {
+    return !conta || (!conta.senha && conta.ativo !== false);
+}
+
+async function pedirCodigoDePrimeiroAcesso(res, identificacao) {
+    const prof = await preCadastroDoProfessor(identificacao);
+    if (!prof || !contaAceitaPrimeiroAcesso(await contaDoPreCadastro(prof))) {
+        return res.json(RESPOSTA_PEDIDO_PRIMEIRO_ACESSO);
+    }
+
+    // Um código por vez: o pedido novo invalida o anterior.
+    await RecuperacaoSenha.updateMany(
+        { usuarioId: prof._id, finalidade: FINALIDADE_PRIMEIRO_ACESSO, status: 'ativo' },
+        { $set: { status: 'expirado' } }
+    );
+
+    const codigo = crypto.randomInt(100000, 1000000).toString();
+    const { hashSegredo } = require('../utils/codigosBackup');
+    await RecuperacaoSenha.create({
+        usuarioId: prof._id,
+        finalidade: FINALIDADE_PRIMEIRO_ACESSO,
+        codigo: await hashSegredo(codigo),
+        criadoEm: new Date(),
+        expiraEm: new Date(Date.now() + 15 * 60 * 1000),
+        status: 'ativo',
+        tentativas: 0,
+    });
+
+    const entregue = await EmailService.enviarCodigoPrimeiroAcesso(prof.email, codigo, prof.nome);
+    if (!entregue) {
+        logger.error('[primeiro-acesso] Código gerado mas NÃO entregue', {
+            professorId: String(prof._id),
+            action: 'auth.primeiroAcesso.envioFalhou',
+        });
+    }
+    return res.json(RESPOSTA_PEDIDO_PRIMEIRO_ACESSO);
+}
+
+async function concluirPrimeiroAcesso(req, res, identificacao, codigo, password) {
+    const fraca = motivoSenhaFraca(password);
+    if (fraca) return res.status(400).json({ success: false, error: fraca });
+
+    const recusa = () =>
+        res.status(400).json({ success: false, error: 'Código inválido ou expirado.' });
+
+    const prof = await preCadastroDoProfessor(identificacao);
+    if (!prof) return recusa();
+    const conta = await contaDoPreCadastro(prof);
+    if (!contaAceitaPrimeiroAcesso(conta)) return recusa();
+
+    const conferencia = await conferirCodigoDeRecuperacao(
+        prof._id,
+        codigo,
+        FINALIDADE_PRIMEIRO_ACESSO
+    );
+    if (!conferencia.ok) {
+        return res.status(400).json({ success: false, error: conferencia.error });
+    }
+
+    // Consome o código antes de gravar a senha, num passo só: dois pedidos
+    // simultâneos com o mesmo código não passam os dois.
+    const consumido = await RecuperacaoSenha.findOneAndUpdate(
+        { _id: conferencia.recovery._id, status: 'ativo' },
+        { $set: { status: 'utilizado' } }
+    );
+    if (!consumido) return recusa();
+
+    const senhaHash = await bcrypt.hash(password, SALT_ROUNDS);
+    let user;
+    if (conta) {
+        // Só grava se a conta continua sem senha e ativa.
+        user = await Usuario.findOneAndUpdate(
+            {
+                _id: conta._id,
+                ativo: { $ne: false },
+                $or: [{ senha: { $exists: false } }, { senha: null }, { senha: '' }],
+            },
+            { $set: { senha: senhaHash }, $inc: { tokenVersion: 1 } },
+            { new: true }
+        );
+        if (!user) return recusa();
+    } else {
+        user = await Usuario.create({
+            nome: prof.nome,
+            email: prof.email.toLowerCase(),
+            senha: senhaHash,
+            // Sem CPF no pré-cadastro, o campo fica vazio. O valor fixo de
+            // antes colidia no índice único (escolaId, cpf) a partir do segundo
+            // professor ativado assim.
+            ...(prof.cpf ? { cpf: prof.cpf } : {}),
+            telefone: prof.telefone || '(00) 00000-0000', // obrigatório no schema
+            perfil: 'professor',
+            ativo: true,
+        });
+    }
+
+    await logAction(req, 'FIRST_ACCESS_ACTIVATE', 'Usuarios', {
+        recursoId: user._id,
+        descricao: `Professor ${prof._id} ativou sua conta via Primeiro Acesso.`,
+    });
+
+    // Logar automaticamente gerando cookie JWT (mesmo padrão dos demais cadastros)
+    emitirTokenSessao(res, user);
+
+    return res.json({
+        success: true,
+        message: 'Conta ativada com sucesso!',
+        user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email },
+        redirect_to: getRedirectPath(user),
+    });
+}
 
 /**
  * OPÇÍO B — CADASTRO COM CÓDIGO SECRETO
@@ -1898,6 +1997,7 @@ exports.forgotPassword = async (req, res) => {
 };
 
 const TENTATIVAS_CODIGO_RECUPERACAO = 5;
+const FINALIDADE_PRIMEIRO_ACESSO = 'primeiro-acesso';
 const ERRO_CODIGO_BLOQUEADO =
     'Código bloqueado por excesso de tentativas. Solicite um novo código.';
 
@@ -1913,13 +2013,23 @@ const ERRO_CODIGO_BLOQUEADO =
  * Quem acerta recebe a tentativa de volta: verificar e depois redefinir são
  * duas conferências do mesmo código, e acertar não pode esgotar o teto.
  *
+ * O primeiro acesso (Issue #659) usa a mesma conferência com
+ * `finalidade = 'primeiro-acesso'`. O código de recuperação continua sem o
+ * campo nos pedidos antigos, por isso o filtro dele é "qualquer coisa menos
+ * primeiro acesso".
+ *
  * @returns {Promise<{ok: true, recovery: object} | {ok: false, error: string}>}
  */
-async function conferirCodigoDeRecuperacao(usuarioId, codigo) {
+async function conferirCodigoDeRecuperacao(usuarioId, codigo, finalidade = 'recuperacao') {
     const agora = new Date();
+    const doFluxo =
+        finalidade === FINALIDADE_PRIMEIRO_ACESSO
+            ? { finalidade: FINALIDADE_PRIMEIRO_ACESSO }
+            : { finalidade: { $ne: FINALIDADE_PRIMEIRO_ACESSO } };
     const recovery = await RecuperacaoSenha.findOneAndUpdate(
         {
             usuarioId,
+            ...doFluxo,
             status: 'ativo',
             expiraEm: { $gt: agora },
             tentativas: { $lt: TENTATIVAS_CODIGO_RECUPERACAO },
@@ -1931,7 +2041,7 @@ async function conferirCodigoDeRecuperacao(usuarioId, codigo) {
     if (!recovery) {
         // Não reservou: sem pedido ativo, vencido ou sem tentativa sobrando.
         const ativo = await RecuperacaoSenha.findOneAndUpdate(
-            { usuarioId, status: 'ativo' },
+            { usuarioId, ...doFluxo, status: 'ativo' },
             { $set: { status: 'expirado' } }
         );
         if (!ativo) return { ok: false, error: 'Código inválido ou expirado.' };

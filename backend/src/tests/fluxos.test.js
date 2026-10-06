@@ -18,6 +18,7 @@ const {
 const SecurityConfig = require('../models/SecurityConfig');
 const { CONSENTIMENTO_VERSAO } = require('../utils/consentimentoLgpd');
 const Professor = require('../models/Professor');
+const EmailService = require('../services/EmailService');
 
 const CODIGO_GLOBAL = CODIGO_ESCOLA_TESTE;
 // Todo cadastro exige o aceite da Política de Privacidade (Issue #295).
@@ -101,7 +102,7 @@ describe('Cadastro com auto-login e redirect por perfil', () => {
 // Primeiro acesso (ativação de conta pré-cadastrada)
 // ─────────────────────────────────────────────────────────
 describe('POST /api/auth/first-access', () => {
-    it('ativa a conta, autentica automaticamente e devolve redirect', async () => {
+    it('com o código do e-mail, ativa a conta, autentica e devolve redirect', async () => {
         await Professor.create({
             nome: 'Prof Pré-Cadastrado',
             email: 'pre@escola.test',
@@ -109,8 +110,20 @@ describe('POST /api/auth/first-access', () => {
             ativo: true,
         });
 
+        // Etapa 1 (Issue #659): o código vai para o e-mail do pré-cadastro.
+        let codigo;
+        const espiao = jest
+            .spyOn(EmailService, 'enviarCodigoPrimeiroAcesso')
+            .mockImplementation(async (_para, c) => {
+                codigo = c;
+                return true;
+            });
+        await request(app).post('/api/auth/first-access').send({ emailOrCpf: 'pre@escola.test' });
+        espiao.mockRestore();
+
         const res = await request(app).post('/api/auth/first-access').send({
             emailOrCpf: 'pre@escola.test',
+            codigo,
             password: SENHA_TESTE_NOVA,
         });
         expect(res.status).toBe(200);

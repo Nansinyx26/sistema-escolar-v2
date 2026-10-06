@@ -298,6 +298,40 @@
             box-shadow: none;
         }
 
+        /* Primeiro acesso em duas etapas (Issue #659) */
+        #avisoCodigo {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            line-height: 1.5;
+            margin-bottom: 1rem;
+        }
+
+        .reenviar-codigo {
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .link-reenviar {
+            background: none;
+            border: 0;
+            padding: 0;
+            font: inherit;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .link-reenviar:hover:not(:disabled) {
+            color: var(--primary);
+        }
+
+        .link-reenviar:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .footer-link {
             text-align: center;
             margin-top: 2rem;
@@ -414,15 +448,32 @@
             <div class="auth-header">
                 <i class="bi bi-person-check-fill"></i>
                 <h1>Ative sua Conta</h1>
-                <p>Olá, Professor! Use os dados fornecidos à direção para criar sua senha de acesso.</p>
+                <p>Olá, Professor! Informe o e-mail ou o CPF que a direção cadastrou. Enviamos um código para o e-mail do cadastro.</p>
             </div>
 
-            <form id="firstAccessForm">
+            <form id="firstAccessForm" novalidate>
                 <div class="form-group">
                     <label class="form-label" for="emailOrCpf">Identificação</label>
                     <div class="input-group">
                         <i class="bi bi-person input-icon"></i>
-                        <input type="text" id="emailOrCpf" class="form-input" placeholder="CPF ou E-mail Institucional" required>
+                        <input type="text" id="emailOrCpf" class="form-input" placeholder="CPF ou E-mail Institucional" autocomplete="username" required>
+                    </div>
+                </div>
+
+                <div id="etapaIdentificacao">
+                    <button type="submit" id="btnEnviarCodigo" class="btn btn-primary" disabled>
+                        <i class="bi bi-envelope-fill"></i> Enviar código
+                    </button>
+                </div>
+
+                <div id="etapaSenha" hidden>
+                <p id="avisoCodigo" role="status" aria-live="polite"></p>
+
+                <div class="form-group">
+                    <label class="form-label" for="codigoAtivacao">Código recebido por e-mail</label>
+                    <div class="input-group">
+                        <i class="bi bi-key input-icon"></i>
+                        <input type="text" id="codigoAtivacao" class="form-input" placeholder="6 dígitos" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}">
                     </div>
                 </div>
 
@@ -465,6 +516,11 @@
                 <button type="submit" id="btnSubmit" class="btn btn-primary" disabled>
                     <i class="bi bi-lightning-fill"></i> Ativar Minha Conta
                 </button>
+
+                <p class="reenviar-codigo">
+                    <button type="button" id="btnReenviarCodigo" class="link-reenviar">Reenviar código</button>
+                </p>
+                </div>
 
                 <div class="footer-link">
                     <a href="login.html">
