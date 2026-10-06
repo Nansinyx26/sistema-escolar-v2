@@ -31,6 +31,14 @@
         alert(msg);
     }
 
+    // O `showToast` põe a mensagem no innerHTML: nome do aluno entra escapado
+    // (Issue #650). Não recodifica o `&`, que o servidor já grava codificado.
+    function textoHtml(v) {
+        return String(v == null ? '' : v).replace(/[<>"'`]/g, function (c) {
+            return { '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c];
+        });
+    }
+
     // ── Modal (criado uma única vez, reaberto sob demanda) ──────────────
     var modal = null;
 
@@ -276,7 +284,7 @@
                 navigator.clipboard
                     .writeText(a.codigoSecreto)
                     .then(function () {
-                        toast('Código de ' + a.nome + ' copiado!', 'success');
+                        toast('Código de ' + textoHtml(a.nome) + ' copiado!', 'success');
                         btnCopiar.querySelector('i').className = 'bi bi-clipboard-check';
                         setTimeout(function () {
                             btnCopiar.querySelector('i').className = 'bi bi-clipboard';

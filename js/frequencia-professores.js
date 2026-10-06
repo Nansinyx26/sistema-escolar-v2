@@ -17,20 +17,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Mapeamento de Ícones de Matérias
     const MATERIAS_ICONS = {
-        'Português': 'bi-book-fill',
-        'Matemática': 'bi-calculator-fill',
-        'Ciências': 'bi-flask',
-        'História': 'bi-clock-history',
-        'Geografia': 'bi-globe',
-        'Inglês': 'bi-translate',
+        Português: 'bi-book-fill',
+        Matemática: 'bi-calculator-fill',
+        Ciências: 'bi-flask',
+        História: 'bi-clock-history',
+        Geografia: 'bi-globe',
+        Inglês: 'bi-translate',
         'Educação Física': 'bi-trophy',
-        'Artes': 'bi-palette',
-        'Física': 'bi-magnet',
-        'Química': 'bi-radioactive',
-        'Biologia': 'bi-dna',
-        'Filosofia': 'bi-lightbulb',
-        'Sociologia': 'bi-people-fill',
-        'Ensino Religioso': 'bi-book-half'
+        Artes: 'bi-palette',
+        Física: 'bi-magnet',
+        Química: 'bi-radioactive',
+        Biologia: 'bi-dna',
+        Filosofia: 'bi-lightbulb',
+        Sociologia: 'bi-people-fill',
+        'Ensino Religioso': 'bi-book-half',
     };
 
     // Renderizar Opções de Matéria
@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        materiasDisponiveis.forEach(materia => {
+        materiasDisponiveis.forEach((materia) => {
             const label = document.createElement('label');
             label.className = 'checkbox-card';
             label.style.padding = '0';
@@ -66,10 +66,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const iconName = MATERIAS_ICONS[materia] || 'bi-journal-bookmark';
 
-            content.innerHTML = `
-                <i class="bi ${iconName}" style="font-size: 1.5rem;"></i>
-                <span style="font-size: 0.9rem;">${materia}</span>
-            `;
+            // A matéria é texto do cadastro do docente: vai por textContent
+            // (Issue #650). O ícone vem de uma lista fechada.
+            content.innerHTML = `<i class="bi ${iconName}" style="font-size: 1.5rem;"></i>`;
+            const nomeMateria = document.createElement('span');
+            nomeMateria.style.fontSize = '0.9rem';
+            nomeMateria.textContent = materia;
+            content.appendChild(nomeMateria);
 
             label.appendChild(radio);
             label.appendChild(content);
@@ -91,20 +94,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Busca dados completos na collection 'professores'
             const professores = await db.getAll('professores');
             // Tenta achar por ID de usuário ou Email
-            let prof = professores.find(p => p.idUsuario === user._id || (p.email && p.email === user.email));
+            let prof = professores.find(
+                (p) => p.idUsuario === user._id || (p.email && p.email === user.email)
+            );
 
             // Fallback: Tenta achar pelo NOME (caso o diretor tenha cadastrado apenas com nome)
             if (!prof && user.nome) {
                 console.log('Tentando buscar perfil pelo nome:', user.nome);
-                prof = professores.find(p => p.nome && p.nome.trim().toLowerCase() === user.nome.trim().toLowerCase());
+                prof = professores.find(
+                    (p) => p.nome && p.nome.trim().toLowerCase() === user.nome.trim().toLowerCase()
+                );
             }
 
             if (prof) {
                 professorData = { ...user, ...prof };
             } else {
-                console.warn('Perfil de professor não encontrado para este usuário. A grade pode não aparecer.');
+                console.warn(
+                    'Perfil de professor não encontrado para este usuário. A grade pode não aparecer.'
+                );
             }
-            
+
             nomeInput.value = professorData.nome || '';
             escolaInput.value = professorData.escola || '';
         } else if (user.perfil === 'diretor' || user.perfil === 'admin') {
@@ -114,9 +123,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Carrega a lista de professores ativos
             allProfessores = await db.getAll('professores');
-            
+
             selectProf.innerHTML = '<option value="">Selecione o Professor...</option>';
-            allProfessores.forEach(p => {
+            allProfessores.forEach((p) => {
                 const opt = document.createElement('option');
                 opt.value = p._id || p.id;
                 opt.textContent = p.nome;
@@ -126,15 +135,18 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Ao mudar o professor
             selectProf.addEventListener('change', () => {
                 const selectedId = selectProf.value;
-                const prof = allProfessores.find(p => (p._id || p.id) === selectedId);
+                const prof = allProfessores.find((p) => (p._id || p.id) === selectedId);
                 if (prof) {
                     professorData = { ...prof };
                     escolaInput.value = prof.escola || 'Escola Padrão';
-                    
+
                     // Configura matérias específicas para o professor selecionado
-                    const materiasExibir = (prof.materias && prof.materias.length > 0)
-                        ? prof.materias
-                        : (prof.disciplina ? [prof.disciplina] : []);
+                    const materiasExibir =
+                        prof.materias && prof.materias.length > 0
+                            ? prof.materias
+                            : prof.disciplina
+                              ? [prof.disciplina]
+                              : [];
                     if (materiasExibir.length > 0) {
                         renderMaterias(materiasExibir);
                     } else {
@@ -165,21 +177,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const data = {
             data: document.getElementById('dataLancamento').value,
-            nomeProfessor: (user.perfil === 'professor') ? (nomeInput.value || '') : (professorData.nome || ''),
+            nomeProfessor:
+                user.perfil === 'professor' ? nomeInput.value || '' : professorData.nome || '',
             professorId: professorData._id || user._id,
             escola: escolaInput.value || 'Escola Padrão',
             disciplina: document.getElementById('materia').value || 'Multidisciplinar',
             classe: classeSelect.value,
             quantidadeAulas: document.getElementById('quantidadeAulas').value,
             observacao: document.getElementById('observacao').value,
-            usuarioId: user._id
+            usuarioId: user._id,
         };
 
         // Log de depuração removido
 
         if (!data.escola || !data.disciplina) {
-            console.error('Campos faltantes:', { escola: data.escola, disciplina: data.disciplina });
-            showToast(`Erro: Campos obrigatórios faltando. Escola: ${data.escola || 'Vazio'}, Matéria: ${data.disciplina || 'Vazio'}`, 'error');
+            console.error('Campos faltantes:', {
+                escola: data.escola,
+                disciplina: data.disciplina,
+            });
+            showToast(
+                `Erro: Campos obrigatórios faltando. Escola: ${data.escola || 'Vazio'}, Matéria: ${data.disciplina || 'Vazio'}`,
+                'error'
+            );
             // setTimeout(() => window.location.href = 'perfil.html', 2000); // Comentado para não redirecionar em teste
             return;
         }
@@ -195,7 +214,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             await db.insert('frequencia-professores', {
                 ...data,
-                criadoEm: new Date().toISOString()
+                criadoEm: new Date().toISOString(),
             });
 
             showToast('Lançamento salvo com sucesso!', 'success');
@@ -209,13 +228,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 selectProf.value = '';
             }
             escolaInput.value = professorData.escola || '';
-            renderMaterias((professorData.materias && professorData.materias.length > 0)
-                ? professorData.materias
-                : (professorData.disciplina ? [professorData.disciplina] : []));
+            renderMaterias(
+                professorData.materias && professorData.materias.length > 0
+                    ? professorData.materias
+                    : professorData.disciplina
+                      ? [professorData.disciplina]
+                      : []
+            );
 
             btn.innerHTML = originalContent;
             btn.disabled = false;
-
         } catch (error) {
             console.error(error);
             const btn = form.querySelector('button[type="submit"]');
@@ -223,7 +245,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             btn.innerHTML = '<i class="bi bi-save"></i> Salvar Lançamento';
 
             // Tratamento especial para erro de chamada pendente (Bloqueio)
-            if (error.message.includes('A frequência dos alunos') || (error.code === 'CHAMADA_PENDENTE')) {
+            if (
+                error.message.includes('A frequência dos alunos') ||
+                error.code === 'CHAMADA_PENDENTE'
+            ) {
                 showModalAlert('Atenção Professor', error.message, 'warning');
             } else {
                 showToast(error.message || 'Erro ao salvar', 'error');
@@ -232,8 +257,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // Check if profile fields are missing
-    if ((!professorData.escola || (!professorData.disciplina && !professorData.materias)) && user.perfil === 'professor') {
-        const confirmEdit = confirm('Seu perfil não possui Escola ou Disciplina cadastrados. Deseja atualizar agora?');
+    if (
+        (!professorData.escola || (!professorData.disciplina && !professorData.materias)) &&
+        user.perfil === 'professor'
+    ) {
+        const confirmEdit = confirm(
+            'Seu perfil não possui Escola ou Disciplina cadastrados. Deseja atualizar agora?'
+        );
         if (confirmEdit) {
             window.location.href = 'perfil.html';
         }
@@ -249,7 +279,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const checkPermission = async () => {
         const dataVal = document.getElementById('dataLancamento').value;
-        const nomeProf = (user.perfil === 'professor') ? (nomeInput.value || '') : (selectProf.value ? (professorData.nome || '') : '');
+        const nomeProf =
+            user.perfil === 'professor'
+                ? nomeInput.value || ''
+                : selectProf.value
+                  ? professorData.nome || ''
+                  : '';
         const turmaVal = classeSelect.value;
 
         console.log('--- Check Permission ---');
@@ -300,7 +335,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                         : `<span style="color: var(--warning-color);"><i class="bi bi-calendar-check"></i> Grade Confirmada: Aula deste dia identificada (${json.detalhes.horaInicio} - ${json.detalhes.horaFim}). Lançamento liberado.</span>`;
 
                     submitBtn.disabled = false;
-                    submitBtn.title = isExato ? "Horário permitido" : "Lançamento retroativo para hoje liberado";
+                    submitBtn.title = isExato
+                        ? 'Horário permitido'
+                        : 'Lançamento retroativo para hoje liberado';
 
                     // Auto-selecionar Matéria baseada na Grade (Apenas se vazio)
                     if (json.detalhes.disciplina) {
@@ -312,8 +349,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                             matInput.value = disciplinaGrade;
 
                             // Tenta marcar visualmente o checkbox correspondente
-                            const checkboxes = document.querySelectorAll('#materiasGrid input[type="radio"], #materiasGrid input[type="checkbox"]');
-                            checkboxes.forEach(cb => {
+                            const checkboxes = document.querySelectorAll(
+                                '#materiasGrid input[type="radio"], #materiasGrid input[type="checkbox"]'
+                            );
+                            checkboxes.forEach((cb) => {
                                 if (cb.value === disciplinaGrade) {
                                     cb.checked = true;
                                     cb.dispatchEvent(new Event('change'));
@@ -325,8 +364,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     // Visual Feedback
                     classeSelect.classList.add('is-valid');
                     document.getElementById('dataLancamento').classList.add('is-valid');
-                    if (user.perfil === 'professor' && nomeInput.value) nomeInput.classList.add('is-valid');
-                    if ((user.perfil === 'diretor' || user.perfil === 'admin') && selectProf.value) selectProf.classList.add('is-valid');
+                    if (user.perfil === 'professor' && nomeInput.value)
+                        nomeInput.classList.add('is-valid');
+                    if ((user.perfil === 'diretor' || user.perfil === 'admin') && selectProf.value)
+                        selectProf.classList.add('is-valid');
                     if (escolaInput.value) escolaInput.classList.add('is-valid');
 
                     // Validation for Aulas
@@ -352,11 +393,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                             qtdInput.classList.remove('is-valid');
                         }
                     };
-
                 } else {
-                    statusContainer.innerHTML = '<span style="color: var(--error-color);"><i class="bi bi-clock-history"></i> Fora do horário de grade. Botão bloqueado.</span>';
+                    statusContainer.innerHTML =
+                        '<span style="color: var(--error-color);"><i class="bi bi-clock-history"></i> Fora do horário de grade. Botão bloqueado.</span>';
                     submitBtn.disabled = true;
-                    submitBtn.title = "Você não possui aula registrada para este horário na grade.";
+                    submitBtn.title = 'Você não possui aula registrada para este horário na grade.';
 
                     // Remover Feedback
                     classeSelect.classList.remove('is-valid');
@@ -366,24 +407,25 @@ document.addEventListener('DOMContentLoaded', async () => {
                     nomeInput.classList.remove('is-valid');
                     selectProf.classList.remove('is-valid');
                 }
-
             } catch (e) {
                 console.error('Erro validação grade', e);
-                statusContainer.innerHTML = '<span style="color: var(--warning-color);">Erro de conexão ao validar.</span>';
+                statusContainer.innerHTML =
+                    '<span style="color: var(--warning-color);">Erro de conexão ao validar.</span>';
             }
         } else {
             // Retroativo
             console.log('Data retroativa/futura. Validação ignorada.');
-            statusContainer.innerHTML = '<span style="color: var(--warning-color);"><i class="bi bi-calendar-check"></i> Modo Retroativo: A validação será feita ao salvar.</span>';
+            statusContainer.innerHTML =
+                '<span style="color: var(--warning-color);"><i class="bi bi-calendar-check"></i> Modo Retroativo: A validação será feita ao salvar.</span>';
             submitBtn.disabled = false;
-            submitBtn.title = "";
+            submitBtn.title = '';
         }
     };
 
     classeSelect.addEventListener('change', checkPermission);
     document.getElementById('dataLancamento').addEventListener('change', checkPermission);
     // Adicionar listener caso o nome demore a carregar
-    // setTimeout(checkPermission, 1000); 
+    // setTimeout(checkPermission, 1000);
     // Melhor: chamar checkPermission após carregar user data lá em cima, mas o setTimeout aqui serve de fallback.
     setTimeout(checkPermission, 1500);
 
@@ -405,13 +447,30 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Fetch grade USANDO O ID DO PROFESSOR (perfil), não do Usuário
                 // professorData._id deve conter o ID da collection 'professores'/'Teacher'
                 const teacherId = professorData._id || user._id;
-                console.log('Buscando grade. User ID:', user._id, 'Teacher ID usado:', teacherId, 'Has Profile:', !!professorData._id);
+                console.log(
+                    'Buscando grade. User ID:',
+                    user._id,
+                    'Teacher ID usado:',
+                    teacherId,
+                    'Has Profile:',
+                    !!professorData._id
+                );
 
-                const resp = await fetch(`${API_URL}/grade-horaria?professorId=${teacherId}`, { credentials: 'include' });
+                const resp = await fetch(`${API_URL}/grade-horaria?professorId=${teacherId}`, {
+                    credentials: 'include',
+                });
                 const json = await resp.json();
 
                 if (json.success && json.data && json.data.length > 0) {
-                    const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+                    const dias = [
+                        'Domingo',
+                        'Segunda',
+                        'Terça',
+                        'Quarta',
+                        'Quinta',
+                        'Sexta',
+                        'Sábado',
+                    ];
 
                     const lista = json.data.sort((a, b) => {
                         if (a.diaSemana !== b.diaSemana) return a.diaSemana - b.diaSemana;
@@ -431,12 +490,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <tbody>
                     `;
 
-                    lista.forEach(g => {
+                    lista.forEach((g) => {
                         html += `
                             <tr style="border-bottom: 1px solid var(--border-color);">
                                 <td style="padding: 0.5rem;">${dias[g.diaSemana] || g.diaSemana}</td>
                                 <td style="padding: 0.5rem;">${g.horaInicio} - ${g.horaFim}</td>
-                                <td style="padding: 0.5rem;">${(g.turmaDetails && g.turmaDetails.nome) ? g.turmaDetails.nome : ((g.turmaId && g.turmaId.nome) ? g.turmaId.nome : '???')}</td>
+                                <td style="padding: 0.5rem;">${g.turmaDetails && g.turmaDetails.nome ? g.turmaDetails.nome : g.turmaId && g.turmaId.nome ? g.turmaId.nome : '???'}</td>
                                 <td style="padding: 0.5rem;">${g.disciplina}</td>
                             </tr>
                         `;
@@ -444,14 +503,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                     html += '</tbody></table>';
                     conteudoGrade.innerHTML = html;
-
                 } else {
                     conteudoGrade.innerHTML = '<p>Nenhuma grade cadastrada.</p>';
                 }
-
             } catch (e) {
                 console.error(e);
-                conteudoGrade.innerHTML = '<p style="color: var(--error-color)">Erro ao carregar grade.</p>';
+                conteudoGrade.innerHTML =
+                    '<p style="color: var(--error-color)">Erro ao carregar grade.</p>';
             }
         });
 
@@ -463,5 +521,4 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (e.target === modal) modal.style.display = 'none';
         });
     }
-
 });

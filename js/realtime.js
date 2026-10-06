@@ -712,14 +712,28 @@
         const resumo = resumirTexto(notification.message || notification.mensagem, 110);
 
         if (typeof showToast === 'function') {
-            const texto = resumo ? `${titulo} — ${resumo}` : titulo;
-            showToast(`${notification.icon || '🔔'} ${texto}`, 'info');
+            // O `showToast` põe a mensagem no innerHTML, e o `resumirTexto` só
+            // tira tag fechada (`<img … ` sem `>` passava). Título, resumo e
+            // ícone entram escapados (Issue #650).
+            const texto = resumo
+                ? `${textoHtml(titulo)} — ${textoHtml(resumo)}`
+                : textoHtml(titulo);
+            showToast(`${textoHtml(notification.icon || '🔔')} ${texto}`, 'info');
         }
 
         mostrarNotificacaoDoSistema(titulo, resumo, notification);
     }
 
     /** Tira HTML, normaliza espaços e corta no limite pedido. */
+    // Texto do servidor no HTML do toast: não recodifica o `&`, que o servidor
+    // já grava codificado (Issue #650).
+    function textoHtml(v) {
+        return String(v ?? '').replace(
+            /[<>"'`]/g,
+            (c) => ({ '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[c]
+        );
+    }
+
     function resumirTexto(texto, limite) {
         if (!texto) return '';
         const limpo = String(texto)
