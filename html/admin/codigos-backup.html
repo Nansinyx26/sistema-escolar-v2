@@ -316,10 +316,14 @@
         return m.length === 2 ? m.pop().split(';').shift() : '';
     }
 
+    // Escape para texto E atributo (Issue #656). O truque do textContent não
+    // escapa aspas, e este escape entra no `value="…"` das contas: uma aspa no
+    // id fechava o atributo. Mesmo mapa de js/escape-html.js.
+    var ESCAPE = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' };
     function escapar(t) {
-        var d = document.createElement('div');
-        d.textContent = String(t == null ? '' : t);
-        return d.innerHTML;
+        return String(t == null ? '' : t).replace(/[&<>"'`]/g, function (c) {
+            return ESCAPE[c];
+        });
     }
 
     function aviso(texto, tipo) {
