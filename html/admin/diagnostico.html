@@ -198,7 +198,7 @@
         <!-- `header-actions`: slot dos botões de acessibilidade e ajustes, que
              sem ele flutuavam por cima do "Atualizar" (#457). -->
         <div class="header-actions" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
-            <button class="refresh-btn" onclick="location.reload()">
+            <button class="refresh-btn" data-acao="recarregarPagina">
                 <i class="ti ti-refresh"></i> Atualizar
             </button>
         </div>
@@ -271,9 +271,14 @@
             }
         }
         checkApi();
+
+        // Ações da página (épico #612). Ver js/acoes.js.
+        if (window.Acoes) window.Acoes.registrar({ recarregarPagina: () => location.reload() });
     </script>
 
-<script src="../../js/api-config.js"></script>
+<!-- Delegação por data-acao (épico #612). -->
+    <script src="../../js/acoes.js"></script>
+    <script src="../../js/api-config.js"></script>
     <script src="../../js/diagnostico-gemini.js" defer></script>
 <script src="../../js/click-sound.js" defer></script>
     <script defer src="../../js/reactions.js"></script>

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <!-- Pagina publica (backend/src/utils/matrizAcesso.js): quem chega sem
+         sessao escolhe a porta de entrada. A troca e decidida pela API. -->
+    <meta name="referrer" content="no-referrer">
+    <title>Confirmar novo e-mail - Sistema Escolar</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="../css/variables.css">
+    <link rel="stylesheet" href="../css/base.css">
+    <link rel="stylesheet" href="../css/components-new.css">
+    <link rel="preload" href="../js/libs/fonts/bootstrap-icons.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="../js/libs/bootstrap-icons.min.css">
+
+    <style>
+        body {
+            background: var(--bg-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 1rem;
+            box-sizing: border-box;
+        }
+
+        .confirmar-email {
+            width: 100%;
+            max-width: 440px;
+        }
+
+        .card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-xl);
+            padding: 2.25rem 2rem;
+            box-shadow: var(--shadow-xl);
+            text-align: center;
+        }
+
+        .estado[hidden] {
+            display: none;
+        }
+
+        .estado > .icone {
+            font-size: 2.75rem;
+            display: block;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+
+        .estado.sucesso > .icone {
+            color: var(--success);
+        }
+
+        .estado.problema > .icone {
+            color: var(--warning, #f59e0b);
+        }
+
+        .estado h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0 0 0.75rem;
+        }
+
+        .estado p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.55;
+            margin: 0 0 0.75rem;
+        }
+
+        .conta {
+            margin: 1.25rem 0;
+            padding: 0.9rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.04);
+            text-align: left;
+        }
+
+        .conta dt {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-secondary);
+        }
+
+        .conta dd {
+            margin: 0.15rem 0 0;
+            color: var(--text-primary);
+            font-weight: 600;
+            overflow-wrap: anywhere;
+        }
+
+        .acoes {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+        }
+
+        .acoes .btn {
+            width: 100%;
+            padding: 0.9rem 1rem;
+            justify-content: center;
+        }
+
+        /* Link com cara de botao: sem o sublinhado e a cor de link do base.css. */
+        .acoes a.btn,
+        .acoes a.btn:hover {
+            text-decoration: none;
+        }
+
+        .acoes a.btn-primary,
+        .acoes a.btn-primary:hover {
+            color: #fff;
+        }
+
+        .acoes a.btn-secondary:hover {
+            color: var(--text-primary);
+        }
+
+        .nota {
+            font-size: 0.8rem !important;
+            opacity: 0.85;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            white-space: nowrap;
+        }
+
+        .erro-envio {
+            margin-top: 1rem;
+            color: var(--danger, #ef4444) !important;
+        }
+    </style>
+    <link rel="stylesheet" href="../css/motion.css">
+    <!-- Acessibilidade (LBI/eMAG) — ver docs/CONFORMIDADE-LEGAL.md -->
+    <link rel="stylesheet" href="../css/acessibilidade.css">
+</head>
+
+<body>
+    <main class="confirmar-email">
+        <div class="card" aria-live="polite">
+            <!-- Carregando: confere qual conta esta conectada. -->
+            <div id="esqueleto" class="estado" data-loading="true" aria-busy="true">
+                <div class="motion-skeleton" aria-hidden="true">
+                    <div class="skeleton-card">
+                        <div class="skeleton skeleton-heading"></div>
+                        <div class="skeleton skeleton-line"></div>
+                        <div class="skeleton skeleton-line"></div>
+                    </div>
+                </div>
+                <span class="sr-only">Carregando…</span>
+            </div>
+
+            <!-- Pedido de confirmacao: abrir o link nao troca nada sozinho. -->
+            <section id="estado-confirmar" class="estado motion-content" hidden aria-labelledby="titulo-confirmar">
+                <i class="bi bi-envelope-check icone" aria-hidden="true"></i>
+                <h1 id="titulo-confirmar">Confirmar o novo e-mail</h1>
+                <p>Ao confirmar, o endereço que recebeu este link passa a ser o e-mail desta conta, para entrar e para receber os avisos da escola.</p>
+                <dl class="conta">
+                    <dt>Conta conectada</dt>
+                    <dd id="conta-nome"></dd>
+                    <dt>E-mail atual</dt>
+                    <dd id="conta-email"></dd>
+                </dl>
+                <div class="acoes">
+                    <button type="button" id="btn-confirmar" class="btn btn-primary">
+                        <i class="bi bi-check2-circle" aria-hidden="true"></i> Confirmar troca
+                    </button>
+                </div>
+                <p id="erro-envio" class="erro-envio" role="alert" hidden></p>
+                <p class="nota">Não pediu esta troca? Feche esta página: nada muda sem a confirmação.</p>
+            </section>
+
+            <!-- Sem sessao: a troca so vale na conta que a pediu. -->
+            <section id="estado-sem-sessao" class="estado problema motion-content" hidden aria-labelledby="titulo-sem-sessao">
+                <i class="bi bi-person-lock icone" aria-hidden="true"></i>
+                <h1 id="titulo-sem-sessao">Entre na sua conta</h1>
+                <p>A troca só pode ser confirmada na conta que a pediu. Entre nela neste navegador e depois abra de novo o link do e-mail.</p>
+                <div class="acoes">
+                    <a class="btn btn-primary" href="/portal-responsavel/dist/index.html">Entrar no Portal da Família</a>
+                    <a class="btn btn-secondary" href="/html/login.html">Entrar como equipe da escola</a>
+                    <button type="button" id="btn-tentar-de-novo" class="btn btn-secondary">Já entrei em outra aba</button>
+                </div>
+            </section>
+
+            <!-- Troca feita. -->
+            <section id="estado-sucesso" class="estado sucesso motion-content" hidden aria-labelledby="titulo-sucesso">
+                <i class="bi bi-check-circle-fill icone" aria-hidden="true"></i>
+                <h1 id="titulo-sucesso">E-mail trocado</h1>
+                <p>A partir de agora, entre com <strong id="novo-email"></strong>. As outras sessões abertas desta conta foram encerradas.</p>
+                <p class="nota">O endereço antigo recebeu um aviso da troca.</p>
+                <div class="acoes">
+                    <a id="link-painel" class="btn btn-primary" href="/">Ir para o início</a>
+                </div>
+            </section>
+
+            <!-- Link sem token, vencido, ja usado ou de outra conta. -->
+            <section id="estado-problema" class="estado problema motion-content" hidden aria-labelledby="titulo-problema">
+                <i class="bi bi-exclamation-triangle icone" aria-hidden="true"></i>
+                <h1 id="titulo-problema">Não deu para confirmar</h1>
+                <p id="problema-mensagem"></p>
+                <p class="nota">Se você entrou com outra conta, saia e entre na conta que pediu a troca. Se o link venceu, peça a troca de novo no seu perfil.</p>
+                <div class="acoes">
+                    <a class="btn btn-secondary" href="/">Ir para o início</a>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="../js/api-config.js"></script>
+    <script src="../js/csrf-helper.js"></script>
+    <script defer src="../js/confirmar-email.js?v=1.0"></script>
+    <script defer src="../js/observability.js"></script>
+    <script defer src="../js/motion.js"></script>
+    <script defer src="../js/acessibilidade.js"></script>
+</body>
+
+</html>

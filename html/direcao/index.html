@@ -197,7 +197,7 @@
                     <span>Sistema Escolar</span>
                 </div>
                 <div class="navbar-nav">
-                    <a href="#" onclick="window.smartBack('../selecionar.html'); return false;" class="btn btn-ghost"><i class="bi bi-arrow-left"></i> Voltar</a>
+                    <a href="../selecionar.html" data-acao="voltarInteligente" class="btn btn-ghost"><i class="bi bi-arrow-left"></i> Voltar</a>
                 </div>
             </div>
         </nav>
@@ -349,6 +349,8 @@
     <script src="../../js/utils.js"></script>
     <script src="../../js/voice-orb.js?v=2.0"></script>
     <script src="../../js/sidebar-voice.js?v=5.0"></script>
+    <!-- Delegação por data-acao (épico #612). -->
+    <script src="../../js/acoes.js"></script>
     <script src="../../direcao/direcao.js"></script>
     <!-- Sons de enviar/receber mensagem e de aviso do mural, usados tanto pelo
          chat quanto pelo realtime.js. Sem defer porque chat-direto-manager.js

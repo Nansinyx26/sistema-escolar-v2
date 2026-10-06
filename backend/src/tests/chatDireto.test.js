@@ -753,6 +753,24 @@ describe('Reações', () => {
         const msg = await ChatDireto.findById(envio.body.data._id);
         expect(msg.reacoes).toHaveLength(0);
     });
+
+    it('reação fora da lista do sistema é recusada (Issue #647)', async () => {
+        const ana = await professorLogado('ana647@escola.test', escolaA);
+        const bruno = await professorLogado('bruno647@escola.test', escolaA);
+        const envio = await ana.agent
+            .post('/api/chat-direto/enviar')
+            .send({ destinatarioId: bruno.id, mensagem: 'oi' });
+
+        const res = await bruno.agent
+            .post('/api/chat-direto/reagir')
+            // Sem tag o filtro do corpo não pega: aspas e texto qualquer
+            // passavam e iam para a outra ponta da conversa.
+            .send({ mensagemId: envio.body.data._id, emoji: 'x" data-x="1' });
+
+        expect(res.status).toBe(400);
+        const msg = await ChatDireto.findById(envio.body.data._id);
+        expect(msg.reacoes).toHaveLength(0);
+    });
 });
 
 describe('Fronteira de quem participa da conversa', () => {

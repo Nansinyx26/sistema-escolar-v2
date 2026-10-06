@@ -8,6 +8,7 @@ const filtrarPorEscola = require('../middleware/filtrarPorEscola');
 const { autorizarArquivo, findFileDoc } = require('../controllers/FileController');
 const exigirAceiteTermo = require('../middleware/exigirAceiteTermo');
 const verificarDireitosAutorais = require('../middleware/verificarDireitosAutorais');
+const { limparCorpoMultipart } = require('../middleware/limparCorpoMultipart');
 const { carimboImpressao, checarBloqueioArquivo } = require('../services/direitosAutorais');
 
 // POST /api/audio/upload
@@ -28,6 +29,7 @@ router.post(
     filtrarPorEscola,
     exigirAceiteTermo,
     audioUpload.single('audio'),
+    limparCorpoMultipart,
     verificarDireitosAutorais,
     async (req, res) => {
         if (!req.file) {

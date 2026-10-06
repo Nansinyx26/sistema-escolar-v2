@@ -107,6 +107,29 @@ function corpoDe(res) {
 }
 
 /**
+ * Publica o áudio num comentário de comunicado para "todos" da escola — o
+ * caminho legítimo pelo qual um áudio de outra pessoa chega a quem ouve. Desde
+ * a Issue #606, áudio fora de comentário fica só com quem gravou.
+ */
+async function publicarEmComentario(audioId, escola) {
+    const Comunicado = require('../models/Comunicado');
+    const Comentario = require('../models/Comentario');
+    const comunicado = await Comunicado.create({
+        escolaId: String(escola._id),
+        titulo: 'Aviso',
+        conteudo: 'Aviso geral',
+        destinatarios: ['todos'],
+        ativo: true,
+    });
+    await Comentario.create({
+        comunicadoId: comunicado._id,
+        usuarioId: new mongoose.Types.ObjectId(),
+        usuarioNome: 'Autor',
+        audioUrl: `/api/audio/${audioId}`,
+    });
+}
+
+/**
  * Agent autenticado como responsável (perfil sem 2FA obrigatório) vinculado a
  * uma escola. Responsável é justamente o perfil de menor privilégio que
  * conseguia baixar o bucket inteiro pela rota de áudio.
@@ -237,7 +260,7 @@ describe('GET /api/audio/:id — não é porta dos fundos do bucket "uploads"', 
         expect(res.text).not.toContain('AUDIO-ESCOLA-B');
     });
 
-    it('ENTREGA mensagem de voz da própria escola (o recurso segue funcionando)', async () => {
+    it('ENTREGA mensagem de voz publicada num comentário que a pessoa enxerga', async () => {
         const audioId = await gravarArquivo({
             contentType: 'audio/webm',
             metadata: {
@@ -247,6 +270,7 @@ describe('GET /api/audio/:id — não é porta dos fundos do bucket "uploads"', 
             },
             conteudo: 'AUDIO-LEGITIMO',
         });
+        await publicarEmComentario(audioId, escolaA);
 
         const agent = await agentResponsavel('ouvinte@escola.test', escolaA);
         const res = await agent.get(`/api/audio/${audioId}`);
@@ -260,6 +284,7 @@ describe('GET /api/audio/:id — não é porta dos fundos do bucket "uploads"', 
             contentType: 'audio/webm',
             metadata: { usuarioId: 'x', escolaId: String(escolaA._id), type: 'voice_message' },
         });
+        await publicarEmComentario(audioId, escolaA);
 
         const agent = await agentResponsavel('cache@escola.test', escolaA);
         const res = await agent.get(`/api/audio/${audioId}`);

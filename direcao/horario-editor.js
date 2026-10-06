@@ -120,13 +120,13 @@ class HorarioEditor {
                 style="background:${d.cor}; color:${d.text}; border:2px solid rgba(255,255,255,.2);
                        padding:4px 10px; font-size:10px; font-weight:700; border-radius:5px;
                        cursor:pointer; white-space:nowrap;"
-                onclick="window.horarioEditor.applyColor('${d.id}')"
+                data-acao="editorAplicarCor" data-cor="${d.id}"
                 title="${d.nome}">
                 ${d.nome.split('–')[0].trim().split(' ')[0]}
             </button>`).join('') + `
             <span style="margin-left:auto;display:flex;align-items:center;gap:10px;">
                 <button class="btn btn-sm btn-outline"
-                    onclick="window.horarioEditor.openTextModal()"
+                    data-acao="editorAbrirTexto"
                     style="font-size:11px;">✏️ Editar texto</button>
                 <span id="save-status" style="color:#94a3b8;font-size:11px;">
                     <i class="bi bi-cloud-check"></i> Salvo</span>
@@ -154,10 +154,10 @@ class HorarioEditor {
                            outline:none;box-sizing:border-box;"
                     placeholder="Ex: PEB 1, INGLÊS ESTUDO, ...">
                 <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
-                    <button onclick="window.horarioEditor.closeModal()"
+                    <button data-acao="editorFecharModal"
                         style="padding:8px 18px;background:#334155;color:#e2e8f0;border:none;
                                border-radius:8px;cursor:pointer;font-size:13px;">Cancelar</button>
-                    <button onclick="window.horarioEditor.saveModal()"
+                    <button data-acao="editorSalvarModal"
                         style="padding:8px 18px;background:#3b82f6;color:#fff;border:none;
                                border-radius:8px;cursor:pointer;font-weight:700;font-size:13px;">Salvar</button>
                 </div>
@@ -473,3 +473,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 100);
 });
 window.handleExcelImport = input => window.horarioEditor.handleExcelImport(input);
+
+// Ações do editor (épico #612): os botões que o editor monta usam `data-acao`.
+if (window.Acoes) {
+    window.Acoes.registrar({
+        editorAplicarCor(_evento, el) {
+            window.horarioEditor.applyColor(el.dataset.cor);
+        },
+        editorAbrirTexto() {
+            window.horarioEditor.openTextModal();
+        },
+        editorFecharModal() {
+            window.horarioEditor.closeModal();
+        },
+        editorSalvarModal() {
+            window.horarioEditor.saveModal();
+        },
+        importarExcel(_evento, el) {
+            window.handleExcelImport(el);
+        },
+    });
+}

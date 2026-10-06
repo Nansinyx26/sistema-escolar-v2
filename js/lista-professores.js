@@ -103,7 +103,7 @@ function renderizarTabela(atribuicoes) {
             <td><input type="text" value="${escHtml(atrib.cargaHoraria || '40h')}" placeholder="Carga"></td>
             <td><input type="text" value="${escHtml(atrib.observacoes || '')}" placeholder="Observações"></td>
             <td class="col-assinatura">_____________________</td>
-            <td><button type="button" class="btn btn-delete btn-sm" onclick="removerLinha(this)" aria-label="Remover linha"><i class="bi bi-trash" aria-hidden="true"></i></button></td>
+            <td><button type="button" class="btn btn-delete btn-sm btn-remover-linha" aria-label="Remover linha"><i class="bi bi-trash" aria-hidden="true"></i></button></td>
         `;
         tbody.appendChild(novaLinha);
     });
@@ -125,7 +125,7 @@ function adicionarProfessor() {
         <td><input type="text" placeholder="Carga" value="40h"></td>
         <td><input type="text" placeholder="Observações"></td>
         <td class="col-assinatura">_____________________</td>
-        <td><button type="button" class="btn btn-delete btn-sm" onclick="removerLinha(this)" aria-label="Remover linha"><i class="bi bi-trash" aria-hidden="true"></i></button></td>
+        <td><button type="button" class="btn btn-delete btn-sm btn-remover-linha" aria-label="Remover linha"><i class="bi bi-trash" aria-hidden="true"></i></button></td>
     `;
 
     tbody.appendChild(novaLinha);

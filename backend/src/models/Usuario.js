@@ -90,6 +90,13 @@ const UsuarioSchema = new mongoose.Schema(
         emailVerificacaoToken: { type: String, select: false }, // Nunca retornado em queries padrão
         emailVerificacaoExpiry: { type: Date, select: false },
 
+        // Troca de e-mail pedida e ainda não confirmada (Issue #609). O token
+        // vai só no link enviado ao endereço novo; aqui fica o hash dele.
+        // Ver services/trocaEmail.js.
+        emailTrocaPendente: { type: String, select: false },
+        emailTrocaTokenHash: { type: String, select: false },
+        emailTrocaExpiry: { type: Date, select: false },
+
         // ============================================
         // MELHORIA: Autenticação de Dois Fatores 2FA (Roadmap #1)
         // ============================================
@@ -312,6 +319,9 @@ const CAMPOS_NUNCA_SERIALIZADOS = [
     'resetTokenExpiry',
     'emailVerificacaoToken',
     'emailVerificacaoExpiry',
+    'emailTrocaPendente',
+    'emailTrocaTokenHash',
+    'emailTrocaExpiry',
     'twoFactorSecret',
     'twoFactorPendingToken',
     'twoFactorPendingExpiry',

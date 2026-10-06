@@ -212,7 +212,16 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Delegação por data-acao (épico #612). -->
+    <script src="../js/acoes.js"></script>
     <script>
+        // Texto vindo da API no innerHTML (Issue #634). Escapa < > e aspas, mas
+        // não o `&`: o servidor já grava `&`, `<` e `>` codificados, e codificar de
+        // novo mostraria "&amp;" na tela (ver escapeAttr em js/escape-html.js).
+        function textoHtml(v) {
+            return String(v ?? '').replace(/[<>"'`]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[c]);
+        }
+
         async function fetchLogs() {
             const user = document.getElementById('filterUser').value;
             const action = document.getElementById('filterAction').value;
@@ -234,9 +243,15 @@
             }
         }
 
+        // Os detalhes iam serializados dentro do `onclick`, entre aspas simples:
+        // uma aspa num campo do log quebrava o atributo. Agora a linha guarda só
+        // o índice, e os detalhes saem desta lista (épico #612).
+        let logsExibidos = [];
+
         function renderLogs(logs) {
             const tbody = document.querySelector('#auditTable tbody');
-            tbody.innerHTML = logs.map(log => {
+            logsExibidos = logs;
+            tbody.innerHTML = logs.map((log, indice) => {
                 const date = new Date(log.data).toLocaleString('pt-BR');
                 const actionClass = log.acao.includes('CREATE') ? 'badge-create' : 
                                   log.acao.includes('DELETE') ? 'badge-delete' :
@@ -246,15 +261,15 @@
                     <tr>
                         <td style="font-size: 0.8rem; color: #94a3b8;">${date}</td>
                         <td>
-                            <div style="font-weight: 500;">${log.usuarioNome}</div>
-                            <div style="font-size: 0.75rem; color: #64748b;">${log.usuarioEmail || ''}</div>
+                            <div style="font-weight: 500;">${textoHtml(log.usuarioNome)}</div>
+                            <div style="font-size: 0.75rem; color: #64748b;">${textoHtml(log.usuarioEmail)}</div>
                         </td>
-                        <td style="text-transform: capitalize;">${log.perfil}</td>
-                        <td><span class="badge ${actionClass}">${log.acao}</span></td>
-                        <td style="font-size: 0.85rem;">${log.recurso}</td>
-                        <td style="font-size: 0.8rem; color: #64748b;">${log.ip || 'Local'}</td>
+                        <td style="text-transform: capitalize;">${textoHtml(log.perfil)}</td>
+                        <td><span class="badge ${actionClass}">${textoHtml(log.acao)}</span></td>
+                        <td style="font-size: 0.85rem;">${textoHtml(log.recurso)}</td>
+                        <td style="font-size: 0.8rem; color: #64748b;">${textoHtml(log.ip || 'Local')}</td>
                         <td>
-                            <button class="details-btn" onclick='showDetails(${JSON.stringify(log.detalhes)})'>
+                            <button class="details-btn" data-acao="verDetalhes" data-indice="${indice}">
                                 <i class="bi bi-info-circle"></i>
                             </button>
                         </td>
@@ -264,9 +279,14 @@
         }
 
         function showDetails(detalhes) {
+            // Os detalhes vão como texto: o JSON pode trazer qualquer valor que
+            // passou pela ação auditada (Issue #634).
+            const pre = document.createElement('pre');
+            pre.style.cssText = 'text-align: left; font-size: 0.8rem; background: #f1f5f9; padding: 1rem; border-radius: 0.5rem; overflow: auto; max-height: 400px;';
+            pre.textContent = JSON.stringify(detalhes, null, 2);
             Swal.fire({
                 title: 'Detalhes da Ação',
-                html: `<pre style="text-align: left; font-size: 0.8rem; background: #f1f5f9; padding: 1rem; border-radius: 0.5rem; overflow: auto; max-height: 400px;">${JSON.stringify(detalhes, null, 2)}</pre>`,
+                html: pre,
                 confirmButtonText: 'Fechar',
                 confirmButtonColor: '#3b82f6',
                 background: '#ffffff',
@@ -276,6 +296,16 @@
 
         document.getElementById('btnSearch').addEventListener('click', fetchLogs);
         window.addEventListener('load', fetchLogs);
+
+        // Ações da página (épico #612). Ver js/acoes.js.
+        if (window.Acoes) {
+            window.Acoes.registrar({
+                verDetalhes(_evento, el) {
+                    const log = logsExibidos[Number(el.dataset.indice)];
+                    if (log) showDetails(log.detalhes);
+                },
+            });
+        }
     </script>
 
 <script src="../js/click-sound.js" defer></script>

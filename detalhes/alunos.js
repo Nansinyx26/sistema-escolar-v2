@@ -14,16 +14,28 @@ function escAttr(v) {
     return String(v).replace(/["'<>`]/g, (c) => ({ '"': '&quot;', "'": '&#39;', '<': '&lt;', '>': '&gt;', '`': '&#96;' })[c]);
 }
 
-// Argumento de handler inline (onclick="f(${argJs(x)})"): vira string JS e
-// passa por escape de HTML COMPLETO, `&` incluído — o navegador decodifica as
-// entidades antes de rodar o JS, então `&quot;` voltaria a ser aspa (Issue #583).
-function argJs(v) {
-    return JSON.stringify(String(v ?? '')).replace(/[&<>"'`]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[c]);
+// Valor que vai para atributo `data-*` e volta pelo `dataset` (Issue #583,
+// épico #612): escape de HTML COMPLETO, `&` incluído. O navegador decodifica
+// as entidades do atributo, e o `dataset` devolve o valor exato do servidor.
+function attrHtml(v) {
+    return String(v ?? '').replace(/[&<>"'`]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[c]);
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
     await init();
 });
+
+// Perfis que abrem Autorizações dos Pais (ver js/guarda-acesso.js).
+const PERFIS_AUTORIZACOES = ['admin', 'diretor', 'secretaria'];
+
+function perfilAtual() {
+    try {
+        const sessao = JSON.parse(sessionStorage.getItem('currentUser') || '{}');
+        return String(sessao?.perfil || sessao?.role || '').toLowerCase();
+    } catch {
+        return '';
+    }
+}
 
 async function init() {
     try {
@@ -46,12 +58,8 @@ async function init() {
         const turmaUrl = urlParams.get('turma') || urlParams.get('turmaId');
         const visaoUrl = urlParams.get('visao');
 
-        // Controle de acesso: Somente Direção e Secretaria podem acessar a visão de autorizações/documentos
-        const userSession = JSON.parse(sessionStorage.getItem('currentUser') || localStorage.getItem('usuario') || '{}');
-        const perfilUsuario = (userSession?.perfil || userSession?.role || '').toLowerCase();
-
         if (visaoUrl === 'documentos' || visaoUrl === 'autorizacoes') {
-            // Redirecionar para a nova página dedicada de Autorizações dos Pais
+            // Documentos e autorizações têm tela própria: Autorizações dos Pais
             window.location.replace('autorizacoes-pais.html');
             return;
         } else if (turmaUrl) {
@@ -70,17 +78,6 @@ async function init() {
         document.getElementById('filtroPCD')?.addEventListener('change', loadAlunos);
         document.getElementById('formEditAluno')?.addEventListener('submit', salvarEdicao);
 
-        // Listeners do Painel de Documentos Assinados / Autorizações dos Pais
-        document.getElementById('searchDocAssinado')?.addEventListener('input', debounce(carregarTodosDocumentosAssinados, 300));
-        document.getElementById('filtroDocTurma')?.addEventListener('change', carregarTodosDocumentosAssinados);
-        document.getElementById('filtroDocTipo')?.addEventListener('change', carregarTodosDocumentosAssinados);
-        document.getElementById('filtroDocStatus')?.addEventListener('change', carregarTodosDocumentosAssinados);
-        document.getElementById('filtroDocDataInicio')?.addEventListener('change', carregarTodosDocumentosAssinados);
-        document.getElementById('filtroDocDataFim')?.addEventListener('change', carregarTodosDocumentosAssinados);
-
-        // Inicializar listeners de tempo real via Socket.IO
-        setupRealtimeDocListeners();
-
     } catch (error) {
         ui.loading(false); // GARANTE que o loading suma em caso de erro
         console.error('Erro ao inicializar:', error);
@@ -93,7 +90,7 @@ async function init() {
                         <i class="bi bi-exclamation-triangle" style="font-size: 3rem;"></i>
                         <h3 style="margin-top: 1rem;">O servidor está demorando para acordar</h3>
                         <p>${error.message}</p>
-                        <button onclick="window.location.reload()" class="btn btn-primary" style="margin-top: 1rem;">Tentar Novamente</button>
+                        <button type="button" data-acao="recarregarPagina" class="btn btn-primary" style="margin-top: 1rem;">Tentar Novamente</button>
                     </td>
                 </tr>
             `;
@@ -193,11 +190,11 @@ function mostrarAvisoSelecao() {
 
         // Criar uma lista vertical de turmas
         let turmasHtml = turmas.map(t => `
-            <div onclick="document.getElementById('filtroTurma').value=${argJs(t.id)}; document.getElementById('filtroTurma').dispatchEvent(new Event('change'));"
+            <div data-acao="escolherTurma" data-turma="${attrHtml(t.id)}"
                  style="background: var(--bg-elevated); padding: 15px 25px; border-radius: 12px; border: 1px solid var(--border-secondary); cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s ease; margin-bottom: 10px;">
                 <div style="display: flex; align-items: center; gap: 15px;">
                     <i class="bi bi-people-fill" style="font-size: 1.5rem; color: var(--primary);"></i>
-                    <span style="font-size: 1.2rem; font-weight: 600; color: var(--text-primary);">Turma ${t.id}</span>
+                    <span style="font-size: 1.2rem; font-weight: 600; color: var(--text-primary);">Turma ${escAttr(t.id)}</span>
                 </div>
                 <i class="bi bi-chevron-right" style="color: var(--text-muted);"></i>
             </div>
@@ -324,7 +321,7 @@ async function loadAlunos() {
                     statusHtml = `
                         <div style="display:flex; flex-direction:column; gap:2px;">
                             <span class="badge badge-pcd" style="width: fit-content;">PCD</span>
-                            <span style="font-size: 0.8rem; color: var(--text-muted);">${aluno.deficiencia}</span>
+                            <span style="font-size: 0.8rem; color: var(--text-muted);">${escAttr(aluno.deficiencia)}</span>
                         </div>
                     `;
                 } else {
@@ -335,15 +332,15 @@ async function loadAlunos() {
                 tr.innerHTML = `
                     <td><input type="checkbox" class="student-select" value="${escAttr(aluno.id || aluno._id)}"></td>
                     <td>
-                        <div style="font-weight: 500; color: var(--text-white);">${aluno.nome}</div>
+                        <div style="font-weight: 500; color: var(--text-white);">${escAttr(aluno.nome)}</div>
                         <div style="font-size: 0.8rem; margin-top: 4px; color: ${aluno.responsavel ? '#22c55e' : '#ef4444'};">
                             ${aluno.responsavel
-                                ? `<i class="bi bi-person-check-fill"></i> ${aluno.responsavel}`
+                                ? `<i class="bi bi-person-check-fill"></i> ${escAttr(aluno.responsavel)}`
                                 : `<i class="bi bi-person-x-fill"></i> Nenhum responsável vinculado`}
                         </div>
                     </td>
-                    <td><code style="background:rgba(255,255,255,0.1); padding: 2px 5px; border-radius: 4px;">${aluno.matricula || '-'}</code></td>
-                    <td><span class="badge badge-turma">${nomeTurma}</span></td>
+                    <td><code style="background:rgba(255,255,255,0.1); padding: 2px 5px; border-radius: 4px;">${escAttr(aluno.matricula || '-')}</code></td>
+                    <td><span class="badge badge-turma">${escAttr(nomeTurma)}</span></td>
                     <td>${statusHtml}</td>
                     <td style="text-align: right; display: flex; gap: 5px; justify-content: flex-end;">
                          <button class="btn btn-ghost btn-sm btn-edit" data-id="${escAttr(aluno.id || aluno._id)}" title="Editar Aluno">
@@ -472,575 +469,35 @@ function abrirModalEdicao(aluno) {
     document.getElementById('editAlunoDeficiencia').value = aluno.deficiencia || '';
     document.getElementById('editAlunoObs').value = aluno.observacoes || '';
     
-    const titulo = document.getElementById('tituloFichaAluno');
-    if (titulo) titulo.textContent = `Ficha de ${aluno.nome}`;
-
-    // Reset para aba 'Dados do Aluno'
-    alternarAbaFicha('dados');
-
-    // Atualiza contagem de documentos na aba
-    window.apiFetch(`/documentos-responsaveis/aluno/${aluno._id || aluno.id}`).then((res) => {
-        const total = res?.data?.length || 0;
-        const badge = document.getElementById('badgeAbaAutorizacoesCount');
-        if (badge) badge.textContent = total;
-    }).catch(() => {});
+    // Autorizações e documentos do responsável ficam em Autorizações dos Pais,
+    // que só a gestão abre. O link já leva à ficha deste aluno lá (Issue #636).
+    const secaoAut = document.getElementById('secaoAutorizacoesAluno');
+    const linkAut = document.getElementById('linkAutorizacoesAluno');
+    if (secaoAut && linkAut) {
+        linkAut.href = `autorizacoes-pais.html?aluno=${encodeURIComponent(aluno._id || aluno.id)}`;
+        secaoAut.hidden = !PERFIS_AUTORIZACOES.includes(perfilAtual());
+    }
 
     const modal = document.getElementById('modalEditAluno');
     if (modal) {
         modal.style.display = 'flex';
         modal.classList.remove('hidden');
+        // `.modal-overlay` (css/components.css) só fica visível com `.show`
+        // (Issue #642). Ler o layout antes faz a entrada animar a partir do
+        // estado invisível, já que `.hidden` tirava o modal do fluxo.
+        modal.getBoundingClientRect();
+        modal.classList.add('show');
     }
 }
 
 window.fecharModal = function() {
     const modal = document.getElementById('modalEditAluno');
     if (modal) {
+        modal.classList.remove('show');
         modal.style.display = 'none';
         modal.classList.add('hidden');
     }
 };
-
-function alternarAbaFicha(aba) {
-    const tabBtnDados = document.getElementById('tabBtnDadosAluno');
-    const tabBtnAut = document.getElementById('tabBtnAutorizacoes');
-    const conteudoDados = document.getElementById('abaConteudoDados');
-    const conteudoAut = document.getElementById('abaConteudoAutorizacoes');
-
-    if (aba === 'autorizacoes') {
-        if (conteudoDados) conteudoDados.classList.add('hidden');
-        if (conteudoAut) conteudoAut.classList.remove('hidden');
-
-        if (tabBtnDados) {
-            tabBtnDados.style.borderBottom = '2px solid transparent';
-            tabBtnDados.style.color = 'var(--text-muted)';
-        }
-        if (tabBtnAut) {
-            tabBtnAut.style.borderBottom = '2px solid var(--primary)';
-            tabBtnAut.style.color = '#fff';
-        }
-
-        const alunoId = document.getElementById('editAlunoId')?.value;
-        if (alunoId) {
-            carregarAutorizacoesEDocumentos(alunoId);
-        }
-    } else {
-        if (conteudoAut) conteudoAut.classList.add('hidden');
-        if (conteudoDados) conteudoDados.classList.remove('hidden');
-
-        if (tabBtnAut) {
-            tabBtnAut.style.borderBottom = '2px solid transparent';
-            tabBtnAut.style.color = 'var(--text-muted)';
-        }
-        if (tabBtnDados) {
-            tabBtnDados.style.borderBottom = '2px solid var(--primary)';
-            tabBtnDados.style.color = '#fff';
-        }
-    }
-}
-window.alternarAbaFicha = alternarAbaFicha;
-
-async function carregarAutorizacoesEDocumentos(alunoId) {
-    const containerAut = document.getElementById('listaAutorizacoesEscolares');
-    const tableDocsBody = document.getElementById('alunoDocsAssinadosBody');
-    const docsCountBadge = document.getElementById('alunoDocsCountBadge');
-    const abaBadgeCount = document.getElementById('badgeAbaAutorizacoesCount');
-
-    if (containerAut) {
-        containerAut.innerHTML = '<div class="spinner spinner-sm" style="margin: 10px auto;"></div>';
-    }
-    if (tableDocsBody) {
-        tableDocsBody.innerHTML = '<tr><td colspan="7" class="text-center" style="padding: 1rem;"><div class="spinner spinner-sm" style="margin: 0 auto;"></div></td></tr>';
-    }
-
-    try {
-        const aluno = await students.getById(alunoId);
-        const aut = aluno?.autorizacoesEscolares || {};
-        const responsavelNome = aluno?.responsavel || 'Responsável';
-
-        const itensAutorizacoes = [
-            {
-                nome: 'Uso de Imagem',
-                descricao: 'Autorização para uso de imagem do aluno em materiais institucionais.',
-                status: aut.atividadesExtraclasse !== undefined ? (aut.atividadesExtraclasse ? 'Aceita' : 'Não aceita') : 'Aceita',
-                data: aluno?.updatedAt ? new Date(aluno.updatedAt).toLocaleDateString('pt-BR') : '12/05/2025',
-                obs: '-'
-            },
-            {
-                nome: 'Saída da Escola',
-                descricao: 'Autoriza a saída do aluno em atividades externas e saídas pedagógicas.',
-                status: aut.atividadesFisicas !== false ? 'Aceita' : 'Não aceita',
-                data: aluno?.updatedAt ? new Date(aluno.updatedAt).toLocaleDateString('pt-BR') : '10/05/2025',
-                obs: 'Sem observações'
-            },
-            {
-                nome: 'Atividades Esportivas e Sala Maker',
-                descricao: 'Participação em atividades esportivas, recreativas e oficinas na Sala Maker.',
-                status: aut.atividadesFisicas !== false ? 'Aceita' : 'Não aceita',
-                data: aluno?.updatedAt ? new Date(aluno.updatedAt).toLocaleDateString('pt-BR') : '08/05/2025',
-                obs: '-'
-            },
-            {
-                nome: 'Alergias e Medicamentos',
-                descricao: 'Informações sobre alergias, administração de antitérmico e condições de saúde.',
-                status: aut.antitermico === false ? 'Não aceita' : (aut.antitermico === true ? 'Aceita' : (aluno?.alergiasRemedio ? 'Não aceita' : 'Aceita')),
-                data: aluno?.updatedAt ? new Date(aluno.updatedAt).toLocaleDateString('pt-BR') : '05/05/2025',
-                obs: aut.medicamentoNome ? `Medicamento: ${aut.medicamentoNome} (${aut.medicamentoDose || ''})` : '-'
-            },
-            {
-                nome: 'Uso de Transporte Escolar',
-                descricao: 'Autorização para uso de condução e transporte escolar credenciado.',
-                status: aut.conducaoEscolar !== false ? 'Aceita' : 'Não aceita',
-                data: aluno?.updatedAt ? new Date(aluno.updatedAt).toLocaleDateString('pt-BR') : '03/05/2025',
-                obs: aut.motoristaNome ? `Motorista: ${aut.motoristaNome}` : '-'
-            }
-        ];
-
-        if (containerAut) {
-            containerAut.innerHTML = itensAutorizacoes.map((item) => {
-                const isAceita = item.status === 'Aceita';
-                const badgeStyle = isAceita
-                    ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3);'
-                    : 'background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3);';
-                const iconBadge = isAceita ? '<i class="bi bi-check-circle-fill"></i> Aceita' : '<i class="bi bi-x-circle-fill"></i> Não aceita';
-
-                return `
-                    <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-secondary); border-radius: 10px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
-                        <div style="flex: 1; min-width: 200px;">
-                            <div style="font-weight: 600; color: #fff; font-size: 0.9rem;">${item.nome}</div>
-                            <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 2px;">${item.descricao}</div>
-                            <div style="font-size: 0.75rem; color: #64748b; margin-top: 4px;">
-                                <span>Resp: ${responsavelNome}</span> &bull; <span>Data: ${item.data}</span>
-                                ${item.obs !== '-' ? ` &bull; <span style="color: #fbbf24;">Obs: ${item.obs}</span>` : ''}
-                            </div>
-                        </div>
-                        <div>
-                            <span class="badge" style="${badgeStyle} font-size: 0.78rem; font-weight: 600; padding: 4px 12px; border-radius: 20px;">
-                                ${iconBadge}
-                            </span>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        const resDocs = await window.apiFetch(`/documentos-responsaveis/aluno/${alunoId}`, {
-            method: 'GET'
-        });
-
-        const docsAluno = resDocs?.data || [];
-        if (docsCountBadge) docsCountBadge.textContent = `${docsAluno.length} anexados`;
-        if (abaBadgeCount) abaBadgeCount.textContent = docsAluno.length;
-
-        if (tableDocsBody) {
-            if (docsAluno.length === 0) {
-                tableDocsBody.innerHTML = `
-                    <tr>
-                        <td colspan="7" class="text-center" style="padding: 1.5rem; color: var(--text-muted);">
-                            Nenhum documento assinado anexado pelo responsável até o momento.
-                        </td>
-                    </tr>
-                `;
-            } else {
-                tableDocsBody.innerHTML = '';
-                const apiBase = (window.API_BASE_URL || '/api').replace(/\/$/, '');
-
-                docsAluno.forEach((doc) => {
-                    const tr = document.createElement('tr');
-                    const mimeType = doc.arquivo?.mimeType || '';
-                    const isPdf = mimeType.includes('pdf') || (doc.arquivo?.nomeOriginal || '').toLowerCase().endsWith('.pdf');
-                    const iconHtml = isPdf 
-                        ? `<i class="bi bi-file-earmark-pdf-fill" style="font-size: 1.3rem; color: #ef4444;"></i>`
-                        : `<i class="bi bi-file-earmark-image-fill" style="font-size: 1.3rem; color: #3b82f6;"></i>`;
-
-                    const dataEnvioFormatada = doc.dataEnvio ? new Date(doc.dataEnvio).toLocaleString('pt-BR') : '-';
-                    const dataAtualizacaoFormatada = doc.ultimaAtualizacao ? new Date(doc.ultimaAtualizacao).toLocaleString('pt-BR') : dataEnvioFormatada;
-                    const docId = doc._id;
-                    const nomeDoc = doc.nomeDocumento || doc.tipoDocumento || 'Documento';
-
-                    let statusColor = '#94a3b8';
-                    if (doc.status === 'Conferido') statusColor = '#10b981';
-                    else if (doc.status === 'Em Análise') statusColor = '#fbbf24';
-                    else if (doc.status === 'Enviado') statusColor = '#38bdf8';
-
-                    tr.innerHTML = `
-                        <td style="text-align: center;">${iconHtml}</td>
-                        <td style="font-weight: 500; color: #fff;">${doc.nomeDocumento || doc.tipoDocumento}</td>
-                        <td><span class="badge" style="background: rgba(59,130,246,0.12); color: #60a5fa; font-size: 0.72rem;">${doc.tipoDocumento}</span></td>
-                        <td style="font-size: 0.8rem; color: #94a3b8;">${dataEnvioFormatada}</td>
-                        <td style="font-size: 0.8rem; color: #94a3b8;">${dataAtualizacaoFormatada}</td>
-                        <td>
-                            <span class="badge" style="background: rgba(255,255,255,0.05); color: ${statusColor}; border: 1px solid ${statusColor}44; font-size: 0.72rem;">
-                                ${doc.status}
-                            </span>
-                        </td>
-                        <td style="text-align: right; white-space: nowrap;">
-                            <button type="button" class="btn btn-outline btn-sm" onclick="abrirVisualizacaoDoc(${argJs(docId)}, ${argJs(mimeType)}, ${argJs(nomeDoc)})" style="padding: 3px 8px; font-size: 0.75rem;">
-                                <i class="bi bi-eye"></i> Ver
-                            </button>
-                            <a href="${apiBase}/documentos-responsaveis/${docId}/download" class="btn btn-primary btn-sm" download style="padding: 3px 8px; font-size: 0.75rem;">
-                                <i class="bi bi-download"></i> Baixar
-                            </a>
-                        </td>
-                    `;
-                    tableDocsBody.appendChild(tr);
-                });
-            }
-        }
-    } catch (e) {
-        console.error('Erro ao carregar autorizações e documentos:', e);
-        if (containerAut) containerAut.innerHTML = '<p style="color: #ef4444; font-size: 0.85rem;">Erro ao carregar autorizações.</p>';
-    }
-}
-window.carregarAutorizacoesEDocumentos = carregarAutorizacoesEDocumentos;
-
-window.abrirAlunoPeloId = async function(id) {
-    try {
-        ui.loading(true, 'Carregando ficha do aluno...');
-        const aluno = await students.getById(id);
-        ui.loading(false);
-        if (aluno) {
-            abrirModalEdicao(aluno);
-            alternarAbaFicha('autorizacoes');
-        } else {
-            alert('Aluno não encontrado.');
-        }
-    } catch (e) {
-        ui.loading(false);
-        console.error('Erro ao abrir aluno:', e);
-    }
-};
-
-function alternarVisaoGeral(visao) {
-    const painelAlunos = document.getElementById('painelVisaoAlunos');
-    const painelDocs = document.getElementById('painelVisaoDocumentos');
-    const btnAlunos = document.getElementById('btnVisaoAlunos');
-    const btnDocs = document.getElementById('btnVisaoDocumentos');
-    const tituloHeader = document.getElementById('paginaTituloHeader');
-    const subtituloHeader = document.getElementById('paginaSubtituloHeader');
-    const btnCadastrar = document.getElementById('btnAcaoCadastrarAluno');
-
-    if (visao === 'documentos') {
-        if (painelAlunos) painelAlunos.classList.add('hidden');
-        if (painelDocs) painelDocs.classList.remove('hidden');
-
-        if (btnAlunos) {
-            btnAlunos.classList.remove('btn-primary');
-            btnAlunos.classList.add('btn-outline');
-        }
-        if (btnDocs) {
-            btnDocs.classList.remove('btn-outline');
-            btnDocs.classList.add('btn-primary');
-        }
-
-        if (tituloHeader) {
-            tituloHeader.innerHTML = '<i class="bi bi-file-earmark-check-fill" style="color: #10b981;"></i> Autorizações dos Pais';
-        }
-        if (subtituloHeader) {
-            subtituloHeader.textContent = 'Visualize todas as autorizações e documentos enviados pelos responsáveis.';
-        }
-        if (btnCadastrar) btnCadastrar.style.display = 'none';
-        document.title = 'Autorizações dos Pais - Sistema Escolar';
-
-        const url = new URL(window.location);
-        url.searchParams.set('visao', 'documentos');
-        window.history.replaceState({}, '', url);
-
-        carregarTodosDocumentosAssinados();
-    } else {
-        if (painelDocs) painelDocs.classList.add('hidden');
-        if (painelAlunos) painelAlunos.classList.remove('hidden');
-
-        if (btnDocs) {
-            btnDocs.classList.remove('btn-primary');
-            btnDocs.classList.add('btn-outline');
-        }
-        if (btnAlunos) {
-            btnAlunos.classList.remove('btn-outline');
-            btnAlunos.classList.add('btn-primary');
-        }
-
-        if (tituloHeader) {
-            tituloHeader.innerHTML = '<i class="bi bi-people-fill"></i> Todos os Alunos';
-        }
-        if (subtituloHeader) {
-            subtituloHeader.textContent = 'Gerencie e visualize a lista completa de estudantes';
-        }
-        if (btnCadastrar) btnCadastrar.style.display = 'flex';
-        document.title = 'Alunos - Sistema Escolar';
-
-        const url = new URL(window.location);
-        url.searchParams.delete('visao');
-        window.history.replaceState({}, '', url);
-    }
-}
-window.alternarVisaoGeral = alternarVisaoGeral;
-
-function popularFiltroTurmasDocs() {
-    const select = document.getElementById('filtroDocTurma');
-    if (!select || select.children.length > 1) return;
-    const turmas = db.getTurmas() || [];
-    turmas.forEach((t) => {
-        const opt = document.createElement('option');
-        opt.value = t.id || t._id;
-        opt.textContent = `Turma ${t.id || t._id}`;
-        select.appendChild(opt);
-    });
-}
-
-async function carregarTodosDocumentosAssinados() {
-    const tableBody = document.getElementById('tabelaDocsAssinadosBody');
-    const emptyState = document.getElementById('emptyStateDocs');
-    const contadorBadge = document.getElementById('badgeContadorDocs');
-
-    if (tableBody) {
-        tableBody.innerHTML = `
-            <tr class="loading-row">
-                <td colspan="10" class="text-center" style="padding: 2rem;">
-                    <div class="spinner spinner-sm" style="margin: 0 auto 10px;"></div>
-                    Carregando documentos assinados...
-                </td>
-            </tr>
-        `;
-    }
-
-    try {
-        const queryParams = new URLSearchParams();
-        const busca = document.getElementById('searchDocAssinado')?.value?.trim();
-        const turma = document.getElementById('filtroDocTurma')?.value;
-        const tipo = document.getElementById('filtroDocTipo')?.value;
-        const status = document.getElementById('filtroDocStatus')?.value;
-        const dataInicio = document.getElementById('filtroDocDataInicio')?.value;
-        const dataFim = document.getElementById('filtroDocDataFim')?.value;
-
-        if (busca) queryParams.set('busca', busca);
-        if (turma) queryParams.set('turmaId', turma);
-        if (tipo) queryParams.set('tipoDocumento', tipo);
-        if (status) queryParams.set('status', status);
-
-        const res = await window.apiFetch('/documentos-responsaveis?' + queryParams.toString(), {
-            method: 'GET'
-        });
-
-        if (!res || !res.success) {
-            throw new Error(res?.error || 'Falha ao carregar documentos');
-        }
-
-        let docs = res.data || [];
-
-        if (dataInicio) {
-            const dtInicio = new Date(`${dataInicio}T00:00:00`);
-            docs = docs.filter((d) => new Date(d.dataEnvio) >= dtInicio);
-        }
-        if (dataFim) {
-            const dtFim = new Date(`${dataFim}T23:59:59`);
-            docs = docs.filter((d) => new Date(d.dataEnvio) <= dtFim);
-        }
-
-        if (contadorBadge) {
-            contadorBadge.textContent = docs.length;
-        }
-
-        popularFiltroTurmasDocs();
-
-        if (tableBody) {
-            tableBody.innerHTML = '';
-        }
-
-        if (docs.length === 0) {
-            if (emptyState) emptyState.classList.remove('hidden');
-            if (tableBody && tableBody.parentElement) {
-                tableBody.parentElement.classList.add('hidden');
-            }
-            return;
-        }
-
-        if (emptyState) emptyState.classList.add('hidden');
-        if (tableBody && tableBody.parentElement) {
-            tableBody.parentElement.classList.remove('hidden');
-        }
-
-        const apiBase = (window.API_BASE_URL || '/api').replace(/\/$/, '');
-
-        docs.forEach((doc) => {
-            const tr = document.createElement('tr');
-            
-            const mimeType = doc.arquivo?.mimeType || '';
-            const isPdf = mimeType.includes('pdf') || (doc.arquivo?.nomeOriginal || '').toLowerCase().endsWith('.pdf');
-            const iconHtml = isPdf 
-                ? `<i class="bi bi-file-earmark-pdf-fill" style="font-size: 1.5rem; color: #ef4444;" title="Documento PDF"></i>`
-                : `<i class="bi bi-file-earmark-image-fill" style="font-size: 1.5rem; color: #3b82f6;" title="Imagem Digitalizada"></i>`;
-
-            const dataEnvioFormatada = doc.dataEnvio ? new Date(doc.dataEnvio).toLocaleString('pt-BR') : '-';
-            const dataAtualizacaoFormatada = doc.ultimaAtualizacao ? new Date(doc.ultimaAtualizacao).toLocaleString('pt-BR') : dataEnvioFormatada;
-
-            let statusColor = '#94a3b8';
-            if (doc.status === 'Conferido') {
-                statusColor = '#10b981';
-            } else if (doc.status === 'Em Análise') {
-                statusColor = '#fbbf24';
-            } else if (doc.status === 'Enviado') {
-                statusColor = '#38bdf8';
-            }
-
-            const alunoNome = doc.alunoId?.nome 
-                ? `${doc.alunoId.nome} ${doc.alunoId.sobrenome || ''}`.trim()
-                : (doc.alunoId || 'Aluno');
-
-            const responsavelNome = doc.responsavelId?.nome || 'Responsável';
-            const turmaNome = doc.turmaId || '-';
-            const docId = doc._id;
-            const nomeDoc = doc.nomeDocumento || doc.tipoDocumento || 'Documento';
-
-            tr.innerHTML = `
-                <td style="text-align: center; vertical-align: middle;">${iconHtml}</td>
-                <td>
-                    <div style="font-weight: 600; color: #fff;">${doc.nomeDocumento || doc.tipoDocumento}</div>
-                    <small style="color: #64748b;">${doc.arquivo?.nomeOriginal || ''}</small>
-                </td>
-                <td><span class="badge" style="background: rgba(59,130,246,0.12); color: #60a5fa; font-size: 0.75rem;">${doc.tipoDocumento}</span></td>
-                <td>
-                    <a href="javascript:void(0)" onclick="abrirAlunoPeloId('${doc.alunoId?._id || doc.alunoId}')" style="color: #38bdf8; text-decoration: none; font-weight: 500;">
-                        ${alunoNome}
-                    </a>
-                </td>
-                <td style="color: #cbd5e1;">${responsavelNome}</td>
-                <td><span class="badge badge-turma">${turmaNome}</span></td>
-                <td style="font-size: 0.8rem; color: #94a3b8;">${dataEnvioFormatada}</td>
-                <td style="font-size: 0.8rem; color: #94a3b8;">${dataAtualizacaoFormatada}</td>
-                <td>
-                    <select onchange="atualizarStatusDoc('${docId}', this.value)" style="background: rgba(15,23,42,0.8); border: 1px solid ${statusColor}; color: ${statusColor}; border-radius: 20px; font-size: 0.75rem; padding: 2px 8px; font-weight: 600; cursor: pointer;">
-                        <option value="Enviado" ${doc.status === 'Enviado' ? 'selected' : ''}>Enviado</option>
-                        <option value="Em Análise" ${doc.status === 'Em Análise' ? 'selected' : ''}>Em Análise</option>
-                        <option value="Conferido" ${doc.status === 'Conferido' ? 'selected' : ''}>Conferido</option>
-                    </select>
-                </td>
-                <td style="text-align: right; white-space: nowrap;">
-                    <button type="button" class="btn btn-outline btn-sm" onclick="abrirVisualizacaoDoc(${argJs(docId)}, ${argJs(mimeType)}, ${argJs(nomeDoc)})" title="Visualizar documento">
-                        <i class="bi bi-eye"></i> Visualizar
-                    </button>
-                    <a href="${apiBase}/documentos-responsaveis/${docId}/download" class="btn btn-ghost btn-sm" download title="Baixar arquivo">
-                        <i class="bi bi-download"></i>
-                    </a>
-                </td>
-            `;
-
-            tableBody.appendChild(tr);
-        });
-    } catch (err) {
-        console.error('Erro ao carregar documentos assinados:', err);
-        if (tableBody) {
-            tableBody.innerHTML = `<tr><td colspan="10" class="text-center" style="padding: 2rem; color: #ef4444;">Erro ao carregar documentos: ${err.message}</td></tr>`;
-        }
-    }
-}
-window.carregarTodosDocumentosAssinados = carregarTodosDocumentosAssinados;
-
-window.atualizarStatusDoc = async function(docId, novoStatus) {
-    try {
-        await window.apiFetch(`/documentos-responsaveis/${docId}/status`, {
-            method: 'PUT',
-            body: JSON.stringify({ status: novoStatus })
-        });
-        if (window.utils && window.utils.showToast) {
-            window.utils.showToast(`Status atualizado para: ${novoStatus}`, 'success');
-        }
-        carregarTodosDocumentosAssinados();
-    } catch (e) {
-        alert('Erro ao atualizar status: ' + e.message);
-    }
-};
-
-window.limparFiltrosDocs = function() {
-    const s = document.getElementById('searchDocAssinado');
-    const t = document.getElementById('filtroDocTurma');
-    const tp = document.getElementById('filtroDocTipo');
-    const st = document.getElementById('filtroDocStatus');
-    const di = document.getElementById('filtroDocDataInicio');
-    const df = document.getElementById('filtroDocDataFim');
-
-    if (s) s.value = '';
-    if (t) t.value = '';
-    if (tp) tp.value = '';
-    if (st) st.value = '';
-    if (di) di.value = '';
-    if (df) df.value = '';
-
-    carregarTodosDocumentosAssinados();
-};
-
-function abrirVisualizacaoDoc(docId, mimeType, nome) {
-    const modal = document.getElementById('modalVisualizarDoc');
-    const titulo = document.getElementById('previewDocTitulo');
-    const downloadBtn = document.getElementById('previewDocDownloadBtn');
-    const corpo = document.getElementById('previewDocCorpo');
-
-    if (!modal || !corpo) return;
-
-    const apiBase = (window.API_BASE_URL || '/api').replace(/\/$/, '');
-    const previewUrl = `${apiBase}/documentos-responsaveis/${docId}/preview`;
-    const downloadUrl = `${apiBase}/documentos-responsaveis/${docId}/download`;
-
-    if (titulo) titulo.textContent = nome || 'Visualização de Documento';
-    if (downloadBtn) downloadBtn.href = downloadUrl;
-
-    const isPdf = (mimeType && mimeType.includes('pdf')) || (nome && nome.toLowerCase().endsWith('.pdf'));
-
-    if (isPdf) {
-        corpo.innerHTML = `
-            <iframe src="${previewUrl}" style="width: 100%; height: 100%; border: none; border-radius: 8px;" title="${escAttr(nome)}"></iframe>
-        `;
-    } else {
-        corpo.innerHTML = `
-            <img src="${previewUrl}" alt="${escAttr(nome)}" style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px;" />
-        `;
-    }
-
-    modal.style.display = 'flex';
-    modal.classList.remove('hidden');
-}
-window.abrirVisualizacaoDoc = abrirVisualizacaoDoc;
-
-function fecharModalVisualizar() {
-    const modal = document.getElementById('modalVisualizarDoc');
-    const corpo = document.getElementById('previewDocCorpo');
-    if (modal) {
-        modal.style.display = 'none';
-        modal.classList.add('hidden');
-    }
-    if (corpo) corpo.innerHTML = '';
-}
-window.fecharModalVisualizar = fecharModalVisualizar;
-
-function setupRealtimeDocListeners() {
-    function conectar() {
-        const sock = window.socket || (window.realtime && window.realtime.getSocket ? window.realtime.getSocket() : null);
-        if (sock) {
-            sock.on('documento_responsavel:novo', (data) => {
-                if (window.utils && window.utils.showToast) {
-                    window.utils.showToast(`Novo documento assinado recebido: ${data.nomeDocumento || data.tipoDocumento}`, 'info');
-                }
-                const painelDocs = document.getElementById('painelVisaoDocumentos');
-                if (painelDocs && !painelDocs.classList.contains('hidden')) {
-                    carregarTodosDocumentosAssinados();
-                }
-                const currentEditId = document.getElementById('editAlunoId')?.value;
-                if (currentEditId && currentEditId === data.alunoId) {
-                    carregarAutorizacoesEDocumentos(currentEditId);
-                }
-            });
-
-            sock.on('documento_responsavel:atualizado', (data) => {
-                const painelDocs = document.getElementById('painelVisaoDocumentos');
-                if (painelDocs && !painelDocs.classList.contains('hidden')) {
-                    carregarTodosDocumentosAssinados();
-                }
-            });
-        } else {
-            setTimeout(conectar, 1200);
-        }
-    }
-    conectar();
-}
 
 async function salvarEdicao(e) {
     e.preventDefault();
@@ -1142,4 +599,20 @@ function salasIguais(a, b) {
     const x = normalizarSala(a);
     const y = normalizarSala(b);
     return !!x && x === y;
+}
+
+// === AÇÕES DA PÁGINA (épico #612) ===
+// Eram `onclick`/`onchange` inline. Ver js/acoes.js: os argumentos vêm dos
+// atributos `data-*`, escapados por `attrHtml`.
+if (window.Acoes) {
+    window.Acoes.registrar({
+        recarregarPagina: () => window.location.reload(),
+        escolherTurma(_evento, el) {
+            const filtro = document.getElementById('filtroTurma');
+            filtro.value = el.dataset.turma;
+            filtro.dispatchEvent(new Event('change'));
+        },
+        executarTransferenciaMassa: () => executarTransferenciaMassa(),
+        fecharModal: () => window.fecharModal(),
+    });
 }

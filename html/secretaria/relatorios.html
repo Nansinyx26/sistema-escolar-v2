@@ -121,8 +121,8 @@
 
             <!-- Tabs -->
             <div class="sec-tabs">
-                <button class="sec-tab active" onclick="switchTab('turma')"><i class="bi bi-people"></i> Alunos por Turma</button>
-                <button class="sec-tab" onclick="switchTab('matriculas')"><i class="bi bi-card-checklist"></i> Matrículas</button>
+                <button class="sec-tab active" data-acao="trocarAba" data-aba="turma"><i class="bi bi-people"></i> Alunos por Turma</button>
+                <button class="sec-tab" data-acao="trocarAba" data-aba="matriculas"><i class="bi bi-card-checklist"></i> Matrículas</button>
             </div>
 
             <!-- Filtros: valem para as DUAS abas e para a exportação -->
@@ -146,8 +146,8 @@
 
             <!-- Export -->
             <div style="display:flex;gap:0.5rem;margin-bottom:1.5rem;flex-wrap:wrap;">
-                <button class="sec-btn sec-btn-blue" onclick="exportar('alunos')"><i class="bi bi-download"></i> Exportar Alunos (CSV)</button>
-                <button class="sec-btn sec-btn-blue" onclick="exportar('matriculas')"><i class="bi bi-download"></i> Exportar Matrículas (CSV)</button>
+                <button class="sec-btn sec-btn-blue" data-acao="exportar" data-tipo="alunos"><i class="bi bi-download"></i> Exportar Alunos (CSV)</button>
+                <button class="sec-btn sec-btn-blue" data-acao="exportar" data-tipo="matriculas"><i class="bi bi-download"></i> Exportar Matrículas (CSV)</button>
             </div>
 
             <!-- Alunos por Turma -->
@@ -176,6 +176,8 @@
 <script defer src="../../js/database.js?v=3"></script>
 <script defer src="../../js/auth.js?v=3"></script>
 <script defer src="../../js/utils.js?v=3"></script>
+<!-- Delegação por data-acao (épico #612). -->
+<script src="../../js/acoes.js"></script>
 <script>
 const API = () => window.API_BASE_URL || '/api';
 function toast(m,t='success'){const d=document.createElement('div');d.className=`sec-toast sec-toast-${t}`;d.textContent=m;document.body.appendChild(d);setTimeout(()=>d.remove(),3000);}
@@ -340,12 +342,12 @@ function mensagemDoStatus(status) {
     return `Não foi possível carregar (HTTP ${status}).`;
 }
 
-/** Bloco de erro com retry. `aoTentar` é o nome de uma função global. */
+/** Bloco de erro com retry. `aoTentar` nomeia uma das funções de RECARREGAR (abaixo). */
 function blocoErro(mensagem, aoTentar) {
     return `<div style="text-align:center;padding:2rem;color:#fca5a5;">
         <i class="bi bi-exclamation-triangle" style="font-size:1.5rem;display:block;margin-bottom:0.5rem;"></i>
         <div style="margin-bottom:1rem;">${escapar(mensagem)}</div>
-        <button class="sec-btn sec-btn-outline" onclick="${aoTentar}()">
+        <button class="sec-btn sec-btn-outline" data-acao="tentarDeNovo" data-funcao="${aoTentar}">
             <i class="bi bi-arrow-clockwise"></i> Tentar novamente
         </button>
     </div>`;
@@ -481,6 +483,19 @@ function exportar(tipo) {
     const url = `${API()}/secretaria/relatorios/exportar?tipo=${tipo}${queryDosFiltros('&')}`;
     window.open(url, '_blank');
     toast(queryDosFiltros() ? 'Download iniciado (com os filtros da tela).' : 'Download iniciado!');
+}
+
+// Ações da página (épico #612). Ver js/acoes.js.
+if (window.Acoes) {
+    window.Acoes.registrar({
+        trocarAba: (_evento, el) => switchTab(el.dataset.aba),
+        exportar: (_evento, el) => exportar(el.dataset.tipo),
+        // Só as duas cargas da página: o nome vem de um atributo.
+        tentarDeNovo: (_evento, el) => {
+            const recarregar = { carregarAlunosPorTurma, carregarMatriculas }[el.dataset.funcao];
+            if (recarregar) recarregar();
+        },
+    });
 }
 </script>
 <script src="../../js/sidebar-voice.js?v=5.0"></script>

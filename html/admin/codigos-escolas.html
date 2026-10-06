@@ -146,7 +146,7 @@
 
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; gap: 1rem; flex-wrap: wrap;">
                 <h2 style="margin: 0; font-size: 1.25rem;">Escolas</h2>
-                <button class="btn btn-secondary btn-sm" onclick="loadCodigos()">
+                <button class="btn btn-secondary btn-sm" data-acao="recarregarCodigos">
                     <i class="bi bi-arrow-clockwise"></i> Atualizar
                 </button>
             </div>
@@ -173,6 +173,8 @@
     </div>
 
     <div id="toastContainer" class="toast-container"></div>
+    <!-- Delegação por data-acao (épico #612). -->
+    <script src="../../js/acoes.js"></script>
     <script src="../../js/api-config.js"></script>
     <!-- csrfHeaders(): sem o header X-CSRF-Token o backend devolve 403 na rotação. -->
     <script src="../../js/csrf-helper.js"></script>
@@ -225,14 +227,14 @@
                             <td>
                                 <div class="code-actions">
                                     ${temCodigo ? `
-                                        <button class="btn-icon" title="Mostrar/Ocultar" onclick="toggleCode(this)">
+                                        <button class="btn-icon" title="Mostrar/Ocultar" data-acao="alternarCodigo">
                                             <i class="bi bi-eye"></i>
                                         </button>
-                                        <button class="btn-icon" title="Copiar" onclick="copyCode(this, '${codigoAttr}')" style="color: var(--primary-color)">
+                                        <button class="btn-icon" title="Copiar" data-acao="copiarCodigo" data-codigo="${codigoAttr}" style="color: var(--primary-color)">
                                             <i class="bi bi-clipboard"></i>
                                         </button>
                                     ` : ''}
-                                    <button class="btn-icon" title="Gerar novo código" onclick="regenerate('${e._id}', '${escapeHtml(e.nome).replace(/'/g, "\\'")}')" style="color: var(--warning-color, #f59e0b)">
+                                    <button class="btn-icon" title="Gerar novo código" data-acao="gerarCodigo" data-id="${escapeHtml(e._id)}" data-nome="${escapeHtml(e.nome)}" style="color: var(--warning-color, #f59e0b)">
                                         <i class="bi bi-arrow-repeat"></i>
                                     </button>
                                 </div>
@@ -301,6 +303,16 @@
 
             loadCodigos();
         });
+
+        // Ações da página (épico #612). Ver js/acoes.js.
+        if (window.Acoes) {
+            window.Acoes.registrar({
+                recarregarCodigos: () => window.loadCodigos(),
+                alternarCodigo: (_evento, el) => window.toggleCode(el),
+                copiarCodigo: (_evento, el) => window.copyCode(el, el.dataset.codigo),
+                gerarCodigo: (_evento, el) => window.regenerate(el.dataset.id, el.dataset.nome),
+            });
+        }
     </script>
     <script src="../../js/vendor.js"></script>
     <script defer src="../../js/reactions.js"></script>

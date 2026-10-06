@@ -12,6 +12,7 @@ const ImageProcessor = require('../utils/imageProcessor');
 const crypto = require('node:crypto');
 const ACTUAL_JWT_SECRET = require('../utils/jwtConfig');
 const RecuperacaoSenha = require('../models/RecuperacaoSenha');
+const { hostDoGoogle } = require('../middleware/validarFoto');
 const EmailService = require('../services/EmailService');
 const logger = require('../utils/logger');
 const { emitirParaPerfis } = require('../utils/realtime');
@@ -201,6 +202,9 @@ exports.create = async (req, res) => {
             'anonimizadoEm',
             'emailVerificado',
             'emailVerificacaoToken',
+            'emailTrocaPendente',
+            'emailTrocaTokenHash',
+            'emailTrocaExpiry',
             'resetToken',
             'resetTokenExpiry',
             'twoFactorFixedCode',
@@ -1126,7 +1130,7 @@ function validarUrlFoto(url) {
     try {
         const u = new URL(url);
         if (u.protocol !== 'https:') return '';
-        if (!/(^|\.)googleusercontent\.com$/.test(u.hostname)) return '';
+        if (!hostDoGoogle(u.hostname)) return '';
         // Aspas/sinais de menor nunca aparecem numa URL legítima do Google e
         // são exatamente o que quebraria `src="..."`.
         if (/["'<>]/.test(url)) return '';
@@ -2541,7 +2545,8 @@ exports.updateProfile = async (req, res) => {
                 return res.status(400).json({
                     success: false,
                     codigo: 'EMAIL_NAO_ALTERAVEL',
-                    error: 'O e-mail da conta não pode ser alterado por aqui. Procure a secretaria da escola.',
+                    // O caminho é a troca com confirmação por link (Issue #609).
+                    error: 'O e-mail não muda por aqui. Use "Trocar e-mail" no perfil: enviamos um link de confirmação para o endereço novo.',
                 });
             }
         }

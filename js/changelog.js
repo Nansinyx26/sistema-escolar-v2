@@ -147,8 +147,11 @@
                 const dataStr = formatDate(n.dataCriacao || n.dataEnvio);
                 const notifId = n.id || n._id;
                 const mensagem = n.mensagem || '';
-                const mensagemHtml = n.corpoHtml || escapeHtml(mensagem).replace(/\n/g, '<br>');
-                const longMessage = isLongText(stripHtml(mensagemHtml), 140);
+                // `corpoHtml` é a versão do e-mail; na tela vale só o texto dele,
+                // escapado (Issue #648).
+                const mensagemTexto = n.corpoHtml ? stripHtml(n.corpoHtml) : mensagem;
+                const mensagemHtml = escapeHtml(mensagemTexto).replace(/\n/g, '<br>');
+                const longMessage = isLongText(mensagemTexto, 140);
 
                 return `
             <div class="notif-item${isLida ? ' lida' : ''}${longMessage ? ' notif-collapsed' : ''}" data-id="${notifId}" tabindex="0" role="article" aria-label="Notificação: ${escapeHtml(n.titulo)}">
@@ -177,10 +180,12 @@
         bindNotifItemEvents(container);
     }
 
+    // Documento INERTE: `innerHTML` numa div solta carrega imagem e dispara
+    // `onerror` mesmo fora da página (Issue #648).
     function stripHtml(html) {
-        const tmp = document.createElement('div');
-        tmp.innerHTML = html;
-        return tmp.textContent || tmp.innerText || '';
+        return (
+            new DOMParser().parseFromString(String(html ?? ''), 'text/html').body.textContent || ''
+        );
     }
 
     function bindNotifItemEvents(container) {

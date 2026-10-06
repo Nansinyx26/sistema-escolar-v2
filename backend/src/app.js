@@ -5,7 +5,11 @@ const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const apiRoutes = require('./routes/api');
-const { sanitizeObject, sanitizeInput } = require('./utils/sanitize');
+const {
+    sanitizeObject,
+    sanitizeInput,
+    removerOperadoresMongoProfundo,
+} = require('./utils/sanitize');
 const { csrfCookieSetter, csrfValidator } = require('./middleware/csrfProtection');
 const logger = require('./utils/logger');
 const { requestLogger } = require('./middleware/requestLogger');
@@ -251,6 +255,12 @@ app.use(
     })
 );
 
+// A mesma CSP sem handler inline, só em modo relatório (Issue #613, épico
+// #612): o navegador não bloqueia nada e avisa em POST /api/csp-relatorio cada
+// `onclick=` que a política nova barraria. Ver middleware/cspRelatorio.js.
+const cspRelatorio = require('./middleware/cspRelatorio');
+app.use(cspRelatorio.politicaEmRelatorio);
+
 // Cabeçalhos anti-clickjacking também nas respostas de arquivo estático e nas
 // páginas de erro, que em alguns caminhos não passam pela cadeia acima.
 app.use((req, res, next) => {
@@ -386,6 +396,7 @@ const {
     codeIpLimiter,
     codeContaLimiter,
     authPrefixLimiter,
+    cspRelatorioLimiter,
 } = require('./middleware/rateLimiters');
 
 // ============================================
@@ -614,52 +625,17 @@ function removerOperadoresMongo(alvo) {
     });
 }
 
-/**
- * NoSQL INJECTION NO BODY.
- *
- * `sanitizeObject` percorria o body recursivamente mas só limpava HTML das
- * strings — as CHAVES passavam intactas. Um JSON como
- *     { "email": { "$ne": null }, "senha": { "$gt": "" } }
- * chegava inteiro ao controller e virava operador de consulta no Mongo.
- * (No /login o `email.toLowerCase()` estourava com TypeError → 500, um acidente
- * feliz; mas qualquer outro handler que jogue um campo do body direto num
- * filtro estava exposto.)
- *
- * Diferente da versão de query/params, aqui NÃO descartamos objetos aninhados:
- * o body legítimo tem estrutura (segundoResponsavel, lgpdConsents,
- * pessoasAutorizadas…). Removemos apenas as chaves perigosas, recursivamente:
- *   - `$...`  → operador de consulta;
- *   - `a.b`   → notação de caminho, usada para escrever campo aninhado
- *               arbitrário num $set;
- *   - chaves de poluição de prototype.
- */
-const CHAVES_PROIBIDAS = new Set(['__proto__', 'constructor', 'prototype']);
-const PROFUNDIDADE_MAX = 12;
-
-function removerOperadoresMongoProfundo(alvo, profundidade = 0) {
-    if (!alvo || typeof alvo !== 'object' || profundidade > PROFUNDIDADE_MAX) return;
-
-    if (Array.isArray(alvo)) {
-        alvo.forEach((item) => {
-            removerOperadoresMongoProfundo(item, profundidade + 1);
-        });
-        return;
-    }
-
-    Object.keys(alvo).forEach((chave) => {
-        if (chave.startsWith('$') || chave.includes('.') || CHAVES_PROIBIDAS.has(chave)) {
-            delete alvo[chave];
-            return;
-        }
-        removerOperadoresMongoProfundo(alvo[chave], profundidade + 1);
-    });
-}
+// `removerOperadoresMongoProfundo` mora em utils/sanitize.js: as rotas com
+// upload (multer) também precisam dele, depois que o corpo é lido (Issue #647).
 
 // ============================================
 // PROTEÇÍO CSRF (Double Submit Cookie)
 // ============================================
 // 1. Define o cookie CSRF em toda resposta
 app.use(csrfCookieSetter);
+// Relatório de violação da CSP (Issue #613): o navegador manda sozinho, sem
+// token CSRF — por isso fica antes do validador, com teto próprio por IP.
+app.post(cspRelatorio.ROTA, cspRelatorioLimiter, ...cspRelatorio.receberRelatorioCsp);
 // 2. Valida o token CSRF em rotas que mudam estado (POST/PUT/DELETE)
 app.use('/api', csrfValidator);
 

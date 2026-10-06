@@ -1,0 +1,124 @@
+/**
+ * trocar-email.css — diálogo "Trocar e-mail" do perfil da equipe (Issue #611).
+ *
+ * Motion (docs/MOTION.md, Emil primário): abrir é ação rara — entrada de 200ms
+ * com opacity + translateY(8px) + blur(4px). O fechamento é o do <dialog>
+ * nativo, sem animação. `prefers-reduced-motion` é tratado em css/motion.css.
+ */
+
+.te-linha-email {
+    display: flex;
+    gap: 0.5rem;
+    align-items: stretch;
+    flex-wrap: wrap;
+}
+
+.te-linha-email .form-input {
+    flex: 1 1 14rem;
+    min-width: 0;
+}
+
+.te-abrir {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    white-space: nowrap;
+}
+
+.te-dialogo {
+    /* O reset de margem do base.css tira a centralização nativa do <dialog>. */
+    margin: auto;
+    width: min(28rem, calc(100vw - 2rem));
+    padding: 1.5rem;
+    border: 1px solid var(--glass-border, rgba(255, 255, 255, 0.12));
+    border-radius: var(--radius-xl, 16px);
+    background: var(--bg-secondary, #111316);
+    color: var(--text-primary, #f4f4f5);
+    box-shadow: var(--shadow-xl, 0 24px 60px -20px rgba(0, 0, 0, 0.85));
+}
+
+.te-dialogo[open] {
+    animation: te-entrar 200ms var(--motion-ease-out, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+
+.te-dialogo::backdrop {
+    background: rgba(0, 0, 0, 0.55);
+}
+
+@keyframes te-entrar {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+        filter: blur(4px);
+    }
+}
+
+.te-cabecalho {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.te-cabecalho h2 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.te-fechar {
+    background: none;
+    border: none;
+    color: var(--text-secondary, #a1a1aa);
+    cursor: pointer;
+    padding: 0.35rem;
+    border-radius: var(--radius-sm, 6px);
+    line-height: 1;
+}
+
+.te-texto {
+    color: var(--text-secondary, #a1a1aa);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin: 0 0 1rem;
+}
+
+.te-texto strong {
+    color: var(--text-primary, #f4f4f5);
+    overflow-wrap: anywhere;
+}
+
+.te-etapa {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.te-etapa[hidden] {
+    display: none;
+}
+
+.te-etapa .btn {
+    margin-top: 0.75rem;
+    width: 100%;
+    justify-content: center;
+}
+
+.te-erro {
+    margin: 0 0 0.5rem;
+    padding: 0.6rem 0.8rem;
+    border-radius: var(--radius-md, 8px);
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #f87171;
+    font-size: 0.85rem;
+}
+
+.te-nota {
+    color: var(--text-secondary, #a1a1aa);
+    font-size: 0.8rem;
+    margin: 0;
+}

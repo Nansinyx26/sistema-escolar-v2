@@ -175,9 +175,14 @@ async function carregarAlunosAtlas() {
 
         aplicarFiltros();
 
-        if (state.alunosFiltrados.length > 0) {
-            selecionarAluno(state.alunosFiltrados[0].id);
-        }
+        // `?aluno=<id>` vem do link "Ver autorizações e documentos" da edição do
+        // aluno (detalhes/alunos.html, Issue #636) e abre a ficha dele. Sem o
+        // parâmetro, ou com um id fora da lista, abre o primeiro, como antes.
+        const pedido = new URLSearchParams(window.location.search).get('aluno');
+        const inicial = state.alunos.some((a) => a.id === pedido)
+            ? pedido
+            : state.alunosFiltrados[0]?.id;
+        if (inicial) selecionarAluno(inicial);
     } catch (err) {
         console.error('Erro ao carregar as autorizações dos alunos:', err);
         if (listContainer) {

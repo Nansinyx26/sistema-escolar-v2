@@ -13,6 +13,13 @@
  *     `sec-ch-ua-platform`, que qualquer cliente HTTP manda como quiser, e ia
  *     cru para o innerHTML da auditoria do admin;
  *   - html/admin/usuarios.html: o e-mail entrava em onclick entre aspas simples.
+ *     Desde o épico #612 (Issue #616) os argumentos vão em atributos `data-*`,
+ *     escapados por `attrHtml`; o caso abaixo cobre a mesma garantia.
+ * Desde o épico #612 (Issue #618) os argumentos de detalhes/alunos.js também
+ * vão em `data-*` com `attrHtml`. Sem handler inline em nenhuma das duas
+ * páginas, o caso do `argJs` saiu.
+ * A pré-visualização de documento saiu de detalhes/alunos.js (Issue #636): não
+ * tinha tela, e a de Autorizações dos Pais é a que vale.
  */
 
 const fs = require('node:fs');
@@ -77,79 +84,50 @@ describe('cópias locais de escAttr', () => {
     });
 });
 
-describe.each(['detalhes/alunos.js', 'html/admin/usuarios.html'])(
-    'argJs de %s (argumento de handler inline)',
-    (rel) => {
-        let argJs;
-        beforeAll(() => {
-            argJs = extrairFuncao(rel, 'argJs');
-        });
-
-        it.each([
-            ['aspas duplas', NOME_MALICIOSO],
-            ['aspa simples', "x'); window.__xss=1; ('"],
-            ['entidade crua que decodificaria para aspa', 'x&quot;); window.__xss=1; ("'],
-            ['e-mail com apóstrofo', "o'brien@exemplo.test"],
-        ])('%s chega intacto e não executa nada', (_nome, valor) => {
-            let recebido;
-            window.__receber = (v) => {
-                recebido = v;
-            };
-            const div = document.createElement('div');
-            div.innerHTML = `<button onclick="window.__receber(${argJs(valor)})"></button>`;
-            document.body.appendChild(div);
-            const botao = div.querySelector('button');
-            expect(botao.getAttributeNames()).toEqual(['onclick']);
-            botao.click();
-            expect(window.__xss).toBeUndefined();
-            expect(recebido).toBe(valor);
-            delete window.__receber;
-        });
-    }
-);
-
-describe('detalhes/alunos.js — pré-visualização de documento', () => {
-    let abrirVisualizacaoDoc;
+describe('attrHtml de html/admin/usuarios.html (argumento em data-*, Issue #616)', () => {
+    let attrHtml;
     beforeAll(() => {
-        abrirVisualizacaoDoc = extrairFuncao(
-            'detalhes/alunos.js',
-            'escAttr',
-            'abrirVisualizacaoDoc'
-        );
+        attrHtml = extrairFuncao('html/admin/usuarios.html', 'attrHtml');
     });
-
-    function montarModal() {
-        document.body.innerHTML = `
-            <div id="modalVisualizarDoc" class="hidden">
-                <h3 id="previewDocTitulo"></h3>
-                <a id="previewDocDownloadBtn"></a>
-                <div id="previewDocCorpo"></div>
-            </div>`;
-        return document.getElementById('previewDocCorpo');
-    }
 
     it.each([
-        ['imagem', 'image/png', 'img', 'alt'],
-        ['PDF', 'application/pdf', 'iframe', 'title'],
-    ])('%s: o nome do documento não cria atributo', (_tipo, mime, tag, attr) => {
-        const corpo = montarModal();
-        abrirVisualizacaoDoc('65f1a2b3c4d5e6f708192a3b', mime, NOME_MALICIOSO);
-        const el = corpo.querySelector(tag);
-        expect(el.hasAttribute('onerror')).toBe(false);
-        expect(el.hasAttribute('data-x')).toBe(false);
-        expect(el.getAttribute(attr)).toBe(NOME_MALICIOSO);
+        ['aspas duplas', NOME_MALICIOSO],
+        ['aspa simples', "x' data-acao='outra"],
+        ['entidade crua que decodificaria para aspa', 'x&quot; data-acao=&quot;outra'],
+        ['e-mail com apóstrofo', "o'brien@exemplo.test"],
+    ])('%s chega intacto pelo dataset e não cria atributo', (_nome, valor) => {
+        const div = document.createElement('div');
+        div.innerHTML = `<button data-acao="excluirUsuario" data-email="${attrHtml(valor)}"></button>`;
+        document.body.appendChild(div);
+        const botao = div.querySelector('button');
+        expect(botao.getAttributeNames()).toEqual(['data-acao', 'data-email']);
+        expect(botao.dataset.acao).toBe('excluirUsuario');
+        expect(botao.dataset.email).toBe(valor);
+        expect(window.__xss).toBeUndefined();
+    });
+});
+
+describe.each(['detalhes/alunos.js'])('attrHtml de %s (argumento em data-*, Issue #618)', (rel) => {
+    let attrHtml;
+    beforeAll(() => {
+        attrHtml = extrairFuncao(rel, 'attrHtml');
     });
 
-    it('nome com apóstrofo aparece como veio', () => {
-        const corpo = montarModal();
-        abrirVisualizacaoDoc('65f1a2b3c4d5e6f708192a3b', 'application/pdf', NOME_APOSTROFO);
-        expect(corpo.querySelector('iframe').getAttribute('title')).toBe(NOME_APOSTROFO);
-    });
-
-    it('o botão de visualizar não leva mais o nome com o escape antigo', () => {
-        const src = fonte('detalhes/alunos.js');
-        expect(src).not.toMatch(/abrirVisualizacaoDoc\('\$\{/);
-        expect(src).not.toMatch(/nomeDocSafe/);
+    it.each([
+        ['aspas duplas', NOME_MALICIOSO],
+        ['aspa simples', "x' data-acao='outra"],
+        ['entidade crua que decodificaria para aspa', 'x&quot; data-acao=&quot;outra'],
+        ['nome de documento com apóstrofo', NOME_APOSTROFO],
+        ['& já codificado pelo servidor', NOME_COM_E],
+    ])('%s chega intacto pelo dataset e não cria atributo', (_nome, valor) => {
+        const div = document.createElement('div');
+        div.innerHTML = `<button data-acao="verDocumento" data-nome="${attrHtml(valor)}"></button>`;
+        document.body.appendChild(div);
+        const botao = div.querySelector('button');
+        expect(botao.getAttributeNames()).toEqual(['data-acao', 'data-nome']);
+        expect(botao.dataset.acao).toBe('verDocumento');
+        expect(botao.dataset.nome).toBe(valor);
+        expect(window.__xss).toBeUndefined();
     });
 });
 

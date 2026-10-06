@@ -109,7 +109,7 @@
             <!-- Nova Matrícula -->
             <div class="sec-form-card">
                 <h3><i class="bi bi-plus-circle" style="color:#10b981;"></i> Nova Matrícula</h3>
-                <form id="formMatricula" onsubmit="criarMatricula(event)">
+                <form id="formMatricula" data-acao-submit="criarMatricula">
                     <div class="sec-form-grid">
                         <div><label style="font-size:0.75rem;color:#94a3b8;">ID do Aluno</label><input id="matAlunoId" class="sec-input" placeholder="ID do aluno" required></div>
                         <div><label for="matTurmaId" style="font-size:0.75rem;color:#94a3b8;">Turma</label><select id="matTurmaId" class="sec-select"><option value="">Carregando...</option></select></div>
@@ -138,7 +138,7 @@
                     </div>
                     <div><label style="font-size:0.75rem;color:#94a3b8;">Motivo (saída)</label><input id="statusMotivo" class="sec-input" placeholder="Opcional"></div>
                 </div>
-                <div style="margin-top:1rem;"><button class="sec-btn sec-btn-primary" onclick="alterarStatus()"><i class="bi bi-check-lg"></i> Atualizar</button></div>
+                <div style="margin-top:1rem;"><button class="sec-btn sec-btn-primary" data-acao="alterarStatus"><i class="bi bi-check-lg"></i> Atualizar</button></div>
             </div>
 
             <!-- Lista de Turmas -->
@@ -161,7 +161,15 @@
 <script defer src="../../js/database.js?v=3"></script>
 <script defer src="../../js/auth.js?v=3"></script>
 <script defer src="../../js/utils.js?v=3"></script>
+<!-- Delegação por data-acao (épico #612). -->
+<script src="../../js/acoes.js"></script>
 <script>
+// Texto vindo da API no innerHTML (Issue #634). Escapa < > e aspas, mas
+// não o `&`: o servidor já grava `&`, `<` e `>` codificados, e codificar de
+// novo mostraria "&amp;" na tela (ver escapeAttr em js/escape-html.js).
+function textoHtml(v) {
+    return String(v ?? '').replace(/[<>"'`]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[c]);
+}
 const API = () => window.API_BASE_URL || '/api';
 function toast(msg, type='success') {
     const d = document.createElement('div');
@@ -184,12 +192,12 @@ async function carregarTurmas() {
         const sel = document.getElementById('matTurmaId');
         const body = document.getElementById('turmasBody');
         if (json.success) {
-            sel.innerHTML = json.data.map(t => `<option value="${t._id}">${t.nome || t.id}</option>`).join('');
+            sel.innerHTML = json.data.map(t => `<option value="${textoHtml(t._id)}">${textoHtml(t.nome || t.id)}</option>`).join('');
             body.innerHTML = json.data.map(t => `<tr>
-                <td><strong>${t.nome || t.id}</strong></td>
-                <td>${t.periodo || '-'}</td>
-                <td>${t.capacidade || '-'}</td>
-                <td>${t.totalAlunos}</td>
+                <td><strong>${textoHtml(t.nome || t.id)}</strong></td>
+                <td>${textoHtml(t.periodo || '-')}</td>
+                <td>${textoHtml(t.capacidade || '-')}</td>
+                <td>${textoHtml(t.totalAlunos)}</td>
                 <td><span class="sec-badge sec-badge-green">${t.ativo ? 'Ativa' : 'Inativa'}</span></td>
             </tr>`).join('');
         }
@@ -231,6 +239,14 @@ async function alterarStatus() {
         if (json.success) toast('Status atualizado!');
         else toast(json.error, 'error');
     } catch(e) { toast('Erro ao atualizar', 'error'); }
+}
+
+// Ações da página (épico #612). Ver js/acoes.js.
+if (window.Acoes) {
+    window.Acoes.registrar({
+        criarMatricula: (evento) => criarMatricula(evento),
+        alterarStatus: () => alterarStatus(),
+    });
 }
 </script>
 <script src="../../js/sidebar-voice.js?v=5.0"></script>

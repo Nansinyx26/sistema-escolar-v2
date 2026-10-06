@@ -48,6 +48,46 @@ function streamFile(res, fileDoc, cacheControl = 'private, max-age=3600') {
 }
 
 /**
+ * Áudio de comentário (`voice_message`) — Issue #606.
+ *
+ * Era liberado a qualquer conta da mesma escola, e a escola só era conferida
+ * quando o arquivo a tinha no metadata: os áudios enviados antes de a rota
+ * gravar `usuarioId`/`escolaId` ficavam abertos a qualquer conta logada da
+ * rede. E um comunicado só para professores, ou para uma turma, tinha o áudio
+ * dos comentários aberto à escola inteira.
+ *
+ * Agora vale a regra de quem enxerga a conversa (`assertAcessoAThread`, a
+ * mesma das rotas de comentário):
+ *   - quem gravou ouve o próprio áudio, inclusive antes de publicar;
+ *   - publicado num comentário ativo: quem enxerga o comunicado/notificação;
+ *   - fora de comentário ativo: só quem gravou.
+ */
+async function autorizarAudioDeComentario(req, fileDoc, meta) {
+    const meuId = String(req.user?.id || req.user?._id || '');
+    if (meta.usuarioId && String(meta.usuarioId) === meuId) return { ok: true };
+
+    const id = String(fileDoc._id);
+    const Comentario = require('../models/Comentario');
+    const comentario = await Comentario.findOne({
+        audioUrl: { $in: [`/api/audio/${id}`, `/api/files/${id}`, id] },
+        ativo: { $ne: false },
+    })
+        .select('comunicadoId notificacaoId usuarioId')
+        .lean();
+
+    const negado = { ok: false, status: 403, error: 'Você não tem acesso a este áudio.' };
+    if (!comentario) return negado;
+    if (String(comentario.usuarioId || '') === meuId) return { ok: true };
+
+    const { assertAcessoAThread } = require('./ComentarioController');
+    const acesso = await assertAcessoAThread(req, {
+        comunicadoId: comentario.comunicadoId,
+        notificacaoId: comentario.notificacaoId,
+    });
+    return acesso.ok ? { ok: true } : negado;
+}
+
+/**
  * Autoriza o download de um arquivo do GridFS.
  *
  * O bucket 'uploads' guarda RG/CPF/comprovantes enviados pelos responsáveis.
@@ -73,12 +113,9 @@ async function autorizarArquivo(req, fileDoc) {
     }
 
     // Mensagem de voz de comentário: destinada à audiência do comunicado, não
-    // só a quem gravou. Restringir ao dono quebraria o áudio dos comentários.
-    // A fronteira que importa aqui já foi aplicada acima (mesma escola); o que
-    // esta regra NÃO faz é liberar qualquer outro arquivo do bucket — quem
-    // chama por /api/audio ainda precisa passar pelo filtro de contentType.
+    // só a quem gravou — e só a ela (Issue #606).
     if (meta.type === 'voice_message') {
-        return { ok: true };
+        return autorizarAudioDeComentario(req, fileDoc, meta);
     }
 
     // Anexo/áudio do chat direto: a regra de `meta.usuarioId` abaixo liberaria

@@ -70,6 +70,9 @@ async function assertAcessoAThread(req, { comunicadoId, notificacaoId }) {
     return { ok: false, status: 400, error: 'Informe o comunicado ou a notificação.' };
 }
 
+// O download do áudio de um comentário segue a mesma regra (Issue #606).
+exports.assertAcessoAThread = assertAcessoAThread;
+
 /** Filtro que casa a notificação por _id (quando ObjectId) ou pelo `id` textual. */
 function buildNotifQuery(notificacaoId) {
     const valor = String(notificacaoId);

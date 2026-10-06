@@ -13,7 +13,7 @@
  * elemento e falha em atributo — e boa parte dos templates deste código
  * interpola justamente dentro de atributo:
  *
- *     `<div title="${descricao}" onclick="abrir('${id}')">`
+ *     `<div title="${descricao}" data-id="${id}">`
  *
  * Com o textContent, um valor contendo `"` fecha o atributo e permite injetar
  * outro atributo — inclusive um handler de evento, que a CSP ainda aceita

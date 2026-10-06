@@ -18,6 +18,9 @@
         );
     }
 
+    // Valor do banco em contexto de TEXTO (Issue #650): mesma regra do escAttr.
+    const textoHtml = escAttr;
+
     // Estado da Aplicação
     const state = {
         alunos: [],
@@ -212,7 +215,7 @@
         const valorAtual = dom.selectTurma.value;
         const opts = ['<option value="">Todas as Turmas</option>'];
         state.turmas.forEach((t) => {
-            opts.push(`<option value="${escAttr(t)}">${t}</option>`);
+            opts.push(`<option value="${escAttr(t)}">${textoHtml(t)}</option>`);
         });
         dom.selectTurma.innerHTML = opts.join('');
         dom.selectTurma.value = valorAtual;
@@ -306,26 +309,26 @@
         const linhas = paginaItens
             .map(
                 (aluno) => `
-            <tr data-aluno-id="${aluno.id}">
+            <tr data-aluno-id="${escAttr(aluno.id)}">
                 <td>
-                    <div style="font-weight: 600; color: #fff;">${aluno.nome}</div>
-                    ${aluno.matricula ? `<div style="font-size: 0.72rem; color: #64748b;">RA: ${aluno.matricula}</div>` : ''}
+                    <div style="font-weight: 600; color: #fff;">${textoHtml(aluno.nome)}</div>
+                    ${aluno.matricula ? `<div style="font-size: 0.72rem; color: #64748b;">RA: ${textoHtml(aluno.matricula)}</div>` : ''}
                 </td>
-                <td><span class="chip chip-cinza">${aluno.turma}</span></td>
+                <td><span class="chip chip-cinza">${textoHtml(aluno.turma)}</span></td>
                 <td>
-                    <div style="font-size: 0.84rem; color: #cbd5e1;">${aluno.responsavel}</div>
-                    ${aluno.responsavelEmail ? `<div style="font-size: 0.72rem; color: #64748b;">${aluno.responsavelEmail}</div>` : ''}
+                    <div style="font-size: 0.84rem; color: #cbd5e1;">${textoHtml(aluno.responsavel)}</div>
+                    ${aluno.responsavelEmail ? `<div style="font-size: 0.72rem; color: #64748b;">${textoHtml(aluno.responsavelEmail)}</div>` : ''}
                 </td>
                 <td style="text-align: center;">
-                    <span class="chip chip-verde" style="font-weight: 700;">${aluno.aceitas}</span>
+                    <span class="chip chip-verde" style="font-weight: 700;">${textoHtml(aluno.aceitas)}</span>
                 </td>
                 <td style="text-align: center;">
-                    <span class="chip chip-vermelho" style="font-weight: 700;">${aluno.naoAceitas}</span>
+                    <span class="chip chip-vermelho" style="font-weight: 700;">${textoHtml(aluno.naoAceitas)}</span>
                 </td>
                 <td>${renderBadgeStatus(aluno.statusGeral)}</td>
                 <td style="font-size: 0.78rem; color: #94a3b8;">${formatarData(aluno.ultimaAtualizacao)}</td>
                 <td style="text-align: right;">
-                    <button type="button" class="sec-btn sec-btn-outline sec-btn-sm btn-ver-detalhes" data-aluno-id="${aluno.id}">
+                    <button type="button" class="sec-btn sec-btn-outline sec-btn-sm btn-ver-detalhes" data-aluno-id="${escAttr(aluno.id)}">
                         <i class="bi bi-eye"></i> Detalhes
                     </button>
                 </td>
@@ -463,8 +466,8 @@
                         ) {
                             detalhesHtml = `
                             <div style="background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.2); border-radius: 8px; padding: 0.5rem 0.75rem; font-size: 0.76rem; color: #cbd5e1; margin-top: 0.3rem;">
-                                <strong>Condutor:</strong> ${auth.detalhes.motoristaNome || 'Não informado'}
-                                ${auth.detalhes.motoristaTelefone ? ` • 📞 ${auth.detalhes.motoristaTelefone}` : ''}
+                                <strong>Condutor:</strong> ${textoHtml(auth.detalhes.motoristaNome || 'Não informado')}
+                                ${auth.detalhes.motoristaTelefone ? ` • 📞 ${textoHtml(auth.detalhes.motoristaTelefone)}` : ''}
                             </div>
                         `;
                         } else if (
@@ -473,8 +476,8 @@
                         ) {
                             detalhesHtml = `
                             <div style="background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.2); border-radius: 8px; padding: 0.5rem 0.75rem; font-size: 0.76rem; color: #cbd5e1; margin-top: 0.3rem;">
-                                <strong>Medicamento:</strong> ${auth.detalhes.medicamentoNome || 'Não informado'}
-                                ${auth.detalhes.medicamentoDose ? ` • Dose: ${auth.detalhes.medicamentoDose}` : ''}
+                                <strong>Medicamento:</strong> ${textoHtml(auth.detalhes.medicamentoNome || 'Não informado')}
+                                ${auth.detalhes.medicamentoDose ? ` • Dose: ${textoHtml(auth.detalhes.medicamentoDose)}` : ''}
                             </div>
                         `;
                         }
@@ -483,10 +486,10 @@
                     return `
                     <div class="auth-item-card">
                         <div class="auth-item-header">
-                            <span class="auth-item-title">${auth.titulo}</span>
+                            <span class="auth-item-title">${textoHtml(auth.titulo)}</span>
                             ${statusBadge}
                         </div>
-                        <p class="auth-item-desc">${auth.descricao}</p>
+                        <p class="auth-item-desc">${textoHtml(auth.descricao)}</p>
                         ${detalhesHtml}
                         <div class="auth-item-meta">
                             <span>Respondido em: <strong>${formatarData(auth.dataResposta)}</strong></span>

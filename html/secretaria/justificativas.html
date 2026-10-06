@@ -106,10 +106,10 @@
 
             <div class="sec-form-card">
                 <div class="sec-filter-bar">
-                    <button class="sec-filter-btn active" onclick="filtrar('')">Todas</button>
-                    <button class="sec-filter-btn" onclick="filtrar('pendente')">⏳ Pendentes</button>
-                    <button class="sec-filter-btn" onclick="filtrar('aprovada')">✅ Aprovadas</button>
-                    <button class="sec-filter-btn" onclick="filtrar('rejeitada')">❌ Rejeitadas</button>
+                    <button class="sec-filter-btn active" data-acao="filtrar" data-status="">Todas</button>
+                    <button class="sec-filter-btn" data-acao="filtrar" data-status="pendente">⏳ Pendentes</button>
+                    <button class="sec-filter-btn" data-acao="filtrar" data-status="aprovada">✅ Aprovadas</button>
+                    <button class="sec-filter-btn" data-acao="filtrar" data-status="rejeitada">❌ Rejeitadas</button>
                 </div>
                 <div style="overflow-x:auto;">
                     <table class="sec-table">
@@ -128,7 +128,19 @@
 <script defer src="../../js/database.js?v=3"></script>
 <script defer src="../../js/auth.js?v=3"></script>
 <script defer src="../../js/utils.js?v=3"></script>
+<!-- Delegação por data-acao (épico #612). -->
+<script src="../../js/acoes.js"></script>
 <script>
+// Valor que vai para atributo `data-*` (épico #612): escape completo.
+function escAttrAcao(v) {
+    return String(v ?? '').replace(/[&<>"'`]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[c]);
+}
+// Texto vindo da API no innerHTML (Issue #634). Escapa < > e aspas, mas
+// não o `&`: o servidor já grava `&`, `<` e `>` codificados, e codificar de
+// novo mostraria "&amp;" na tela (ver escapeAttr em js/escape-html.js).
+function textoHtml(v) {
+    return String(v ?? '').replace(/[<>"'`]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[c]);
+}
 const API = () => window.API_BASE_URL || '/api';
 let currentFilter = '';
 function toast(m,t='success'){const d=document.createElement('div');d.className=`sec-toast sec-toast-${t}`;d.textContent=m;document.body.appendChild(d);setTimeout(()=>d.remove(),3000);}
@@ -156,15 +168,15 @@ async function carregarJustificativas() {
             body.innerHTML = json.data.map(j => {
                 const badgeClass = j.status === 'pendente' ? 'sec-badge-yellow' : j.status === 'aprovada' ? 'sec-badge-green' : 'sec-badge-red';
                 const acoes = j.status === 'pendente' ? `
-                    <button class="sec-btn sec-btn-primary" style="padding:0.3rem 0.8rem;font-size:0.75rem;" onclick="analisar('${j._id}','aprovada')"><i class="bi bi-check"></i></button>
-                    <button class="sec-btn sec-btn-danger" style="padding:0.3rem 0.8rem;font-size:0.75rem;" onclick="analisar('${j._id}','rejeitada')"><i class="bi bi-x"></i></button>
-                ` : `<span style="color:#64748b;font-size:0.75rem;">${j.analisadoPorNome || '-'}</span>`;
+                    <button class="sec-btn sec-btn-primary" style="padding:0.3rem 0.8rem;font-size:0.75rem;" data-acao="analisar" data-id="${escAttrAcao(j._id)}" data-status="aprovada"><i class="bi bi-check"></i></button>
+                    <button class="sec-btn sec-btn-danger" style="padding:0.3rem 0.8rem;font-size:0.75rem;" data-acao="analisar" data-id="${escAttrAcao(j._id)}" data-status="rejeitada"><i class="bi bi-x"></i></button>
+                ` : `<span style="color:#64748b;font-size:0.75rem;">${textoHtml(j.analisadoPorNome || '-')}</span>`;
                 return `<tr>
-                    <td><strong>${j.alunoNome}</strong></td>
+                    <td><strong>${textoHtml(j.alunoNome)}</strong></td>
                     <td style="font-size:0.8rem;">${new Date(j.dataInicio).toLocaleDateString('pt-BR')} - ${new Date(j.dataFim).toLocaleDateString('pt-BR')}</td>
-                    <td>${j.motivo}</td>
-                    <td>${j.categoria || '-'}</td>
-                    <td><span class="sec-badge ${badgeClass}">${j.status}</span></td>
+                    <td>${textoHtml(j.motivo)}</td>
+                    <td>${textoHtml(j.categoria || '-')}</td>
+                    <td><span class="sec-badge ${badgeClass}">${textoHtml(j.status)}</span></td>
                     <td style="display:flex;gap:0.3rem;">${acoes}</td>
                 </tr>`;
             }).join('');
@@ -185,6 +197,14 @@ async function analisar(id, status) {
         if (json.success) { toast(`Justificativa ${status}!`); carregarJustificativas(); }
         else toast(json.error, 'error');
     } catch(e) { toast('Erro', 'error'); }
+}
+
+// Ações da página (épico #612). Ver js/acoes.js.
+if (window.Acoes) {
+    window.Acoes.registrar({
+        filtrar: (_evento, el) => filtrar(el.dataset.status),
+        analisar: (_evento, el) => analisar(el.dataset.id, el.dataset.status),
+    });
 }
 </script>
 <script src="../../js/sidebar-voice.js?v=5.0"></script>

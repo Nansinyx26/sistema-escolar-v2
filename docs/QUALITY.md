@@ -256,6 +256,29 @@ esquecimento a custo quase zero e não fecha a porta para isso.
 
 ---
 
+## Handlers inline e a CSP
+
+A CSP autoriza os blocos `<script>` inline por hash, mas ainda tem
+`script-src-attr 'unsafe-inline'` por causa dos handlers inline do frontend
+legado (`onclick="..."`). O épico #612 tira esses handlers e depois fecha a
+diretiva com `'none'`. Até lá, três peças seguram o caminho:
+
+| Peça | Arquivo | O que faz |
+|---|---|---|
+| Delegação | `js/acoes.js` | `data-acao="nome"` chama a função registrada com `Acoes.registrar`. Só ação registrada roda, nunca uma global com o mesmo nome. |
+| Trava da contagem | `scripts/handlers-inline.js` + `scripts/handlers-inline.json` | O teste `handlersInline.trava.test.js` reprova se um arquivo **ganhar** handler inline, e também se **perder** sem a trava acompanhar. |
+| CSP em relatório | `backend/src/middleware/cspRelatorio.js` | A mesma restrição (`script-src-attr 'none'`) em `Content-Security-Policy-Report-Only`. O navegador não bloqueia nada e avisa em `POST /api/csp-relatorio`. O log `csp.violacao` diz página, arquivo e linha, só com caminhos. |
+
+Tirou handlers de um arquivo? Rode `node scripts/handlers-inline.js --gravar`
+e commite a trava junto. Sem argumento, o script mostra a contagem por arquivo.
+
+A contagem estática acha o atributo seguido de aspas, no HTML e nas strings que
+o JS joga em `innerHTML`. O relatório da produção pega o que ela não enxerga,
+como atributo montado por concatenação. Antes de fechar a diretiva (#619), o
+relatório precisa ficar uma semana sem violação.
+
+---
+
 ## Cobertura
 
 `codecov.yml` tem dois gates:

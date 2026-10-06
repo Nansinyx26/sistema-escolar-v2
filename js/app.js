@@ -45,6 +45,13 @@ function escAttr(v) {
     );
 }
 
+// Valor do banco em contexto de TEXTO (Issue #650): a mesma regra do escAttr,
+// que escapa < > e aspas sem recodificar o `&` já gravado pelo servidor.
+// `function`, e não `const`, para conviver com outra cópia na mesma página.
+function textoHtml(v) {
+    return escAttr(v);
+}
+
 // ============================================
 // RELATÓRIOS DIÁRIOS
 // ============================================
@@ -904,29 +911,29 @@ class App {
             const mediaGeralClass = mediaGeral !== null ? ui.getNotaClass(mediaGeral) : '';
 
             html += `
-                <tr data-aluno-id="${aluno.id}">
+                <tr data-aluno-id="${escAttr(aluno.id)}">
                     <td class="col-num">${index + 1}</td>
                     <td class="col-foto">
-                        <div class="foto-container" onclick="app.triggerPhotoUpload('${aluno.id}')" style="cursor: pointer;">
+                        <div class="foto-container" style="cursor: pointer;">
                             ${
                                 window.getPhotoUrl(aluno.foto) !== '/img/default-avatar.png'
                                     ? `<img src="${escAttr(window.getPhotoUrl(aluno.foto))}" alt="${escAttr(aluno.nome)}" class="foto-aluno">`
-                                    : `<div class="foto-placeholder">${aluno.nome.charAt(0)}</div>`
+                                    : `<div class="foto-placeholder">${textoHtml(aluno.nome.charAt(0))}</div>`
                             }
                         </div>
                     </td>
                     <td class="col-nome">
                         <div class="nome-wrapper">
-                            <span class="nome">${aluno.nome}</span>
+                            <span class="nome">${textoHtml(aluno.nome)}</span>
                             ${aluno.deficiencia ? `<span class="badge-deficiencia" title="${escAttr(aluno.deficiencia)}">PCD</span>` : ''}
                         </div>
                         ${
                             aluno.observacoesBimestre
                                 ? aluno.observacoesBimestre[bimestre]
-                                    ? `<small class="observacoes">${aluno.observacoesBimestre[bimestre]}</small>`
+                                    ? `<small class="observacoes">${textoHtml(aluno.observacoesBimestre[bimestre])}</small>`
                                     : ''
                                 : aluno.observacoes
-                                  ? `<small class="observacoes">${aluno.observacoes}</small>`
+                                  ? `<small class="observacoes">${textoHtml(aluno.observacoes)}</small>`
                                   : ''
                         }
                     </td>
@@ -946,14 +953,14 @@ class App {
                                 else if (niv === 'A' || niv === '4') circleClass = 'level-green';
 
                                 return circleClass
-                                    ? `<span class="level-circle ${circleClass}"></span><span>${niv}</span>`
-                                    : niv;
+                                    ? `<span class="level-circle ${circleClass}"></span><span>${textoHtml(niv)}</span>`
+                                    : textoHtml(niv);
                             })()}
                         </div>
                     </td>
-                    <td class="col-condicao">${aluno.condicao || aluno.deficiencia || '-'}</td>
-                    <td class="col-matricula">${aluno.matricula || '-'}</td>
-                    <td class="col-faltas" style="font-weight: 500; text-align: center;">${(aluno.faltasBimestre && aluno.faltasBimestre[bimestre]) !== undefined ? aluno.faltasBimestre[bimestre] : '0'}</td>
+                    <td class="col-condicao">${textoHtml(aluno.condicao || aluno.deficiencia || '-')}</td>
+                    <td class="col-matricula">${textoHtml(aluno.matricula || '-')}</td>
+                    <td class="col-faltas" style="font-weight: 500; text-align: center;">${(aluno.faltasBimestre && aluno.faltasBimestre[bimestre]) !== undefined ? textoHtml(aluno.faltasBimestre[bimestre]) : '0'}</td>
                     <td class="col-recuperacao">
                         ${(() => {
                             if (aluno.recuperacaoBimestre && aluno.recuperacaoBimestre[bimestre]) {
@@ -1214,9 +1221,12 @@ class App {
 
         const carregarFaltas = async (data) => {
             try {
-                const response = await fetch(`${db.baseUrl}/faltas?turma=${turmaId}&data=${data}`, {
-                    credentials: 'include',
-                });
+                const response = await fetch(
+                    `${db.baseUrl}/faltas?turma=${encodeURIComponent(turmaId)}&data=${encodeURIComponent(data)}`,
+                    {
+                        credentials: 'include',
+                    }
+                );
                 const json = await response.json();
                 if (json.success) {
                     // Filtra apenas as faltas (presente: false) para manter compatibilidade com a lógica visual
@@ -1306,23 +1316,23 @@ class App {
                             ? alunos
                                   .map(
                                       (aluno) => `
-                        <div class="student-attendance-card" id="card-aluno-${aluno.id}" onclick="document.getElementById('check-${aluno.id}').click()">
+                        <div class="student-attendance-card" id="card-aluno-${escAttr(aluno.id)}">
                             <div class="student-data">
                                 <div class="student-mini-avatar">
                                     ${
                                         aluno.foto
                                             ? `<img src="${escAttr(aluno.foto)}">`
-                                            : aluno.nome.charAt(0)
+                                            : textoHtml(aluno.nome.charAt(0))
                                     }
                                 </div>
                                 <div class="student-names">
-                                    <h4>${aluno.nome.split(' ')[0]} ${aluno.nome.split(' ')[1] || ''}</h4>
-                                    <small>Mat: ${aluno.matricula || '-'}</small>
+                                    <h4>${textoHtml(aluno.nome.split(' ')[0])} ${textoHtml(aluno.nome.split(' ')[1] || '')}</h4>
+                                    <small>Mat: ${textoHtml(aluno.matricula || '-')}</small>
                                 </div>
                             </div>
                             
-                            <label class="attendance-toggle" onclick="event.stopPropagation()">
-                                <input type="checkbox" class="falta-check" id="check-${aluno.id}" data-aluno-id="${aluno.id}">
+                            <label class="attendance-toggle">
+                                <input type="checkbox" class="falta-check" id="check-${escAttr(aluno.id)}" data-aluno-id="${escAttr(aluno.id)}">
                                 <span class="slider"></span>
                             </label>
                         </div>
@@ -1341,6 +1351,13 @@ class App {
                 </div>
             </div>
         `;
+
+        // Clicar no cartão marca a falta. O interruptor marca sozinho: o clique
+        // nele, e o que o navegador repassa ao checkbox, não contam de novo.
+        document.querySelector('.attendance-grid')?.addEventListener('click', (e) => {
+            if (e.target.closest('.attendance-toggle')) return;
+            e.target.closest('.student-attendance-card')?.querySelector('.falta-check')?.click();
+        });
 
         // Carregar dados da data atual
         await atualizarMarcadores();
@@ -1869,7 +1886,9 @@ class App {
                 // Deleta do banco de dados
                 await students.delete(alunoId);
 
-                ui.success(`Aluno "${alunoNome}" excluído com sucesso!`);
+                // `alunoNome` vem do `textContent` da linha, que DECODIFICA o `&lt;` gravado
+                // pelo filtro: sem escape, ele virava tag aqui (Issue #650).
+                ui.success(`Aluno "${textoHtml(alunoNome)}" excluído com sucesso!`);
 
                 // Aguarda um pouco e recarrega
                 setTimeout(() => {
@@ -2121,7 +2140,7 @@ class App {
                         </div>
                         <div style="flex: 1;">
                             <label style="font-size: 0.8rem; color: #aaa; margin-bottom: 2px; display: block;">Condição</label>
-                            <select id="editAlunoCondicao" class="form-input" onchange="document.getElementById('editAlunoCondicaoOutroContainer').style.display = (this.value === 'Outros' ? 'block' : 'none')">
+                            <select id="editAlunoCondicao" class="form-input">
                                 <option value="" ${!aluno.condicao ? 'selected' : ''}>Nenhuma</option>
                                 <option value="TDAH" ${aluno.condicao === 'TDAH' ? 'selected' : ''}>TDAH</option>
                                 <option value="TOD" ${aluno.condicao === 'TOD' ? 'selected' : ''}>TOD</option>
@@ -2145,7 +2164,7 @@ class App {
                         </label>
                     </div>
 
-                    <textarea id="editAlunoObservacoes" class="form-input" rows="3" placeholder="Digite a descrição do aluno neste bimestre...">${obsVal}</textarea>
+                    <textarea id="editAlunoObservacoes" class="form-input" rows="3" placeholder="Digite a descrição do aluno neste bimestre...">${textoHtml(obsVal)}</textarea>
                     <small class="text-secondary">Estes dados são específicos para o ${currentBimestre}º bimestre.</small>
                 </div>
             </form>
@@ -2172,6 +2191,12 @@ class App {
                     },
                 },
             ],
+        });
+
+        // "Outros" abre o campo para escrever a condição.
+        document.getElementById('editAlunoCondicao')?.addEventListener('change', (e) => {
+            document.getElementById('editAlunoCondicaoOutroContainer').style.display =
+                e.target.value === 'Outros' ? 'block' : 'none';
         });
     }
 
@@ -2254,8 +2279,8 @@ class App {
         const content = `
             <div class="notas-modal">
                 <div class="notas-header">
-                    <h4>${aluno.nome}</h4>
-                    <p>Turma ${turmaId} - ${bimestre}º Bimestre</p>
+                    <h4>${textoHtml(aluno.nome)}</h4>
+                    <p>Turma ${escHtml(turmaId)} - ${escHtml(bimestre)}º Bimestre</p>
                 </div>
 
                 <div class="notas-add">
@@ -2331,15 +2356,15 @@ class App {
                                             (m) => m.id === nota.materiaId
                                         );
                                         return `
-                                        <tr data-nota-id="${nota.id}">
-                                            <td>${materia?.icone || ''} ${materia?.nome || nota.materiaId}</td>
-                                            <td>${nota.tipo}</td>
-                                            <td>${nota.descricao || '-'}</td>
+                                        <tr data-nota-id="${escAttr(nota.id)}">
+                                            <td>${textoHtml(materia?.icone || '')} ${textoHtml(materia?.nome || nota.materiaId)}</td>
+                                            <td>${textoHtml(nota.tipo)}</td>
+                                            <td>${textoHtml(nota.descricao || '-')}</td>
                                             <td class="${ui.getNotaClass(nota.nota)}">${ui.formatNota(nota.nota)}</td>
-                                            <td>${nota.peso}</td>
+                                            <td>${textoHtml(nota.peso)}</td>
                                             <td>${ui.formatDate(nota.data)}</td>
                                             <td>
-                                                <button class="btn-icon btn-delete-nota" data-nota-id="${nota.id}">🗑️</button>
+                                                <button class="btn-icon btn-delete-nota" data-nota-id="${escAttr(nota.id)}">🗑️</button>
                                             </td>
                                         </tr>
                                     `;

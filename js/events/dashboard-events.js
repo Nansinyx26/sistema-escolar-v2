@@ -70,4 +70,17 @@ document.addEventListener('DOMContentLoaded', function () {
             if (fnMap[action]) fnMap[action]();
         });
     });
+
+    // Tour guiado e "Sair" do menu do perfil (eram `onclick` inline, épico #612)
+    const btnTour = document.getElementById('btn-restart-tour');
+    if (btnTour) {
+        btnTour.addEventListener('click', function () {
+            if (window.OnboardingTour) window.OnboardingTour.restart();
+        });
+    }
+    document.querySelectorAll('[data-pn-sair]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            if (window.sair) window.sair();
+        });
+    });
 });

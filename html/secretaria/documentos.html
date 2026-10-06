@@ -120,8 +120,8 @@
                     </div>
                 </div>
                 <div style="margin-top:1rem;display:flex;gap:0.5rem;">
-                    <button class="sec-btn sec-btn-primary" onclick="gerarDocumento()"><i class="bi bi-file-earmark-plus"></i> Gerar</button>
-                    <button class="sec-btn sec-btn-blue" id="btnPrint" style="display:none;" onclick="imprimirDoc()"><i class="bi bi-printer"></i> Imprimir</button>
+                    <button class="sec-btn sec-btn-primary" data-acao="gerarDocumento"><i class="bi bi-file-earmark-plus"></i> Gerar</button>
+                    <button class="sec-btn sec-btn-blue" id="btnPrint" style="display:none;" data-acao="imprimirDoc"><i class="bi bi-printer"></i> Imprimir</button>
                 </div>
             </div>
 
@@ -136,7 +136,7 @@
                 <h3><i class="bi bi-clock-history" style="color:#8b5cf6;"></i> Documentos Emitidos do Aluno</h3>
                 <div class="sec-form-grid" style="grid-template-columns:1fr auto;">
                     <input id="histAlunoId" class="sec-input" placeholder="ID do aluno para ver histórico">
-                    <button class="sec-btn sec-btn-primary" onclick="carregarHistorico()"><i class="bi bi-search"></i> Buscar</button>
+                    <button class="sec-btn sec-btn-primary" data-acao="carregarHistorico"><i class="bi bi-search"></i> Buscar</button>
                 </div>
                 <div style="overflow-x:auto;margin-top:1rem;">
                     <table class="sec-table">
@@ -155,7 +155,15 @@
 <script defer src="../../js/database.js?v=3"></script>
 <script defer src="../../js/auth.js?v=3"></script>
 <script defer src="../../js/utils.js?v=3"></script>
+<!-- Delegação por data-acao (épico #612). -->
+<script src="../../js/acoes.js"></script>
 <script>
+// Texto vindo da API no innerHTML (Issue #634). Escapa < > e aspas, mas
+// não o `&`: o servidor já grava `&`, `<` e `>` codificados, e codificar de
+// novo mostraria "&amp;" na tela (ver escapeAttr em js/escape-html.js).
+function textoHtml(v) {
+    return String(v ?? '').replace(/[<>"'`]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[c]);
+}
 const API = () => window.API_BASE_URL || '/api';
 function toast(m,t='success'){const d=document.createElement('div');d.className=`sec-toast sec-toast-${t}`;d.textContent=m;document.body.appendChild(d);setTimeout(()=>d.remove(),3000);}
 
@@ -183,16 +191,7 @@ async function gerarDocumento() {
 function imprimirDoc() {
     const content = document.getElementById('docContent').innerHTML;
     const w = window.open('', '_blank');
-    w.document.write(`<html><head><title>Documento</title><style>body{font-family:serif;padding:2rem;line-height:1.6;}table{width:100%;border-collapse:collapse;}th,td{border:1px solid #333;padding:8px;text-align:left;}</style></head><body>${content}
-<script src="../../js/click-sound.js" defer></script>
-    <script defer src="../../js/reactions.js"></script>
-    <script defer src="../../js/push-notifications.js"></script>
-    <script defer src="../../js/pwa-install.js"></script>
-    <script defer src="../../js/settings-drawer.js"></script>
-    <script defer src="../../js/observability.js"></script>
-    <script defer src="../../js/motion.js"></script>
-    <script defer src="../../js/acessibilidade.js"></script>
-</body></html>`);
+    w.document.write(`<html><head><title>Documento</title><style>body{font-family:serif;padding:2rem;line-height:1.6;}table{width:100%;border-collapse:collapse;}th,td{border:1px solid #333;padding:8px;text-align:left;}</style></head><body>${content}</body></html>`);
     w.document.close();
     w.print();
 }
@@ -206,14 +205,23 @@ async function carregarHistorico() {
         const body = document.getElementById('histBody');
         if (json.success && json.data.length > 0) {
             body.innerHTML = json.data.map(d => `<tr>
-                <td>${d.titulo}</td>
-                <td><span class="sec-badge sec-badge-blue">${d.tipo.replace(/_/g,' ')}</span></td>
-                <td>${d.numeroDocumento || '-'}</td>
+                <td>${textoHtml(d.titulo)}</td>
+                <td><span class="sec-badge sec-badge-blue">${textoHtml(String(d.tipo || '').replace(/_/g,' '))}</span></td>
+                <td>${textoHtml(d.numeroDocumento || '-')}</td>
                 <td>${new Date(d.createdAt).toLocaleDateString('pt-BR')}</td>
-                <td>${d.emitidoPorNome || '-'}</td>
+                <td>${textoHtml(d.emitidoPorNome || '-')}</td>
             </tr>`).join('');
         } else body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#94a3b8;">Nenhum documento encontrado</td></tr>';
     } catch(e) { toast('Erro ao buscar histórico', 'error'); }
+}
+
+// Ações da página (épico #612). Ver js/acoes.js.
+if (window.Acoes) {
+    window.Acoes.registrar({
+        gerarDocumento: () => gerarDocumento(),
+        imprimirDoc: () => imprimirDoc(),
+        carregarHistorico: () => carregarHistorico(),
+    });
 }
 </script>
 <script src="../../js/sidebar-voice.js?v=5.0"></script>
@@ -222,5 +230,15 @@ async function carregarHistorico() {
     <!-- Lucide line icons (padronização) + shim de compatibilidade Bootstrap Icons -->
     <script src="../../js/libs/lucide.min.js"></script>
     <script src="../../js/libs/lucide-init.js"></script>
+    <!-- Estavam DENTRO da string do imprimirDoc(), onde cortavam o script da
+         página (Issue #632). O lugar delas é aqui, como nas outras páginas. -->
+    <script src="../../js/click-sound.js" defer></script>
+    <script defer src="../../js/reactions.js"></script>
+    <script defer src="../../js/push-notifications.js"></script>
+    <script defer src="../../js/pwa-install.js"></script>
+    <script defer src="../../js/settings-drawer.js"></script>
+    <script defer src="../../js/observability.js"></script>
+    <script defer src="../../js/motion.js"></script>
+    <script defer src="../../js/acessibilidade.js"></script>
 </body>
 </html>

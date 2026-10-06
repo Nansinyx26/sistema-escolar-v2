@@ -27,10 +27,10 @@
     /**
      * URL para `src`/`window.open`.
      *
-     * O escape de HTML NÃO basta aqui: dentro de `onclick="abrir('${url}')"` o
-     * parser decodifica as entidades ANTES do JS ler a string, então um `&#39;`
-     * vira `'` e fecha a string JS. Rejeitar o valor quando ele contém
-     * aspas/barra invertida remove o problema na origem.
+     * O escape de HTML não bastava quando a URL ia dentro de um handler inline
+     * (`abrir('${url}')`): o parser decodifica as entidades ANTES do JS ler a
+     * string, então um `&#39;` virava `'` e fechava a string JS. Rejeitar o
+     * valor quando ele contém aspas/barra invertida remove o problema na origem.
      *
      * Bloqueia o que é perigoso em vez de tentar listar todo formato válido:
      * `audioUrl` no schema é "ID do GridFS ou URL", e uma allowlist de formatos
@@ -138,7 +138,7 @@
                         .filter(Boolean)
                         .map(
                             (img) =>
-                                `<img src="${esc(img)}" class="media-item" onclick="window.open('${esc(img)}', '_blank')">`
+                                `<img src="${esc(img)}" class="media-item" data-abrir="${esc(img)}">`
                         )
                         .join('')}
                 </div>
@@ -147,11 +147,11 @@
             }
             
             <div class="comunicado-actions">
-                <button class="action-btn ${hasReacted ? 'active' : ''}" onclick="window.LegacyFeed.toggleReacao('${esc(c._id)}')">
+                <button type="button" class="action-btn ${hasReacted ? 'active' : ''}" data-feed="reagir" data-id="${esc(c._id)}">
                     <i class="bi ${hasReacted ? 'bi-heart-fill' : 'bi-heart'}"></i>
                     <span class="reacoes-count">${userReactions.length}</span>
                 </button>
-                <button class="action-btn" onclick="window.LegacyFeed.toggleComentarios('${esc(c._id)}')">
+                <button type="button" class="action-btn" data-feed="comentarios" data-id="${esc(c._id)}">
                     <i class="bi bi-chat-text"></i>
                     <span>${(c.comentarios && c.comentarios.length) || 0}</span>
                 </button>
@@ -184,7 +184,7 @@
                 </div>
                 <div class="comentario-input-group">
                     <input type="text" placeholder="Escreva um comentário..." class="comentario-input" id="input-${esc(c._id)}">
-                    <button class="btn btn-primary btn-sm" onclick="window.LegacyFeed.enviarComentario('${esc(c._id)}')">
+                    <button type="button" class="btn btn-primary btn-sm" data-feed="comentar" data-id="${esc(c._id)}">
                         <i class="bi bi-send"></i>
                     </button>
                 </div>
@@ -272,7 +272,25 @@
         });
     }
 
-    // Export variables and functions to window for onclick handlers
+    // Botões e imagens dos cards. Eram `onclick` inline (épico #612); um
+    // ouvinte no container vale para todo card montado depois.
+    const ACOES_DO_CARD = {
+        reagir: 'toggleReacao',
+        comentarios: 'toggleComentarios',
+        comentar: 'enviarComentario',
+    };
+    feedContainer.addEventListener('click', (e) => {
+        const img = e.target.closest('img.media-item[data-abrir]');
+        if (img) {
+            window.open(img.dataset.abrir, '_blank');
+            return;
+        }
+        const btn = e.target.closest('[data-feed][data-id]');
+        const acao = btn && ACOES_DO_CARD[btn.dataset.feed];
+        if (acao) window.LegacyFeed[acao](btn.dataset.id);
+    });
+
+    // Funções públicas do feed (outros scripts as chamam por `window.LegacyFeed`)
     window.LegacyFeed = {
         toggleComentarios: (id) => {
             const el = document.getElementById(`comentarios-${id}`);
