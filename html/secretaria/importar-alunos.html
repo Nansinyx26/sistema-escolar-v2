@@ -217,7 +217,8 @@ async function processarArquivo(file) {
     if (file.size > 8 * 1024 * 1024) return toast('Arquivo acima de 8 MB.', 'error');
     const status = document.getElementById('fileStatus');
     const nome = file.name.toLowerCase();
-    status.innerHTML = `<span class="chip-count"><i class="bi bi-file-earmark"></i> ${file.name}</span>`;
+    // Nome do arquivo escolhido: escapado (Issue #656).
+    status.innerHTML = `<span class="chip-count"><i class="bi bi-file-earmark"></i> ${escaparAttr(file.name)}</span>`;
 
     try {
         if (nome.endsWith('.csv') || nome.endsWith('.txt')) {

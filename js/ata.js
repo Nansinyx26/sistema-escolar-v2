@@ -1194,7 +1194,7 @@ async function convertPDFImageToDOCX() {
             document.getElementById('pdfUploadStatus').innerHTML = `
                 <span style="color: var(--success);">
                     <i class="bi bi-check-circle-fill"></i> 
-                    <strong>${pdfCarregado.name}</strong> (${sizeInMB} MB)
+                    <strong>${escHtml(pdfCarregado.name)}</strong> (${sizeInMB} MB)
                 </span>
             `;
         }, 2000);
@@ -1237,7 +1237,7 @@ async function handlePDFUpload(event) {
         statusDiv.innerHTML = `
             <span style="color: var(--success);">
                 <i class="bi bi-check-circle-fill"></i> 
-                <strong>${file.name}</strong> (${sizeInMB} MB)
+                <strong>${escHtml(file.name)}</strong> (${sizeInMB} MB)
             </span>
         `;
 
