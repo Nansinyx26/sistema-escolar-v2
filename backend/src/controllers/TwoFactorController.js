@@ -32,6 +32,66 @@ const { mascarar: mascararEmail } = require('../services/EnvioEmail');
 const MAX_TENTATIVAS_2FA = 5;
 const BLOQUEIO_2FA_MS = 15 * 60 * 1000;
 
+/** Resposta 429 do bloqueio, com o tempo que falta. */
+function responderBloqueio(res, ate, error) {
+    const segundos = Math.max(1, Math.ceil((ate - new Date()) / 1000));
+    res.set('Retry-After', String(segundos));
+    return res.status(429).json({
+        success: false,
+        ok: false,
+        codigo: 'MUITAS_TENTATIVAS',
+        retryEmSegundos: segundos,
+        error:
+            error ||
+            `Muitas tentativas incorretas. Tente novamente em ${Math.ceil(segundos / 60)} minuto(s).`,
+    });
+}
+
+/**
+ * Bloqueia o segundo fator por BLOQUEIO_2FA_MS e invalida o código pendente:
+ * passado o bloqueio, é preciso um código novo.
+ */
+async function bloquear2FA(userId) {
+    const ate = new Date(Date.now() + BLOQUEIO_2FA_MS);
+    await Usuario.updateOne(
+        { _id: userId },
+        {
+            $set: {
+                twoFactorLockUntil: ate,
+                twoFactorAttempts: 0,
+                twoFactorPendingToken: null,
+                twoFactorPendingExpiry: null,
+            },
+        }
+    );
+    return ate;
+}
+
+/**
+ * Reserva uma tentativa ANTES de comparar o código (Issue #669), num passo só:
+ * só passa sem bloqueio vigente e com o contador abaixo do teto. Antes, o
+ * contador era lido e regravado em dois passos — palpites em paralelo liam
+ * todos o mesmo valor e eram todos comparados. Mesmo princípio da #596.
+ *
+ * @returns {Promise<number|null>} o número desta tentativa, ou null sem reserva
+ */
+async function reservarTentativa2FA(userId) {
+    const agora = new Date();
+    const reserva = await Usuario.findOneAndUpdate(
+        {
+            _id: userId,
+            twoFactorLockUntil: { $not: { $gt: agora } },
+            twoFactorAttempts: { $not: { $gte: MAX_TENTATIVAS_2FA } },
+        },
+        // Pipeline: soma 1 mesmo quando o campo não existe ainda.
+        [{ $set: { twoFactorAttempts: { $add: [{ $ifNull: ['$twoFactorAttempts', 0] }, 1] } } }],
+        { new: true }
+    )
+        .select('+twoFactorAttempts')
+        .lean();
+    return reserva ? reserva.twoFactorAttempts : null;
+}
+
 // O transporte de e-mail vive em services/EnvioEmail.js. Este arquivo mantinha
 // a QUARTA cópia de `createTransport` do projeto, com defaults próprios — era
 // assim que uma correção de configuração passava a valer em três lugares e não
@@ -115,7 +175,7 @@ exports.sendCode = async (req, res) => {
         const userId = pre.userId;
 
         const usuario = await Usuario.findById(userId).select(
-            '+twoFactorEnabled +twoFactorPendingToken +twoFactorPendingExpiry'
+            '+twoFactorEnabled +twoFactorPendingToken +twoFactorPendingExpiry +twoFactorLockUntil'
         );
 
         if (!usuario) {
@@ -132,16 +192,23 @@ exports.sendCode = async (req, res) => {
                 .json({ success: false, error: '2FA não está ativo nesta conta.' });
         }
 
+        // Durante o bloqueio não sai código novo (Issue #669): reenviar era o
+        // jeito de zerar o contador e seguir tentando.
+        if (usuario.twoFactorLockUntil && usuario.twoFactorLockUntil > new Date()) {
+            return responderBloqueio(res, usuario.twoFactorLockUntil);
+        }
+
         const codigo = gerarCodigo6Digitos();
         const expiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutos
 
         // Salva o hash do código (não o código em texto puro)
         const codigoHash = crypto.createHash('sha256').update(codigo).digest('hex');
 
+        // O contador de tentativas NÃO volta a zero com código novo: ele é da
+        // conta, e só zera com acerto ou junto com o bloqueio (Issue #669).
         await Usuario.findByIdAndUpdate(userId, {
             twoFactorPendingToken: codigoHash,
             twoFactorPendingExpiry: expiry,
-            twoFactorAttempts: 0,
         });
 
         // Falta de e-mail no cadastro é a falha mais silenciosa do fluxo: o
@@ -226,16 +293,20 @@ exports.verifyCode = async (req, res) => {
         const now = new Date();
 
         // 2. Bloqueio por tentativas: 10^6 códigos só são varridos sem limite.
+        //    A tentativa é reservada antes de qualquer comparação (Issue #669).
         if (usuario.twoFactorLockUntil && usuario.twoFactorLockUntil > now) {
-            const minutos = Math.ceil((usuario.twoFactorLockUntil - now) / 60000);
-            res.set('Retry-After', String(Math.ceil((usuario.twoFactorLockUntil - now) / 1000)));
-            return res.status(429).json({
-                success: false,
-                ok: false,
-                codigo: 'MUITAS_TENTATIVAS',
-                retryEmSegundos: Math.ceil((usuario.twoFactorLockUntil - now) / 1000),
-                error: `Muitas tentativas incorretas. Tente novamente em ${minutos} minuto(s).`,
-            });
+            return responderBloqueio(res, usuario.twoFactorLockUntil);
+        }
+        const tentativa = await reservarTentativa2FA(userId);
+        if (tentativa === null) {
+            // Sem reserva: outro pedido levou a última tentativa, ou o
+            // bloqueio começou agora. Bloqueia (de novo, se for o caso).
+            const ate = await bloquear2FA(userId);
+            return responderBloqueio(
+                res,
+                ate,
+                'Muitas tentativas incorretas. O código foi invalidado — faça login novamente.'
+            );
         }
 
         // ============================================
@@ -387,19 +458,15 @@ exports.verifyCode = async (req, res) => {
         }
 
         if (!valido) {
-            const tentativas = (usuario.twoFactorAttempts || 0) + 1;
-            const update = { twoFactorAttempts: tentativas };
+            // A tentativa já foi contada na reserva (passo 2).
+            const tentativas = tentativa;
 
             if (tentativas >= MAX_TENTATIVAS_2FA) {
                 // Invalida o código atual junto com o bloqueio: reiniciar o
                 // fluxo exige um código novo, não só esperar o tempo passar.
-                update.twoFactorLockUntil = new Date(Date.now() + BLOQUEIO_2FA_MS);
-                update.twoFactorAttempts = 0;
-                update.twoFactorPendingToken = null;
-                update.twoFactorPendingExpiry = null;
+                await bloquear2FA(userId);
             }
 
-            await Usuario.findByIdAndUpdate(userId, update);
             await logAction(req, 'LOGIN_2FA_FAILED', 'Auth', {
                 recursoId: usuario._id,
                 descricao: `Código 2FA incorreto para ${usuario.email} (tentativa ${tentativas}/${MAX_TENTATIVAS_2FA})`,
