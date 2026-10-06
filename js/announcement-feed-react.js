@@ -10,7 +10,9 @@
         if (window.React && window.ReactDOM && (window.Motion || window.framerMotion)) {
             callback();
         } else {
-            setTimeout(function () { waitForLibs(callback); }, 80);
+            setTimeout(function () {
+                waitForLibs(callback);
+            }, 80);
         }
     }
 
@@ -51,8 +53,11 @@
         };
         const formatDate = (date) => {
             if (!date) return '';
-            return new Date(date).toLocaleString('pt-BR', { 
-                day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' 
+            return new Date(date).toLocaleString('pt-BR', {
+                day: '2-digit',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
             });
         };
 
@@ -68,11 +73,10 @@
             return 'Responsável';
         };
 
-        const stripHtml = (html) => {
-            const tmp = document.createElement("DIV");
-            tmp.innerHTML = html;
-            return tmp.textContent || tmp.innerText || "";
-        };
+        // Texto do HTML num documento INERTE (Issue #648): `innerHTML` numa div
+        // solta carrega a imagem e dispara o `onerror` mesmo fora da página.
+        const stripHtml = (html) =>
+            new DOMParser().parseFromString(String(html ?? ''), 'text/html').body.textContent || '';
 
         // --- FILTRO DE LINGUAGEM IMPRÓPRIA ---
         // O bloqueio de verdade é do servidor (middleware bloquearPalavroes);
@@ -93,13 +97,18 @@
         };
 
         /** Faixa de aviso exibida sob o campo de texto. */
-        const AvisoLinguagem = ({ resultado }) => (
-            !resultado || resultado.limpo ? null : h('div', {
-                className: 'aviso-linguagem-impropria',
-                'data-nivel': resultado.nivel,
-                role: 'alert'
-            }, (resultado.bloquear ? '🚫 ' : '⚠️ ') + resultado.mensagem)
-        );
+        const AvisoLinguagem = ({ resultado }) =>
+            !resultado || resultado.limpo
+                ? null
+                : h(
+                      'div',
+                      {
+                          className: 'aviso-linguagem-impropria',
+                          'data-nivel': resultado.nivel,
+                          role: 'alert',
+                      },
+                      (resultado.bloquear ? '🚫 ' : '⚠️ ') + resultado.mensagem
+                  );
 
         /** Porteiro do envio: `true` libera, `false` barra e avisa. */
         const podeEnviarTexto = (texto) => {
@@ -132,9 +141,9 @@
                 window.speak(cleanText);
 
                 // Simulação de progresso para o TTS (já que o Google TTS via window.speak não dá feedback de tempo real facilmente)
-                let startTime = Date.now();
+                const startTime = Date.now();
                 const estimatedDuration = cleanText.length * 80; // aprox 80ms por char
-                
+
                 const timer = setInterval(() => {
                     const elapsed = Date.now() - startTime;
                     const p = Math.min((elapsed / estimatedDuration) * 100, 100);
@@ -151,16 +160,28 @@
                 window.addEventListener('tts:ended', onEnd);
             };
 
-            return h('div', { className: 'custom-audio-player' },
-                h('button', {
-                    className: 'audio-ctrl-btn',
-                    onClick: togglePlay,
-                    title: playing ? 'Parar' : 'Ouvir comunicado'
-                }, h('i', { className: `bi ${playing ? 'bi-pause-circle-fill' : 'bi-play-circle-fill'}` })),
-                h('div', { className: 'audio-progress-container' },
+            return h(
+                'div',
+                { className: 'custom-audio-player' },
+                h(
+                    'button',
+                    {
+                        className: 'audio-ctrl-btn',
+                        onClick: togglePlay,
+                        title: playing ? 'Parar' : 'Ouvir comunicado',
+                    },
+                    h('i', {
+                        className: `bi ${playing ? 'bi-pause-circle-fill' : 'bi-play-circle-fill'}`,
+                    })
+                ),
+                h(
+                    'div',
+                    { className: 'audio-progress-container' },
                     h('div', { className: 'audio-progress-bar', style: { width: `${progress}%` } })
                 ),
-                h('span', { style: { fontSize: '0.7rem', color: 'var(--text-muted)' } }, 
+                h(
+                    'span',
+                    { style: { fontSize: '0.7rem', color: 'var(--text-muted)' } },
                     playing ? 'Ouvindo...' : 'Ouvir'
                 )
             );
@@ -180,35 +201,45 @@
                 else audio.play();
             };
 
-            return h('div', { 
-                className: `audio-message-player-premium ${compact ? 'compact' : ''}`,
-                onClick: (e) => e.stopPropagation()
-            },
-                h('audio', { 
-                    ref: audioRef, 
-                    src: src, 
-                    onPlay: () => setPlaying(true), 
+            return h(
+                'div',
+                {
+                    className: `audio-message-player-premium ${compact ? 'compact' : ''}`,
+                    onClick: (e) => e.stopPropagation(),
+                },
+                h('audio', {
+                    ref: audioRef,
+                    src: src,
+                    onPlay: () => setPlaying(true),
                     onPause: () => setPlaying(false),
                     onEnded: () => setPlaying(false),
-                    preload: 'metadata'
+                    preload: 'metadata',
                 }),
-                h('button', {
-                    className: 'audio-play-btn-premium',
-                    onClick: togglePlay,
-                    type: 'button',
-                    title: playing ? 'Pausar' : 'Reproduzir'
-                }, h('i', { className: `bi ${playing ? 'bi-pause-fill' : 'bi-play-fill'}` })),
-                h('div', { className: 'audio-wave-premium' },
-                    [1, 2, 3, 4, 5, 6, 7, 8].map(i => h('div', { 
-                        key: i, 
-                        className: `wave-bar-premium ${playing ? 'playing' : ''}`,
-                        style: { animationDelay: `${i * 0.1}s` }
-                    }))
+                h(
+                    'button',
+                    {
+                        className: 'audio-play-btn-premium',
+                        onClick: togglePlay,
+                        type: 'button',
+                        title: playing ? 'Pausar' : 'Reproduzir',
+                    },
+                    h('i', { className: `bi ${playing ? 'bi-pause-fill' : 'bi-play-fill'}` })
+                ),
+                h(
+                    'div',
+                    { className: 'audio-wave-premium' },
+                    [1, 2, 3, 4, 5, 6, 7, 8].map((i) =>
+                        h('div', {
+                            key: i,
+                            className: `wave-bar-premium ${playing ? 'playing' : ''}`,
+                            style: { animationDelay: `${i * 0.1}s` },
+                        })
+                    )
                 )
             );
         }
 
-        let currentPlayingAudio = null;
+        const currentPlayingAudio = null;
 
         // --- COMPONENTE DE REAÇÕES PREMIUM ---
         function ReactionArea({ messageId, initialReactions, type = 'post' }) {
@@ -219,7 +250,8 @@
 
             useEffect(() => {
                 const handleClickOutside = (e) => {
-                    if (pickerRef.current && !pickerRef.current.contains(e.target)) setShowPicker(false);
+                    if (pickerRef.current && !pickerRef.current.contains(e.target))
+                        setShowPicker(false);
                 };
                 document.addEventListener('mousedown', handleClickOutside);
                 return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -250,30 +282,34 @@
                         method: 'POST',
                         headers: apiHeaders(),
                         body: JSON.stringify({ messageId, emoji }),
-                        credentials: 'include'
+                        credentials: 'include',
                     });
                     const json = await res.json();
                     if (json.success) {
                         setReactions(json.allReactions || []);
                         setShowPicker(false);
                     }
-                } catch (e) { console.error('Erro ao reagir:', e); }
+                } catch (e) {
+                    console.error('Erro ao reagir:', e);
+                }
             };
 
             const removeReaction = async () => {
                 try {
                     const res = await fetch(`${BASE_URL}/reactions/${messageId}`, {
                         method: 'DELETE',
-                        credentials: 'include'
+                        credentials: 'include',
                     });
                     const json = await res.json();
                     if (json.success) setReactions(json.allReactions || []);
-                } catch (e) { console.error('Erro ao remover reação:', e); }
+                } catch (e) {
+                    console.error('Erro ao remover reação:', e);
+                }
             };
 
             const reactionSummary = useMemo(() => {
                 const summary = {};
-                reactions.forEach(r => {
+                reactions.forEach((r) => {
                     if (!summary[r.emoji]) summary[r.emoji] = 0;
                     summary[r.emoji]++;
                 });
@@ -283,38 +319,67 @@
             const myReaction = useMemo(() => {
                 const uid = user?._id || user?.id;
                 if (!uid || !reactions.length) return null;
-                return reactions.find(r => normalizeId(r.senderId) === normalizeId(uid));
+                return reactions.find((r) => normalizeId(r.senderId) === normalizeId(uid));
             }, [reactions, user]);
 
-            return h('div', { className: 'reaction-container-premium' },
-                h('button', { 
-                    className: `action-btn-legacy ${myReaction ? 'active' : ''}`,
-                    onClick: () => setShowPicker(!showPicker)
-                }, 
+            return h(
+                'div',
+                { className: 'reaction-container-premium' },
+                h(
+                    'button',
+                    {
+                        className: `action-btn-legacy ${myReaction ? 'active' : ''}`,
+                        onClick: () => setShowPicker(!showPicker),
+                    },
                     h('i', { className: 'bi bi-hand-thumbs-up' }),
                     myReaction ? ' Reagido' : ' Reagir'
                 ),
-                h(AnimatePresence, null,
-                    showPicker && h(motion.div, {
-                        ref: pickerRef,
-                        initial: { opacity: 0, y: 10, scale: 0.9 },
-                        animate: { opacity: 1, y: 0, scale: 1 },
-                        exit: { opacity: 0, y: 10, scale: 0.9 },
-                        className: 'emoji-picker-premium'
-                    },
-                        EMOJIS.map(e => h('button', {
-                            key: e, className: 'emoji-btn-premium',
-                            onClick: () => submitReaction(e)
-                        }, e))
-                    )
+                h(
+                    AnimatePresence,
+                    null,
+                    showPicker &&
+                        h(
+                            motion.div,
+                            {
+                                ref: pickerRef,
+                                initial: { opacity: 0, y: 10, scale: 0.9 },
+                                animate: { opacity: 1, y: 0, scale: 1 },
+                                exit: { opacity: 0, y: 10, scale: 0.9 },
+                                className: 'emoji-picker-premium',
+                            },
+                            EMOJIS.map((e) =>
+                                h(
+                                    'button',
+                                    {
+                                        key: e,
+                                        className: 'emoji-btn-premium',
+                                        onClick: () => submitReaction(e),
+                                    },
+                                    e
+                                )
+                            )
+                        )
                 ),
-                Object.keys(reactionSummary).length > 0 && h('div', { className: 'social-status-bar' },
-                    Object.entries(reactionSummary).map(([emoji, count]) => h('div', {
-                        key: emoji,
-                        className: `reaction-pill-premium ${myReaction?.emoji === emoji ? 'active' : ''}`,
-                        onClick: myReaction?.emoji === emoji ? removeReaction : () => submitReaction(emoji)
-                    }, emoji, h('span', null, count)))
-                )
+                Object.keys(reactionSummary).length > 0 &&
+                    h(
+                        'div',
+                        { className: 'social-status-bar' },
+                        Object.entries(reactionSummary).map(([emoji, count]) =>
+                            h(
+                                'div',
+                                {
+                                    key: emoji,
+                                    className: `reaction-pill-premium ${myReaction?.emoji === emoji ? 'active' : ''}`,
+                                    onClick:
+                                        myReaction?.emoji === emoji
+                                            ? removeReaction
+                                            : () => submitReaction(emoji),
+                                },
+                                emoji,
+                                h('span', null, count)
+                            )
+                        )
+                    )
             );
         }
 
@@ -325,10 +390,13 @@
             const [isEditing, setIsEditing] = useState(false);
             const [editText, setEditText] = useState(comment.texto);
             const user = window.auth?.getCurrentUser();
-            const isAuthor = user && normalizeId(user.id || user._id) === normalizeId(comment.usuarioId);
+            const isAuthor =
+                user && normalizeId(user.id || user._id) === normalizeId(comment.usuarioId);
             const isDirector = user && (user.perfil === 'diretor' || user.perfil === 'admin');
 
-            const replies = allComments.filter(c => normalizeId(c.parentId) === normalizeId(comment._id));
+            const replies = allComments.filter(
+                (c) => normalizeId(c.parentId) === normalizeId(comment._id)
+            );
 
             const avisoResposta = useMemo(() => analisarLinguagem(replyText), [replyText]);
             const avisoEdicao = useMemo(() => analisarLinguagem(editText), [editText]);
@@ -348,21 +416,31 @@
                 setIsEditing(false);
             };
 
-            return h('div', { className: 'comment-container-node' },
-                h('div', { className: 'comment-item-premium' },
-                    h('div', { className: 'comment-avatar' },
+            return h(
+                'div',
+                { className: 'comment-container-node' },
+                h(
+                    'div',
+                    { className: 'comment-item-premium' },
+                    h(
+                        'div',
+                        { className: 'comment-avatar' },
                         (() => {
                             const photoUrl = window.getPhotoUrl(comment.usuarioFoto);
                             const isDefault = !photoUrl || photoUrl.includes('default-avatar.png');
-                            
+
                             if (isDefault) {
-                                return h('div', { className: 'avatar-placeholder avatar-sm' }, 
-                                    window.utils?.getInitials ? window.utils.getInitials(comment.usuarioNome || "?") : (comment.usuarioNome || "?").charAt(0)
+                                return h(
+                                    'div',
+                                    { className: 'avatar-placeholder avatar-sm' },
+                                    window.utils?.getInitials
+                                        ? window.utils.getInitials(comment.usuarioNome || '?')
+                                        : (comment.usuarioNome || '?').charAt(0)
                                 );
                             }
-                            
-                            return h('img', { 
-                                src: photoUrl, 
+
+                            return h('img', {
+                                src: photoUrl,
                                 alt: comment.usuarioNome,
                                 className: 'avatar-sm',
                                 onError: (e) => {
@@ -371,69 +449,195 @@
                                     // qualquer caractere de markup antes de ir
                                     // para innerHTML (React não escapa aqui).
                                     e.target.parentElement.innerHTML = `<div class="avatar-placeholder avatar-sm">${String(window.utils?.getInitials(comment.usuarioNome) || '?').replace(/[&<>"'`]/g, '')}</div>`;
-                                }
+                                },
                             });
                         })()
                     ),
-                    h('div', { className: 'comment-main' },
-                        h('div', { className: 'comment-header' },
-                            h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
-                                h('span', { className: 'comment-author' }, comment.usuarioNome || 'Usuário'),
-                                h('span', { className: `comment-role badge-perfil ${getBadgeClass(comment.usuarioPerfil)}` }, getRoleName(comment.usuarioPerfil))
+                    h(
+                        'div',
+                        { className: 'comment-main' },
+                        h(
+                            'div',
+                            { className: 'comment-header' },
+                            h(
+                                'div',
+                                { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
+                                h(
+                                    'span',
+                                    { className: 'comment-author' },
+                                    comment.usuarioNome || 'Usuário'
+                                ),
+                                h(
+                                    'span',
+                                    {
+                                        className: `comment-role badge-perfil ${getBadgeClass(comment.usuarioPerfil)}`,
+                                    },
+                                    getRoleName(comment.usuarioPerfil)
+                                )
                             )
                         ),
-                        isEditing ? h('div', null,
-                            h('textarea', {
-                                className: `comment-input-legacy ${avisoEdicao.bloquear ? 'campo-linguagem-impropria' : ''}`,
-                                value: editText,
-                                onChange: e => setEditText(e.target.value),
-                                'aria-invalid': avisoEdicao.bloquear ? 'true' : undefined,
-                                style: { width: '100%', minHeight: '60px', marginTop: '0.5rem' }
-                            }),
-                            h(AvisoLinguagem, { resultado: avisoEdicao }),
-                            h('div', { style: { display: 'flex', gap: '0.5rem', marginTop: '0.5rem' } },
-                                h('button', {
-                                    className: 'action-btn-legacy active',
-                                    onClick: handleEditSubmit,
-                                    disabled: avisoEdicao.bloquear,
-                                    title: avisoEdicao.bloquear ? avisoEdicao.mensagem : undefined
-                                }, 'Salvar'),
-                                h('button', { className: 'action-btn-legacy', onClick: () => setIsEditing(false) }, 'Cancelar')
-                            )
-                        ) : h('div', null,
-                            h('p', { className: 'comment-content-text', style: { fontSize: '0.9rem', color: '#fff', margin: '2px 0 0 0', lineHeight: '1.4' } }, comment.texto),
-                            h('span', { className: 'comment-date', style: { fontSize: '0.72rem', color: '#10b981', marginTop: '2px', display: 'block' } }, formatDate(comment.dataCriacao)),
-                            comment.audioUrl && h(AudioMessagePlayer, { src: comment.audioUrl, compact: true })
-                        ),
-                        
-                        h('div', { className: 'comment-actions-premium', style: { display: 'flex', gap: '15px' } },
-                            h('button', { className: 'comment-action-link', onClick: () => setShowReplyInput(!showReplyInput) }, 'Responder'),
-                            isAuthor && h('button', { className: 'comment-action-link', onClick: () => setIsEditing(true) }, 'Editar'),
-                            (isAuthor || isDirector) && h('button', { className: 'comment-action-link delete', onClick: () => onDelete(comment._id) }, 'Excluir'),
-                            h(ReactionArea, { messageId: comment._id, type: 'comment', initialReactions: [] })
+                        isEditing
+                            ? h(
+                                  'div',
+                                  null,
+                                  h('textarea', {
+                                      className: `comment-input-legacy ${avisoEdicao.bloquear ? 'campo-linguagem-impropria' : ''}`,
+                                      value: editText,
+                                      onChange: (e) => setEditText(e.target.value),
+                                      'aria-invalid': avisoEdicao.bloquear ? 'true' : undefined,
+                                      style: {
+                                          width: '100%',
+                                          minHeight: '60px',
+                                          marginTop: '0.5rem',
+                                      },
+                                  }),
+                                  h(AvisoLinguagem, { resultado: avisoEdicao }),
+                                  h(
+                                      'div',
+                                      {
+                                          style: {
+                                              display: 'flex',
+                                              gap: '0.5rem',
+                                              marginTop: '0.5rem',
+                                          },
+                                      },
+                                      h(
+                                          'button',
+                                          {
+                                              className: 'action-btn-legacy active',
+                                              onClick: handleEditSubmit,
+                                              disabled: avisoEdicao.bloquear,
+                                              title: avisoEdicao.bloquear
+                                                  ? avisoEdicao.mensagem
+                                                  : undefined,
+                                          },
+                                          'Salvar'
+                                      ),
+                                      h(
+                                          'button',
+                                          {
+                                              className: 'action-btn-legacy',
+                                              onClick: () => setIsEditing(false),
+                                          },
+                                          'Cancelar'
+                                      )
+                                  )
+                              )
+                            : h(
+                                  'div',
+                                  null,
+                                  h(
+                                      'p',
+                                      {
+                                          className: 'comment-content-text',
+                                          style: {
+                                              fontSize: '0.9rem',
+                                              color: '#fff',
+                                              margin: '2px 0 0 0',
+                                              lineHeight: '1.4',
+                                          },
+                                      },
+                                      comment.texto
+                                  ),
+                                  h(
+                                      'span',
+                                      {
+                                          className: 'comment-date',
+                                          style: {
+                                              fontSize: '0.72rem',
+                                              color: '#10b981',
+                                              marginTop: '2px',
+                                              display: 'block',
+                                          },
+                                      },
+                                      formatDate(comment.dataCriacao)
+                                  ),
+                                  comment.audioUrl &&
+                                      h(AudioMessagePlayer, {
+                                          src: comment.audioUrl,
+                                          compact: true,
+                                      })
+                              ),
+
+                        h(
+                            'div',
+                            {
+                                className: 'comment-actions-premium',
+                                style: { display: 'flex', gap: '15px' },
+                            },
+                            h(
+                                'button',
+                                {
+                                    className: 'comment-action-link',
+                                    onClick: () => setShowReplyInput(!showReplyInput),
+                                },
+                                'Responder'
+                            ),
+                            isAuthor &&
+                                h(
+                                    'button',
+                                    {
+                                        className: 'comment-action-link',
+                                        onClick: () => setIsEditing(true),
+                                    },
+                                    'Editar'
+                                ),
+                            (isAuthor || isDirector) &&
+                                h(
+                                    'button',
+                                    {
+                                        className: 'comment-action-link delete',
+                                        onClick: () => onDelete(comment._id),
+                                    },
+                                    'Excluir'
+                                ),
+                            h(ReactionArea, {
+                                messageId: comment._id,
+                                type: 'comment',
+                                initialReactions: [],
+                            })
                         )
                     )
                 ),
-                showReplyInput && h('div', { className: 'reply-input-wrapper' },
-                    h('input', {
-                        className: `comment-input-legacy ${avisoResposta.bloquear ? 'campo-linguagem-impropria' : ''}`,
-                        placeholder: 'Escreva uma resposta...',
-                        value: replyText,
-                        onChange: e => setReplyText(e.target.value),
-                        'aria-invalid': avisoResposta.bloquear ? 'true' : undefined,
-                        onKeyPress: e => e.key === 'Enter' && handleReplySubmit()
-                    }),
-                    h('button', {
-                        className: 'comment-submit-legacy',
-                        onClick: handleReplySubmit,
-                        disabled: avisoResposta.bloquear,
-                        title: avisoResposta.bloquear ? avisoResposta.mensagem : undefined
-                    }, h('i', { className: 'bi bi-send' })),
-                    h(AvisoLinguagem, { resultado: avisoResposta })
-                ),
-                replies.length > 0 && h('div', { className: 'replies-thread' },
-                    replies.map(r => h(CommentItem, { key: r._id, comment: r, allComments, onReply, onDelete, onEdit }))
-                )
+                showReplyInput &&
+                    h(
+                        'div',
+                        { className: 'reply-input-wrapper' },
+                        h('input', {
+                            className: `comment-input-legacy ${avisoResposta.bloquear ? 'campo-linguagem-impropria' : ''}`,
+                            placeholder: 'Escreva uma resposta...',
+                            value: replyText,
+                            onChange: (e) => setReplyText(e.target.value),
+                            'aria-invalid': avisoResposta.bloquear ? 'true' : undefined,
+                            onKeyPress: (e) => e.key === 'Enter' && handleReplySubmit(),
+                        }),
+                        h(
+                            'button',
+                            {
+                                className: 'comment-submit-legacy',
+                                onClick: handleReplySubmit,
+                                disabled: avisoResposta.bloquear,
+                                title: avisoResposta.bloquear ? avisoResposta.mensagem : undefined,
+                            },
+                            h('i', { className: 'bi bi-send' })
+                        ),
+                        h(AvisoLinguagem, { resultado: avisoResposta })
+                    ),
+                replies.length > 0 &&
+                    h(
+                        'div',
+                        { className: 'replies-thread' },
+                        replies.map((r) =>
+                            h(CommentItem, {
+                                key: r._id,
+                                comment: r,
+                                allComments,
+                                onReply,
+                                onDelete,
+                                onEdit,
+                            })
+                        )
+                    )
             );
         }
 
@@ -449,14 +653,19 @@
             const loadComments = async () => {
                 try {
                     setLoading(true);
-                    const res = await fetch(`${BASE_URL}/comentarios/comunicado/${comunicadoId}`, { credentials: 'include' });
+                    const res = await fetch(`${BASE_URL}/comentarios/comunicado/${comunicadoId}`, {
+                        credentials: 'include',
+                    });
                     const json = await res.json();
                     if (json.success && Array.isArray(json.data)) {
                         setComments(json.data);
                     }
                 } catch (e) {
                     console.error('Erro ao carregar comentários:', e);
-                    setFeedback({ type: 'error', text: 'Não foi possível carregar os comentários.' });
+                    setFeedback({
+                        type: 'error',
+                        text: 'Não foi possível carregar os comentários.',
+                    });
                 } finally {
                     setLoading(false);
                 }
@@ -481,8 +690,14 @@
 
                     const handleNew = (data) => {
                         if (sameComunicado(data.comunicadoId)) {
-                            setComments(prev => {
-                                if (prev.some(c => normalizeId(c._id) === normalizeId(data.comentario._id))) return prev;
+                            setComments((prev) => {
+                                if (
+                                    prev.some(
+                                        (c) =>
+                                            normalizeId(c._id) === normalizeId(data.comentario._id)
+                                    )
+                                )
+                                    return prev;
                                 return [...prev, data.comentario];
                             });
                             onCountUpdate(1);
@@ -490,13 +705,21 @@
                     };
                     const handleRemove = (data) => {
                         if (sameComunicado(data.comunicadoId)) {
-                            setComments(prev => prev.filter(c => normalizeId(c._id) !== normalizeId(data.id)));
+                            setComments((prev) =>
+                                prev.filter((c) => normalizeId(c._id) !== normalizeId(data.id))
+                            );
                             onCountUpdate(-1);
                         }
                     };
                     const handleUpdate = (data) => {
                         if (sameComunicado(data.comentario.comunicadoId)) {
-                            setComments(prev => prev.map(c => normalizeId(c._id) === normalizeId(data.comentario._id) ? data.comentario : c));
+                            setComments((prev) =>
+                                prev.map((c) =>
+                                    normalizeId(c._id) === normalizeId(data.comentario._id)
+                                        ? data.comentario
+                                        : c
+                                )
+                            );
                         }
                     };
                     socket.on('comentario:new', handleNew);
@@ -525,18 +748,25 @@
                         method: 'POST',
                         headers: apiHeaders(),
                         body: JSON.stringify({ comunicadoId, texto: texto.trim(), parentId }),
-                        credentials: 'include'
+                        credentials: 'include',
                     });
                     const json = await res.json();
                     if (json.success) {
                         if (parentId === null) setMainText('');
-                        setComments(prev => {
-                            if (prev.some(c => normalizeId(c._id) === normalizeId(json.data._id))) return prev;
+                        setComments((prev) => {
+                            if (prev.some((c) => normalizeId(c._id) === normalizeId(json.data._id)))
+                                return prev;
                             if (!window.socket || !window.socket.connected) onCountUpdate(1);
                             return [...prev, json.data];
                         });
-                        setFeedback({ type: 'success', text: parentId ? 'Resposta enviada!' : 'Comentário enviado!' });
-                        showFeedToast(parentId ? 'Resposta enviada!' : 'Comentário enviado!', 'success');
+                        setFeedback({
+                            type: 'success',
+                            text: parentId ? 'Resposta enviada!' : 'Comentário enviado!',
+                        });
+                        showFeedToast(
+                            parentId ? 'Resposta enviada!' : 'Comentário enviado!',
+                            'success'
+                        );
                     } else {
                         const msg = json.error || 'Erro ao enviar comentário.';
                         setFeedback({ type: 'error', text: msg });
@@ -557,11 +787,13 @@
                     const res = await fetch(`${BASE_URL}/comentarios/${id}`, {
                         method: 'DELETE',
                         credentials: 'include',
-                        headers: apiHeaders()
+                        headers: apiHeaders(),
                     });
                     const json = await res.json();
                     if (json.success) {
-                        setComments(prev => prev.filter(c => normalizeId(c._id) !== normalizeId(id)));
+                        setComments((prev) =>
+                            prev.filter((c) => normalizeId(c._id) !== normalizeId(id))
+                        );
                         onCountUpdate(-1);
                         showFeedToast('Comentário excluído.', 'success');
                     } else {
@@ -580,11 +812,15 @@
                         method: 'PUT',
                         headers: apiHeaders(),
                         body: JSON.stringify({ texto }),
-                        credentials: 'include'
+                        credentials: 'include',
                     });
                     const json = await res.json();
                     if (json.success) {
-                        setComments(prev => prev.map(c => normalizeId(c._id) === normalizeId(id) ? json.data : c));
+                        setComments((prev) =>
+                            prev.map((c) =>
+                                normalizeId(c._id) === normalizeId(id) ? json.data : c
+                            )
+                        );
                         showFeedToast('Comentário atualizado!', 'success');
                     } else {
                         showFeedToast(json.error || 'Erro ao editar comentário.', 'error');
@@ -595,65 +831,121 @@
                 }
             };
 
-            const rootComments = comments.filter(c => !c.parentId);
+            const rootComments = comments.filter((c) => !c.parentId);
             const avisoPrincipal = useMemo(() => analisarLinguagem(mainText), [mainText]);
 
             const readAllComments = () => {
                 if (!window.speak || comments.length === 0) return;
-                
+
                 const textToRead = comments
-                    .filter(c => !c.parentId) // Apenas principais para não ficar confuso
-                    .map(c => `${c.usuarioNome} comentou: ${c.texto}`)
+                    .filter((c) => !c.parentId) // Apenas principais para não ficar confuso
+                    .map((c) => `${c.usuarioNome} comentou: ${c.texto}`)
                     .join('. ');
-                
+
                 if (textToRead) {
                     window.speak(`Lendo ${comments.length} comentários. ${textToRead}`);
                 }
             };
 
-            return h('div', { className: 'comments-section-legacy' },
-                feedback && h('div', { className: `comment-feedback comment-feedback-${feedback.type}` }, feedback.text),
-                h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' } },
-                    h('span', { style: { fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' } }, 'Comentários'),
-                    comments.length > 0 && h('button', {
-                        className: 'action-btn-legacy',
-                        onClick: readAllComments,
-                        style: { padding: '4px 8px', fontSize: '0.7rem' },
-                        title: 'Ouvir todos os comentários'
-                    }, h('i', { className: 'bi bi-volume-up-fill', style: { marginRight: '5px' } }), 'Ouvir Comentários')
+            return h(
+                'div',
+                { className: 'comments-section-legacy' },
+                feedback &&
+                    h(
+                        'div',
+                        { className: `comment-feedback comment-feedback-${feedback.type}` },
+                        feedback.text
+                    ),
+                h(
+                    'div',
+                    {
+                        style: {
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: '10px',
+                        },
+                    },
+                    h(
+                        'span',
+                        {
+                            style: {
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                color: 'var(--text-muted)',
+                            },
+                        },
+                        'Comentários'
+                    ),
+                    comments.length > 0 &&
+                        h(
+                            'button',
+                            {
+                                className: 'action-btn-legacy',
+                                onClick: readAllComments,
+                                style: { padding: '4px 8px', fontSize: '0.7rem' },
+                                title: 'Ouvir todos os comentários',
+                            },
+                            h('i', {
+                                className: 'bi bi-volume-up-fill',
+                                style: { marginRight: '5px' },
+                            }),
+                            'Ouvir Comentários'
+                        )
                 ),
-                loading ? h('p', { className: 'comments-loading-text' }, 'Carregando comentários...') :
-                h('div', { className: 'comments-list-premium' },
-                    rootComments.length === 0
-                        ? h('p', { className: 'comments-empty-text' }, 'Seja o primeiro a comentar.')
-                        : rootComments.map(c => h(CommentItem, {
-                            key: c._id, comment: c, allComments: comments,
-                            onReply: postComment, onDelete: deleteComment, onEdit: editComment
-                        }))
-                ),
+                loading
+                    ? h('p', { className: 'comments-loading-text' }, 'Carregando comentários...')
+                    : h(
+                          'div',
+                          { className: 'comments-list-premium' },
+                          rootComments.length === 0
+                              ? h(
+                                    'p',
+                                    { className: 'comments-empty-text' },
+                                    'Seja o primeiro a comentar.'
+                                )
+                              : rootComments.map((c) =>
+                                    h(CommentItem, {
+                                        key: c._id,
+                                        comment: c,
+                                        allComments: comments,
+                                        onReply: postComment,
+                                        onDelete: deleteComment,
+                                        onEdit: editComment,
+                                    })
+                                )
+                      ),
                 h(AvisoLinguagem, { resultado: avisoPrincipal }),
-                h('div', { className: 'comment-form-legacy' },
+                h(
+                    'div',
+                    { className: 'comment-form-legacy' },
                     h('textarea', {
                         ref: inputRef,
                         className: `comment-input-legacy ${avisoPrincipal.bloquear ? 'campo-linguagem-impropria' : ''}`,
                         placeholder: 'Escreva um comentário público...',
                         value: mainText,
-                        onChange: e => setMainText(e.target.value),
+                        onChange: (e) => setMainText(e.target.value),
                         'aria-invalid': avisoPrincipal.bloquear ? 'true' : undefined,
-                        onKeyDown: e => {
+                        onKeyDown: (e) => {
                             if (e.key === 'Enter' && !e.shiftKey) {
                                 e.preventDefault();
                                 postComment(null, mainText);
                             }
                         },
-                        rows: 2
+                        rows: 2,
                     }),
-                    h('button', {
-                        className: `comment-submit-legacy ${avisoPrincipal.bloquear ? 'bloqueado-por-linguagem' : ''}`,
-                        onClick: () => postComment(null, mainText),
-                        disabled: !mainText.trim() || submitting || avisoPrincipal.bloquear,
-                        title: avisoPrincipal.bloquear ? avisoPrincipal.mensagem : undefined
-                    }, h('i', { className: `bi ${submitting ? 'bi-hourglass-split' : 'bi-send-fill'}` }))
+                    h(
+                        'button',
+                        {
+                            className: `comment-submit-legacy ${avisoPrincipal.bloquear ? 'bloqueado-por-linguagem' : ''}`,
+                            onClick: () => postComment(null, mainText),
+                            disabled: !mainText.trim() || submitting || avisoPrincipal.bloquear,
+                            title: avisoPrincipal.bloquear ? avisoPrincipal.mensagem : undefined,
+                        },
+                        h('i', {
+                            className: `bi ${submitting ? 'bi-hourglass-split' : 'bi-send-fill'}`,
+                        })
+                    )
                 )
             );
         }
@@ -663,82 +955,156 @@
             const [showComments, setShowComments] = useState(false);
             const [commentsCount, setCommentsCount] = useState(comunicado.comentariosCount || 0);
 
-            const toggleComments = () => setShowComments(prev => !prev);
-            
-            const isImportante = comunicado.prioridade === 'Importante' || comunicado.prioridade === 'Urgente';
+            const toggleComments = () => setShowComments((prev) => !prev);
 
-            return h(motion.div, {
-                layout: true,
-                initial: { opacity: 0, y: 20 },
-                animate: { opacity: 1, y: 0 },
-                className: `comunicado-card-premium card-priority-${(comunicado.prioridade || 'normal').toLowerCase()}`
-            },
-                h('div', { className: 'card-header-premium' },
-                    h('div', { className: 'card-avatar-premium' },
+            const isImportante =
+                comunicado.prioridade === 'Importante' || comunicado.prioridade === 'Urgente';
+
+            return h(
+                motion.div,
+                {
+                    layout: true,
+                    initial: { opacity: 0, y: 20 },
+                    animate: { opacity: 1, y: 0 },
+                    className: `comunicado-card-premium card-priority-${(comunicado.prioridade || 'normal').toLowerCase()}`,
+                },
+                h(
+                    'div',
+                    { className: 'card-header-premium' },
+                    h(
+                        'div',
+                        { className: 'card-avatar-premium' },
                         (() => {
                             // Prioritiza foto resolvida pelo backend, mas aceita fallbacks se necessário
                             const photoUrl = window.getPhotoUrl(comunicado.diretorFoto);
                             const isDefault = !photoUrl || photoUrl.includes('default-avatar.png');
-                            
+
                             if (isDefault) {
-                                return h('div', { className: 'avatar-placeholder avatar-md' }, 
-                                    window.utils?.getInitials ? window.utils.getInitials(comunicado.diretorNome || "D") : (comunicado.diretorNome || "D").charAt(0)
+                                return h(
+                                    'div',
+                                    { className: 'avatar-placeholder avatar-md' },
+                                    window.utils?.getInitials
+                                        ? window.utils.getInitials(comunicado.diretorNome || 'D')
+                                        : (comunicado.diretorNome || 'D').charAt(0)
                                 );
                             }
-                            
-                            return h('img', { 
-                                src: photoUrl, 
+
+                            return h('img', {
+                                src: photoUrl,
                                 className: 'user-avatar avatar-md',
                                 alt: comunicado.diretorNome,
-                                onError: (e) => { 
-                                    e.target.style.display = 'none'; 
+                                onError: (e) => {
+                                    e.target.style.display = 'none';
                                     // Ver comentário equivalente no avatar de comentário.
-                                    e.target.parentElement.innerHTML = `<div class="avatar-placeholder avatar-md">${String(window.utils?.getInitials(comunicado.diretorNome || "D") || "D").replace(/[&<>"'`]/g, '')}</div>`;
-                                }
+                                    e.target.parentElement.innerHTML = `<div class="avatar-placeholder avatar-md">${String(window.utils?.getInitials(comunicado.diretorNome || 'D') || 'D').replace(/[&<>"'`]/g, '')}</div>`;
+                                },
                             });
                         })()
                     ),
-                    h('div', { className: 'author-info-mural' },
-                        h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' } },
-                            h('h4', { className: 'card-author-premium' }, comunicado.diretorNome || "Direção"),
-                            h('span', { className: 'card-author-role' }, comunicado.diretorPerfil || 'Direção'),
-                            h('span', { className: `category-pill-card` }, comunicado.categoria || 'Geral')
+                    h(
+                        'div',
+                        { className: 'author-info-mural' },
+                        h(
+                            'div',
+                            {
+                                style: {
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    flexWrap: 'wrap',
+                                },
+                            },
+                            h(
+                                'h4',
+                                { className: 'card-author-premium' },
+                                comunicado.diretorNome || 'Direção'
+                            ),
+                            h(
+                                'span',
+                                { className: 'card-author-role' },
+                                comunicado.diretorPerfil || 'Direção'
+                            ),
+                            h(
+                                'span',
+                                { className: `category-pill-card` },
+                                comunicado.categoria || 'Geral'
+                            )
                         ),
-                        h('span', { className: 'card-date-premium' }, formatDate(comunicado.dataCriacao))
+                        h(
+                            'span',
+                            { className: 'card-date-premium' },
+                            formatDate(comunicado.dataCriacao)
+                        )
                     )
                 ),
-                h('div', { className: 'card-body-premium' },
-                    h('h3', { className: 'card-title-premium' }, 
-                        h('i', { className: 'bi bi-megaphone', style: { color: 'var(--primary-neon)', marginRight: '10px' } }),
+                h(
+                    'div',
+                    { className: 'card-body-premium' },
+                    h(
+                        'h3',
+                        { className: 'card-title-premium' },
+                        h('i', {
+                            className: 'bi bi-megaphone',
+                            style: { color: 'var(--primary-neon)', marginRight: '10px' },
+                        }),
                         comunicado.titulo
                     ),
-                    h('div', { className: 'card-text-premium', dangerouslySetInnerHTML: { __html: comunicado.conteudo } }),
-                    
+                    // O conteúdo é texto: o servidor tira as tags na gravação. Ia
+                    // como HTML e executava o que tivesse escapado do filtro (#648).
+                    h(
+                        'div',
+                        { className: 'card-text-premium', style: { whiteSpace: 'pre-line' } },
+                        stripHtml(comunicado.conteudo)
+                    ),
+
                     // Grade de Imagens
-                    comunicado.imagens?.length > 0 && h('div', { className: `card-media-grid-premium grid-${Math.min(comunicado.imagens.length, 3)}` },
-                        comunicado.imagens.map((img, i) => h('img', { key: i, src: img, className: 'media-item-premium', style: { borderRadius: '12px', marginBottom: '10px' }, onClick: () => window.open(img, '_blank') }))
-                    )
+                    comunicado.imagens?.length > 0 &&
+                        h(
+                            'div',
+                            {
+                                className: `card-media-grid-premium grid-${Math.min(comunicado.imagens.length, 3)}`,
+                            },
+                            comunicado.imagens.map((img, i) =>
+                                h('img', {
+                                    key: i,
+                                    src: img,
+                                    className: 'media-item-premium',
+                                    style: { borderRadius: '12px', marginBottom: '10px' },
+                                    onClick: () => window.open(img, '_blank'),
+                                })
+                            )
+                        )
                 ),
-                h('div', { className: 'card-actions-premium' },
+                h(
+                    'div',
+                    { className: 'card-actions-premium' },
                     h(ReactionArea, { messageId: comunicado._id, initialReactions: [] }),
-                    h(CustomAudioPlayer, { text: `${comunicado.titulo}. ${stripHtml(comunicado.conteudo)}` }),
-                    h('button', {
-                        className: `action-btn-legacy ${showComments ? 'active' : ''}`,
-                        type: 'button',
-                        onClick: toggleComments
-                    },
+                    h(CustomAudioPlayer, {
+                        text: `${comunicado.titulo}. ${stripHtml(comunicado.conteudo)}`,
+                    }),
+                    h(
+                        'button',
+                        {
+                            className: `action-btn-legacy ${showComments ? 'active' : ''}`,
+                            type: 'button',
+                            onClick: toggleComments,
+                        },
                         h('i', { className: 'bi bi-chat-left-text' }),
                         h('span', { className: 'count-badge-legacy' }, commentsCount),
                         ' Comentários'
                     )
                 ),
-                showComments && h('div', { className: 'comments-wrapper-premium' },
-                    h(CommentSection, {
-                        comunicadoId: comunicado._id,
-                        initialComments: [],
-                        onCountUpdate: (delta) => setCommentsCount(prev => Math.max(0, prev + delta))
-                    })
-                )
+                showComments &&
+                    h(
+                        'div',
+                        { className: 'comments-wrapper-premium' },
+                        h(CommentSection, {
+                            comunicadoId: comunicado._id,
+                            initialComments: [],
+                            onCountUpdate: (delta) =>
+                                setCommentsCount((prev) => Math.max(0, prev + delta)),
+                        })
+                    )
             );
         }
 
@@ -753,29 +1119,49 @@
                 onSearch(val);
             };
 
-            return h('div', { className: 'feed-header-social' },
-                h('div', { className: 'feed-header-top' },
-                    h('div', { className: 'feed-title-wrapper' },
+            return h(
+                'div',
+                { className: 'feed-header-social' },
+                h(
+                    'div',
+                    { className: 'feed-header-top' },
+                    h(
+                        'div',
+                        { className: 'feed-title-wrapper' },
                         h('h2', { className: 'feed-main-title' }, 'Mural da Comunidade'),
-                        h('p', { className: 'feed-subtitle' }, 'Fique por dentro das novidades da sua escola')
+                        h(
+                            'p',
+                            { className: 'feed-subtitle' },
+                            'Fique por dentro das novidades da sua escola'
+                        )
                     ),
-                    h('div', { className: 'feed-search-wrapper' },
+                    h(
+                        'div',
+                        { className: 'feed-search-wrapper' },
                         h('i', { className: 'bi bi-search search-icon' }),
                         h('input', {
                             type: 'text',
                             placeholder: 'Buscar no mural...',
                             value: localQuery,
                             onChange: handleSearchChange,
-                            className: 'feed-search-input'
+                            className: 'feed-search-input',
                         })
                     )
                 ),
-                h('div', { className: 'feed-filters-bar' },
-                    categories.map(cat => h('button', {
-                        key: cat,
-                        className: `feed-filter-tab ${currentFilter === cat ? 'active' : ''}`,
-                        onClick: () => onFilterChange(cat)
-                    }, cat))
+                h(
+                    'div',
+                    { className: 'feed-filters-bar' },
+                    categories.map((cat) =>
+                        h(
+                            'button',
+                            {
+                                key: cat,
+                                className: `feed-filter-tab ${currentFilter === cat ? 'active' : ''}`,
+                                onClick: () => onFilterChange(cat),
+                            },
+                            cat
+                        )
+                    )
                 )
             );
         }
@@ -802,32 +1188,36 @@
                     } else {
                         throw new Error(json.error || 'Erro ao carregar avisos');
                     }
-                } catch (e) { 
+                } catch (e) {
                     console.error('Erro ao carregar feed:', e);
                     setError('Não foi possível conectar ao servidor para carregar o mural.');
-                } finally { 
-                    setLoading(false); 
+                } finally {
+                    setLoading(false);
                 }
             };
 
             useEffect(() => {
                 loadFeed();
-                
+
                 const socket = window.socket;
                 if (socket) {
                     const handleNew = (comunicado) => {
                         // Check if it matches existing filters locally
-                        const matchesBusca = !filters.busca || 
-                            comunicado.titulo.toLowerCase().includes(filters.busca.toLowerCase()) || 
+                        const matchesBusca =
+                            !filters.busca ||
+                            comunicado.titulo.toLowerCase().includes(filters.busca.toLowerCase()) ||
                             comunicado.conteudo.toLowerCase().includes(filters.busca.toLowerCase());
-                        const matchesCat = filters.categoria === 'Todos' || comunicado.categoria === filters.categoria;
-                        
+                        const matchesCat =
+                            filters.categoria === 'Todos' ||
+                            comunicado.categoria === filters.categoria;
+
                         if (matchesBusca && matchesCat) {
-                            setComunicados(prev => [comunicado, ...prev]);
+                            setComunicados((prev) => [comunicado, ...prev]);
                         }
                     };
-                    const handleRemove = (data) => setComunicados(prev => prev.filter(c => c._id !== data.id));
-                    
+                    const handleRemove = (data) =>
+                        setComunicados((prev) => prev.filter((c) => c._id !== data.id));
+
                     socket.on('comunicado:new', handleNew);
                     socket.on('comunicado:remove', handleRemove);
                     return () => {
@@ -839,41 +1229,64 @@
 
             const handleSearch = (q) => {
                 // Debounce manual ou via setFilters que dipara useEffect
-                setFilters(prev => ({ ...prev, busca: q }));
+                setFilters((prev) => ({ ...prev, busca: q }));
             };
 
             const handleCategory = (cat) => {
-                setFilters(prev => ({ ...prev, categoria: cat }));
+                setFilters((prev) => ({ ...prev, categoria: cat }));
             };
 
-            return h('section', { className: 'announcement-feed-premium' },
-                h(FeedHeader, { 
-                    onSearch: handleSearch, 
-                    onFilterChange: handleCategory, 
-                    currentFilter: filters.categoria 
+            return h(
+                'section',
+                { className: 'announcement-feed-premium' },
+                h(FeedHeader, {
+                    onSearch: handleSearch,
+                    onFilterChange: handleCategory,
+                    currentFilter: filters.categoria,
                 }),
-                
-                loading && comunicados.length === 0 ? h('div', { className: 'feed-loading-premium' }, 
-                    h('div', { className: 'spinner-premium' }),
-                    h('p', null, 'Atualizando seu feed...')
-                ) :
-                error ? h('div', { className: 'feed-error-premium' },
-                    h('i', { className: 'bi bi-wifi-off' }),
-                    h('p', null, error),
-                    h('button', { onClick: () => loadFeed(), className: 'btn-retry' }, 'Tentar novamente')
-                ) :
-                comunicados.length === 0 ? h('div', { className: 'feed-empty-social' }, 
-                    h('div', { className: 'empty-artwork' }, 
-                        h('i', { className: 'bi bi-chat-square-dots' })
-                    ),
-                    h('h3', null, 'O mural está vazio'),
-                    h('p', null, 'Não encontramos avisos com os filtros selecionados.')
-                ) :
-                h('div', { className: 'feed-list-premium' },
-                    h(AnimatePresence, { mode: 'popLayout' },
-                        comunicados.map(c => h(AnnouncementCard, { key: c._id, comunicado: c }))
-                    )
-                )
+
+                loading && comunicados.length === 0
+                    ? h(
+                          'div',
+                          { className: 'feed-loading-premium' },
+                          h('div', { className: 'spinner-premium' }),
+                          h('p', null, 'Atualizando seu feed...')
+                      )
+                    : error
+                      ? h(
+                            'div',
+                            { className: 'feed-error-premium' },
+                            h('i', { className: 'bi bi-wifi-off' }),
+                            h('p', null, error),
+                            h(
+                                'button',
+                                { onClick: () => loadFeed(), className: 'btn-retry' },
+                                'Tentar novamente'
+                            )
+                        )
+                      : comunicados.length === 0
+                        ? h(
+                              'div',
+                              { className: 'feed-empty-social' },
+                              h(
+                                  'div',
+                                  { className: 'empty-artwork' },
+                                  h('i', { className: 'bi bi-chat-square-dots' })
+                              ),
+                              h('h3', null, 'O mural está vazio'),
+                              h('p', null, 'Não encontramos avisos com os filtros selecionados.')
+                          )
+                        : h(
+                              'div',
+                              { className: 'feed-list-premium' },
+                              h(
+                                  AnimatePresence,
+                                  { mode: 'popLayout' },
+                                  comunicados.map((c) =>
+                                      h(AnnouncementCard, { key: c._id, comunicado: c })
+                                  )
+                              )
+                          )
             );
         }
 

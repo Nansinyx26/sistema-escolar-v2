@@ -188,7 +188,9 @@ window.verDetalhe = function(id) {
     if (!c) return;
     const dest = Array.isArray(c.destinatarios) ? c.destinatarios.map(d => d === 'todos' ? 'Todos' : d === 'professores' ? 'Professores' : d === 'responsaveis' ? 'Responsáveis' : d.startsWith('turma:') ? `Turma ${d.replace('turma:', '')}` : d).join(', ') : '—';
     document.getElementById('modalTitle').textContent = c.titulo;
-    document.getElementById('confirmText').innerHTML = `<strong style="color:#a1a1aa;">Categoria:</strong> ${c.categoria || '—'}<br><strong style="color:#a1a1aa;">Prioridade:</strong> ${c.prioridade || 'Normal'}<br><strong style="color:#a1a1aa;">Público:</strong> ${dest}<br><strong style="color:#a1a1aa;">Data:</strong> ${new Date(c.dataCriacao).toLocaleString('pt-BR')}<br><br>${c.conteudo || ''}`;
+    // O conteúdo é texto (o servidor tira as tags): ia como HTML (Issue #648).
+    const conteudo = escapeHtml(textoDoHtml(c.conteudo)).replace(/\n/g, '<br>');
+    document.getElementById('confirmText').innerHTML = `<strong style="color:#a1a1aa;">Categoria:</strong> ${escapeHtml(c.categoria) || '—'}<br><strong style="color:#a1a1aa;">Prioridade:</strong> ${escapeHtml(c.prioridade) || 'Normal'}<br><strong style="color:#a1a1aa;">Público:</strong> ${escapeHtml(dest)}<br><strong style="color:#a1a1aa;">Data:</strong> ${new Date(c.dataCriacao).toLocaleString('pt-BR')}<br><br>${conteudo}`;
     document.getElementById('btnConfirmarEnvio').style.display = 'none';
     abrirModal();
 };
@@ -359,6 +361,8 @@ window.showToast = showToast;
 
 function debounce(fn, ms) { let t; return function(...args) { clearTimeout(t); t = setTimeout(() => fn.apply(this, args), ms); }; }
 function escapeHtml(str) { if (!str) return ''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// Texto de um HTML num documento inerte: nada carrega, nada executa (Issue #648).
+function textoDoHtml(html) { return new DOMParser().parseFromString(String(html ?? ''), 'text/html').body.textContent || ''; }
 function getCsrfHeaders() { const m = document.cookie.match(/csrf_token=([^;]+)/); return m ? { 'X-CSRF-Token': decodeURIComponent(m[1]) } : {}; }
 
 // ─── Ações da página (épico #612) ─────────────────────────────────────────────
