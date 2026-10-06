@@ -85,11 +85,18 @@ exports.create = async (req, res) => {
 
         // O aluno da chamada passa pela mesma guarda das rotas de aluno: sem
         // ela, dava para lançar falta no nome de criança de outra turma.
-        if (corpo.aluno) {
-            const acesso = await assertAcessoAoAluno(req, String(corpo.aluno));
+        // Vale também quando o aluno vem só pela matrícula, e a matrícula
+        // gravada é a do cadastro, nunca a do corpo (Issue #661): o portal da
+        // família casa falta pela matrícula.
+        const referencia = corpo.aluno || corpo.matriculaId;
+        if (referencia) {
+            const acesso = await assertAcessoAoAluno(req, String(referencia));
             if (!acesso.ok) {
                 return res.status(acesso.status).json({ success: false, error: acesso.error });
             }
+            if (!corpo.aluno) corpo.aluno = String(acesso.aluno._id);
+            if (acesso.aluno.matricula) corpo.matriculaId = String(acesso.aluno.matricula);
+            else delete corpo.matriculaId;
         }
 
         if (req.escolaId) corpo.escolaId = req.escolaId;

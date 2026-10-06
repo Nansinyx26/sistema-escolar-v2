@@ -412,12 +412,20 @@ describe('Módulo de Avaliações Escolares (/api/avaliacoes-escolares)', () => 
                 bimestre: 1,
                 escolaId: String(escolaA._id),
             });
+            // Aluno real da turma: desde a Issue #661, aluno de fora da turma
+            // é recusado antes da faixa da nota.
+            const aluno = await Aluno.create({
+                nome: 'Aluno da Turma',
+                turmaId: '7A',
+                ativo: true,
+                escolaId: String(escolaA._id),
+            });
 
             const res = await request(app)
                 .post(`/api/avaliacoes-escolares/${avaliacao._id}/notas`)
                 .set('Cookie', cookie)
                 .send({
-                    notas: [{ alunoId: 'aluno-fake', nota: 15 }], // inválida
+                    notas: [{ alunoId: String(aluno._id), nota: 15 }], // inválida
                 });
 
             expect(res.status).toBe(400);
