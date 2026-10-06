@@ -87,6 +87,8 @@ function criarAutenticacaoSocket(JWT_SECRET) {
                 superAdmin: conta.superAdmin === true,
             };
             socket.data.usuario = usuarioSocket;
+            // O logout derruba só os sockets do token encerrado (Issue #667).
+            socket.data.jti = decoded.jti || null;
             const escolaBloqueio = require('../services/escolaBloqueio');
             if (await escolaBloqueio.escolaBloqueadaPara(usuarioSocket, [escolaId])) {
                 return next(new Error(escolaBloqueio.CODIGO));
