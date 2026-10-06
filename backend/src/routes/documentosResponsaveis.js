@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const DocumentoResponsavelController = require('../controllers/DocumentoResponsavelController');
 const uploadDocument = require('../middleware/uploadDocument');
+const { limparCorpoMultipart } = require('../middleware/limparCorpoMultipart');
 
 function tratarUpload(req, res, next) {
     uploadDocument.single('arquivo')(req, res, (err) => {
@@ -11,7 +12,7 @@ function tratarUpload(req, res, next) {
                 error: err.message || 'Erro no upload do arquivo.',
             });
         }
-        next();
+        limparCorpoMultipart(req, res, next);
     });
 }
 

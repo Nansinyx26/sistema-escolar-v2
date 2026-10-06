@@ -505,6 +505,33 @@ describe('criarEvento e enviarComunicado', () => {
         expect(com.prioridade).toBe('Importante');
     });
 
+    it('título e conteúdo com tag saem limpos no preview, no comunicado e na notificação (Issue #647)', async () => {
+        const { cookie } = await cookieDe('diretor');
+        const { confirmacao } = await pedirAcao(cookie, 'enviarComunicado', {
+            titulo: 'Aviso <img src=x onerror=alert(1)>',
+            conteudo: 'Leia <script>alert(1)</script>com atenção <b>hoje</b>',
+            destinatarios: ['todos'],
+        });
+
+        // Os parâmetros vêm do modelo, não do corpo da requisição: antes
+        // passavam crus até o banco e o sino.
+        expect(confirmacao.dados.conteudo).not.toMatch(/[<>]/);
+
+        const res = await confirmar(cookie, confirmacao.confirmToken);
+        expect(res.status).toBe(200);
+
+        const com = await Comunicado.findOne({}).sort({ createdAt: -1 }).lean();
+        expect(com.titulo).toBe('Aviso');
+        expect(com.conteudo).not.toMatch(/[<>]/);
+        expect(com.conteudo).toContain('com atenção hoje');
+
+        const Notificacao = require('../models/Notificacao');
+        for (const n of await Notificacao.find({}).lean()) {
+            expect(String(n.titulo || '')).not.toMatch(/[<>]/);
+            expect(String(n.corpoHtml || '')).not.toMatch(/[<>]/);
+        }
+    });
+
     it('recusa destinatário fora da lista conhecida', async () => {
         const { cookie } = await cookieDe('diretor');
         const { confirmacao, resultadoNoModelo } = await pedirAcao(cookie, 'enviarComunicado', {

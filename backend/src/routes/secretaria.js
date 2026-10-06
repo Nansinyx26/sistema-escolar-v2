@@ -6,6 +6,7 @@ const SecretariaAutorizacoesController = require('../controllers/SecretariaAutor
 const authorize = require('../middleware/authorize');
 const filtrarPorEscola = require('../middleware/filtrarPorEscola');
 const { uploadImportacao, tratarErroUpload } = require('../middleware/uploadImportacao');
+const { limparCorpoMultipart } = require('../middleware/limparCorpoMultipart');
 const { importacaoPreviewLimiter, importacaoIpLimiter } = require('../middleware/rateLimiters');
 
 // Todas as rotas requerem perfil secretaria, diretor ou admin
@@ -82,6 +83,7 @@ router.post(
     importacaoPreviewLimiter,
     uploadImportacao.single('arquivo'),
     tratarErroUpload,
+    limparCorpoMultipart,
     TurmaAlunosController.previewImportacao
 );
 router.post(

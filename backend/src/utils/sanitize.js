@@ -37,7 +37,49 @@ const sanitizeObject = (obj) => {
     });
 };
 
+/**
+ * NoSQL INJECTION NO BODY.
+ *
+ * `sanitizeObject` percorria o body recursivamente mas só limpava HTML das
+ * strings — as CHAVES passavam intactas. Um JSON como
+ *     { "email": { "$ne": null }, "senha": { "$gt": "" } }
+ * chegava inteiro ao controller e virava operador de consulta no Mongo.
+ * (No /login o `email.toLowerCase()` estourava com TypeError → 500, um acidente
+ * feliz; mas qualquer outro handler que jogue um campo do body direto num
+ * filtro estava exposto.)
+ *
+ * Diferente da versão de query/params, aqui NÃO descartamos objetos aninhados:
+ * o body legítimo tem estrutura (segundoResponsavel, lgpdConsents,
+ * pessoasAutorizadas…). Removemos apenas as chaves perigosas, recursivamente:
+ *   - `$...`  → operador de consulta;
+ *   - `a.b`   → notação de caminho, usada para escrever campo aninhado
+ *               arbitrário num $set;
+ *   - chaves de poluição de prototype.
+ */
+const CHAVES_PROIBIDAS = new Set(['__proto__', 'constructor', 'prototype']);
+const PROFUNDIDADE_MAX = 12;
+
+function removerOperadoresMongoProfundo(alvo, profundidade = 0) {
+    if (!alvo || typeof alvo !== 'object' || profundidade > PROFUNDIDADE_MAX) return;
+
+    if (Array.isArray(alvo)) {
+        alvo.forEach((item) => {
+            removerOperadoresMongoProfundo(item, profundidade + 1);
+        });
+        return;
+    }
+
+    Object.keys(alvo).forEach((chave) => {
+        if (chave.startsWith('$') || chave.includes('.') || CHAVES_PROIBIDAS.has(chave)) {
+            delete alvo[chave];
+            return;
+        }
+        removerOperadoresMongoProfundo(alvo[chave], profundidade + 1);
+    });
+}
+
 module.exports = {
     sanitizeInput,
     sanitizeObject,
+    removerOperadoresMongoProfundo,
 };

@@ -13,6 +13,7 @@ const { parsearXlsx, parsearCsv } = require('./parserPlanilha');
 const classificador = require('./classificador');
 const normalizacao = require('./normalizacao');
 const { pareceTexto } = require('../../utils/assinaturaArquivo');
+const { sanitizeObject } = require('../../utils/sanitize');
 
 /** Teto de tamanho do upload (§5.1). Espelhado no multer da rota. */
 const TAMANHO_MAXIMO = 5 * 1024 * 1024;
@@ -115,6 +116,11 @@ async function lerArquivo({ buffer, mapaColunas }) {
     }
 
     const registros = (resultado.registros || []).slice(0, MAXIMO_LINHAS);
+    // O arquivo não passa pelo filtro do corpo JSON (app.js): o que foi lido
+    // dele vai direto para a prévia e, na confirmação, para o cadastro do
+    // aluno. Mesmo tratamento do filtro, aqui na leitura (Issue #647).
+    for (const registro of registros) sanitizeObject(registro);
+    if (resultado.cabecalho) sanitizeObject(resultado.cabecalho);
     const avisos = [...(resultado.avisos || [])];
     if ((resultado.registros || []).length > MAXIMO_LINHAS) {
         avisos.push(

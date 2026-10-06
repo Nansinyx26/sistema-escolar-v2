@@ -824,6 +824,13 @@ exports.apagarMensagem = async (req, res) => {
     }
 };
 
+/**
+ * Reações aceitas — as mesmas que a interface oferece (`REACOES_RAPIDAS` em
+ * js/chat-direto-manager.js). O `emoji` era texto livre: ia para o banco e
+ * para a outra ponta da conversa sem passar por lista nenhuma (Issue #647).
+ */
+const REACOES_PERMITIDAS = new Set(['👍', '❤️', '😂', '😮', '😢', '👏', '🎉']);
+
 exports.reagirMensagem = async (req, res) => {
     try {
         const { mensagemId, emoji } = req.body;
@@ -834,6 +841,10 @@ exports.reagirMensagem = async (req, res) => {
             return res
                 .status(400)
                 .json({ success: false, error: 'ID da mensagem e emoji são obrigatórios.' });
+        }
+        // 'REMOVE' é o comando de tirar a própria reação (ver abaixo).
+        if (emoji !== 'REMOVE' && !REACOES_PERMITIDAS.has(String(emoji))) {
+            return res.status(400).json({ success: false, error: 'Reação não permitida.' });
         }
 
         const msg = await ChatDireto.findById(String(mensagemId));
