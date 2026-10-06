@@ -56,10 +56,8 @@ class DirecaoDashboard {
             const turmas = json.success ? json.data : [];
 
             const selectTurma = document.getElementById('filtroTurma');
-            const selectTurmaCodigos = document.getElementById('filtroTurmaCodigosSecretos');
             // Clear existing options except first
             selectTurma.innerHTML = '<option value="">Todas as turmas</option>';
-            if (selectTurmaCodigos) selectTurmaCodigos.innerHTML = '<option value="">Todas as turmas</option>';
 
             turmas.sort((a, b) => {
                 const idA = a.id || a.nome || a._id || '';
@@ -80,14 +78,6 @@ class DirecaoDashboard {
                 option.value = turmaId;
                 option.textContent = `Turma ${turmaId}`;
                 selectTurma.appendChild(option);
-
-                // Also populate the secret codes turma filter
-                if (selectTurmaCodigos) {
-                    const opt2 = document.createElement('option');
-                    opt2.value = turmaId;
-                    opt2.textContent = `Turma ${turmaId}`;
-                    selectTurmaCodigos.appendChild(opt2);
-                }
             });
 
             // Materias (Hardcoded for now or fetch if configured)
@@ -135,14 +125,6 @@ class DirecaoDashboard {
                 console.error(e);
             }
         });
-
-        // Secret Codes Card — search and filter
-        let searchTimer = null;
-        document.getElementById('searchCodigosSecretos')?.addEventListener('input', () => {
-            clearTimeout(searchTimer);
-            searchTimer = setTimeout(() => this.loadSecretCodes(), 300);
-        });
-        document.getElementById('filtroTurmaCodigosSecretos')?.addEventListener('change', () => this.loadSecretCodes());
     }
 
     async loadSecretCode() {
@@ -183,11 +165,9 @@ class DirecaoDashboard {
             const chartJson = await chartRes.json();
             if (chartJson.success) this.renderCharts(chartJson.data);
 
-            // 3. Load Ranking
-            const rankRes = await fetch(`${this.baseUrl}/dashboard/ranking?${query}`, { credentials: 'include' });
-            const rankJson = await rankRes.json();
-            if (rankJson.success) this.renderRanking(rankJson.data);
-
+            // O ranking e a tabela de códigos secretos saíram desta tela (Issue
+            // #656): html/direcao/index.html não tem os elementos, e os códigos
+            // vivem em direcao/codigos-secretos.js, que já escapa os dados.
         } catch (error) {
             console.error('Erro ao carregar dados do dashboard:', error);
         }
@@ -363,100 +343,11 @@ class DirecaoDashboard {
         });
     }
 
-    renderRanking(ranking) {
-        const tbody = document.getElementById('rankingTableBody');
-        if (!tbody) return;
-
-        if (ranking.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="empty-message">Nenhum dado disponível</td></tr>';
-            return;
-        }
-
-        tbody.innerHTML = ranking.map((item, index) => {
-            let positionClass = 'normal';
-            if (index === 0) positionClass = 'gold';
-            else if (index === 1) positionClass = 'silver';
-            else if (index === 2) positionClass = 'bronze';
-
-            return `
-                <tr>
-                    <td><span class="ranking-position ${positionClass}">${index + 1}</span></td>
-                    <td>${item.nome}</td>
-                    <td>Turma ${item.turma}</td>
-                    <td><span class="media-valor ${item.media >= 7 ? 'nota-boa' : item.media >= 5 ? 'nota-media' : 'nota-baixa'}">${item.media.toFixed(1)}</span></td>
-                </tr>
-            `;
-        }).join('');
-    }
-
     async exportarRelatorio() {
         // Implementar exportação semelhante mas usando dados do backend
         // (Simplificando: busca tudo de novo e gera TXT)
         // ...
         alert('Funcionalidade de exportação em manutenção para API.');
-    }
-
-    // ─── Secret Codes Table ──────────────────────────────────────────────────
-    async loadSecretCodes() {
-        const tbody = document.getElementById('secretCodesTableBody');
-        if (!tbody) return;
-
-        const q = (document.getElementById('searchCodigosSecretos')?.value || '').trim();
-        const turma = document.getElementById('filtroTurmaCodigosSecretos')?.value || '';
-
-        const params = new URLSearchParams();
-        if (q) params.set('q', q);
-        if (turma) params.set('turma', turma);
-
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-message">Carregando códigos...</td></tr>';
-
-        try {
-            const res = await fetch(`${this.baseUrl}/alunos/codigos-secretos?${params.toString()}`, { credentials: 'include' });
-            const json = await res.json();
-
-            if (!json.success || !json.data || json.data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="empty-message">Nenhum aluno encontrado.</td></tr>';
-                return;
-            }
-
-            this.renderSecretCodes(json.data);
-        } catch (error) {
-            console.error('Erro ao carregar códigos secretos:', error);
-            tbody.innerHTML = '<tr><td colspan="5" class="empty-message">Erro ao carregar dados.</td></tr>';
-        }
-    }
-
-    renderSecretCodes(data) {
-        const tbody = document.getElementById('secretCodesTableBody');
-        if (!tbody) return;
-
-        tbody.innerHTML = data.map(item => {
-            const statusBadge = item.vinculado
-                ? '<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(34,197,94,0.12);color:#22c55e;padding:3px 10px;border-radius:20px;font-size:0.78rem;font-weight:600;"><i class="bi bi-link-45deg"></i> Vinculado</span>'
-                : '<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(251,191,36,0.12);color:#fbbf24;padding:3px 10px;border-radius:20px;font-size:0.78rem;font-weight:600;"><i class="bi bi-clock-history"></i> Aguardando</span>';
-
-            // Sem código = falha ao gerar (a rota gera em lote antes de
-            // responder, então não existe mais estado "gerando").
-            const codigoHTML = item.codigoSecreto
-                ? `<code style="background:rgba(16,185,129,0.1);color:#34d399;padding:4px 10px;border-radius:6px;font-weight:700;letter-spacing:1.5px;font-size:0.9rem;">${item.codigoSecreto}</code>`
-                : '<span style="color:#f87171;font-size:0.85rem;" title="Não foi possível gerar o código deste aluno. Revise o cadastro e recarregue."><i class="bi bi-exclamation-triangle"></i> Falhou</span>';
-
-            return `
-                <tr>
-                    <td style="font-weight:600;">${item.nome}</td>
-                    <td>${codigoHTML}</td>
-                    <td>${item.ano || '-'}</td>
-                    <td>${item.turma || '-'}</td>
-                    <td>${statusBadge}</td>
-                </tr>
-            `;
-        }).join('');
-
-        // Pagination placeholder (optional enhancement)
-        const paginationEl = document.getElementById('secretCodesPagination');
-        if (paginationEl) {
-            paginationEl.innerHTML = `<span style="font-size:0.8rem;color:var(--text-secondary);">${data.length} aluno(s) encontrado(s)</span>`;
-        }
     }
 
     exportarRelatorio() {
