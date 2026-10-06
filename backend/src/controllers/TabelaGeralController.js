@@ -10,6 +10,7 @@
  */
 
 const TabelaGeral = require('../models/TabelaGeral');
+const { escolaMatch } = require('../middleware/filtrarPorEscola');
 
 // ─── Dados originais da grade (mesmo que horario-jaguari.js) ─────────────────
 const TURMAS = [
@@ -156,10 +157,31 @@ function buildResponseError(status, message, extra = {}) {
     return { success: false, error: message, ...extra };
 }
 
+/**
+ * Leitura: só a tabela da escola da sessão (Issue #679). Sem o recorte, a
+ * tabela era uma só para a rede inteira.
+ */
+function daEscola(req, filtro = {}) {
+    const escopo = escolaMatch(req.escolaId);
+    return Object.keys(escopo).length ? { $and: [filtro, escopo] } : filtro;
+}
+
+/**
+ * Escrita: a escola da sessão entra no filtro de toda gravação. Sem escola
+ * ativa não há em qual tabela gravar, e a resposta já foi enviada.
+ */
+function escolaParaGravar(req, res) {
+    if (req.escolaId && req.escolaId !== 'default') return String(req.escolaId);
+    res.status(400).json(
+        buildResponseError(400, 'Escolha a escola ativa antes de alterar a tabela geral.')
+    );
+    return null;
+}
+
 // ─── GET /api/tabela-geral ───────────────────────────────────────────────────
 exports.list = async (req, res) => {
     try {
-        const cells = await TabelaGeral.find({}).lean();
+        const cells = await TabelaGeral.find(daEscola(req)).lean();
 
         // Agrupar por turmaId → dia → aulaIdx para facilitar o frontend
         const grouped = {};
@@ -179,7 +201,9 @@ exports.list = async (req, res) => {
 exports.getSala = async (req, res) => {
     try {
         const { turmaId } = req.params;
-        const cells = await TabelaGeral.find({ turmaId }).sort({ dia: 1, aulaIdx: 1 }).lean();
+        const cells = await TabelaGeral.find(daEscola(req, { turmaId }))
+            .sort({ dia: 1, aulaIdx: 1 })
+            .lean();
 
         // Agrupar por dia
         const byDia = {};
@@ -201,10 +225,7 @@ exports.getProfessor = async (req, res) => {
         if (!professorKey)
             return res.status(400).json(buildResponseError(400, 'professorKey obrigatório'));
 
-        const cells = await TabelaGeral.find({
-            professorKey,
-            abrev: { $ne: '' },
-        })
+        const cells = await TabelaGeral.find(daEscola(req, { professorKey, abrev: { $ne: '' } }))
             .sort({ dia: 1, aulaIdx: 1 })
             .lean();
 
@@ -254,6 +275,8 @@ exports.updateCell = async (req, res) => {
         if (aulaIdx < 0 || aulaIdx > 6) {
             return res.status(400).json(buildResponseError(400, `aulaIdx deve ser 0–6`));
         }
+        const escolaId = escolaParaGravar(req, res);
+        if (!escolaId) return;
 
         // Determina professorKey (vem do body ou calculado pelo model)
         const professorKey =
@@ -264,6 +287,7 @@ exports.updateCell = async (req, res) => {
         // ── Validação de conflito ──────────────────────────────────────────
         if (professorKey && !SEM_CONFLITO.has(professorKey)) {
             const conflito = await TabelaGeral.findOne({
+                escolaId,
                 professorKey,
                 dia,
                 aulaIdx: Number(aulaIdx),
@@ -292,8 +316,10 @@ exports.updateCell = async (req, res) => {
         const turmaIdx = TURMAS_IDS.indexOf(turmaId);
         const turmaNome = turmaIdx >= 0 ? TURMAS[turmaIdx] : turmaId;
 
+        // `escolaId` no filtro: o upsert grava a célula na escola da sessão, e a
+        // gestão de uma escola não reescreve a célula de outra.
         const updated = await TabelaGeral.findOneAndUpdate(
-            { turmaId, dia, aulaIdx: Number(aulaIdx) },
+            { escolaId, turmaId, dia, aulaIdx: Number(aulaIdx) },
             {
                 $set: {
                     turmaNome,
@@ -323,6 +349,8 @@ exports.updateCell = async (req, res) => {
  */
 exports.seed = async (req, res) => {
     try {
+        const escolaId = escolaParaGravar(req, res);
+        if (!escolaId) return;
         const ops = [];
 
         DIAS.forEach((dia) => {
@@ -337,7 +365,7 @@ exports.seed = async (req, res) => {
 
                     ops.push({
                         updateOne: {
-                            filter: { turmaId, dia, aulaIdx },
+                            filter: { escolaId, turmaId, dia, aulaIdx },
                             update: {
                                 $set: {
                                     turmaNome,
@@ -372,7 +400,10 @@ exports.seed = async (req, res) => {
 // ─── DELETE /api/tabela-geral/reset ──────────────────────────────────────────
 exports.reset = async (req, res) => {
     try {
-        const r = await TabelaGeral.deleteMany({});
+        // Só a tabela da escola da sessão; antes apagava a da rede inteira.
+        const escolaId = escolaParaGravar(req, res);
+        if (!escolaId) return;
+        const r = await TabelaGeral.deleteMany({ escolaId });
         res.json(buildResponseOk({ message: `${r.deletedCount} registros removidos` }));
     } catch (err) {
         res.status(500).json(buildResponseError(500, err.message));
