@@ -4,7 +4,6 @@ const { alunosDoResponsavel } = require('../services/vinculoDoResponsavel');
 const obs = require('../observability');
 const { escolaMatch } = require('../middleware/filtrarPorEscola');
 const { extrairPaginacao } = require('../middleware/pagination');
-const escapeRegex = require('../utils/escapeRegex');
 const { filtroPorId, filtroDoPerfil, paraTurmas } = require('../utils/visibilidadeNotificacao');
 
 /** O que a gestão pode gravar numa notificação (Issue #675). */
@@ -18,11 +17,6 @@ const CAMPOS_NOTIFICACAO = [
     'status',
     'dataEnvio',
 ];
-
-/** Regex ancorada e escapada para casar e-mail exato. */
-function emailRegexExato(email) {
-    return new RegExp(`^${escapeRegex(String(email || ''))}$`, 'i');
-}
 
 /** Turmas em que o professor dá aula (sala principal, adicionais e lista). */
 async function turmasDoProfessor(userId) {
