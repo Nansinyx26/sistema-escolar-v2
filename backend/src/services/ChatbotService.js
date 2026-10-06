@@ -743,9 +743,13 @@ async function fetchComunicados({ perfil, turmaAluno, escolaId }) {
  * @param {Object} params
  * @returns {Promise<Object[]>}
  */
-async function fetchGradeHoraria({ turmaId }) {
+async function fetchGradeHoraria({ turmaId, escolaId }) {
     if (!turmaId) return [];
-    const grade = await GradeHoraria.find({ turmaId }).sort({ diaSemana: 1, horaInicio: 1 }).lean();
+    // A escola entra no filtro (Issue #688): "1A" existe em toda escola, e a
+    // resposta misturava a grade das turmas homônimas de outras escolas.
+    const grade = await GradeHoraria.find(comEscola({ turmaId }, escolaMatch(escolaId)))
+        .sort({ diaSemana: 1, horaInicio: 1 })
+        .lean();
     return grade;
 }
 
@@ -1311,7 +1315,7 @@ async function processMessage({
             if (!turmaId && turmasAutorizadas && turmasAutorizadas.length > 0) {
                 turmaId = turmasAutorizadas[0];
             }
-            dados = await fetchGradeHoraria({ turmaId });
+            dados = await fetchGradeHoraria({ turmaId, escolaId });
             break;
         }
 

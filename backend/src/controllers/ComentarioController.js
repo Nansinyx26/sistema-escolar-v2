@@ -81,6 +81,29 @@ function buildNotifQuery(notificacaoId) {
         : { id: valor };
 }
 
+/**
+ * O áudio do comentário precisa ser um `/api/audio/<id>` gravado pelo próprio
+ * autor (Issue #688). O `audioUrl` do corpo era gravado sem conferência, e a
+ * autorização do áudio (FileController) segue o comentário ativo que aponta
+ * para ele: quem conhecia o id de um áudio de outra conversa o republicava num
+ * comentário seu e voltava a ouvi-lo, junto com a audiência dessa conversa.
+ *
+ * @returns {Promise<string|null>} a URL canônica, ou null se não vale
+ */
+async function audioDoAutor(audioUrl, usuarioId) {
+    const id = /^\/api\/audio\/([a-f0-9]{24})$/i.exec(String(audioUrl))?.[1];
+    if (!id) return null;
+    const mongoose = require('mongoose');
+    const arquivo = await mongoose.connection.db
+        .collection('uploads.files')
+        .findOne({ _id: new mongoose.Types.ObjectId(id) }, { projection: { metadata: 1 } });
+    const meta = arquivo?.metadata || {};
+    if (meta.type !== 'voice_message' || String(meta.usuarioId || '') !== String(usuarioId)) {
+        return null;
+    }
+    return `/api/audio/${id}`;
+}
+
 exports.add = async (req, res) => {
     try {
         const { comunicadoId, notificacaoId, texto, audioUrl, parentId } = req.body;
@@ -105,6 +128,13 @@ exports.add = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Usuário não encontrado.' });
         }
 
+        const audio = audioUrl ? await audioDoAutor(audioUrl, usuarioId) : null;
+        if (audioUrl && !audio) {
+            return res
+                .status(400)
+                .json({ success: false, error: 'Áudio inválido. Grave a mensagem de novo.' });
+        }
+
         const novoComentario = new Comentario({
             // O schema não tinha `escolaId` e `strict: true` DESCARTAVA o campo em
             // silêncio — por isso os comentários de produção estão todos sem
@@ -117,7 +147,7 @@ exports.add = async (req, res) => {
             usuarioFoto: usuario.foto || usuario.fotoGoogle || '',
             usuarioPerfil: usuario.perfil,
             texto,
-            audioUrl,
+            audioUrl: audio || undefined,
             parentId: parentId || null,
         });
 
