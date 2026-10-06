@@ -10,12 +10,12 @@ exports.addOrUpdate = async (req, res) => {
         const senderName = req.user.nome || 'Usuário';
 
         if (!messageId || !emoji) {
-            return res.status(400).json({ success: false, error: 'messageId e emoji são obrigatórios.' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'messageId e emoji são obrigatórios.' });
         }
 
-        const allowedEmojis = [
-            '👍', '❤️', '😂', '😮', '😢', '👏', '🔥', '🎉'
-        ];
+        const allowedEmojis = ['👍', '❤️', '😂', '😮', '😢', '👏', '🔥', '🎉'];
         if (!allowedEmojis.includes(emoji)) {
             return res.status(400).json({ success: false, error: 'Emoji não permitido.' });
         }
@@ -25,10 +25,15 @@ exports.addOrUpdate = async (req, res) => {
         const reaction = await MessageReaction.findOneAndUpdate(
             { messageId, senderId: queryId },
             {
-                messageId, senderId: queryId, senderType, senderName,
-                parentName: parentName || '', studentName: studentName || '',
+                messageId,
+                senderId: queryId,
+                senderType,
+                senderName,
+                parentName: parentName || '',
+                studentName: studentName || '',
                 escolaId: req.escolaId || req.session?.escolaAtivaId || undefined,
-                emoji, updatedAt: new Date()
+                emoji,
+                updatedAt: new Date(),
             },
             { upsert: true, new: true, setDefaultsOnInsert: true }
         );
@@ -43,14 +48,17 @@ exports.addOrUpdate = async (req, res) => {
         // o resumo de reações (nome e perfil de quem reagiu) a todos os
         // sockets conectados, inclusive de conversas de outras escolas.
         emitirParaMensagem(messageId, isNew ? 'reaction:add' : 'reaction:update', {
-            messageId, reaction, allReactions, summary
+            messageId,
+            reaction,
+            allReactions,
+            summary,
         });
 
         res.status(isNew ? 201 : 200).json({
             success: true,
             data: reaction,
             allReactions,
-            summary
+            summary,
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -71,8 +79,10 @@ exports.remove = async (req, res) => {
         const allReactions = await MessageReaction.find({ messageId }).lean();
 
         emitirParaMensagem(messageId, 'reaction:remove', {
-            messageId, senderId, allReactions,
-            summary: buildReactionSummary(allReactions)
+            messageId,
+            senderId,
+            allReactions,
+            summary: buildReactionSummary(allReactions),
         });
 
         res.json({ success: true, message: 'Reação removida.', allReactions });
@@ -85,10 +95,10 @@ exports.getByMessage = async (req, res) => {
     try {
         const { messageId } = req.params;
         const reactions = await MessageReaction.find({ messageId }).sort({ createdAt: -1 }).lean();
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             data: reactions,
-            summary: buildReactionSummary(reactions)
+            summary: buildReactionSummary(reactions),
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -98,7 +108,7 @@ exports.getByMessage = async (req, res) => {
 // Helper: Agrupa reações por emoji com contagem
 function buildReactionSummary(reactions) {
     const summary = {};
-    reactions.forEach(r => {
+    reactions.forEach((r) => {
         if (!summary[r.emoji]) {
             summary[r.emoji] = { count: 0, users: [] };
         }
