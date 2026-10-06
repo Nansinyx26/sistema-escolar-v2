@@ -88,6 +88,21 @@
         return headers;
     };
 
+    // Resposta de erro do servidor vira texto para o usuário. O 403 mais comum
+    // aqui é IA_DESLIGADA_NESTA_ESCOLA (Issue #401): sem isto o chat dizia só
+    // "Não consegui processar sua pergunta." e ninguém sabia que era o
+    // interruptor da escola.
+    async function mensagemDeErro(res) {
+        try {
+            const data = await res.json();
+            if (data?.error) return data.error;
+        } catch {}
+        if (res.status === 401) return 'Sua sessão expirou. Entre novamente.';
+        if (res.status === 403) return 'Você não tem acesso ao assistente.';
+        if (res.status === 429) return 'Muitas perguntas seguidas. Aguarde um instante.';
+        return null;
+    }
+
     const getCurrentUser = () => {
         if (window.auth && window.auth.getCurrentUser) {
             return window.auth.getCurrentUser();
@@ -597,6 +612,8 @@
                 // persiste alunoId resolvido para o próximo turno
                 if (data.data?.alunoId) contextAlunoId = data.data.alunoId;
                 responseOptions = data.data?.options || null;
+            } else {
+                responseText = await mensagemDeErro(res);
             }
 
             removeTypingIndicator();
@@ -992,6 +1009,8 @@
                 responseText = data.data?.response;
                 if (data.data?.alunoId) contextAlunoId = data.data.alunoId;
                 responseOptions = data.data?.options || null;
+            } else {
+                responseText = await mensagemDeErro(res);
             }
             removeTypingIndicator();
             addMessage(
