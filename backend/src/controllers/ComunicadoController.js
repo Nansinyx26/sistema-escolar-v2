@@ -5,7 +5,7 @@ const logger = require('../utils/logger');
 const escapeRegex = require('../utils/escapeRegex');
 const { emitirParaEscola } = require('../utils/realtime');
 const { extrairPaginacao } = require('../middleware/pagination');
-const { semRestricaoPara } = require('../utils/restricaoAcesso');
+const { alvosDoUsuario, alunosDoResponsavel } = require('../services/vinculoDoResponsavel');
 
 /**
  * Restringe a consulta à escola ativa. Admin enxerga a rede toda.
@@ -27,30 +27,10 @@ async function podeVerComunicado(comunicado, user) {
     if (['diretor', 'admin', 'secretaria'].includes(perfil)) return true;
 
     const destinatarios = Array.isArray(comunicado.destinatarios) ? comunicado.destinatarios : [];
-    const alvos = ['todos', `usuario:${user.id || user._id}`];
-    if (perfil === 'professor') alvos.push('professores');
-
-    if (perfil === 'responsavel' && user.email) {
-        alvos.push('responsaveis');
-        const Aluno = require('../models/Aluno');
-        const emailRegex = new RegExp(`^${escapeRegex(String(user.email))}$`, 'i');
-        const alunos = await Aluno.find({
-            $or: [
-                { responsavel: emailRegex },
-                { 'responsavelDados.email': emailRegex },
-                { 'responsaveis.email': emailRegex },
-            ],
-            ...semRestricaoPara(user.email),
-        })
-            .select('turma turmaId')
-            .lean();
-        alunos.forEach((a) => {
-            const t = a.turma || a.turmaId;
-            if (t) alvos.push(t, `turma:${t}`);
-        });
-    }
-
-    return destinatarios.some((d) => alvos.includes(d));
+    // O responsável só alcança `todos`/`responsaveis` com filho vinculado na
+    // escola do comunicado (Issue #687).
+    const alvos = await alvosDoUsuario(user, comunicado.escolaId);
+    return destinatarios.some((d) => alvos.includes(String(d)));
 }
 
 // Reexportados para o ComentarioController: quem pode LER/COMENTAR um
@@ -218,44 +198,18 @@ exports.getAll = async (req, res) => {
         }
 
         if (perfil !== 'diretor' && perfil !== 'admin') {
-            const targets = ['todos'];
-            if (perfil === 'professor') targets.push('professores');
-
-            if (perfil === 'responsavel') {
-                targets.push('responsaveis');
-
-                // Buscar turmas dos alunos vinculados a este responsável
-                const email = user.email;
-                if (email) {
-                    const Aluno = require('../models/Aluno');
-                    const emailRegex = new RegExp(
-                        `^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
-                        'i'
-                    );
-                    const alunos = await Aluno.find({
-                        $or: [
-                            { responsavel: emailRegex },
-                            { 'responsavelDados.email': emailRegex },
-                            { 'responsaveis.email': emailRegex },
-                        ],
-                        ...semRestricaoPara(email),
-                    })
-                        .select('turma turmaId')
-                        .lean();
-
-                    alunos.forEach((aluno) => {
-                        const tId = aluno.turma || aluno.turmaId;
-                        if (tId) {
-                            targets.push(tId);
-                            targets.push(`turma:${tId}`);
-                        }
-                    });
-                }
+            // Mesma regra do `podeVerComunicado` (Issue #687): o responsável
+            // só alcança `todos`/`responsaveis` com filho vinculado na escola.
+            const targets = await alvosDoUsuario(user, req.escolaId);
+            if (perfil === 'responsavel' && !req.escolaId) {
+                // Sem escola resolvida, só as escolas dos próprios filhos.
+                const escolas = (await alunosDoResponsavel(user.email))
+                    .map((a) => a.escolaId)
+                    .filter(Boolean)
+                    .map(String);
+                query.escolaId = { $in: [...new Set(escolas)] };
             }
-
-            query.destinatarios = {
-                $in: [...targets, `usuario:${userId}`],
-            };
+            query.destinatarios = { $in: [...targets, `usuario:${userId}`] };
         }
 
         const paginacao = extrairPaginacao(req.query);

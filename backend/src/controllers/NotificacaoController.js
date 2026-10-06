@@ -1,6 +1,6 @@
 const Notificacao = require('../models/Notificacao');
 const Professor = require('../models/Professor');
-const Aluno = require('../models/Aluno');
+const { alunosDoResponsavel } = require('../services/vinculoDoResponsavel');
 const obs = require('../observability');
 const { escolaMatch } = require('../middleware/filtrarPorEscola');
 const { extrairPaginacao } = require('../middleware/pagination');
@@ -23,10 +23,13 @@ async function turmasDoProfessor(userId) {
     return [...new Set(turmas.filter(Boolean))];
 }
 
-/** Destinatários que alcançam os filhos do responsável: turmas e ids dos alunos. */
-async function destinatariosDaFamilia(email) {
-    if (!email) return [];
-    const alunos = await Aluno.find({ responsavel: emailRegexExato(email) }).lean();
+/**
+ * Destinatários que alcançam os filhos do responsável NA ESCOLA: turmas e ids
+ * dos alunos. Vazio quando não há filho vinculado ali (Issue #687), e aí o
+ * sino fica só com o que foi endereçado a ele pelo nome.
+ */
+async function destinatariosDaFamilia(email, escolaId) {
+    const alunos = await alunosDoResponsavel(email, escolaId);
     const lista = [];
     for (const a of alunos) {
         lista.push(...paraTurmas([a.turma || a.turmaId]));
@@ -45,7 +48,8 @@ async function filtroDaSessao(req) {
     const userId = String(req.user?._id || req.user?.id || '');
     const ctx = { perfil, userId };
     if (perfil === 'professor') ctx.turmas = await turmasDoProfessor(userId);
-    if (perfil === 'responsavel') ctx.familia = await destinatariosDaFamilia(req.user?.email);
+    if (perfil === 'responsavel')
+        ctx.familia = await destinatariosDaFamilia(req.user?.email, req.escolaId);
 
     const filtro = filtroDoPerfil(ctx);
     // Multi-escola: filtro tolerante (escola ativa + legados sem escolaId).
