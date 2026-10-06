@@ -19,14 +19,16 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const btnNew = document.getElementById('btn-toggle-new-pass');
-    if (btnNew) btnNew.addEventListener('click', function () {
-        if (typeof togglePass === 'function') togglePass('newPassword', this);
-    });
+    if (btnNew)
+        btnNew.addEventListener('click', function () {
+            if (typeof togglePass === 'function') togglePass('newPassword', this);
+        });
 
     const btnConfirm = document.getElementById('btn-toggle-confirm-pass');
-    if (btnConfirm) btnConfirm.addEventListener('click', function () {
-        if (typeof togglePass === 'function') togglePass('confirmPassword', this);
-    });
+    if (btnConfirm)
+        btnConfirm.addEventListener('click', function () {
+            if (typeof togglePass === 'function') togglePass('confirmPassword', this);
+        });
 
     // Validação em tempo real com feedback visual
     if (passInput) {
@@ -36,10 +38,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 length: val.length >= 8,
                 upper: /[A-Z]/.test(val),
                 number: /[0-9]/.test(val),
-                special: /[^A-Za-z0-9]/.test(val)
+                special: /[^A-Za-z0-9]/.test(val),
             };
 
-            Object.keys(reqs).forEach(key => {
+            Object.keys(reqs).forEach((key) => {
                 const el = document.getElementById(`req-${key}`);
                 if (el) {
                     if (reqs[key]) {
@@ -69,21 +71,22 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!passInput || !confirmInput || !btnSubmit || !privacyConsent) return;
         const val = passInput.value;
         const privacyAccepted = privacyConsent.checked;
-        const isValid = val.length >= 8 && 
-                      /[A-Z]/.test(val) && 
-                      /[0-9]/.test(val) && 
-                      /[^A-Za-z0-9]/.test(val) &&
-                      val === confirmInput.value &&
-                      val !== "" &&
-                      privacyAccepted;
-        
+        const isValid =
+            val.length >= 8 &&
+            /[A-Z]/.test(val) &&
+            /[0-9]/.test(val) &&
+            /[^A-Za-z0-9]/.test(val) &&
+            val === confirmInput.value &&
+            val !== '' &&
+            privacyAccepted;
+
         btnSubmit.disabled = !isValid;
     }
 
     if (form) {
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             if (btnSubmit.disabled) return;
 
             try {
@@ -96,8 +99,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     credentials: 'include', // recebe o cookie JWT do auto-login
                     body: JSON.stringify({
                         emailOrCpf: document.getElementById('emailOrCpf').value,
-                        password: passInput.value
-                    })
+                        password: passInput.value,
+                    }),
                 });
 
                 const json = await response.json();

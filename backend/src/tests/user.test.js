@@ -3,22 +3,35 @@
  * Suite 2 — Primeiro acesso e reset de senha
  */
 
-const request   = require('supertest');
-const bcrypt    = require('bcryptjs');
-const app       = require('../app');
-const Usuario   = require('../models/Usuario');
+const request = require('supertest');
+const bcrypt = require('bcryptjs');
+const app = require('../app');
+const Usuario = require('../models/Usuario');
 const Professor = require('../models/Professor');
-const { conectarBanco, limparBanco, desconectarBanco, criarUsuario, SENHA_TESTE, SENHA_TESTE_NOVA, CODIGO_ESCOLA_TESTE } = require('./helpers');
+const {
+    conectarBanco,
+    limparBanco,
+    desconectarBanco,
+    criarUsuario,
+    SENHA_TESTE,
+    SENHA_TESTE_NOVA,
+    CODIGO_ESCOLA_TESTE,
+} = require('./helpers');
 
-beforeAll(async () => { await conectarBanco(); });
-afterEach(async () => { await limparBanco(); });
-afterAll(async () => { await desconectarBanco(); });
+beforeAll(async () => {
+    await conectarBanco();
+});
+afterEach(async () => {
+    await limparBanco();
+});
+afterAll(async () => {
+    await desconectarBanco();
+});
 
 // ─────────────────────────────────────────────────────────
 // Primeiro Acesso
 // ─────────────────────────────────────────────────────────
 describe('POST /api/auth/first-access', () => {
-
     it('deve rejeitar professor nao pre-cadastrado com 404', async () => {
         const res = await request(app)
             .post('/api/auth/first-access')
@@ -85,7 +98,6 @@ describe('POST /api/auth/first-access', () => {
 // Reset de senha
 // ─────────────────────────────────────────────────────────
 describe('POST /api/auth/reset-password', () => {
-
     it('deve rejeitar token invalido com 400', async () => {
         const res = await request(app)
             .post('/api/auth/reset-password')
@@ -160,16 +172,14 @@ describe('POST /api/auth/validate-code', () => {
         if (!config) {
             config = await SecurityConfig.create({
                 codigoSecretoEscola: testCode,
-                dataUltimaRotacao: new Date()
+                dataUltimaRotacao: new Date(),
             });
         } else {
             config.codigoSecretoEscola = testCode;
             await config.save();
         }
 
-        const res = await request(app)
-            .post('/api/auth/validate-code')
-            .send({ codigo: testCode });
+        const res = await request(app).post('/api/auth/validate-code').send({ codigo: testCode });
 
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
