@@ -22,6 +22,7 @@ const ConfigController = require('../controllers/ConfigController');
 const FileController = require('../controllers/FileController');
 const { runHealthCheck } = require('../utils/healthMonitor');
 const monitoring = require('../services/MonitoringService');
+const { limparCorpoMultipart } = require('../middleware/limparCorpoMultipart');
 
 // --- 1. Diagnóstico / Health Check (Públicos) ---
 router.get('/health', (_req, res) => {
@@ -97,6 +98,7 @@ router.post(
     authJWT,
     filtrarPorEscola,
     upload.single('foto'),
+    limparCorpoMultipart,
     verificarDireitosAutorais,
     convertToWebP,
     async (req, res) => {
@@ -498,6 +500,7 @@ router.post(
     chatUploadLimiter,
     exigirAceiteTermo,
     receberAnexosChat,
+    limparCorpoMultipart,
     verificarDireitosAutorais,
     ChatDiretoController.uploadAnexo
 );

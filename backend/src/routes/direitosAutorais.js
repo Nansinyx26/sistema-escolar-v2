@@ -9,6 +9,7 @@ const express = require('express');
 const multer = require('multer');
 
 const DireitosAutoraisController = require('../controllers/DireitosAutoraisController');
+const { limparCorpoMultipart } = require('../middleware/limparCorpoMultipart');
 
 const router = express.Router();
 
@@ -26,7 +27,7 @@ const receberReferencia = multer({
 
 function tratarUpload(req, res, next) {
     receberReferencia(req, res, (err) => {
-        if (!err) return next();
+        if (!err) return limparCorpoMultipart(req, res, next);
         const grande = err.code === 'LIMIT_FILE_SIZE';
         return res.status(400).json({
             success: false,

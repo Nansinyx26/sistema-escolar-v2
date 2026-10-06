@@ -23,6 +23,21 @@ const path = require('path');
 const logger = require('../../utils/logger');
 const { ErroPermissao, exigirCargo } = require('./PermissionGuard');
 const ConfirmationStore = require('./ConfirmationStore');
+const { sanitizeObject, removerOperadoresMongoProfundo } = require('../../utils/sanitize');
+
+/**
+ * Parâmetros de ferramenta vêm do MODELO, não do corpo da requisição: não
+ * passam pelo filtro global de app.js. O texto que uma ferramenta grava
+ * (título e conteúdo de comunicado, evento, atividade…) ia cru para o banco e
+ * daí para o mural e o sino de toda a escola — e o modelo pode ser conduzido
+ * por injeção de prompt. Mesmo tratamento do filtro global (Issue #647).
+ */
+function limparParametros(parametros) {
+    const limpos = parametros && typeof parametros === 'object' ? parametros : {};
+    sanitizeObject(limpos);
+    removerOperadoresMongoProfundo(limpos);
+    return limpos;
+}
 const AuditLogger = require('./AuditLogger');
 
 const DIRETORIO_FERRAMENTAS = path.join(__dirname, 'tools');
@@ -155,7 +170,7 @@ async function executar(ferramentaNome, parametros, ctx) {
         // na montagem do catálogo.
         exigirCargo(ctx, ferramenta.cargosPermitidos, ferramenta.name);
 
-        const dados = await ferramenta.handler(parametros || {}, ctx);
+        const dados = await ferramenta.handler(limparParametros(parametros), ctx);
 
         // ── Escrita: o handler produziu só um PREVIEW ────────────────────────
         // Nada foi gravado. Emitimos um token e devolvemos o que SERÁ feito,
@@ -243,7 +258,9 @@ async function executarConfirmada(acao, ctx) {
         // rebaixamento de privilégio entrar em vigor.
         exigirCargo(ctx, ferramenta.cargosPermitidos, ferramenta.name);
 
-        const dados = await ferramenta.confirmar(acao.parametros, ctx);
+        // O preview já saiu de parâmetros limpos; limpa de novo porque o que
+        // o handler devolve em `parametros` é o que fica guardado e executa.
+        const dados = await ferramenta.confirmar(limparParametros(acao.parametros), ctx);
 
         await AuditLogger.registrarAcao(ctx, {
             ferramenta: acao.ferramenta,
