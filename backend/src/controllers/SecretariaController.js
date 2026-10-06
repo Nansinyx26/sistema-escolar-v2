@@ -516,8 +516,18 @@ exports.criarResponsavel = async (req, res) => {
                 .json({ success: false, error: 'Nome, email e telefone são obrigatórios.' });
         }
 
-        // Cria o usuário responsável
+        // Cria o usuário responsável. Conta que já existe não é alterada nem
+        // devolvida (Issue #665): a busca é pela rede inteira, e a resposta
+        // entregava o cadastro completo — CPF, telefone, histórico LGPD — de
+        // qualquer conta, de qualquer escola e perfil.
         let usuario = await Usuario.findOne({ email: String(email).toLowerCase() });
+        const existente = Boolean(usuario);
+        if (existente && usuario.perfil !== 'responsavel') {
+            return res.status(409).json({
+                success: false,
+                error: 'Este e-mail pertence a uma conta que não é de responsável.',
+            });
+        }
         if (!usuario) {
             usuario = new Usuario({
                 nome,
@@ -546,9 +556,11 @@ exports.criarResponsavel = async (req, res) => {
                     email,
                 });
                 aluno.responsavel = nome;
-                usuario.nomeAluno = aluno.nome;
                 await aluno.save();
-                await usuario.save();
+                if (!existente) {
+                    usuario.nomeAluno = aluno.nome;
+                    await usuario.save();
+                }
             }
         }
 
@@ -556,7 +568,17 @@ exports.criarResponsavel = async (req, res) => {
             descricao: `Responsável ${usuario._id} cadastrado${alunoId ? ` e vinculado ao aluno ${alunoId}` : ''}`,
         });
 
-        res.status(201).json({ success: true, data: usuario });
+        res.status(201).json({
+            success: true,
+            data: existente
+                ? { _id: usuario._id, existente: true }
+                : {
+                      _id: usuario._id,
+                      nome: usuario.nome,
+                      email: usuario.email,
+                      perfil: usuario.perfil,
+                  },
+        });
     } catch (error) {
         if (error.code === 11000) {
             return res.status(409).json({ success: false, error: 'Email ou CPF já cadastrado.' });
