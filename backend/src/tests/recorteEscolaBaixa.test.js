@@ -132,17 +132,14 @@ describe('turmas', () => {
     it('a turma nasce na escola da sessão, com os campos da lista', async () => {
         const dir = await equipe('diretor', A);
 
-        const res = await request(app)
-            .post('/api/turmas')
-            .set('Cookie', dir.cookie)
-            .send({
-                id: '5C',
-                nome: '5C',
-                ano: 5,
-                escolaId: B,
-                ativo: false,
-                _id: 'turma-forjada',
-            });
+        const res = await request(app).post('/api/turmas').set('Cookie', dir.cookie).send({
+            id: '5C',
+            nome: '5C',
+            ano: 5,
+            escolaId: B,
+            ativo: false,
+            _id: 'turma-forjada',
+        });
 
         expect(res.status).toBe(201);
         const turma = await Turma.findOne({ nome: '5C' }).lean();

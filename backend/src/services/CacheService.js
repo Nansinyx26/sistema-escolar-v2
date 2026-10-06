@@ -168,7 +168,9 @@ class CacheService {
 
         // Relatórios (cache mais longo)
         relatorioFrequencia: (turmaId, mes) => `relatorio:freq:${turmaId}:${mes}`,
-        relatorioBimestral: (turmaId, bimestre) => `relatorio:bi:${turmaId}:${bimestre}`,
+        // A escola entra na chave: turmas de mesmo nome existem em toda escola.
+        relatorioBimestral: (turmaId, bimestre, escolaId) =>
+            `relatorio:bi:${escolaId || 'rede'}:${turmaId}:${bimestre}`,
 
         // Agregações (cache longo)
         dashboard: (userId) => `dashboard:${userId}`,
