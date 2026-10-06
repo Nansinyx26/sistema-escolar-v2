@@ -2,10 +2,18 @@ const mongoose = require('mongoose');
 
 const RecuperacaoSenhaSchema = new mongoose.Schema(
     {
+        // Na recuperação, o `_id` do Usuario. No primeiro acesso (Issue #659)
+        // a conta ainda não existe: é o `_id` do pré-cadastro em `professores`,
+        // e `finalidade` separa os dois — um código nunca serve ao outro fluxo.
         usuarioId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Usuario',
             required: true,
+        },
+        finalidade: {
+            type: String,
+            enum: ['recuperacao', 'primeiro-acesso'],
+            default: 'recuperacao',
         },
         codigo: {
             type: String,

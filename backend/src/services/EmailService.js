@@ -79,3 +79,44 @@ exports.sendVerificationCode = async (to, code, userName) => {
         logger.error(`[EmailService] Código de recuperação não entregue (${r.etapa}): ${r.erro}`);
     return r.ok;
 };
+
+/** O nome vem do pré-cadastro, digitado pela escola: entra como texto. */
+function textoEmail(valor) {
+    return String(valor ?? '').replace(
+        /[&<>"']/g,
+        (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
+    );
+}
+
+/**
+ * Código do primeiro acesso do professor pré-cadastrado (Issue #659). Vai para
+ * o e-mail do PRÉ-CADASTRO — é a prova de que quem ativa a conta é o dono dele.
+ */
+exports.enviarCodigoPrimeiroAcesso = async (to, code, nome) => {
+    const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 10px; overflow: hidden;">
+        <div style="background: #06b6d4; padding: 20px; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 24px;">Sistema Escolar</h1>
+        </div>
+        <div style="padding: 30px;">
+            <h2 style="color: #333; margin-top: 0;">Ativação da sua conta</h2>
+            <p style="color: #666; line-height: 1.6;">Olá, <strong>${textoEmail(nome)}</strong>.</p>
+            <p style="color: #666; line-height: 1.6;">Recebemos um pedido de primeiro acesso com o seu cadastro na escola. Para criar sua senha, use o código abaixo:</p>
+            <div style="font-size: 36px; font-weight: bold; letter-spacing: 8px; background: #f4f4f4; padding: 16px 24px; border-radius: 6px; text-align: center; margin: 20px 0; color: #06b6d4;">
+                ${code}
+            </div>
+            <p style="color: #666; line-height: 1.6;">Este código expira em 15 minutos. Se não foi você quem pediu, ignore este e-mail: sem o código, ninguém ativa a sua conta.</p>
+            <p style="color: #999; font-size: 12px; margin-top: 40px; text-align: center;">
+                Este é um e-mail automático. Por favor, não responda.
+            </p>
+        </div>
+    </div>
+    `;
+
+    const r = await enviarEmail(to, 'Código de ativação da conta — Sistema Escolar', html);
+    if (!r.ok)
+        logger.error(
+            `[EmailService] Código de primeiro acesso não entregue (${r.etapa}): ${r.erro}`
+        );
+    return r.ok;
+};
