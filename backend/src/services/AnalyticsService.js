@@ -177,14 +177,22 @@ class AnalyticsService {
             // Agregações
             const disciplinas = {};
             const desempenhos = { excelente: 0, bom: 0, regular: 0, fraco: 0 };
+            let alunosSemNotas = 0;
 
             analises.forEach((analise) => {
+                // Aluno sem nota no bimestre volta sem `disciplinas` (Issue #676):
+                // o `Object.entries(undefined)` derrubava o relatório da turma
+                // inteira. Ele conta à parte, fora da distribuição.
+                if (analise.success && analise.desempenho === 'sem-dados') {
+                    alunosSemNotas++;
+                    return;
+                }
                 if (analise.success) {
                     // Contar desempenhos
                     desempenhos[analise.desempenho] = (desempenhos[analise.desempenho] || 0) + 1;
 
                     // Agregar disciplinas
-                    Object.entries(analise.disciplinas).forEach(([disc, dados]) => {
+                    Object.entries(analise.disciplinas || {}).forEach(([disc, dados]) => {
                         if (!disciplinas[disc]) {
                             disciplinas[disc] = {
                                 medias: [],
@@ -210,6 +218,7 @@ class AnalyticsService {
                 turma: turma?.nome,
                 bimestre,
                 totalAlunos: alunos.length,
+                alunosSemNotas,
                 desempenhos,
                 disciplinas,
                 mediaGeral:
