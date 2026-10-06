@@ -73,11 +73,10 @@
             return 'Responsável';
         };
 
-        const stripHtml = (html) => {
-            const tmp = document.createElement('DIV');
-            tmp.innerHTML = html;
-            return tmp.textContent || tmp.innerText || '';
-        };
+        // Texto do HTML num documento INERTE (Issue #648): `innerHTML` numa div
+        // solta carrega a imagem e dispara o `onerror` mesmo fora da página.
+        const stripHtml = (html) =>
+            new DOMParser().parseFromString(String(html ?? ''), 'text/html').body.textContent || '';
 
         // --- FILTRO DE LINGUAGEM IMPRÓPRIA ---
         // O bloqueio de verdade é do servidor (middleware bloquearPalavroes);
@@ -1050,10 +1049,13 @@
                         }),
                         comunicado.titulo
                     ),
-                    h('div', {
-                        className: 'card-text-premium',
-                        dangerouslySetInnerHTML: { __html: comunicado.conteudo },
-                    }),
+                    // O conteúdo é texto: o servidor tira as tags na gravação. Ia
+                    // como HTML e executava o que tivesse escapado do filtro (#648).
+                    h(
+                        'div',
+                        { className: 'card-text-premium', style: { whiteSpace: 'pre-line' } },
+                        stripHtml(comunicado.conteudo)
+                    ),
 
                     // Grade de Imagens
                     comunicado.imagens?.length > 0 &&
