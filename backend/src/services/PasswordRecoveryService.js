@@ -47,7 +47,7 @@ class PasswordRecoveryService {
      * Usa mensagem padrão para não revelar se email existe no sistema
      *
      * @param {string} email - Email do usuário
-     * @returns {Object} { success, message, code_debug? (apenas em dev) }
+     * @returns {Object} { success, message }
      */
     static async forgotPassword(email) {
         try {
@@ -104,17 +104,13 @@ class PasswordRecoveryService {
                 logger.error('Failed to send recovery code email', { error: err.message });
             });
 
-            logger.info(`📧 [FORGOT_PASSWORD] Código enviado para ${user.email}`);
+            logger.info('[FORGOT_PASSWORD] Código enviado', { usuarioId: String(user._id) });
 
-            // Retornar código apenas em desenvolvimento
-            if (process.env.NODE_ENV === 'development') {
-                standardResponse.code_debug = code;
-            }
-
+            // O código nunca volta na resposta (Issue #677): o `code_debug` dependia
+            // só de NODE_ENV, como o que o controller já tinha removido.
             return standardResponse;
         } catch (error) {
             logger.error('PasswordRecoveryService.forgotPassword error', {
-                email,
                 error: error.message,
             });
             return {

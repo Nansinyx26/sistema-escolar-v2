@@ -1709,8 +1709,17 @@ exports.pedirRedefinicaoDeSenha = async (req, res) => {
                 .json({ success: false, error: 'A conta não tem e-mail para receber o código.' });
         }
 
-        const PasswordRecoveryService = require('../services/PasswordRecoveryService');
-        await PasswordRecoveryService.forgotPassword(alvo.email);
+        if (alvo.ativo === false) {
+            return res.status(409).json({
+                success: false,
+                error: 'A conta está desativada. Reative-a antes de redefinir a senha.',
+            });
+        }
+
+        // Mesmo gerador do "esqueci minha senha" (Issue #677). O serviço antigo
+        // gravava o código em texto puro, e a conferência só aceita `salt:hash`:
+        // o código que chegava ao titular nunca funcionava.
+        await enviarCodigoDeRecuperacao(alvo);
 
         await logAction(req, 'SENHA_REDEFINICAO_SOLICITADA', 'Usuarios', {
             recursoId: String(alvo._id),
@@ -1813,6 +1822,70 @@ exports.anonymize = async (req, res) => {
     }
 };
 
+/**
+ * Gera o código de recuperação de `user`, grava só o hash e envia por e-mail.
+ * Usado pelo "esqueci minha senha" e pela redefinição pedida pela gestão
+ * (Issue #677): os dois caminhos precisam do mesmo formato, porque a
+ * conferência (`conferirCodigoDeRecuperacao`) só aceita `salt:hash`.
+ *
+ * @returns {Promise<boolean>} se o provedor aceitou o e-mail
+ */
+async function enviarCodigoDeRecuperacao(user) {
+    // 1. Invalida códigos ativos anteriores deste usuário
+    await RecuperacaoSenha.updateMany(
+        { usuarioId: user._id, status: 'ativo' },
+        { $set: { status: 'expirado' } }
+    );
+
+    // 2. Gerar código de 6 dígitos numéricos
+    const code = crypto.randomInt(100000, 999999).toString();
+
+    // ============================================
+    // 3. Salvar o HASH, nunca o código
+    // ============================================
+    // O código ia para o banco em TEXTO PURO. Quem lesse a coleção
+    // `recuperacaosenhas` — dump, backup vazado, acesso indevido ao Atlas —
+    // tinha, para cada pedido em aberto, um código de redefinição de senha
+    // pronto para usar. É tomada de conta direta, sem precisar da senha.
+    const { hashSegredo } = require('../utils/codigosBackup');
+
+    await RecuperacaoSenha.create({
+        usuarioId: user._id,
+        codigo: await hashSegredo(code),
+        criadoEm: new Date(),
+        expiraEm: new Date(Date.now() + 15 * 60 * 1000), // 15 minutos
+        status: 'ativo',
+        tentativas: 0,
+    });
+
+    // ============================================
+    // REMOVIDO: gravação do código em `latest_code.txt`
+    // ============================================
+    // Havia um `fs.writeFileSync(.../latest_code.txt, code)` aqui, marcado
+    // como "para testes E2E" — mas sem nenhuma guarda de ambiente: rodava
+    // em PRODUÇÃO, a cada pedido de recuperação. O arquivo ficava no disco
+    // do servidor com um código de redefinição válido em texto puro.
+    //
+    // Qualquer leitura de arquivo arbitrário, backup de disco ou acesso ao
+    // contêiner virava tomada de conta. Teste E2E que precise do código
+    // deve lê-lo do banco de teste, não de um arquivo escrito em produção.
+
+    // ============================================
+    // 4. Envio AGUARDADO
+    // ============================================
+    // Era fire-and-forget: a resposta dizia "você receberá um código" mesmo
+    // quando o provedor recusava a mensagem. Mesmo problema que deixou o
+    // 2FA de diretor e secretaria mudo por semanas.
+    const entregue = await EmailService.sendVerificationCode(user.email, code, user.nome);
+    if (!entregue) {
+        logger.error('[recuperacao] Código gerado mas NÃO entregue', {
+            usuarioId: String(user._id),
+            action: 'auth.recuperacao.envioFalhou',
+        });
+    }
+    return entregue;
+}
+
 exports.forgotPassword = async (req, res) => {
     const { email } = req.body;
     try {
@@ -1833,58 +1906,7 @@ exports.forgotPassword = async (req, res) => {
             return res.json(standardResponse);
         }
 
-        // 1. Invalida códigos ativos anteriores deste usuário
-        await RecuperacaoSenha.updateMany(
-            { usuarioId: user._id, status: 'ativo' },
-            { $set: { status: 'expirado' } }
-        );
-
-        // 2. Gerar código de 6 dígitos numéricos
-        const code = crypto.randomInt(100000, 999999).toString();
-
-        // ============================================
-        // 3. Salvar o HASH, nunca o código
-        // ============================================
-        // O código ia para o banco em TEXTO PURO. Quem lesse a coleção
-        // `recuperacaosenhas` — dump, backup vazado, acesso indevido ao Atlas —
-        // tinha, para cada pedido em aberto, um código de redefinição de senha
-        // pronto para usar. É tomada de conta direta, sem precisar da senha.
-        const { hashSegredo } = require('../utils/codigosBackup');
-
-        await RecuperacaoSenha.create({
-            usuarioId: user._id,
-            codigo: await hashSegredo(code),
-            criadoEm: new Date(),
-            expiraEm: new Date(Date.now() + 15 * 60 * 1000), // 15 minutos
-            status: 'ativo',
-            tentativas: 0,
-        });
-
-        // ============================================
-        // REMOVIDO: gravação do código em `latest_code.txt`
-        // ============================================
-        // Havia um `fs.writeFileSync(.../latest_code.txt, code)` aqui, marcado
-        // como "para testes E2E" — mas sem nenhuma guarda de ambiente: rodava
-        // em PRODUÇÃO, a cada pedido de recuperação. O arquivo ficava no disco
-        // do servidor com um código de redefinição válido em texto puro.
-        //
-        // Qualquer leitura de arquivo arbitrário, backup de disco ou acesso ao
-        // contêiner virava tomada de conta. Teste E2E que precise do código
-        // deve lê-lo do banco de teste, não de um arquivo escrito em produção.
-
-        // ============================================
-        // 4. Envio AGUARDADO
-        // ============================================
-        // Era fire-and-forget: a resposta dizia "você receberá um código" mesmo
-        // quando o provedor recusava a mensagem. Mesmo problema que deixou o
-        // 2FA de diretor e secretaria mudo por semanas.
-        const entregue = await EmailService.sendVerificationCode(user.email, code, user.nome);
-        if (!entregue) {
-            logger.error('[recuperacao] Código gerado mas NÃO entregue', {
-                usuarioId: String(user._id),
-                action: 'auth.recuperacao.envioFalhou',
-            });
-        }
+        await enviarCodigoDeRecuperacao(user);
 
         // O código NUNCA volta na resposta, nem em desenvolvimento: havia um
         // `code_debug` que dependia só de NODE_ENV. Uma variável de ambiente
