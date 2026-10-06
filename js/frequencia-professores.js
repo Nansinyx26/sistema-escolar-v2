@@ -66,10 +66,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const iconName = MATERIAS_ICONS[materia] || 'bi-journal-bookmark';
 
-            content.innerHTML = `
-                <i class="bi ${iconName}" style="font-size: 1.5rem;"></i>
-                <span style="font-size: 0.9rem;">${materia}</span>
-            `;
+            // A matéria é texto do cadastro do docente: vai por textContent
+            // (Issue #650). O ícone vem de uma lista fechada.
+            content.innerHTML = `<i class="bi ${iconName}" style="font-size: 1.5rem;"></i>`;
+            const nomeMateria = document.createElement('span');
+            nomeMateria.style.fontSize = '0.9rem';
+            nomeMateria.textContent = materia;
+            content.appendChild(nomeMateria);
 
             label.appendChild(radio);
             label.appendChild(content);

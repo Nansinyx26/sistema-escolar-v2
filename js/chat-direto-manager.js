@@ -1387,7 +1387,7 @@
                 reacoesHtml = `<div class="chat-reacoes-list">${Object.keys(counts)
                     .map(
                         (emoji) =>
-                            `<span class="chat-reacao-badge" data-msg-id="${esc(String(m._id))}" data-emoji="${esc(emoji)}" title="${esc(quem[emoji])}">${emoji} ${counts[emoji]}</span>`
+                            `<span class="chat-reacao-badge" data-msg-id="${esc(String(m._id))}" data-emoji="${esc(emoji)}" title="${esc(quem[emoji])}">${esc(emoji)} ${counts[emoji]}</span>`
                     )
                     .join('')}</div>`;
             }

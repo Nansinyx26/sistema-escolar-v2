@@ -220,7 +220,7 @@ const SelecionarPage = {
 
                     html += `
                     <div class="ano-section">
-                        <h3 class="ano-title">${ano}º Ano</h3>
+                        <h3 class="ano-title">${escAttr(ano)}º Ano</h3>
                         <div class="turmas-row">
                             ${turmasDoAno.map((t) => this.renderTurmaCard(t, profsPorTurma[t.id])).join('')}
                         </div>
@@ -300,10 +300,10 @@ const SelecionarPage = {
             return `
                 <div class="professor-row" style="display:flex; align-items:center; gap:10px; margin-top:8px; padding:6px; background:rgba(255,255,255,0.03); border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
                     <div class="foto-mini" style="width:30px; height:30px; border-radius:50%; background:var(--bg-elevated); overflow:hidden; display:flex; align-items:center; justify-content:center; border:1px solid var(--border-secondary); flex-shrink:0;">
-                        ${p.foto ? `<img src="${escAttr(window.getPhotoUrl(p.foto))}" style="width:100%; height:100%; object-fit:cover;">` : `<span style="font-size:12px; color:var(--primary); font-weight:bold;">${inicial}</span>`}
+                        ${p.foto ? `<img src="${escAttr(window.getPhotoUrl(p.foto))}" style="width:100%; height:100%; object-fit:cover;">` : `<span style="font-size:12px; color:var(--primary); font-weight:bold;">${escAttr(inicial)}</span>`}
                     </div>
                     <div style="display:flex; flex-direction:column; align-items:flex-start;">
-                        <span style="font-size:0.85rem; font-weight:600; color:var(--text-primary); line-height:1.2;">${p.nome}</span>
+                        <span style="font-size:0.85rem; font-weight:600; color:var(--text-primary); line-height:1.2;">${escAttr(p.nome)}</span>
                         <span style="font-size:0.65rem; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:0.05em;">${label}</span>
                     </div>
                 </div>
@@ -314,14 +314,14 @@ const SelecionarPage = {
             <div class="turma-card" id="card-${escAttr(turma.id)}" data-turma="${escAttr(turma.id)}">
                 <div class="turma-card-content" data-turma="${escAttr(turma.id)}" style="width:100%;">
                     <div class="turma-card-header" style="display:flex; justify-content:space-between; align-items:flex-start; width:100%;">
-                        <div class="turma-icon">${turma.ano}${turma.sala}</div>
+                        <div class="turma-icon">${escAttr(turma.ano)}${escAttr(turma.sala)}</div>
                         <div class="expand-icon" style="color:var(--primary); font-size:1.5rem; transition:transform 0.3s; z-index:2;">
                             <i class="bi bi-chevron-down"></i>
                         </div>
                     </div>
                     <div class="turma-info">
-                        <h4>Turma ${turma.id}</h4>
-                        <p style="color:var(--text-secondary); font-size:0.85rem; margin-bottom:12px;">Turno: ${turma.turno || turma.periodo || 'Manhã'}</p>
+                        <h4>Turma ${escAttr(turma.id)}</h4>
+                        <p style="color:var(--text-secondary); font-size:0.85rem; margin-bottom:12px;">Turno: ${escAttr(turma.turno || turma.periodo || 'Manhã')}</p>
                         
                         <div class="professores-container" style="width:100%;">
                             ${renderProfLine(principal, 'Sala Principal')}
