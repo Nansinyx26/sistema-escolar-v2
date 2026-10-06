@@ -227,10 +227,12 @@
             const action = document.getElementById('filterAction').value;
             const date = document.getElementById('filterDate').value;
 
+            // Filtros codificados (Issue #656): um `&` ou `=` digitado no campo
+            // virava outro parâmetro da consulta.
             let url = `/api/audit/logs?`;
-            if (user) url += `usuario=${user}&`;
-            if (action) url += `acao=${action}&`;
-            if (date) url += `de=${date}&`;
+            if (user) url += `usuario=${encodeURIComponent(user)}&`;
+            if (action) url += `acao=${encodeURIComponent(action)}&`;
+            if (date) url += `de=${encodeURIComponent(date)}&`;
 
             try {
                 const res = await fetch(url);

@@ -666,10 +666,10 @@ function abrirFerramentas() {
         return;
     }
 
-    // Redireciona para página de ferramentas
-    // TODO: Criar página ferramentas.html dedicada
-    // Por enquanto, redireciona para limpar-dados.html (ferramenta existente)
-    window.location.href = 'utils/limpar-dados.html';
+    // As ferramentas do admin ficam no painel (cartão "Ferramentas"). O destino
+    // antigo, html/utils/limpar-dados.html, era utilitário de desenvolvimento
+    // publicado em produção e saiu do repositório (Issue #656).
+    window.location.href = 'dashboard.html';
 }
 
 // === INPUT MASKS ===

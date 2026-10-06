@@ -50,8 +50,6 @@ const EXCECOES = {
     // Ferramentas de desenvolvimento, fora da navegação do produto.
     'html/design-system.html': 'vitrine de componentes',
     'html/diagnostico-audio.html': 'ferramenta de diagnóstico de áudio',
-    'html/utils/limpar-dados.html': 'utilitário de desenvolvimento',
-    'html/utils/test-backend.html': 'utilitário de desenvolvimento',
 };
 
 function listarHtml(pasta) {

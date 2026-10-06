@@ -266,7 +266,7 @@ class App {
         const user = auth.login(usuario, senha, config.usuarios);
 
         if (user) {
-            ui.success(`Bem-vindo, ${user.nome}!`);
+            ui.success(`Bem-vindo, ${textoHtml(user.nome)}!`);
             setTimeout(() => {
                 window.location.href = 'selecionar.html';
             }, 1000);
@@ -453,24 +453,24 @@ class App {
                             <!-- Header do Card (Clicável para expandir via delegation) -->
                             <div class="turma-card-content">
                                 <div class="turma-card-header" style="display:flex; justify-content:space-between; align-items:flex-start; width:100%;">
-                                    <div class="turma-icon">${turma.ano}${turma.sala}</div>
+                                    <div class="turma-icon">${textoHtml(turma.ano)}${textoHtml(turma.sala)}</div>
                                     <div class="turma-media-badge media-valor ${mediaClass}" style="padding: 4px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: bold;">
                                         Média: ${mediaDisplay}
                                     </div>
                                 </div>
                                 <div class="turma-info">
-                                    <h4>Turma ${turma.id}</h4>
-                                    <p>${turma.turno}</p>
+                                    <h4>Turma ${textoHtml(turma.id)}</h4>
+                                    <p>${textoHtml(turma.turno)}</p>
                                     <div class="professor-info" style="display:flex; align-items:center; gap:8px; margin-top:5px;">
                                         <div class="foto-mini" style="width:24px; height:24px; border-radius:50%; overflow:hidden; background:#eee;">
                                             ${
                                                 window.getPhotoUrl(fotoRegente) !==
                                                 '/img/default-avatar.png'
                                                     ? `<img src="${escAttr(window.getPhotoUrl(fotoRegente))}" style="width:100%; height:100%; object-fit:cover;">`
-                                                    : `<div style="display:flex; align-items:center; justify-content:center; width:100%; height:100%; font-size:10px; color:#666;">${nomeRegente.charAt(0)}</div>`
+                                                    : `<div style="display:flex; align-items:center; justify-content:center; width:100%; height:100%; font-size:10px; color:#666;">${textoHtml(nomeRegente.charAt(0))}</div>`
                                             }
                                         </div>
-                                        <p class="professor" style="margin:0;">${nomeRegente}</p>
+                                        <p class="professor" style="margin:0;">${textoHtml(nomeRegente)}</p>
                                     </div>
                                     <i class="bi bi-chevron-down expand-icon" style="margin-top:10px; opacity:0.5;"></i>
                                 </div>
@@ -2459,25 +2459,6 @@ class App {
             this.showNotasModal(alunoId, turmaId, bimestre, currentMateria);
         } catch (error) {
             // Erro já tratado
-        }
-    }
-
-    /**
-     * Confirma exclusão de aluno
-     * @param {number} alunoId - ID do aluno
-     * @param {string} turmaId - ID da turma
-     * @param {number} bimestre - Bimestre
-     */
-    async confirmarExclusaoAluno(alunoId, turmaId, bimestre) {
-        const aluno = await students.getById(alunoId);
-        const confirmado = await ui.confirm(
-            `Deseja realmente excluir o aluno "${aluno.nome}"? Esta ação não pode ser desfeita.`,
-            { title: 'Confirmar Exclusão', confirmText: 'Excluir', confirmClass: 'btn-danger' }
-        );
-
-        if (confirmado) {
-            await students.delete(alunoId);
-            await this.renderTurmaPage(turmaId, bimestre);
         }
     }
 

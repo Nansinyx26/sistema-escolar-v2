@@ -3,6 +3,28 @@
  * Gerencia componentes visuais, modais e notificações
  */
 
+/**
+ * Mensagem como TEXTO (Issue #656).
+ *
+ * Toast, título de modal, botões e as mensagens de `confirm`, `alert` e
+ * `prompt` iam crus para o innerHTML, e os chamadores passam `error.message`
+ * vindo do servidor. Nenhum chamador passa marcação de propósito
+ * (levantamento na #656), então o padrão é texto. A exceção é o `content` do
+ * `showModal`: é o corpo do modal (formulários), HTML por contrato — quem monta
+ * escapa o que for dado, como já faz js/app.js.
+ *
+ * Regra do #650 (textoHtml): escapa < > aspas e crase, mas NÃO o `&`, que o
+ * servidor já grava codificado — o textContent mostraria "&amp;" nesses textos
+ * e no que o chamador já escapou. Sem `<` literal, nenhum elemento nasce.
+ */
+function textoDaMensagem(v) {
+    if (v === null || v === undefined) return '';
+    return String(v).replace(
+        /["'<>`]/g,
+        (c) => ({ '"': '&quot;', "'": '&#39;', '<': '&lt;', '>': '&gt;', '`': '&#96;' })[c]
+    );
+}
+
 class UIManager {
     constructor() {
         this.modals = new Map();
@@ -22,8 +44,9 @@ class UIManager {
      */
     createToastContainer() {
         // Tenta encontrar por qualquer um dos IDs comuns
-        this.toastContainer = document.getElementById('toast-container') || document.getElementById('toastContainer');
-        
+        this.toastContainer =
+            document.getElementById('toast-container') || document.getElementById('toastContainer');
+
         if (!this.toastContainer) {
             this.toastContainer = document.createElement('div');
             this.toastContainer.id = 'toast-container';
@@ -37,13 +60,15 @@ class UIManager {
      * @param {string} message - Mensagem a exibir
      * @param {string} type - Tipo: success, error, warning, info
      * @param {number} duration - Duração em ms
+     * @param {{html?: boolean}} [opcoes] - `html: true` aceita marcação (o
+     *        chamador escapa o que for dado); sem isso a mensagem é texto
      */
-    showToast(message, type = 'info', duration = 3000) {
+    showToast(message, type = 'info', duration = 3000, opcoes = {}) {
         // Se por algum motivo o container for nulo, tenta inicializar de novo
         if (!this.toastContainer) {
             this.createToastContainer();
         }
-        
+
         // Se ainda for nulo (caso extremo), usa o console
         if (!this.toastContainer) {
             console.log(`[${type}] ${message}`);
@@ -57,12 +82,12 @@ class UIManager {
             success: '✓',
             error: '✕',
             warning: '⚠',
-            info: 'ℹ'
+            info: 'ℹ',
         };
 
         toast.innerHTML = `
             <span class="toast-icon">${icons[type] || icons.info}</span>
-            <span class="toast-message">${message}</span>
+            <span class="toast-message">${opcoes?.html ? message : textoDaMensagem(message)}</span>
         `;
 
         this.toastContainer.appendChild(toast);
@@ -80,25 +105,27 @@ class UIManager {
     /**
      * Atalhos para tipos de toast
      */
-    success(message, duration) {
-        this.showToast(message, 'success', duration);
+    success(message, duration, opcoes) {
+        this.showToast(message, 'success', duration, opcoes);
     }
 
-    error(message, duration) {
-        this.showToast(message, 'error', duration);
+    error(message, duration, opcoes) {
+        this.showToast(message, 'error', duration, opcoes);
     }
 
-    warning(message, duration) {
-        this.showToast(message, 'warning', duration);
+    warning(message, duration, opcoes) {
+        this.showToast(message, 'warning', duration, opcoes);
     }
 
-    info(message, duration) {
-        this.showToast(message, 'info', duration);
+    info(message, duration, opcoes) {
+        this.showToast(message, 'info', duration, opcoes);
     }
 
     /**
      * Cria e exibe um modal
-     * @param {Object} options - Opções do modal
+     * @param {Object} options - Opções do modal. `title` e o `text` dos botões
+     *        são TEXTO; `content` é HTML (o corpo do modal) e quem chama escapa
+     *        o que for dado.
      */
     showModal(options) {
         const {
@@ -108,7 +135,7 @@ class UIManager {
             size = 'medium',
             closable = true,
             onClose = null,
-            buttons = []
+            buttons = [],
         } = options;
 
         // Remove modal existente com mesmo ID
@@ -118,31 +145,40 @@ class UIManager {
         modal.className = 'modal-overlay';
         modal.id = id;
 
-        const sizeClass = {
-            small: 'modal-sm',
-            medium: 'modal-md',
-            large: 'modal-lg',
-            fullscreen: 'modal-fs'
-        }[size] || 'modal-md';
+        const sizeClass =
+            {
+                small: 'modal-sm',
+                medium: 'modal-md',
+                large: 'modal-lg',
+                fullscreen: 'modal-fs',
+            }[size] || 'modal-md';
 
         modal.innerHTML = `
             <div class="modal ${sizeClass}">
                 <div class="modal-header">
-                    <h3 class="modal-title">${title}</h3>
+                    <h3 class="modal-title">${textoDaMensagem(title)}</h3>
                     ${closable ? '<button class="modal-close" data-close="true">&times;</button>' : ''}
                 </div>
                 <div class="modal-body">
                     ${content}
                 </div>
-                ${buttons.length > 0 ? `
+                ${
+                    buttons.length > 0
+                        ? `
                     <div class="modal-footer">
-                        ${buttons.map(btn => `
+                        ${buttons
+                            .map(
+                                (btn) => `
                             <button class="btn ${btn.class || 'btn-secondary'}" data-action="${btn.action || ''}">
-                                ${btn.text}
+                                ${textoDaMensagem(btn.text)}
                             </button>
-                        `).join('')}
+                        `
+                            )
+                            .join('')}
                     </div>
-                ` : ''}
+                `
+                        : ''
+                }
             </div>
         `;
 
@@ -165,11 +201,13 @@ class UIManager {
         }
 
         // Botões de ação
-        buttons.forEach(btn => {
+        buttons.forEach((btn) => {
             if (btn.onClick) {
-                modal.querySelector(`[data-action="${btn.action}"]`)?.addEventListener('click', () => {
-                    btn.onClick(modal);
-                });
+                modal
+                    .querySelector(`[data-action="${btn.action}"]`)
+                    ?.addEventListener('click', () => {
+                        btn.onClick(modal);
+                    });
             }
         });
 
@@ -191,14 +229,14 @@ class UIManager {
 
             setTimeout(() => {
                 modal.remove();
-                
+
                 // Only delete from map if it's still the same modal instance
                 // preventing race condition when reopening modal with same ID immediately
                 const currentData = this.modals.get(id);
                 if (currentData && currentData.modal === modal) {
                     this.modals.delete(id);
                 }
-                
+
                 if (onClose) onClose();
             }, 300);
         }
@@ -208,12 +246,15 @@ class UIManager {
      * Fecha todos os modais
      */
     closeAllModals() {
-        this.modals.forEach((_, id) => this.closeModal(id));
+        this.modals.forEach((_, id) => {
+            this.closeModal(id);
+        });
     }
 
     /**
      * Modal de confirmação
-     * @param {string} message - Mensagem de confirmação
+     * @param {string} message - Mensagem de confirmação (TEXTO; `options.html`
+     *        aceita marcação, e o chamador escapa o que for dado)
      * @param {Object} options - Opções adicionais
      * @returns {Promise<boolean>}
      */
@@ -224,13 +265,14 @@ class UIManager {
                 confirmText = 'Confirmar',
                 cancelText = 'Cancelar',
                 confirmClass = 'btn-primary',
-                cancelClass = 'btn-secondary'
+                cancelClass = 'btn-secondary',
+                html = false,
             } = options;
 
             this.showModal({
                 id: 'confirm-modal',
                 title,
-                content: `<p>${message}</p>`,
+                content: `<p>${html ? message : textoDaMensagem(message)}</p>`,
                 size: 'small',
                 closable: true,
                 onClose: () => resolve(false),
@@ -242,7 +284,7 @@ class UIManager {
                         onClick: () => {
                             this.closeModal('confirm-modal');
                             resolve(false);
-                        }
+                        },
                     },
                     {
                         text: confirmText,
@@ -251,24 +293,24 @@ class UIManager {
                         onClick: () => {
                             this.closeModal('confirm-modal');
                             resolve(true);
-                        }
-                    }
-                ]
+                        },
+                    },
+                ],
             });
         });
     }
 
     /**
      * Modal de alerta
-     * @param {string} message - Mensagem
-     * @param {string} title - Título
+     * @param {string} message - Mensagem (texto)
+     * @param {string} title - Título (texto)
      */
     alert(message, title = 'Aviso') {
         return new Promise((resolve) => {
             this.showModal({
                 id: 'alert-modal',
                 title,
-                content: `<p>${message}</p>`,
+                content: `<p>${textoDaMensagem(message)}</p>`,
                 size: 'small',
                 closable: true,
                 onClose: () => resolve(),
@@ -280,18 +322,18 @@ class UIManager {
                         onClick: () => {
                             this.closeModal('alert-modal');
                             resolve();
-                        }
-                    }
-                ]
+                        },
+                    },
+                ],
             });
         });
     }
 
     /**
      * Modal de prompt
-     * @param {string} message - Mensagem
+     * @param {string} message - Mensagem (texto)
      * @param {string} defaultValue - Valor padrão
-     * @param {string} title - Título
+     * @param {string} title - Título (texto)
      * @returns {Promise<string|null>}
      */
     prompt(message, defaultValue = '', title = 'Entrada') {
@@ -302,8 +344,8 @@ class UIManager {
                 id: 'prompt-modal',
                 title,
                 content: `
-                    <p>${message}</p>
-                    <input type="text" id="${inputId}" class="form-input" value="${defaultValue}">
+                    <p>${textoDaMensagem(message)}</p>
+                    <input type="text" id="${inputId}" class="form-input" value="${textoDaMensagem(defaultValue)}">
                 `,
                 size: 'small',
                 closable: true,
@@ -316,7 +358,7 @@ class UIManager {
                         onClick: () => {
                             this.closeModal('prompt-modal');
                             resolve(null);
-                        }
+                        },
                     },
                     {
                         text: 'OK',
@@ -326,9 +368,9 @@ class UIManager {
                             const value = document.getElementById(inputId)?.value || '';
                             this.closeModal('prompt-modal');
                             resolve(value);
-                        }
-                    }
-                ]
+                        },
+                    },
+                ],
             });
 
             // Foca no input
@@ -379,7 +421,7 @@ class UIManager {
                 this.loadingTimer = setTimeout(() => {
                     const textEl = document.getElementById('loading-text');
                     const spinnerContainer = document.querySelector('.spinner-container');
-                    
+
                     if (textEl) {
                         textEl.style.fontSize = '1.2rem'; // Ajuste leve para acomodar o texto longo
                         textEl.innerHTML = `Aguarde, estamos acordando o servidor...<br><small style="opacity:0.9; font-size:0.9rem; font-weight: 400;">(Isso pode levar até 30s no primeiro acesso)</small>`;
@@ -389,8 +431,9 @@ class UIManager {
                         const img = document.createElement('img');
                         img.id = 'wakeup-img';
                         img.src = '/img/gif/gif.webp';
-                        img.style.cssText = 'max-width: 280px; margin-bottom: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); animation: fadeIn 0.5s ease-out; display: block; margin-left: auto; margin-right: auto;';
-                        
+                        img.style.cssText =
+                            'max-width: 280px; margin-bottom: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); animation: fadeIn 0.5s ease-out; display: block; margin-left: auto; margin-right: auto;';
+
                         // Insere a imagem ANTES do container do spinner
                         spinnerContainer.parentElement.insertBefore(img, spinnerContainer);
                     }
@@ -406,7 +449,7 @@ class UIManager {
             // Limpa timers quando for fechar o loading
             if (this.loadingTimer) clearTimeout(this.loadingTimer);
             if (this.counterInterval) clearInterval(this.counterInterval);
-            
+
             this.loadingTimer = null;
             this.counterInterval = null;
 

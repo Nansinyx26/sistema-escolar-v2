@@ -54,11 +54,43 @@
         return txt.charAt(0).toUpperCase() + txt.slice(1);
     }
 
-    function kpi(nome, valorHtml, sub) {
-        var valor = document.querySelector('[data-kpi="' + nome + '"]');
+    /**
+     * Valor do cartão como TEXTO (Issue #656). Era `valorHtml`, cru no
+     * innerHTML; a única marcação que algum chamador mandava era o `<small>`
+     * do "%", que agora é a `unidade`, montada pelo DOM.
+     */
+    function kpi(nome, valor, sub, unidade) {
+        var alvo = document.querySelector('[data-kpi="' + nome + '"]');
         var legenda = document.querySelector('[data-kpi-sub="' + nome + '"]');
-        if (valor) valor.innerHTML = valorHtml;
+        if (alvo) {
+            alvo.textContent = valor === null || valor === undefined ? '' : String(valor);
+            if (unidade) {
+                var small = document.createElement('small');
+                small.textContent = unidade;
+                alvo.appendChild(small);
+            }
+        }
         if (legenda) legenda.textContent = sub || '';
+    }
+
+    /**
+     * `href` só se ficar na MESMA ORIGEM (Issue #656): o escape de HTML não
+     * barra `javascript:` nem `//outro-host`. Os links das pendências são
+     * caminhos relativos e âncoras; o resto vira "#".
+     */
+    function hrefMesmaOrigem(href) {
+        if (typeof href !== 'string' || !href.trim()) return '#';
+        var atual = window.location && window.location.href;
+        var base = /^https?:\/\//i.test(atual || '') ? atual : 'http://origem.invalid/';
+        try {
+            var destino = new URL(href, base);
+            var pagina = new URL(base);
+            return destino.origin === pagina.origin && destino.protocol === pagina.protocol
+                ? href
+                : '#';
+        } catch (_e) {
+            return '#';
+        }
     }
 
     function lista(id, html) {
@@ -137,7 +169,7 @@
                 }
 
                 var geral = Math.round((presencas / registros) * 100);
-                kpi(kpiNome, geral + '<small>%</small>', 'Presença no ano letivo');
+                kpi(kpiNome, String(geral), 'Presença no ano letivo', '%');
 
                 var itens = Object.keys(turmas)
                     .filter(function (t) {
@@ -307,10 +339,10 @@
                             ? '<span class="ui-pill ui-pill--muted">—</span>'
                             : p.valor === 0
                               ? '<span class="ui-pill ui-pill--muted">em dia</span>'
-                              : '<span class="ui-pill pn-pill-alerta">' + p.valor + '</span>';
+                              : '<span class="ui-pill pn-pill-alerta">' + esc(p.valor) + '</span>';
                     return (
                         '<li><a class="pn-pend" href="' +
-                        esc(p.href) +
+                        esc(hrefMesmaOrigem(p.href)) +
                         '">' +
                         '<span class="pn-pend-txt">' +
                         esc(p.rotulo) +

@@ -530,7 +530,9 @@
             const container = document.getElementById('toastContainer');
             const el = document.createElement('div');
             el.className = `toast ${type}`;
-            el.innerHTML = `<i class="bi bi-${type === 'success' ? 'check-circle-fill' : 'exclamation-circle-fill'}" style="color:${type === 'success' ? '#10b981' : '#ef4444'}"></i> <span>${msg}</span>`;
+            el.innerHTML = `<i class="bi bi-${type === 'success' ? 'check-circle-fill' : 'exclamation-circle-fill'}" style="color:${type === 'success' ? '#10b981' : '#ef4444'}"></i> <span></span>`;
+            // A mensagem entra como texto: o erro vem do servidor (`err.message`, #656).
+            el.querySelector('span').textContent = msg;
             container.appendChild(el);
             setTimeout(() => el.remove(), 4500);
         }

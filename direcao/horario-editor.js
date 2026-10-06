@@ -1,6 +1,6 @@
 /**
  * Horário Editor — CIEP Jaguari 2026
- * Edição de cor e texto restrita à conta Diretor
+ * Edição de cor e texto restrita a quem o servidor deixa gravar (ver checkPodeEditar)
  */
 
 class HorarioEditor {
@@ -8,7 +8,7 @@ class HorarioEditor {
         this.overrides = {};
         this.selectedCell = null;
         this.configId = null;
-        this.isDiretor = false;   // será verificado no init()
+        this.podeEditar = false;   // será verificado no init()
         this.isEditingMode = false;   // controla se a edição está liberada
 
         // Paleta com cores rgb() — iguais ao CSS
@@ -29,14 +29,32 @@ class HorarioEditor {
     }
 
     /* ── Verifica perfil ──────────────────────────────────── */
-    async checkDiretor() {
-        return true; // Forçado para garantir que o botão apareça para você
+    // Quem pode GRAVAR o que o editor muda (Issue #656). Antes devolvia `true`
+    // fixo, e a edição aparecia para qualquer um, que só via "Erro ao salvar".
+    // Cores e textos vão para PUT /api/config/:id, que o servidor só aceita de
+    // admin (routes/api.js); toda célula salva na tabela geral grava essa
+    // configuração logo depois (saveCellState → saveToMongo), e a importação
+    // do Excel também. O perfil vem da sessão real — /api/auth/me pelo
+    // js/auth.js, com o cache da sessão como reserva sem rede —, o mesmo campo
+    // `perfil` que o `authorize` do servidor confere.
+    async checkPodeEditar() {
+        const auth = window.auth;
+        if (!auth) return false;
+        let usuario = null;
+        try {
+            if (typeof auth.refreshCurrentUser === 'function') usuario = await auth.refreshCurrentUser();
+            if (!usuario && typeof auth.checkSession === 'function') usuario = await auth.checkSession();
+        } catch (_e) {
+            usuario = null;
+        }
+        if (!usuario && typeof auth.getCurrentUser === 'function') usuario = auth.getCurrentUser();
+        return String((usuario && usuario.perfil) || '').toLowerCase() === 'admin';
     }
 
     /* ── Init ─────────────────────────────────────────────── */
     async init() {
-        this.isDiretor = await this.checkDiretor();
-        console.log('🛠️ Editor de Horários — Diretor:', this.isDiretor);
+        this.podeEditar = await this.checkPodeEditar();
+        console.log('🛠️ Editor de Horários — pode editar:', this.podeEditar);
 
         await this.loadFromMongo();
 
@@ -47,7 +65,11 @@ class HorarioEditor {
             setTimeout(() => this.aplicarEdicoes(), 60);
         };
 
-        if (this.isDiretor) {
+        if (this.podeEditar) {
+            // "Importar Excel" também grava: nasce escondido na página.
+            document.querySelectorAll('[data-so-quem-edita]').forEach((el) => {
+                el.style.display = '';
+            });
             this.insertEditToggleButton();
             this.renderToolbar();
             this.renderPalette();
@@ -215,8 +237,8 @@ class HorarioEditor {
                 }
             }
 
-            // Só ativa interatividade para diretor
-            if (!this.isDiretor) return;
+            // Só ativa interatividade para quem pode gravar
+            if (!this.podeEditar) return;
 
             if (this.isEditingMode) cell.classList.add('editable-cell');
             else cell.classList.remove('editable-cell');
@@ -365,7 +387,7 @@ class HorarioEditor {
 
     /* ── Importação Excel ─────────────────────────────────── */
     async handleExcelImport(input) {
-        if (!this.isDiretor) { alert('Apenas o Diretor pode importar horários.'); return; }
+        if (!this.podeEditar) { alert('Apenas o administrador pode importar horários.'); return; }
         const file = input.files[0];
         if (!file) return;
         const reader = new FileReader();
@@ -466,8 +488,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (attempts > 30) { // 3 segundos timeout
             clearInterval(check);
             console.warn('⚠️ Horário Editor: inicializando sem DB.');
-            // Força a ser diretor para teste se não houver auth no ambiente isolado
-            window.horarioEditor.isDiretor = true;
             window.horarioEditor.init();
         }
     }, 100);
