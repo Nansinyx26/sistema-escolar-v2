@@ -33,6 +33,15 @@ function t(text) {
     return BI_CONFIG.translations[text] || text;
 }
 
+// Texto da API (sumário da IA, matéria, turma) no HTML montado por string
+// (Issue #649). Não recodifica o `&`, que o servidor já grava codificado.
+function textoBi(v) {
+    return String(v ?? '').replace(
+        /[<>"'`]/g,
+        (c) => ({ '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' })[c]
+    );
+}
+
 let mainCharts = {};
 const activeValueAnimations = {};
 let isFirstBiLoad = true;
@@ -232,12 +241,12 @@ function renderHeatmap(data) {
     // Header
     html += `<div class="matrix-label-corner"></div>`;
     turmas.forEach(tHead => {
-        html += `<div class="matrix-label-h" style="font-weight: 700; color: #94a3b8; text-align: center;">${tHead}</div>`;
+        html += `<div class="matrix-label-h" style="font-weight: 700; color: #94a3b8; text-align: center;">${textoBi(tHead)}</div>`;
     });
 
     // Rows
     materias.forEach(m => {
-        html += `<div class="matrix-label-v-text" style="font-size: 0.75rem; font-weight: 600; display: flex; align-items: center;">${t(m)}</div>`;
+        html += `<div class="matrix-label-v-text" style="font-size: 0.75rem; font-weight: 600; display: flex; align-items: center;">${textoBi(t(m))}</div>`;
         turmas.forEach(tCode => {
             const entry = dataMap.get(`${m}||${tCode}`);
             const media = entry ? parseFloat(entry.media) : 0;
@@ -363,13 +372,13 @@ function renderAIPedagogicalSummary(data) {
             </div>
             
             <div class="summary-text" style="color: #cbd5e1; font-size: 0.95rem; line-height: 1.6; font-weight: 400;">
-                ${data.sumario.replace(/\*\*(.*?)\*\*/g, '<strong style="color: #fff;">$1</strong>')}
+                ${textoBi(data.sumario).replace(/\*\*(.*?)\*\*/g, '<strong style="color: #fff;">$1</strong>')}
             </div>
 
             <div style="margin-top: 1.5rem; display: flex; gap: 10px; flex-wrap: wrap;">
-                <div class="badge-mini" title="Média Global"><i class="bi bi-graph-up"></i> ${data.mediaEscola || '0'}</div>
-                <div class="badge-mini" title="Alunos em Risco"><i class="bi bi-people"></i> ${data.alunosRisco || 0}</div>
-                <div class="badge-mini" title="Matéria Crítica"><i class="bi bi-journal-x"></i> ${data.materiaCritica || 'N/A'}</div>
+                <div class="badge-mini" title="Média Global"><i class="bi bi-graph-up"></i> ${textoBi(data.mediaEscola || '0')}</div>
+                <div class="badge-mini" title="Alunos em Risco"><i class="bi bi-people"></i> ${textoBi(data.alunosRisco || 0)}</div>
+                <div class="badge-mini" title="Matéria Crítica"><i class="bi bi-journal-x"></i> ${textoBi(data.materiaCritica || 'N/A')}</div>
             </div>
             <p class="bi-aviso-indicador" style="margin-top: 1rem; font-size: 0.78rem; color: #94a3b8;">
                 <i class="bi bi-info-circle"></i> <span data-aviso-indicador></span>
@@ -498,7 +507,8 @@ function showCellDetails(materia, turma, media, total) {
     else if (mediaNum >= 5.0 && mediaNum < 7.5) mediaColor = '#f59e0b';
 
     Swal.fire({
-        title: `${nomeMateria} — Turma ${turma}`,
+        // `titleText`: o título vai como texto; `title` é HTML (Issue #649).
+        titleText: `${nomeMateria} — Turma ${turma}`,
         html: `
             <div style="text-align: left; padding: 12px 4px;">
                 <div style="display: flex; gap: 16px; margin-bottom: 16px;">

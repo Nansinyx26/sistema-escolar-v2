@@ -341,7 +341,10 @@
                 : `<div class="chat-avatar-initials">${initials}</div>`;
         }
 
-        const formattedText = formatBold(text);
+        // A resposta é texto: nome de aluno, comunicado e matéria vêm crus do
+        // banco, e o resto do modelo. Escapa ANTES do negrito (Issue #649);
+        // o mesmo vale para o rótulo da opção, que volta cru pelo `dataset`.
+        const formattedText = formatBold(escAttr(text));
 
         let html = `
             <div class="msg-content-wrapper">
