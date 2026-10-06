@@ -1944,9 +1944,13 @@ exports.anonymize = async (req, res) => {
  * (Issue #677): os dois caminhos precisam do mesmo formato, porque a
  * conferência (`conferirCodigoDeRecuperacao`) só aceita `salt:hash`.
  *
- * @returns {Promise<boolean>} se o provedor aceitou o e-mail
+ * @param {Object} [opcoes]
+ * @param {boolean} [opcoes.aguardarEnvio=true] `false` grava o código e
+ *   responde sem esperar o provedor de e-mail (Issue #678).
+ * @returns {Promise<boolean>} se o provedor aceitou o e-mail; `true` quando o
+ *   envio não é aguardado
  */
-async function enviarCodigoDeRecuperacao(user) {
+async function enviarCodigoDeRecuperacao(user, { aguardarEnvio = true } = {}) {
     // 1. Invalida códigos ativos anteriores deste usuário
     await RecuperacaoSenha.updateMany(
         { usuarioId: user._id, status: 'ativo' },
@@ -1987,23 +1991,38 @@ async function enviarCodigoDeRecuperacao(user) {
     // deve lê-lo do banco de teste, não de um arquivo escrito em produção.
 
     // ============================================
-    // 4. Envio AGUARDADO
+    // 4. Envio, com a falha SEMPRE registrada
     // ============================================
-    // Era fire-and-forget: a resposta dizia "você receberá um código" mesmo
-    // quando o provedor recusava a mensagem. Mesmo problema que deixou o
-    // 2FA de diretor e secretaria mudo por semanas.
-    const entregue = await EmailService.sendVerificationCode(user.email, code, user.nome);
-    if (!entregue) {
-        logger.error('[recuperacao] Código gerado mas NÃO entregue', {
-            usuarioId: String(user._id),
-            action: 'auth.recuperacao.envioFalhou',
+    // Era fire-and-forget sem registro: a resposta dizia "você receberá um
+    // código" mesmo quando o provedor recusava a mensagem, e ninguém sabia.
+    // Mesmo problema que deixou o 2FA de diretor e secretaria mudo por semanas.
+    // A redefinição pedida pela gestão aguarda o envio. O "esqueci minha
+    // senha" não (Issue #678): esperar o provedor só quando a conta existe
+    // denunciava, pelo tempo de resposta, quais e-mails estão cadastrados.
+    const envio = EmailService.sendVerificationCode(user.email, code, user.nome)
+        .catch(() => false)
+        .then((entregue) => {
+            if (!entregue) {
+                logger.error('[recuperacao] Código gerado mas NÃO entregue', {
+                    usuarioId: String(user._id),
+                    action: 'auth.recuperacao.envioFalhou',
+                });
+            }
+            return entregue;
         });
-    }
-    return entregue;
+    return aguardarEnvio ? envio : true;
 }
+
+/**
+ * Tempo mínimo da resposta do "esqueci minha senha" (Issue #678). Com conta, o
+ * código é gerado e gravado antes da resposta; sem conta, não há nada a gravar.
+ * O piso iguala as duas respostas enquanto esse trabalho couber nele.
+ */
+const TEMPO_MINIMO_RECUPERACAO_MS = 400;
 
 exports.forgotPassword = async (req, res) => {
     const { email } = req.body;
+    const inicio = Date.now();
     try {
         if (!email) {
             return res.status(400).json({ success: false, error: 'E-mail é obrigatório.' });
@@ -2017,12 +2036,18 @@ exports.forgotPassword = async (req, res) => {
         };
 
         // Busca pelo email informado
+        // Com ou sem conta, a resposta custa o mesmo (Issue #678): o envio do
+        // e-mail não é aguardado, o caminho sem conta também calcula um hash
+        // (a parte cara de gravar o código) e as duas respeitam o piso.
         const user = await Usuario.findOne({ email: email.toLowerCase(), ativo: true });
-        if (!user) {
-            return res.json(standardResponse);
+        if (user) {
+            await enviarCodigoDeRecuperacao(user, { aguardarEnvio: false });
+        } else {
+            const { hashSegredo } = require('../utils/codigosBackup');
+            await hashSegredo(crypto.randomInt(100000, 999999).toString());
         }
-
-        await enviarCodigoDeRecuperacao(user);
+        const falta = TEMPO_MINIMO_RECUPERACAO_MS - (Date.now() - inicio);
+        if (falta > 0) await new Promise((resolve) => setTimeout(resolve, falta));
 
         // O código NUNCA volta na resposta, nem em desenvolvimento: havia um
         // `code_debug` que dependia só de NODE_ENV. Uma variável de ambiente
