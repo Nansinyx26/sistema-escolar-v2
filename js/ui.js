@@ -3,6 +3,28 @@
  * Gerencia componentes visuais, modais e notificações
  */
 
+/**
+ * Mensagem como TEXTO (Issue #656).
+ *
+ * Toast, título de modal, botões e as mensagens de `confirm`, `alert` e
+ * `prompt` iam crus para o innerHTML, e os chamadores passam `error.message`
+ * vindo do servidor. Nenhum chamador passa marcação de propósito
+ * (levantamento na #656), então o padrão é texto. A exceção é o `content` do
+ * `showModal`: é o corpo do modal (formulários), HTML por contrato — quem monta
+ * escapa o que for dado, como já faz js/app.js.
+ *
+ * Regra do #650 (textoHtml): escapa < > aspas e crase, mas NÃO o `&`, que o
+ * servidor já grava codificado — o textContent mostraria "&amp;" nesses textos
+ * e no que o chamador já escapou. Sem `<` literal, nenhum elemento nasce.
+ */
+function textoDaMensagem(v) {
+    if (v === null || v === undefined) return '';
+    return String(v).replace(
+        /["'<>`]/g,
+        (c) => ({ '"': '&quot;', "'": '&#39;', '<': '&lt;', '>': '&gt;', '`': '&#96;' })[c]
+    );
+}
+
 class UIManager {
     constructor() {
         this.modals = new Map();
@@ -38,8 +60,10 @@ class UIManager {
      * @param {string} message - Mensagem a exibir
      * @param {string} type - Tipo: success, error, warning, info
      * @param {number} duration - Duração em ms
+     * @param {{html?: boolean}} [opcoes] - `html: true` aceita marcação (o
+     *        chamador escapa o que for dado); sem isso a mensagem é texto
      */
-    showToast(message, type = 'info', duration = 3000) {
+    showToast(message, type = 'info', duration = 3000, opcoes = {}) {
         // Se por algum motivo o container for nulo, tenta inicializar de novo
         if (!this.toastContainer) {
             this.createToastContainer();
@@ -63,7 +87,7 @@ class UIManager {
 
         toast.innerHTML = `
             <span class="toast-icon">${icons[type] || icons.info}</span>
-            <span class="toast-message">${message}</span>
+            <span class="toast-message">${opcoes?.html ? message : textoDaMensagem(message)}</span>
         `;
 
         this.toastContainer.appendChild(toast);
@@ -81,25 +105,27 @@ class UIManager {
     /**
      * Atalhos para tipos de toast
      */
-    success(message, duration) {
-        this.showToast(message, 'success', duration);
+    success(message, duration, opcoes) {
+        this.showToast(message, 'success', duration, opcoes);
     }
 
-    error(message, duration) {
-        this.showToast(message, 'error', duration);
+    error(message, duration, opcoes) {
+        this.showToast(message, 'error', duration, opcoes);
     }
 
-    warning(message, duration) {
-        this.showToast(message, 'warning', duration);
+    warning(message, duration, opcoes) {
+        this.showToast(message, 'warning', duration, opcoes);
     }
 
-    info(message, duration) {
-        this.showToast(message, 'info', duration);
+    info(message, duration, opcoes) {
+        this.showToast(message, 'info', duration, opcoes);
     }
 
     /**
      * Cria e exibe um modal
-     * @param {Object} options - Opções do modal
+     * @param {Object} options - Opções do modal. `title` e o `text` dos botões
+     *        são TEXTO; `content` é HTML (o corpo do modal) e quem chama escapa
+     *        o que for dado.
      */
     showModal(options) {
         const {
@@ -130,7 +156,7 @@ class UIManager {
         modal.innerHTML = `
             <div class="modal ${sizeClass}">
                 <div class="modal-header">
-                    <h3 class="modal-title">${title}</h3>
+                    <h3 class="modal-title">${textoDaMensagem(title)}</h3>
                     ${closable ? '<button class="modal-close" data-close="true">&times;</button>' : ''}
                 </div>
                 <div class="modal-body">
@@ -144,7 +170,7 @@ class UIManager {
                             .map(
                                 (btn) => `
                             <button class="btn ${btn.class || 'btn-secondary'}" data-action="${btn.action || ''}">
-                                ${btn.text}
+                                ${textoDaMensagem(btn.text)}
                             </button>
                         `
                             )
@@ -227,7 +253,8 @@ class UIManager {
 
     /**
      * Modal de confirmação
-     * @param {string} message - Mensagem de confirmação
+     * @param {string} message - Mensagem de confirmação (TEXTO; `options.html`
+     *        aceita marcação, e o chamador escapa o que for dado)
      * @param {Object} options - Opções adicionais
      * @returns {Promise<boolean>}
      */
@@ -239,12 +266,13 @@ class UIManager {
                 cancelText = 'Cancelar',
                 confirmClass = 'btn-primary',
                 cancelClass = 'btn-secondary',
+                html = false,
             } = options;
 
             this.showModal({
                 id: 'confirm-modal',
                 title,
-                content: `<p>${message}</p>`,
+                content: `<p>${html ? message : textoDaMensagem(message)}</p>`,
                 size: 'small',
                 closable: true,
                 onClose: () => resolve(false),
@@ -274,15 +302,15 @@ class UIManager {
 
     /**
      * Modal de alerta
-     * @param {string} message - Mensagem
-     * @param {string} title - Título
+     * @param {string} message - Mensagem (texto)
+     * @param {string} title - Título (texto)
      */
     alert(message, title = 'Aviso') {
         return new Promise((resolve) => {
             this.showModal({
                 id: 'alert-modal',
                 title,
-                content: `<p>${message}</p>`,
+                content: `<p>${textoDaMensagem(message)}</p>`,
                 size: 'small',
                 closable: true,
                 onClose: () => resolve(),
@@ -303,9 +331,9 @@ class UIManager {
 
     /**
      * Modal de prompt
-     * @param {string} message - Mensagem
+     * @param {string} message - Mensagem (texto)
      * @param {string} defaultValue - Valor padrão
-     * @param {string} title - Título
+     * @param {string} title - Título (texto)
      * @returns {Promise<string|null>}
      */
     prompt(message, defaultValue = '', title = 'Entrada') {
@@ -316,8 +344,8 @@ class UIManager {
                 id: 'prompt-modal',
                 title,
                 content: `
-                    <p>${message}</p>
-                    <input type="text" id="${inputId}" class="form-input" value="${defaultValue}">
+                    <p>${textoDaMensagem(message)}</p>
+                    <input type="text" id="${inputId}" class="form-input" value="${textoDaMensagem(defaultValue)}">
                 `,
                 size: 'small',
                 closable: true,
