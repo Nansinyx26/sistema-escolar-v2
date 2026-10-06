@@ -15,7 +15,7 @@ const RecuperacaoSenha = require('../models/RecuperacaoSenha');
 const { hostDoGoogle } = require('../middleware/validarFoto');
 const EmailService = require('../services/EmailService');
 const logger = require('../utils/logger');
-const { emitirParaPerfis } = require('../utils/realtime');
+const { emitirParaPerfis, encerrarConexoesDaConta } = require('../utils/realtime');
 // Usado nos dados vindos do Google, que não passam pela sanitização global
 // do app.js (ela cobre req.body/query/params, não payload de OAuth).
 const { sanitizeInput } = require('../utils/sanitize');
@@ -1441,11 +1441,23 @@ exports.logout = async (req, res) => {
             ? req.headers.authorization.slice(7)
             : null);
 
+    let revogacao;
     try {
-        await require('../utils/sessionToken').revogarTokenSessao(tokenAtual);
+        revogacao = await require('../utils/sessionToken').revogarTokenSessao(tokenAtual);
     } catch (e) {
         // Nunca falha o logout por causa disso — o cookie ainda é limpo abaixo.
         console.error('[LOGOUT] Falha ao revogar token:', e.message);
+    }
+
+    // O socket desta sessão cai junto (Issue #667). Só depois de uma
+    // revogação que conferiu a assinatura: a rota é pública, e um token
+    // forjado não pode derrubar a conexão de ninguém.
+    if (revogacao?.revogado) {
+        const payload = jwt.decode(tokenAtual) || {};
+        encerrarConexoesDaConta(
+            String(payload.id || payload._id || ''),
+            revogacao.escopo === 'token' ? { jti: payload.jti } : {}
+        );
     }
 
     // clearCookie precisa das mesmas opções usadas no setCookie, senão o browser ignora.
@@ -1662,6 +1674,8 @@ exports.update = async (req, res) => {
         const user = await Usuario.findByIdAndUpdate(targetId, updateOps, { new: true }).select(
             '-senha'
         );
+        // A aba aberta também perde o tempo real (Issue #667).
+        if (mudouPrivilegio) encerrarConexoesDaConta(String(targetId));
 
         await logAction(req, 'UPDATE_USER', 'Usuarios', {
             recursoId: targetId,
@@ -1704,6 +1718,7 @@ exports.delete = async (req, res) => {
             // Revoga sessões abertas ANTES de remover o documento: se a exclusão
             // falhar no meio, a conta já não consegue mais usar o cookie antigo.
             await Usuario.updateOne({ _id: user._id }, { $inc: { tokenVersion: 1 } });
+            encerrarConexoesDaConta(String(user._id)); // Issue #667
             await Usuario.findByIdAndDelete(req.params.id);
 
             // Remove o perfil estendido junto. `secretarias.email` é unique —
@@ -1862,6 +1877,7 @@ exports.anonymize = async (req, res) => {
             },
             $inc: { tokenVersion: 1 },
         });
+        encerrarConexoesDaConta(String(user._id)); // Issue #667
 
         // As conversas do chat ficavam intactas: anonimizar o cadastro e
         // deixar o texto das mensagens preservava justamente o conteúdo mais
@@ -2151,6 +2167,8 @@ exports.resetPassword = async (req, res) => {
                 $unset: { resetToken: '', resetTokenExpiry: '' },
             }
         );
+        // Quem roubou o cookie perde também o tempo real (Issue #667).
+        encerrarConexoesDaConta(String(user._id));
 
         // Registra a atividade no log de auditoria
         await logAction(req, 'RESET_PASSWORD_SUCCESS', 'Usuarios', {
@@ -2224,6 +2242,8 @@ exports.updatePasswordForce = async (req, res) => {
 
         // As outras sessões morrem pelo tokenVersion; esta segue com um token novo.
         emitirTokenSessao(res, atualizado);
+        // Os sockets caem todos; esta aba reconecta com o cookie novo (Issue #667).
+        encerrarConexoesDaConta(String(userId));
 
         await logAction(req, 'FORCE_CHANGE_PASSWORD', 'Usuarios', {
             recursoId: userId,
