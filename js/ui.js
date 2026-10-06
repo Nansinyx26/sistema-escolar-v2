@@ -22,8 +22,9 @@ class UIManager {
      */
     createToastContainer() {
         // Tenta encontrar por qualquer um dos IDs comuns
-        this.toastContainer = document.getElementById('toast-container') || document.getElementById('toastContainer');
-        
+        this.toastContainer =
+            document.getElementById('toast-container') || document.getElementById('toastContainer');
+
         if (!this.toastContainer) {
             this.toastContainer = document.createElement('div');
             this.toastContainer.id = 'toast-container';
@@ -43,7 +44,7 @@ class UIManager {
         if (!this.toastContainer) {
             this.createToastContainer();
         }
-        
+
         // Se ainda for nulo (caso extremo), usa o console
         if (!this.toastContainer) {
             console.log(`[${type}] ${message}`);
@@ -57,7 +58,7 @@ class UIManager {
             success: '✓',
             error: '✕',
             warning: '⚠',
-            info: 'ℹ'
+            info: 'ℹ',
         };
 
         toast.innerHTML = `
@@ -108,7 +109,7 @@ class UIManager {
             size = 'medium',
             closable = true,
             onClose = null,
-            buttons = []
+            buttons = [],
         } = options;
 
         // Remove modal existente com mesmo ID
@@ -118,12 +119,13 @@ class UIManager {
         modal.className = 'modal-overlay';
         modal.id = id;
 
-        const sizeClass = {
-            small: 'modal-sm',
-            medium: 'modal-md',
-            large: 'modal-lg',
-            fullscreen: 'modal-fs'
-        }[size] || 'modal-md';
+        const sizeClass =
+            {
+                small: 'modal-sm',
+                medium: 'modal-md',
+                large: 'modal-lg',
+                fullscreen: 'modal-fs',
+            }[size] || 'modal-md';
 
         modal.innerHTML = `
             <div class="modal ${sizeClass}">
@@ -134,15 +136,23 @@ class UIManager {
                 <div class="modal-body">
                     ${content}
                 </div>
-                ${buttons.length > 0 ? `
+                ${
+                    buttons.length > 0
+                        ? `
                     <div class="modal-footer">
-                        ${buttons.map(btn => `
+                        ${buttons
+                            .map(
+                                (btn) => `
                             <button class="btn ${btn.class || 'btn-secondary'}" data-action="${btn.action || ''}">
                                 ${btn.text}
                             </button>
-                        `).join('')}
+                        `
+                            )
+                            .join('')}
                     </div>
-                ` : ''}
+                `
+                        : ''
+                }
             </div>
         `;
 
@@ -165,11 +175,13 @@ class UIManager {
         }
 
         // Botões de ação
-        buttons.forEach(btn => {
+        buttons.forEach((btn) => {
             if (btn.onClick) {
-                modal.querySelector(`[data-action="${btn.action}"]`)?.addEventListener('click', () => {
-                    btn.onClick(modal);
-                });
+                modal
+                    .querySelector(`[data-action="${btn.action}"]`)
+                    ?.addEventListener('click', () => {
+                        btn.onClick(modal);
+                    });
             }
         });
 
@@ -191,14 +203,14 @@ class UIManager {
 
             setTimeout(() => {
                 modal.remove();
-                
+
                 // Only delete from map if it's still the same modal instance
                 // preventing race condition when reopening modal with same ID immediately
                 const currentData = this.modals.get(id);
                 if (currentData && currentData.modal === modal) {
                     this.modals.delete(id);
                 }
-                
+
                 if (onClose) onClose();
             }, 300);
         }
@@ -208,7 +220,9 @@ class UIManager {
      * Fecha todos os modais
      */
     closeAllModals() {
-        this.modals.forEach((_, id) => this.closeModal(id));
+        this.modals.forEach((_, id) => {
+            this.closeModal(id);
+        });
     }
 
     /**
@@ -224,7 +238,7 @@ class UIManager {
                 confirmText = 'Confirmar',
                 cancelText = 'Cancelar',
                 confirmClass = 'btn-primary',
-                cancelClass = 'btn-secondary'
+                cancelClass = 'btn-secondary',
             } = options;
 
             this.showModal({
@@ -242,7 +256,7 @@ class UIManager {
                         onClick: () => {
                             this.closeModal('confirm-modal');
                             resolve(false);
-                        }
+                        },
                     },
                     {
                         text: confirmText,
@@ -251,9 +265,9 @@ class UIManager {
                         onClick: () => {
                             this.closeModal('confirm-modal');
                             resolve(true);
-                        }
-                    }
-                ]
+                        },
+                    },
+                ],
             });
         });
     }
@@ -280,9 +294,9 @@ class UIManager {
                         onClick: () => {
                             this.closeModal('alert-modal');
                             resolve();
-                        }
-                    }
-                ]
+                        },
+                    },
+                ],
             });
         });
     }
@@ -316,7 +330,7 @@ class UIManager {
                         onClick: () => {
                             this.closeModal('prompt-modal');
                             resolve(null);
-                        }
+                        },
                     },
                     {
                         text: 'OK',
@@ -326,9 +340,9 @@ class UIManager {
                             const value = document.getElementById(inputId)?.value || '';
                             this.closeModal('prompt-modal');
                             resolve(value);
-                        }
-                    }
-                ]
+                        },
+                    },
+                ],
             });
 
             // Foca no input
@@ -379,7 +393,7 @@ class UIManager {
                 this.loadingTimer = setTimeout(() => {
                     const textEl = document.getElementById('loading-text');
                     const spinnerContainer = document.querySelector('.spinner-container');
-                    
+
                     if (textEl) {
                         textEl.style.fontSize = '1.2rem'; // Ajuste leve para acomodar o texto longo
                         textEl.innerHTML = `Aguarde, estamos acordando o servidor...<br><small style="opacity:0.9; font-size:0.9rem; font-weight: 400;">(Isso pode levar até 30s no primeiro acesso)</small>`;
@@ -389,8 +403,9 @@ class UIManager {
                         const img = document.createElement('img');
                         img.id = 'wakeup-img';
                         img.src = '/img/gif/gif.webp';
-                        img.style.cssText = 'max-width: 280px; margin-bottom: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); animation: fadeIn 0.5s ease-out; display: block; margin-left: auto; margin-right: auto;';
-                        
+                        img.style.cssText =
+                            'max-width: 280px; margin-bottom: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); animation: fadeIn 0.5s ease-out; display: block; margin-left: auto; margin-right: auto;';
+
                         // Insere a imagem ANTES do container do spinner
                         spinnerContainer.parentElement.insertBefore(img, spinnerContainer);
                     }
@@ -406,7 +421,7 @@ class UIManager {
             // Limpa timers quando for fechar o loading
             if (this.loadingTimer) clearTimeout(this.loadingTimer);
             if (this.counterInterval) clearInterval(this.counterInterval);
-            
+
             this.loadingTimer = null;
             this.counterInterval = null;
 
