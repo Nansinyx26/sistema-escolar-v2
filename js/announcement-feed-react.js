@@ -141,7 +141,7 @@
                 window.speak(cleanText);
 
                 // Simulação de progresso para o TTS (já que o Google TTS via window.speak não dá feedback de tempo real facilmente)
-                let startTime = Date.now();
+                const startTime = Date.now();
                 const estimatedDuration = cleanText.length * 80; // aprox 80ms por char
 
                 const timer = setInterval(() => {
@@ -239,7 +239,7 @@
             );
         }
 
-        let currentPlayingAudio = null;
+        const currentPlayingAudio = null;
 
         // --- COMPONENTE DE REAÇÕES PREMIUM ---
         function ReactionArea({ messageId, initialReactions, type = 'post' }) {
