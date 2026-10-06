@@ -66,7 +66,8 @@ class HorarioEditor {
         };
 
         if (this.podeEditar) {
-            // "Importar Excel" também grava: nasce escondido na página.
+            // "Importar Excel" e "Sincronizar" também gravam: nascem escondidos
+            // na página.
             document.querySelectorAll('[data-so-quem-edita]').forEach((el) => {
                 el.style.display = '';
             });
@@ -75,10 +76,6 @@ class HorarioEditor {
             this.renderPalette();
             this.setupKeyboard();
             this.insertModal();
-
-            // Exibe botão "Sincronizar Banco" apenas para diretores
-            const seedBtn = document.getElementById('btn-seed-db');
-            if (seedBtn) seedBtn.style.display = '';
         }
 
         this.aplicarEdicoes();
