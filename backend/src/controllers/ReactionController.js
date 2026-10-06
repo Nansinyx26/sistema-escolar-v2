@@ -2,6 +2,23 @@ const MessageReaction = require('../models/MessageReaction');
 const RealtimeNotification = require('../models/RealtimeNotification');
 const { emitirParaMensagem } = require('../utils/realtime');
 
+/**
+ * Reações da mensagem dentro da escola da sessão. A lista leva nome, perfil e
+ * nome do aluno de quem reagiu; sem o recorte, qualquer `messageId` de outra
+ * escola devolvia isso. Registro antigo sem escola continua visível.
+ */
+function reacoesDaMensagem(req, messageId) {
+    const filtro = { messageId };
+    if (req.escolaId) {
+        filtro.$or = [
+            { escolaId: String(req.escolaId) },
+            { escolaId: { $in: [null, ''] } },
+            { escolaId: { $exists: false } },
+        ];
+    }
+    return MessageReaction.find(filtro);
+}
+
 exports.addOrUpdate = async (req, res) => {
     try {
         const { messageId, emoji, parentName, studentName } = req.body;
@@ -10,12 +27,12 @@ exports.addOrUpdate = async (req, res) => {
         const senderName = req.user.nome || 'Usuário';
 
         if (!messageId || !emoji) {
-            return res.status(400).json({ success: false, error: 'messageId e emoji são obrigatórios.' });
+            return res
+                .status(400)
+                .json({ success: false, error: 'messageId e emoji são obrigatórios.' });
         }
 
-        const allowedEmojis = [
-            '👍', '❤️', '😂', '😮', '😢', '👏', '🔥', '🎉'
-        ];
+        const allowedEmojis = ['👍', '❤️', '😂', '😮', '😢', '👏', '🔥', '🎉'];
         if (!allowedEmojis.includes(emoji)) {
             return res.status(400).json({ success: false, error: 'Emoji não permitido.' });
         }
@@ -25,10 +42,15 @@ exports.addOrUpdate = async (req, res) => {
         const reaction = await MessageReaction.findOneAndUpdate(
             { messageId, senderId: queryId },
             {
-                messageId, senderId: queryId, senderType, senderName,
-                parentName: parentName || '', studentName: studentName || '',
+                messageId,
+                senderId: queryId,
+                senderType,
+                senderName,
+                parentName: parentName || '',
+                studentName: studentName || '',
                 escolaId: req.escolaId || req.session?.escolaAtivaId || undefined,
-                emoji, updatedAt: new Date()
+                emoji,
+                updatedAt: new Date(),
             },
             { upsert: true, new: true, setDefaultsOnInsert: true }
         );
@@ -36,21 +58,24 @@ exports.addOrUpdate = async (req, res) => {
         const isNew = reaction.createdAt.getTime() === reaction.updatedAt.getTime();
 
         // Buscar todas as reações desta mensagem para retornar
-        const allReactions = await MessageReaction.find({ messageId }).lean();
+        const allReactions = await reacoesDaMensagem(req, messageId).lean();
         const summary = buildReactionSummary(allReactions);
 
         // Emitir apenas na sala da mensagem. O emit global adicional entregava
         // o resumo de reações (nome e perfil de quem reagiu) a todos os
         // sockets conectados, inclusive de conversas de outras escolas.
         emitirParaMensagem(messageId, isNew ? 'reaction:add' : 'reaction:update', {
-            messageId, reaction, allReactions, summary
+            messageId,
+            reaction,
+            allReactions,
+            summary,
         });
 
         res.status(isNew ? 201 : 200).json({
             success: true,
             data: reaction,
             allReactions,
-            summary
+            summary,
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -68,11 +93,13 @@ exports.remove = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Reação não encontrada.' });
         }
 
-        const allReactions = await MessageReaction.find({ messageId }).lean();
+        const allReactions = await reacoesDaMensagem(req, messageId).lean();
 
         emitirParaMensagem(messageId, 'reaction:remove', {
-            messageId, senderId, allReactions,
-            summary: buildReactionSummary(allReactions)
+            messageId,
+            senderId,
+            allReactions,
+            summary: buildReactionSummary(allReactions),
         });
 
         res.json({ success: true, message: 'Reação removida.', allReactions });
@@ -84,11 +111,11 @@ exports.remove = async (req, res) => {
 exports.getByMessage = async (req, res) => {
     try {
         const { messageId } = req.params;
-        const reactions = await MessageReaction.find({ messageId }).sort({ createdAt: -1 }).lean();
-        res.json({ 
-            success: true, 
+        const reactions = await reacoesDaMensagem(req, messageId).sort({ createdAt: -1 }).lean();
+        res.json({
+            success: true,
             data: reactions,
-            summary: buildReactionSummary(reactions)
+            summary: buildReactionSummary(reactions),
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
@@ -98,7 +125,7 @@ exports.getByMessage = async (req, res) => {
 // Helper: Agrupa reações por emoji com contagem
 function buildReactionSummary(reactions) {
     const summary = {};
-    reactions.forEach(r => {
+    reactions.forEach((r) => {
         if (!summary[r.emoji]) {
             summary[r.emoji] = { count: 0, users: [] };
         }
