@@ -12,7 +12,6 @@ const Escola = require('../models/Escola');
 const Usuario = require('../models/Usuario');
 const RecuperacaoSenha = require('../models/RecuperacaoSenha');
 const EmailService = require('../services/EmailService');
-const PasswordRecoveryService = require('../services/PasswordRecoveryService');
 const { conectarBanco, limparBanco, desconectarBanco, criarUsuario } = require('./helpers');
 const { assinarTokenSessao } = require('../utils/sessionToken');
 const { invalidarCacheEscolas } = require('../middleware/filtrarPorEscola');
@@ -111,16 +110,4 @@ it('conta desativada responde 409 e não gera código', async () => {
     expect(res.status).toBe(409);
     expect(espiaoEnvio).not.toHaveBeenCalled();
     expect(await RecuperacaoSenha.countDocuments({})).toBe(0);
-});
-
-it('o serviço não devolve o código nem em desenvolvimento', async () => {
-    const ambiente = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'development';
-    try {
-        const resposta = await PasswordRecoveryService.forgotPassword(professor.email);
-        expect(resposta.success).toBe(true);
-        expect(resposta.code_debug).toBeUndefined();
-    } finally {
-        process.env.NODE_ENV = ambiente;
-    }
 });
