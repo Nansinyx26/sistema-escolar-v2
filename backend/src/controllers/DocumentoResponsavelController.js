@@ -369,6 +369,12 @@ exports.listarPorAluno = async (req, res) => {
         const query = {
             $or: [{ alunoId: idAluno }, { alunoId: String(idAluno) }, { alunoId: alunoId }],
         };
+        // Responsável vê só o que ele mesmo enviou, como na visualização e no
+        // download (Issue #689): a lista entregava o `storageId` dos
+        // documentos do outro responsável do aluno.
+        if (perfil === 'responsavel') {
+            query.responsavelId = String(req.user?.id || req.user?._id || '');
+        }
 
         const documentos = await DocumentoResponsavel.find(query).sort({ dataEnvio: -1 }).lean();
 
@@ -523,6 +529,9 @@ async function localizarEAutorizar(req, idOuStorageId) {
     const versao = (doc.versoes || []).find((v) => String(v.storageId) === String(idOuStorageId));
     return { ok: true, doc, arquivo: versao || doc.arquivo, ehVersaoAnterior: !!versao };
 }
+
+// A rota genérica de arquivos (FileController) aplica a mesma regra (Issue #689).
+exports.localizarEAutorizar = localizarEAutorizar;
 
 /**
  * A tela "Autorizações dos Pais" abre o arquivo num <iframe> da própria
