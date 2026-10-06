@@ -3,6 +3,11 @@ const Falta = require('../models/Falta');
 const Config = require('../models/Config');
 const Professor = require('../models/Professor');
 
+/** Filtro da escola da sessão; `{}` quando a rede ainda não tem escolas. */
+function escopoDaEscola(req, extra = {}) {
+    return req.escolaId ? { ...extra, escolaId: String(req.escolaId) } : { ...extra };
+}
+
 exports.create = async (req, res) => {
     try {
         const {
@@ -104,7 +109,9 @@ exports.create = async (req, res) => {
 exports.list = async (req, res) => {
     try {
         const { professor, dataInicio, dataFim } = req.query;
-        const filter = {};
+        // Só as aulas da escola da sessão (Issue #660). Sem o `filtrarPorEscola`
+        // na montagem, esta lista trazia a rede inteira.
+        const filter = escopoDaEscola(req);
 
         if (professor) filter.nomeProfessor = professor;
         if (dataInicio && dataFim) {
@@ -152,10 +159,10 @@ exports.listPendencias = async (req, res) => {
 
         // 1. Busca todas as aulas registradas pelo professor
         const DATA_IMPLANTACAO = new Date('2025-01-01');
-        const filter = {
+        const filter = escopoDaEscola(req, {
             nomeProfessor: professorName,
             createdAt: { $gte: DATA_IMPLANTACAO },
-        };
+        });
         const aulas = await FrequenciaProfessor.find(filter);
 
         const pendencias = [];

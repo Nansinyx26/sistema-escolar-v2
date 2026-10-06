@@ -832,11 +832,18 @@ exports.regenerateSecretCode = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
         }
 
-        // Multi-escola: só regenera código de aluno da escola ativa
+        // Multi-escola: só regenera código de aluno da escola ativa. Vale também
+        // para o admin, que troca a escola da sessão para agir em outra.
         if (req.escolaId && aluno.escolaId && String(aluno.escolaId) !== String(req.escolaId)) {
             return res
                 .status(403)
                 .json({ success: false, error: 'Este aluno pertence a outra escola.' });
+        }
+        // Aluno sem escola fica fora do alcance da gestão, como nas outras rotas
+        // do aluno (Issues #602 e #675).
+        const acesso = await assertAcessoAoAluno(req, aluno._id, { aluno });
+        if (!acesso.ok) {
+            return res.status(acesso.status).json({ success: false, error: acesso.error });
         }
 
         const codigoAnterior = aluno.codigoSecreto;

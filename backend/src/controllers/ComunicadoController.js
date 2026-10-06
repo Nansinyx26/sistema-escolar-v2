@@ -4,6 +4,7 @@ const ImageProcessor = require('../utils/imageProcessor');
 const logger = require('../utils/logger');
 const escapeRegex = require('../utils/escapeRegex');
 const { emitirParaEscola } = require('../utils/realtime');
+const { emitirComunicadoNovo } = require('../services/publicoDoComunicado');
 const { extrairPaginacao } = require('../middleware/pagination');
 const { alvosDoUsuario, alunosDoResponsavel } = require('../services/vinculoDoResponsavel');
 
@@ -147,13 +148,10 @@ exports.create = async (req, res) => {
                     req.escolaId || req.session?.escolaAtivaId || novoComunicado.escolaId || null,
             });
 
-            // Broadcast restrito à escola do comunicado — o emit global
-            // entregava título, HTML e imagens a toda a rede.
-            emitirParaEscola(
-                novoComunicado.escolaId || req.escolaId,
-                'comunicado:new',
-                novoComunicado.toObject()
-            );
+            // Só para o público do comunicado (Issue #663). A sala da escola
+            // entregava o comunicado interno ou de turma a todos os conectados,
+            // responsáveis inclusive.
+            emitirComunicadoNovo(novoComunicado, req.escolaId);
         }
 
         res.status(201).json({ success: true, data: novoComunicado });
@@ -347,17 +345,26 @@ exports.markAsRead = async (req, res) => {
         if (!userId)
             return res.status(401).json({ success: false, error: 'Usuário não autenticado.' });
 
-        const comunicado = await Comunicado.findByIdAndUpdate(
-            req.params.id,
-            { $addToSet: { visualizacoes: userId } },
-            { new: true }
-        );
-
-        if (!comunicado) {
+        // Mesmas checagens do getById (Issue #663): sem elas, esta rota
+        // devolvia o comunicado inteiro de qualquer escola ou público a quem
+        // soubesse o _id — e o `_id` chegava pelo evento de tempo real.
+        const comunicado = await Comunicado.findOne(
+            escopoEscola(req, { _id: String(req.params.id), ativo: true })
+        )
+            .select('_id escolaId destinatarios')
+            .lean();
+        if (!comunicado || !(await podeVerComunicado(comunicado, req.user))) {
             return res.status(404).json({ success: false, error: 'Comunicado não encontrado.' });
         }
 
-        res.json({ success: true, data: comunicado });
+        await Comunicado.updateOne(
+            { _id: comunicado._id },
+            { $addToSet: { visualizacoes: userId } }
+        );
+
+        // Marcar como lido não devolve o comunicado: quem precisa do conteúdo
+        // usa o GET, que tem as mesmas checagens.
+        res.json({ success: true });
     } catch (error) {
         logger.error(`[ComunicadoController.markAsRead] Error: ${error.message}`, {
             id: req.params.id,

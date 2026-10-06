@@ -15,7 +15,7 @@ const RecuperacaoSenha = require('../models/RecuperacaoSenha');
 const { hostDoGoogle } = require('../middleware/validarFoto');
 const EmailService = require('../services/EmailService');
 const logger = require('../utils/logger');
-const { emitirParaPerfis } = require('../utils/realtime');
+const { emitirParaPerfis, encerrarConexoesDaConta } = require('../utils/realtime');
 // Usado nos dados vindos do Google, que não passam pela sanitização global
 // do app.js (ela cobre req.body/query/params, não payload de OAuth).
 const { sanitizeInput } = require('../utils/sanitize');
@@ -271,84 +271,183 @@ exports.create = async (req, res) => {
 };
 
 /**
- * OPÇÍO A — PRIMEIRO ACESSO
- * Valida CPF/Email e permite definir senha se ainda não tiver conta
+ * PRIMEIRO ACESSO do professor pré-cadastrado pela direção — em duas etapas
+ * (Issue #659).
+ *
+ *   1. `{ emailOrCpf }` → manda um código de 6 dígitos para o e-mail do
+ *      PRÉ-CADASTRO;
+ *   2. `{ emailOrCpf, codigo, password }` → confere o código e só então grava
+ *      a senha e abre a sessão.
+ *
+ * Antes era uma etapa só: bastava saber o e-mail (ou o CPF) de um professor
+ * pré-cadastrado para definir a senha dele e entrar na escola, com acesso aos
+ * alunos das turmas. O código no e-mail é a prova de posse que faltava — a
+ * mesma da recuperação de senha, com as mesmas 5 tentativas e 15 minutos.
  */
 exports.firstAccess = async (req, res) => {
-    const { emailOrCpf, password } = req.body;
+    const { emailOrCpf, codigo, password } = req.body;
 
     try {
-        // SEGURANÇA: Validação de força de senha
-        if (!password || password.length < 8) {
+        if (typeof emailOrCpf !== 'string' || !emailOrCpf.trim()) {
             return res
                 .status(400)
-                .json({ success: false, error: 'A senha deve ter no mínimo 8 caracteres.' });
+                .json({ success: false, error: 'Informe o e-mail ou o CPF do pré-cadastro.' });
         }
-
-        // 1. Procura na coleção de Professores (pré-cadastrados pela direção)
-        const prof = await Professor.findOne({
-            $or: [{ email: emailOrCpf.toLowerCase() }, { cpf: emailOrCpf.replace(/\D/g, '') }],
-        });
-
-        if (!prof) {
-            return res.status(404).json({
-                success: false,
-                error: 'Dados não encontrados no pré-cadastro da escola.',
-            });
+        if (codigo === undefined || codigo === null || codigo === '') {
+            return await pedirCodigoDePrimeiroAcesso(res, emailOrCpf.trim());
         }
-
-        // 2. Verifica se já existe um Usuário (Login) para este professor.
-        // `+senha`: o campo é `select: false` no schema; aqui precisamos saber
-        // se a conta já tem senha definida (não o valor dela).
-        const existingUser = await Usuario.findOne({ email: prof.email.toLowerCase() }).select(
-            '+senha'
-        );
-        if (existingUser && existingUser.senha) {
-            return res.status(400).json({
-                success: false,
-                error: 'Este e-mail já possui uma conta ativa. Use a recuperação de senha.',
-            });
-        }
-
-        // 3. Cria ou Atualiza o Usuário com a nova senha
-        const senhaHash = await bcrypt.hash(password, SALT_ROUNDS);
-        let user;
-
-        if (existingUser) {
-            existingUser.senha = senhaHash;
-            existingUser.ativo = true;
-            await existingUser.save();
-            user = existingUser;
-        } else {
-            user = await Usuario.create({
-                nome: prof.nome,
-                email: prof.email.toLowerCase(),
-                senha: senhaHash,
-                cpf: prof.cpf || '000.000.000-00', // Fallback para evitar ValidationError
-                telefone: prof.telefone || '(00) 00000-0000', // Fallback para evitar ValidationError
-                perfil: 'professor',
-                ativo: true,
-            });
-        }
-
-        await logAction(req, 'FIRST_ACCESS_ACTIVATE', 'Usuarios', {
-            recursoId: user._id,
-            descricao: `Professor ${prof._id} ativou sua conta via Primeiro Acesso.`,
-        });
-
-        // Logar automaticamente gerando cookie JWT (mesmo padrão dos demais cadastros)
-        emitirTokenSessao(res, user);
-
-        res.json({
-            success: true,
-            message: 'Conta ativada com sucesso!',
-            user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email },
-            redirect_to: getRedirectPath(user),
-        });
+        return await concluirPrimeiroAcesso(req, res, emailOrCpf.trim(), codigo, password);
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
 };
+
+/**
+ * A mesma resposta para pré-cadastro existente, inexistente e conta que já
+ * tem senha: a etapa 1 não pode servir para descobrir quem é professor.
+ */
+const RESPOSTA_PEDIDO_PRIMEIRO_ACESSO = {
+    success: true,
+    etapa: 'codigo',
+    message:
+        'Se os dados estiverem no pré-cadastro da escola e a conta ainda não tiver senha, ' +
+        'enviamos um código para o e-mail cadastrado. Se você já tem senha, use "Esqueci minha senha".',
+};
+
+/** Pré-cadastro ativo pelo e-mail ou, com 11 dígitos, pelo CPF. */
+async function preCadastroDoProfessor(identificacao) {
+    const filtros = [{ email: identificacao.toLowerCase() }];
+    // Sem esta guarda, digitar um e-mail virava `{ cpf: '' }` e casava com
+    // qualquer pré-cadastro sem CPF.
+    const cpf = identificacao.replace(/\D/g, '');
+    if (cpf.length === 11) filtros.push({ cpf });
+    const prof = await Professor.findOne({ $or: filtros, ativo: { $ne: false } });
+    return prof?.email ? prof : null;
+}
+
+/**
+ * A conta do pré-cadastro, se já existir. `+senha` porque o campo é
+ * `select: false`: aqui importa saber SE tem senha, não o valor.
+ */
+function contaDoPreCadastro(prof) {
+    return Usuario.findOne({ email: prof.email.toLowerCase() }).select('+senha');
+}
+
+/**
+ * O primeiro acesso só serve a quem ainda não tem senha. Conta inativa não é
+ * reativada por aqui: quem desativou foi a escola, e é ela quem reativa.
+ */
+function contaAceitaPrimeiroAcesso(conta) {
+    return !conta || (!conta.senha && conta.ativo !== false);
+}
+
+async function pedirCodigoDePrimeiroAcesso(res, identificacao) {
+    const prof = await preCadastroDoProfessor(identificacao);
+    if (!prof || !contaAceitaPrimeiroAcesso(await contaDoPreCadastro(prof))) {
+        return res.json(RESPOSTA_PEDIDO_PRIMEIRO_ACESSO);
+    }
+
+    // Um código por vez: o pedido novo invalida o anterior.
+    await RecuperacaoSenha.updateMany(
+        { usuarioId: prof._id, finalidade: FINALIDADE_PRIMEIRO_ACESSO, status: 'ativo' },
+        { $set: { status: 'expirado' } }
+    );
+
+    const codigo = crypto.randomInt(100000, 1000000).toString();
+    const { hashSegredo } = require('../utils/codigosBackup');
+    await RecuperacaoSenha.create({
+        usuarioId: prof._id,
+        finalidade: FINALIDADE_PRIMEIRO_ACESSO,
+        codigo: await hashSegredo(codigo),
+        criadoEm: new Date(),
+        expiraEm: new Date(Date.now() + 15 * 60 * 1000),
+        status: 'ativo',
+        tentativas: 0,
+    });
+
+    const entregue = await EmailService.enviarCodigoPrimeiroAcesso(prof.email, codigo, prof.nome);
+    if (!entregue) {
+        logger.error('[primeiro-acesso] Código gerado mas NÃO entregue', {
+            professorId: String(prof._id),
+            action: 'auth.primeiroAcesso.envioFalhou',
+        });
+    }
+    return res.json(RESPOSTA_PEDIDO_PRIMEIRO_ACESSO);
+}
+
+async function concluirPrimeiroAcesso(req, res, identificacao, codigo, password) {
+    const fraca = motivoSenhaFraca(password);
+    if (fraca) return res.status(400).json({ success: false, error: fraca });
+
+    const recusa = () =>
+        res.status(400).json({ success: false, error: 'Código inválido ou expirado.' });
+
+    const prof = await preCadastroDoProfessor(identificacao);
+    if (!prof) return recusa();
+    const conta = await contaDoPreCadastro(prof);
+    if (!contaAceitaPrimeiroAcesso(conta)) return recusa();
+
+    const conferencia = await conferirCodigoDeRecuperacao(
+        prof._id,
+        codigo,
+        FINALIDADE_PRIMEIRO_ACESSO
+    );
+    if (!conferencia.ok) {
+        return res.status(400).json({ success: false, error: conferencia.error });
+    }
+
+    // Consome o código antes de gravar a senha, num passo só: dois pedidos
+    // simultâneos com o mesmo código não passam os dois.
+    const consumido = await RecuperacaoSenha.findOneAndUpdate(
+        { _id: conferencia.recovery._id, status: 'ativo' },
+        { $set: { status: 'utilizado' } }
+    );
+    if (!consumido) return recusa();
+
+    const senhaHash = await bcrypt.hash(password, SALT_ROUNDS);
+    let user;
+    if (conta) {
+        // Só grava se a conta continua sem senha e ativa.
+        user = await Usuario.findOneAndUpdate(
+            {
+                _id: conta._id,
+                ativo: { $ne: false },
+                $or: [{ senha: { $exists: false } }, { senha: null }, { senha: '' }],
+            },
+            { $set: { senha: senhaHash }, $inc: { tokenVersion: 1 } },
+            { new: true }
+        );
+        if (!user) return recusa();
+    } else {
+        user = await Usuario.create({
+            nome: prof.nome,
+            email: prof.email.toLowerCase(),
+            senha: senhaHash,
+            // Sem CPF no pré-cadastro, o campo fica vazio. O valor fixo de
+            // antes colidia no índice único (escolaId, cpf) a partir do segundo
+            // professor ativado assim.
+            ...(prof.cpf ? { cpf: prof.cpf } : {}),
+            telefone: prof.telefone || '(00) 00000-0000', // obrigatório no schema
+            perfil: 'professor',
+            ativo: true,
+        });
+    }
+
+    await logAction(req, 'FIRST_ACCESS_ACTIVATE', 'Usuarios', {
+        recursoId: user._id,
+        descricao: `Professor ${prof._id} ativou sua conta via Primeiro Acesso.`,
+    });
+
+    // Logar automaticamente gerando cookie JWT (mesmo padrão dos demais cadastros)
+    emitirTokenSessao(res, user);
+
+    return res.json({
+        success: true,
+        message: 'Conta ativada com sucesso!',
+        user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email },
+        redirect_to: getRedirectPath(user),
+    });
+}
 
 /**
  * OPÇÍO B — CADASTRO COM CÓDIGO SECRETO
@@ -903,10 +1002,11 @@ exports.login = async (req, res) => {
                 // de 5 minutos continua valendo, gravada em `PendingExpiry`.
                 const expiry = new Date(Date.now() + 5 * 60 * 1000);
 
+                // O contador de tentativas do 2FA não zera aqui (Issue #669):
+                // senha certa + 4 palpites + novo login repetiam sem bloqueio.
                 await Usuario.findByIdAndUpdate(user._id, {
                     twoFactorPendingToken: null,
                     twoFactorPendingExpiry: expiry,
-                    twoFactorAttempts: 0,
                 });
 
                 logger.info('[2FA] Código fixo aplicado', {
@@ -945,10 +1045,10 @@ exports.login = async (req, res) => {
             const codigoHash = crypto.createHash('sha256').update(codigo).digest('hex');
             const expiry = new Date(Date.now() + 5 * 60 * 1000);
 
+            // O contador de tentativas do 2FA não zera aqui (Issue #669).
             await Usuario.findByIdAndUpdate(user._id, {
                 twoFactorPendingToken: codigoHash,
                 twoFactorPendingExpiry: expiry,
-                twoFactorAttempts: 0,
             });
 
             // ============================================
@@ -1342,11 +1442,23 @@ exports.logout = async (req, res) => {
             ? req.headers.authorization.slice(7)
             : null);
 
+    let revogacao;
     try {
-        await require('../utils/sessionToken').revogarTokenSessao(tokenAtual);
+        revogacao = await require('../utils/sessionToken').revogarTokenSessao(tokenAtual);
     } catch (e) {
         // Nunca falha o logout por causa disso — o cookie ainda é limpo abaixo.
         console.error('[LOGOUT] Falha ao revogar token:', e.message);
+    }
+
+    // O socket desta sessão cai junto (Issue #667). Só depois de uma
+    // revogação que conferiu a assinatura: a rota é pública, e um token
+    // forjado não pode derrubar a conexão de ninguém.
+    if (revogacao?.revogado) {
+        const payload = jwt.decode(tokenAtual) || {};
+        encerrarConexoesDaConta(
+            String(payload.id || payload._id || ''),
+            revogacao.escopo === 'token' ? { jti: payload.jti } : {}
+        );
     }
 
     // clearCookie precisa das mesmas opções usadas no setCookie, senão o browser ignora.
@@ -1563,6 +1675,8 @@ exports.update = async (req, res) => {
         const user = await Usuario.findByIdAndUpdate(targetId, updateOps, { new: true }).select(
             '-senha'
         );
+        // A aba aberta também perde o tempo real (Issue #667).
+        if (mudouPrivilegio) encerrarConexoesDaConta(String(targetId));
 
         await logAction(req, 'UPDATE_USER', 'Usuarios', {
             recursoId: targetId,
@@ -1605,6 +1719,7 @@ exports.delete = async (req, res) => {
             // Revoga sessões abertas ANTES de remover o documento: se a exclusão
             // falhar no meio, a conta já não consegue mais usar o cookie antigo.
             await Usuario.updateOne({ _id: user._id }, { $inc: { tokenVersion: 1 } });
+            encerrarConexoesDaConta(String(user._id)); // Issue #667
             await Usuario.findByIdAndDelete(req.params.id);
 
             // Remove o perfil estendido junto. `secretarias.email` é unique —
@@ -1709,8 +1824,17 @@ exports.pedirRedefinicaoDeSenha = async (req, res) => {
                 .json({ success: false, error: 'A conta não tem e-mail para receber o código.' });
         }
 
-        const PasswordRecoveryService = require('../services/PasswordRecoveryService');
-        await PasswordRecoveryService.forgotPassword(alvo.email);
+        if (alvo.ativo === false) {
+            return res.status(409).json({
+                success: false,
+                error: 'A conta está desativada. Reative-a antes de redefinir a senha.',
+            });
+        }
+
+        // Mesmo gerador do "esqueci minha senha" (Issue #677). O serviço antigo
+        // gravava o código em texto puro, e a conferência só aceita `salt:hash`:
+        // o código que chegava ao titular nunca funcionava.
+        await enviarCodigoDeRecuperacao(alvo);
 
         await logAction(req, 'SENHA_REDEFINICAO_SOLICITADA', 'Usuarios', {
             recursoId: String(alvo._id),
@@ -1763,6 +1887,7 @@ exports.anonymize = async (req, res) => {
             },
             $inc: { tokenVersion: 1 },
         });
+        encerrarConexoesDaConta(String(user._id)); // Issue #667
 
         // As conversas do chat ficavam intactas: anonimizar o cadastro e
         // deixar o texto das mensagens preservava justamente o conteúdo mais
@@ -1813,8 +1938,91 @@ exports.anonymize = async (req, res) => {
     }
 };
 
+/**
+ * Gera o código de recuperação de `user`, grava só o hash e envia por e-mail.
+ * Usado pelo "esqueci minha senha" e pela redefinição pedida pela gestão
+ * (Issue #677): os dois caminhos precisam do mesmo formato, porque a
+ * conferência (`conferirCodigoDeRecuperacao`) só aceita `salt:hash`.
+ *
+ * @param {Object} [opcoes]
+ * @param {boolean} [opcoes.aguardarEnvio=true] `false` grava o código e
+ *   responde sem esperar o provedor de e-mail (Issue #678).
+ * @returns {Promise<boolean>} se o provedor aceitou o e-mail; `true` quando o
+ *   envio não é aguardado
+ */
+async function enviarCodigoDeRecuperacao(user, { aguardarEnvio = true } = {}) {
+    // 1. Invalida códigos ativos anteriores deste usuário
+    await RecuperacaoSenha.updateMany(
+        { usuarioId: user._id, status: 'ativo' },
+        { $set: { status: 'expirado' } }
+    );
+
+    // 2. Gerar código de 6 dígitos numéricos
+    const code = crypto.randomInt(100000, 999999).toString();
+
+    // ============================================
+    // 3. Salvar o HASH, nunca o código
+    // ============================================
+    // O código ia para o banco em TEXTO PURO. Quem lesse a coleção
+    // `recuperacaosenhas` — dump, backup vazado, acesso indevido ao Atlas —
+    // tinha, para cada pedido em aberto, um código de redefinição de senha
+    // pronto para usar. É tomada de conta direta, sem precisar da senha.
+    const { hashSegredo } = require('../utils/codigosBackup');
+
+    await RecuperacaoSenha.create({
+        usuarioId: user._id,
+        codigo: await hashSegredo(code),
+        criadoEm: new Date(),
+        expiraEm: new Date(Date.now() + 15 * 60 * 1000), // 15 minutos
+        status: 'ativo',
+        tentativas: 0,
+    });
+
+    // ============================================
+    // REMOVIDO: gravação do código em `latest_code.txt`
+    // ============================================
+    // Havia um `fs.writeFileSync(.../latest_code.txt, code)` aqui, marcado
+    // como "para testes E2E" — mas sem nenhuma guarda de ambiente: rodava
+    // em PRODUÇÃO, a cada pedido de recuperação. O arquivo ficava no disco
+    // do servidor com um código de redefinição válido em texto puro.
+    //
+    // Qualquer leitura de arquivo arbitrário, backup de disco ou acesso ao
+    // contêiner virava tomada de conta. Teste E2E que precise do código
+    // deve lê-lo do banco de teste, não de um arquivo escrito em produção.
+
+    // ============================================
+    // 4. Envio, com a falha SEMPRE registrada
+    // ============================================
+    // Era fire-and-forget sem registro: a resposta dizia "você receberá um
+    // código" mesmo quando o provedor recusava a mensagem, e ninguém sabia.
+    // Mesmo problema que deixou o 2FA de diretor e secretaria mudo por semanas.
+    // A redefinição pedida pela gestão aguarda o envio. O "esqueci minha
+    // senha" não (Issue #678): esperar o provedor só quando a conta existe
+    // denunciava, pelo tempo de resposta, quais e-mails estão cadastrados.
+    const envio = EmailService.sendVerificationCode(user.email, code, user.nome)
+        .catch(() => false)
+        .then((entregue) => {
+            if (!entregue) {
+                logger.error('[recuperacao] Código gerado mas NÃO entregue', {
+                    usuarioId: String(user._id),
+                    action: 'auth.recuperacao.envioFalhou',
+                });
+            }
+            return entregue;
+        });
+    return aguardarEnvio ? envio : true;
+}
+
+/**
+ * Tempo mínimo da resposta do "esqueci minha senha" (Issue #678). Com conta, o
+ * código é gerado e gravado antes da resposta; sem conta, não há nada a gravar.
+ * O piso iguala as duas respostas enquanto esse trabalho couber nele.
+ */
+const TEMPO_MINIMO_RECUPERACAO_MS = 400;
+
 exports.forgotPassword = async (req, res) => {
     const { email } = req.body;
+    const inicio = Date.now();
     try {
         if (!email) {
             return res.status(400).json({ success: false, error: 'E-mail é obrigatório.' });
@@ -1828,63 +2036,18 @@ exports.forgotPassword = async (req, res) => {
         };
 
         // Busca pelo email informado
+        // Com ou sem conta, a resposta custa o mesmo (Issue #678): o envio do
+        // e-mail não é aguardado, o caminho sem conta também calcula um hash
+        // (a parte cara de gravar o código) e as duas respeitam o piso.
         const user = await Usuario.findOne({ email: email.toLowerCase(), ativo: true });
-        if (!user) {
-            return res.json(standardResponse);
+        if (user) {
+            await enviarCodigoDeRecuperacao(user, { aguardarEnvio: false });
+        } else {
+            const { hashSegredo } = require('../utils/codigosBackup');
+            await hashSegredo(crypto.randomInt(100000, 999999).toString());
         }
-
-        // 1. Invalida códigos ativos anteriores deste usuário
-        await RecuperacaoSenha.updateMany(
-            { usuarioId: user._id, status: 'ativo' },
-            { $set: { status: 'expirado' } }
-        );
-
-        // 2. Gerar código de 6 dígitos numéricos
-        const code = crypto.randomInt(100000, 999999).toString();
-
-        // ============================================
-        // 3. Salvar o HASH, nunca o código
-        // ============================================
-        // O código ia para o banco em TEXTO PURO. Quem lesse a coleção
-        // `recuperacaosenhas` — dump, backup vazado, acesso indevido ao Atlas —
-        // tinha, para cada pedido em aberto, um código de redefinição de senha
-        // pronto para usar. É tomada de conta direta, sem precisar da senha.
-        const { hashSegredo } = require('../utils/codigosBackup');
-
-        await RecuperacaoSenha.create({
-            usuarioId: user._id,
-            codigo: await hashSegredo(code),
-            criadoEm: new Date(),
-            expiraEm: new Date(Date.now() + 15 * 60 * 1000), // 15 minutos
-            status: 'ativo',
-            tentativas: 0,
-        });
-
-        // ============================================
-        // REMOVIDO: gravação do código em `latest_code.txt`
-        // ============================================
-        // Havia um `fs.writeFileSync(.../latest_code.txt, code)` aqui, marcado
-        // como "para testes E2E" — mas sem nenhuma guarda de ambiente: rodava
-        // em PRODUÇÃO, a cada pedido de recuperação. O arquivo ficava no disco
-        // do servidor com um código de redefinição válido em texto puro.
-        //
-        // Qualquer leitura de arquivo arbitrário, backup de disco ou acesso ao
-        // contêiner virava tomada de conta. Teste E2E que precise do código
-        // deve lê-lo do banco de teste, não de um arquivo escrito em produção.
-
-        // ============================================
-        // 4. Envio AGUARDADO
-        // ============================================
-        // Era fire-and-forget: a resposta dizia "você receberá um código" mesmo
-        // quando o provedor recusava a mensagem. Mesmo problema que deixou o
-        // 2FA de diretor e secretaria mudo por semanas.
-        const entregue = await EmailService.sendVerificationCode(user.email, code, user.nome);
-        if (!entregue) {
-            logger.error('[recuperacao] Código gerado mas NÃO entregue', {
-                usuarioId: String(user._id),
-                action: 'auth.recuperacao.envioFalhou',
-            });
-        }
+        const falta = TEMPO_MINIMO_RECUPERACAO_MS - (Date.now() - inicio);
+        if (falta > 0) await new Promise((resolve) => setTimeout(resolve, falta));
 
         // O código NUNCA volta na resposta, nem em desenvolvimento: havia um
         // `code_debug` que dependia só de NODE_ENV. Uma variável de ambiente
@@ -1898,6 +2061,7 @@ exports.forgotPassword = async (req, res) => {
 };
 
 const TENTATIVAS_CODIGO_RECUPERACAO = 5;
+const FINALIDADE_PRIMEIRO_ACESSO = 'primeiro-acesso';
 const ERRO_CODIGO_BLOQUEADO =
     'Código bloqueado por excesso de tentativas. Solicite um novo código.';
 
@@ -1913,13 +2077,23 @@ const ERRO_CODIGO_BLOQUEADO =
  * Quem acerta recebe a tentativa de volta: verificar e depois redefinir são
  * duas conferências do mesmo código, e acertar não pode esgotar o teto.
  *
+ * O primeiro acesso (Issue #659) usa a mesma conferência com
+ * `finalidade = 'primeiro-acesso'`. O código de recuperação continua sem o
+ * campo nos pedidos antigos, por isso o filtro dele é "qualquer coisa menos
+ * primeiro acesso".
+ *
  * @returns {Promise<{ok: true, recovery: object} | {ok: false, error: string}>}
  */
-async function conferirCodigoDeRecuperacao(usuarioId, codigo) {
+async function conferirCodigoDeRecuperacao(usuarioId, codigo, finalidade = 'recuperacao') {
     const agora = new Date();
+    const doFluxo =
+        finalidade === FINALIDADE_PRIMEIRO_ACESSO
+            ? { finalidade: FINALIDADE_PRIMEIRO_ACESSO }
+            : { finalidade: { $ne: FINALIDADE_PRIMEIRO_ACESSO } };
     const recovery = await RecuperacaoSenha.findOneAndUpdate(
         {
             usuarioId,
+            ...doFluxo,
             status: 'ativo',
             expiraEm: { $gt: agora },
             tentativas: { $lt: TENTATIVAS_CODIGO_RECUPERACAO },
@@ -1931,7 +2105,7 @@ async function conferirCodigoDeRecuperacao(usuarioId, codigo) {
     if (!recovery) {
         // Não reservou: sem pedido ativo, vencido ou sem tentativa sobrando.
         const ativo = await RecuperacaoSenha.findOneAndUpdate(
-            { usuarioId, status: 'ativo' },
+            { usuarioId, ...doFluxo, status: 'ativo' },
             { $set: { status: 'expirado' } }
         );
         if (!ativo) return { ok: false, error: 'Código inválido ou expirado.' };
@@ -2041,6 +2215,8 @@ exports.resetPassword = async (req, res) => {
                 $unset: { resetToken: '', resetTokenExpiry: '' },
             }
         );
+        // Quem roubou o cookie perde também o tempo real (Issue #667).
+        encerrarConexoesDaConta(String(user._id));
 
         // Registra a atividade no log de auditoria
         await logAction(req, 'RESET_PASSWORD_SUCCESS', 'Usuarios', {
@@ -2114,6 +2290,8 @@ exports.updatePasswordForce = async (req, res) => {
 
         // As outras sessões morrem pelo tokenVersion; esta segue com um token novo.
         emitirTokenSessao(res, atualizado);
+        // Os sockets caem todos; esta aba reconecta com o cookie novo (Issue #667).
+        encerrarConexoesDaConta(String(userId));
 
         await logAction(req, 'FORCE_CHANGE_PASSWORD', 'Usuarios', {
             recursoId: userId,

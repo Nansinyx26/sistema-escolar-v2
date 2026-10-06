@@ -3,42 +3,73 @@
  * Suite 2 — Primeiro acesso e reset de senha
  */
 
-const request   = require('supertest');
-const bcrypt    = require('bcryptjs');
-const app       = require('../app');
-const Usuario   = require('../models/Usuario');
+const request = require('supertest');
+const bcrypt = require('bcryptjs');
+const app = require('../app');
+const Usuario = require('../models/Usuario');
 const Professor = require('../models/Professor');
-const { conectarBanco, limparBanco, desconectarBanco, criarUsuario, SENHA_TESTE, SENHA_TESTE_NOVA, CODIGO_ESCOLA_TESTE } = require('./helpers');
+const EmailService = require('../services/EmailService');
+const {
+    conectarBanco,
+    limparBanco,
+    desconectarBanco,
+    criarUsuario,
+    SENHA_TESTE,
+    SENHA_TESTE_NOVA,
+    CODIGO_ESCOLA_TESTE,
+} = require('./helpers');
 
-beforeAll(async () => { await conectarBanco(); });
-afterEach(async () => { await limparBanco(); });
-afterAll(async () => { await desconectarBanco(); });
+beforeAll(async () => {
+    await conectarBanco();
+});
+afterEach(async () => {
+    await limparBanco();
+});
+afterAll(async () => {
+    await desconectarBanco();
+});
 
 // ─────────────────────────────────────────────────────────
 // Primeiro Acesso
 // ─────────────────────────────────────────────────────────
+// Desde a Issue #659 são duas etapas: o código vai ao e-mail do pré-cadastro e
+// a senha só é gravada com ele. Os casos completos estão em
+// primeiroAcessoComCodigo.test.js.
 describe('POST /api/auth/first-access', () => {
+    let espiao;
+    let codigoEnviado;
+    beforeEach(() => {
+        codigoEnviado = null;
+        espiao = jest
+            .spyOn(EmailService, 'enviarCodigoPrimeiroAcesso')
+            .mockImplementation(async (_para, codigo) => {
+                codigoEnviado = codigo;
+                return true;
+            });
+    });
+    afterEach(() => espiao.mockRestore());
 
-    it('deve rejeitar professor nao pre-cadastrado com 404', async () => {
+    it('professor nao pre-cadastrado recebe a resposta generica e nenhum codigo', async () => {
         const res = await request(app)
             .post('/api/auth/first-access')
             .send({ emailOrCpf: 'naoexiste@escola.test', password: SENHA_TESTE });
 
-        expect(res.status).toBe(404);
-        expect(res.body.success).toBe(false);
+        expect(res.status).toBe(200);
+        expect(res.body.etapa).toBe('codigo');
+        expect(codigoEnviado).toBeNull();
     });
 
     it('deve rejeitar senha fraca com 400', async () => {
         const res = await request(app)
             .post('/api/auth/first-access')
-            .send({ emailOrCpf: 'qualquer@escola.test', password: '123' });
+            .send({ emailOrCpf: 'qualquer@escola.test', codigo: '123456', password: '123' });
 
         expect(res.status).toBe(400);
         // Mensagem contém "8 caracteres"
         expect(res.body.error).toMatch(/8 caracteres/i);
     });
 
-    it('deve ativar conta de professor pre-cadastrado com sucesso', async () => {
+    it('deve ativar conta de professor pre-cadastrado com o codigo do e-mail', async () => {
         await Professor.create({
             nome: 'Joana Silva',
             email: 'joana@escola.test',
@@ -46,9 +77,12 @@ describe('POST /api/auth/first-access', () => {
             telefone: '(11) 91111-2222',
         });
 
-        const res = await request(app)
-            .post('/api/auth/first-access')
-            .send({ emailOrCpf: 'joana@escola.test', password: 'SenhaForte@123' });
+        await request(app).post('/api/auth/first-access').send({ emailOrCpf: 'joana@escola.test' });
+        const res = await request(app).post('/api/auth/first-access').send({
+            emailOrCpf: 'joana@escola.test',
+            codigo: codigoEnviado,
+            password: 'SenhaForte@123',
+        });
 
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
@@ -73,9 +107,17 @@ describe('POST /api/auth/first-access', () => {
             ativo: true,
         });
 
-        const res = await request(app)
+        // O pedido não manda código, e a conclusão é recusada.
+        await request(app)
             .post('/api/auth/first-access')
-            .send({ emailOrCpf: 'carlos@escola.test', password: 'SenhaForte@123' });
+            .send({ emailOrCpf: 'carlos@escola.test' });
+        expect(codigoEnviado).toBeNull();
+
+        const res = await request(app).post('/api/auth/first-access').send({
+            emailOrCpf: 'carlos@escola.test',
+            codigo: '123456',
+            password: 'SenhaForte@123',
+        });
 
         expect(res.status).toBe(400);
     });
@@ -85,7 +127,6 @@ describe('POST /api/auth/first-access', () => {
 // Reset de senha
 // ─────────────────────────────────────────────────────────
 describe('POST /api/auth/reset-password', () => {
-
     it('deve rejeitar token invalido com 400', async () => {
         const res = await request(app)
             .post('/api/auth/reset-password')
@@ -160,16 +201,14 @@ describe('POST /api/auth/validate-code', () => {
         if (!config) {
             config = await SecurityConfig.create({
                 codigoSecretoEscola: testCode,
-                dataUltimaRotacao: new Date()
+                dataUltimaRotacao: new Date(),
             });
         } else {
             config.codigoSecretoEscola = testCode;
             await config.save();
         }
 
-        const res = await request(app)
-            .post('/api/auth/validate-code')
-            .send({ codigo: testCode });
+        const res = await request(app).post('/api/auth/validate-code').send({ codigo: testCode });
 
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);

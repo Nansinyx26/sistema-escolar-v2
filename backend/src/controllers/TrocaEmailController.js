@@ -16,6 +16,7 @@ const { mascarar } = require('../services/EnvioEmail');
 const { notificarPedidoTrocaEmail, notificarEmailTrocado } = require('../utils/emailNotifications');
 const { logAction } = require('../utils/auditHelper');
 const { emitirTokenSessao } = require('../utils/sessionToken');
+const { encerrarConexoesDaConta } = require('../utils/realtime');
 const escapeRegex = require('../utils/escapeRegex');
 const logger = require('../utils/logger');
 
@@ -209,6 +210,9 @@ exports.confirmar = async (req, res) => {
             throw err;
         }
         if (!atualizada) return res.status(400).json(LINK_INVALIDO);
+        // As outras abas perdem também o tempo real; esta reconecta com o
+        // token novo emitido abaixo (Issue #667).
+        encerrarConexoesDaConta(String(atualizada._id));
 
         invalidarCacheDeVerificacao(atualizada._id);
         const { alterados, falhas } = await trocaEmail.migrarVinculos({

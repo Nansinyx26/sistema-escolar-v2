@@ -141,7 +141,11 @@ describe('DELETE /usuarios/:id apaga a conta do banco', () => {
             res
         );
 
-        expect(res.corpo.success).toBe(false);
+        // Desde a Issue #659 o primeiro acesso pede um código antes de gravar
+        // senha, e responde igual exista ou não o pré-cadastro. O que importa
+        // aqui é que o perfil apagado não gera código nem conta.
+        expect(res.corpo.user).toBeUndefined();
+        expect(await RecuperacaoSenha.countDocuments({ finalidade: 'primeiro-acesso' })).toBe(0);
         expect(await Usuario.countDocuments({ email: 'volta@t.com' })).toBe(0);
     });
 });

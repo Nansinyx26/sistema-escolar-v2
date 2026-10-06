@@ -51,13 +51,17 @@ module.exports = {
     list: async (req, res) => {
         try {
             const { professorId, turmaId } = req.query;
+            // Só a grade da escola da sessão (Issue #675).
             const query = { ativo: { $ne: false } };
+            if (req.escolaId) query.escolaId = String(req.escolaId);
 
             if (professorId) query.professorId = professorId;
             if (turmaId) query.turmaId = turmaId;
 
+            // O e-mail do professor é contato da equipe, não do responsável.
+            const camposProfessor = req.user?.perfil === 'responsavel' ? 'nome' : 'nome email';
             const grade = await GradeHoraria.find(query)
-                .populate('professorDetails', 'nome email')
+                .populate('professorDetails', camposProfessor)
                 .populate('turmaDetails', 'nome ano turno')
                 .lean();
 

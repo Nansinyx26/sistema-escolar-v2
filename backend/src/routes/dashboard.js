@@ -9,7 +9,15 @@ router.get('/public-summary', DashboardController.getPublicSummary);
 router.get('/summary', authJWT, filtrarPorEscola, DashboardController.getSummary);
 router.get('/chart-data', authJWT, filtrarPorEscola, DashboardController.getChartData);
 router.get('/charts', authJWT, filtrarPorEscola, DashboardController.getChartData);
-router.get('/ranking', authJWT, filtrarPorEscola, DashboardController.getRanking);
+// Nome, turma e média das crianças: só a gestão (Issue #665). Sem o authorize,
+// qualquer responsável logado recebia o top 10 da escola.
+router.get(
+    '/ranking',
+    authJWT,
+    filtrarPorEscola,
+    authorize('admin', 'diretor', 'secretaria'),
+    DashboardController.getRanking
+);
 router.get('/teacher-panel', authJWT, filtrarPorEscola, DashboardController.getTeacherPanel);
 router.get(
     '/director-notices',

@@ -1,0 +1,117 @@
+/**
+ * publicoDoComunicado.js — entrega `comunicado:new` só a quem é do público do
+ * comunicado (Issue #663).
+ *
+ * O evento ia para a sala `escola:<id>`, em que estão TODOS os sockets da
+ * escola — responsáveis inclusive. Um comunicado só para professores, para uma
+ * turma ou para uma família chegava, com título, conteúdo e `_id`, a todos os
+ * conectados. As telas usam o próprio objeto do evento para desenhar o card,
+ * então o recorte é feito aqui, na origem, e elas não mudam.
+ *
+ * A regra é a mesma do `podeVerComunicado` (ComunicadoController): a gestão vê
+ * tudo; `todos` é a escola; `professores` e `responsaveis` são perfis;
+ * `usuario:<id>` é a pessoa; o resto é turma, e vale para os responsáveis dos
+ * alunos dela — menos o e-mail bloqueado por decisão judicial (Issue #491).
+ */
+const Aluno = require('../models/Aluno');
+const Usuario = require('../models/Usuario');
+const { emitirParaEscola, emitirParaPerfis, emitirParaUsuario } = require('../utils/realtime');
+const { restritoPara } = require('../utils/restricaoAcesso');
+
+const EVENTO = 'comunicado:new';
+const GESTAO = ['admin', 'diretor', 'secretaria'];
+const PUBLICOS = ['todos', 'professores', 'responsaveis'];
+
+/** Turmas citadas nos destinatários, com ou sem o prefixo `turma:`. */
+function turmasDosDestinatarios(destinatarios) {
+    return destinatarios
+        .filter((d) => !PUBLICOS.includes(d) && !d.startsWith('usuario:'))
+        .map((d) => (d.startsWith('turma:') ? d.slice('turma:'.length) : d))
+        .filter(Boolean);
+}
+
+/** Contas de responsável dos alunos das turmas, na escola. */
+async function responsaveisDasTurmas(escolaId, turmas) {
+    const alunos = await Aluno.find({
+        escolaId: String(escolaId),
+        $or: [{ turma: { $in: turmas } }, { turmaId: { $in: turmas } }],
+    })
+        .select('responsavel responsavelDados.email responsaveis.email restricoesAcesso')
+        .lean();
+
+    const emails = new Set();
+    for (const aluno of alunos) {
+        const candidatos = [
+            aluno.responsavel,
+            aluno.responsavelDados?.email,
+            ...(aluno.responsaveis || []).map((r) => r?.email),
+        ];
+        for (const email of candidatos) {
+            if (email && !restritoPara(aluno, email)) emails.add(String(email).toLowerCase());
+        }
+    }
+    if (!emails.size) return [];
+
+    const contas = await Usuario.find({ email: { $in: [...emails] }, perfil: 'responsavel' })
+        .select('_id')
+        .lean();
+    return contas.map((c) => String(c._id));
+}
+
+/**
+ * Emite `comunicado:new` para o público do comunicado. Não rejeita: o evento é
+ * aviso de tela, e o comunicado já foi gravado.
+ *
+ * @param {object} comunicado documento (Mongoose ou objeto simples)
+ * @param {string} [escolaPadrao] escola da sessão, quando o comunicado não tem
+ */
+async function emitirComunicadoNovo(comunicado, escolaPadrao) {
+    try {
+        const escolaId = comunicado.escolaId || escolaPadrao;
+        const payload =
+            typeof comunicado.toObject === 'function' ? comunicado.toObject() : comunicado;
+        const destinatarios = (
+            Array.isArray(comunicado.destinatarios) ? comunicado.destinatarios : []
+        ).map(String);
+
+        if (destinatarios.includes('todos')) {
+            emitirParaEscola(escolaId, EVENTO, payload);
+            return;
+        }
+        if (!escolaId) {
+            emitirParaEscola(escolaId, EVENTO, payload); // descarta com aviso
+            return;
+        }
+
+        const perfis = [...GESTAO];
+        if (destinatarios.includes('professores')) perfis.push('professor');
+        if (destinatarios.includes('responsaveis')) perfis.push('responsavel');
+        await emitirParaPerfis(escolaId, perfis, EVENTO, payload);
+
+        // Pessoas fora dos perfis acima: `usuario:<id>` e responsáveis da turma.
+        const pessoas = new Set(
+            destinatarios
+                .filter((d) => d.startsWith('usuario:'))
+                .map((d) => d.slice('usuario:'.length))
+                .filter(Boolean)
+        );
+        const turmas = turmasDosDestinatarios(destinatarios);
+        if (turmas.length && !perfis.includes('responsavel')) {
+            for (const id of await responsaveisDasTurmas(escolaId, turmas)) pessoas.add(id);
+        }
+        if (!pessoas.size) return;
+
+        // Quem já recebeu pelo perfil não recebe de novo.
+        const contas = await Usuario.find({ _id: { $in: [...pessoas] } })
+            .select('_id perfil')
+            .lean();
+        for (const conta of contas) {
+            if (!perfis.includes(conta.perfil))
+                emitirParaUsuario(String(conta._id), EVENTO, payload);
+        }
+    } catch (err) {
+        console.warn(`[realtime] '${EVENTO}' não entregue: ${err.message}`);
+    }
+}
+
+module.exports = { emitirComunicadoNovo, turmasDosDestinatarios };

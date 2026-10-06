@@ -310,9 +310,16 @@ exports.delete = async (req, res) => {
         const comentario = await Comentario.findById(req.params.id);
         if (!comentario) return res.status(404).json({ success: false, error: 'Não encontrado.' });
 
-        // Verificação de permissão: Autor OU Diretor
+        // Verificação de permissão: Autor OU Diretor — da mesma escola, fora o
+        // admin (Issue #675). Sem a escola, a direção de uma escola desativava
+        // comentário de outra.
         const isAuthor = comentario.usuarioId.toString() === usuarioId.toString();
-        const isDirector = perfil === 'diretor' || perfil === 'admin';
+        const daMesmaEscola =
+            perfil === 'admin' ||
+            !req.escolaId ||
+            !comentario.escolaId ||
+            String(comentario.escolaId) === String(req.escolaId);
+        const isDirector = (perfil === 'diretor' || perfil === 'admin') && daMesmaEscola;
 
         if (!isAuthor && !isDirector) {
             return res.status(403).json({ success: false, error: 'Não autorizado.' });
