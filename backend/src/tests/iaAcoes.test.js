@@ -42,11 +42,11 @@ function provedorQueChamaFerramenta(nome, argumentos) {
                 yield { tipo: 'fim', motivo: 'completo' };
                 return;
             }
-            const retorno = [...mensagens].reverse().find(m => m.papel === 'ferramenta');
+            const retorno = [...mensagens].reverse().find((m) => m.papel === 'ferramenta');
             this.resultadoRecebido = retorno ? retorno.resultado : null;
             yield { tipo: 'texto', texto: 'Preparei a ação. Confirme abaixo.' };
             yield { tipo: 'fim', motivo: 'completo' };
-        }
+        },
     };
 }
 
@@ -56,25 +56,30 @@ async function cookieDe(perfil, extras = {}) {
     const user = await criarUsuario({ perfil, ...extras });
     const token = jwt.sign(
         { id: user._id, perfil: user.perfil, email: user.email, nome: user.nome },
-        process.env.JWT_SECRET, { expiresIn: '1h' }
+        process.env.JWT_SECRET,
+        { expiresIn: '1h' }
     );
     return { cookie: `escola_jwt=${token}`, user };
 }
 
 function eventosSSE(texto) {
-    return texto.split('\n').filter(l => l.startsWith('data:'))
-        .map(l => JSON.parse(l.slice(5).trim()));
+    return texto
+        .split('\n')
+        .filter((l) => l.startsWith('data:'))
+        .map((l) => JSON.parse(l.slice(5).trim()));
 }
 
 /** Roda o chat até o card de confirmação e devolve o evento. */
 async function pedirAcao(cookie, ferramenta, argumentos) {
     global.__provedorIA = provedorQueChamaFerramenta(ferramenta, argumentos);
-    const res = await request(app).post('/api/ia/chat').set('Cookie', cookie)
+    const res = await request(app)
+        .post('/api/ia/chat')
+        .set('Cookie', cookie)
         .send({ mensagem: 'faça isso' });
     return {
         res,
-        confirmacao: eventosSSE(res.text).find(e => e.tipo === 'confirmacao'),
-        resultadoNoModelo: global.__provedorIA.resultadoRecebido
+        confirmacao: eventosSSE(res.text).find((e) => e.tipo === 'confirmacao'),
+        resultadoNoModelo: global.__provedorIA.resultadoRecebido,
     };
 }
 
@@ -95,7 +100,7 @@ function ctxDe({ perfil, escolaId, user = {} }) {
         allowedTurmas: [],
         headers: { 'user-agent': 'jest' },
         socket: { remoteAddress: '127.0.0.1' },
-        ip: '127.0.0.1'
+        ip: '127.0.0.1',
     });
 }
 
@@ -103,7 +108,9 @@ function ctxDe({ perfil, escolaId, user = {} }) {
 
 let escola;
 
-beforeAll(async () => { await conectarBanco(); });
+beforeAll(async () => {
+    await conectarBanco();
+});
 
 beforeEach(async () => {
     // Garante que ESTA suíte é dona do estado: uma escola ativa deixada
@@ -119,7 +126,9 @@ afterEach(async () => {
     invalidarCacheEscolas();
 });
 
-afterAll(async () => { await desconectarBanco(); });
+afterAll(async () => {
+    await desconectarBanco();
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -128,12 +137,16 @@ describe('Catálogo de ferramentas de escrita', () => {
         const escritaDe = (p) => {
             const leitura = ToolRegistry.nomesPara(p) || [];
             const todas = ToolRegistry.nomesPara(p, { incluirMutates: true }) || [];
-            return todas.filter(n => !leitura.includes(n));
+            return todas.filter((n) => !leitura.includes(n));
         };
 
         expect(escritaDe('diretor').sort()).toEqual([
-            'criarAtividade', 'criarEvento', 'criarProjetoMaker',
-            'criarTurma', 'enviarComunicado', 'gerarRelatorioPDF'
+            'criarAtividade',
+            'criarEvento',
+            'criarProjetoMaker',
+            'criarTurma',
+            'enviarComunicado',
+            'gerarRelatorioPDF',
         ]);
         expect(escritaDe('secretaria')).toHaveLength(6);
 
@@ -161,7 +174,9 @@ describe('O preview NÃO grava nada', () => {
         const { cookie } = await cookieDe('diretor');
 
         const { confirmacao } = await pedirAcao(cookie, 'criarTurma', {
-            nome: '6C', periodo: 'manha', ano: 2026
+            nome: '6C',
+            periodo: 'manha',
+            ano: 2026,
         });
 
         expect(confirmacao).toBeDefined();
@@ -178,7 +193,8 @@ describe('O preview NÃO grava nada', () => {
     it('o token não é entregue ao modelo', async () => {
         const { cookie } = await cookieDe('diretor');
         const { confirmacao, resultadoNoModelo } = await pedirAcao(cookie, 'criarTurma', {
-            nome: '6D', periodo: 'tarde'
+            nome: '6D',
+            periodo: 'tarde',
         });
 
         expect(confirmacao.confirmToken).toBeTruthy();
@@ -190,7 +206,10 @@ describe('O preview NÃO grava nada', () => {
 
     it('o token é guardado no banco apenas como hash', async () => {
         const { cookie } = await cookieDe('diretor');
-        const { confirmacao } = await pedirAcao(cookie, 'criarTurma', { nome: '7A', periodo: 'manha' });
+        const { confirmacao } = await pedirAcao(cookie, 'criarTurma', {
+            nome: '7A',
+            periodo: 'manha',
+        });
 
         const pendente = await IaAcaoPendente.findOne().lean();
         expect(pendente.tokenHash).not.toBe(confirmacao.confirmToken);
@@ -200,7 +219,8 @@ describe('O preview NÃO grava nada', () => {
     it('validação falha no preview, antes de qualquer confirmação', async () => {
         const { cookie } = await cookieDe('diretor');
         const { confirmacao, resultadoNoModelo } = await pedirAcao(cookie, 'criarTurma', {
-            nome: '8A', periodo: 'madrugada'
+            nome: '8A',
+            periodo: 'madrugada',
         });
 
         expect(confirmacao).toBeUndefined();
@@ -214,7 +234,8 @@ describe('O preview NÃO grava nada', () => {
         const { cookie } = await cookieDe('diretor');
 
         const { confirmacao, resultadoNoModelo } = await pedirAcao(cookie, 'criarTurma', {
-            nome: '6ºC', periodo: 'manha'   // grafia diferente, mesma turma
+            nome: '6ºC',
+            periodo: 'manha', // grafia diferente, mesma turma
         });
 
         expect(confirmacao).toBeUndefined();
@@ -226,7 +247,10 @@ describe('POST /api/ia/confirmar — execução', () => {
     it('cria a turma e grava na auditoria', async () => {
         const { cookie, user } = await cookieDe('diretor');
         const { confirmacao } = await pedirAcao(cookie, 'criarTurma', {
-            nome: '6C', periodo: 'manha', ano: 2026, sala: 'B2'
+            nome: '6C',
+            periodo: 'manha',
+            ano: 2026,
+            sala: 'B2',
         });
 
         const res = await confirmar(cookie, confirmacao.confirmToken);
@@ -256,7 +280,10 @@ describe('POST /api/ia/confirmar — execução', () => {
 
     it('o token é de USO ÚNICO', async () => {
         const { cookie } = await cookieDe('diretor');
-        const { confirmacao } = await pedirAcao(cookie, 'criarTurma', { nome: '6C', periodo: 'manha' });
+        const { confirmacao } = await pedirAcao(cookie, 'criarTurma', {
+            nome: '6C',
+            periodo: 'manha',
+        });
 
         const primeira = await confirmar(cookie, confirmacao.confirmToken);
         expect(primeira.status).toBe(200);
@@ -271,12 +298,15 @@ describe('POST /api/ia/confirmar — execução', () => {
 
     it('duas confirmações simultâneas executam apenas uma vez', async () => {
         const { cookie } = await cookieDe('diretor');
-        const { confirmacao } = await pedirAcao(cookie, 'criarTurma', { nome: '9Z', periodo: 'tarde' });
+        const { confirmacao } = await pedirAcao(cookie, 'criarTurma', {
+            nome: '9Z',
+            periodo: 'tarde',
+        });
 
         // A corrida é o motivo de o consumo ser findOneAndDelete (atômico).
         const [a, b] = await Promise.all([
             confirmar(cookie, confirmacao.confirmToken),
-            confirmar(cookie, confirmacao.confirmToken)
+            confirmar(cookie, confirmacao.confirmToken),
         ]);
 
         const status = [a.status, b.status].sort();
@@ -286,7 +316,10 @@ describe('POST /api/ia/confirmar — execução', () => {
 
     it('token de outra pessoa não executa', async () => {
         const dono = await cookieDe('diretor');
-        const { confirmacao } = await pedirAcao(dono.cookie, 'criarTurma', { nome: '6C', periodo: 'manha' });
+        const { confirmacao } = await pedirAcao(dono.cookie, 'criarTurma', {
+            nome: '6C',
+            periodo: 'manha',
+        });
 
         const outro = await cookieDe('diretor');
         const res = await confirmar(outro.cookie, confirmacao.confirmToken);
@@ -299,7 +332,10 @@ describe('POST /api/ia/confirmar — execução', () => {
 
     it('token expirado é recusado mesmo antes do TTL do Mongo varrer', async () => {
         const { cookie } = await cookieDe('diretor');
-        const { confirmacao } = await pedirAcao(cookie, 'criarTurma', { nome: '6C', periodo: 'manha' });
+        const { confirmacao } = await pedirAcao(cookie, 'criarTurma', {
+            nome: '6C',
+            periodo: 'manha',
+        });
 
         // Envelhece o documento sem esperar 5 minutos.
         await IaAcaoPendente.updateOne({}, { $set: { expiraEm: new Date(Date.now() - 1000) } });
@@ -331,16 +367,20 @@ describe('O cliente não escolhe o que é executado', () => {
     it('os parâmetros vêm do servidor, não do corpo da confirmação', async () => {
         const { cookie } = await cookieDe('diretor');
         const { confirmacao } = await pedirAcao(cookie, 'criarTurma', {
-            nome: 'TURMA-PREVISTA', periodo: 'manha'
+            nome: 'TURMA-PREVISTA',
+            periodo: 'manha',
         });
 
         // Tenta trocar o que será criado no momento de confirmar.
-        const res = await request(app).post('/api/ia/confirmar').set('Cookie', cookie).send({
-            confirmToken: confirmacao.confirmToken,
-            parametros: { nome: 'TURMA-INJETADA', periodo: 'noite' },
-            nome: 'TURMA-INJETADA',
-            escolaId: 'outra-escola'
-        });
+        const res = await request(app)
+            .post('/api/ia/confirmar')
+            .set('Cookie', cookie)
+            .send({
+                confirmToken: confirmacao.confirmToken,
+                parametros: { nome: 'TURMA-INJETADA', periodo: 'noite' },
+                nome: 'TURMA-INJETADA',
+                escolaId: 'outra-escola',
+            });
 
         expect(res.status).toBe(200);
         expect(await Turma.findOne({ nome: 'TURMA-INJETADA' })).toBeNull();
@@ -355,7 +395,8 @@ describe('Autorização na execução', () => {
     it('professor não consegue nem preparar uma ação de escrita', async () => {
         const { cookie } = await cookieDe('professor');
         const { confirmacao, resultadoNoModelo } = await pedirAcao(cookie, 'criarTurma', {
-            nome: '6C', periodo: 'manha'
+            nome: '6C',
+            periodo: 'manha',
         });
 
         expect(confirmacao).toBeUndefined();
@@ -366,7 +407,10 @@ describe('Autorização na execução', () => {
 
     it('rebaixamento de perfil entre o pedido e a confirmação invalida o token', async () => {
         const { cookie, user } = await cookieDe('diretor');
-        const { confirmacao } = await pedirAcao(cookie, 'criarTurma', { nome: '6C', periodo: 'manha' });
+        const { confirmacao } = await pedirAcao(cookie, 'criarTurma', {
+            nome: '6C',
+            periodo: 'manha',
+        });
 
         // O perfil é relido do BANCO a cada requisição (authJWT), então a
         // mudança vale já na confirmação.
@@ -384,9 +428,14 @@ describe('Autorização na execução', () => {
 describe('Cancelamento', () => {
     it('cancelar descarta a ação pendente', async () => {
         const { cookie } = await cookieDe('diretor');
-        const { confirmacao } = await pedirAcao(cookie, 'criarTurma', { nome: '6C', periodo: 'manha' });
+        const { confirmacao } = await pedirAcao(cookie, 'criarTurma', {
+            nome: '6C',
+            periodo: 'manha',
+        });
 
-        const cancel = await request(app).post('/api/ia/cancelar').set('Cookie', cookie)
+        const cancel = await request(app)
+            .post('/api/ia/cancelar')
+            .set('Cookie', cookie)
             .send({ confirmToken: confirmacao.confirmToken });
         expect(cancel.status).toBe(200);
         expect(await IaAcaoPendente.countDocuments()).toBe(0);
@@ -402,7 +451,9 @@ describe('criarEvento e enviarComunicado', () => {
     it('cria o evento no calendário com a data interpretada corretamente', async () => {
         const { cookie } = await cookieDe('diretor');
         const { confirmacao } = await pedirAcao(cookie, 'criarEvento', {
-            titulo: 'Reunião de pais', tipo: 'reuniao_pais', dataInicio: '2026-08-15'
+            titulo: 'Reunião de pais',
+            tipo: 'reuniao_pais',
+            dataInicio: '2026-08-15',
         });
 
         expect(confirmacao.resumo).toMatch(/15\/08\/2026/);
@@ -421,8 +472,10 @@ describe('criarEvento e enviarComunicado', () => {
     it('recusa evento com término anterior ao início', async () => {
         const { cookie } = await cookieDe('diretor');
         const { confirmacao, resultadoNoModelo } = await pedirAcao(cookie, 'criarEvento', {
-            titulo: 'Semana errada', tipo: 'evento',
-            dataInicio: '2026-08-20', dataFim: '2026-08-10'
+            titulo: 'Semana errada',
+            tipo: 'evento',
+            dataInicio: '2026-08-20',
+            dataFim: '2026-08-10',
         });
 
         expect(confirmacao).toBeUndefined();
@@ -435,7 +488,7 @@ describe('criarEvento e enviarComunicado', () => {
             titulo: 'Sem aula na sexta',
             conteudo: 'Não haverá aula na próxima sexta-feira por formação de professores.',
             destinatarios: ['todos'],
-            prioridade: 'Importante'
+            prioridade: 'Importante',
         });
 
         // O preview mostra o texto para a pessoa reler antes de publicar.
@@ -455,7 +508,9 @@ describe('criarEvento e enviarComunicado', () => {
     it('recusa destinatário fora da lista conhecida', async () => {
         const { cookie } = await cookieDe('diretor');
         const { confirmacao, resultadoNoModelo } = await pedirAcao(cookie, 'enviarComunicado', {
-            titulo: 'Teste', conteudo: 'texto', destinatarios: ['todo-mundo-do-mundo']
+            titulo: 'Teste',
+            conteudo: 'texto',
+            destinatarios: ['todo-mundo-do-mundo'],
         });
 
         expect(confirmacao).toBeUndefined();
@@ -467,15 +522,38 @@ describe('gerarRelatorioPDF', () => {
     beforeEach(async () => {
         const Nota = require('../models/Nota');
         await Nota.create([
-            { alunoId: 'a1', escolaId: String(escola._id), materiaId: 'Matematica', turmaId: '1A', bimestre: 1, nota: 8 },
-            { alunoId: 'a2', escolaId: String(escola._id), materiaId: 'Matematica', turmaId: '1A', bimestre: 1, nota: 6 },
-            { alunoId: 'a3', escolaId: String(escola._id), materiaId: 'Portugues', turmaId: '1A', bimestre: 1, nota: 9 }
+            {
+                alunoId: 'a1',
+                escolaId: String(escola._id),
+                materiaId: 'Matematica',
+                turmaId: '1A',
+                bimestre: 1,
+                nota: 8,
+            },
+            {
+                alunoId: 'a2',
+                escolaId: String(escola._id),
+                materiaId: 'Matematica',
+                turmaId: '1A',
+                bimestre: 1,
+                nota: 6,
+            },
+            {
+                alunoId: 'a3',
+                escolaId: String(escola._id),
+                materiaId: 'Portugues',
+                turmaId: '1A',
+                bimestre: 1,
+                nota: 9,
+            },
         ]);
     });
 
     it('gera o PDF e devolve um link de download', async () => {
         const { cookie } = await cookieDe('diretor');
-        const { confirmacao } = await pedirAcao(cookie, 'gerarRelatorioPDF', { tipo: 'desempenho' });
+        const { confirmacao } = await pedirAcao(cookie, 'gerarRelatorioPDF', {
+            tipo: 'desempenho',
+        });
 
         expect(confirmacao).toBeDefined();
         expect(confirmacao.resumo).toMatch(/desempenho/i);
@@ -489,7 +567,9 @@ describe('gerarRelatorioPDF', () => {
 
     it('o arquivo nasce com os metadados que autorizam o download', async () => {
         const { cookie, user } = await cookieDe('diretor');
-        const { confirmacao } = await pedirAcao(cookie, 'gerarRelatorioPDF', { tipo: 'desempenho' });
+        const { confirmacao } = await pedirAcao(cookie, 'gerarRelatorioPDF', {
+            tipo: 'desempenho',
+        });
         const res = await confirmar(cookie, confirmacao.confirmToken);
 
         const mongoose = require('mongoose');
@@ -507,12 +587,18 @@ describe('gerarRelatorioPDF', () => {
         const Nota = require('../models/Nota');
         const outra = await Escola.create({ nome: 'EMEF Vizinha', tipo: 'EMEF', ativo: false });
         await Nota.create({
-            alunoId: 'zz', escolaId: String(outra._id),
-            materiaId: 'SegredoDaVizinha', turmaId: '9Z', bimestre: 1, nota: 10
+            alunoId: 'zz',
+            escolaId: String(outra._id),
+            materiaId: 'SegredoDaVizinha',
+            turmaId: '9Z',
+            bimestre: 1,
+            nota: 10,
         });
 
         const { cookie } = await cookieDe('diretor');
-        const { confirmacao } = await pedirAcao(cookie, 'gerarRelatorioPDF', { tipo: 'desempenho' });
+        const { confirmacao } = await pedirAcao(cookie, 'gerarRelatorioPDF', {
+            tipo: 'desempenho',
+        });
 
         // O preview conta as combinações: 2 (Matematica/1A e Portugues/1A).
         // Se a vizinha entrasse, seriam 3.
@@ -525,7 +611,7 @@ describe('gerarRelatorioPDF', () => {
 
         const { cookie } = await cookieDe('diretor');
         const { confirmacao, resultadoNoModelo } = await pedirAcao(cookie, 'gerarRelatorioPDF', {
-            tipo: 'desempenho'
+            tipo: 'desempenho',
         });
 
         expect(confirmacao).toBeUndefined();
@@ -537,12 +623,19 @@ describe('gerarRelatorioPDF', () => {
         const Nota = require('../models/Nota');
         // Registro legado com nota textual, gravado direto na coleção.
         await Nota.collection.insertOne({
-            _id: 'legado-1', alunoId: 'a9', escolaId: String(escola._id),
-            materiaId: 'Artes', turmaId: '1A', bimestre: 1, nota: 'Satisfatório'
+            _id: 'legado-1',
+            alunoId: 'a9',
+            escolaId: String(escola._id),
+            materiaId: 'Artes',
+            turmaId: '1A',
+            bimestre: 1,
+            nota: 'Satisfatório',
         });
 
         const { cookie } = await cookieDe('diretor');
-        const { confirmacao } = await pedirAcao(cookie, 'gerarRelatorioPDF', { tipo: 'desempenho' });
+        const { confirmacao } = await pedirAcao(cookie, 'gerarRelatorioPDF', {
+            tipo: 'desempenho',
+        });
         const res = await confirmar(cookie, confirmacao.confirmToken);
 
         expect(res.status).toBe(200);
@@ -564,12 +657,18 @@ describe('Auditoria', () => {
         const ctx = ctxDe({
             perfil: 'diretor',
             escolaId: String(escola._id),
-            user: { id: String(user._id), nome: user.nome }
+            user: { id: String(user._id), nome: user.nome },
         });
         const acaoFalsa = {
             ferramenta: 'criarEvento',
-            parametros: { titulo: 'x', tipo: 'invalido', dataInicio: new Date().toISOString(), dataFim: new Date().toISOString(), anoLetivo: 2026 },
-            resumo: 'evento inválido'
+            parametros: {
+                titulo: 'x',
+                tipo: 'invalido',
+                dataInicio: new Date().toISOString(),
+                dataFim: new Date().toISOString(),
+                anoLetivo: 2026,
+            },
+            resumo: 'evento inválido',
         };
         const r = await ToolRegistry.executarConfirmada(acaoFalsa, ctx);
 
@@ -588,7 +687,9 @@ describe('Auditoria', () => {
         const { cookie } = await cookieDe('diretor');
         const segredo = 'Detalhe sensível sobre a situação familiar de um aluno.';
         const { confirmacao } = await pedirAcao(cookie, 'enviarComunicado', {
-            titulo: 'Aviso', conteudo: segredo, destinatarios: ['professores']
+            titulo: 'Aviso',
+            conteudo: segredo,
+            destinatarios: ['professores'],
         });
 
         await confirmar(cookie, confirmacao.confirmToken);
