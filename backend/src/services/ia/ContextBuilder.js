@@ -23,6 +23,7 @@ const Escola = require('../../models/Escola');
 const Config = require('../../models/Config');
 const logger = require('../../utils/logger');
 const { PERSONA_PROMPT_PREFIX } = require('../assistantPersona');
+const { guiaPara } = require('./guiaDoSistema');
 
 /**
  * Módulos que cada perfil enxerga no sistema.
@@ -328,6 +329,19 @@ function montarSystemPrompt(ctx) {
     }
 
     linhas.push('');
+
+    // Perguntas de uso do sistema (Issue #702): o modelo só cita telas que
+    // existem no menu deste perfil — `guiaDoSistema.test.js` confere.
+    const guia = guiaPara(ctx.usuario.perfil);
+    if (guia.length > 0) {
+        linhas.push('ONDE FICA CADA COISA NO SISTEMA (menus e abas que esta pessoa vê):');
+        for (const tela of guia) linhas.push(`- ${tela.menu}: ${tela.para}.`);
+        linhas.push(
+            '- Para "onde fica", "como faço" ou "onde vejo", indique o item acima pelo nome exato. Se o que a pessoa procura não estiver nesta lista, diga que não sabe o caminho e sugira procurar a secretaria ou a direção. Nunca invente nome de menu ou de tela.'
+        );
+        linhas.push('');
+    }
+
     linhas.push('LIMITES (obrigatórios):');
     linhas.push(
         `- Fale apenas da escola desta sessão${ctx.escola ? ` (${ctx.escola.nome})` : ''}. Se pedirem dados de outra escola, recuse com cordialidade.`
