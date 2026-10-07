@@ -9,7 +9,14 @@
  * edição, a paleta e o "Importar Excel" apareciam para qualquer perfil, e o
  * servidor recusava a gravação (PUT /api/config/:id é só de admin). Agora o
  * editor lê o perfil da sessão real e só mostra a edição a quem pode gravar.
+ *
+ * Issue #696: o "Sincronizar" (POST /api/tabela-geral/seed, só de admin) nunca
+ * aparecia, nem para o admin: o editor procurava `btn-seed-db` e a página tem
+ * `btn-seed-db-header`. Agora o botão usa o mesmo `data-so-quem-edita`.
  */
+
+const fs = require('node:fs');
+const path = require('node:path');
 
 let HorarioEditor;
 
@@ -95,5 +102,42 @@ describe('init', () => {
 
         expect(document.getElementById('btn-toggle-edit')).not.toBeNull();
         expect(document.querySelector('[data-so-quem-edita]').style.display).toBe('');
+    });
+});
+
+describe('botões da página real (direcao/horario-jaguari.html)', () => {
+    /** Só o cabeçalho de ações da página, como ela vai ao ar. */
+    function paginaReal() {
+        const html = fs.readFileSync(
+            path.resolve(__dirname, '../../../direcao/horario-jaguari.html'),
+            'utf8'
+        );
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        document.body.innerHTML = doc.querySelector('.header-actions').outerHTML;
+        window.db = { getConfig: jest.fn().mockResolvedValue(null) };
+        window.mostrarTabela = () => {};
+    }
+    const sincronizar = () => document.querySelector('[data-acao="sincronizarHorario"]');
+    const importar = () => document.querySelector('label[for="input-excel-header"]');
+
+    it('admin vê o Sincronizar e o Importar Excel', async () => {
+        paginaReal();
+        sessao({ doServidor: { perfil: 'admin' } });
+        expect(sincronizar().style.display).toBe('none');
+
+        await new HorarioEditor().init();
+
+        expect(sincronizar().style.display).toBe('');
+        expect(importar().style.display).toBe('');
+    });
+
+    it('diretor não vê o Sincronizar nem o Importar Excel', async () => {
+        paginaReal();
+        sessao({ doServidor: { perfil: 'diretor' } });
+
+        await new HorarioEditor().init();
+
+        expect(sincronizar().style.display).toBe('none');
+        expect(importar().style.display).toBe('none');
     });
 });

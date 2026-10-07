@@ -3822,6 +3822,11 @@ if (window.Acoes) {
             toggleLegendaAccordion(el);
         },
         sincronizarHorario() {
+            // O seed regrava cada aula com o horário de referência da página.
+            const ok = window.confirm(
+                'Sincronizar regrava a tabela geral com o horário de referência e desfaz as edições feitas aqui. Continuar?'
+            );
+            if (!ok) return;
             window.HorarioSync.seed().then((r) => alert(r.data ? r.data.message : 'Erro no seed'));
         },
     });

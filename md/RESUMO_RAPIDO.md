@@ -1,5 +1,7 @@
 # ✅ RESUMO — Melhorias Implementadas (30 Jun 2026)
 
+> **Histórico (Issue #696).** O `UserController-REFATORADO.js` e os serviços `AuthenticationService`, `RegistrationService` e `PasswordRecoveryService` descritos aqui nunca entraram em rota e foram removidos (#656, #696), junto com o `GUIA_MIGRACAO_USERCONTROLLER.md`. Login, cadastro e recuperação de senha estão em `backend/src/controllers/UserController.js`. Não siga os passos de migração abaixo.
+
 ## 🎯 Status Final: P0 + P1 Completo
 
 ---
@@ -181,7 +183,7 @@ Services → Controllers → Express Routes
 👉 [ANALISE_MELHORIAS_BACKEND.md](ANALISE_MELHORIAS_BACKEND.md) — 15 recomendações
 
 **Guia de migração:**  
-👉 [GUIA_MIGRACAO_USERCONTROLLER.md](GUIA_MIGRACAO_USERCONTROLLER.md) — Passo-a-passo
+👉 `GUIA_MIGRACAO_USERCONTROLLER.md` (removido) — Passo-a-passo
 
 **Exemplos práticos:**  
 👉 [EXEMPLOS_PAGINACAO.md](EXEMPLOS_PAGINACAO.md) — 5 exemplos de paginação

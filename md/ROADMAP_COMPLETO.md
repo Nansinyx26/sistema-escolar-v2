@@ -1,5 +1,7 @@
 # 🗺️ Sistema Escolar v2 — Complete Development Roadmap
 
+> **Histórico (Issue #696).** O `UserController-REFATORADO.js` e os serviços `AuthenticationService`, `RegistrationService` e `PasswordRecoveryService` descritos aqui nunca entraram em rota e foram removidos (#656, #696), junto com o `GUIA_MIGRACAO_USERCONTROLLER.md`. Login, cadastro e recuperação de senha estão em `backend/src/controllers/UserController.js`. Não siga os passos de migração abaixo.
+
 **Início:** 27 de junho de 2026  
 **Status Atual:** ✅ P0 + P1 + P2 + P3 Completo  
 **Próximo:** P4 (Futuro)

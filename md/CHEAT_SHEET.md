@@ -1,5 +1,7 @@
 # ⚡ CHEAT SHEET — Tudo que foi implementado em 4 dias
 
+> **Histórico (Issue #696).** O `UserController-REFATORADO.js` e os serviços `AuthenticationService`, `RegistrationService` e `PasswordRecoveryService` descritos aqui nunca entraram em rota e foram removidos (#656, #696), junto com o `GUIA_MIGRACAO_USERCONTROLLER.md`. Login, cadastro e recuperação de senha estão em `backend/src/controllers/UserController.js`. Não siga os passos de migração abaixo.
+
 ## 🎯 Quick Reference
 
 **P0 + P1 + P2 + P3 = 5800 linhas de código + 1700 linhas de docs**

@@ -11,6 +11,9 @@
  * O levantamento dos chamadores não achou nenhum que passe marcação de
  * propósito: o padrão virou texto, e HTML só com `{ html: true }`.
  *
+ * O `ui.loading` seguiu na #696: hoje todo chamador passa texto fixo, e o
+ * padrão vale para quem vier depois.
+ *
  * O texto segue a regra do #650: escapa < > e aspas sem recodificar o `&`,
  * para que "Pedro &amp; Maria" gravado pelo servidor e o que o chamador já
  * escapou continuem aparecendo certo.
@@ -141,6 +144,15 @@ describe('js/ui.js', () => {
         expect(input.value).toBe(valor);
         expect(input.hasAttribute('autofocus')).toBe(false);
         expect(input.hasAttribute('data-x')).toBe(false);
+    });
+
+    it('loading mostra a mensagem como texto (Issue #696)', () => {
+        ui.loading(true, `Carregando ${TAG}`);
+        const overlay = document.getElementById('loading-overlay');
+        semElementoDoDado(overlay.querySelector('#loading-text'));
+        expect(overlay.querySelector('#loading-text').textContent).toBe(`Carregando ${TAG}`);
+        ui.loading(false);
+        jest.runOnlyPendingTimers();
     });
 
     it('showModal continua aceitando HTML no content (corpo do modal)', () => {

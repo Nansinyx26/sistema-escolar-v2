@@ -104,13 +104,13 @@
                         <button class="btn btn-primary btn-mobile-full" data-acao="mostrarTabela" data-tabela="GERAL" data-tipo="geral">
                             <i class="bi bi-table"></i> Visão Geral
                         </button>
-                        <!-- data-so-quem-edita: direcao/horario-editor.js mostra a quem pode gravar (#656). -->
+                        <!-- data-so-quem-edita: direcao/horario-editor.js mostra a quem pode gravar (#656, #696). -->
                         <label for="input-excel-header" class="btn btn-outline btn-mobile-full" style="cursor:pointer;margin:0;display:none;" data-so-quem-edita>
                             <i class="bi bi-file-earmark-excel"></i> Importar Excel
                             <input type="file" id="input-excel-header" accept=".xlsx,.xls" style="display:none" data-acao-change="importarExcel">
                         </label>
                         <button id="btn-seed-db-header" class="btn btn-outline btn-mobile-full" title="Sincronizar banco" style="display:none;"
-                            data-acao="sincronizarHorario">
+                            data-acao="sincronizarHorario" data-so-quem-edita>
                             <i class="bi bi-cloud-upload"></i> Sincronizar
                         </button>
                         <a href="../Horario Jaguari 2026/HORARIO_JAGUARI_2026_CONSOLIDADO.xlsx" download class="btn btn-outline btn-mobile-full">

@@ -1,5 +1,7 @@
 # ✨ PROJETO CONCLUÍDO — Sistema Escolar v2 Improvements
 
+> **Histórico (Issue #696).** O `UserController-REFATORADO.js` e os serviços `AuthenticationService`, `RegistrationService` e `PasswordRecoveryService` descritos aqui nunca entraram em rota e foram removidos (#656, #696), junto com o `GUIA_MIGRACAO_USERCONTROLLER.md`. Login, cadastro e recuperação de senha estão em `backend/src/controllers/UserController.js`. Não siga os passos de migração abaixo.
+
 **Data de Conclusão:** 30 de junho de 2026  
 **Tempo Total:** 4 dias (27-30 Jun)  
 **Status:** ✅ 100% COMPLETO
