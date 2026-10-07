@@ -146,6 +146,7 @@ describe('ToolRegistry — primeira barreira (catálogo por cargo)', () => {
             'atividadesPendentesCorrecao',
             'buscarAluno',
             'consultarFrequencia',
+            'consultarGradeHoraria',
             'consultarNotas',
             'contarAlunos',
             'listarComunicados',
