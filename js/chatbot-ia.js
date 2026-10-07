@@ -39,14 +39,24 @@
     }
 
     const CONFIG = {
-        apiBase: (window.API_BASE_URL || '/api') + '/ia/chatbot',
+        // O assistente (copiloto), o mesmo da página "Assistente da Escola" e
+        // do portal do responsável (Issue #702). Ver `enviarPergunta`.
+        apiChat: (window.API_BASE_URL || '/api') + '/ia/chat',
         ttsBase: (window.API_BASE_URL || '/api') + '/tts',
         stylesUrl: '/css/chatbot-ia.css',
     };
 
+    // Pasta deste script (`/js/`): os módulos do Assistente (`js/ia/`) e o
+    // DOMPurify (`js/libs/`) são buscados a partir dela, sob demanda.
+    const BASE_JS = new URL(
+        '.',
+        (document.currentScript && document.currentScript.src) || window.location.href
+    );
+
     let isOpen = false;
     let messages = [];
-    let contextAlunoId = null; // Contexto conversacional: aluno ativo
+    // A conversa mora no servidor; o cliente guarda só o ponteiro para ela.
+    let conversaId = null;
     // Forçar configurações fixas conforme solicitado
     localStorage.setItem('user_tts_provider', 'elevenlabs');
     // Liga/desliga legado: o gênero da voz escolhida (Issue #564).
@@ -246,7 +256,7 @@
 
             if (nome) {
                 addMessage(
-                    `Olá, **${nome}**! Você está na conta **${perfil}**. Posso consultar informações do sistema escolar para você. Escolha um tema ou pergunte direto:`,
+                    `Olá, **${nome}**! Você está na conta **${perfil}**. Posso consultar os dados da escola e explicar onde fica cada coisa no sistema. Escolha um tema ou pergunte direto:`,
                     true,
                     getInitialSuggestions()
                 );
@@ -269,7 +279,7 @@
 
     function clearChat() {
         messages = [];
-        contextAlunoId = null;
+        conversaId = null; // a próxima pergunta abre uma conversa nova
         body.innerHTML = '';
         addMessage(
             'Conversa limpa. Escolha um tema ou pergunte direto:',
@@ -293,6 +303,7 @@
                 { label: 'Resumo do desempenho', value: '' },
                 { label: 'Comunicados recentes', value: '' },
                 { label: 'Grade horária', value: '' },
+                { label: 'Onde vejo o boletim?', value: '' },
             ];
         }
 
@@ -306,6 +317,7 @@
         if (['diretor', 'admin', 'coordenador', 'secretaria'].includes(perfil)) {
             base.push({ label: 'Resumo da escola', value: '' });
         }
+        base.push({ label: 'Onde fica cada coisa no sistema?', value: '' });
         return base;
     }
 
@@ -329,7 +341,7 @@
             return;
         }
         const opcao = e.target.closest('.chatbot-option-btn[data-rotulo]');
-        if (opcao) selectOption(opcao.dataset.rotulo, opcao.dataset.valor);
+        if (opcao) selectOption(opcao.dataset.rotulo);
     });
 
     // --- MESSAGE RENDERING ---
@@ -337,7 +349,12 @@
         return text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     }
 
-    function addMessage(text, isAi, options) {
+    /**
+     * Desenha uma mensagem e devolve o elemento do texto e o índice dela.
+     * `semAudio`: a resposta em stream chega vazia; a narração toca no fim.
+     */
+    function addMessage(text, isAi, options, opcoes) {
+        const semAudio = !!(opcoes && opcoes.semAudio);
         const index = messages.length;
         messages.push({ text, isAi });
         const div = document.createElement('div');
@@ -365,7 +382,7 @@
             <div class="msg-content-wrapper">
                 ${isAi ? avatarHtml : ''}
                 <div class="msg-text-bubble">
-                    <div>${formattedText}</div>
+                    <div class="msg-texto">${formattedText}</div>
         `;
 
         if (isAi) {
@@ -419,9 +436,10 @@
         body.appendChild(div);
         body.scrollTop = body.scrollHeight;
 
-        if (isAi && audioSettings.autoPlay) {
+        if (isAi && audioSettings.autoPlay && !semAudio) {
             playAudio(index);
         }
+        return { el: div.querySelector('.msg-texto'), indice: index };
     }
 
     function addTypingIndicator() {
@@ -459,7 +477,7 @@
 
         try {
             // Usa window.speak (que agora aponta para /api/tts/speak e usa ElevenLabs)
-            const audio = await window.speak(msg.text.replace(/\*\*/g, ''));
+            const audio = await window.speak(textoParaFala(msg.text));
 
             if (!audio) {
                 if (icon) icon.className = 'bi bi-volume-up-fill';
@@ -550,40 +568,219 @@
     const micBtn = document.getElementById('chat-mic-ia');
     if (micBtn) micBtn.style.display = 'none';
 
-    form.onsubmit = async (e) => {
+    form.onsubmit = (e) => {
         e.preventDefault();
         const text = input.value.trim();
         if (!text) return;
+        enviarPergunta(text);
+    };
 
-        const user = getCurrentUser();
-        let escolaSelecionada = user?.escolaId || null;
-        let escolaNome = user?.escolaNome || null;
-        if (!escolaSelecionada) {
-            try {
-                const salva = JSON.parse(localStorage.getItem('escolaSelecionada'));
-                if (salva) {
-                    escolaSelecionada = salva.id;
-                    escolaNome = salva.nome;
-                }
-            } catch (e) {}
-        }
-        let turmaSelecionada = null;
+    // ─── ASSISTENTE (copiloto) ────────────────────────────────────────────
+    //
+    // O chat conversa com `POST /api/ia/chat`, o mesmo assistente da página
+    // "Assistente da Escola" e do portal do responsável (Issue #702). Antes ia
+    // ao `/api/ia/chatbot`, que classificava a pergunta por palavras-chave e
+    // montava a resposta num molde; o Gemini só reescrevia o texto pronto.
+    // Agora o Gemini entende a pergunta e consulta o sistema por ferramentas
+    // que o servidor filtra por perfil e escola: o responsável só alcança os
+    // próprios filhos, o professor só as próprias turmas.
+    //
+    // `fetch` + leitor de stream, e não `EventSource`: a rota é POST e passa
+    // pelo CSRF, que exige um cabeçalho.
+
+    /** Texto do status enquanto uma ferramenta consulta o sistema. */
+    const CONSULTANDO = {
+        buscarAluno: 'Procurando o aluno...',
+        consultarNotas: 'Consultando notas...',
+        consultarFrequencia: 'Consultando frequência...',
+        consultarGradeHoraria: 'Consultando a grade horária...',
+        listarComunicados: 'Consultando comunicados...',
+        listarEventos: 'Consultando o calendário...',
+    };
+
+    /** Erro com mensagem pronta para a pessoa ler. */
+    class ErroDoAssistente extends Error {}
+
+    function carregarScript(src, jaCarregado) {
+        if (jaCarregado()) return Promise.resolve();
+        return new Promise((resolve) => {
+            const script = document.createElement('script');
+            script.src = src;
+            script.onload = resolve;
+            script.onerror = resolve; // sem DOMPurify o renderizador cai para texto puro
+            document.head.appendChild(script);
+        });
+    }
+
+    /** Importa um módulo de `js/ia/`; `null` se não der (offline, navegador antigo). */
+    function importarModuloIA(arquivo) {
         try {
-            turmaSelecionada =
-                sessionStorage.getItem('turmaAtiva') || sessionStorage.getItem('turmaSelecionada');
-        } catch (e) {}
-        const userContext = {
-            escolaId: escolaSelecionada,
-            escolaNome: escolaNome,
-            turmaId: turmaSelecionada,
-            perfil: user?.perfil || null,
-        };
+            return import(new URL('ia/' + arquivo, BASE_JS).href).catch(() => null);
+        } catch {
+            return Promise.resolve(null);
+        }
+    }
 
+    let promessaMarkdown = null;
+    /**
+     * Renderizador de Markdown do Assistente (escapa o texto e passa por
+     * DOMPurify). Até ele chegar, a resposta é pintada como texto puro.
+     */
+    function carregarMarkdown() {
+        if (!promessaMarkdown) {
+            promessaMarkdown = carregarScript(
+                new URL('libs/purify.min.js', BASE_JS).href,
+                () => !!window.DOMPurify
+            ).then(() => importarModuloIA('MarkdownRenderer.js'));
+        }
+        return promessaMarkdown;
+    }
+    let markdown = null;
+
+    function pintarResposta(el, texto) {
+        if (markdown && markdown.renderizarMarkdown) {
+            el.classList.remove('msg-texto-puro');
+            el.innerHTML = markdown.renderizarMarkdown(texto);
+        } else {
+            // Texto puro guarda as quebras de linha da resposta.
+            el.classList.add('msg-texto-puro');
+            el.textContent = texto;
+        }
+    }
+
+    /**
+     * O renderizador pode chegar depois de uma resposta curta terminar: as
+     * respostas já completas que ficaram em texto puro são pintadas de novo.
+     */
+    function repintarRespostas() {
+        for (const el of body.querySelectorAll('.msg-texto.msg-texto-puro[data-indice]')) {
+            const texto = messages[Number(el.dataset.indice)]?.text;
+            if (texto) pintarResposta(el, texto);
+        }
+    }
+
+    /** Texto para a narração: sem a marcação do Markdown. */
+    function textoParaFala(texto) {
+        return String(texto || '')
+            .replace(/```[\s\S]*?```/g, ' ')
+            .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+            .replace(/^\s*#{1,6}\s*/gm, '')
+            .replace(/^\s*\|?[\s:|-]+\|?\s*$/gm, '')
+            .replace(/[|*_`>#]/g, ' ')
+            .replace(/[ \t]+/g, ' ')
+            .trim();
+    }
+
+    /**
+     * Ação de escrita (comunicado, evento, turma): nada foi gravado ainda. O
+     * card de Confirmar/Cancelar é o mesmo da página do Assistente; o token
+     * volta sozinho em POST /api/ia/confirmar.
+     */
+    async function mostrarConfirmacao(acao) {
+        // O lugar do card é reservado JÁ, na ordem do stream: o módulo chega
+        // depois, e o texto que o assistente escreve em seguida não pode
+        // passar à frente do card.
+        const lugar = document.createElement('div');
+        lugar.className = 'chatbot-confirmacao';
+        body.appendChild(lugar);
+
+        const modulo = await importarModuloIA('ActionConfirm.js');
+        if (!modulo || !modulo.ActionConfirm) {
+            lugar.remove();
+            addMessage(
+                'Para confirmar esta ação, abra o **Assistente da Escola** no menu.',
+                true,
+                null,
+                { semAudio: true }
+            );
+            return;
+        }
+        const card = new modulo.ActionConfirm({
+            aoEditar: (texto) => {
+                input.value = texto || '';
+                input.focus();
+            },
+        });
+        card.renderizar(lugar, acao);
+        body.scrollTop = body.scrollHeight;
+    }
+
+    /**
+     * Uma pergunta ao assistente, lendo o stream SSE.
+     * @param {string} texto
+     * @param {{aoTexto: Function, aoFerramenta: Function, aoConfirmacao: Function}} eventos
+     * @returns {Promise<string>} a resposta completa
+     */
+    async function conversarComAssistente(texto, eventos) {
+        const res = await fetch(CONFIG.apiChat, {
+            method: 'POST',
+            headers: { ...getHeaders(), Accept: 'text/event-stream' },
+            credentials: 'include',
+            body: JSON.stringify({ mensagem: texto, conversaId: conversaId || undefined }),
+        });
+
+        if (!res.ok || !res.body) {
+            // 403 da IA desligada na escola, 401, 429…: o motivo do servidor.
+            throw new ErroDoAssistente(
+                (await mensagemDeErro(res)) || 'Não foi possível falar com o assistente agora.'
+            );
+        }
+
+        const leitor = res.body.getReader();
+        const decodificador = new TextDecoder();
+        let buffer = '';
+        let completo = '';
+
+        for (;;) {
+            const { done, value } = await leitor.read();
+            if (done) break;
+            buffer += decodificador.decode(value, { stream: true });
+
+            // Eventos SSE são separados por linha em branco; o resto do
+            // buffer é um evento partido ao meio e fica para a próxima leitura.
+            const blocos = buffer.split('\n\n');
+            buffer = blocos.pop() || '';
+
+            for (const bloco of blocos) {
+                for (const linha of bloco.split('\n')) {
+                    if (!linha.startsWith('data:')) continue; // ':' = keepalive
+                    let evento;
+                    try {
+                        evento = JSON.parse(linha.slice(5).trim());
+                    } catch {
+                        continue;
+                    }
+                    if (evento.tipo === 'inicio' && evento.conversa?.id) {
+                        conversaId = evento.conversa.id;
+                    } else if (evento.tipo === 'delta' && evento.texto) {
+                        completo += evento.texto;
+                        eventos.aoTexto(completo);
+                    } else if (evento.tipo === 'ferramenta') {
+                        eventos.aoFerramenta(evento.nome);
+                    } else if (evento.tipo === 'confirmacao') {
+                        eventos.aoConfirmacao(evento);
+                    } else if (evento.tipo === 'conversa' && evento.id) {
+                        conversaId = evento.id;
+                    } else if (evento.tipo === 'erro') {
+                        throw new ErroDoAssistente(
+                            evento.mensagem || 'Não consegui gerar a resposta agora.'
+                        );
+                    }
+                }
+            }
+        }
+        return completo;
+    }
+
+    const agendarQuadro = (f) =>
+        window.requestAnimationFrame ? window.requestAnimationFrame(f) : setTimeout(f, 16);
+
+    async function enviarPergunta(text) {
         addMessage(text, false);
         input.value = '';
         input.disabled = true;
         document.getElementById('chat-submit-btn').disabled = true;
-        statusEl.textContent = 'Consultando...';
+        statusEl.textContent = 'Pensando...';
         addTypingIndicator();
 
         if (window.VoiceOrbManager && orbContainer) {
@@ -592,55 +789,76 @@
             window.VoiceOrbManager.setState('thinking');
         }
 
+        // O renderizador vem em paralelo com a pergunta, sem atrasá-la.
+        carregarMarkdown().then((m) => {
+            markdown = m;
+            if (m) repintarRespostas();
+        });
+
+        let resposta = null; // { el, indice } da bolha do assistente
+        let ultimo = '';
+        let quadroPendente = false;
+        const pintar = () => {
+            quadroPendente = false;
+            if (!resposta) return;
+            pintarResposta(resposta.el, ultimo);
+            body.scrollTop = body.scrollHeight;
+        };
+
         try {
-            const res = await fetch(CONFIG.apiBase, {
-                method: 'POST',
-                headers: getHeaders(),
-                body: JSON.stringify({
-                    message: text,
-                    alunoId: contextAlunoId,
-                    userContext: userContext,
-                }),
-                credentials: 'include',
+            const completo = await conversarComAssistente(text, {
+                aoTexto(textoAteAqui) {
+                    if (!resposta) {
+                        removeTypingIndicator();
+                        resposta = addMessage('', true, null, { semAudio: true });
+                        resposta.el.dataset.indice = String(resposta.indice);
+                    }
+                    ultimo = textoAteAqui;
+                    if (!quadroPendente) {
+                        quadroPendente = true;
+                        agendarQuadro(pintar);
+                    }
+                },
+                aoFerramenta(nome) {
+                    statusEl.textContent = CONSULTANDO[nome] || 'Consultando o sistema...';
+                },
+                aoConfirmacao(acao) {
+                    removeTypingIndicator();
+                    mostrarConfirmacao(acao);
+                },
             });
 
-            let responseText = '';
-            let responseOptions = null;
-            if (res.ok) {
-                const data = await res.json();
-                responseText = data.data?.response;
-                // persiste alunoId resolvido para o próximo turno
-                if (data.data?.alunoId) contextAlunoId = data.data.alunoId;
-                responseOptions = data.data?.options || null;
-            } else {
-                responseText = await mensagemDeErro(res);
-            }
-
             removeTypingIndicator();
-
-            if (responseText) {
-                addMessage(responseText, true, responseOptions);
-                statusEl.textContent = 'Conectado';
+            statusEl.textContent = 'Conectado';
+            if (resposta) {
+                messages[resposta.indice].text = completo;
+                pintar();
                 if (window.VoiceOrbManager) window.VoiceOrbManager.setState('idle');
-            } else {
+                if (audioSettings.autoPlay) playAudio(resposta.indice);
+            } else if (!body.lastElementChild?.classList.contains('chatbot-confirmacao')) {
                 addMessage('Não consegui processar sua pergunta.', true, null);
-                statusEl.textContent = 'Conectado';
                 if (window.VoiceOrbManager) window.VoiceOrbManager.setState('error');
             }
         } catch (err) {
             removeTypingIndicator();
+            statusEl.textContent = 'Conectado';
             if (window.VoiceOrbManager) window.VoiceOrbManager.setState('error');
-            addMessage(
-                'Ocorreu um erro de conexão. Verifique sua internet e tente novamente.',
-                true,
-                null
-            );
+            const aviso =
+                err instanceof ErroDoAssistente
+                    ? err.message
+                    : 'Ocorreu um erro de conexão. Verifique sua internet e tente novamente.';
+            if (resposta && !ultimo) {
+                resposta.el.textContent = aviso;
+                messages[resposta.indice].text = aviso;
+            } else {
+                addMessage(aviso, true, null, { semAudio: true });
+            }
         } finally {
             input.disabled = false;
             document.getElementById('chat-submit-btn').disabled = false;
             input.focus();
         }
-    };
+    }
 
     // --- Seletor de voz ---
     //
@@ -954,79 +1172,13 @@
         fecharSugestoes();
     });
 
-    async function selectOption(label, value) {
-        // Sem value = chip de tema (não é botão de aluno): a pergunta é o rótulo
-        const isChipDeTema = !value;
-        if (!isChipDeTema) contextAlunoId = value;
-        const lastUserMsg = isChipDeTema
-            ? label
-            : messages.filter((m) => !m.isAi).slice(-1)[0]?.text || label;
-
-        const user = getCurrentUser();
-        let escolaSelecionada = user?.escolaId || null;
-        let escolaNome = user?.escolaNome || null;
-        if (!escolaSelecionada) {
-            try {
-                const salva = JSON.parse(localStorage.getItem('escolaSelecionada'));
-                if (salva) {
-                    escolaSelecionada = salva.id;
-                    escolaNome = salva.nome;
-                }
-            } catch (e) {}
-        }
-        let turmaSelecionada = null;
-        try {
-            turmaSelecionada =
-                sessionStorage.getItem('turmaAtiva') || sessionStorage.getItem('turmaSelecionada');
-        } catch (e) {}
-        const userContext = {
-            escolaId: escolaSelecionada,
-            escolaNome: escolaNome,
-            turmaId: turmaSelecionada,
-            perfil: user?.perfil || null,
-        };
-
-        addMessage(label, false, null);
-        input.disabled = true;
-        document.getElementById('chat-submit-btn').disabled = true;
-        statusEl.textContent = 'Consultando...';
-        addTypingIndicator();
-        try {
-            const res = await fetch(CONFIG.apiBase, {
-                method: 'POST',
-                headers: getHeaders(),
-                body: JSON.stringify({
-                    message: lastUserMsg,
-                    alunoId: isChipDeTema ? contextAlunoId || null : value,
-                    userContext: userContext,
-                }),
-                credentials: 'include',
-            });
-            let responseText = '';
-            let responseOptions = null;
-            if (res.ok) {
-                const data = await res.json();
-                responseText = data.data?.response;
-                if (data.data?.alunoId) contextAlunoId = data.data.alunoId;
-                responseOptions = data.data?.options || null;
-            } else {
-                responseText = await mensagemDeErro(res);
-            }
-            removeTypingIndicator();
-            addMessage(
-                responseText || 'Não consegui processar sua pergunta.',
-                true,
-                responseOptions
-            );
-            statusEl.textContent = 'Conectado';
-        } catch {
-            removeTypingIndicator();
-            addMessage('Erro de conexão.', true, null);
-        } finally {
-            input.disabled = false;
-            document.getElementById('chat-submit-btn').disabled = false;
-            input.focus();
-        }
+    /**
+     * Chip de tema: o rótulo vira a pergunta. O chatbot antigo também
+     * desenhava botões de aluno; o assistente resolve a dúvida conversando.
+     */
+    function selectOption(label) {
+        if (!label || input.disabled) return;
+        enviarPergunta(label);
     }
 
     window.chatbotIA = {
