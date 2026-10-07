@@ -5,12 +5,12 @@
  * gravavam `consentimentoAceiteEm: now` no próprio `Usuario.create`, e
  * `consentimentoVigente()` tratava esse carimbo como consentimento válido.
  *
- * Duas frentes aqui:
+ * Aqui fica a migração que tira o carimbo das contas antigas — e SÓ dele. Que
+ * as rotas de cadastro não carimbam mais está em `consentimentoCadastro.test.js`
+ * (rotas vivas e trava estática); o caso que chamava o `RegistrationService`
+ * saiu com o serviço, que nenhuma rota usava (Issue #696).
  *
- *   1. o cadastro de verdade não grava mais o campo;
- *   2. a migração tira o carimbo das contas antigas — e SÓ dele.
- *
- * A segunda é a que mais importa acertar. Uma migração que apague demais tira
+ * A migração é o que mais importa acertar. Uma migração que apague demais tira
  * de alguém um consentimento que ele deu; uma que apague de menos deixa o
  * sistema afirmando um que ninguém deu. Por isso cada condição do filtro tem
  * um caso que a exercita sozinha.
@@ -20,13 +20,9 @@
 const mongoose = require('mongoose');
 
 const { conectarBanco, limparBanco, desconectarBanco } = require('./helpers');
-const RegistrationService = require('../services/RegistrationService');
 const Usuario = require('../models/Usuario');
-const Escola = require('../models/Escola');
 const { consentimentoVigente } = require('../utils/consentimentoLgpd');
 const migracao = require('../../migrations/1788652800000-invalidar-consentimento-carimbado-no-cadastro');
-
-const SENHA_OK = 'Docente' + '#Jest' + '2026'; // maiúscula + número + especial
 
 beforeAll(async () => {
     await conectarBanco();
@@ -62,36 +58,6 @@ const aceitePeloPortal = (aceitoEm) => ({
     browser: 'jest',
     os: 'Outro',
     loginType: 'Conta Local',
-});
-
-describe('cadastro não grava consentimento (Issue #236)', () => {
-    it('registerDocente cria a conta sem consentimentoAceiteEm', async () => {
-        await Escola.create({
-            nome: 'Escola A',
-            tipo: 'EMEF',
-            codigoSecreto: 'CodigoA',
-            ativo: true,
-        });
-
-        const res = await RegistrationService.registerDocente({
-            nome: 'Professor Fixture',
-            email: 'prof.fixture@escola.test',
-            senha: SENHA_OK,
-            disciplina: 'Matemática',
-            turma: '1A',
-            matricula: '12345',
-            telefone: '19999990000',
-            codigoEscola: 'CodigoA',
-        });
-
-        expect(res.success).toBe(true);
-        const bruto = await usuarios().findOne({ email: 'prof.fixture@escola.test' });
-        expect(bruto).toBeTruthy();
-        expect(bruto).not.toHaveProperty('consentimentoAceiteEm');
-
-        // E o efeito que importa: o sistema não afirma um consentimento.
-        expect(consentimentoVigente(bruto).aceito).toBe(false);
-    });
 });
 
 describe('migração 1788652800000 — só o carimbo de cadastro sai', () => {

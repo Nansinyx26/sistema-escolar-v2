@@ -443,11 +443,13 @@ function addAudit(acao, secao, campo, cssClass) {
     });
     const ip = '189.44.xx.xx'; // Mascarado por privacidade
 
+    // `campo` traz o nome do arquivo escolhido e a mensagem de erro do
+    // servidor: tudo escapado (Issue #656).
     row.innerHTML = `
-        <td>${hora}</td>
-        <td class="${cssClass || ''}">${acao}</td>
-        <td>${secao} › ${campo}</td>
-        <td>${ip}</td>
+        <td>${escAttr(hora)}</td>
+        <td class="${escAttr(cssClass || '')}">${escAttr(acao)}</td>
+        <td>${escAttr(secao)} › ${escAttr(campo)}</td>
+        <td>${escAttr(ip)}</td>
     `;
 
     tbody.insertBefore(row, tbody.firstChild);

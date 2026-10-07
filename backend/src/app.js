@@ -666,6 +666,8 @@ app.use('/api/auth/login', authContaLimiter);
 const limitarAuth = [authIpLimiter, authContaLimiter];
 app.use('/api/auth/forgot-password', limitarAuth);
 app.use('/api/auth/reset-password', limitarAuth);
+// Primeiro acesso manda e confere o mesmo código de 6 dígitos (Issue #659).
+app.use('/api/auth/first-access', limitarAuth);
 
 // Todo o restante do prefixo /api/auth — cadastro, ativação e 2FA.
 // Antes só login/forgot/reset eram cobertos, deixando register-diretor,

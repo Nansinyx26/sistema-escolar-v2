@@ -21,11 +21,24 @@ if (user && user.perfil === 'professor') {
     });
 }
 
+// --- Escape (Issue #656) ---
+// Dados da sessão, do histórico e dos pedidos vão para o innerHTML. Regra do
+// #650: escapa < > aspas e crase, mas não o `&`, que o servidor já grava
+// codificado (ver escapeAttr em js/escape-html.js).
+function textoHtml(v) {
+    if (v === null || v === undefined) return '';
+    return String(v).replace(
+        /["'<>`]/g,
+        (c) => ({ '"': '&quot;', "'": '&#39;', '<': '&lt;', '>': '&gt;', '`': '&#96;' })[c]
+    );
+}
+
 // --- Toast ---
+// A mensagem é texto: os chamadores passam `e.message` do servidor.
 function toast(msg, type = 'success') {
     const el = document.createElement('div');
     el.className = `toast ${type}`;
-    el.innerHTML = `<i class="bi bi-${type === 'success' ? 'check-circle-fill' : 'x-circle-fill'}" style="color:${type === 'success' ? 'var(--success)' : 'var(--danger)'}"></i> ${msg}`;
+    el.innerHTML = `<i class="bi bi-${type === 'success' ? 'check-circle-fill' : 'x-circle-fill'}" style="color:${type === 'success' ? 'var(--success)' : 'var(--danger)'}"></i> ${textoHtml(msg)}`;
     document.getElementById('toastContainer').appendChild(el);
     setTimeout(() => el.remove(), 4000);
 }
@@ -99,13 +112,13 @@ function loadDados() {
     try {
         const u = user;
         document.getElementById('dadosGrid').innerHTML = `
-            <div class="info-item"><label>Nome Completo</label><span>${u.nome || '—'}</span></div>
-            <div class="info-item"><label>E-mail</label><span>${u.email || '—'}</span></div>
-            <div class="info-item"><label>CPF</label><span>${maskCPF(u.cpf)}</span></div>
-            <div class="info-item"><label>Telefone</label><span>${maskTel(u.telefone)}</span></div>
-            <div class="info-item"><label>Perfil</label><span class="badge badge-blue"><i class="bi bi-person-badge"></i> ${u.perfil || '—'}</span></div>
-            <div class="info-item"><label>Escola</label><span>${u.escola || '—'}</span></div>
-            <div class="info-item"><label>Disciplina</label><span>${u.disciplina || '—'}</span></div>
+            <div class="info-item"><label>Nome Completo</label><span>${textoHtml(u.nome || '—')}</span></div>
+            <div class="info-item"><label>E-mail</label><span>${textoHtml(u.email || '—')}</span></div>
+            <div class="info-item"><label>CPF</label><span>${textoHtml(maskCPF(u.cpf))}</span></div>
+            <div class="info-item"><label>Telefone</label><span>${textoHtml(maskTel(u.telefone))}</span></div>
+            <div class="info-item"><label>Perfil</label><span class="badge badge-blue"><i class="bi bi-person-badge"></i> ${textoHtml(u.perfil || '—')}</span></div>
+            <div class="info-item"><label>Escola</label><span>${textoHtml(u.escola || '—')}</span></div>
+            <div class="info-item"><label>Disciplina</label><span>${textoHtml(u.disciplina || '—')}</span></div>
             <div class="info-item"><label>Último Login</label><span>${fmtDate(u.ultimoLogin)}</span></div>
         `;
     } catch {
@@ -136,9 +149,9 @@ async function loadAudit() {
             .map(
                 (act) => `
             <tr>
-                <td><span class="badge badge-blue">${act.acao || '—'}</span></td>
-                <td>${act.recurso || '—'}</td>
-                <td>${act.descricao || '—'}</td>
+                <td><span class="badge badge-blue">${textoHtml(act.acao || '—')}</span></td>
+                <td>${textoHtml(act.recurso || '—')}</td>
+                <td>${textoHtml(act.descricao || '—')}</td>
                 <td>${fmtDate(act.data)}</td>
             </tr>
         `
@@ -246,7 +259,7 @@ async function loadPedidos() {
                 case 'rejeitado':
                     return '<span class="badge badge-red"><i class="bi bi-x-circle"></i> Rejeitado</span>';
                 default:
-                    return `<span class="badge badge-blue">${st}</span>`;
+                    return `<span class="badge badge-blue">${textoHtml(st)}</span>`;
             }
         };
 
@@ -264,8 +277,8 @@ async function loadPedidos() {
             .map(
                 (p) => `
             <tr>
-                <td><strong>${p.protocolo || '—'}</strong></td>
-                <td>${tipoNome(p.tipo)}</td>
+                <td><strong>${textoHtml(p.protocolo || '—')}</strong></td>
+                <td>${textoHtml(tipoNome(p.tipo))}</td>
                 <td>${badgeStatus(p.status)}</td>
                 <td>${fmtDate(p.prazoAtendimento)}</td>
                 <td>${fmtDate(p.criadoEm)}</td>

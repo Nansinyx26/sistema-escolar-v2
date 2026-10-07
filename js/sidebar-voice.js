@@ -610,11 +610,37 @@ function initVoiceCommand() {
     console.log('[Voice] Comandos de voz via navegador desativados por política de segurança.');
 }
 
+/**
+ * `data-href` só navega para a MESMA ORIGEM (Issue #656).
+ *
+ * Qualquer elemento com o atributo virava `location.href`: um `javascript:`
+ * rodaria código e um `//outro-host` (ou `/\outro-host`, que o navegador lê
+ * igual) levaria para outro site. O destino é resolvido contra a página atual
+ * e só passa se a origem não mudar — os caminhos relativos dos painéis
+ * ("perfil.html", "../direcao/x.html") continuam valendo.
+ * @param {string} href
+ * @returns {string|null} o próprio `href`, ou null quando ele sai da origem
+ */
+function hrefMesmaOrigem(href) {
+    if (typeof href !== 'string' || !href.trim()) return null;
+    const atual = window.location && window.location.href;
+    const base = /^https?:\/\//i.test(atual || '') ? atual : 'http://origem.invalid/';
+    try {
+        const destino = new URL(href, base);
+        const pagina = new URL(base);
+        // O protocolo também: `blob:` de mesma origem herda a origem da página.
+        const mesma = destino.origin === pagina.origin && destino.protocol === pagina.protocol;
+        return mesma ? href : null;
+    } catch (_e) {
+        return null;
+    }
+}
+
 document.addEventListener('click', (e) => {
     const target = e.target.closest('[data-action], [data-href]');
     if (!target) return;
     const action = target.getAttribute('data-action');
-    const href = target.getAttribute('data-href');
+    const href = hrefMesmaOrigem(target.getAttribute('data-href'));
     if (action === 'sair') {
         if (typeof window.sair === 'function') window.sair();
         else if (window.auth) window.auth.logout();

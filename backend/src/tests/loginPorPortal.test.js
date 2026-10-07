@@ -196,7 +196,7 @@ describe('utils/portalDeLogin — a regra isolada', () => {
     });
 
     it('`docente` continua sendo a porta da escola — é o nome antigo dela', () => {
-        // `AuthenticationService.login(email, senha, portal = 'docente')`.
+        // Era o padrão do login da refatoração abandonada (Issue #696).
         // Trocar o nome da porta não pode virar recusa.
         expect(portal.portalDaRequisicao('docente')).toBe('escola');
         expect(portal.portalConfere('professor', 'docente')).toBe(true);

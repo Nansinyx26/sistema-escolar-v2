@@ -101,6 +101,34 @@
         }
 
         /**
+         * Devolve `url` só se ele levar para a MESMA ORIGEM (Issue #656).
+         *
+         * A pilha guarda `pathname + search` da página, e um endereço como
+         * `https://escola//outro-host/x` tem pathname `//outro-host/x`: empilhado
+         * e depois atribuído a `location.href`, vira URL relativa ao esquema e
+         * leva para outro site. `/\outro-host` o navegador lê do mesmo jeito, e
+         * `javascript:` roda código. O destino é resolvido contra a página atual
+         * e só passa se origem e protocolo não mudarem.
+         * @param {string} url
+         * @returns {string|null}
+         */
+        function destinoMesmaOrigem(url) {
+            if (typeof url !== 'string' || !url.trim() || typeof URL === 'undefined') return null;
+            var atual =
+                typeof window !== 'undefined' && window.location ? window.location.href : '';
+            var base = /^https?:\/\//i.test(atual || '') ? atual : 'http://origem.invalid/';
+            try {
+                var destino = new URL(url, base);
+                var pagina = new URL(base);
+                return destino.origin === pagina.origin && destino.protocol === pagina.protocol
+                    ? url
+                    : null;
+            } catch (_e) {
+                return null;
+            }
+        }
+
+        /**
          * Verifica se uma URL é considerada Dashboard principal.
          * @param {string} [url]
          * @returns {boolean}
@@ -162,7 +190,12 @@
          * @returns {string}
          */
         function getFallbackDashboard(customFallback) {
-            if (customFallback && typeof customFallback === 'string' && customFallback !== '#') {
+            if (
+                customFallback &&
+                typeof customFallback === 'string' &&
+                customFallback !== '#' &&
+                destinoMesmaOrigem(customFallback)
+            ) {
                 return customFallback;
             }
 
@@ -192,6 +225,8 @@
          */
         function registrarPaginaAtual(url) {
             var current = normalizeUrl(url);
+            // `//host/x` não entra na pilha: ver destinoMesmaOrigem.
+            if (!destinoMesmaOrigem(current)) return;
 
             // Se a página for um Dashboard, reseta a pilha e guarda como último dashboard
             if (isDashboardUrl(current)) {
@@ -261,7 +296,7 @@
                 target = stack.pop();
             }
 
-            if (!target) {
+            if (!target || !destinoMesmaOrigem(target)) {
                 target = getFallbackDashboard(customFallback);
                 stack = [target];
             }
@@ -290,7 +325,7 @@
             }
 
             var target = copy.length > 0 ? copy[copy.length - 1] : null;
-            if (!target || target === current) {
+            if (!target || target === current || !destinoMesmaOrigem(target)) {
                 target = getFallbackDashboard(customFallback);
             }
             return target;
@@ -457,6 +492,7 @@
             getStack: getStack,
             setStack: setStack,
             normalizeUrl: normalizeUrl,
+            destinoMesmaOrigem: destinoMesmaOrigem,
             isDashboardUrl: isDashboardUrl,
             getUserRole: getUserRole,
             getFallbackDashboard: getFallbackDashboard,

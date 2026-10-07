@@ -1,16 +1,22 @@
 const Notificacao = require('../models/Notificacao');
 const Professor = require('../models/Professor');
-const Aluno = require('../models/Aluno');
+const { alunosDoResponsavel } = require('../services/vinculoDoResponsavel');
 const obs = require('../observability');
 const { escolaMatch } = require('../middleware/filtrarPorEscola');
 const { extrairPaginacao } = require('../middleware/pagination');
-const escapeRegex = require('../utils/escapeRegex');
 const { filtroPorId, filtroDoPerfil, paraTurmas } = require('../utils/visibilidadeNotificacao');
 
-/** Regex ancorada e escapada para casar e-mail exato. */
-function emailRegexExato(email) {
-    return new RegExp(`^${escapeRegex(String(email || ''))}$`, 'i');
-}
+/** O que a gestão pode gravar numa notificação (Issue #675). */
+const CAMPOS_NOTIFICACAO = [
+    'tipo',
+    'categoria',
+    'prioridade',
+    'titulo',
+    'mensagem',
+    'destinatarios',
+    'status',
+    'dataEnvio',
+];
 
 /** Turmas em que o professor dá aula (sala principal, adicionais e lista). */
 async function turmasDoProfessor(userId) {
@@ -23,10 +29,13 @@ async function turmasDoProfessor(userId) {
     return [...new Set(turmas.filter(Boolean))];
 }
 
-/** Destinatários que alcançam os filhos do responsável: turmas e ids dos alunos. */
-async function destinatariosDaFamilia(email) {
-    if (!email) return [];
-    const alunos = await Aluno.find({ responsavel: emailRegexExato(email) }).lean();
+/**
+ * Destinatários que alcançam os filhos do responsável NA ESCOLA: turmas e ids
+ * dos alunos. Vazio quando não há filho vinculado ali (Issue #687), e aí o
+ * sino fica só com o que foi endereçado a ele pelo nome.
+ */
+async function destinatariosDaFamilia(email, escolaId) {
+    const alunos = await alunosDoResponsavel(email, escolaId);
     const lista = [];
     for (const a of alunos) {
         lista.push(...paraTurmas([a.turma || a.turmaId]));
@@ -45,7 +54,8 @@ async function filtroDaSessao(req) {
     const userId = String(req.user?._id || req.user?.id || '');
     const ctx = { perfil, userId };
     if (perfil === 'professor') ctx.turmas = await turmasDoProfessor(userId);
-    if (perfil === 'responsavel') ctx.familia = await destinatariosDaFamilia(req.user?.email);
+    if (perfil === 'responsavel')
+        ctx.familia = await destinatariosDaFamilia(req.user?.email, req.escolaId);
 
     const filtro = filtroDoPerfil(ctx);
     // Multi-escola: filtro tolerante (escola ativa + legados sem escolaId).
@@ -101,9 +111,17 @@ module.exports = {
     async create(req, res) {
         try {
             const userPerfil = req.user?.perfil || '';
-            const data = { ...req.body };
-            // `id` é gerado pelo model; aceitar do corpo abria colisão no índice único.
-            delete data.id;
+            // Lista fechada de campos (Issue #675). Com `{...req.body}`, o corpo
+            // gravava `lido`, `ocultadoPor`, `dataCriacao`, `id`... O
+            // `paraResponsavel` só vale como booleano de verdade: `"true"` em
+            // texto passava pela checagem abaixo e o Mongoose convertia.
+            const data = {};
+            for (const campo of CAMPOS_NOTIFICACAO) {
+                if (req.body[campo] !== undefined) data[campo] = req.body[campo];
+            }
+            if (req.body.paraResponsavel !== undefined) {
+                data.paraResponsavel = req.body.paraResponsavel === true;
+            }
 
             // Regra 6: Professores NÃO podem enviar notificações diretamente para responsáveis.
             if (

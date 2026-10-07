@@ -67,6 +67,18 @@ async function emitirParaPerfis(escolaId, perfis, evento, payload) {
     }
 }
 
+/**
+ * Presença online (`presence:professor`) — só para a equipe da escola
+ * (Issue #688). Ia para a sala `escola:<id>`, onde estão também os
+ * responsáveis: cada família via o status online da equipe e das outras
+ * famílias. A presença de qualquer conta continua chegando à equipe, que a usa
+ * no chat direto.
+ */
+const PERFIS_DA_EQUIPE = ['admin', 'diretor', 'secretaria', 'professor'];
+function emitirPresenca(escolaId, payload) {
+    return emitirParaPerfis(escolaId, PERFIS_DA_EQUIPE, 'presence:professor', payload);
+}
+
 /** Emite para um usuário específico. */
 function emitirParaUsuario(usuarioId, evento, payload) {
     if (!global.io || !usuarioId) return;
@@ -79,9 +91,40 @@ function emitirParaMensagem(messageId, evento, payload) {
     global.io.to(`message:${messageId}`).emit(evento, payload);
 }
 
+/**
+ * Derruba as conexões de tempo real de uma conta (Issue #667).
+ *
+ * O handshake confere a sessão só na conexão. Quando ela é revogada — logout,
+ * troca de senha, desativação, exclusão — o HTTP recusa na hora, mas o socket
+ * já aberto seguia nas salas e continuava recebendo mensagens e comunicados.
+ * Quem ainda tem sessão válida reconecta sozinho; a sessão revogada é barrada
+ * no handshake. `disconnectSockets` e `fetchSockets` alcançam também as outras
+ * instâncias pelo adapter compartilhado.
+ *
+ * @param {string} usuarioId
+ * @param {{ jti?: string }} [opcoes] com `jti`, só os sockets daquele token (logout)
+ */
+async function encerrarConexoesDaConta(usuarioId, { jti } = {}) {
+    if (!global.io || !usuarioId) return;
+    try {
+        const sala = global.io.in(`user:${usuarioId}`);
+        if (!jti) {
+            sala.disconnectSockets(true);
+            return;
+        }
+        for (const s of await sala.fetchSockets()) {
+            if (s.data?.jti === jti) s.disconnect(true);
+        }
+    } catch (err) {
+        console.warn(`[realtime] conexões da conta não encerradas: ${err.message}`);
+    }
+}
+
 module.exports = {
+    encerrarConexoesDaConta,
     emitirParaEscola,
     emitirParaPerfis,
     emitirParaUsuario,
     emitirParaMensagem,
+    emitirPresenca,
 };

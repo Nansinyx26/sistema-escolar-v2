@@ -36,6 +36,31 @@ function validarNota(valor) {
     return { valido: true, valor: Math.round(n * 10) / 10 }; // 1 casa decimal
 }
 
+/**
+ * Confere o aluno da nota para QUALQUER perfil e tira dele a matrícula
+ * (Issue #661). Antes, `matriculaId` vinha livre do corpo e só o professor tinha
+ * o `alunoId` conferido: dava para gravar nota na ficha de criança de outra
+ * turma ou escola, e o portal da família casa nota pela matrícula.
+ *
+ * Com `alunoId`, é ele que identifica o aluno; sem ele, a matrícula.
+ * `turmaId` do professor é a do cadastro do aluno.
+ */
+async function alunoDaNota(req, body) {
+    const referencia = body.alunoId || body.matriculaId;
+    if (!referencia) {
+        return { ok: false, status: 400, error: 'alunoId é obrigatório para lançar nota.' };
+    }
+    const acesso = await assertAcessoAoAluno(req, String(referencia));
+    if (!acesso.ok) return acesso;
+
+    const aluno = acesso.aluno;
+    if (!body.alunoId) body.alunoId = String(aluno._id);
+    if (aluno.matricula) body.matriculaId = String(aluno.matricula);
+    else delete body.matriculaId;
+    if (req.user?.perfil === 'professor') body.turmaId = aluno.turma || aluno.turmaId;
+    return acesso;
+}
+
 // --------------------------------------------------
 // GET /api/notas
 // --------------------------------------------------
@@ -103,34 +128,13 @@ exports.create = async (req, res) => {
             body.nota = check.valor;
         }
 
-        // --- SEGURANÇA: Verificação Horizontal para Professor (Prevenção IDOR) ---
-        if (req.user && req.user.perfil === 'professor') {
-            if (!body.alunoId) {
-                return res
-                    .status(400)
-                    .json({ success: false, error: 'alunoId é obrigatório para lançar nota.' });
-            }
-
-            // Busca o aluno para verificar se pertence a uma turma autorizada
-            const aluno = await Aluno.findOne({
-                $or: [{ _id: body.alunoId }, { id: body.alunoId }],
-            }).lean();
-            if (!aluno) {
-                return res.status(404).json({ success: false, error: 'Aluno não encontrado.' });
-            }
-
-            const turmaAluno = aluno.turma || aluno.turmaId;
-            const allowed = req.allowedTurmas || [];
-            if (!allowed.includes(turmaAluno)) {
-                return res.status(403).json({
-                    success: false,
-                    error: `Acesso negado. Você não tem permissão para lançar notas para alunos da turma ${turmaAluno}.`,
-                });
-            }
-            // Força a turmaId correta na nota
-            body.turmaId = turmaAluno;
+        // Escola, turma do professor e matrícula, para qualquer perfil (Issue #661).
+        const acessoAluno = await alunoDaNota(req, body);
+        if (!acessoAluno.ok) {
+            return res
+                .status(acessoAluno.status)
+                .json({ success: false, error: acessoAluno.error });
         }
-        // -------------------------------------------------------------------------
 
         const doc = await Nota.create(body);
 
@@ -210,26 +214,20 @@ exports.update = async (req, res) => {
                     error: 'Acesso negado. Você não tem permissão para atualizar notas desta turma.',
                 });
             }
-            // Se tentar mudar o alunoId na atualização, valida o novo aluno também
-            if (body.alunoId && body.alunoId !== existingNota.alunoId) {
-                const newAluno = await Aluno.findOne({
-                    $or: [{ _id: body.alunoId }, { id: body.alunoId }],
-                }).lean();
-                if (!newAluno)
-                    return res
-                        .status(404)
-                        .json({ success: false, error: 'Novo aluno não encontrado.' });
-                const newTurma = newAluno.turma || newAluno.turmaId;
-                if (!allowed.includes(newTurma)) {
-                    return res.status(403).json({
-                        success: false,
-                        error: 'Você não tem permissão para mover notas para esta turma.',
-                    });
-                }
-                body.turmaId = newTurma;
-            }
         }
         // -------------------------------------------------------------------------
+
+        // Trocar o aluno (ou a matrícula) da nota confere o aluno novo, para
+        // qualquer perfil, e a matrícula volta a sair do cadastro (Issue #661).
+        if (body.alunoId !== undefined || body.matriculaId !== undefined) {
+            if (body.alunoId === undefined) body.alunoId = String(existingNota.alunoId);
+            const acessoNovo = await alunoDaNota(req, body);
+            if (!acessoNovo.ok) {
+                return res
+                    .status(acessoNovo.status)
+                    .json({ success: false, error: acessoNovo.error });
+            }
+        }
 
         const doc = await Nota.findOneAndUpdate(
             { $or: [{ _id: req.params.id }, { id: req.params.id }] },

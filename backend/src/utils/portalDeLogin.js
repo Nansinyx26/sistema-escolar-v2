@@ -44,10 +44,9 @@
  * ─────────────────────────────────────────────────────────────────────────
  * ONDE ISTO É CONSULTADO
  * ─────────────────────────────────────────────────────────────────────────
- * `controllers/UserController.js` (o login em uso) e
- * `services/AuthenticationService.js` (o login da refatoração em andamento).
- * Os dois traziam a regra escrita à mão, com textos e códigos diferentes —
- * duas versões da mesma decisão, que é o começo de toda divergência.
+ * `controllers/UserController.js`. O `services/AuthenticationService.js`, de
+ * uma refatoração que nunca entrou em rota, trazia a mesma regra escrita à mão,
+ * com textos e códigos diferentes, até sair na Issue #696.
  * ============================================================================
  */
 
@@ -102,9 +101,9 @@ function portalDaRequisicao(valorBruto) {
     const bruto = String(valorBruto == null ? '' : valorBruto)
         .trim()
         .toLowerCase();
-    // 'docente' é o nome antigo da porta da escola, usado por
-    // `AuthenticationService.login(email, senha, portal = 'docente')`. Mantido
-    // aqui como sinônimo para que a troca de nome não vire recusa.
+    // 'docente' é o nome antigo da porta da escola (era o padrão do login da
+    // refatoração abandonada). Mantido como sinônimo para que a troca de nome
+    // não vire recusa.
     if (bruto === PORTAL_RESPONSAVEL) return PORTAL_RESPONSAVEL;
     return PORTAL_ESCOLA;
 }

@@ -118,6 +118,17 @@ async function autorizarArquivo(req, fileDoc) {
         return autorizarAudioDeComentario(req, fileDoc, meta);
     }
 
+    // Documento enviado pelo responsável (Issue #689): vale a regra do módulo
+    // (professor não vê; responsável só vê o que ele mesmo enviou). Pela regra
+    // genérica de `metadata.alunoId`, o outro responsável do aluno e o
+    // professor da turma baixavam o documento por esta rota.
+    if (meta.type === 'documento_responsavel') {
+        const { localizarEAutorizar } = require('./DocumentoResponsavelController');
+        const auth = await localizarEAutorizar(req, String(fileDoc._id));
+        if (auth.ok) return { ok: true };
+        return { ok: false, status: 403, error: auth.error || 'Acesso negado a este documento.' };
+    }
+
     // Anexo/áudio do chat direto: a regra de `meta.usuarioId` abaixo liberaria
     // só o remetente, deixando o destinatário com 403 no próprio arquivo que
     // acabou de receber. Aqui os dois lados da conversa (e só eles) passam.

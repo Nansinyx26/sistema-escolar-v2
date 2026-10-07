@@ -353,7 +353,8 @@ function showToast(msg, type = 'info') {
     const icon = type === 'success' ? 'bi-check-circle-fill' : type === 'error' ? 'bi-x-circle-fill' : type === 'warning' ? 'bi-exclamation-triangle-fill' : 'bi-info-circle-fill';
     const toast = document.createElement('div');
     toast.className = `mn-toast ${type}`;
-    toast.innerHTML = `<i class="bi ${icon}"></i> <span>${msg}</span>`;
+    // A mensagem é texto: os chamadores passam `json.error` do servidor (#656).
+    toast.innerHTML = `<i class="bi ${icon}"></i> <span>${escAttr(msg)}</span>`;
     document.body.appendChild(toast);
     setTimeout(() => { toast.classList.add('fade-out'); setTimeout(() => toast.remove(), 450); }, 3200);
 }

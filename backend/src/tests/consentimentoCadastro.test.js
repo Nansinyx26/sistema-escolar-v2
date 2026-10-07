@@ -13,9 +13,9 @@
  *
  * AS ROTAS VIVAS, E NÃO O SERVIÇO
  * -------------------------------
- * O `RegistrationService` só é chamado pelo `UserController-REFATORADO`, que não
- * está em nenhuma rota. Os testes aqui sobem o `app` e fazem POST nas rotas
- * públicas de cadastro que os formulários de verdade usam. Direção e secretaria
+ * O `RegistrationService`, que só o `UserController-REFATORADO` chamava, nunca
+ * esteve em rota e saiu com ele (#656, #696). Os testes aqui sobem o `app` e
+ * fazem POST nas rotas públicas de cadastro que os formulários de verdade usam. Direção e secretaria
  * deixaram de ter cadastro público (Issue #378) e são testadas em
  * `contencaoAcesso.regressao.test.js`.
  *
@@ -401,8 +401,9 @@ describe('trava: nenhum caminho de criação de conta grava consentimento sozinh
             }
         }
 
-        // Sanidade: a varredura precisa estar enxergando os creates de verdade.
-        expect(criacoes).toBeGreaterThanOrEqual(10);
+        // Sanidade: a varredura precisa estar enxergando os creates de verdade
+        // (9 desde que o RegistrationService, com 4, saiu na #696).
+        expect(criacoes).toBeGreaterThanOrEqual(9);
         expect(infratores).toEqual([]);
     });
 

@@ -68,10 +68,32 @@ exports.list = async (req, res) => {
     }
 };
 
+/** O que a gestão pode gravar numa turma nova (Issue #675). */
+const CAMPOS_TURMA = [
+    'id',
+    'nome',
+    'ano',
+    'sala',
+    'periodo',
+    'capacidade',
+    'professor',
+    'descricao',
+];
+
 exports.create = async (req, res) => {
     try {
-        if (req.escolaId && !req.body.escolaId) req.body.escolaId = req.escolaId;
-        const doc = await Turma.create(req.body);
+        // Lista fechada de campos, e a escola é a da sessão, nunca a do corpo
+        // (Issue #675): com `req.body` inteiro, a gestão criava turma em outra
+        // escola só mandando `escolaId`.
+        const dados = {};
+        for (const campo of CAMPOS_TURMA) {
+            if (req.body[campo] !== undefined) dados[campo] = req.body[campo];
+        }
+        if (req.escolaId) dados.escolaId = String(req.escolaId);
+        else if (req.user?.perfil === 'admin' && req.body.escolaId) {
+            dados.escolaId = String(req.body.escolaId);
+        }
+        const doc = await Turma.create(dados);
 
         // Registro de Auditoria
         await AuditoriaService.log({

@@ -107,6 +107,12 @@ function turmasDoProfessor(req) {
     return estrutura.canonizarLista(req.allowedTurmas || []);
 }
 
+/** Turma na grafia canônica ("5ºA", "5º Ano A" → "5A"); sem canônica, o texto. */
+function turmaCanonica(texto) {
+    if (!texto) return '';
+    return estrutura.canonizarTurma(texto)?.id || String(texto).trim().toUpperCase();
+}
+
 function professorLecionaNaTurma(req, turmaId) {
     const turma = estrutura.canonizarTurma(turmaId);
     if (turma) return turmasDoProfessor(req).some((t) => t.id === turma.id);
@@ -831,14 +837,41 @@ exports.lancarNotas = async (req, res) => {
         const alunos = await Aluno.find({
             $or: [{ id: { $in: alunoIds } }, { _id: { $in: alunoIds } }],
         })
-            .select('id _id nome')
+            .select('id _id nome turma turmaId escolaId')
             .lean();
 
         const alunosMap = {};
+        const alunoPorId = {};
         alunos.forEach((a) => {
-            if (a.id) alunosMap[String(a.id)] = a.nome;
-            if (a._id) alunosMap[String(a._id)] = a.nome;
+            if (a.id) {
+                alunosMap[String(a.id)] = a.nome;
+                alunoPorId[String(a.id)] = a;
+            }
+            if (a._id) {
+                alunosMap[String(a._id)] = a.nome;
+                alunoPorId[String(a._id)] = a;
+            }
         });
+
+        // Todo aluno da lista é da escola e da turma da avaliação (Issue #661).
+        // Sem isto, `notas[].alunoId` gravava nota na ficha de qualquer criança
+        // — de outra turma ou de outra escola. Confere tudo ANTES de gravar.
+        const turmaDaAvaliacao = turmaCanonica(avaliacao.turmaId);
+        for (const item of notas) {
+            if (!item.alunoId) continue;
+            const aluno = alunoPorId[String(item.alunoId)];
+            const daEscola =
+                aluno && (!req.escolaId || String(aluno.escolaId || '') === String(req.escolaId));
+            const daTurma =
+                aluno &&
+                [aluno.turmaId, aluno.turma].some((t) => turmaCanonica(t) === turmaDaAvaliacao);
+            if (!daEscola || !daTurma) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'A lista tem aluno que não é da turma desta avaliação. Nenhuma nota foi gravada.',
+                });
+            }
+        }
 
         // Buscar notas existentes para comparação de auditoria
         const notasExistentes = await Nota.find({

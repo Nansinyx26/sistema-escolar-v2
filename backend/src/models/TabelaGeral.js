@@ -1,7 +1,7 @@
 /**
  * TabelaGeral — Modelo MongoDB
  * Cada documento representa UMA CÉLULA da grade de horários:
- *   turmaId + dia + aulaIdx  →  única combinação (índice único)
+ *   escolaId + turmaId + dia + aulaIdx  →  única combinação (índice único)
  *
  * aulaIdx  Horário           Nº aula
  *    0     7h30–8h20         1ª
@@ -26,6 +26,7 @@ const HORARIO_LABELS = [
 ];
 
 const DIAS_VALIDOS = ['SEGUNDA', 'TERÇA', 'QUARTA', 'QUINTA', 'SEXTA'];
+const INDICE_UNICO = 'escola_turma_dia_aula_unico';
 
 const TabelaGeralSchema = new mongoose.Schema(
     {
@@ -86,8 +87,14 @@ const TabelaGeralSchema = new mongoose.Schema(
     }
 );
 
-// ── Índice único: uma célula por combinação turma+dia+aula ──────────────────
-TabelaGeralSchema.index({ turmaId: 1, dia: 1, aulaIdx: 1 }, { unique: true });
+// ── Índice único: uma célula por escola+turma+dia+aula ──────────────────────
+// A escola entra na chave (Issue #679): sem ela, duas escolas não podiam ter a
+// mesma célula, e a tabela era uma só para a rede. O nome é o mesmo da
+// migração que troca o índice antigo.
+TabelaGeralSchema.index(
+    { escolaId: 1, turmaId: 1, dia: 1, aulaIdx: 1 },
+    { unique: true, name: INDICE_UNICO }
+);
 
 // ── Índice para detecção de conflito de professor ───────────────────────────
 TabelaGeralSchema.index({ professorKey: 1, dia: 1, aulaIdx: 1 });

@@ -17,6 +17,7 @@ const jwt = require('jsonwebtoken');
 const Usuario = require('../models/Usuario');
 const { tokenEstaRevogado } = require('../utils/sessionToken');
 const { vinculosDoUsuario } = require('../middleware/filtrarPorEscola');
+const { alunosDoResponsavel } = require('../services/vinculoDoResponsavel');
 const { apagarCredenciaisDoHandshake } = require('./adapter');
 
 function tokenDoHandshake(socket) {
@@ -49,7 +50,7 @@ function criarAutenticacaoSocket(JWT_SECRET) {
             }
 
             const conta = await Usuario.findById(decoded.id || decoded._id)
-                .select('tokenVersion ativo perfil escolaId superAdmin')
+                .select('tokenVersion ativo perfil escolaId superAdmin email')
                 .lean();
 
             if (!conta || conta.ativo === false) {
@@ -67,7 +68,15 @@ function criarAutenticacaoSocket(JWT_SECRET) {
 
             // Escola do socket — base do isolamento multi-tenant no realtime
             let escolaId = conta.escolaId ? String(conta.escolaId) : null;
-            if (!escolaId) {
+            if (conta.perfil === 'responsavel') {
+                // Responsável só entra na sala da escola com filho vinculado
+                // nela (Issue #687): a sala `escola:<id>` recebe os avisos
+                // para `todos`, que são das famílias da escola.
+                const email = conta.email || decoded.email;
+                if (escolaId && !(await alunosDoResponsavel(email, escolaId)).length) {
+                    escolaId = null;
+                }
+            } else if (!escolaId) {
                 const vinculos = await vinculosDoUsuario({
                     id: conta._id,
                     email: decoded.email,
@@ -87,6 +96,8 @@ function criarAutenticacaoSocket(JWT_SECRET) {
                 superAdmin: conta.superAdmin === true,
             };
             socket.data.usuario = usuarioSocket;
+            // O logout derruba só os sockets do token encerrado (Issue #667).
+            socket.data.jti = decoded.jti || null;
             const escolaBloqueio = require('../services/escolaBloqueio');
             if (await escolaBloqueio.escolaBloqueadaPara(usuarioSocket, [escolaId])) {
                 return next(new Error(escolaBloqueio.CODIGO));

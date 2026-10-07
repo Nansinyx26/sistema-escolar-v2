@@ -11,11 +11,10 @@
  * de negócio fica presa a um objeto de transporte HTTP.
  *
  * O efeito prático dessa amarra era pior que arquitetural: o
- * `RegistrationService` — que também cadastra docente com código secreto —
+ * `RegistrationService` — que também cadastrava docente com código secreto —
  * tinha a validação COMENTADA, com um TODO no lugar. Ninguém pagou o preço
- * ainda porque aquele service está órfão (nenhuma rota o alcança), mas o dia
- * em que alguém ligasse as rotas do UserController refatorado, o cadastro de
- * professor aceitaria qualquer código.
+ * porque aquele service era órfão (nenhuma rota o alcançava); ele saiu na
+ * Issue #696.
  *
  * A regra não podia descer para `utils/` porque precisa do model Escola, e
  * `transversal-nao-desce` proíbe `utils/` importar `models/`.

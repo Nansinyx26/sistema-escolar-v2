@@ -74,6 +74,9 @@ function filtroDoPerfil({ perfil, userId, turmas = [], familia = [] }) {
     }
 
     if (perfil === 'responsavel') {
+        // Sem filho vinculado na escola, `todos` e `responsaveis` não são o
+        // público dele: só o que foi endereçado a ele pelo nome (Issue #687).
+        if (!familia.length) return pessoal.length ? { $or: pessoal } : { _id: null };
         // Responsável nunca vê aviso interno: só `paraResponsavel: true` do
         // público dos filhos — ou o que foi endereçado a ele pelo nome.
         return {

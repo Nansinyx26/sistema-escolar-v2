@@ -3,8 +3,29 @@
  * Funções auxiliares reutilizáveis
  */
 
+// === MENSAGEM COMO TEXTO (Issue #656) ===
+// O toast e o alerta central punham a mensagem crua no innerHTML, e boa parte
+// dos chamadores passa `e.message`/`json.error` vindos do servidor. Nenhum
+// chamador passa marcação de propósito (levantamento na #656), então o padrão
+// virou texto; HTML só com `{ html: true }`, e quem usar escapa o que for dado.
+//
+// A regra é a do #650 (textoHtml): escapa < > aspas e crase, mas NÃO o `&`,
+// que o servidor já grava codificado. O textContent mostraria "&amp;" nesses
+// textos e também no que alguns chamadores já escapam (realtime.js,
+// secretaria-codigo-aluno.js, superadmin-escolas.js). Sem `<` literal, nenhum
+// elemento nasce. Nome próprio para não colidir com os helpers globais
+// (escAttr, textoHtml) que outras páginas declaram.
+function textoDaMensagem(v) {
+    if (v === null || v === undefined) return '';
+    return String(v).replace(
+        /["'<>`]/g,
+        (c) => ({ '"': '&quot;', "'": '&#39;', '<': '&lt;', '>': '&gt;', '`': '&#96;' })[c]
+    );
+}
+
 // === TOAST NOTIFICATIONS ===
-function showToast(message, type = 'info', duration = 3000) {
+// `message` é TEXTO; `opcoes.html: true` aceita marcação (ver textoDaMensagem).
+function showToast(message, type = 'info', duration = 3000, opcoes = {}) {
     const container = document.getElementById('toastContainer');
     if (!container) return;
 
@@ -21,7 +42,7 @@ function showToast(message, type = 'info', duration = 3000) {
     toast.innerHTML = `
         <i class="toast-icon bi ${icons[type]}"></i>
         <div class="toast-content">
-            <div class="toast-message">${message}</div>
+            <div class="toast-message">${opcoes?.html ? message : textoDaMensagem(message)}</div>
         </div>
         <button type="button" class="toast-close" aria-label="Fechar aviso">
             <i class="bi bi-x" aria-hidden="true"></i>
@@ -39,7 +60,8 @@ function showToast(message, type = 'info', duration = 3000) {
 }
 
 // === CENTRAL MODAL ALERT (Pleasant & Non-Aggressive) ===
-function showModalAlert(title, message, type = 'info') {
+// `title` e `message` são TEXTO; `opcoes.html: true` aceita marcação.
+function showModalAlert(title, message, type = 'info', opcoes = {}) {
     // Remove if already exists
     const existing = document.getElementById('customModalAlert');
     if (existing) existing.remove();
@@ -60,14 +82,16 @@ function showModalAlert(title, message, type = 'info') {
     };
 
     const config = icons[type] || icons.info;
+    const titulo = opcoes?.html ? title : textoDaMensagem(title);
+    const texto = opcoes?.html ? message : textoDaMensagem(message);
 
     backdrop.innerHTML = `
         <div class="glass-strong" style="max-width: 400px; width: 90%; padding: 2rem; border-radius: 24px; text-align: center; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 25px 50px rgba(0,0,0,0.5); animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);">
             <div style="width: 70px; height: 70px; background: ${config.color}22; color: ${config.color}; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; font-size: 2.2rem; box-shadow: 0 0 20px ${config.color}33;">
                 <i class="bi ${config.icon}"></i>
             </div>
-            <h2 style="margin-bottom: 0.8rem; color: var(--text-primary); font-size: 1.5rem;">${title}</h2>
-            <p style="margin-bottom: 2rem; color: var(--text-secondary); line-height: 1.5; font-size: 1rem;">${message}</p>
+            <h2 style="margin-bottom: 0.8rem; color: var(--text-primary); font-size: 1.5rem;">${titulo}</h2>
+            <p style="margin-bottom: 2rem; color: var(--text-secondary); line-height: 1.5; font-size: 1rem;">${texto}</p>
             <button type="button" class="btn btn-primary" data-fechar-alerta style="width: 100%; padding: 1rem; border-radius: 14px; font-weight: 600; font-size: 1rem; box-shadow: var(--shadow-md);">
                 Entendi, vou fazer
             </button>

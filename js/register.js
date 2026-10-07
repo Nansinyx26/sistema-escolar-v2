@@ -29,7 +29,10 @@ document.addEventListener('DOMContentLoaded', () => {
             type === 'error'
                 ? 'linear-gradient(135deg, #ef4444, #dc2626)'
                 : 'linear-gradient(135deg, #10b981, #059669)';
-        toast.innerHTML = `<i class="bi ${type === 'error' ? 'bi-x-circle' : 'bi-check-circle'}"></i> ${msg}`;
+        // A mensagem entra como texto: o erro vem do servidor (`data.error`, #656).
+        const icone = document.createElement('i');
+        icone.className = `bi ${type === 'error' ? 'bi-x-circle' : 'bi-check-circle'}`;
+        toast.append(icone, ` ${msg}`);
         container.appendChild(toast);
         setTimeout(() => toast.remove(), 4500);
     }

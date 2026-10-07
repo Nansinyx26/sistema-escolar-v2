@@ -132,10 +132,19 @@ async function publicarEmComentario(audioId, escola) {
 /**
  * Agent autenticado como responsável (perfil sem 2FA obrigatório) vinculado a
  * uma escola. Responsável é justamente o perfil de menor privilégio que
- * conseguia baixar o bucket inteiro pela rota de áudio.
+ * conseguia baixar o bucket inteiro pela rota de áudio. Tem filho vinculado
+ * na escola: desde a #687, é isso que o faz público dos avisos para "todos".
  */
 async function agentResponsavel(email, escola) {
     await criarUsuario({ email, perfil: 'responsavel', escolaId: String(escola._id) });
+    const Aluno = require('../models/Aluno');
+    await Aluno.create({
+        nome: 'Filho',
+        turma: '1A',
+        ativo: true,
+        escolaId: String(escola._id),
+        responsavel: email,
+    });
     const agent = request.agent(app);
     const login = await agent
         .post('/api/auth/login')
