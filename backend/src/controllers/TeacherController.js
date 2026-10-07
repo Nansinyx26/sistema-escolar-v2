@@ -108,10 +108,12 @@ exports.list = async (req, res) => {
                 ];
                 const disc = u.disciplina || 'Geral';
                 const isEspecial = materiasEspeciais.includes(disc);
-                const t = u.turma || '';
-
-                const salaPrincipal = isEspecial ? 'VARIADOS' : t;
-                const salasAdicionais = isEspecial && t ? [t] : [];
+                // Sem turma (Issue #706): `Usuario.turma` é o que a pessoa
+                // escreveu no cadastro público, não uma atribuição da gestão.
+                // Virar escopo aqui reabriria, pelo auto-heal, o que o
+                // `register-docente` deixou de fazer.
+                const salaPrincipal = isEspecial ? 'VARIADOS' : undefined;
+                const salasAdicionais = [];
                 const materias = [disc];
 
                 await Professor.create({
@@ -123,7 +125,7 @@ exports.list = async (req, res) => {
                     disciplina: disc,
                     salaPrincipal: salaPrincipal,
                     salasAdicionais: salasAdicionais,
-                    turmas: t ? [t] : [],
+                    turmas: [],
                     materias: materias,
                     tipoEspecial: isEspecial,
                     role: 'professor',

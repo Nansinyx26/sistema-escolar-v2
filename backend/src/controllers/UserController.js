@@ -2587,12 +2587,14 @@ exports.registerDocente = async (req, res) => {
         const senhaHash = await bcrypt.hash(senha, SALT_ROUNDS);
 
         const now = new Date();
+        // `turma` NÃO vai para a conta (Issue #706): é só o pedido de quem se
+        // cadastra, e o auto-heal da lista de professores transformava
+        // `Usuario.turma` em escopo quando o cadastro pedagógico faltava.
         const user = await Usuario.create({
             nome,
             email: email.toLowerCase(),
             senha: senhaHash,
             disciplina,
-            turma,
             matricula,
             telefone,
             perfil: 'professor',
@@ -2604,7 +2606,18 @@ exports.registerDocente = async (req, res) => {
             ...assinaturasDoCadastro(req),
         });
 
-        // Auto-criação do registro na coleção 'professores' para vincular a turma e disciplina ao painel do professor
+        // Auto-criação do registro na coleção 'professores' — o cadastro
+        // pedagógico que liga o docente à escola.
+        //
+        // SEM TURMA (Issue #706). As turmas do professor são o escopo de acesso
+        // aos alunos: o `horizontalFilter` monta `req.allowedTurmas` com
+        // `salaPrincipal`, `salasAdicionais` e `turmas`. Esta rota é pública —
+        // basta o código da escola, que todo o corpo docente conhece — e
+        // gravava ali a turma escolhida no formulário: quem tinha o código
+        // escolhia a turma e lia as fichas dela sem a direção atribuir nada.
+        // Como no `/register-code`, a conta nasce sem turma; a turma pedida vai
+        // na notificação abaixo, e a gestão atribui pela tela de professores
+        // (`TeacherController.update`, a única porta que monta o escopo).
         const mongoose = require('mongoose');
         const Professor = require('../models/Professor');
         const materiasEspeciais = [
@@ -2616,9 +2629,6 @@ exports.registerDocente = async (req, res) => {
             'Of. Maker',
         ];
         const isEspecial = materiasEspeciais.includes(disciplina);
-
-        const salaPrincipal = isEspecial ? 'VARIADOS' : turma;
-        const salasAdicionais = isEspecial ? [turma] : [];
         const materias = [disciplina];
 
         await Professor.create({
@@ -2628,9 +2638,10 @@ exports.registerDocente = async (req, res) => {
             email: user.email.toLowerCase(),
             telefone: user.telefone || telefone,
             disciplina: disciplina,
-            salaPrincipal: salaPrincipal,
-            salasAdicionais: salasAdicionais,
-            turmas: [turma],
+            // 'VARIADOS' marca o especialista e não casa com turma de aluno.
+            salaPrincipal: isEspecial ? 'VARIADOS' : undefined,
+            salasAdicionais: [],
+            turmas: [],
             materias: materias,
             tipoEspecial: isEspecial,
             role: 'professor',
@@ -2657,7 +2668,7 @@ exports.registerDocente = async (req, res) => {
             id: 'notif_reg_' + Date.now(),
             tipo: 'cadastro',
             titulo: notifMsg,
-            mensagem: `${nome} se cadastrou como Docente (${disciplina} - ${turma}) no dia ${dateStr} às ${hourStr}.`,
+            mensagem: `${nome} se cadastrou como Docente (${disciplina}) no dia ${dateStr} às ${hourStr} e pediu a turma ${turma}. Atribua as turmas em Professores: até lá, a conta não vê aluno nenhum.`,
             destinatarios: 'diretores',
             status: 'enviado',
             escolaId: escolaIdFinal || undefined,
@@ -2682,7 +2693,8 @@ exports.registerDocente = async (req, res) => {
 
         res.status(201).json({
             success: true,
-            message: 'Conta de docente criada com sucesso!',
+            message:
+                'Conta de docente criada com sucesso! A direção atribui as suas turmas; até lá, nenhum aluno aparece no painel.',
             user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email },
             redirect_to: getRedirectPath(user),
         });
