@@ -198,7 +198,7 @@ async function resolverVinculos(req, { turmaId, materiaId, professorId }) {
 
     let professor = null;
     if (ehProfessor(req)) {
-        const docente = await estrutura.docenteDoUsuario(idDoUsuario(req));
+        const docente = await estrutura.docenteDoUsuario(idDoUsuario(req), req.escolaId);
         const permitidas = estrutura.disciplinasDoDocente(docente, disciplinas);
         if (!permitidas.some((d) => d.id === disciplina.id)) {
             return {
@@ -237,7 +237,10 @@ exports.opcoes = async (req, res) => {
                 const todas = await estrutura.disciplinasDaEscola(req.escolaId);
                 let resultado;
                 if (ehProfessor(req)) {
-                    const docente = await estrutura.docenteDoUsuario(idDoUsuario(req));
+                    const docente = await estrutura.docenteDoUsuario(
+                        idDoUsuario(req),
+                        req.escolaId
+                    );
                     resultado = {
                         turmas: turmasDoProfessor(req),
                         professores: docente ? [docente] : [],

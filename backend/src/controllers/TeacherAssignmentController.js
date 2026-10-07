@@ -1,4 +1,5 @@
 const AtribuicaoProfessor = require('../models/AtribuicaoProfessor');
+const { turmasDoProfessorNaEscola } = require('../services/turmasDoProfessor');
 const mongoose = require('mongoose');
 
 /** Filtro de tenant. `{}` quando não há escola resolvida (base pré-multi-escola). */
@@ -40,7 +41,8 @@ class TeacherAssignmentController {
                         nome: p.nome.trim(),
                         classe: p.disciplina || 'Geral',
                         pontuacao: 0,
-                        serieTurma: p.salaPrincipal || '',
+                        // A sala dele NESTA escola (Issue #707).
+                        serieTurma: turmasDoProfessorNaEscola(p, req.escolaId)[0] || '',
                         ha: 4,
                         rp: 4,
                         estudoL: 3,

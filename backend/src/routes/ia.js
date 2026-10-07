@@ -75,8 +75,8 @@ router.get(
 // ============================================
 // COPILOTO — conversa em streaming (SSE)
 // ============================================
-// Este router já é montado em api.js com `authJWT + horizontalFilter +
-// filtrarPorEscola`, então quando a requisição chega aqui `req.user` está
+// Este router já é montado em api.js com `authJWT + filtrarPorEscola +
+// horizontalFilter`, então quando a requisição chega aqui `req.user` está
 // verificado e `req.escolaId` resolvido. O ContextBuilder lê SÓ desses dois —
 // nunca do corpo da requisição.
 //

@@ -11,6 +11,7 @@
 const Professor = require('../../../models/Professor');
 const escapeRegex = require('../../../utils/escapeRegex');
 const { filtroDaEscola } = require('../PermissionGuard');
+const { turmasDoProfessorNaEscola } = require('../../turmasDoProfessor');
 
 const MAX_RESULTADOS = 60;
 
@@ -52,9 +53,10 @@ module.exports = {
             filtro.$and = [{ $or: [{ disciplina: padrao }, { materias: padrao }] }];
         }
 
-        if (turma) {
-            const t = String(turma).trim();
-            const variantes = [t, t.replace('º', '')];
+        const variantes = turma
+            ? [String(turma).trim(), String(turma).trim().replace('º', '')]
+            : null;
+        if (variantes) {
             filtro.$and = [
                 ...(filtro.$and || []),
                 {
@@ -62,32 +64,34 @@ module.exports = {
                         { turmas: { $in: variantes } },
                         { salaPrincipal: { $in: variantes } },
                         { salasAdicionais: { $in: variantes } },
+                        { 'vinculos.turmas': { $in: variantes } },
                     ],
                 },
             ];
         }
 
-        const professores = await Professor.find(filtro)
+        const encontrados = await Professor.find(filtro)
             .select(
-                'nome email disciplina materias turmas salaPrincipal salasAdicionais tipoAtuacao'
+                'nome email disciplina materias turmas salaPrincipal salasAdicionais tipoAtuacao vinculos escolaId'
             )
             .sort({ nome: 1 })
             .limit(MAX_RESULTADOS)
             .lean();
 
+        // As turmas de cada um são as que ele tem NESTA escola (Issue #707):
+        // a consulta acha candidatos, e a "1A" que ele dá em outra escola não
+        // faz dele professor da "1A" daqui.
+        const professores = encontrados
+            .map((p) => ({ ...p, turmasAqui: turmasDoProfessorNaEscola(p, ctx.escolaId) }))
+            .filter((p) => !variantes || p.turmasAqui.some((t) => variantes.includes(t)));
+
         return {
             total: professores.length,
-            truncado: professores.length >= MAX_RESULTADOS,
+            truncado: encontrados.length >= MAX_RESULTADOS,
             professores: professores.map((p) => ({
                 nome: p.nome,
                 disciplinas: [...new Set([...(p.materias || []), p.disciplina].filter(Boolean))],
-                turmas: [
-                    ...new Set(
-                        [...(p.turmas || []), p.salaPrincipal, ...(p.salasAdicionais || [])].filter(
-                            Boolean
-                        )
-                    ),
-                ],
+                turmas: p.turmasAqui,
                 atuacao: p.tipoAtuacao,
             })),
         };

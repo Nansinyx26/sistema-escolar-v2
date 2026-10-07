@@ -52,6 +52,7 @@ const Professor = require('../models/Professor');
 const Aluno = require('../models/Aluno');
 const escapeRegex = require('../utils/escapeRegex');
 const { semRestricaoPara } = require('../utils/restricaoAcesso');
+const { turmasDoProfessorNaEscola } = require('./turmasDoProfessor');
 
 /**
  * Expande uma turma nas grafias equivalentes: "1ºC" → {"1ºC", "1C"}.
@@ -81,28 +82,26 @@ function expandirTurmas(lista) {
 }
 
 /**
- * Turmas em que o professor leciona.
+ * Turmas em que o professor leciona na escola.
  *
  * Consolida `salaPrincipal`, `salasAdicionais` e o array helper `turmas` — os
- * três coexistem no cadastro e nenhum sozinho é confiável.
+ * três coexistem no cadastro e nenhum sozinho é confiável — e fica só com as
+ * da escola (Issue #707; ver services/turmasDoProfessor.js).
  *
  * @param {string} usuarioId `Usuario._id` do professor
+ * @param {string} [escolaId] escola ativa da sessão
  * @returns {Promise<Set<string>>} vazio quando não há cadastro de professor
  */
-async function turmasDoProfessor(usuarioId) {
+async function turmasDoProfessor(usuarioId, escolaId) {
     const professor = await Professor.findOne({ idUsuario: String(usuarioId) })
-        .select('salaPrincipal salasAdicionais turmas')
+        .select('salaPrincipal salasAdicionais turmas vinculos escolaId')
         .lean();
 
     // Sem cadastro de professor, nenhuma turma. Falha FECHADA: o efeito é o
     // chat com responsáveis ficar indisponível, nunca liberado por omissão.
     if (!professor) return new Set();
 
-    return expandirTurmas([
-        professor.salaPrincipal,
-        ...(Array.isArray(professor.salasAdicionais) ? professor.salasAdicionais : []),
-        ...(Array.isArray(professor.turmas) ? professor.turmas : []),
-    ]);
+    return expandirTurmas(turmasDoProfessorNaEscola(professor, escolaId));
 }
 
 /**

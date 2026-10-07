@@ -1,6 +1,7 @@
 const Notificacao = require('../models/Notificacao');
 const Professor = require('../models/Professor');
 const { alunosDoResponsavel } = require('../services/vinculoDoResponsavel');
+const { turmasDoProfessorNaEscola } = require('../services/turmasDoProfessor');
 const obs = require('../observability');
 const { escolaMatch } = require('../middleware/filtrarPorEscola');
 const { extrairPaginacao } = require('../middleware/pagination');
@@ -18,15 +19,10 @@ const CAMPOS_NOTIFICACAO = [
     'dataEnvio',
 ];
 
-/** Turmas em que o professor dá aula (sala principal, adicionais e lista). */
-async function turmasDoProfessor(userId) {
+/** Turmas em que o professor dá aula NA ESCOLA ativa (Issue #707). */
+async function turmasDoProfessor(userId, escolaId) {
     const professor = await Professor.findOne({ idUsuario: userId }).lean();
-    if (!professor) return [];
-    const turmas = [];
-    if (professor.salaPrincipal) turmas.push(professor.salaPrincipal);
-    if (Array.isArray(professor.salasAdicionais)) turmas.push(...professor.salasAdicionais);
-    if (Array.isArray(professor.turmas)) turmas.push(...professor.turmas);
-    return [...new Set(turmas.filter(Boolean))];
+    return turmasDoProfessorNaEscola(professor, escolaId);
 }
 
 /**
@@ -53,7 +49,7 @@ async function filtroDaSessao(req) {
     const perfil = req.user?.perfil || '';
     const userId = String(req.user?._id || req.user?.id || '');
     const ctx = { perfil, userId };
-    if (perfil === 'professor') ctx.turmas = await turmasDoProfessor(userId);
+    if (perfil === 'professor') ctx.turmas = await turmasDoProfessor(userId, req.escolaId);
     if (perfil === 'responsavel')
         ctx.familia = await destinatariosDaFamilia(req.user?.email, req.escolaId);
 

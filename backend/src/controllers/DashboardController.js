@@ -295,17 +295,9 @@ exports.getTeacherPanel = async (req, res) => {
         const prof = await Professor.findOne({ email: user.email }).lean();
 
         const nomeProfessor = user.nome ? user.nome.split(' ')[0] : 'Docente';
-        let turmas = [];
-        if (prof) {
-            if (prof.turmas && prof.turmas.length > 0) {
-                turmas = prof.turmas;
-            } else {
-                if (prof.salaPrincipal) turmas.push(prof.salaPrincipal);
-                if (prof.salasAdicionais && prof.salasAdicionais.length > 0) {
-                    turmas = [...turmas, ...prof.salasAdicionais];
-                }
-            }
-        }
+        // Só as turmas que o professor tem NESTA escola (Issue #707).
+        const { turmasDoProfessorNaEscola } = require('../services/turmasDoProfessor');
+        let turmas = turmasDoProfessorNaEscola(prof, req.escolaId);
 
         // Normaliza e limpa duplicatas (ex: remove '1C' se '1ºC' estiver presente ou vice-versa, limpa strings vazias)
         turmas = [...new Set(turmas)].map((t) => t.trim()).filter(Boolean);

@@ -24,6 +24,7 @@ const Config = require('../../models/Config');
 const logger = require('../../utils/logger');
 const { PERSONA_PROMPT_PREFIX } = require('../assistantPersona');
 const { guiaPara } = require('./guiaDoSistema');
+const { turmasDoProfessorNaEscola } = require('../turmasDoProfessor');
 
 /**
  * Módulos que cada perfil enxerga no sistema.
@@ -179,19 +180,12 @@ async function construirContexto(req) {
         configuracaoAcademica(),
     ]);
 
-    // Turmas do professor: `turmas` é o campo unificado; salaPrincipal +
-    // salasAdicionais são a origem histórica e cobrem registros antigos.
+    // Turmas do professor NESTA escola (Issue #707): salaPrincipal +
+    // salasAdicionais + turmas da escola do cadastro, ou as do vínculo adicional.
     let turmas = [];
     let disciplinas = [];
     if (perfil === 'professor' && equipe) {
-        const brutas = [
-            ...(equipe.turmas || []),
-            equipe.salaPrincipal,
-            ...(equipe.salasAdicionais || []),
-        ]
-            .filter(Boolean)
-            .map(String);
-        turmas = [...new Set(brutas)];
+        turmas = turmasDoProfessorNaEscola(equipe, escolaId);
         disciplinas = [...new Set([...(equipe.materias || []), equipe.disciplina].filter(Boolean))];
     }
 
