@@ -54,7 +54,10 @@ describe('mensagemDeErro do chatbot', () => {
         expect(await mensagemDeErro(resposta(500))).toBeNull();
     });
 
-    it('os dois envios do chat usam a mensagem do servidor', () => {
-        expect(src.match(/responseText = await mensagemDeErro\(res\)/g)).toHaveLength(2);
+    it('o envio do chat usa a mensagem do servidor', () => {
+        // Desde a #702 o campo de mensagem e os chips passam pelo mesmo
+        // `enviarPergunta`, que conversa com o assistente por esta função.
+        expect(textoDaFuncao('conversarComAssistente')).toContain('await mensagemDeErro(res)');
+        expect(src.match(/\benviarPergunta\((text|label)\);/g)).toHaveLength(2);
     });
 });

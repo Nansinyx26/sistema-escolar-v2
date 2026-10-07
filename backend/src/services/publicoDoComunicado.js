@@ -167,4 +167,9 @@ async function emitirComunicadoNovo(comunicado, escolaPadrao) {
     }
 }
 
-module.exports = { emitirComunicadoNovo, turmasDosDestinatarios, contasDasTurmas };
+module.exports = {
+    emitirComunicadoNovo,
+    turmasDosDestinatarios,
+    contasDasTurmas,
+    variantesDasTurmas,
+};

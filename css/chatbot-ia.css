@@ -549,6 +549,189 @@
 }
 
 
+/* Resposta do assistente (Issue #702): o copiloto escreve em Markdown, que
+   js/ia/MarkdownRenderer.js converte em HTML seguro. Antes de o renderizador
+   chegar, a resposta aparece como texto puro, com as quebras de linha. */
+
+.msg-texto-puro {
+    white-space: pre-wrap;
+}
+
+.msg-texto p {
+    margin: 0 0 8px;
+}
+
+.msg-texto p:last-child,
+.msg-texto ul:last-child,
+.msg-texto ol:last-child {
+    margin-bottom: 0;
+}
+
+.msg-texto ul,
+.msg-texto ol {
+    margin: 4px 0 8px;
+    padding-left: 20px;
+}
+
+.msg-texto h1,
+.msg-texto h2,
+.msg-texto h3,
+.msg-texto h4 {
+    font-size: 14.5px;
+    margin: 8px 0 4px;
+}
+
+.msg-texto code {
+    padding: 1px 4px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.25);
+    font-size: 12.5px;
+}
+
+.msg-texto pre {
+    overflow-x: auto;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.msg-texto a {
+    color: #93c5fd;
+}
+
+/* Tabela larga rola dentro da bolha em vez de alargar o chat. */
+.msg-texto .ia-tabela-wrap {
+    overflow-x: auto;
+    margin: 6px 0;
+}
+
+.msg-texto table {
+    border-collapse: collapse;
+    font-size: 12.5px;
+}
+
+.msg-texto th,
+.msg-texto td {
+    padding: 4px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    text-align: left;
+    /* A bolha quebra palavra longa; na tabela isso partia "Horário" ao meio.
+       A célula fica inteira e a tabela rola no .ia-tabela-wrap. */
+    word-break: normal;
+    white-space: nowrap;
+}
+
+/* Card de confirmação de ação de escrita (js/ia/ActionConfirm.js). Mesmo
+   desenho da página do Assistente, com as cores do chat. */
+
+.chatbot-body .ia-confirmacao {
+    align-self: flex-start;
+    width: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(251, 191, 36, 0.35);
+    color: #f1f5f9;
+    font-size: 13px;
+}
+
+.chatbot-body .ia-confirmacao-cabecalho {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    color: #fbbf24;
+}
+
+.chatbot-body .ia-confirmacao-cabecalho i,
+.chatbot-body .ia-confirmacao-cabecalho svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Página sem o Lucide: o ícone não vira SVG e só ocuparia espaço. */
+.chatbot-body .ia-confirmacao-cabecalho i[data-lucide]:empty {
+    display: none;
+}
+
+.chatbot-body .ia-confirmacao-resumo {
+    margin: 0 0 8px;
+    line-height: 1.5;
+}
+
+.chatbot-body .ia-confirmacao-dados {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 10px;
+    margin: 0 0 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.22);
+    font-size: 12px;
+}
+
+.chatbot-body .ia-confirmacao-dados dt {
+    color: var(--chat-text-muted);
+}
+
+.chatbot-body .ia-confirmacao-dados dd {
+    margin: 0;
+    word-break: break-word;
+    white-space: pre-wrap;
+}
+
+.chatbot-body .ia-confirmacao-acoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.chatbot-body .ia-confirmacao-acoes button {
+    padding: 6px 14px;
+    border-radius: 8px;
+    font: inherit;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.chatbot-body .ia-confirmacao-acoes button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.chatbot-body .ia-confirmacao-acoes button:focus-visible {
+    outline: 2px solid var(--chat-accent);
+    outline-offset: 2px;
+}
+
+.chatbot-body .ia-btn-confirmar {
+    border: 0;
+    color: #04120e;
+    background: linear-gradient(135deg, var(--chat-accent), var(--chat-accent-light));
+}
+
+.chatbot-body .ia-btn-editar,
+.chatbot-body .ia-btn-cancelar {
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: transparent;
+    color: #f1f5f9;
+}
+
+.chatbot-body .ia-confirmacao-ok {
+    border-color: rgba(16, 185, 129, 0.4);
+    background: rgba(16, 185, 129, 0.08);
+}
+
+.chatbot-body .ia-confirmacao-erro {
+    border-color: rgba(248, 113, 113, 0.4);
+    background: rgba(248, 113, 113, 0.08);
+}
+
+.chatbot-body .ia-confirmacao-cancelado p {
+    color: var(--chat-text-muted);
+}
+
+
 /* VoiceOrb Modo 1 (Chat) */
 
 #chatbot-voice-orb-container {
