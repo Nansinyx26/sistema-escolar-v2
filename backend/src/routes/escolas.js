@@ -10,6 +10,7 @@ const SecurityController = require('../controllers/SecurityController');
 const Usuario = require('../models/Usuario');
 const { logAction } = require('../utils/auditHelper');
 const escolaBloqueio = require('../services/escolaBloqueio');
+const obs = require('../observability');
 
 // Mesmo alfabeto do seed (scripts/seedEscolas.js): sem caracteres ambíguos,
 // para o código ser ditado por telefone e digitado no cadastro do docente.
@@ -317,7 +318,10 @@ router.patch('/:escolaId/ia', authJWT, authorize('admin', 'diretor'), async (req
         });
         return res.json({ success: true, data: escola });
     } catch (e) {
-        return res.status(500).json({ success: false, error: e.message });
+        obs.captureException(e, { tipo: 'escolas.ia_alterar' });
+        return res
+            .status(500)
+            .json({ success: false, error: 'Não foi possível salvar a decisão sobre a IA.' });
     }
 });
 
