@@ -102,32 +102,15 @@ class AIProvider {
 // Implementação: Google Gemini
 // ─────────────────────────────────────────────────────────────────────────────
 
-const MODELO_PADRAO = 'gemini-2.0-flash';
+// A cascata de modelos mora em `modelosGemini.js`, compartilhada com o
+// voiceService (Issue #703).
+const { MODELO_PADRAO, cascataDeModelos } = require('./modelosGemini');
 
 /**
  * Teto de entrada. O histórico já chega recortado pelo controller, mas este é o
  * limite duro: protege contra um turno único gigante inflar o custo.
  */
 const MAX_CHARS_POR_MENSAGEM = 8000;
-
-/**
- * Cascata de modelos tentados quando o anterior recusa a requisição.
- *
- * O valor está em cada família ter um BALDE DE COTA PRÓPRIO no nível gratuito:
- * estourar o limite por minuto do 2.5-flash não consome o do 2.0-flash, então a
- * cascata realmente devolve resposta em vez de só repetir o mesmo 429.
- *
- * Por isso a lista NÃO pode conter modelo desativado: `gemini-1.5-flash` e
- * `gemini-1.5-pro` saíram da API e respondiam 404 — duas viagens de rede
- * garantidamente perdidas no meio da cascata, bem no momento em que a pessoa
- * está esperando a resposta.
- */
-const MODELOS_FALLBACK = [
-    'gemini-2.5-flash',
-    'gemini-2.0-flash',
-    'gemini-2.5-flash-lite',
-    'gemini-2.0-flash-lite',
-];
 
 class GeminiProvider extends AIProvider {
     constructor() {
@@ -263,9 +246,7 @@ class GeminiProvider extends AIProvider {
         const tools = this._traduzirFerramentas(ferramentas);
         if (tools) corpo.tools = tools;
 
-        const modelosParaTentar = [this.modelo, ...MODELOS_FALLBACK].filter(
-            (m, i, arr) => m && arr.indexOf(m) === i
-        );
+        const modelosParaTentar = cascataDeModelos(this.modelo);
         let respostaSucesso = null;
         let ultimoDetalheErro = '';
         let cotaExcedidaGeral = false;
