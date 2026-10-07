@@ -10,6 +10,7 @@ const fetch =
 const logger = require('../utils/logger');
 const TTSService = require('./TTSService');
 const { removerEmojis } = require('../utils/semEmoji');
+const { cascataDeModelos } = require('./ia/modelosGemini');
 
 /**
  * voiceService: Faz a ponte entre IA (Gemini) e Voz (ElevenLabs).
@@ -46,12 +47,9 @@ class VoiceService {
             prompt = prompt.slice(0, MAX_PROMPT_CHARS);
         }
 
-        const modelos = [
-            'gemini-2.0-flash',
-            'gemini-1.5-flash',
-            'gemini-2.0-flash-lite',
-            'gemini-1.5-pro',
-        ];
+        // Mesma cascata do copiloto (Issue #703): a lista própria daqui ainda
+        // tentava os modelos 1.5, desativados, e nunca chegava ao 2.5.
+        const modelos = cascataDeModelos();
         let lastError = null;
 
         for (const mod of modelos) {
