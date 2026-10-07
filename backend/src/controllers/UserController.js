@@ -4,7 +4,11 @@ const Turma = require('../models/Turma');
 const SecurityController = require('./SecurityController');
 const { logAction } = require('../utils/auditHelper');
 const { notificarVerificacaoEmail, notificarBruteForce } = require('../utils/emailNotifications');
-const { enviarVerificacao, invalidarCacheDeVerificacao } = require('../services/verificacaoEmail');
+const {
+    enviarVerificacao,
+    exigeVerificacao,
+    invalidarCacheDeVerificacao,
+} = require('../services/verificacaoEmail');
 const escolaBloqueio = require('../services/escolaBloqueio');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -1382,6 +1386,21 @@ exports.googleLogin = async (req, res) => {
                 return res.status(403).json(escolaBloqueio.respostaBloqueio());
             }
 
+            // O Google é a PRIMEIRA prova de posse do e-mail desta conta?
+            // (Issue #708) Conta criada pelo cadastro com senha nasce sem
+            // confirmação, e a #412 a barra até alguém provar que é dona da
+            // caixa postal. Quem criou a conta não precisa ser essa pessoa:
+            // basta saber o e-mail de alguém e ter o código de um aluno. Se a
+            // dona real entra com o Google, a conta vira confirmada — e a senha
+            // e as sessões de quem a criou passavam a atravessar o portão,
+            // alcançando os alunos ligados ao e-mail dela. Por isso, o que foi
+            // definido antes da prova deixa de valer: senha local aleatória
+            // (a dona entra pelo Google ou define outra pelo "esqueci minha
+            // senha"), `tokenVersion` incrementado (derruba todo JWT anterior)
+            // e conexões em tempo real encerradas. Conta já confirmada, ou
+            // legada de antes do marco da #412, segue como estava.
+            const primeiraProvaDePosse = exigeVerificacao(user);
+
             // Usuário existente: sincronizar foto do Google se houver mudança
             const updateFields = {
                 loginGoogle: true,
@@ -1396,8 +1415,25 @@ exports.googleLogin = async (req, res) => {
             if (nome && (!user.nome || user.nome === user.email.split('@')[0])) {
                 updateFields.nome = nome;
             }
-            user = await Usuario.findByIdAndUpdate(user._id, { $set: updateFields }, { new: true });
+            const atualizacao = { $set: updateFields };
+            if (primeiraProvaDePosse) {
+                const crypto = require('node:crypto');
+                updateFields.senha = await bcrypt.hash(
+                    crypto.randomBytes(32).toString('hex'),
+                    SALT_ROUNDS
+                );
+                atualizacao.$inc = { tokenVersion: 1 };
+            }
+            user = await Usuario.findByIdAndUpdate(user._id, atualizacao, { new: true });
             invalidarCacheDeVerificacao(user._id);
+            if (primeiraProvaDePosse) {
+                encerrarConexoesDaConta(String(user._id));
+                await logAction(req, 'CONTA_CONFIRMADA_PELO_GOOGLE', 'Segurança', {
+                    recursoId: user._id,
+                    descricao:
+                        'E-mail confirmado pelo login com Google: senha do cadastro descartada e sessões anteriores encerradas.',
+                });
+            }
         }
 
         // O TOKEN carrega só o mínimo para autorizar (ver montarPayload).
