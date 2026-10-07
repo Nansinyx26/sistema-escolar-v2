@@ -40,11 +40,24 @@ async function iaLiberada(escolaId) {
 const RESPOSTA_DESLIGADA = {
     success: false,
     codigo: 'IA_DESLIGADA_NESTA_ESCOLA',
-    error: 'O assistente está desligado nesta escola. A direção pode ligá-lo nas configurações.',
+    error: 'O assistente está desligado nesta escola. A direção pode ligá-lo na página do Assistente de IA.',
 };
+
+// Quem decide pela escola (Issue #711). A rota que grava a decisão confere de
+// novo — inclusive o vínculo com a escola —, então `podeLigar` só decide se a
+// tela oferece o botão, e `escolaId` diz qual escola o interruptor consultou.
+const PERFIS_QUE_LIGAM = new Set(['diretor', 'admin']);
+
+/** Resposta 403 dizendo também se quem perguntou pode ligar a IA, e onde. */
+function respostaDesligada(perfil, escolaId) {
+    if (!PERFIS_QUE_LIGAM.has(perfil) || !escolaId) {
+        return { ...RESPOSTA_DESLIGADA, podeLigar: false };
+    }
+    return { ...RESPOSTA_DESLIGADA, podeLigar: true, escolaId: String(escolaId) };
+}
 
 function limparCache() {
     cache.clear();
 }
 
-module.exports = { iaLiberada, RESPOSTA_DESLIGADA, limparCache };
+module.exports = { iaLiberada, RESPOSTA_DESLIGADA, respostaDesligada, limparCache };

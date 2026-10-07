@@ -18,7 +18,7 @@ const { TextDecoder, TextEncoder } = require('node:util');
 const RESPOSTA_DESLIGADA = {
     success: false,
     codigo: 'IA_DESLIGADA_NESTA_ESCOLA',
-    error: 'O assistente está desligado nesta escola. A direção pode ligá-lo nas configurações.',
+    error: 'O assistente está desligado nesta escola. A direção pode ligá-lo na página do Assistente de IA.',
 };
 
 global.TextDecoder = global.TextDecoder || TextDecoder;

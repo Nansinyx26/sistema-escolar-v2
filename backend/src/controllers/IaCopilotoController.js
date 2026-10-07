@@ -24,7 +24,7 @@ const { construirContexto, montarSystemPrompt } = require('../services/ia/Contex
 const ToolRegistry = require('../services/ia/ToolRegistry');
 const { criarMapa } = require('../services/ia/pseudonimizar');
 const { mascararTexto } = require('../services/ia/escopoAlunos');
-const { iaLiberada, RESPOSTA_DESLIGADA } = require('../services/ia/interruptor');
+const { iaLiberada, respostaDesligada } = require('../services/ia/interruptor');
 const ConversationStore = require('../services/ia/ConversationStore');
 const ConfirmationStore = require('../services/ia/ConfirmationStore');
 const ExportadorConversa = require('../services/ia/ExportadorConversa');
@@ -122,7 +122,7 @@ async function chat(req, res) {
     // Interruptor por escola (Issue #401): mandar dado de aluno para um
     // provedor externo é decisão da escola, e o padrão da rede é não mandar.
     if (!(await iaLiberada(req.escolaId))) {
-        return res.status(403).json(RESPOSTA_DESLIGADA);
+        return res.status(403).json(respostaDesligada(req.user?.perfil, req.escolaId));
     }
 
     const provider = obterProvider();

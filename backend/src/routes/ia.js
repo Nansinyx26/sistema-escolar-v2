@@ -17,10 +17,10 @@ const acessoAluno = requireAcessoAoAluno('alunoId');
 // Interruptor por escola (Issue #401): a IA só recebe dado de aluno onde a
 // escola decidiu usá-la. O copiloto confere dentro do próprio controller,
 // porque a resposta dele é um fluxo (SSE).
-const { iaLiberada, RESPOSTA_DESLIGADA } = require('../services/ia/interruptor');
+const { iaLiberada, respostaDesligada } = require('../services/ia/interruptor');
 async function exigirIaLigada(req, res, next) {
     if (await iaLiberada(req.escolaId)) return next();
-    return res.status(403).json(RESPOSTA_DESLIGADA);
+    return res.status(403).json(respostaDesligada(req.user?.perfil, req.escolaId));
 }
 
 router.get(
