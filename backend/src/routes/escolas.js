@@ -11,6 +11,10 @@ const Usuario = require('../models/Usuario');
 const { logAction } = require('../utils/auditHelper');
 const escolaBloqueio = require('../services/escolaBloqueio');
 const obs = require('../observability');
+const {
+    professoresDaEscola,
+    salvarAutorizacoes,
+} = require('../services/ferramentas/permissaoFerramenta');
 
 // Mesmo alfabeto do seed (scripts/seedEscolas.js): sem caracteres ambíguos,
 // para o código ser ditado por telefone e digitado no cadastro do docente.
@@ -326,10 +330,17 @@ router.patch('/:escolaId/ia', authJWT, authorize('admin', 'diretor'), async (req
 });
 
 /**
- * PATCH /api/escolas/:escolaId/autorizacoes-professor — a direção decide se o
- * professor vê a situação das autorizações da própria turma (Issue #496).
- * O diretor só decide pela escola a que está vinculado; o admin, por qualquer
- * uma. Sem decisão, o professor não vê.
+ * PATCH /api/escolas/:escolaId/autorizacoes-professor — a direção libera ou
+ * retira, de TODOS os professores atuais da escola, a consulta da situação das
+ * autorizações da própria turma (Issues #496 e #727).
+ *
+ * Desde a #727 a decisão é por professor (`permissoes_ferramentas`, ferramenta
+ * "gestao.autorizacoes-pais"): este atalho grava a mesma decisão para cada
+ * professor da escola, com um registro de auditoria por professor alterado.
+ * `Escola.professorVeAutorizacoes` não decide mais nada — a migração da #727
+ * já levou o valor dela para as permissões.
+ *
+ * O diretor só decide pela escola a que está vinculado; o admin, por qualquer uma.
  */
 router.patch(
     '/:escolaId/autorizacoes-professor',
@@ -347,23 +358,38 @@ router.patch(
             if (!(await decidePelaEscola(req.user, escolaId))) {
                 return res.status(403).json({ success: false, error: 'Acesso negado.' });
             }
-            const antes = await Escola.findById(escolaId).select('professorVeAutorizacoes').lean();
-            if (!antes) {
+            if (!(await Escola.exists({ _id: escolaId }))) {
                 return res.status(404).json({ success: false, error: 'Escola não encontrada.' });
             }
-            await Escola.updateOne(
-                { _id: escolaId },
-                { $set: { professorVeAutorizacoes: liberar } }
-            );
-            await logAction(req, 'AUTORIZACOES_PROFESSOR_ALTERADO', 'Escola', {
-                recursoId: String(escolaId),
-                valorAnterior: { professorVeAutorizacoes: antes.professorVeAutorizacoes === true },
-                valorNovo: { professorVeAutorizacoes: liberar },
-                descricao: `Consulta de autorizações pelo professor ${liberar ? 'liberada' : 'fechada'} na escola ${escolaId}.`,
+
+            const professores = await professoresDaEscola(escolaId);
+            let alteradas = 0;
+            if (professores.length) {
+                const resultado = await salvarAutorizacoes({
+                    escolaId,
+                    diretorId: String(req.user.id || req.user._id),
+                    alteracoes: professores.map((p) => ({
+                        professorId: p.id,
+                        ferramentaId: 'gestao.autorizacoes-pais',
+                        autorizado: liberar,
+                    })),
+                    auditar: (acao, detalhes) =>
+                        logAction(req, acao, 'PermissaoFerramenta', {
+                            ...detalhes,
+                            escolaId: String(escolaId),
+                        }),
+                });
+                alteradas = resultado.alteradas.length;
+            }
+            return res.json({
+                success: true,
+                data: { liberar, professores: professores.length, alteradas },
             });
-            return res.json({ success: true, data: { professorVeAutorizacoes: liberar } });
         } catch (e) {
-            return res.status(500).json({ success: false, error: e.message });
+            obs.captureException(e, { tipo: 'escolas.autorizacoes_professor' });
+            return res
+                .status(500)
+                .json({ success: false, error: 'Não foi possível salvar a decisão.' });
         }
     }
 );

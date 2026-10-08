@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * criarProjetoMaker — registra um projeto da oficina maker.
  *
@@ -12,10 +10,22 @@ const ProjetoMaker = require('../../../models/ProjetoMaker');
 const Turma = require('../../../models/Turma');
 const { filtroDaEscola, turmasPermitidas, ErroPermissao } = require('../PermissionGuard');
 
-const AREAS = ['robotica', 'programacao', 'impressao3d', 'marcenaria', 'eletronica', 'sustentabilidade', 'outro'];
+const AREAS = [
+    'robotica',
+    'programacao',
+    'impressao3d',
+    'marcenaria',
+    'eletronica',
+    'sustentabilidade',
+    'outro',
+];
 const SITUACOES = ['planejamento', 'em_andamento', 'concluido', 'suspenso'];
 
-const normalizar = (t) => String(t || '').replace('º', '').trim().toUpperCase();
+const normalizar = (t) =>
+    String(t || '')
+        .replace('º', '')
+        .trim()
+        .toUpperCase();
 
 function lerData(valor) {
     if (!valor) return null;
@@ -30,7 +40,8 @@ function lerData(valor) {
 
 module.exports = {
     name: 'criarProjetoMaker',
-    description: 'Registra um projeto da oficina maker (robótica, programação, impressão 3D, marcenaria, eletrônica, sustentabilidade). Use quando pedirem para criar/cadastrar um projeto maker. Exige confirmação.',
+    description:
+        'Registra um projeto da oficina maker (robótica, programação, impressão 3D, marcenaria, eletrônica, sustentabilidade). Use quando pedirem para criar/cadastrar um projeto maker. Exige confirmação.',
 
     schema: {
         type: 'object',
@@ -40,22 +51,32 @@ module.exports = {
             turmas: {
                 type: 'array',
                 items: { type: 'string' },
-                description: 'Turmas envolvidas, como ["6A", "6B"].'
+                description: 'Turmas envolvidas, como ["6A", "6B"].',
             },
             descricao: { type: 'string', description: 'O que o projeto propõe.' },
             materiais: {
                 type: 'array',
                 items: { type: 'string' },
-                description: 'Materiais necessários.'
+                description: 'Materiais necessários.',
             },
             dataInicio: { type: 'string', description: 'Início previsto, no formato AAAA-MM-DD.' },
-            dataPrevistaFim: { type: 'string', description: 'Término previsto, no formato AAAA-MM-DD.' },
-            situacao: { type: 'string', enum: SITUACOES, description: 'Situação inicial. Padrão: planejamento.' }
+            dataPrevistaFim: {
+                type: 'string',
+                description: 'Término previsto, no formato AAAA-MM-DD.',
+            },
+            situacao: {
+                type: 'string',
+                enum: SITUACOES,
+                description: 'Situação inicial. Padrão: planejamento.',
+            },
         },
-        required: ['titulo']
+        required: ['titulo'],
     },
 
     cargosPermitidos: ['diretor', 'secretaria', 'professor'],
+    // Professor só com "Geração de atividades com IA" autorizada pela direção
+    // (Issue #727). Conferido no catálogo, no preview e na confirmação.
+    ferramentaControlada: 'ia.atividades',
     mutates: true,
 
     async handler(params, ctx) {
@@ -74,15 +95,17 @@ module.exports = {
 
         // Turmas: precisam existir na escola e estar ao alcance da pessoa.
         const pedidas = (Array.isArray(params.turmas) ? params.turmas : [])
-            .map(t => String(t).trim()).filter(Boolean);
+            .map((t) => String(t).trim())
+            .filter(Boolean);
 
         let turmasFinais = [];
         if (pedidas.length > 0) {
             const daEscola = await Turma.find({ ...filtroDaEscola(ctx), ativo: { $ne: false } })
-                .select('nome id').lean();
-            const mapa = new Map(daEscola.map(t => [normalizar(t.nome || t.id), t.nome || t.id]));
+                .select('nome id')
+                .lean();
+            const mapa = new Map(daEscola.map((t) => [normalizar(t.nome || t.id), t.nome || t.id]));
 
-            const desconhecidas = pedidas.filter(t => !mapa.has(normalizar(t)));
+            const desconhecidas = pedidas.filter((t) => !mapa.has(normalizar(t)));
             if (desconhecidas.length > 0) {
                 throw new ErroPermissao(
                     `Não encontrei estas turmas nesta escola: ${desconhecidas.join(', ')}. Confirme os nomes com a pessoa.`
@@ -92,7 +115,7 @@ module.exports = {
             const permitidas = turmasPermitidas(ctx);
             if (permitidas !== null) {
                 const minhas = new Set(permitidas.map(normalizar));
-                const fora = pedidas.filter(t => !minhas.has(normalizar(t)));
+                const fora = pedidas.filter((t) => !minhas.has(normalizar(t)));
                 if (fora.length > 0) {
                     throw new ErroPermissao(
                         `Estas turmas não estão entre as suas: ${fora.join(', ')}. Explique o limite com cordialidade.`
@@ -100,17 +123,21 @@ module.exports = {
                 }
             }
 
-            turmasFinais = pedidas.map(t => mapa.get(normalizar(t)));
+            turmasFinais = pedidas.map((t) => mapa.get(normalizar(t)));
         }
 
         const inicio = lerData(params.dataInicio);
         const fim = lerData(params.dataPrevistaFim);
         if (inicio && fim && fim < inicio) {
-            throw new ErroPermissao('O término previsto é anterior ao início. Confirme as datas com a pessoa.');
+            throw new ErroPermissao(
+                'O término previsto é anterior ao início. Confirme as datas com a pessoa.'
+            );
         }
 
         const materiais = (Array.isArray(params.materiais) ? params.materiais : [])
-            .map(m => String(m).trim()).filter(Boolean).slice(0, 30);
+            .map((m) => String(m).trim())
+            .filter(Boolean)
+            .slice(0, 30);
 
         const parametros = {
             titulo,
@@ -120,14 +147,17 @@ module.exports = {
             materiais,
             descricao: params.descricao ? String(params.descricao).trim() : undefined,
             dataInicio: inicio ? inicio.toISOString() : undefined,
-            dataPrevistaFim: fim ? fim.toISOString() : undefined
+            dataPrevistaFim: fim ? fim.toISOString() : undefined,
         };
 
         return {
-            resumo: `Criar projeto maker "${titulo}" (${area})`
-                + (turmasFinais.length > 0 ? ` com as turmas ${turmasFinais.join(', ')}` : ' sem turma definida')
-                + `, situação: ${situacao}`,
-            parametros
+            resumo:
+                `Criar projeto maker "${titulo}" (${area})` +
+                (turmasFinais.length > 0
+                    ? ` com as turmas ${turmasFinais.join(', ')}`
+                    : ' sem turma definida') +
+                `, situação: ${situacao}`,
+            parametros,
         };
     },
 
@@ -141,12 +171,14 @@ module.exports = {
             situacao: parametros.situacao,
             materiais: parametros.materiais,
             dataInicio: parametros.dataInicio ? new Date(parametros.dataInicio) : undefined,
-            dataPrevistaFim: parametros.dataPrevistaFim ? new Date(parametros.dataPrevistaFim) : undefined,
+            dataPrevistaFim: parametros.dataPrevistaFim
+                ? new Date(parametros.dataPrevistaFim)
+                : undefined,
             responsavelId: ctx.usuarioId,
             responsavelNome: ctx.nome,
             criadoPor: ctx.usuarioId,
             criadoPorNome: ctx.nome,
-            ativo: true
+            ativo: true,
         });
 
         return {
@@ -156,8 +188,8 @@ module.exports = {
                 titulo: projeto.titulo,
                 area: projeto.area,
                 situacao: projeto.situacao,
-                turmas: projeto.turmas
-            }
+                turmas: projeto.turmas,
+            },
         };
-    }
+    },
 };

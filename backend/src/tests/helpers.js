@@ -123,8 +123,35 @@ async function aceitarTermoAudioImagem(usuarioId) {
     );
 }
 
+/**
+ * Autoriza o professor em TODAS as ferramentas do catálogo de autorização
+ * (Issue #727), em cada escola que existir no momento da chamada.
+ *
+ * Para suítes que testam OUTRA coisa (o assistente, as ações, a memória) e
+ * precisam de um professor que use a IA. A barreira em si — negar sem
+ * autorização — é testada em `ferramentasBarreira.regressao.test.js`.
+ * Chame depois de criar as escolas da suíte.
+ */
+async function autorizarFerramentas(usuario) {
+    const Escola = require('../models/Escola');
+    const PermissaoFerramenta = require('../models/PermissaoFerramenta');
+    const { FERRAMENTAS } = require('../services/ferramentas/catalogo');
+    const professorId = String(usuario._id || usuario.id);
+    const escolas = await Escola.find().select('_id').lean();
+    for (const escola of escolas) {
+        for (const f of FERRAMENTAS) {
+            await PermissaoFerramenta.updateOne(
+                { escolaId: String(escola._id), professorId, ferramentaId: f.id },
+                { $set: { autorizado: true } },
+                { upsert: true }
+            );
+        }
+    }
+}
+
 module.exports = {
     conectarBanco,
+    autorizarFerramentas,
     limparBanco,
     desconectarBanco,
     criarUsuario,

@@ -20,7 +20,13 @@ const Escola = require('../models/Escola');
 const AuditLog = require('../models/AuditLog');
 const interruptor = require('../services/ia/interruptor');
 const { invalidarCacheEscolas } = require('../middleware/filtrarPorEscola');
-const { conectarBanco, limparBanco, desconectarBanco, criarUsuario } = require('./helpers');
+const {
+    conectarBanco,
+    limparBanco,
+    desconectarBanco,
+    criarUsuario,
+    autorizarFerramentas,
+} = require('./helpers');
 const { assinarTokenSessao } = require('../utils/sessionToken');
 
 function cookieDe(u) {
@@ -70,6 +76,9 @@ beforeEach(async () => {
         perfil: 'professor',
         escolaId: String(escola._id),
     });
+    // O professor tem a ferramenta autorizada pela direção (Issue #727): o que
+    // se testa aqui é a chave da ESCOLA.
+    await autorizarFerramentas(prof);
 });
 
 function ligar(quem, escolaId, habilitada = true) {
