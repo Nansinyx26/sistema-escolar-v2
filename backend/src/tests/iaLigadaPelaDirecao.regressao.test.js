@@ -5,6 +5,9 @@
  * direção pode ligá-la", mas só o admin conseguia. A direção liga a IA da
  * PRÓPRIA escola; a decisão vai ao log com antes e depois; o 403 do copiloto
  * diz à tela quando quem pergunta pode ligar.
+ *
+ * Issue #725: a direção usa sem pedir. Escola sem decisão conta como ligada
+ * para quem decide por ela; o `false` gravado continua valendo para todos.
  */
 const request = require('supertest');
 
@@ -19,6 +22,7 @@ const app = require('../app');
 const Escola = require('../models/Escola');
 const AuditLog = require('../models/AuditLog');
 const interruptor = require('../services/ia/interruptor');
+const voiceService = require('../services/voiceService');
 const { invalidarCacheEscolas } = require('../middleware/filtrarPorEscola');
 const { conectarBanco, limparBanco, desconectarBanco, criarUsuario } = require('./helpers');
 const { assinarTokenSessao } = require('../utils/sessionToken');
@@ -86,8 +90,35 @@ function conversar(quem) {
         .send({ mensagem: 'Bom dia' });
 }
 
+describe('escola sem decisão: a direção usa sem pedir (Issue #725)', () => {
+    it('a direção conversa sem ninguém ligar a IA', async () => {
+        const res = await conversar(diretor);
+        expect(res.status).toBe(200);
+        expect(res.text).toContain('Olá!');
+    });
+
+    it('a direção recebe os insights do BI sem ninguém ligar a IA', async () => {
+        const espiao = jest
+            .spyOn(voiceService, 'generateInsightText')
+            .mockResolvedValue('Resumo da escola.');
+        const res = await request(app)
+            .get('/api/ia/insights-global')
+            .set('Cookie', cookieDe(diretor));
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        // Liberada para a direção, a IA é chamada de fato.
+        expect(espiao).toHaveBeenCalled();
+        espiao.mockRestore();
+    });
+
+    it('o professor continua dependendo da decisão da escola', async () => {
+        expect((await conversar(prof)).status).toBe(403);
+    });
+});
+
 describe('IA desligada: o 403 diz se quem pergunta pode ligar', () => {
-    it('para a direção, oferece ligar a escola que o interruptor consultou', async () => {
+    it('para a direção que desligou, oferece ligar a escola que o interruptor consultou', async () => {
+        await ligar(diretor, escola._id, false);
         const res = await conversar(diretor);
         expect(res.status).toBe(403);
         expect(res.body.codigo).toBe('IA_DESLIGADA_NESTA_ESCOLA');
