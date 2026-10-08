@@ -61,7 +61,8 @@ Cada mudança gera um registro no `AuditLog`:
 - `acao`: `FERRAMENTA_AUTORIZADA` ou `FERRAMENTA_REVOGADA`
 - quem decidiu (`usuarioId`, `usuarioNome`, `perfil`), escola e data
 - `detalhes.valorAnterior` / `detalhes.valorNovo`: `{ professorId, ferramentaId, autorizado }`
-- `detalhes.descricao`: ferramenta e nome do professor
+- `detalhes.descricao`: ferramenta e id do professor — sem o nome, pela regra da
+  Issue #410 (texto livre de log não passa pelo sanitizador)
 
 Salvar um par sem mudança não grava nem audita.
 

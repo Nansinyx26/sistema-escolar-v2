@@ -221,7 +221,9 @@ describe('salvar autorizações', () => {
             ferramentaId: 'ia.assistente',
             autorizado: true,
         });
-        expect(log.detalhes.descricao).toContain('João Silva');
+        // Sem nome de pessoa em texto de auditoria (Issue #410): o id basta.
+        expect(log.detalhes.descricao).toContain(String(profA._id));
+        expect(log.detalhes.descricao).not.toContain('João Silva');
 
         const celula = linhaDe(await quadro(diretorA), profA).ferramentas['ia.assistente'];
         expect(celula.status).toBe('autorizado');

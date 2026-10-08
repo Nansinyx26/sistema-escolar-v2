@@ -347,7 +347,7 @@ async function salvarAutorizacoes({ escolaId, diretorId, alteracoes, auditar }) 
     const pedidas = normalizarAlteracoes(alteracoes);
 
     const professores = await professoresDaEscola(escola);
-    const daEscola = new Map(professores.map((p) => [p.id, p]));
+    const daEscola = new Set(professores.map((p) => p.id));
     const deFora = pedidas.filter((a) => !daEscola.has(a.professorId));
     if (deFora.length) {
         throw erroDeEntrada(
@@ -401,12 +401,13 @@ async function salvarAutorizacoes({ escolaId, diretorId, alteracoes, auditar }) 
         );
 
         const ferramenta = ferramentaPorId(ferramentaId);
-        const professor = daEscola.get(professorId);
         await auditar(autorizado ? 'FERRAMENTA_AUTORIZADA' : 'FERRAMENTA_REVOGADA', {
             recursoId: `${professorId}:${ferramentaId}`,
             valorAnterior: { professorId, ferramentaId, autorizado: antes },
             valorNovo: { professorId, ferramentaId, autorizado },
-            descricao: `${ferramenta.nome} ${autorizado ? 'autorizado' : 'revogado'} para ${professor.nome}.`,
+            // Sem o nome do professor: texto livre não passa pelo sanitizador de
+            // log (Issue #410). Quem é ele está em professorId.
+            descricao: `${ferramenta.nome} ${autorizado ? 'autorizado' : 'revogado'} para o professor ${professorId}.`,
         });
 
         alteradas.push({ professorId, ferramentaId, autorizado, antes });
