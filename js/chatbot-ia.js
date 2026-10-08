@@ -466,27 +466,44 @@
     }
 
     // --- AUDIO ---
-    // --- AUDIO ---
+    // Troca o ícone do botão "ouvir" da mensagem `index` (Issue #712).
+    //
+    // O js/libs/lucide-init.js SUBSTITUI o `<i class="bi …">` por um `<svg>`
+    // com o mesmo id. `className` de SVG é só leitura: o `icon.className = …`
+    // antigo estourava um TypeError no fim de cada narração, antes de devolver
+    // o orb ao repouso — e o `window.onerror` do js/dashboard.js virava toast.
+    // Trocar a classe no `<svg>` também não redesenharia o traço. Recriamos o
+    // `<i>` e mandamos o Lucide desenhar de novo, como em js/sidebar-voice.js.
+    // Busca pelo id a cada troca: a referência anterior já saiu do DOM.
+    function trocarIconeAudio(index, classe) {
+        const atual = document.getElementById(`play-icon-${index}`);
+        if (!atual) return;
+        const novo = document.createElement('i');
+        novo.id = atual.id;
+        novo.className = classe;
+        atual.replaceWith(novo);
+        if (typeof window.renderLucideIcons === 'function') window.renderLucideIcons();
+    }
+
     async function playAudio(index) {
         stopAudio();
         initAudioContext();
 
         const msg = messages[index];
-        const icon = document.getElementById(`play-icon-${index}`);
-        if (icon) icon.className = 'bi bi-arrow-repeat bi-spin';
+        trocarIconeAudio(index, 'bi bi-arrow-repeat bi-spin');
 
         try {
             // Usa window.speak (que agora aponta para /api/tts/speak e usa ElevenLabs)
             const audio = await window.speak(textoParaFala(msg.text));
 
             if (!audio) {
-                if (icon) icon.className = 'bi bi-volume-up-fill';
+                trocarIconeAudio(index, 'bi bi-volume-up-fill');
                 return;
             }
 
             currentAudio = audio;
             playingMsgIndex = index;
-            if (icon) icon.className = 'bi bi-pause-fill';
+            trocarIconeAudio(index, 'bi bi-pause-fill');
 
             if (window.VoiceOrbManager && orbContainer) {
                 orbContainer.style.display = 'block';
@@ -499,14 +516,13 @@
             audio.addEventListener('ended', () => cleanupAudio(index));
         } catch (e) {
             console.warn('[TTS] Erro:', e.message);
-            if (icon) icon.className = 'bi bi-volume-up-fill';
+            trocarIconeAudio(index, 'bi bi-volume-up-fill');
         }
     }
 
     function cleanupAudio(index) {
         if (animationId) cancelAnimationFrame(animationId);
-        const icon = document.getElementById(`play-icon-${index}`);
-        if (icon) icon.className = 'bi bi-volume-up-fill';
+        trocarIconeAudio(index, 'bi bi-volume-up-fill');
         playingMsgIndex = null;
         if (window.VoiceOrbManager) {
             window.VoiceOrbManager.setState('idle');
