@@ -16,7 +16,7 @@
  * numa tela de gestão.
  *
  * A tela não decide permissão — quem decide é a API (`authorize.estrito` +
- * `filtrarPorEscola`). Motion: só `.skeleton` e `.motion-reveal` de
+ * `filtrarPorEscola`). Motion: só `.skeleton` e `Motion.reveal` (`data-reveal`) de
  * css/motion.css; salvar não anima (ação de alta frequência, docs/MOTION.md).
  */
 
@@ -149,8 +149,12 @@
     // ── Lista ───────────────────────────────────────────────────────────────
 
     function montarCartao(denuncia, indice) {
-        const cartao = no('article', 'den-card motion-reveal');
+        const cartao = no('article', 'den-card');
         cartao.style.setProperty('--motion-i', String(indice));
+        // `data-reveal`, e não a classe `motion-reveal` direto: a classe esconde
+        // o cartão, e só quem passa por `Motion.reveal` ganha o `is-visible`.
+        // Com a classe posta à mão, a lista carregava e ficava invisível.
+        cartao.setAttribute('data-reveal', '');
 
         const topo = no('header', 'den-card__topo');
         const gravidade = denuncia.severidade === 'grave' ? 'grave' : 'moderada';

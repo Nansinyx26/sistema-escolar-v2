@@ -76,6 +76,10 @@ describe('html/secretaria/denuncias.html', () => {
         it('mostra skeleton enquanto carrega e usa as APIs que o motion.js expõe', () => {
             expect(script).toContain('Motion.skeleton');
             expect(script).toContain('Motion.reveal');
+            // A classe `motion-reveal` posta à mão esconde o cartão para sempre:
+            // só o `Motion.reveal` sobre `data-reveal` o torna visível.
+            expect(script).toContain("'data-reveal'");
+            expect(script).not.toMatch(/no\('article', '[^']*motion-reveal/);
         });
     });
 });
