@@ -157,7 +157,7 @@ class PedagogicoService {
     /**
      * Gera Insights Globais Narrativos (Unificado).
      */
-    static async getGlobalInsights(escolaId = null) {
+    static async getGlobalInsights(escolaId = null, perfil = undefined) {
         // Escopo por escola do diretor logado (tolerante a registros legados)
         const ef = escolaMatch(escolaId);
 
@@ -235,7 +235,7 @@ class PedagogicoService {
 
         // Escola que não aderiu à IA fica com o resumo calculado aqui (#493).
         const { iaLiberada } = require('./ia/interruptor');
-        if (!(await iaLiberada(escolaId))) return fallbackResult;
+        if (!(await iaLiberada(escolaId, perfil))) return fallbackResult;
 
         try {
             const prompt = `Você é o assistente pedagógico da escola, escrevendo o painel de insights do BI para a DIREÇÃO. Nunca mencione Gemini, Google ou IA.
