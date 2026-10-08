@@ -3,11 +3,13 @@ const Professor = require('../models/Professor');
 const Turma = require('../models/Turma');
 const SecurityController = require('./SecurityController');
 const { logAction } = require('../utils/auditHelper');
-const { notificarVerificacaoEmail, notificarBruteForce } = require('../utils/emailNotifications');
+const { notificarBruteForce } = require('../utils/emailNotifications');
 const {
+    aguardaConfirmacao,
     enviarVerificacao,
     exigeVerificacao,
     invalidarCacheDeVerificacao,
+    reenviarComIntervalo,
 } = require('../services/verificacaoEmail');
 const escolaBloqueio = require('../services/escolaBloqueio');
 const bcrypt = require('bcryptjs');
@@ -454,6 +456,20 @@ async function concluirPrimeiroAcesso(req, res, identificacao, codigo, password)
 }
 
 /**
+ * Resposta do autocadastro da equipe (Issue #716): a conta foi criada, mas só
+ * entra depois de confirmar o e-mail — sem sessão aqui. `redirect_to` leva ao
+ * login também o front antigo, que ainda tentaria abrir o painel.
+ */
+function respostaConfirmeOEmail(user, complemento = '') {
+    return {
+        success: true,
+        confirmarEmail: true,
+        message: `Conta criada! Enviamos um link de confirmação para ${user.email}. Confirme o e-mail e depois entre com a sua senha.${complemento ? ` ${complemento}` : ''}`,
+        redirect_to: getRedirectPath(null),
+    };
+}
+
+/**
  * OPÇÍO B — CADASTRO COM CÓDIGO SECRETO
  */
 exports.registerWithCode = async (req, res) => {
@@ -498,7 +514,6 @@ exports.registerWithCode = async (req, res) => {
 
         // 3. Cria a conta — já vinculada à escola do código
         const senhaHash = await bcrypt.hash(senha, SALT_ROUNDS);
-        const emailVerificacaoToken = crypto.randomBytes(32).toString('hex');
 
         const user = await Usuario.create({
             nome,
@@ -511,8 +526,8 @@ exports.registerWithCode = async (req, res) => {
             escola: escolaResolvida ? escolaResolvida.nome : undefined,
             escolaId: escolaIdFinal || undefined,
             emailVerificado: false,
-            emailVerificacaoToken,
-            emailVerificacaoExpiry: Date.now() + 24 * 60 * 60 * 1000, // 24 horas
+            // Só entra depois de confirmar o e-mail (Issue #716).
+            confirmacaoEmailObrigatoria: true,
             deveMudarSenha: false, // usuário não precisa mudar senha no primeiro acesso
             // O aceite que a pessoa marcou no formulário, com IP e navegador —
             // conferido acima por validarConsentimentoDoCadastro (Issue #295).
@@ -545,37 +560,18 @@ exports.registerWithCode = async (req, res) => {
             }
         }
 
-        // Sessão multi-escola: escola ativa já definida ao entrar no painel
-        if (req.session && escolaIdFinal) {
-            req.session.escolaAtivaId = escolaIdFinal;
-            req.session.usuarioId = String(user._id);
-        }
-
         await logAction(req, 'REGISTER_WITH_CODE', 'Usuarios', {
             recursoId: user._id,
             escolaId: escolaIdFinal || undefined,
             descricao: `Nova conta criada via Código Secreto por ${email}${escolaResolvida ? ` (escola: ${escolaResolvida.nome})` : ''}`,
         });
 
-        // Gera token JWT e define cookie HttpOnly.
-        // CPF e telefone saíram do payload: o JWT é apenas assinado, NÍO é
-        // cifrado — qualquer um que o obtenha lê o conteúdo em claro. Não há
-        // motivo para carregar PII num crachá de autorização.
-        emitirTokenSessao(res, user);
+        // 4. SEM SESSÃO (Issue #716): a conta só entra depois de confirmar o
+        //    e-mail. O link sai em background — falha de entrega é registrada
+        //    em `enviarVerificacao`, e o login manda outro.
+        enviarVerificacao(user).catch(() => {});
 
-        // 4. Envia e-mail de verificação em background (não bloqueante)
-        const tokenUrl = `${process.env.FRONTEND_URL || 'http://localhost:3001'}/api/auth/verify-email/${emailVerificacaoToken}`;
-        notificarVerificacaoEmail(user.email, user.nome, tokenUrl).catch((err) => {
-            console.error('Erro ao enviar e-mail de verificação em background:', err);
-        });
-
-        // Responde indicando sucesso e que o usuário já está autenticado
-        res.status(201).json({
-            success: true,
-            message: 'Conta criada e autenticada com sucesso! Redirecionando...',
-            user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email },
-            redirect_to: getRedirectPath(user),
-        });
+        res.status(201).json(respostaConfirmeOEmail(user));
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
@@ -633,6 +629,9 @@ const CODIGOS_LOGIN = {
     // Escola bloqueada pelo super admin (Issue #463) — mesmo código que o
     // authJWT devolve para a sessão que cai depois do bloqueio.
     ESCOLA_BLOQUEADA: escolaBloqueio.CODIGO,
+    // Autocadastro da equipe sem e-mail confirmado (Issue #716) — mesmo código
+    // que o assertAcessoAoAluno usa para o responsável (#412).
+    EMAIL_NAO_VERIFICADO: 'EMAIL_NAO_VERIFICADO',
 };
 
 const ERRO_CREDENCIAIS = {
@@ -838,6 +837,23 @@ exports.login = async (req, res) => {
                 success: false,
                 ok: false,
                 ...recusa,
+            });
+        }
+
+        // ============================================
+        // E-MAIL DO AUTOCADASTRO — verificado DEPOIS da senha (Issue #716).
+        // A conta criada pelo cadastro público da equipe só entra depois de
+        // confirmar o e-mail: até lá, ninguém provou que quem a criou é dono
+        // do endereço. Sem sessão não há como pedir o link de novo, então ele
+        // sai daqui — no máximo um a cada 10 minutos.
+        // ============================================
+        if (aguardaConfirmacao(user)) {
+            await reenviarComIntervalo(user._id);
+            return res.status(403).json({
+                success: false,
+                ok: false,
+                codigo: CODIGOS_LOGIN.EMAIL_NAO_VERIFICADO,
+                error: 'Confirme seu e-mail para entrar. Enviamos o link de confirmação para a sua caixa de entrada.',
             });
         }
 
@@ -2635,6 +2651,9 @@ exports.registerDocente = async (req, res) => {
             telefone,
             perfil: 'professor',
             ativo: true,
+            // Só entra depois de confirmar o e-mail (Issue #716).
+            emailVerificado: false,
+            confirmacaoEmailObrigatoria: true,
             ultimoLogin: now,
             lastLogin: now,
             // O aceite que a pessoa marcou no formulário, com IP e navegador —
@@ -2718,22 +2737,16 @@ exports.registerDocente = async (req, res) => {
             horario: hourStr,
         });
 
-        // 3. Logar automaticamente gerando cookie JWT
-        emitirTokenSessao(res, user);
+        // 3. SEM SESSÃO (Issue #716): a conta só entra depois de confirmar o
+        //    e-mail. O link sai em background, e o login manda outro.
+        enviarVerificacao(user).catch(() => {});
 
-        // Sessão multi-escola: escola ativa já definida ao entrar no painel
-        if (req.session && escolaIdFinal) {
-            req.session.escolaAtivaId = escolaIdFinal;
-            req.session.usuarioId = String(user._id);
-        }
-
-        res.status(201).json({
-            success: true,
-            message:
-                'Conta de docente criada com sucesso! A direção atribui as suas turmas; até lá, nenhum aluno aparece no painel.',
-            user: { id: user._id, nome: user.nome, perfil: user.perfil, email: user.email },
-            redirect_to: getRedirectPath(user),
-        });
+        res.status(201).json(
+            respostaConfirmeOEmail(
+                user,
+                'A direção atribui as suas turmas; até lá, nenhum aluno aparece no painel.'
+            )
+        );
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }

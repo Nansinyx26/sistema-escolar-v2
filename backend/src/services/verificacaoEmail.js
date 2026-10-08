@@ -55,6 +55,39 @@ function exigeVerificacao(conta) {
     return nascimento >= marcoDaVerificacao();
 }
 
+/**
+ * Conta do autocadastro da equipe que ainda não confirmou o e-mail (Issue
+ * #716). Os cadastros públicos (`register-docente`, `register-code`) aceitam
+ * qualquer endereço; até a pessoa clicar no link, ninguém provou que quem
+ * criou a conta é dono dele. Essa conta não entra — o login recusa e o
+ * `authJWT` recusa a sessão. Vale para qualquer perfil marcado, mas só o
+ * autocadastro marca: conta antiga, da gestão ou de convite não tem a marca.
+ *
+ * @param {{confirmacaoEmailObrigatoria?: boolean, emailVerificado?: boolean}} conta
+ */
+function aguardaConfirmacao(conta) {
+    return Boolean(conta?.confirmacaoEmailObrigatoria) && !conta?.emailVerificado;
+}
+
+/** Intervalo mínimo entre dois links pedidos pelo login (Issue #716). */
+const REENVIO_MINIMO_MS = 10 * 60 * 1000;
+
+/**
+ * Reenvia o link de confirmação, no máximo um a cada 10 minutos. Quem tem a
+ * senha de uma conta não confirmada poderia, entrando em sequência, encher a
+ * caixa postal do dono do e-mail.
+ *
+ * @returns {Promise<boolean>} true se um link novo saiu
+ */
+async function reenviarComIntervalo(usuarioId) {
+    const conta = await Usuario.findById(usuarioId).select('email nome +emailVerificacaoExpiry');
+    if (!conta) return false;
+    const validade = conta.emailVerificacaoExpiry ? conta.emailVerificacaoExpiry.getTime() : 0;
+    const emitidoEm = validade - VALIDADE_HORAS * 3600 * 1000;
+    if (validade && Date.now() - emitidoEm < REENVIO_MINIMO_MS) return false;
+    return enviarVerificacao(conta);
+}
+
 /** Lê a conta (com cache curto) e decide. Usado nos guards por requisição. */
 async function contaPrecisaConfirmar(usuarioId) {
     const id = String(usuarioId || '');
@@ -121,4 +154,6 @@ module.exports = {
     invalidarCacheDeVerificacao,
     enviarVerificacao,
     urlDeVerificacao,
+    aguardaConfirmacao,
+    reenviarComIntervalo,
 };

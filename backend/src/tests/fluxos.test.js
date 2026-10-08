@@ -1,6 +1,6 @@
 /**
  * fluxos.test.js — Validação final (Fase 7) dos fluxos de navegação:
- * cadastro → sessão automática → redirect por perfil; primeiro acesso;
+ * cadastro → confirmação de e-mail → login (Issue #716); primeiro acesso;
  * recuperação de senha; logout; páginas de erro amigáveis.
  */
 const request = require('supertest');
@@ -41,9 +41,9 @@ beforeEach(async () => {
 });
 
 // ─────────────────────────────────────────────────────────
-// Cadastro → autenticação automática + redirect por perfil
+// Cadastro → confirmação de e-mail antes da sessão (Issue #716)
 // ─────────────────────────────────────────────────────────
-describe('Cadastro com auto-login e redirect por perfil', () => {
+describe('Cadastro da equipe pede a confirmação do e-mail antes de entrar', () => {
     it.each([
         ['register-diretor', 'dir@escola.test'],
         ['register-secretaria', 'sec@escola.test'],
@@ -64,7 +64,7 @@ describe('Cadastro com auto-login e redirect por perfil', () => {
         }
     );
 
-    it('docente: emite cookie JWT e redirect para o dashboard', async () => {
+    it('docente: não abre sessão e manda para o login depois de confirmar', async () => {
         const res = await request(app).post('/api/auth/register-docente').send({
             nome: 'Docente Teste',
             email: 'doc@escola.test',
@@ -77,12 +77,13 @@ describe('Cadastro com auto-login e redirect por perfil', () => {
             consentimentoLgpd: ACEITE_LGPD,
         });
         expect(res.status).toBe(201);
-        expect(res.body.redirect_to).toBe('/html/dashboard.html');
+        expect(res.body.confirmarEmail).toBe(true);
+        expect(res.body.redirect_to).toBe('/html/login.html');
         const cookies = res.headers['set-cookie'] || [];
-        expect(cookies.some((c) => c.startsWith('escola_jwt'))).toBe(true);
+        expect(cookies.some((c) => c.startsWith('escola_jwt'))).toBe(false);
     });
 
-    it('nenhum redirect_to de cadastro aponta para landing ou login', async () => {
+    it('a resposta do cadastro diz para confirmar o e-mail', async () => {
         const res = await request(app).post('/api/auth/register-docente').send({
             nome: 'Doc2',
             email: 'doc2@escola.test',
@@ -94,7 +95,8 @@ describe('Cadastro com auto-login e redirect por perfil', () => {
             codigoEscola: CODIGO_GLOBAL,
             consentimentoLgpd: ACEITE_LGPD,
         });
-        expect(res.body.redirect_to).not.toMatch(/index\.html|login\.html|primeiro-acesso/);
+        expect(res.body.message).toContain('Enviamos um link de confirmação para doc2@escola.test');
+        expect(res.body.redirect_to).not.toMatch(/index\.html|primeiro-acesso/);
     });
 });
 

@@ -5,6 +5,7 @@ const { tokenEstaRevogado } = require('../utils/sessionToken');
 const logger = require('../utils/logger');
 const logContext = require('../utils/logContext');
 const escolaBloqueio = require('../services/escolaBloqueio');
+const { aguardaConfirmacao } = require('../services/verificacaoEmail');
 
 module.exports = async function authJWT(req, res, next) {
     // Tenta obter o token do cookie primeiro, depois do header Authorization
@@ -51,7 +52,9 @@ module.exports = async function authJWT(req, res, next) {
 
         // Verificação de invalidação de sessão (senha alterada, conta removida)
         const user = await Usuario.findById(decoded.id || decoded._id)
-            .select('tokenVersion ativo perfil superAdmin escolaId')
+            .select(
+                'tokenVersion ativo perfil superAdmin escolaId emailVerificado confirmacaoEmailObrigatoria'
+            )
             .lean();
 
         const userTokenVersion = user && user.tokenVersion !== undefined ? user.tokenVersion : 0;
@@ -70,6 +73,17 @@ module.exports = async function authJWT(req, res, next) {
             return res.status(401).json({
                 success: false,
                 error: 'Conta desativada. Procure a administração da escola.',
+            });
+        }
+
+        // Autocadastro da equipe ainda sem e-mail confirmado (Issue #716). O
+        // login e os cadastros já não abrem sessão para essa conta; esta é a
+        // segunda barreira, para qualquer outro caminho que emita uma.
+        if (aguardaConfirmacao(user)) {
+            return res.status(403).json({
+                success: false,
+                codigo: 'EMAIL_NAO_VERIFICADO',
+                error: 'Confirme seu e-mail para entrar. O link de confirmação está na sua caixa de entrada.',
             });
         }
 
