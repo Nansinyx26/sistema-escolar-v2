@@ -14,6 +14,7 @@ const { escolaMatch } = require('../middleware/filtrarPorEscola');
 const escapeRegex = require('../utils/escapeRegex');
 const { RELEVANCIA } = require('../utils/buscaAluno');
 const { nomeExibicao, sugerirAlunos } = require('./ia/sugestaoAlunos');
+const { turmasDoProfessorNaEscola } = require('./turmasDoProfessor');
 
 const DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
@@ -538,10 +539,8 @@ async function enforceRBAC({ perfil, userId, userEmail, escolaId }) {
         if (!professorDoc) {
             return { alunoFilter: { _id: null }, turmasAutorizadas: [], professorDoc: null };
         }
-        const turmasAutorizadas = [
-            professorDoc.salaPrincipal,
-            ...(professorDoc.salasAdicionais || []),
-        ].filter(Boolean);
+        // Só as turmas que o professor tem NESTA escola (Issue #707).
+        const turmasAutorizadas = turmasDoProfessorNaEscola(professorDoc, escolaId);
         const alunoFilter = comEscola({ turma: { $in: turmasAutorizadas } }, ef);
         return { alunoFilter, turmasAutorizadas, professorDoc };
     }
@@ -765,11 +764,21 @@ async function fetchProfessores({ turma, escolaId }) {
     // escopo, "professores da turma 3A" misturava docentes de outras escolas.
     // Professor guarda o vínculo em vinculos.escolaId (não em escolaId de topo).
     const base = {
-        $or: [{ salaPrincipal: turma }, { salasAdicionais: turma }],
+        $or: [
+            { salaPrincipal: turma },
+            { salasAdicionais: turma },
+            { turmas: turma },
+            { 'vinculos.turmas': turma },
+        ],
     };
     const query = escolaId ? { $and: [base, { 'vinculos.escolaId': String(escolaId) }] } : base;
-    const professores = await Professor.find(query).select('nome materias disciplina').lean();
-    return professores;
+    const professores = await Professor.find(query)
+        .select('nome materias disciplina salaPrincipal salasAdicionais turmas vinculos escolaId')
+        .lean();
+    // A turma de mesmo nome em outra escola do professor não conta (Issue #707).
+    return professores
+        .filter((p) => turmasDoProfessorNaEscola(p, escolaId).includes(turma))
+        .map(({ nome, materias, disciplina }) => ({ nome, materias, disciplina }));
 }
 
 /**

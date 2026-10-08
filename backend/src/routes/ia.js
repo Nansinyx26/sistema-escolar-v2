@@ -17,10 +17,10 @@ const acessoAluno = requireAcessoAoAluno('alunoId');
 // Interruptor por escola (Issue #401): a IA só recebe dado de aluno onde a
 // escola decidiu usá-la. O copiloto confere dentro do próprio controller,
 // porque a resposta dele é um fluxo (SSE).
-const { iaLiberada, RESPOSTA_DESLIGADA } = require('../services/ia/interruptor');
+const { iaLiberada, respostaDesligada } = require('../services/ia/interruptor');
 async function exigirIaLigada(req, res, next) {
     if (await iaLiberada(req.escolaId)) return next();
-    return res.status(403).json(RESPOSTA_DESLIGADA);
+    return res.status(403).json(respostaDesligada(req.user?.perfil, req.escolaId));
 }
 
 router.get(
@@ -75,8 +75,8 @@ router.get(
 // ============================================
 // COPILOTO — conversa em streaming (SSE)
 // ============================================
-// Este router já é montado em api.js com `authJWT + horizontalFilter +
-// filtrarPorEscola`, então quando a requisição chega aqui `req.user` está
+// Este router já é montado em api.js com `authJWT + filtrarPorEscola +
+// horizontalFilter`, então quando a requisição chega aqui `req.user` está
 // verificado e `req.escolaId` resolvido. O ContextBuilder lê SÓ desses dois —
 // nunca do corpo da requisição.
 //

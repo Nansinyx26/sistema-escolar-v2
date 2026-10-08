@@ -10,6 +10,7 @@ const SecurityController = require('../controllers/SecurityController');
 const Usuario = require('../models/Usuario');
 const { logAction } = require('../utils/auditHelper');
 const escolaBloqueio = require('../services/escolaBloqueio');
+const obs = require('../observability');
 
 // Mesmo alfabeto do seed (scripts/seedEscolas.js): sem caracteres ambíguos,
 // para o código ser ditado por telefone e digitado no cadastro do docente.
@@ -259,12 +260,30 @@ router.get('/codigos-secretos', authJWT, authorize('admin'), async (req, res) =>
  * escola. O código anterior deixa de valer imediatamente para novos cadastros.
  */
 /**
- * PATCH /api/escolas/:escolaId/ia — ADMIN liga ou desliga o assistente naquela
+ * A direção decide só pela escola a que está vinculada; o admin, por qualquer
+ * uma. Vale para as chaves que a direção liga e desliga na própria escola.
+ */
+async function decidePelaEscola(user, escolaId) {
+    if (user.perfil === 'admin') return true;
+    const conta = await Usuario.findById(user.id || user._id)
+        .select('escolaId')
+        .lean();
+    const vinculos = await vinculosDoUsuario(user);
+    const minhas = new Set([
+        ...vinculos.map((v) => String(v.escolaId)),
+        ...(conta?.escolaId ? [String(conta.escolaId)] : []),
+    ]);
+    return minhas.has(String(escolaId));
+}
+
+/**
+ * PATCH /api/escolas/:escolaId/ia — liga ou desliga o assistente naquela
  * escola (Issue #401). Sem decisão registrada, vale o padrão da rede
  * (`IA_ESCOLAS_PADRAO`, que nasce desligado): mandar dado de aluno para um
- * provedor externo é decisão da escola.
+ * provedor externo é decisão da escola. Quem decide é a direção da própria
+ * escola ou o admin da rede (Issue #711).
  */
-router.patch('/:escolaId/ia', authJWT, authorize('admin'), async (req, res) => {
+router.patch('/:escolaId/ia', authJWT, authorize('admin', 'diretor'), async (req, res) => {
     try {
         const habilitada = req.body?.habilitada;
         if (typeof habilitada !== 'boolean') {
@@ -272,26 +291,37 @@ router.patch('/:escolaId/ia', authJWT, authorize('admin'), async (req, res) => {
                 .status(400)
                 .json({ success: false, error: 'Informe habilitada: true ou false.' });
         }
+        const { escolaId } = req.params;
+        if (!(await decidePelaEscola(req.user, escolaId))) {
+            return res.status(403).json({ success: false, error: 'Acesso negado.' });
+        }
+        const antes = await Escola.findById(escolaId).select('iaHabilitada').lean();
+        if (!antes) {
+            return res.status(404).json({ success: false, error: 'Escola não encontrada.' });
+        }
         const escola = await Escola.findByIdAndUpdate(
-            req.params.escolaId,
+            escolaId,
             { $set: { iaHabilitada: habilitada } },
             { new: true }
         )
             .select('nome iaHabilitada')
             .lean();
-        if (!escola) {
-            return res.status(404).json({ success: false, error: 'Escola não encontrada.' });
-        }
         require('../services/ia/interruptor').limparCache();
-        const { logAction } = require('../utils/auditHelper');
         await logAction(req, 'IA_ESCOLA_ALTERADA', 'Segurança', {
             recursoId: String(escola._id),
+            // `null` = a escola ainda não tinha decidido (valia o padrão da rede).
+            valorAnterior: {
+                iaHabilitada: typeof antes.iaHabilitada === 'boolean' ? antes.iaHabilitada : null,
+            },
             valorNovo: { iaHabilitada: escola.iaHabilitada },
             descricao: `Assistente de IA ${escola.iaHabilitada ? 'ligado' : 'desligado'} na escola ${escola._id}.`,
         });
         return res.json({ success: true, data: escola });
     } catch (e) {
-        return res.status(500).json({ success: false, error: e.message });
+        obs.captureException(e, { tipo: 'escolas.ia_alterar' });
+        return res
+            .status(500)
+            .json({ success: false, error: 'Não foi possível salvar a decisão sobre a IA.' });
     }
 });
 
@@ -314,18 +344,8 @@ router.patch(
                     .json({ success: false, error: 'Informe liberar: true ou false.' });
             }
             const { escolaId } = req.params;
-            if (req.user.perfil !== 'admin') {
-                const conta = await Usuario.findById(req.user.id || req.user._id)
-                    .select('escolaId')
-                    .lean();
-                const vinculos = await vinculosDoUsuario(req.user);
-                const minhas = new Set([
-                    ...vinculos.map((v) => String(v.escolaId)),
-                    ...(conta?.escolaId ? [String(conta.escolaId)] : []),
-                ]);
-                if (!minhas.has(String(escolaId))) {
-                    return res.status(403).json({ success: false, error: 'Acesso negado.' });
-                }
+            if (!(await decidePelaEscola(req.user, escolaId))) {
+                return res.status(403).json({ success: false, error: 'Acesso negado.' });
             }
             const antes = await Escola.findById(escolaId).select('professorVeAutorizacoes').lean();
             if (!antes) {

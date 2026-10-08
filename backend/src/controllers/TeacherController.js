@@ -1,5 +1,6 @@
 const Professor = require('../models/Professor');
 const ImageProcessor = require('../utils/imageProcessor');
+const { gravaNoVinculo, turmasDoProfessorNaEscola } = require('../services/turmasDoProfessor');
 
 const PERFIS_GESTAO = ['admin', 'diretor', 'secretaria'];
 
@@ -55,6 +56,31 @@ function pertenceAEscola(req, teacher) {
     return vinculos.some((v) => String(v.escolaId) === String(req.escolaId));
 }
 
+/**
+ * O cadastro como a escola ativa o vê (Issue #707). Numa escola de vínculo
+ * adicional, as turmas mostradas são as que ELA atribuiu (as do topo são da
+ * escola do cadastro); e as turmas que outras escolas gravaram nos vínculos
+ * delas não saem daqui. O admin, que opera a rede, vê o documento inteiro.
+ */
+function vistoPelaEscola(req, teacher) {
+    if (!req.escolaId || req.user?.perfil === 'admin' || !teacher) return teacher;
+    const visto = { ...teacher };
+    if (Array.isArray(teacher.vinculos)) {
+        visto.vinculos = teacher.vinculos.map((v) => {
+            if (String(v?.escolaId) === String(req.escolaId)) return v;
+            const { turmas: _deOutraEscola, ...resto } = v || {};
+            return resto;
+        });
+    }
+    if (gravaNoVinculo(teacher, req.escolaId)) {
+        const turmas = turmasDoProfessorNaEscola(teacher, req.escolaId);
+        visto.salaPrincipal = turmas[0];
+        visto.salasAdicionais = turmas.slice(1);
+        visto.turmas = turmas;
+    }
+    return visto;
+}
+
 /** true se o usuário logado é o dono do cadastro pedagógico. */
 function ehDonoDoCadastro(user, teacher) {
     if (!user || !teacher) return false;
@@ -108,10 +134,12 @@ exports.list = async (req, res) => {
                 ];
                 const disc = u.disciplina || 'Geral';
                 const isEspecial = materiasEspeciais.includes(disc);
-                const t = u.turma || '';
-
-                const salaPrincipal = isEspecial ? 'VARIADOS' : t;
-                const salasAdicionais = isEspecial && t ? [t] : [];
+                // Sem turma (Issue #706): `Usuario.turma` é o que a pessoa
+                // escreveu no cadastro público, não uma atribuição da gestão.
+                // Virar escopo aqui reabriria, pelo auto-heal, o que o
+                // `register-docente` deixou de fazer.
+                const salaPrincipal = isEspecial ? 'VARIADOS' : undefined;
+                const salasAdicionais = [];
                 const materias = [disc];
 
                 await Professor.create({
@@ -123,7 +151,7 @@ exports.list = async (req, res) => {
                     disciplina: disc,
                     salaPrincipal: salaPrincipal,
                     salasAdicionais: salasAdicionais,
-                    turmas: t ? [t] : [],
+                    turmas: [],
                     materias: materias,
                     tipoEspecial: isEspecial,
                     role: 'professor',
@@ -146,7 +174,7 @@ exports.list = async (req, res) => {
         // gestão; docentes entre si veem o essencial pedagógico.
         const ehGestao = PERFIS_GESTAO.includes(String(req.user?.perfil || '').toLowerCase());
         const normalizedTeachers = teachers.map((t) => {
-            const base = { ...t, id: t.id || t._id };
+            const base = { ...vistoPelaEscola(req, t), id: t.id || t._id };
             if (!ehGestao) {
                 delete base.telefone;
                 delete base.cpf;
@@ -179,7 +207,7 @@ exports.get = async (req, res) => {
 
         const ehGestao = PERFIS_GESTAO.includes(String(req.user?.perfil || '').toLowerCase());
         const ehProprio = ehDonoDoCadastro(req.user, teacher);
-        const data = { ...teacher };
+        const data = { ...vistoPelaEscola(req, teacher) };
         if (!ehGestao && !ehProprio) {
             delete data.telefone;
             delete data.idade;
@@ -276,31 +304,59 @@ exports.update = async (req, res) => {
             }
         }
 
-        // Só a gestão remonta as turmas (elas definem o escopo de acesso)
+        // Vínculos de escola só mudam por admin — nem diretor move docente entre escolas pelo body
+        if (dados.vinculos !== undefined && perfil !== 'admin') delete dados.vinculos;
+
+        // Só a gestão remonta as turmas (elas definem o escopo de acesso).
+        //
+        // Cada escola, as suas (Issue #707): as turmas do topo são da escola do
+        // cadastro. A gestão de uma escola de vínculo ADICIONAL grava no vínculo
+        // dela — antes reescrevia o topo, e a mudança passava a valer também na
+        // escola do cadastro, que nunca atribuiu aquelas turmas.
+        let turmasDoVinculo = null;
         if (
             ehGestao &&
             (dados.salaPrincipal !== undefined || dados.salasAdicionais !== undefined)
         ) {
-            const principal =
-                dados.salaPrincipal !== undefined ? dados.salaPrincipal : existente.salaPrincipal;
+            const noVinculo = gravaNoVinculo(existente, req.escolaId);
+            const atuais = noVinculo ? turmasDoProfessorNaEscola(existente, req.escolaId) : [];
+            const anterior = noVinculo ? atuais[0] : existente.salaPrincipal;
+            const anteriores = noVinculo ? atuais.slice(1) : existente.salasAdicionais || [];
+            const principal = dados.salaPrincipal !== undefined ? dados.salaPrincipal : anterior;
             const adicionais = Array.isArray(dados.salasAdicionais)
                 ? dados.salasAdicionais
-                : existente.salasAdicionais || [];
-            dados.turmas =
+                : anteriores;
+            const turmas =
                 principal && principal !== 'VARIADOS' ? [principal, ...adicionais] : adicionais;
+            if (noVinculo) {
+                turmasDoVinculo = turmas.filter(Boolean).map(String);
+                delete dados.salaPrincipal;
+                delete dados.salasAdicionais;
+            } else {
+                dados.turmas = turmas;
+            }
         }
 
-        // Vínculos de escola só mudam por admin — nem diretor move docente entre escolas pelo body
-        if (dados.vinculos !== undefined && perfil !== 'admin') delete dados.vinculos;
+        const atualizacao = { $set: dados };
+        const opcoes = { new: true };
+        if (turmasDoVinculo && Array.isArray(dados.vinculos)) {
+            // Admin mandou os vínculos no corpo: as turmas entram no da escola.
+            dados.vinculos = dados.vinculos.map((v) =>
+                String(v?.escolaId) === String(req.escolaId) ? { ...v, turmas: turmasDoVinculo } : v
+            );
+        } else if (turmasDoVinculo) {
+            atualizacao.$set['vinculos.$[daEscola].turmas'] = turmasDoVinculo;
+            opcoes.arrayFilters = [{ 'daEscola.escolaId': String(req.escolaId) }];
+        }
 
         const teacher = await Professor.findOneAndUpdate(
             { $or: [{ _id: req.params.id }, { id: req.params.id }] },
-            { $set: dados },
-            { new: true }
-        );
+            atualizacao,
+            opcoes
+        ).lean();
         if (!teacher)
             return res.status(404).json({ success: false, error: 'Professor não encontrado' });
-        res.json({ success: true, data: teacher });
+        res.json({ success: true, data: vistoPelaEscola(req, teacher) });
     } catch (error) {
         res.status(400).json({ success: false, error: error.message });
     }
@@ -351,7 +407,7 @@ exports.statusOnline = async (req, res) => {
 
         // Busca professores da escola
         const profsBrutos = await Professor.find(escopo)
-            .select('nome foto salaPrincipal idUsuario escola vinculos')
+            .select('nome foto salaPrincipal salasAdicionais turmas idUsuario escola vinculos')
             .lean();
 
         // Busca diretores da escola
@@ -466,7 +522,7 @@ exports.statusOnline = async (req, res) => {
                 cargo: 'Professor',
                 foto: p.foto || null,
                 escola: nomeDaEscola(p),
-                sala: p.salaPrincipal || '—',
+                sala: vistoPelaEscola(req, p).salaPrincipal || '—',
                 online: pres.online,
                 status: pres.status,
                 onlineDesde: pres.onlineDesde,

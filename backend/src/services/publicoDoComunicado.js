@@ -18,6 +18,7 @@ const Professor = require('../models/Professor');
 const Usuario = require('../models/Usuario');
 const { emitirParaEscola, emitirParaPerfis, emitirParaUsuario } = require('../utils/realtime');
 const { restritoPara } = require('../utils/restricaoAcesso');
+const { turmasDoProfessorNaEscola } = require('./turmasDoProfessor');
 
 const EVENTO = 'comunicado:new';
 const GESTAO = ['admin', 'diretor', 'secretaria'];
@@ -76,7 +77,12 @@ async function responsaveisDasTurmas(escolaId, turmas) {
     return contas.map((c) => String(c._id));
 }
 
-/** Contas dos professores que dão aula nas turmas, na escola. */
+/**
+ * Contas dos professores que dão aula nas turmas, na escola. A consulta acha os
+ * candidatos; quem decide é `turmasDoProfessorNaEscola` (Issue #707): o
+ * professor de duas escolas não recebe o aviso da "1A" de B por dar aula na
+ * "1A" de A.
+ */
 async function professoresDasTurmas(escolaId, turmas) {
     const nomes = variantesDasTurmas(turmas);
     const professores = await Professor.find({
@@ -88,13 +94,18 @@ async function professoresDasTurmas(escolaId, turmas) {
                     { salaPrincipal: { $in: nomes } },
                     { salasAdicionais: { $in: nomes } },
                     { turmas: { $in: nomes } },
+                    { 'vinculos.turmas': { $in: nomes } },
                 ],
             },
         ],
     })
-        .select('idUsuario')
+        .select('idUsuario salaPrincipal salasAdicionais turmas vinculos escolaId')
         .lean();
-    return professores.map((p) => String(p.idUsuario)).filter(Boolean);
+    const alvo = new Set(nomes);
+    return professores
+        .filter((p) => turmasDoProfessorNaEscola(p, escolaId).some((t) => alvo.has(t)))
+        .map((p) => String(p.idUsuario))
+        .filter(Boolean);
 }
 
 /**
@@ -167,4 +178,9 @@ async function emitirComunicadoNovo(comunicado, escolaPadrao) {
     }
 }
 
-module.exports = { emitirComunicadoNovo, turmasDosDestinatarios, contasDasTurmas };
+module.exports = {
+    emitirComunicadoNovo,
+    turmasDosDestinatarios,
+    contasDasTurmas,
+    variantesDasTurmas,
+};

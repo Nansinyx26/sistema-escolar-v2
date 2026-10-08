@@ -38,6 +38,7 @@ const Aluno = require('../../models/Aluno');
 const Professor = require('../../models/Professor');
 const Config = require('../../models/Config');
 const { escolaMatch } = require('../../middleware/filtrarPorEscola');
+const { turmasDoProfessorNaEscola } = require('../turmasDoProfessor');
 
 // ─── Turmas ─────────────────────────────────────────────────────────────────
 
@@ -130,7 +131,7 @@ async function turmasDaEscola(escolaId) {
         Aluno.distinct('turma', { ...escopo, ativo: { $ne: false } }),
         Aluno.distinct('turmaId', { ...escopo, ativo: { $ne: false } }),
         Professor.find(filtroProfessoresDaEscola(escolaId))
-            .select('salaPrincipal salasAdicionais turmas')
+            .select('salaPrincipal salasAdicionais turmas vinculos escolaId')
             .lean(),
     ]);
 
@@ -147,11 +148,8 @@ async function turmasDaEscola(escolaId) {
         ...ativas.flatMap((t) => [t.nome, t.id]),
         ...turmasDeAlunos,
         ...turmaIdsDeAlunos,
-        ...professores.flatMap((p) => [
-            p.salaPrincipal,
-            ...(Array.isArray(p.salasAdicionais) ? p.salasAdicionais : []),
-            ...(Array.isArray(p.turmas) ? p.turmas : []),
-        ]),
+        // Só as turmas que o professor tem NESTA escola (Issue #707).
+        ...professores.flatMap((p) => turmasDoProfessorNaEscola(p, escolaId)),
     ];
     return canonizarLista(textos).filter((t) => !desativadas.has(t.id));
 }
@@ -314,14 +312,11 @@ function resolverDisciplina(disciplinas, valor) {
 
 /**
  * O que a página precisa saber de um professor — nome, salas e disciplinas.
- * Contato (e-mail, telefone) fica de fora de propósito.
+ * Contato (e-mail, telefone) fica de fora de propósito. As salas são as que ele
+ * tem NA ESCOLA da página (Issue #707).
  */
-function resumoDocente(professor) {
-    const salas = [
-        professor.salaPrincipal,
-        ...(Array.isArray(professor.salasAdicionais) ? professor.salasAdicionais : []),
-        ...(Array.isArray(professor.turmas) ? professor.turmas : []),
-    ];
+function resumoDocente(professor, escolaId) {
+    const salas = turmasDoProfessorNaEscola(professor, escolaId);
     const disciplinas = [
         ...new Set(
             [...(professor.materias || []), professor.disciplina]
@@ -342,23 +337,23 @@ function resumoDocente(professor) {
 }
 
 const CAMPOS_DOCENTE =
-    'idUsuario nome salaPrincipal salasAdicionais turmas materias disciplina tipoEspecial';
+    'idUsuario nome salaPrincipal salasAdicionais turmas materias disciplina tipoEspecial vinculos escolaId';
 
 async function docentesDaEscola(escolaId) {
     const professores = await Professor.find(filtroProfessoresDaEscola(escolaId))
         .select(CAMPOS_DOCENTE)
         .sort({ nome: 1 })
         .lean();
-    return professores.filter((p) => p.idUsuario).map(resumoDocente);
+    return professores.filter((p) => p.idUsuario).map((p) => resumoDocente(p, escolaId));
 }
 
 /** Cadastro pedagógico do usuário logado — mesma busca de `horizontalFilter`. */
-async function docenteDoUsuario(usuarioId) {
+async function docenteDoUsuario(usuarioId, escolaId) {
     if (!usuarioId) return null;
     const professor = await Professor.findOne({ idUsuario: String(usuarioId) })
         .select(CAMPOS_DOCENTE)
         .lean();
-    return professor ? resumoDocente(professor) : null;
+    return professor ? resumoDocente(professor, escolaId) : null;
 }
 
 /**
