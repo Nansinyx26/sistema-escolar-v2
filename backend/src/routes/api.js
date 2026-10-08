@@ -84,13 +84,14 @@ router.get('/public/photo/:id', FileController.servePublicImage); // Rota públi
 // `horizontalFilter` não é decoração: desde a Issue #228 a foto do aluno carrega
 // `metadata.alunoId`, e por isso o download passa por `assertAcessoAoAluno` — que
 // decide a turma do professor lendo `req.allowedTurmas`. É este middleware que
-// preenche esse campo. Sem ele, a lista fica vazia e TODO professor toma 403 na
+// preenche esse campo, com as turmas da escola que o `filtrarPorEscola` resolveu
+// antes dele (Issue #707). Sem ele, a lista fica vazia e TODO professor toma 403 na
 // foto dos próprios alunos. Mesma composição já usada em `/upload/documento/:id`.
 router.get(
     '/upload/photo/:id',
     authJWT,
-    horizontalFilter,
     filtrarPorEscola,
+    horizontalFilter,
     FileController.serveFile
 );
 router.post(
@@ -139,15 +140,15 @@ router.post(
 router.get(
     '/upload/documento/:id',
     authJWT,
-    horizontalFilter,
     filtrarPorEscola,
+    horizontalFilter,
     FileController.serveFile
 );
 router.post(
     '/upload/documento',
     authJWT,
-    horizontalFilter,
     filtrarPorEscola,
+    horizontalFilter,
     uploadDocument.array('documentos', 10),
     verificarDireitosAutorais,
     async (req, res) => {
@@ -281,25 +282,25 @@ router.use('/meus-dados', authJWT, require('./meus-dados'));
 // `filtrarPorEscola` resolve req.escolaId: sem ele o escopo do controller vira
 // no-op e o sync de uma escola apagava as atribuições das outras (Issue #660).
 router.use('/atribuicoes', authJWT, filtrarPorEscola, require('./atribuicoes'));
-router.use('/alunos', authJWT, horizontalFilter, filtrarPorEscola, require('./alunos'));
-router.use('/professores', authJWT, horizontalFilter, filtrarPorEscola, require('./professores'));
+router.use('/alunos', authJWT, filtrarPorEscola, horizontalFilter, require('./alunos'));
+router.use('/professores', authJWT, filtrarPorEscola, horizontalFilter, require('./professores'));
 // `filtrarPorEscola` é o que resolve req.escolaId — sem ele o escopo de escola
 // do DirectorController vira no-op e a listagem volta a varrer a rede inteira.
 router.use('/diretores', authJWT, filtrarPorEscola, require('./diretores'));
-router.use('/turmas', authJWT, horizontalFilter, filtrarPorEscola, require('./turmas'));
-router.use('/faltas', authJWT, horizontalFilter, filtrarPorEscola, require('./faltas'));
+router.use('/turmas', authJWT, filtrarPorEscola, horizontalFilter, require('./turmas'));
+router.use('/faltas', authJWT, filtrarPorEscola, horizontalFilter, require('./faltas'));
 router.use(
     '/frequencia-professores',
     authJWT,
-    horizontalFilter,
     filtrarPorEscola, // Issue #660: sem ele, a lista e o registro ignoravam a escola
+    horizontalFilter,
     require('./frequencia-professores')
 );
 // Planilha de faltas dos funcionários — `filtrarPorEscola` é obrigatório: é ele
 // que resolve req.escolaId, usado tanto para listar o quadro quanto para isolar
 // a planilha por escola.
 router.use('/faltas-funcionarios', authJWT, filtrarPorEscola, require('./faltas-funcionarios'));
-router.use('/notas', authJWT, horizontalFilter, filtrarPorEscola, require('./notas'));
+router.use('/notas', authJWT, filtrarPorEscola, horizontalFilter, require('./notas'));
 router.use('/dashboard', require('./dashboard'));
 // `filtrarPorEscola` acrescentado junto com o `escolaId` no schema: sem ele
 // `req.escolaId` é undefined, o carimbo do controller grava `undefined` e o
@@ -310,8 +311,8 @@ router.use('/avaliacoes', require('./avaliacoes'));
 router.use(
     '/avaliacoes-escolares',
     authJWT,
-    horizontalFilter,
     filtrarPorEscola,
+    horizontalFilter,
     require('./avaliacoesEscolares')
 );
 router.use('/reviews', authJWT, require('./reviews'));
@@ -326,16 +327,17 @@ router.use('/comentarios', authJWT, filtrarPorEscola, require('./comentarios'));
 // que o `authorize.estrito` depende para exigir tenant explícito do admin, e
 // que o controller usa para isolar a fila. Sem ele, a moderação vira global.
 router.use('/moderacao', authJWT, filtrarPorEscola, require('./moderacao'));
-router.use('/relatorios', authJWT, horizontalFilter, filtrarPorEscola, require('./relatorios'));
-// Deveres legais (LDB, Censo Escolar/INEP e LAI). `horizontalFilter` vem antes
-// de `filtrarPorEscola` porque o recorte do professor é por TURMA e o da
-// exportação é por ESCOLA — as duas barreiras se somam, não se substituem.
-router.use('/conformidade', authJWT, horizontalFilter, filtrarPorEscola, require('./conformidade'));
+router.use('/relatorios', authJWT, filtrarPorEscola, horizontalFilter, require('./relatorios'));
+// Deveres legais (LDB, Censo Escolar/INEP e LAI). O recorte do professor é por
+// TURMA (`horizontalFilter`) e o da exportação é por ESCOLA (`filtrarPorEscola`)
+// — as duas barreiras se somam, não se substituem. A escola vem primeiro: as
+// turmas são as do professor NAQUELA escola (Issue #707).
+router.use('/conformidade', authJWT, filtrarPorEscola, horizontalFilter, require('./conformidade'));
 router.use('/audio', require('./audio'));
 // `filtrarPorEscola`: a narração confere o texto contra os alunos da escola
 // antes de mandá-lo ao provedor de voz (Issue #401).
 router.use('/tts', authJWT, filtrarPorEscola, require('./tts'));
-router.use('/ia', authJWT, horizontalFilter, filtrarPorEscola, require('./ia'));
+router.use('/ia', authJWT, filtrarPorEscola, horizontalFilter, require('./ia'));
 router.use('/chatbot', authJWT, filtrarPorEscola, require('./chatbot'));
 router.use('/secretaria', authJWT, require('./secretaria'));
 
@@ -346,16 +348,16 @@ const { requireAcessoAoAluno } = require('../middleware/assertAcessoAoAluno');
 router.get(
     '/gamificacao/aluno/:alunoId',
     authJWT,
-    horizontalFilter,
     filtrarPorEscola,
+    horizontalFilter,
     requireAcessoAoAluno('alunoId'),
     GamificacaoController.getBadgesAluno
 );
 router.post(
     '/gamificacao/recalcular/:alunoId',
     authJWT,
-    horizontalFilter,
     filtrarPorEscola,
+    horizontalFilter,
     authorize('admin', 'diretor', 'secretaria', 'professor'),
     requireAcessoAoAluno('alunoId'),
     GamificacaoController.recalcularBadges
