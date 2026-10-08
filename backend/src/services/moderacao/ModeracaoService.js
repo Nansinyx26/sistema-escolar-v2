@@ -267,6 +267,8 @@ async function registrarDenunciaAberta({ categoria, relato, contexto = {} }) {
         extras: {
             categoriaDenuncia: categoria,
             relato,
+            // Entra na página de denúncias recebidas como nova (Issue #726).
+            apuracao: { situacao: 'nova' },
             ...conselhoTutelarInicial(categoria),
         },
     });

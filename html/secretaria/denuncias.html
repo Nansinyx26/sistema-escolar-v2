@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <!-- Trava de acesso por perfil. SEM defer e antes de tudo: a decisao
+         precisa acontecer antes do primeiro pixel. Ver js/guarda-acesso.js.
+         /html/secretaria e fechada para admin, diretor e secretaria — os tres
+         perfis que recebem denuncias (Issue #726). -->
+    <script src="/js/guarda-acesso.js?v=1.0"></script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Denúncias recebidas</title>
+    <link rel="icon" type="image/png" href="../../favicon/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/variables.css?v=2.0">
+    <link rel="stylesheet" href="../../css/base.css?v=2.0">
+    <link rel="stylesheet" href="../../css/components-new.css?v=2.0">
+    <link rel="stylesheet" href="../../css/responsive-global.css?v=1.2">
+    <link rel="stylesheet" href="../../css/system-global.css?v=1.0">
+    <link rel="stylesheet" href="../../js/libs/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../../css/motion.css?v=1.0">
+    <link rel="stylesheet" href="../../css/botao-voltar.css">
+
+    <style>
+        /* ------------------------------------------------------------------
+           Layout desta tela. TODO o motion vem de css/motion.css (tokens de
+           duração/curva, .skeleton e .motion-reveal). Nenhuma animação nova é
+           declarada aqui — ver AGENTS.md §8 e docs/MOTION.md.
+           Cores pelos tokens de css/variables.css, para o tema claro valer.
+           ------------------------------------------------------------------ */
+        .den-wrap {
+            max-width: 60rem;
+            margin: 0 auto;
+            padding: 1.5rem 1rem 4rem;
+        }
+
+        .den-cabecalho h1 {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin: 0 0 0.35rem;
+            font-size: 1.5rem;
+            color: var(--text-primary, #fafafa);
+        }
+
+        .den-cabecalho p {
+            max-width: 46rem;
+            margin: 0 0 1.25rem;
+            color: var(--text-tertiary, #a1a1aa);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .den-filtros {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .den-abas { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+        .den-aba {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            min-height: 44px;
+            padding: 0 0.95rem;
+            border: 1px solid var(--border-secondary, rgba(255, 255, 255, 0.08));
+            border-radius: var(--radius-full, 9999px);
+            background: transparent;
+            color: var(--text-tertiary, #a1a1aa);
+            font: inherit;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color var(--motion-fast) var(--motion-ease-out),
+                        color var(--motion-fast) var(--motion-ease-out);
+        }
+
+        .den-aba[aria-pressed="true"] {
+            border-color: var(--primary, #10b981);
+            background: var(--primary-light, rgba(16, 185, 129, 0.08));
+            color: var(--text-primary, #fafafa);
+        }
+
+        .den-aba__total {
+            min-width: 1.5rem;
+            padding: 0.05rem 0.4rem;
+            border-radius: var(--radius-full, 9999px);
+            background: var(--bg-elevated, #27272a);
+            font-size: 0.75rem;
+            text-align: center;
+        }
+
+        .den-categoria { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
+
+        .den-categoria select,
+        .den-form textarea {
+            border: 1px solid var(--border-secondary, rgba(255, 255, 255, 0.08));
+            border-radius: var(--radius-md, 0.5rem);
+            background: var(--bg-tertiary, #18181b);
+            color: var(--text-primary, #fafafa);
+            font: inherit;
+        }
+
+        .den-categoria select { min-height: 44px; padding: 0 0.75rem; }
+
+        .den-erro,
+        .den-nota {
+            margin: 0 0 1rem;
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius-md, 0.5rem);
+            font-size: 0.9rem;
+        }
+
+        .den-erro { border: 1px solid var(--error, #ef4444); background: var(--error-light, rgba(239, 68, 68, 0.1)); }
+        .den-nota { color: var(--text-tertiary, #a1a1aa); text-align: center; }
+
+        .den-lista { display: grid; gap: 0.85rem; }
+
+        .den-card {
+            padding: 1rem 1.1rem;
+            border: 1px solid var(--border-secondary, rgba(255, 255, 255, 0.08));
+            border-radius: var(--radius-lg, 0.75rem);
+            background: var(--bg-secondary, #0f0f12);
+        }
+
+        .den-card__topo {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .den-card__data {
+            margin-left: auto;
+            font-size: 0.8rem;
+            color: var(--text-tertiary, #a1a1aa);
+        }
+
+        .den-selo {
+            padding: 0.2rem 0.65rem;
+            border-radius: var(--radius-full, 9999px);
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        /* Categoria: as três que envolvem integridade física (e que exigem a
+           comunicação ao Conselho Tutelar) em tom de alerta; as demais neutras. */
+        .den-selo--grave    { background: var(--error-light, rgba(239, 68, 68, 0.1)); color: var(--error, #ef4444); }
+        .den-selo--moderada { background: var(--warning-light, rgba(245, 158, 11, 0.1)); color: var(--warning, #f59e0b); }
+
+        .den-selo--nova        { background: var(--info-light, rgba(14, 165, 233, 0.1)); color: var(--info, #0ea5e9); }
+        .den-selo--em_apuracao { background: var(--warning-light, rgba(245, 158, 11, 0.1)); color: var(--warning, #f59e0b); }
+        .den-selo--concluida   { background: var(--success-light, rgba(16, 185, 129, 0.1)); color: var(--success, #10b981); }
+        .den-selo--sigilosa    { border: 1px solid var(--border-secondary, rgba(255, 255, 255, 0.08)); color: var(--text-secondary, #d4d4d8); }
+
+        .den-dados {
+            display: grid;
+            grid-template-columns: minmax(8rem, auto) 1fr;
+            gap: 0.3rem 1rem;
+            margin: 0 0 0.9rem;
+            font-size: 0.88rem;
+        }
+
+        .den-dados dt { color: var(--text-tertiary, #a1a1aa); }
+        .den-dados dd { margin: 0; overflow-wrap: anywhere; color: var(--text-secondary, #d4d4d8); }
+
+        .den-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            min-height: 44px;
+            padding: 0 1rem;
+            border: 1px solid var(--border-secondary, rgba(255, 255, 255, 0.08));
+            border-radius: var(--radius-md, 0.5rem);
+            background: transparent;
+            color: var(--text-primary, #fafafa);
+            font: inherit;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color var(--motion-fast) var(--motion-ease-out),
+                        opacity var(--motion-fast) var(--motion-ease-out);
+        }
+
+        .den-btn:hover { background: var(--bg-tertiary, #18181b); }
+        .den-btn:disabled { opacity: 0.5; cursor: progress; }
+        .den-btn--primario { border-color: transparent; background: var(--primary-dark, #059669); color: #fff; }
+        .den-btn--primario:hover { background: var(--primary-active, #059669); }
+
+        .den-aba:focus-visible,
+        .den-btn:focus-visible,
+        .den-categoria select:focus-visible,
+        .den-form textarea:focus-visible,
+        .den-form input:focus-visible {
+            outline: 2px solid var(--border-focus, #10b981);
+            outline-offset: 2px;
+        }
+
+        .den-detalhe {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-secondary, rgba(255, 255, 255, 0.08));
+        }
+
+        .den-detalhe h3 {
+            margin: 1.1rem 0 0.5rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--text-tertiary, #a1a1aa);
+        }
+
+        .den-detalhe h3:first-child { margin-top: 0; }
+
+        .den-sigilo {
+            margin: 0 0 1rem;
+            padding: 0.65rem 0.9rem;
+            border-left: 3px solid var(--warning, #f59e0b);
+            background: var(--warning-light, rgba(245, 158, 11, 0.1));
+            font-size: 0.85rem;
+        }
+
+        /* O relato é texto da própria pessoa: quebras de linha preservadas,
+           palavra longa quebrada para não estourar a tela no celular. */
+        .den-relato {
+            margin: 0;
+            padding: 0.85rem 1rem;
+            border-radius: var(--radius-md, 0.5rem);
+            background: var(--bg-tertiary, #18181b);
+            color: var(--text-primary, #fafafa);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        .den-historico { display: grid; gap: 0.6rem; margin: 0; padding: 0; list-style: none; }
+
+        .den-historico li {
+            padding: 0.6rem 0.85rem;
+            border-left: 2px solid var(--border-secondary, rgba(255, 255, 255, 0.08));
+            font-size: 0.85rem;
+        }
+
+        .den-historico__meta { color: var(--text-tertiary, #a1a1aa); }
+        .den-historico__nota { margin: 0.35rem 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+        .den-form { display: grid; gap: 0.6rem; margin-top: 0.5rem; }
+        .den-form fieldset { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; margin: 0; padding: 0; border: 0; }
+        .den-form legend { margin-bottom: 0.4rem; font-size: 0.85rem; color: var(--text-tertiary, #a1a1aa); }
+        .den-form fieldset label { display: inline-flex; align-items: center; gap: 0.45rem; min-height: 44px; cursor: pointer; }
+        .den-form textarea { width: 100%; min-height: 6rem; padding: 0.6rem 0.75rem; resize: vertical; }
+        .den-form__ajuda { margin: 0; font-size: 0.8rem; color: var(--text-tertiary, #a1a1aa); }
+        .den-form__aviso { margin: 0; font-size: 0.85rem; min-height: 1.2em; }
+        .den-form__acoes { display: flex; justify-content: flex-end; }
+
+        @media (max-width: 30rem) {
+            .den-dados { grid-template-columns: 1fr; }
+            .den-dados dd { margin-bottom: 0.4rem; }
+            .den-card__data { margin-left: 0; width: 100%; }
+        }
+    </style>
+    <!-- Acessibilidade (LBI/eMAG) — ver docs/CONFORMIDADE-LEGAL.md -->
+    <link rel="stylesheet" href="../../css/acessibilidade.css">
+</head>
+<body>
+    <main class="den-wrap">
+        <header class="den-cabecalho">
+            <button type="button" class="btn-voltar-global" aria-label="Voltar para a página anterior" style="margin-bottom: 1rem;">
+                <i class="bi bi-arrow-left"></i>
+                <span>Voltar</span>
+            </button>
+            <h1><i class="bi bi-shield-exclamation" aria-hidden="true"></i> Denúncias recebidas</h1>
+            <!-- Dito na tela: quem abre precisa saber o alcance e o rastro. -->
+            <p>
+                Denúncias de bullying, assédio e discriminação enviadas pelo canal da escola.
+                Só a direção, a secretaria e a administração veem esta tela, e a pessoa
+                denunciada não é avisada. Cada relato aberto fica registrado na auditoria.
+            </p>
+        </header>
+
+        <div class="den-filtros">
+            <div class="den-abas" id="den-abas" role="group" aria-label="Filtrar por situação">
+                <button type="button" class="den-aba" data-situacao="" aria-pressed="true">Todas <span class="den-aba__total" data-total=""></span></button>
+                <button type="button" class="den-aba" data-situacao="nova" aria-pressed="false">Novas <span class="den-aba__total" data-total="nova"></span></button>
+                <button type="button" class="den-aba" data-situacao="em_apuracao" aria-pressed="false">Em apuração <span class="den-aba__total" data-total="em_apuracao"></span></button>
+                <button type="button" class="den-aba" data-situacao="concluida" aria-pressed="false">Concluídas <span class="den-aba__total" data-total="concluida"></span></button>
+            </div>
+            <label class="den-categoria" for="den-categoria">
+                Tipo
+                <select id="den-categoria">
+                    <option value="">Todos os tipos</option>
+                </select>
+            </label>
+        </div>
+
+        <p class="den-erro" id="den-erro" role="alert" hidden></p>
+
+        <section class="den-lista" id="den-lista" aria-live="polite" aria-label="Denúncias"></section>
+
+        <p class="den-nota" id="den-vazio" hidden>Nenhuma denúncia nesta situação.</p>
+        <p class="den-nota" id="den-limite" hidden></p>
+    </main>
+
+    <script defer src="../../js/botao-voltar.js"></script>
+    <script src="../../js/api-config.js"></script>
+    <script src="../../js/csrf-helper.js"></script>
+    <script defer src="../../js/auth.js?v=3"></script>
+    <script defer src="../../js/motion.js"></script>
+    <script defer src="../../js/moderacao/denuncias.js?v=1.0"></script>
+    <script defer src="../../js/observability.js"></script>
+    <script defer src="../../js/acessibilidade.js"></script>
+</body>
+</html>
