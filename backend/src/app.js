@@ -636,6 +636,14 @@ app.use(csrfCookieSetter);
 // Relatório de violação da CSP (Issue #613): o navegador manda sozinho, sem
 // token CSRF — por isso fica antes do validador, com teto próprio por IP.
 app.post(cspRelatorio.ROTA, cspRelatorioLimiter, ...cspRelatorio.receberRelatorioCsp);
+// POST /api/observability/frontend-error — coletor de erros do navegador.
+// O front não fala com o Sentry direto por causa da CSP; ver middleware.js.
+// Antes do validador pelo mesmo motivo do relatório de CSP (Issue #715): o
+// js/observability.js manda por `sendBeacon`, que não leva cabeçalho, e o 403
+// do CSRF calava todo erro de front. A rota não usa sessão — um relatório falso
+// sai de um `curl` com ou sem token —, então o freio dela é o teto por IP do
+// próprio coletor, somado ao teto geral de /api montado acima.
+observability.middleware.mountFrontendCollector(app);
 // 2. Valida o token CSRF em rotas que mudam estado (POST/PUT/DELETE)
 app.use('/api', csrfValidator);
 
@@ -680,10 +688,6 @@ app.use('/api', apiRoutes);
 // GET /api/health/observability — diz quais provedores estão ligados.
 // Nunca expõe DSN, chave ou endpoint.
 observability.middleware.mountHealth(app);
-
-// POST /api/observability/frontend-error — coletor de erros do navegador.
-// O front não fala com o Sentry direto por causa da CSP; ver middleware.js.
-observability.middleware.mountFrontendCollector(app);
 
 // Redirecionamentos amigáveis de rotas de páginas
 app.get(['/avaliacoes', '/detalhes/avaliacoes'], (req, res) => {
