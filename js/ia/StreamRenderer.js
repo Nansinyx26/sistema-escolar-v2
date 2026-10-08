@@ -381,8 +381,9 @@ export class StreamRenderer {
     /**
      * Mostra um aviso dentro da bolha em curso (ou como bolha própria).
      * Usado para erro do servidor e para cancelamento pelo usuário.
+     * `acao` ({ rotulo, aoClicar(botao) }) acrescenta um botão ao aviso.
      */
-    mostrarAviso(mensagem, { tipo = 'erro' } = {}) {
+    mostrarAviso(mensagem, { tipo = 'erro', acao = null } = {}) {
         if (this.repinturaAgendada) {
             clearTimeout(this.repinturaAgendada);
             this.repinturaAgendada = null;
@@ -392,6 +393,15 @@ export class StreamRenderer {
         aviso.className = 'ia-aviso ia-aviso-' + tipo;
         aviso.setAttribute('role', tipo === 'erro' ? 'alert' : 'status');
         aviso.textContent = mensagem;
+
+        if (acao) {
+            const botao = document.createElement('button');
+            botao.type = 'button';
+            botao.className = 'ia-aviso-botao';
+            botao.textContent = acao.rotulo;
+            botao.addEventListener('click', () => acao.aoClicar(botao));
+            aviso.appendChild(botao);
+        }
 
         if (this.corpoAtual) {
             // Mantém o que já havia chegado antes da falha — jogar fora o texto

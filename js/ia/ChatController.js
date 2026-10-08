@@ -237,6 +237,54 @@ export class ChatController {
     }
 
     /**
+     * Liga a IA da escola a pedido da direção (Issue #711). O servidor confere
+     * o perfil e o vínculo com a escola e registra a decisão no log de
+     * auditoria; aqui só se pede a confirmação de quem decide.
+     */
+    async _ligarIaDaEscola(escolaId, texto, botao) {
+        const confirmado = window.confirm(
+            'Ligar o assistente de IA nesta escola?\n\n' +
+                'As perguntas feitas ao assistente passam a ser enviadas ao serviço de IA ' +
+                '(Google Gemini), com o nome dos alunos trocado por rótulos. A decisão vale ' +
+                'para toda a equipe da escola e fica registrada no log de auditoria.'
+        );
+        if (!confirmado) return;
+
+        botao.disabled = true;
+        try {
+            const resposta = await fetch(
+                `${this.baseApi}/escolas/${encodeURIComponent(escolaId)}/ia`,
+                {
+                    method: 'PATCH',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': lerCookie('csrf_token'),
+                    },
+                    body: JSON.stringify({ habilitada: true }),
+                }
+            );
+            const json = await resposta.json().catch(() => ({}));
+            if (!resposta.ok || !json.success) {
+                throw new Error(json.error || 'Não foi possível ligar o assistente.');
+            }
+            botao.remove();
+            // A pergunta volta para a caixa em vez de ser reenviada sozinha: a
+            // bolha dela já está na tela, e reenviar a duplicaria.
+            this.renderer.mostrarAviso(
+                'Assistente ligado nesta escola. Sua pergunta voltou para a caixa de texto — é só enviar.',
+                { tipo: 'info' }
+            );
+            this.el.entrada.value = texto;
+            this._ajustarAltura();
+            this.el.entrada.focus();
+        } catch (e) {
+            botao.disabled = false;
+            this.aoAvisar(e.message || 'Não foi possível ligar o assistente.');
+        }
+    }
+
+    /**
      * Retoma uma conversa anterior, repintando o histórico vindo do servidor.
      * @param {Object} conversa resposta de GET /api/ia/conversas/:id
      */
@@ -315,6 +363,22 @@ export class ChatController {
             if (!resposta.ok || !resposta.body) {
                 this.pararNarracao();
                 const erro = await resposta.json().catch(() => ({}));
+                // IA desligada na escola, e quem pergunta é quem decide (o
+                // servidor diz em `podeLigar`): a decisão fica a um botão daqui.
+                if (erro.codigo === 'IA_DESLIGADA_NESTA_ESCOLA' && erro.podeLigar) {
+                    this.renderer.mostrarAviso(
+                        'O assistente está desligado nesta escola, e a decisão de ligá-lo é da direção.',
+                        {
+                            tipo: 'info',
+                            acao: {
+                                rotulo: 'Ligar o assistente nesta escola',
+                                aoClicar: (botao) =>
+                                    this._ligarIaDaEscola(erro.escolaId, texto, botao),
+                            },
+                        }
+                    );
+                    return;
+                }
                 this.renderer.mostrarAviso(
                     erro.error || 'Não foi possível falar com o assistente agora.'
                 );
