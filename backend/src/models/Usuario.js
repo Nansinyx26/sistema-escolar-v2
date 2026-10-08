@@ -89,6 +89,10 @@ const UsuarioSchema = new mongoose.Schema(
         emailVerificado: { type: Boolean, default: false },
         emailVerificacaoToken: { type: String, select: false }, // Nunca retornado em queries padrão
         emailVerificacaoExpiry: { type: Date, select: false },
+        // Autocadastro da equipe (Issue #716): a conta só entra depois de
+        // confirmar o e-mail. Sem default — conta antiga não tem a marca e
+        // segue entrando como antes. Ver services/verificacaoEmail.js.
+        confirmacaoEmailObrigatoria: { type: Boolean },
 
         // Troca de e-mail pedida e ainda não confirmada (Issue #609). O token
         // vai só no link enviado ao endereço novo; aqui fica o hash dele.

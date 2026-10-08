@@ -193,6 +193,10 @@ const MENSAGENS_LOGIN = {
     CONTA_DE_RESPONSAVEL:
         'Esta é uma conta de responsável. Entre pelo Portal do Responsável, em /portal-responsavel/.',
     CONTA_DA_ESCOLA: 'Esta é uma conta da equipe escolar. Entre pela página de login da escola.',
+    // Autocadastro da equipe ainda sem e-mail confirmado (Issue #716). A senha
+    // estava certa; falta clicar no link, que o servidor acabou de reenviar.
+    EMAIL_NAO_VERIFICADO:
+        'Confirme seu e-mail para entrar. Enviamos o link de confirmação para a sua caixa de entrada.',
 };
 
 /**
