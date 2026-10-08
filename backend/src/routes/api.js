@@ -338,6 +338,10 @@ router.use('/audio', require('./audio'));
 // antes de mandá-lo ao provedor de voz (Issue #401).
 router.use('/tts', authJWT, filtrarPorEscola, require('./tts'));
 router.use('/ia', authJWT, filtrarPorEscola, horizontalFilter, require('./ia'));
+// Autorização de ferramentas por professor (Issue #720). `filtrarPorEscola`
+// dá a escola da sessão: a direção decide e o professor é conferido só dentro
+// dela, nunca numa escola que venha no corpo da requisição.
+router.use('/ferramentas', authJWT, filtrarPorEscola, require('./ferramentas'));
 router.use('/chatbot', authJWT, filtrarPorEscola, require('./chatbot'));
 router.use('/secretaria', authJWT, require('./secretaria'));
 
