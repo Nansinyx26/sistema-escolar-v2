@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ── Carregamento ─────────────────────────────────────────────────────────
     function mostrarSkeleton() {
-        const linha = `<tr>${'<td><span class="af-skel"></span></td>'.repeat(6)}</tr>`;
+        const linha = `<tr>${'<td><span class="af-skel" data-skeleton></span></td>'.repeat(6)}</tr>`;
         corpo.innerHTML = linha.repeat(5);
     }
 

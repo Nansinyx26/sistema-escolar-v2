@@ -539,12 +539,8 @@
         .af-btn-perigo { background: #dc2626 !important; border-color: #dc2626 !important; }
         .af-recusa-texto { color: #cbd5e1 !important; -webkit-text-fill-color: #cbd5e1 !important; margin: 0 0 1rem; }
 
-        /* Skeleton do carregamento (docs/MOTION.md) */
-        .af-skel { display: block; height: .9rem; border-radius: 6px; background: linear-gradient(90deg, rgba(255,255,255,.05) 0%, rgba(255,255,255,.11) 50%, rgba(255,255,255,.05) 100%); background-size: 200% 100%; animation: af-shimmer 1.4s ease-in-out infinite; }
-        @keyframes af-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
-        @media (prefers-reduced-motion: reduce) {
-            .af-skel { animation: none; }
-        }
+        /* Skeleton do carregamento: forma da página, brilho de css/motion.css (docs/MOTION.md) */
+        .af-skel { display: block; height: .9rem; border-radius: 6px; background-color: rgba(255,255,255,.06); }
 
         @media (max-width: 900px) {
             .af-filtros { grid-template-columns: 1fr 1fr; }
