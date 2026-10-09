@@ -7,6 +7,7 @@ const { generateUniqueSecretCode, assignSecretCodes } = require('../utils/secret
 const logger = require('../utils/logger');
 const assertAcessoAoAluno = require('../middleware/assertAcessoAoAluno');
 const urlFotoAluno = require('../utils/urlFotoAluno');
+const { referenciaDaFoto, ehFotoDoAluno } = require('../services/fotoDoAluno');
 const { projetarAluno } = require('../utils/projecaoAluno');
 const { limparCamposSemFinalidade } = require('../utils/camposSemFinalidade');
 const { vinculosDoUsuario, escolaIdDaConta } = require('../middleware/filtrarPorEscola');
@@ -221,6 +222,28 @@ async function guardarFotoDoAluno(fotoBase64, { alunoId, escolaId, prefixo }) {
     }
 }
 
+/**
+ * Referência a arquivo no campo `foto` só vale se for a foto deste aluno
+ * (Issue #734). Manter a foto atual — em qualquer das grafias que a listagem
+ * devolve — continua valendo; base64 e URL https seguem as regras de sempre.
+ *
+ * @returns {Promise<boolean>} `true` quando o valor pode ser gravado
+ */
+async function fotoPodeSerGravada(foto, aluno) {
+    const ref = referenciaDaFoto(foto);
+    if (!ref) return true;
+    if (aluno && ref === referenciaDaFoto(aluno.foto)) return true;
+    return ehFotoDoAluno(ref, aluno?._id);
+}
+
+function recusarFoto(res) {
+    return res.status(400).json({
+        success: false,
+        codigo: 'FOTO_DE_OUTRO_ARQUIVO',
+        error: 'A foto informada não é deste aluno. Envie a imagem novamente.',
+    });
+}
+
 exports.list = async (req, res) => {
     try {
         const { turma, turmaId, q, page = 1, limit = 100 } = req.query;
@@ -369,6 +392,12 @@ exports.create = async (req, res) => {
         const alunoId = new mongoose.Types.ObjectId();
         filteredBody._id = alunoId;
 
+        // Aluno novo ainda não tem foto no bucket: referência a arquivo
+        // apontaria para o de outra pessoa (Issue #734).
+        if (!(await fotoPodeSerGravada(filteredBody.foto, { _id: alunoId }))) {
+            return recusarFoto(res);
+        }
+
         // Conversão automática de imagem para WebP e salvamento no GridFS
         if (filteredBody.foto && ImageProcessor.isBase64Image(filteredBody.foto)) {
             const referencia = await guardarFotoDoAluno(filteredBody.foto, {
@@ -497,6 +526,9 @@ exports.update = async (req, res) => {
         //
         // Aqui também nasce o metadata: `alunoId` é o que faz o download da
         // foto passar por `assertAcessoAoAluno` em vez da regra de legado.
+        if (!(await fotoPodeSerGravada(filteredBody.foto, existingStudent))) {
+            return recusarFoto(res);
+        }
         if (filteredBody.foto && ImageProcessor.isBase64Image(filteredBody.foto)) {
             const referencia = await guardarFotoDoAluno(filteredBody.foto, {
                 alunoId: existingStudent._id,
@@ -507,10 +539,15 @@ exports.update = async (req, res) => {
             if (referencia) {
                 filteredBody.foto = referencia;
 
-                // Foto antiga só sai do bucket depois que a nova entrou.
+                // Foto antiga só sai do bucket depois que a nova entrou — e só
+                // se o arquivo for a foto DESTE aluno (Issue #734). O valor
+                // gravado não prova isso: antes da correção, qualquer id do
+                // bucket entrava aqui e era apagado.
                 const fotoAntiga = String(existingStudent.foto || '');
-                if (fotoAntiga.startsWith('gridfs:')) {
-                    const oldId = fotoAntiga.slice('gridfs:'.length);
+                const oldId = fotoAntiga.startsWith('gridfs:')
+                    ? fotoAntiga.slice('gridfs:'.length)
+                    : null;
+                if (oldId && (await ehFotoDoAluno(oldId, existingStudent._id))) {
                     try {
                         await deleteFile(oldId);
                     } catch (e) {
