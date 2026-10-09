@@ -13,13 +13,15 @@
 const Aluno = require('../../../models/Aluno');
 const Turma = require('../../../models/Turma');
 const Professor = require('../../../models/Professor');
+const { soComConta } = require('../../professoresComConta');
 const Falta = require('../../../models/Falta');
 const CalendarioEscolar = require('../../../models/CalendarioEscolar');
 const { filtroDaEscola } = require('../PermissionGuard');
 
 module.exports = {
     name: 'resumoDashboard',
-    description: 'Panorama geral da escola: total de alunos, turmas, professores, faltas recentes e próximos eventos. Use para "como está a escola", "me dá um resumo", "panorama geral".',
+    description:
+        'Panorama geral da escola: total de alunos, turmas, professores, faltas recentes e próximos eventos. Use para "como está a escola", "me dá um resumo", "panorama geral".',
 
     schema: { type: 'object', properties: {} },
 
@@ -43,17 +45,26 @@ module.exports = {
         const [alunos, turmas, professores, faltasSemana, proximosEventos] = await Promise.all([
             Aluno.countDocuments({ ...escola, ativo: { $ne: false } }),
             Turma.countDocuments({ ...escola, ativo: { $ne: false } }),
-            Professor.countDocuments({
+            // Conta só quem tem conta de professor (Issue #735).
+            Professor.find({
                 ativo: { $ne: false },
-                $or: [{ 'vinculos.escolaId': String(ctx.escolaId) }, escola]
-            }),
+                $or: [{ 'vinculos.escolaId': String(ctx.escolaId) }, escola],
+            })
+                .select('idUsuario')
+                .lean()
+                .then(soComConta)
+                .then((lista) => lista.length),
             Falta.countDocuments({ ...escola, presente: false, data: { $gte: seteDiasAtras } }),
             CalendarioEscolar.find({
                 ...escola,
                 ativo: { $ne: false },
                 dataFim: { $gte: hoje },
-                dataInicio: { $lte: trintaDiasAFrente }
-            }).select('titulo tipo dataInicio').sort({ dataInicio: 1 }).limit(5).lean()
+                dataInicio: { $lte: trintaDiasAFrente },
+            })
+                .select('titulo tipo dataInicio')
+                .sort({ dataInicio: 1 })
+                .limit(5)
+                .lean(),
         ]);
 
         return {
@@ -62,11 +73,11 @@ module.exports = {
             professoresAtivos: professores,
             faltasUltimos7Dias: faltasSemana,
             mediaAlunosPorTurma: turmas > 0 ? Number((alunos / turmas).toFixed(1)) : null,
-            proximosEventos: proximosEventos.map(e => ({
+            proximosEventos: proximosEventos.map((e) => ({
                 titulo: e.titulo,
                 tipo: e.tipo,
-                data: e.dataInicio
-            }))
+                data: e.dataInicio,
+            })),
         };
-    }
+    },
 };
