@@ -3,24 +3,26 @@
 <head>
     <!-- Trava de acesso por perfil. SEM defer e antes de tudo: a decisao
          precisa acontecer antes do primeiro pixel. Ver js/guarda-acesso.js.
-         /html/secretaria e fechada para admin, diretor e secretaria — os tres
-         perfis que recebem denuncias (Issue #726). -->
+         Pagina solta em /html, e nao em /html/secretaria: ela e da gestao da
+         escola (admin, diretor e secretaria), nao da secretaria — a barra da
+         direcao nao aponta para telas da secretaria (relatoriosDoDiretor.test.js).
+         A regra mora em utils/matrizAcesso.js (Issue #726). -->
     <script src="/js/guarda-acesso.js?v=1.0"></script>
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Denúncias recebidas</title>
-    <link rel="icon" type="image/png" href="../../favicon/favicon.png">
+    <link rel="icon" type="image/png" href="../favicon/favicon.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="../../css/variables.css?v=2.0">
-    <link rel="stylesheet" href="../../css/base.css?v=2.0">
-    <link rel="stylesheet" href="../../css/components-new.css?v=2.0">
-    <link rel="stylesheet" href="../../css/responsive-global.css?v=1.2">
-    <link rel="stylesheet" href="../../css/system-global.css?v=1.0">
-    <link rel="stylesheet" href="../../js/libs/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="../../css/motion.css?v=1.0">
-    <link rel="stylesheet" href="../../css/botao-voltar.css">
+    <link rel="stylesheet" href="../css/variables.css?v=2.0">
+    <link rel="stylesheet" href="../css/base.css?v=2.0">
+    <link rel="stylesheet" href="../css/components-new.css?v=2.0">
+    <link rel="stylesheet" href="../css/responsive-global.css?v=1.2">
+    <link rel="stylesheet" href="../css/system-global.css?v=1.0">
+    <link rel="stylesheet" href="../js/libs/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="../css/motion.css?v=1.0">
+    <link rel="stylesheet" href="../css/botao-voltar.css">
 
     <style>
         /* ------------------------------------------------------------------
@@ -267,7 +269,7 @@
         }
     </style>
     <!-- Acessibilidade (LBI/eMAG) — ver docs/CONFORMIDADE-LEGAL.md -->
-    <link rel="stylesheet" href="../../css/acessibilidade.css">
+    <link rel="stylesheet" href="../css/acessibilidade.css">
 </head>
 <body>
     <main class="den-wrap">
@@ -308,13 +310,13 @@
         <p class="den-nota" id="den-limite" hidden></p>
     </main>
 
-    <script defer src="../../js/botao-voltar.js"></script>
-    <script src="../../js/api-config.js"></script>
-    <script src="../../js/csrf-helper.js"></script>
-    <script defer src="../../js/auth.js?v=3"></script>
-    <script defer src="../../js/motion.js"></script>
-    <script defer src="../../js/moderacao/denuncias.js?v=1.0"></script>
-    <script defer src="../../js/observability.js"></script>
-    <script defer src="../../js/acessibilidade.js"></script>
+    <script defer src="../js/botao-voltar.js"></script>
+    <script src="../js/api-config.js"></script>
+    <script src="../js/csrf-helper.js"></script>
+    <script defer src="../js/auth.js?v=3"></script>
+    <script defer src="../js/motion.js"></script>
+    <script defer src="../js/moderacao/denuncias.js?v=1.0"></script>
+    <script defer src="../js/observability.js"></script>
+    <script defer src="../js/acessibilidade.js"></script>
 </body>
 </html>

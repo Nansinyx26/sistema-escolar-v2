@@ -1,6 +1,6 @@
 /**
  * js/moderacao/denuncias.js — as denúncias recebidas pelo canal aberto
- * (Issue #726). Tela: html/secretaria/denuncias.html.
+ * (Issue #726). Tela: html/denuncias.html.
  *
  * O RELATO SÓ VEM QUANDO ALGUÉM PEDE
  * ==================================
