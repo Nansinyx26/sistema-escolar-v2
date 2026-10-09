@@ -145,6 +145,13 @@ const AREAS = {
         perfis: ['admin', 'diretor', 'secretaria', 'professor', 'responsavel'],
     },
 
+    // ── Denúncias recebidas (Issue #726) ─────────────────────────────────
+    // Solta em /html, e não em /html/secretaria, embora os perfis sejam os
+    // mesmos: a tela é da GESTÃO da escola, e a barra da direção não aponta
+    // para telas da secretaria (relatoriosDoDiretor.test.js). Espelha
+    // `authorize.estrito(['diretor', 'secretaria'])` de /api/moderacao/denuncias.
+    '/html/denuncias.html': { perfis: ['admin', 'diretor', 'secretaria'] },
+
     // ── Painel unificado ─────────────────────────────────────────────────
     // O dashboard se adapta ao perfil que o abre (professor, diretor, admin) e
     // NUNCA conferiu qual era esse perfil. Um responsável que chegasse aqui —
