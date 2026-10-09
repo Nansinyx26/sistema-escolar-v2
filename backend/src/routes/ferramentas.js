@@ -20,4 +20,10 @@ router.get('/minhas', authorize(EQUIPE), FerramentasController.minhas);
 router.get('/autorizacoes', authorize('diretor'), FerramentasController.listarAutorizacoes);
 router.put('/autorizacoes', authorize('diretor'), FerramentasController.salvar);
 
+// Pedidos (Issue #733). Só professor pede — o serviço confere de novo, porque
+// o `authorize` deixa o admin passar. A decisão é da direção da própria escola.
+router.get('/solicitacoes', authorize('diretor'), FerramentasController.solicitacoes);
+router.post('/solicitacoes/:id/decidir', authorize('diretor'), FerramentasController.decidir);
+router.post('/:ferramentaId/solicitar', authorize('professor'), FerramentasController.solicitar);
+
 module.exports = router;

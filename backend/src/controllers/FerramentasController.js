@@ -18,6 +18,9 @@ const {
     quadroDaEscola,
     situacaoDoUsuario,
     salvarAutorizacoes,
+    solicitarFerramenta,
+    listarSolicitacoes,
+    decidirSolicitacao,
 } = require('../services/ferramentas/permissaoFerramenta');
 
 function semEscola(res) {
@@ -81,7 +84,7 @@ async function salvar(req, res) {
             escolaId: req.escolaId,
             diretorId: String(req.user.id || req.user._id),
             alteracoes: req.body?.alteracoes,
-            auditar: (acao, detalhes) => logAction(req, acao, 'PermissaoFerramenta', detalhes),
+            auditar: auditorDe(req),
         });
         return res.json({
             success: true,
@@ -97,4 +100,85 @@ async function salvar(req, res) {
     }
 }
 
-module.exports = { catalogo, minhas, listarAutorizacoes, salvar };
+function auditorDe(req) {
+    return (acao, detalhes) => logAction(req, acao, 'PermissaoFerramenta', detalhes);
+}
+
+/**
+ * POST /api/ferramentas/:ferramentaId/solicitar — o professor pede a ferramenta.
+ * Corpo opcional: { mensagem }. Professor e escola vêm da sessão.
+ */
+async function solicitar(req, res) {
+    try {
+        const { solicitacao, nova } = await solicitarFerramenta({
+            usuario: req.user,
+            escolaId: req.escolaId,
+            ferramentaId: req.params.ferramentaId,
+            mensagem: req.body?.mensagem,
+            auditar: auditorDe(req),
+        });
+        return res.status(nova ? 201 : 200).json({
+            success: true,
+            message: nova
+                ? 'Pedido enviado à direção.'
+                : 'Você já tem um pedido aguardando a direção para esta ferramenta.',
+            data: {
+                id: String(solicitacao._id),
+                ferramentaId: solicitacao.ferramentaId,
+                status: solicitacao.status,
+                criadaEm: solicitacao.createdAt,
+                nova,
+            },
+        });
+    } catch (e) {
+        return falha(res, 'solicitar', e);
+    }
+}
+
+/** GET /api/ferramentas/solicitacoes?status=pendente|autorizada|recusada|todas — direção. */
+async function solicitacoes(req, res) {
+    if (!req.escolaId) return semEscola(res);
+    const status = ['pendente', 'autorizada', 'recusada', 'todas'].includes(req.query.status)
+        ? req.query.status
+        : 'pendente';
+    try {
+        return res.json({ success: true, data: await listarSolicitacoes(req.escolaId, status) });
+    } catch (e) {
+        return falha(res, 'solicitacoes', e);
+    }
+}
+
+/**
+ * POST /api/ferramentas/solicitacoes/:id/decidir — direção.
+ * Corpo: { decisao: 'autorizar' | 'recusar', motivo? }
+ */
+async function decidir(req, res) {
+    if (!req.escolaId) return semEscola(res);
+    try {
+        const pedido = await decidirSolicitacao({
+            escolaId: req.escolaId,
+            diretorId: String(req.user.id || req.user._id),
+            solicitacaoId: req.params.id,
+            decisao: req.body?.decisao,
+            motivo: req.body?.motivo,
+            auditar: auditorDe(req),
+        });
+        return res.json({
+            success: true,
+            message: pedido.status === 'autorizada' ? 'Ferramenta autorizada.' : 'Pedido recusado.',
+            data: { id: String(pedido._id), status: pedido.status },
+        });
+    } catch (e) {
+        return falha(res, 'decidir', e);
+    }
+}
+
+module.exports = {
+    catalogo,
+    minhas,
+    listarAutorizacoes,
+    salvar,
+    solicitar,
+    solicitacoes,
+    decidir,
+};

@@ -41,6 +41,9 @@ pode usar. A decisão fica no MongoDB, é conferida no backend a cada uso e vai 
 | `GET /minhas` | equipe | Situação de cada ferramenta para quem está logado: `autorizado`, `pendente`, `bloqueado` (professor) ou `livre` (demais) |
 | `GET /autorizacoes` | diretor | Quadro professores × ferramentas da escola, com turmas e disciplinas, status, quem concedeu, última alteração e pedido pendente |
 | `PUT /autorizacoes` | diretor | "Salvar autorizações": `{ alteracoes: [{ professorId, ferramentaId, autorizado }] }` |
+| `POST /:ferramentaId/solicitar` | professor | Pede a ferramenta (`{ mensagem? }`); um pendente por vez; avisa a direção |
+| `GET /solicitacoes?status=` | diretor | Pedidos da escola (`pendente`, `autorizada`, `recusada` ou `todas`) |
+| `POST /solicitacoes/:id/decidir` | diretor | `{ decisao: "autorizar" \| "recusar", motivo? }`; avisa o professor |
 
 Quando a barreira nega, a resposta é **403** com:
 
@@ -50,7 +53,8 @@ Quando a barreira nega, a resposta é **403** com:
   "codigo": "FERRAMENTA_NAO_AUTORIZADA",
   "error": "A ferramenta \"Plano de aula com IA\" precisa de autorização da direção.",
   "ferramenta": { "id": "ia.plano-aula", "nome": "Plano de aula com IA" },
-  "solicitacaoPendente": false
+  "solicitacaoPendente": false,
+  "podeSolicitar": true
 }
 ```
 
@@ -108,12 +112,36 @@ registro de auditoria por professor alterado. `Escola.professorVeAutorizacoes`
 não decide mais nada: a migração `1791471600000-autorizacoes-pais-por-professor`
 autorizou os professores atuais das escolas que tinham a chave ligada.
 
+## Pedidos e avisos
+
+```
+professor pede ──▶ solicitacoes_ferramentas (pendente) ──▶ aviso a cada diretor da escola
+direção decide ──▶ permissoes_ferramentas + pedido encerrado ──▶ aviso ao professor
+```
+
+Os avisos reaproveitam a Central de Notificações (`RealtimeNotification`, evento
+`notification:new` na sala `user:<id>`) e o push do celular
+(`NotificationService.pushParaUsuario`), em
+`backend/src/services/ferramentas/notificacoesFerramenta.js`:
+
+| Quando | Para quem | Texto |
+|---|---|---|
+| Pedido | direção da escola | O professor João Silva solicitou autorização para utilizar a ferramenta "Assistente de IA". |
+| Autorizou | professor | A direção autorizou você a utilizar a ferramenta "Assistente de IA". |
+| Recusou o pedido | professor | A direção não autorizou o uso da ferramenta "Assistente de IA". |
+| Retirou sem pedido | professor | A direção retirou a sua autorização para a ferramenta "Assistente de IA". |
+
+Além do aviso, o Socket.IO emite `ferramentas:atualizadas` (`{ ferramentaId, status }`)
+para o professor e `ferramentas:solicitacao` para a direção — as telas das etapas
+seguintes usam esses eventos para se atualizar sem recarregar. Auditoria do fluxo:
+`FERRAMENTA_SOLICITADA`, `FERRAMENTA_AUTORIZADA`, `FERRAMENTA_SOLICITACAO_RECUSADA`.
+
 ## Etapas
 
 | Etapa | Issue | Situação |
 |---|---|---|
 | Backend básico: coleções, catálogo, verificação, rotas da direção, auditoria | #721 | Pronto |
-| Barreira nas ferramentas de IA e em Autorizações dos Pais; migração da chave da #496 | #727 | Este PR |
-| Pedidos e notificações (professor → direção → professor) em tempo real | — | A fazer |
+| Barreira nas ferramentas de IA e em Autorizações dos Pais; migração da chave da #496 | #727 | Pronto |
+| Pedidos e notificações (professor → direção → professor) em tempo real | #733 | Este PR |
 | Página "Autorizações de Ferramentas" da direção | — | A fazer |
 | Cadeados e "Solicitar autorização" na conta do professor | — | A fazer |
