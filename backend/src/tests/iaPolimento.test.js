@@ -23,7 +23,13 @@ const Escola = require('../models/Escola');
 const ExportadorConversa = require('../services/ia/ExportadorConversa');
 const { comandosPara } = require('../services/ia/comandos');
 const { invalidarCacheEscolas } = require('../middleware/filtrarPorEscola');
-const { conectarBanco, limparBanco, desconectarBanco, criarUsuario } = require('./helpers');
+const {
+    conectarBanco,
+    limparBanco,
+    desconectarBanco,
+    criarUsuario,
+    autorizarFerramentas,
+} = require('./helpers');
 
 function provedorSimples(texto = 'resposta') {
     return {
@@ -31,30 +37,37 @@ function provedorSimples(texto = 'resposta') {
         async *stream() {
             yield { tipo: 'texto', texto };
             yield { tipo: 'fim', motivo: 'completo' };
-        }
+        },
     };
 }
 
 async function cookieDe(perfil, extras = {}) {
     const user = await criarUsuario({ perfil, ...extras });
+    // A barreira por professor (Issue #727) é testada à parte.
+    if (perfil === 'professor') await autorizarFerramentas(user);
     const token = jwt.sign(
         { id: user._id, perfil: user.perfil, email: user.email, nome: user.nome },
-        process.env.JWT_SECRET, { expiresIn: '1h' }
+        process.env.JWT_SECRET,
+        { expiresIn: '1h' }
     );
     return { cookie: `escola_jwt=${token}`, user };
 }
 
 function eventosSSE(texto) {
-    return texto.split('\n').filter(l => l.startsWith('data:'))
-        .map(l => JSON.parse(l.slice(5).trim()));
+    return texto
+        .split('\n')
+        .filter((l) => l.startsWith('data:'))
+        .map((l) => JSON.parse(l.slice(5).trim()));
 }
 
 async function criarConversa(cookie, mensagem = 'primeira pergunta') {
     const res = await request(app).post('/api/ia/chat').set('Cookie', cookie).send({ mensagem });
-    return eventosSSE(res.text).find(e => e.tipo === 'conversa');
+    return eventosSSE(res.text).find((e) => e.tipo === 'conversa');
 }
 
-beforeAll(async () => { await conectarBanco(); });
+beforeAll(async () => {
+    await conectarBanco();
+});
 
 beforeEach(async () => {
     // Garante que ESTA suíte é dona do estado: uma escola ativa deixada
@@ -71,7 +84,9 @@ afterEach(async () => {
     invalidarCacheEscolas();
 });
 
-afterAll(async () => { await desconectarBanco(); });
+afterAll(async () => {
+    await desconectarBanco();
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -80,7 +95,7 @@ describe('GET /api/ia/comandos — paleta filtrada por cargo', () => {
         const { cookie } = await cookieDe('responsavel');
         const res = await request(app).get('/api/ia/comandos').set('Cookie', cookie);
 
-        const nomes = res.body.data.map(c => c.nome);
+        const nomes = res.body.data.map((c) => c.nome);
         expect(nomes).not.toContain('logs');
         expect(nomes).not.toContain('professores');
         expect(nomes).not.toContain('dashboard');
@@ -93,7 +108,7 @@ describe('GET /api/ia/comandos — paleta filtrada por cargo', () => {
         const { cookie } = await cookieDe('professor');
         const res = await request(app).get('/api/ia/comandos').set('Cookie', cookie);
 
-        const nomes = res.body.data.map(c => c.nome);
+        const nomes = res.body.data.map((c) => c.nome);
         expect(nomes).not.toContain('logs');
         expect(nomes).not.toContain('configuracoes');
         expect(nomes).toContain('turmas');
@@ -103,8 +118,10 @@ describe('GET /api/ia/comandos — paleta filtrada por cargo', () => {
         const { cookie } = await cookieDe('diretor');
         const res = await request(app).get('/api/ia/comandos').set('Cookie', cookie);
 
-        const nomes = res.body.data.map(c => c.nome);
-        expect(nomes).toEqual(expect.arrayContaining(['logs', 'dashboard', 'relatorios', 'configuracoes']));
+        const nomes = res.body.data.map((c) => c.nome);
+        expect(nomes).toEqual(
+            expect.arrayContaining(['logs', 'dashboard', 'relatorios', 'configuracoes'])
+        );
     });
 
     it('a lista enviada ao cliente não expõe a regra de cargos', () => {
@@ -145,7 +162,8 @@ describe('POST /api/ia/exportar/:id', () => {
         const res = await request(app)
             .post(`/api/ia/exportar/${conversa.id}`)
             .set('Cookie', cookie)
-            .buffer(true).parse((r, cb) => {
+            .buffer(true)
+            .parse((r, cb) => {
                 const partes = [];
                 r.on('data', (c) => partes.push(c));
                 r.on('end', () => cb(null, Buffer.concat(partes)));
@@ -165,7 +183,8 @@ describe('POST /api/ia/exportar/:id', () => {
         const res = await request(app)
             .post(`/api/ia/exportar/${conversa.id}`)
             .set('Cookie', cookie)
-            .buffer(true).parse((r, cb) => {
+            .buffer(true)
+            .parse((r, cb) => {
                 const partes = [];
                 r.on('data', (c) => partes.push(c));
                 r.on('end', () => cb(null, Buffer.concat(partes)));
@@ -223,13 +242,14 @@ describe('ExportadorConversa — detalhes de formato', () => {
         resumo: '',
         mensagens: [
             { papel: 'usuario', texto: 'texto com <tag> e & comercial', em: new Date() },
-            { papel: 'assistente', texto: 'linha 1\nlinha 2', em: new Date() }
-        ]
+            { papel: 'assistente', texto: 'linha 1\nlinha 2', em: new Date() },
+        ],
     };
 
     it('gera nome de arquivo seguro a partir do título', () => {
-        expect(ExportadorConversa.nomeArquivo('Título com acentuação & símbolos', 'pdf'))
-            .toMatch(/^[a-zA-Z0-9-]+\.pdf$/);
+        expect(ExportadorConversa.nomeArquivo('Título com acentuação & símbolos', 'pdf')).toMatch(
+            /^[a-zA-Z0-9-]+\.pdf$/
+        );
         // Título vazio não gera um arquivo chamado só ".txt".
         expect(ExportadorConversa.nomeArquivo('', 'txt')).toBe('conversa.txt');
         expect(ExportadorConversa.nomeArquivo('///', 'txt')).toBe('conversa.txt');
@@ -249,7 +269,7 @@ describe('ExportadorConversa — detalhes de formato', () => {
         const { buffer } = await ExportadorConversa.exportar(conversa, 'txt', 'Ana');
         const texto = buffer.toString('utf8');
 
-        expect(texto).toContain('Ana —');          // nome real de quem perguntou
+        expect(texto).toContain('Ana —'); // nome real de quem perguntou
         expect(texto).toContain('Assistente —');
         expect(texto).toContain('linha 1\nlinha 2');
     });

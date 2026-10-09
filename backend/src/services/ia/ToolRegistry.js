@@ -39,6 +39,8 @@ function limparParametros(parametros) {
     return limpos;
 }
 const AuditLogger = require('./AuditLogger');
+const { ferramentaPorId } = require('../ferramentas/catalogo');
+const { checkToolPermission } = require('../ferramentas/permissaoFerramenta');
 
 const DIRETORIO_FERRAMENTAS = path.join(__dirname, 'tools');
 
@@ -63,6 +65,13 @@ function validarFerramenta(ferramenta, arquivo) {
     if (ferramenta.mutates && typeof ferramenta.confirmar !== 'function') {
         throw new Error(
             `[IA] Ferramenta "${ferramenta.name}" declara mutates:true mas não implementa confirmar().`
+        );
+    }
+    // Ação que depende de autorização da direção (Issue #727): a chave precisa
+    // existir no catálogo, senão nunca liberaria ninguém.
+    if (ferramenta.ferramentaControlada && !ferramentaPorId(ferramenta.ferramentaControlada)) {
+        throw new Error(
+            `[IA] Ferramenta "${ferramenta.name}" aponta para "${ferramenta.ferramentaControlada}", que não está no catálogo de ferramentas.`
         );
     }
     // Um parâmetro `escolaId` vindo do modelo seria um parâmetro vindo, em
@@ -123,16 +132,58 @@ function cargoPode(ferramenta, perfil) {
  * @param {string} perfil
  * @param {Object} [opcoes]
  * @param {boolean} [opcoes.incluirMutates=false] Fase 4 liga isto
+ * @param {Set<string>} [opcoes.bloqueadas] ferramentas do catálogo que a
+ *   direção não autorizou para esta pessoa (ver `controladasBloqueadas`)
  * @returns {Array<{name, description, schema}>|null} null quando não há nenhuma
  */
-function declaracoesPara(perfil, { incluirMutates = false } = {}) {
+function declaracoesPara(perfil, { incluirMutates = false, bloqueadas = null } = {}) {
     const p = String(perfil || '').toLowerCase();
     const lista = [...carregar().values()]
         .filter((f) => incluirMutates || !f.mutates)
         .filter((f) => cargoPode(f, p))
+        .filter((f) => !(f.ferramentaControlada && bloqueadas?.has(f.ferramentaControlada)))
         .map((f) => ({ name: f.name, description: f.description, schema: f.schema }));
 
     return lista.length > 0 ? lista : null;
+}
+
+function usuarioDoContexto(ctx) {
+    return { id: ctx.usuarioId, perfil: ctx.perfil };
+}
+
+/**
+ * Ferramentas do catálogo de autorização (Issue #727) usadas por alguma ação
+ * do assistente e que a direção NÃO liberou para quem está na sessão. Vai em
+ * `declaracoesPara(..., { bloqueadas })`: o modelo nem recebe a ação.
+ *
+ * @returns {Promise<Set<string>>}
+ */
+async function controladasBloqueadas(ctx) {
+    const controladas = new Set(
+        [...carregar().values()].map((f) => f.ferramentaControlada).filter(Boolean)
+    );
+    const bloqueadas = new Set();
+    for (const id of controladas) {
+        const { liberado } = await checkToolPermission(usuarioDoContexto(ctx), ctx.escolaId, id);
+        if (!liberado) bloqueadas.add(id);
+    }
+    return bloqueadas;
+}
+
+/** Barreira de autorização da direção para uma ação do assistente. */
+async function exigirAutorizacao(ferramenta, ctx) {
+    if (!ferramenta.ferramentaControlada) return;
+    const { liberado } = await checkToolPermission(
+        usuarioDoContexto(ctx),
+        ctx.escolaId,
+        ferramenta.ferramentaControlada
+    );
+    if (!liberado) {
+        const nome = ferramentaPorId(ferramenta.ferramentaControlada).nome;
+        throw new ErroPermissao(
+            `A ferramenta "${nome}" precisa de autorização da direção para esta conta.`
+        );
+    }
 }
 
 /** Nomes disponíveis a um cargo — usado pela paleta de comandos (Fase 5). */
@@ -169,6 +220,7 @@ async function executar(ferramentaNome, parametros, ctx) {
         // filtrado. É o que protege contra alucinação e contra um bug futuro
         // na montagem do catálogo.
         exigirCargo(ctx, ferramenta.cargosPermitidos, ferramenta.name);
+        await exigirAutorizacao(ferramenta, ctx);
 
         const dados = await ferramenta.handler(limparParametros(parametros), ctx);
 
@@ -257,6 +309,8 @@ async function executarConfirmada(acao, ctx) {
         // pedido e a confirmação passam até 5 minutos, tempo de sobra para um
         // rebaixamento de privilégio entrar em vigor.
         exigirCargo(ctx, ferramenta.cargosPermitidos, ferramenta.name);
+        // A direção pode revogar entre o preview e a confirmação.
+        await exigirAutorizacao(ferramenta, ctx);
 
         // O preview já saiu de parâmetros limpos; limpa de novo porque o que
         // o handler devolve em `parametros` é o que fica guardado e executa.
@@ -321,6 +375,7 @@ function _resetarCatalogo() {
 
 module.exports = {
     declaracoesPara,
+    controladasBloqueadas,
     nomesPara,
     executar,
     executarConfirmada,

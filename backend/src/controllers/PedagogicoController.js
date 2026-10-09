@@ -16,7 +16,7 @@ const { iaLiberada } = require('../services/ia/interruptor');
  * `catch` de quando a IA está fora do ar, que serve a resposta offline.
  */
 async function exigirIaDaEscola(req) {
-    if (await iaLiberada(req.escolaId)) return;
+    if (await iaLiberada(req.escolaId, req.user?.perfil)) return;
     const erro = new Error('IA desligada para esta escola');
     erro.iaDesligada = true;
     throw erro;
@@ -114,7 +114,7 @@ exports.analisarDesempenho = async (req, res) => {
 
 exports.getGlobalInsights = async (req, res) => {
     try {
-        const insights = await PedagogicoService.getGlobalInsights(req.escolaId);
+        const insights = await PedagogicoService.getGlobalInsights(req.escolaId, req.user?.perfil);
         // "Alunos em risco" e o resumo são estimativas (Issue #494).
         res.json({ success: true, data: { ...insights, aviso: AVISO_INDICADOR } });
     } catch (error) {

@@ -121,7 +121,7 @@ async function chat(req, res) {
 
     // Interruptor por escola (Issue #401): mandar dado de aluno para um
     // provedor externo é decisão da escola, e o padrão da rede é não mandar.
-    if (!(await iaLiberada(req.escolaId))) {
+    if (!(await iaLiberada(req.escolaId, req.user?.perfil))) {
         return res.status(403).json(respostaDesligada(req.user?.perfil, req.escolaId));
     }
 
@@ -147,10 +147,13 @@ async function chat(req, res) {
         // `incluirMutates`: a Fase 4 liga as ferramentas de escrita. Elas não
         // executam ao serem chamadas — devolvem um preview + token, e só o
         // endpoint de confirmação efetiva.
+        ctxFerramenta = ToolRegistry.construirContextoFerramenta(req);
+        // Ações que dependem de autorização da direção (Issue #727) saem da
+        // lista de quem não foi autorizado.
         ferramentas = ToolRegistry.declaracoesPara(contexto.usuario.perfil, {
             incluirMutates: true,
+            bloqueadas: await ToolRegistry.controladasBloqueadas(ctxFerramenta),
         });
-        ctxFerramenta = ToolRegistry.construirContextoFerramenta(req);
         contexto.temFerramentas = Array.isArray(ferramentas) && ferramentas.length > 0;
 
         // O HISTÓRICO AGORA VEM DO BANCO, não do corpo da requisição. O cliente

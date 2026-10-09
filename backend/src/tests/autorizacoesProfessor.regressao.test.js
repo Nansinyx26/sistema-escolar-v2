@@ -2,7 +2,11 @@
  * autorizacoesProfessor.regressao.test.js — Issue #496
  *
  * O professor vê a SITUAÇÃO das autorizações dos alunos das próprias turmas
- * — nunca arquivo, detalhe ou data — e só se a direção da escola liberou.
+ * — nunca arquivo, detalhe ou data — e só se a direção liberou para ele.
+ *
+ * Desde a Issue #727 a liberação é por professor (ferramenta
+ * "gestao.autorizacoes-pais"); o atalho da direção na tela de Autorizações dos
+ * Pais grava a mesma decisão para todos os professores atuais da escola.
  */
 const request = require('supertest');
 const app = require('../app');
@@ -10,6 +14,7 @@ const Escola = require('../models/Escola');
 const Aluno = require('../models/Aluno');
 const Professor = require('../models/Professor');
 const AuditLog = require('../models/AuditLog');
+const PermissaoFerramenta = require('../models/PermissaoFerramenta');
 const { invalidarCacheEscolas } = require('../middleware/filtrarPorEscola');
 const { conectarBanco, limparBanco, desconectarBanco, criarUsuario } = require('./helpers');
 const { assinarTokenSessao } = require('../utils/sessionToken');
@@ -86,19 +91,34 @@ beforeEach(async () => {
 });
 
 describe('decisão da direção', () => {
-    it('desligado por padrão: o professor recebe 403 com código próprio', async () => {
+    it('sem autorização: o professor recebe 403 com o código da ferramenta', async () => {
         const res = await situacao(prof);
         expect(res.status).toBe(403);
-        expect(res.body.codigo).toBe('AUTORIZACOES_PROFESSOR_DESLIGADO');
+        expect(res.body.codigo).toBe('FERRAMENTA_NAO_AUTORIZADA');
+        expect(res.body.ferramenta.id).toBe('gestao.autorizacoes-pais');
     });
 
-    it('a direção da escola liga, e a decisão vai para o log com antes e depois', async () => {
+    it('a direção libera para todos, o professor passa a ver e o log tem antes e depois', async () => {
         const res = await liberar(diretor, escola._id, true);
         expect(res.status).toBe(200);
+        expect(res.body.data).toMatchObject({ liberar: true, professores: 1, alteradas: 1 });
+        expect((await situacao(prof)).status).toBe(200);
 
-        const log = await AuditLog.findOne({ acao: 'AUTORIZACOES_PROFESSOR_ALTERADO' }).lean();
-        expect(log.detalhes.valorAnterior).toEqual({ professorVeAutorizacoes: false });
-        expect(log.detalhes.valorNovo).toEqual({ professorVeAutorizacoes: true });
+        const log = await AuditLog.findOne({ acao: 'FERRAMENTA_AUTORIZADA' }).lean();
+        expect(log.escolaId).toBe(String(escola._id));
+        expect(log.detalhes.valorAnterior).toMatchObject({
+            professorId: String(prof._id),
+            ferramentaId: 'gestao.autorizacoes-pais',
+            autorizado: false,
+        });
+        expect(log.detalhes.valorNovo.autorizado).toBe(true);
+    });
+
+    it('a direção retira de todos, e o professor deixa de ver na hora', async () => {
+        await liberar(diretor, escola._id, true);
+        const res = await liberar(diretor, escola._id, false);
+        expect(res.body.data).toMatchObject({ liberar: false, alteradas: 1 });
+        expect((await situacao(prof)).status).toBe(403);
     });
 
     it('diretor não decide por outra escola; professor e secretaria não decidem', async () => {
@@ -110,13 +130,18 @@ describe('decisão da direção', () => {
             escolaId: String(escola._id),
         });
         expect((await liberar(sec, escola._id, true)).status).toBe(403);
-        expect((await Escola.findById(escola._id).lean()).professorVeAutorizacoes).toBeUndefined();
+        expect(await PermissaoFerramenta.countDocuments()).toBe(0);
     });
 });
 
 describe('o que o professor vê', () => {
     beforeEach(async () => {
-        await Escola.updateOne({ _id: escola._id }, { $set: { professorVeAutorizacoes: true } });
+        await PermissaoFerramenta.create({
+            escolaId: String(escola._id),
+            professorId: String(prof._id),
+            ferramentaId: 'gestao.autorizacoes-pais',
+            autorizado: true,
+        });
     });
 
     it('só alunos das próprias turmas', async () => {
