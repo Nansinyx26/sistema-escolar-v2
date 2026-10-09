@@ -74,6 +74,22 @@ function cadastrar(campos = {}) {
         });
 }
 
+/**
+ * A conta do autocadastro só entra depois de confirmar o e-mail (Issue #716):
+ * marca a confirmação, como o link faria, e entra com a senha do cadastro.
+ */
+async function entrarDepoisDeConfirmar() {
+    await Usuario.updateOne(
+        { email: 'docente706@escola.test' },
+        { $set: { emailVerificado: true } }
+    );
+    const login = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'docente706@escola.test', senha: SENHA });
+    expect(login.status).toBe(200);
+    return cookieDaResposta(login);
+}
+
 async function nomesDosAlunos(cookie) {
     const res = await request(app).get('/api/alunos').set('Cookie', cookie);
     expect(res.status).toBe(200);
@@ -94,7 +110,7 @@ describe('register-docente', () => {
         const conta = await Usuario.findOne({ email: 'docente706@escola.test' }).lean();
         expect(conta.turma).toBeUndefined();
 
-        expect(await nomesDosAlunos(cookieDaResposta(cadastro))).toEqual([]);
+        expect(await nomesDosAlunos(await entrarDepoisDeConfirmar())).toEqual([]);
     });
 
     it('especialista fica marcado como VARIADOS, sem sala adicional', async () => {
@@ -115,7 +131,7 @@ describe('register-docente', () => {
     });
 
     it('depois que a gestão atribui a turma, o acesso funciona', async () => {
-        const cadastro = await cadastrar();
+        await cadastrar();
         const prof = await Professor.findOne({ email: 'docente706@escola.test' }).lean();
 
         const diretor = await criarUsuario({ email: 'dir706@escola.test', perfil: 'diretor' });
@@ -131,7 +147,7 @@ describe('register-docente', () => {
             .send({ salaPrincipal: '6B' });
         expect(atribuicao.status).toBe(200);
 
-        expect(await nomesDosAlunos(cookieDaResposta(cadastro))).toEqual(['Aluno do 6B']);
+        expect(await nomesDosAlunos(await entrarDepoisDeConfirmar())).toEqual(['Aluno do 6B']);
     });
 });
 

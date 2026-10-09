@@ -1385,7 +1385,7 @@ async function processMessage({
     // Interruptor por escola (Issue #401): sem decisão da escola, a resposta é
     // a do servidor — que já está pronta acima.
     const { iaLiberada } = require('./ia/interruptor');
-    if (!(await iaLiberada(escolaId))) {
+    if (!(await iaLiberada(escolaId, perfil))) {
         return { response: respostaDireta, alunoId: resolvedAlunoId };
     }
 

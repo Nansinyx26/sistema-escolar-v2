@@ -19,7 +19,7 @@ const acessoAluno = requireAcessoAoAluno('alunoId');
 // porque a resposta dele é um fluxo (SSE).
 const { iaLiberada, respostaDesligada } = require('../services/ia/interruptor');
 async function exigirIaLigada(req, res, next) {
-    if (await iaLiberada(req.escolaId)) return next();
+    if (await iaLiberada(req.escolaId, req.user?.perfil)) return next();
     return res.status(403).json(respostaDesligada(req.user?.perfil, req.escolaId));
 }
 

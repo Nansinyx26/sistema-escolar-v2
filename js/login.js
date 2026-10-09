@@ -597,7 +597,13 @@ function setupRegisterForm() {
                 )
             );
 
-            showToast('Conta criada com sucesso! Redirecionando...', 'success');
+            // A conta só entra depois de confirmar o e-mail (Issue #716): o
+            // servidor não abre sessão no cadastro e diz o que fazer.
+            const confirmar = Boolean(data?.confirmarEmail);
+            showToast(
+                confirmar ? data.message : 'Conta criada com sucesso! Redirecionando...',
+                'success'
+            );
 
             // Limpa formulário e informações
             form.reset();
@@ -608,8 +614,10 @@ function setupRegisterForm() {
                 validationIcon.className = 'bi';
             }
 
-            // Já autenticado via cookie JWT — vai direto ao painel do perfil criado
-            window.location.href = (data && data.redirect_to) || 'escolher-perfil.html';
+            // Sem confirmação pendente (servidor antigo), segue para o painel.
+            if (!confirmar) {
+                window.location.href = (data && data.redirect_to) || 'escolher-perfil.html';
+            }
         } catch (error) {
             console.error('Erro no registro:', error);
             showToast(error.message || 'Erro ao criar conta', 'error');

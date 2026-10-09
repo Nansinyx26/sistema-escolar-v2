@@ -121,7 +121,7 @@ async function chat(req, res) {
 
     // Interruptor por escola (Issue #401): mandar dado de aluno para um
     // provedor externo é decisão da escola, e o padrão da rede é não mandar.
-    if (!(await iaLiberada(req.escolaId))) {
+    if (!(await iaLiberada(req.escolaId, req.user?.perfil))) {
         return res.status(403).json(respostaDesligada(req.user?.perfil, req.escolaId));
     }
 

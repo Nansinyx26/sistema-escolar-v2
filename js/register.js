@@ -365,7 +365,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const data = await res.json();
 
-            if (data.success) {
+            if (data.success && data.confirmarEmail) {
+                // A conta só entra depois de confirmar o e-mail (Issue #716):
+                // sem sessão aberta, a pessoa vai para o login depois de ler.
+                showToast(data.message, 'success');
+                setTimeout(() => {
+                    window.location.href = data.redirect_to || '/html/login.html';
+                }, 6000);
+            } else if (data.success) {
                 showToast('🎉 Conta criada com sucesso! Redirecionando...', 'success');
 
                 // Salva sessão localmente para uso imediato no dashboard
