@@ -23,7 +23,13 @@ const app = require('../app');
 const Escola = require('../models/Escola');
 const IaConversa = require('../models/IaConversa');
 const { invalidarCacheEscolas } = require('../middleware/filtrarPorEscola');
-const { conectarBanco, limparBanco, desconectarBanco, criarUsuario } = require('./helpers');
+const {
+    conectarBanco,
+    limparBanco,
+    desconectarBanco,
+    criarUsuario,
+    autorizarFerramentas,
+} = require('./helpers');
 
 const TEM_EMOJI = /\p{Extended_Pictographic}/u;
 
@@ -52,6 +58,9 @@ function provedorEmPedacos(pedacos) {
 
 async function cookieDe(perfil) {
     const user = await criarUsuario({ perfil });
+    // A barreira por professor (Issue #727) é testada à parte; aqui o professor
+    // já vem autorizado nas ferramentas.
+    if (perfil === 'professor') await autorizarFerramentas(user);
     const token = jwt.sign(
         { id: user._id, perfil: user.perfil, email: user.email, nome: user.nome },
         process.env.JWT_SECRET,

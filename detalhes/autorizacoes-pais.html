@@ -153,11 +153,14 @@
                     </div>
                 </div>
 
-                <!-- Decisão da direção (Issue #496): só aparece para direção e admin -->
-                <label id="chaveAutorizacoesProfessor" hidden style="display:flex;gap:0.5rem;align-items:flex-start;margin:0 0 1rem;font-size:0.85rem;">
-                    <input type="checkbox" id="chaveAutorizacoesProfessorInput">
-                    <span>Professores podem ver a situação das autorizações das próprias turmas (autorizado, não autorizado ou sem resposta). Documentos e detalhes continuam só com a gestão.</span>
-                </label>
+                <!-- Decisão da direção (Issues #496 e #727): só aparece para direção e admin.
+                     A autorização é por professor; aqui vale para todos os atuais de uma vez. -->
+                <div id="chaveAutorizacoesProfessor" hidden style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;margin:0 0 1rem;font-size:0.85rem;">
+                    <span style="flex:1 1 18rem;">Consulta pelos professores da situação das autorizações das próprias turmas (autorizado, não autorizado ou sem resposta). Documentos e detalhes continuam só com a gestão.</span>
+                    <button type="button" class="ap-btn-action preview" data-liberar="true">Liberar para todos os professores</button>
+                    <button type="button" class="ap-btn-action preview" data-liberar="false">Retirar de todos</button>
+                    <span id="chaveAutorizacoesProfessorStatus" role="status" aria-live="polite" style="flex-basis:100%;"></span>
+                </div>
 
                 <!-- Barra de Filtros -->
                 <section class="ap-filter-bar" aria-label="Filtros de estudantes">

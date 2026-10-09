@@ -6,6 +6,13 @@ const RelatorioController = require('../controllers/RelatorioController');
 const authorize = require('../middleware/authorize');
 const { requireAcessoAoAluno } = require('../middleware/assertAcessoAoAluno');
 const { iaChatUsuarioLimiter, iaChatIpLimiter } = require('../middleware/rateLimiters');
+const { exigirFerramenta } = require('../middleware/exigirFerramenta');
+
+// Autorização por professor (Issue #727): além da escola ligada (#401), o
+// professor só usa cada ferramenta de IA que a direção autorizou para ele.
+// Diretor e admin não são verificados. O histórico de conversas fica de fora
+// de propósito: é dado da própria pessoa, que continua podendo lê-lo e apagá-lo.
+const assistente = exigirFerramenta('ia.assistente');
 
 // SEGURANÇA: as três rotas abaixo recebiam :alunoId e o repassavam direto ao
 // AnalyticsService — um responsável iterava IDs e montava o perfil de
@@ -93,6 +100,7 @@ router.post(
     iaChatIpLimiter,
     iaChatUsuarioLimiter,
     authorize(PERFIS_COPILOTO),
+    assistente,
     IaCopilotoController.chat
 );
 
@@ -104,6 +112,7 @@ router.post(
     '/confirmar',
     iaChatIpLimiter,
     authorize(PERFIS_COPILOTO),
+    assistente,
     IaCopilotoController.confirmar
 );
 
@@ -130,6 +139,7 @@ router.post(
     '/chatbot',
     exigirIaLigada,
     authorize(['diretor', 'professor', 'responsavel', 'admin', 'coordenador', 'secretaria']),
+    assistente,
     IAController.ChatbotController.sendMessage
 );
 
@@ -139,6 +149,7 @@ router.post(
 router.get(
     '/chatbot/alunos',
     authorize(['diretor', 'professor', 'responsavel', 'admin', 'coordenador', 'secretaria']),
+    assistente,
     IAController.ChatbotController.sugerirAlunos
 );
 
@@ -147,6 +158,7 @@ router.post(
     '/plano-aula',
     exigirIaLigada,
     authorize(['diretor', 'professor', 'admin']),
+    exigirFerramenta('ia.plano-aula'),
     IAController.gerarPlanoAula
 );
 
@@ -159,6 +171,7 @@ router.post(
     '/plano-estudo',
     exigirIaLigada,
     authorize(['diretor', 'professor', 'responsavel', 'admin']),
+    exigirFerramenta('ia.plano-estudo'),
     acessoAluno,
     IAController.gerarPlanoEstudo
 );

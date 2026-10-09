@@ -27,7 +27,13 @@ const Nota = require('../models/Nota');
 const ToolRegistry = require('../services/ia/ToolRegistry');
 const { filtroDaEscola, ErroPermissao } = require('../services/ia/PermissionGuard');
 const { invalidarCacheEscolas } = require('../middleware/filtrarPorEscola');
-const { conectarBanco, limparBanco, desconectarBanco, criarUsuario } = require('./helpers');
+const {
+    conectarBanco,
+    limparBanco,
+    desconectarBanco,
+    criarUsuario,
+    autorizarFerramentas,
+} = require('./helpers');
 
 // ── Dublês do provedor ───────────────────────────────────────────────────────
 
@@ -74,6 +80,9 @@ function provedorQueChamaFerramenta(nome, argumentos = {}) {
 
 async function cookieDe(perfil, extras = {}) {
     const user = await criarUsuario({ perfil, ...extras });
+    // A barreira por professor (Issue #727) é testada à parte; aqui o professor
+    // já vem autorizado nas ferramentas.
+    if (perfil === 'professor') await autorizarFerramentas(user);
     const token = jwt.sign(
         { id: user._id, perfil: user.perfil, email: user.email, nome: user.nome },
         process.env.JWT_SECRET,

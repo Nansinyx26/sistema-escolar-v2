@@ -82,12 +82,38 @@ O catálogo fica no código, e não no banco, porque uma ferramenta só é contr
 quando a rota dela passa pela barreira. Uma ferramenta cadastrada só pela tela
 mostraria um cadeado que não tranca nada.
 
+## Onde a barreira está
+
+| Ferramenta | Rotas | Observação |
+|---|---|---|
+| `ia.assistente` | `POST /api/ia/chat`, `/confirmar`, `/chatbot`, `GET /api/ia/chatbot/alunos` | O histórico (`/conversas`, `/exportar`, `/cancelar`, `/comandos`) fica de fora: é dado da própria pessoa |
+| `ia.atividades` | ações `criarAtividade` e `criarProjetoMaker` do assistente | Campo `ferramentaControlada` na ação; o modelo nem recebe a declaração, e o preview e a confirmação conferem de novo |
+| `ia.plano-aula` | `POST /api/ia/plano-aula` | |
+| `ia.plano-estudo` | `POST /api/ia/plano-estudo` | |
+| `gestao.autorizacoes-pais` | `GET /api/turmas/autorizacoes/situacao` | Substitui a chave por escola `Escola.professorVeAutorizacoes` (#496) |
+
+As ferramentas de IA continuam dependendo **também** da escola ligada
+(`Escola.iaHabilitada`, #401/#711): o professor precisa das duas coisas.
+
+Uma ação nova do assistente que dependa da direção declara
+`ferramentaControlada: '<id do catálogo>'`; o `ToolRegistry` recusa a subida se a
+chave não existir no catálogo.
+
+### A chave da #496
+
+O atalho da direção em `detalhes/autorizacoes-pais.html`
+(`PATCH /api/escolas/:id/autorizacoes-professor`) agora libera ou retira
+`gestao.autorizacoes-pais` de **todos os professores atuais** da escola, com um
+registro de auditoria por professor alterado. `Escola.professorVeAutorizacoes`
+não decide mais nada: a migração `1791471600000-autorizacoes-pais-por-professor`
+autorizou os professores atuais das escolas que tinham a chave ligada.
+
 ## Etapas
 
 | Etapa | Issue | Situação |
 |---|---|---|
-| Backend básico: coleções, catálogo, verificação, rotas da direção, auditoria | #721 | Este PR |
-| Barreira nas ferramentas de IA e em Autorizações dos Pais; migração da chave da #496 | — | A fazer |
+| Backend básico: coleções, catálogo, verificação, rotas da direção, auditoria | #721 | Pronto |
+| Barreira nas ferramentas de IA e em Autorizações dos Pais; migração da chave da #496 | #727 | Este PR |
 | Pedidos e notificações (professor → direção → professor) em tempo real | — | A fazer |
 | Página "Autorizações de Ferramentas" da direção | — | A fazer |
 | Cadeados e "Solicitar autorização" na conta do professor | — | A fazer |
