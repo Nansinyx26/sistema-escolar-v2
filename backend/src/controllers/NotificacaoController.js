@@ -261,3 +261,7 @@ module.exports = {
         }
     },
 };
+
+// O guard da thread de comentários (ComentarioController) usa a mesma regra
+// do sino: quem vê a notificação é quem vê a conversa dela (Issue #745).
+module.exports.filtroDaSessao = filtroDaSessao;

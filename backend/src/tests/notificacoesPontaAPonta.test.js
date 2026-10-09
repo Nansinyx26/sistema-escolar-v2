@@ -347,10 +347,17 @@ describe('aviso interno não alcança responsável', () => {
 
     it('link padrão aponta para página que existe, por perfil', async () => {
         const inscricao = { endpoint: 'https://push.exemplo/z', keys: { p256dh: 'p', auth: 'a' } };
-        await criarUsuario({
+        const familia = await criarUsuario({
             perfil: 'responsavel',
             escolaId: ESCOLA,
             pushSubscriptions: [inscricao],
+        });
+        // O público `responsaveis` é a família com filho na escola (Issue #745).
+        await Aluno.create({
+            nome: 'Filho',
+            turma: '1A',
+            escolaId: ESCOLA,
+            responsavel: familia.email,
         });
 
         const n = await gravada({

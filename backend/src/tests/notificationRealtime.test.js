@@ -5,6 +5,7 @@
  * e-mail/push são escopados por escola (incluindo legados sem escolaId).
  */
 const { conectarBanco, limparBanco, desconectarBanco } = require('./helpers');
+const Aluno = require('../models/Aluno');
 const Usuario = require('../models/Usuario');
 const Notificacao = require('../models/Notificacao');
 const NotificationService = require('../services/NotificationService');
@@ -110,7 +111,7 @@ describe('NotificationService.notify — realtime direcionado + multi-tenant', (
         expect(ev.payload).toHaveProperty('notification');
     });
 
-    it('getTargetUsers escopa por escola e inclui legados sem escolaId', async () => {
+    it('getTargetUsers escopa por escola e inclui legados com filho na escola', async () => {
         await Usuario.create({
             nome: 'Pai A',
             email: 'a@t.com',
@@ -139,6 +140,21 @@ describe('NotificationService.notify — realtime direcionado + multi-tenant', (
             ativo: true,
             cpf: '3',
             telefone: 't',
+        });
+
+        // A família é da escola pelo filho matriculado nela (Issue #745): a
+        // conta legada sem escolaId só entra porque tem filho na ESC_A.
+        await Aluno.create({
+            nome: 'Filho A',
+            turma: '1A',
+            escolaId: 'ESC_A',
+            responsavel: 'a@t.com',
+        });
+        await Aluno.create({
+            nome: 'Filho C',
+            turma: '1B',
+            escolaId: 'ESC_A',
+            responsavel: 'c@t.com',
         });
 
         const alvos = await NotificationService.getTargetUsers(['responsaveis'], 'ESC_A');
