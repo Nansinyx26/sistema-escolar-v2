@@ -17,7 +17,7 @@ const Professor = require('../models/Professor');
 const GradeHoraria = require('../models/GradeHoraria');
 const ToolRegistry = require('../services/ia/ToolRegistry');
 const { invalidarCacheEscolas } = require('../middleware/filtrarPorEscola');
-const { conectarBanco, limparBanco, desconectarBanco } = require('./helpers');
+const { conectarBanco, limparBanco, desconectarBanco, criarUsuario } = require('./helpers');
 
 let A;
 let B;
@@ -34,7 +34,9 @@ beforeEach(async () => {
     B = String((await Escola.create({ nome: 'EMEF Beta', tipo: 'EMEF', ativo: true }))._id);
     invalidarCacheEscolas();
 
+    const conta = await criarUsuario({ nome: 'Prof. Carla', escolaId: A });
     const prof = await Professor.create({
+        idUsuario: String(conta._id),
         nome: 'Prof. Carla',
         email: 'carla@escola.test',
         telefone: '(19) 99999-0000',

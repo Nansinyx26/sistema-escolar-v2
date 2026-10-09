@@ -15,6 +15,7 @@ const escapeRegex = require('../utils/escapeRegex');
 const { RELEVANCIA } = require('../utils/buscaAluno');
 const { nomeExibicao, sugerirAlunos } = require('./ia/sugestaoAlunos');
 const { turmasDoProfessorNaEscola } = require('./turmasDoProfessor');
+const { soComConta, chaveDaTurma } = require('./professoresComConta');
 
 const DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
@@ -763,21 +764,22 @@ async function fetchProfessores({ turma, escolaId }) {
     // Códigos de turma colidem entre escolas (ex.: "3A" existe em várias). Sem
     // escopo, "professores da turma 3A" misturava docentes de outras escolas.
     // Professor guarda o vínculo em vinculos.escolaId (não em escolaId de topo).
-    const base = {
-        $or: [
-            { salaPrincipal: turma },
-            { salasAdicionais: turma },
-            { turmas: turma },
-            { 'vinculos.turmas': turma },
-        ],
-    };
-    const query = escolaId ? { $and: [base, { 'vinculos.escolaId': String(escolaId) }] } : base;
+    // A turma é comparada depois, pela chave normalizada: o banco mistura
+    // "1ºB" e "1B", e a grafia exata não achava ninguém (Issue #735).
+    const query = { ativo: { $ne: false } };
+    if (escolaId) query['vinculos.escolaId'] = String(escolaId);
     const professores = await Professor.find(query)
-        .select('nome materias disciplina salaPrincipal salasAdicionais turmas vinculos escolaId')
+        .select(
+            'nome idUsuario materias disciplina salaPrincipal salasAdicionais turmas vinculos escolaId'
+        )
         .lean();
-    // A turma de mesmo nome em outra escola do professor não conta (Issue #707).
-    return professores
-        .filter((p) => turmasDoProfessorNaEscola(p, escolaId).includes(turma))
+    // A turma de mesmo nome em outra escola do professor não conta (Issue #707),
+    // e só entra quem tem conta de professor (Issue #735).
+    const chave = chaveDaTurma(turma);
+    return (await soComConta(professores))
+        .filter((p) =>
+            turmasDoProfessorNaEscola(p, escolaId).some((t) => chaveDaTurma(t) === chave)
+        )
         .map(({ nome, materias, disciplina }) => ({ nome, materias, disciplina }));
 }
 
@@ -1337,10 +1339,21 @@ async function processMessage({
             // os professores DA ESCOLA ativa (antes: Professor.find({}) devolvia
             // o corpo docente de todas as escolas da rede).
             if (!turma && turmasAutorizadas === null) {
-                const q = escolaId ? { 'vinculos.escolaId': String(escolaId) } : {};
-                dados = await Professor.find(q)
-                    .select('nome materias disciplina salaPrincipal')
-                    .lean();
+                const q = escolaId
+                    ? { ativo: { $ne: false }, 'vinculos.escolaId': String(escolaId) }
+                    : { ativo: { $ne: false } };
+                // Só quem tem conta de professor (Issue #735).
+                dados = await soComConta(
+                    await Professor.find(q)
+                        .select('nome idUsuario materias disciplina salaPrincipal')
+                        .lean()
+                );
+                dados = dados.map(({ nome, materias, disciplina, salaPrincipal }) => ({
+                    nome,
+                    materias,
+                    disciplina,
+                    salaPrincipal,
+                }));
             } else {
                 dados = await fetchProfessores({ turma, escolaId });
             }
