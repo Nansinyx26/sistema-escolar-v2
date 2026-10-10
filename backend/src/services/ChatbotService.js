@@ -15,6 +15,7 @@ const escapeRegex = require('../utils/escapeRegex');
 const { RELEVANCIA } = require('../utils/buscaAluno');
 const { nomeExibicao, sugerirAlunos } = require('./ia/sugestaoAlunos');
 const { turmasDoProfessorNaEscola } = require('./turmasDoProfessor');
+const { contaPrecisaConfirmar } = require('./verificacaoEmail');
 const { soComConta, chaveDaTurma } = require('./professoresComConta');
 
 const DIAS_SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -518,6 +519,17 @@ async function enforceRBAC({ perfil, userId, userEmail, escolaId }) {
     const ef = escolaMatch(escolaId);
 
     if (perfil === 'responsavel') {
+        // Vínculo pelo e-mail só depois de provar que ele é da pessoa (#412):
+        // a conta nova com o e-mail da ficha de outra criança lia as notas
+        // dela pelo chatbot (Issue #747).
+        if (await contaPrecisaConfirmar(userId)) {
+            return {
+                alunoFilter: { _id: null },
+                turmasAutorizadas: [],
+                professorDoc: null,
+                alunosVinculados: [],
+            };
+        }
         const alunoFilter = comEscola(
             {
                 $or: [{ responsavel: userEmail }, { 'responsavelDados.email': userEmail }],

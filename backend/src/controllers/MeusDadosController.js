@@ -33,6 +33,7 @@ const escapeRegex = require('../utils/escapeRegex');
 const { semRestricaoPara } = require('../utils/restricaoAcesso');
 const { logAction } = require('../utils/auditHelper');
 const logger = require('../utils/logger');
+const { contaPrecisaConfirmar } = require('../services/verificacaoEmail');
 
 // A identidade e a vigência dos dois consentimentos moram nos utils, e não
 // aqui: esta tela é LEITORA da mesma regra que a página do Termo escreve
@@ -188,6 +189,12 @@ function gerarProtocolo() {
 
 async function montarDadosDependentes(usuario) {
     if (!usuario?.email) return [];
+    // Os dependentes são achados pelo e-mail da conta. Só vale para o
+    // responsável que provou ser dono dele (Issue #412): sem isto, quem criava
+    // a conta com o e-mail de outra família, ou uma conta de equipe com esse
+    // e-mail, recebia os filhos dela no pacote (Issue #747).
+    if (String(usuario.perfil || '').toLowerCase() !== 'responsavel') return [];
+    if (await contaPrecisaConfirmar(usuario._id)) return [];
     const emailLimpo = String(usuario.email).trim().toLowerCase();
     const emailRegex = new RegExp(`^${escapeRegex(emailLimpo)}$`, 'i');
 
