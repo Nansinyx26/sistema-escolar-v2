@@ -29,7 +29,9 @@ const { normalizarNome } = require('../utils/nomeAluno');
 async function acharProfessor(nome, escolaId) {
     const escopo = escolaId ? { 'vinculos.escolaId': String(escolaId) } : {};
 
-    const exato = await Professor.findOne({ ...escopo, nome }).select('_id nome').lean();
+    const exato = await Professor.findOne({ ...escopo, nome })
+        .select('_id nome')
+        .lean();
     if (exato) return exato;
 
     const alvo = normalizarNome(nome);
@@ -50,7 +52,9 @@ async function acharProfessor(nome, escolaId) {
 async function acharTurma(nome, escolaId) {
     const escopo = escolaId ? { escolaId: String(escolaId) } : {};
 
-    const exata = await Turma.findOne({ ...escopo, nome }).select('_id nome').lean();
+    const exata = await Turma.findOne({ ...escopo, nome })
+        .select('_id nome')
+        .lean();
     if (exata) return exata;
 
     const canonico = (v) =>
@@ -90,7 +94,7 @@ const verifyTimetable = async (req, res, next) => {
     try {
         // 1. Identificar Data e Hora (Com Fuso Correto BRT)
 
-        let dataInput = req.body.data; // Esperado YYYY-MM-DD
+        const dataInput = req.body.data; // Esperado YYYY-MM-DD
         const timeZone = 'America/Sao_Paulo';
         let agoraLocal;
 
@@ -100,15 +104,16 @@ const verifyTimetable = async (req, res, next) => {
             agoraLocal = new Date(`${dataInput}T12:00:00`);
         } else {
             // Tempo real (sem data no body, assume hoje agora)
-            const strDate = new Date().toLocaleString("en-US", { timeZone });
+            const strDate = new Date().toLocaleString('en-US', { timeZone });
             agoraLocal = new Date(strDate);
         }
 
-        let diaSemana = agoraLocal.getDay(); // 0-6
+        const diaSemana = agoraLocal.getDay(); // 0-6
         const minutosAtuais = agoraLocal.getHours() * 60 + agoraLocal.getMinutes();
 
         // 2. Extrair dados da requisição
-        const { nomeProfessor, professorId, turma, classe, turmaId, disciplina, materia } = req.body;
+        const { nomeProfessor, professorId, turma, classe, turmaId, disciplina, materia } =
+            req.body;
 
         // Normalização de campos
         let targetProfessorId = professorId;
@@ -147,7 +152,7 @@ const verifyTimetable = async (req, res, next) => {
             });
             return res.status(400).json({
                 success: false,
-                error: 'Não foi possível identificar a turma para validação de horário.'
+                error: 'Não foi possível identificar a turma para validação de horário.',
             });
         }
 
@@ -161,11 +166,14 @@ const verifyTimetable = async (req, res, next) => {
             professorId: String(targetProfessorId),
             diaSemana: diaSemana,
             ativo: true,
-            $or: turmaConditions.length > 0 ? turmaConditions : [{ turmaId: "NENHUMA" }]
+            $or: turmaConditions.length > 0 ? turmaConditions : [{ turmaId: 'NENHUMA' }],
         };
 
         logger.debug('[Middleware Verify] Consultando grade horária', {
-            action: 'grade.validar', query: finalQuery, diaSemana, minutosAtuais,
+            action: 'grade.validar',
+            query: finalQuery,
+            diaSemana,
+            minutosAtuais,
         });
 
         const grades = await GradeHoraria.find(finalQuery);
@@ -182,11 +190,11 @@ const verifyTimetable = async (req, res, next) => {
         if (isRetroactive) {
             // Se tem alguma grade para este professor/turma/dia, permitimos
             gradeAutorizada = grades[0]; // Pega a primeira que achar (MVP)
-            // Poderíamos validar se quantidadeAulas <= soma das grades do dia? 
+            // Poderíamos validar se quantidadeAulas <= soma das grades do dia?
             // Vamos manter simples: Se existe grade no dia, ok.
         } else {
             // Tempo Real: Valida minutos
-            gradeAutorizada = grades.find(grade => {
+            gradeAutorizada = grades.find((grade) => {
                 const inicio = timeToMinutes(grade.horaInicio);
                 const fim = timeToMinutes(grade.horaFim);
                 return minutosAtuais >= inicio && minutosAtuais < fim;
@@ -202,7 +210,7 @@ const verifyTimetable = async (req, res, next) => {
                 return res.status(400).json({
                     success: false,
                     error: `A quantidade de aulas (${qtdSolicitada}) excede o permitido pela grade (${maxPermitido}).`,
-                    limite: maxPermitido
+                    limite: maxPermitido,
                 });
             }
 
@@ -257,13 +265,17 @@ const verifyTimetable = async (req, res, next) => {
                     ? `Você não tem aula com a turma ${targetTurmaName || ''} neste dia da semana, segundo a grade cadastrada. Ajuste a grade em Grade Horária ou escolha outra data.`
                     : `Agora não é horário de aula sua com a turma ${targetTurmaName || ''}. Confira sua grade em Meu Horário.`,
                 code: 'FORA_DA_GRADE',
-                debug: { diaSemana, minutos: minutosAtuais, retroactive: isRetroactive }
+                debug: { diaSemana, minutos: minutosAtuais, retroactive: isRetroactive },
             });
         }
-
     } catch (error) {
-        logger.error('Erro no middleware de validação de horário', { err: error, action: 'grade.validar' });
-        return res.status(500).json({ success: false, error: 'Erro interno na validação de horário.' });
+        logger.error('Erro no middleware de validação de horário', {
+            err: error,
+            action: 'grade.validar',
+        });
+        return res
+            .status(500)
+            .json({ success: false, error: 'Erro interno na validação de horário.' });
     }
 };
 
