@@ -229,9 +229,11 @@ async function quadroDaEscola(escolaId) {
 async function situacaoDoUsuario(usuario, escolaId) {
     const controlado = PERFIS_CONTROLADOS.has(perfilDe(usuario));
     if (!controlado) {
-        return FERRAMENTAS.map((f) => ({ id: f.id, status: 'livre' }));
+        return FERRAMENTAS.map((f) => ({ id: f.id, nome: f.nome, status: 'livre' }));
     }
-    if (!escolaId) return FERRAMENTAS.map((f) => ({ id: f.id, status: 'bloqueado' }));
+    if (!escolaId) {
+        return FERRAMENTAS.map((f) => ({ id: f.id, nome: f.nome, status: 'bloqueado' }));
+    }
 
     const professorId = idDe(usuario);
     const escola = String(escolaId);
@@ -248,6 +250,7 @@ async function situacaoDoUsuario(usuario, escolaId) {
 
     return FERRAMENTAS.map((f) => ({
         id: f.id,
+        nome: f.nome,
         status: autorizadas.has(f.id) ? 'autorizado' : pedidas.has(f.id) ? 'pendente' : 'bloqueado',
     }));
 }

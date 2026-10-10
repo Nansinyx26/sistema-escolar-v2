@@ -174,7 +174,7 @@
     const container = document.createElement('div');
     container.className = 'chatbot-container';
     container.innerHTML = `
-        <button class="chatbot-fab" id="chatbot-fab" title="Assistente Escolar IA">
+        <button class="chatbot-fab" id="chatbot-fab" title="Assistente Escolar IA" data-ferramenta="ia.assistente">
             <i class="bi bi-robot"></i>
         </button>
         <div class="chatbot-window" id="chatbot-window" style="display:none;">
@@ -614,8 +614,16 @@
         listarEventos: 'Consultando o calendário...',
     };
 
-    /** Erro com mensagem pronta para a pessoa ler. */
-    class ErroDoAssistente extends Error {}
+    /**
+     * Erro com mensagem pronta para a pessoa ler. `bloqueio` vem quando a
+     * barreira recusou por falta de autorização da direção (Issue #753).
+     */
+    class ErroDoAssistente extends Error {
+        constructor(mensagem, bloqueio = null) {
+            super(mensagem);
+            this.bloqueio = bloqueio;
+        }
+    }
 
     function carregarScript(src, jaCarregado) {
         if (jaCarregado()) return Promise.resolve();
@@ -736,9 +744,23 @@
         });
 
         if (!res.ok || !res.body) {
+            // Ferramenta que a direção não liberou: a tela mostra o cadeado e
+            // o pedido, não só o texto. O clone deixa o corpo para a mensagem.
+            const corpo =
+                typeof res.clone === 'function'
+                    ? await res
+                          .clone()
+                          .json()
+                          .catch(() => null)
+                    : null;
+            const bloqueio =
+                corpo?.codigo === 'FERRAMENTA_NAO_AUTORIZADA' && corpo.ferramenta
+                    ? { ferramenta: corpo.ferramenta, pendente: !!corpo.solicitacaoPendente }
+                    : null;
             // 403 da IA desligada na escola, 401, 429…: o motivo do servidor.
             throw new ErroDoAssistente(
-                (await mensagemDeErro(res)) || 'Não foi possível falar com o assistente agora.'
+                (await mensagemDeErro(res)) || 'Não foi possível falar com o assistente agora.',
+                bloqueio
             );
         }
 
@@ -859,6 +881,15 @@
             removeTypingIndicator();
             statusEl.textContent = 'Conectado';
             if (window.VoiceOrbManager) window.VoiceOrbManager.setState('error');
+            if (err instanceof ErroDoAssistente && err.bloqueio && window.FerramentasProfessor) {
+                const { ferramenta, pendente } = err.bloqueio;
+                if (pendente) window.FerramentasProfessor.definirStatus(ferramenta.id, 'pendente');
+                body.appendChild(
+                    window.FerramentasProfessor.criarBloqueio(ferramenta, { pendente })
+                );
+                body.scrollTop = body.scrollHeight;
+                return;
+            }
             const aviso =
                 err instanceof ErroDoAssistente
                     ? err.message

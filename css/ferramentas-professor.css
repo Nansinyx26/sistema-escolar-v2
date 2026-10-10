@@ -1,0 +1,199 @@
+/*
+ * ferramentas-professor.css — cadeado e aviso das ferramentas que dependem da
+ * direção (Issue #753). Usado com js/ferramentas-professor.js.
+ */
+
+/* Atalho trancado: continua visível (o professor precisa saber que a
+   ferramenta existe e como pedi-la), mas sem cara de clicável normal. */
+.fp-trancada {
+    opacity: 0.72;
+}
+
+.fp-cadeado {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    margin-left: 0.4rem;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.16);
+    color: #f59e0b;
+    font-size: 0.72rem;
+    flex-shrink: 0;
+    vertical-align: middle;
+}
+
+/* Card do painel: o cadeado vai para o canto, sem empurrar o texto. */
+.pn-card.fp-trancada {
+    position: relative;
+}
+
+.pn-card.fp-trancada > .fp-cadeado {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    margin: 0;
+}
+
+/* Menu lateral: a etiqueta "IA" cede o lugar ao cadeado, que diz mais e
+   não cabe ao lado dela na largura do menu. */
+.sidebar-item.fp-trancada > .pn-tag {
+    display: none;
+}
+
+/* Botão flutuante do chatbot: cadeado no canto, botão sem esmaecer. */
+.chatbot-fab.fp-trancada {
+    opacity: 1;
+}
+
+.chatbot-fab.fp-trancada > .fp-cadeado {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    margin: 0;
+    background: #f59e0b;
+    color: #1c1003;
+}
+
+/* ── Bloco do aviso (dentro de uma tela ou do diálogo) ── */
+.fp-bloqueio {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    max-width: 26rem;
+    margin: 1.5rem auto;
+    padding: 1.75rem 1.5rem 1.5rem;
+    border-radius: 16px;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    background: var(--bg-secondary, rgba(15, 23, 42, 0.85));
+    color: var(--text-primary, #e2e8f0);
+    text-align: center;
+}
+
+.fp-bloqueio-icone {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 14px;
+    background: rgba(245, 158, 11, 0.14);
+    color: #f59e0b;
+    font-size: 1.35rem;
+}
+
+.fp-titulo {
+    font-size: 1.05rem;
+}
+
+.fp-texto {
+    margin: 0;
+    color: var(--text-secondary, #94a3b8);
+    font-size: 0.92rem;
+    line-height: 1.5;
+}
+
+.fp-erro {
+    margin: 0;
+    min-height: 1em;
+    color: #f87171;
+    font-size: 0.85rem;
+}
+
+.fp-erro:empty {
+    display: none;
+}
+
+.fp-botao {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-top: 0.4rem;
+    padding: 0.65rem 1.2rem;
+    border: none;
+    border-radius: 10px;
+    background: #10b981;
+    color: #04130d;
+    font-weight: 600;
+    font-size: 0.92rem;
+    cursor: pointer;
+    transition: transform var(--motion-fast, 150ms) var(--motion-ease-out, ease-out);
+}
+
+.fp-botao:hover:not(:disabled) {
+    background: #34d399;
+}
+
+.fp-botao:active:not(:disabled) {
+    transform: scale(0.97);
+}
+
+.fp-botao:focus-visible,
+.fp-fechar:focus-visible {
+    outline: 2px solid #34d399;
+    outline-offset: 2px;
+}
+
+.fp-botao:disabled {
+    cursor: default;
+}
+
+.fp-botao-aguardando {
+    background: rgba(245, 158, 11, 0.16);
+    color: #fbbf24;
+}
+
+.fp-fechar {
+    position: absolute;
+    top: 0.6rem;
+    right: 0.6rem;
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-secondary, #94a3b8);
+    cursor: pointer;
+}
+
+/* ── Diálogo aberto pelo clique num atalho trancado ── */
+.fp-dialogo {
+    /* Resets globais zeram a margem do <dialog>; sem ela o modal não centraliza. */
+    margin: auto;
+    padding: 0;
+    border: none;
+    background: transparent;
+    max-width: calc(100vw - 2rem);
+}
+
+.fp-dialogo .fp-bloqueio {
+    margin: 0;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+.fp-dialogo::backdrop {
+    background: rgba(2, 6, 23, 0.6);
+}
+
+.fp-dialogo[open] .fp-bloqueio {
+    animation: fp-entrar var(--motion-enter, 220ms) var(--motion-ease-out, ease-out) both;
+}
+
+@keyframes fp-entrar {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.98);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fp-dialogo[open] .fp-bloqueio {
+        animation: none;
+    }
+    .fp-botao {
+        transition: none;
+    }
+}
