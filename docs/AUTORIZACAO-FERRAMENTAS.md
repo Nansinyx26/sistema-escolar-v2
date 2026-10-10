@@ -32,6 +32,7 @@ pode usar. A decisão fica no MongoDB, é conferida no backend a cada uso e vai 
 | Estado atual por professor | `models/PermissaoFerramenta.js` (coleção `permissoes_ferramentas`) |
 | Pedidos do professor | `models/SolicitacaoFerramenta.js` (coleção `solicitacoes_ferramentas`) |
 | Página da direção | `html/direcao/autorizacoes-ferramentas.html` + `.js` (link no menu lateral do diretor) |
+| Cadeado e pedido na conta do professor | `js/ferramentas-professor.js` + `css/ferramentas-professor.css` |
 | Testes | `backend/src/tests/ferramentasAutorizacao.regressao.test.js` |
 
 ## API (`/api/ferramentas`)
@@ -137,6 +138,38 @@ para o professor e `ferramentas:solicitacao` para a direção — as telas das e
 seguintes usam esses eventos para se atualizar sem recarregar. Auditoria do fluxo:
 `FERRAMENTA_SOLICITADA`, `FERRAMENTA_AUTORIZADA`, `FERRAMENTA_SOLICITACAO_RECUSADA`.
 
+## Na conta do professor
+
+`js/ferramentas-professor.js` lê `GET /api/ferramentas/minhas` (id, nome e
+status de cada ferramenta) e:
+
+- põe cadeado em todo elemento com `data-ferramenta="<id>"` enquanto a
+  ferramenta estiver `bloqueado` ou `pendente`. O clique abre o aviso "Esta
+  ferramenta precisa de autorização da direção." com **Solicitar
+  autorização** (ou "Aguardando a direção", com pedido aberto) em vez de levar
+  à ferramenta;
+- oferece `criarBloqueio()` para a tela mostrar o mesmo aviso quando recebe o
+  403 `FERRAMENTA_NAO_AUTORIZADA`;
+- relê o status com `ferramentas:atualizadas` (Socket.IO), na volta à aba e,
+  em página sem socket, de minuto em minuto enquanto houver algo trancado — e
+  dispara `ferramentas:mudou` no `document` para a página reagir.
+
+Sem resposta de `/minhas`, nada é trancado na tela: a barreira do servidor
+continua valendo. Não use `aria-disabled` no atalho: o `system-global.css`
+tira o clique de quem o tem, e o clique é o que abre o pedido.
+
+| Onde | O que acontece |
+|---|---|
+| Dashboard (menu, card e atalho do Assistente; menu "Autorizações") | Cadeado e aviso no clique |
+| Chatbot flutuante | Cadeado no botão; o 403 vira o aviso com o pedido dentro do chat |
+| `html/selecionar.html`, `html/turma.html` | Cadeado no atalho do Assistente |
+| Copiloto (`direcao/ia-assistant.html`) | Abre já com o aviso e a caixa de texto desligada; libera sozinho quando a direção autoriza |
+| Autorizações da turma (`detalhes/autorizacoes-turma.html`) | O 403 vira o aviso com o pedido; a lista carrega sozinha quando a direção libera |
+
+Plano de aula e plano de estudo com IA ainda não têm tela no front; a barreira
+e o pedido já valem pela API. Geração de atividades não tem atalho próprio:
+quando bloqueada, o assistente nem oferece a ação.
+
 ## Etapas
 
 | Etapa | Issue | Situação |
@@ -144,5 +177,5 @@ seguintes usam esses eventos para se atualizar sem recarregar. Auditoria do flux
 | Backend básico: coleções, catálogo, verificação, rotas da direção, auditoria | #721 | Pronto |
 | Barreira nas ferramentas de IA e em Autorizações dos Pais; migração da chave da #496 | #727 | Pronto |
 | Pedidos e notificações (professor → direção → professor) em tempo real | #733 | Pronto |
-| Página "Autorizações de Ferramentas" da direção, com atalho no menu lateral | #741 | Este PR |
-| Cadeados e "Solicitar autorização" na conta do professor | — | A fazer |
+| Página "Autorizações de Ferramentas" da direção, com atalho no menu lateral | #741 | Pronto |
+| Cadeados e "Solicitar autorização" na conta do professor | #753 | Este PR |

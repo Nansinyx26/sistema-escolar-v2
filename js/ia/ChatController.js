@@ -285,6 +285,61 @@ export class ChatController {
     }
 
     /**
+     * 403 `FERRAMENTA_NAO_AUTORIZADA`: diz o que falta e, se ainda não há
+     * pedido aberto (`podeSolicitar`), oferece o botão de pedir à direção.
+     */
+    _mostrarBloqueioFerramenta(erro) {
+        const ferramenta = erro.ferramenta || {};
+        if (!erro.podeSolicitar) {
+            this.renderer.mostrarAviso(
+                `"${ferramenta.nome || 'Esta ferramenta'}" precisa de autorização da direção. ` +
+                    'Seu pedido já está com ela; você recebe um aviso quando ela decidir.',
+                { tipo: 'info' }
+            );
+            return;
+        }
+        this.renderer.mostrarAviso(
+            erro.error || 'Esta ferramenta precisa de autorização da direção.',
+            {
+                tipo: 'info',
+                acao: {
+                    rotulo: 'Solicitar autorização',
+                    aoClicar: (botao) => this._solicitarFerramenta(ferramenta.id, botao),
+                },
+            }
+        );
+    }
+
+    /** Envia o pedido à direção (`POST /api/ferramentas/:id/solicitar`). */
+    async _solicitarFerramenta(ferramentaId, botao) {
+        botao.disabled = true;
+        try {
+            const resposta = await fetch(
+                `${this.baseApi}/ferramentas/${encodeURIComponent(ferramentaId)}/solicitar`,
+                {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': lerCookie('csrf_token'),
+                    },
+                    body: '{}',
+                }
+            );
+            const json = await resposta.json().catch(() => ({}));
+            if (!resposta.ok || !json.success) {
+                throw new Error(json.error || 'Não foi possível enviar o pedido agora.');
+            }
+            botao.textContent = 'Aguardando a direção';
+            globalThis.FerramentasProfessor?.definirStatus?.(ferramentaId, 'pendente');
+            this.aoAvisar('Pedido enviado à direção. Você recebe um aviso quando ela decidir.');
+        } catch (e) {
+            botao.disabled = false;
+            this.aoAvisar(e.message || 'Não foi possível enviar o pedido agora.');
+        }
+    }
+
+    /**
      * Retoma uma conversa anterior, repintando o histórico vindo do servidor.
      * @param {Object} conversa resposta de GET /api/ia/conversas/:id
      */
@@ -377,6 +432,12 @@ export class ChatController {
                             },
                         }
                     );
+                    return;
+                }
+                // Ferramenta que a direção não liberou para este professor
+                // (Issue #753): o pedido fica a um botão daqui.
+                if (erro.codigo === 'FERRAMENTA_NAO_AUTORIZADA') {
+                    this._mostrarBloqueioFerramenta(erro);
                     return;
                 }
                 this.renderer.mostrarAviso(

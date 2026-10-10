@@ -455,6 +455,8 @@ describe('minhas ferramentas', () => {
         expect(status['ia.assistente']).toBe('autorizado');
         expect(status['ia.plano-estudo']).toBe('pendente');
         expect(status['gestao.autorizacoes-pais']).toBe('bloqueado');
+        // O nome vem junto: o aviso de cadeado da tela do professor usa (#753).
+        expect(res.body.data.find((f) => f.id === 'ia.assistente').nome).toBe('Assistente de IA');
     });
 
     it('para a direção, tudo livre', async () => {
