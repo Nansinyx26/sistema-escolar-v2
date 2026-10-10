@@ -27,7 +27,13 @@ const Nota = require('../models/Nota');
 const ToolRegistry = require('../services/ia/ToolRegistry');
 const { filtroDaEscola, ErroPermissao } = require('../services/ia/PermissionGuard');
 const { invalidarCacheEscolas } = require('../middleware/filtrarPorEscola');
-const { conectarBanco, limparBanco, desconectarBanco, criarUsuario } = require('./helpers');
+const {
+    conectarBanco,
+    limparBanco,
+    desconectarBanco,
+    criarUsuario,
+    autorizarFerramentas,
+} = require('./helpers');
 
 // ── Dublês do provedor ───────────────────────────────────────────────────────
 
@@ -74,6 +80,9 @@ function provedorQueChamaFerramenta(nome, argumentos = {}) {
 
 async function cookieDe(perfil, extras = {}) {
     const user = await criarUsuario({ perfil, ...extras });
+    // A barreira por professor (Issue #727) é testada à parte; aqui o professor
+    // já vem autorizado nas ferramentas.
+    if (perfil === 'professor') await autorizarFerramentas(user);
     const token = jwt.sign(
         { id: user._id, perfil: user.perfil, email: user.email, nome: user.nome },
         process.env.JWT_SECRET,
@@ -490,14 +499,18 @@ describe('listarTurmas e listarProfessores', () => {
     });
 
     it('listarProfessores traz só o quadro da escola da sessão', async () => {
+        const meu = await criarUsuario({ nome: 'Prof Meu' });
+        const outro = await criarUsuario({ nome: 'Prof Outro' });
         await Professor.create([
             {
                 nome: 'Prof Meu',
+                idUsuario: String(meu._id),
                 vinculos: [{ escolaId: String(minhaEscola._id) }],
                 materias: ['Matematica'],
             },
             {
                 nome: 'Prof Outro',
+                idUsuario: String(outro._id),
                 vinculos: [{ escolaId: String(outraEscola._id) }],
                 materias: ['Matematica'],
             },
@@ -507,6 +520,59 @@ describe('listarTurmas e listarProfessores', () => {
         const r = await chamar('listarProfessores', {}, ctx);
 
         expect(r.dados.professores.map((p) => p.nome)).toEqual(['Prof Meu']);
+    });
+
+    // Issue #735: a direção recebia nomes de professores que não têm conta.
+    it('listarProfessores deixa de fora quem não tem conta de professor válida', async () => {
+        const escolaId = String(minhaEscola._id);
+        const ativa = await criarUsuario({ nome: 'Prof Real' });
+        const desativada = await criarUsuario({ nome: 'Prof Desligado', ativo: false });
+        const pendente = await criarUsuario({
+            nome: 'Prof Pendente',
+            confirmacaoEmailObrigatoria: true,
+            emailVerificado: false,
+        });
+        const responsavel = await criarUsuario({ nome: 'Mae', perfil: 'responsavel' });
+        const vinculos = [{ escolaId }];
+        await Professor.create([
+            { nome: 'Prof Real', idUsuario: String(ativa._id), vinculos },
+            { nome: 'Prof Sem Conta', vinculos },
+            { nome: 'Prof Conta Apagada', idUsuario: '507f1f77bcf86cd799439011', vinculos },
+            { nome: 'Prof Desligado', idUsuario: String(desativada._id), vinculos },
+            { nome: 'Prof Pendente', idUsuario: String(pendente._id), vinculos },
+            { nome: 'Prof Responsavel', idUsuario: String(responsavel._id), vinculos },
+        ]);
+
+        const ctx = ctxDe({ perfil: 'diretor', escolaId });
+        const r = await chamar('listarProfessores', {}, ctx);
+
+        expect(r.dados.professores.map((p) => p.nome)).toEqual(['Prof Real']);
+        expect(r.dados.total).toBe(1);
+    });
+
+    it('listarProfessores acha a turma em qualquer grafia', async () => {
+        const escolaId = String(minhaEscola._id);
+        const conta = await criarUsuario({ nome: 'Prof Bia' });
+        await Professor.create({
+            nome: 'Prof Bia',
+            idUsuario: String(conta._id),
+            turmas: ['1ºB'],
+            vinculos: [{ escolaId }],
+        });
+
+        const ctx = ctxDe({ perfil: 'diretor', escolaId });
+        for (const turma of ['1B', '1ºB', '1° B', '1º ano B', 'sala 1b']) {
+            const r = await chamar('listarProfessores', { turma }, ctx);
+            expect(r.dados.professores.map((p) => p.nome)).toEqual(['Prof Bia']);
+        }
+    });
+
+    it('listarProfessores vazio manda o modelo não citar nomes', async () => {
+        const ctx = ctxDe({ perfil: 'diretor', escolaId: String(minhaEscola._id) });
+        const r = await chamar('listarProfessores', { turma: '7C' }, ctx);
+
+        expect(r.dados.total).toBe(0);
+        expect(r.dados.observacao).toMatch(/NÃO cite nenhum nome/);
     });
 });
 

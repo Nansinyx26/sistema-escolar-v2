@@ -60,6 +60,20 @@ router.post(
     ConselhoTutelarController.registrar
 );
 
+// ── Denúncias recebidas pelo canal aberto (Issue #726) ───────────────────────
+// Direção e secretaria (e o admin, que precisa informar a escola) leem o
+// relato e registram a apuração. A listagem não traz o relato; abrir uma
+// denúncia grava `DENUNCIA_VISUALIZAR` no AuditLog — ver DenunciaController.
+const DenunciaController = require('../controllers/DenunciaController');
+const RECEBEM_DENUNCIAS = ['diretor', 'secretaria'];
+router.get('/denuncias', authorize.estrito(RECEBEM_DENUNCIAS), DenunciaController.listar);
+router.get('/denuncias/:id', authorize.estrito(RECEBEM_DENUNCIAS), DenunciaController.obter);
+router.post(
+    '/denuncias/:id/andamento',
+    authorize.estrito(RECEBEM_DENUNCIAS),
+    DenunciaController.registrarAndamento
+);
+
 // ── Canais do usuário (qualquer autenticado) ─────────────────────────────────
 router.post('/denunciar', moderacaoAbusoLimiter, ModeracaoController.denunciar);
 router.post('/contestar', moderacaoAbusoLimiter, ModeracaoController.contestar);

@@ -6,12 +6,16 @@
  * Restrito à GESTÃO. Um professor não precisa da lista dos colegas para o
  * próprio trabalho, e para um responsável isso é dado de terceiros — nomes,
  * disciplinas e alocação de funcionários não entram no escopo dele (LGPD).
+ *
+ * Só entra quem tem conta de professor ativa (Issue #735) — o cadastro sem
+ * conta não é professor que a direção reconheça.
  */
 
 const Professor = require('../../../models/Professor');
 const escapeRegex = require('../../../utils/escapeRegex');
 const { filtroDaEscola } = require('../PermissionGuard');
 const { turmasDoProfessorNaEscola } = require('../../turmasDoProfessor');
+const { soComConta, chaveDaTurma } = require('../../professoresComConta');
 
 const MAX_RESULTADOS = 60;
 
@@ -53,41 +57,41 @@ module.exports = {
             filtro.$and = [{ $or: [{ disciplina: padrao }, { materias: padrao }] }];
         }
 
-        const variantes = turma
-            ? [String(turma).trim(), String(turma).trim().replace('º', '')]
-            : null;
-        if (variantes) {
-            filtro.$and = [
-                ...(filtro.$and || []),
-                {
-                    $or: [
-                        { turmas: { $in: variantes } },
-                        { salaPrincipal: { $in: variantes } },
-                        { salasAdicionais: { $in: variantes } },
-                        { 'vinculos.turmas': { $in: variantes } },
-                    ],
-                },
-            ];
-        }
+        // A turma é comparada DEPOIS da consulta, pela chave normalizada: o
+        // banco mistura "1ºB" e "1B", e um `$in` com a grafia pedida devolvia
+        // lista vazia — que o modelo preenchia com nomes inventados (#735).
+        // O quadro de uma escola cabe em memória.
+        const chave = turma ? chaveDaTurma(turma) : null;
 
         const encontrados = await Professor.find(filtro)
             .select(
-                'nome email disciplina materias turmas salaPrincipal salasAdicionais tipoAtuacao vinculos escolaId'
+                'nome idUsuario disciplina materias turmas salaPrincipal salasAdicionais tipoAtuacao vinculos escolaId'
             )
             .sort({ nome: 1 })
-            .limit(MAX_RESULTADOS)
             .lean();
 
-        // As turmas de cada um são as que ele tem NESTA escola (Issue #707):
-        // a consulta acha candidatos, e a "1A" que ele dá em outra escola não
-        // faz dele professor da "1A" daqui.
-        const professores = encontrados
+        // Só quem tem conta de professor de verdade (Issue #735). As turmas de
+        // cada um são as que ele tem NESTA escola (Issue #707): a "1A" que ele
+        // dá em outra escola não faz dele professor da "1A" daqui.
+        const comConta = await soComConta(encontrados);
+        const todos = comConta
             .map((p) => ({ ...p, turmasAqui: turmasDoProfessorNaEscola(p, ctx.escolaId) }))
-            .filter((p) => !variantes || p.turmasAqui.some((t) => variantes.includes(t)));
+            .filter((p) => !chave || p.turmasAqui.some((t) => chaveDaTurma(t) === chave));
+        const professores = todos.slice(0, MAX_RESULTADOS);
+
+        if (professores.length === 0) {
+            return {
+                total: 0,
+                professores: [],
+                observacao: turma
+                    ? `Nenhum professor com conta nesta escola está vinculado à turma ${turma}. Diga isso à pessoa e NÃO cite nenhum nome de professor.`
+                    : 'Nenhum professor com conta cadastrada nesta escola atende a esse filtro. Diga isso à pessoa e NÃO cite nenhum nome de professor.',
+            };
+        }
 
         return {
-            total: professores.length,
-            truncado: encontrados.length >= MAX_RESULTADOS,
+            total: todos.length,
+            truncado: todos.length > MAX_RESULTADOS,
             professores: professores.map((p) => ({
                 nome: p.nome,
                 disciplinas: [...new Set([...(p.materias || []), p.disciplina].filter(Boolean))],

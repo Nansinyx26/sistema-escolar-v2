@@ -105,6 +105,9 @@
             '/html/notificacoes.html': {
                 perfis: ['admin', 'diretor', 'secretaria', 'professor', 'responsavel'],
             },
+            '/html/denuncias.html': {
+                perfis: ['admin', 'diretor', 'secretaria'],
+            },
             '/html/dashboard.html': {
                 perfis: ['admin', 'diretor', 'professor', 'secretaria'],
                 redirecionarAoPainel: true,

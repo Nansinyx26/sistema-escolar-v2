@@ -24,7 +24,13 @@ const Aluno = require('../models/Aluno');
 const Nota = require('../models/Nota');
 const Falta = require('../models/Falta');
 const Professor = require('../models/Professor');
-const { conectarBanco, limparBanco, desconectarBanco, criarUsuario } = require('./helpers');
+const {
+    conectarBanco,
+    limparBanco,
+    desconectarBanco,
+    criarUsuario,
+    autorizarFerramentas,
+} = require('./helpers');
 const { assinarTokenSessao } = require('../utils/sessionToken');
 const { invalidarCacheEscolas } = require('../middleware/filtrarPorEscola');
 const { criarMapa } = require('../services/ia/pseudonimizar');
@@ -111,6 +117,8 @@ beforeEach(async () => {
         vinculos: [{ escolaId: String(escola._id), cargo: 'professor' }],
         ativo: true,
     });
+    // A barreira por professor (Issue #727) é testada à parte.
+    await autorizarFerramentas(prof);
     invalidarCacheEscolas();
 });
 afterAll(() => {

@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * criarAtividade — propõe uma tarefa/avaliação para uma turma.
  *
@@ -15,7 +13,11 @@ const { filtroDaEscola, turmasPermitidas, ErroPermissao } = require('../Permissi
 
 const TIPOS = ['tarefa', 'prova', 'trabalho', 'projeto', 'leitura', 'outro'];
 
-const normalizar = (t) => String(t || '').replace('º', '').trim().toUpperCase();
+const normalizar = (t) =>
+    String(t || '')
+        .replace('º', '')
+        .trim()
+        .toUpperCase();
 
 /** Aceita "2026-08-15" e "15/08/2026". */
 function lerData(valor) {
@@ -33,28 +35,40 @@ function lerData(valor) {
     return Number.isNaN(solta.getTime()) ? null : solta;
 }
 
-const formatar = (d) => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const formatar = (d) =>
+    d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
 module.exports = {
     name: 'criarAtividade',
-    description: 'Cria uma atividade (tarefa, prova, trabalho) para uma turma, com prazo de entrega. Use quando pedirem para lançar/propor/passar uma atividade. Exige confirmação antes de ser criada.',
+    description:
+        'Cria uma atividade (tarefa, prova, trabalho) para uma turma, com prazo de entrega. Use quando pedirem para lançar/propor/passar uma atividade. Exige confirmação antes de ser criada.',
 
     schema: {
         type: 'object',
         properties: {
             titulo: { type: 'string', description: 'Título da atividade.' },
             turma: { type: 'string', description: 'Turma que receberá a atividade, como "6B".' },
-            tipo: { type: 'string', enum: TIPOS, description: 'Natureza da atividade. Padrão: tarefa.' },
+            tipo: {
+                type: 'string',
+                enum: TIPOS,
+                description: 'Natureza da atividade. Padrão: tarefa.',
+            },
             materia: { type: 'string', description: 'Disciplina.' },
-            dataEntrega: { type: 'string', description: 'Prazo de entrega, no formato AAAA-MM-DD.' },
+            dataEntrega: {
+                type: 'string',
+                description: 'Prazo de entrega, no formato AAAA-MM-DD.',
+            },
             descricao: { type: 'string', description: 'Enunciado ou orientações.' },
             valor: { type: 'number', description: 'Pontuação da atividade, se houver.' },
-            bimestre: { type: 'number', description: 'Bimestre (1 a 4).' }
+            bimestre: { type: 'number', description: 'Bimestre (1 a 4).' },
         },
-        required: ['titulo', 'turma']
+        required: ['titulo', 'turma'],
     },
 
     cargosPermitidos: ['diretor', 'secretaria', 'professor'],
+    // Professor só com "Geração de atividades com IA" autorizada pela direção
+    // (Issue #727). Conferido no catálogo, no preview e na confirmação.
+    ferramentaControlada: 'ia.atividades',
     mutates: true,
 
     async handler({ titulo, turma, tipo, materia, dataEntrega, descricao, valor, bimestre }, ctx) {
@@ -82,10 +96,13 @@ module.exports = {
         // A turma precisa existir na escola — evita atividade órfã por erro de
         // digitação ("6C" quando a escola tem "6ºC" ou nenhuma).
         const turmas = await Turma.find({ ...filtroDaEscola(ctx), ativo: { $ne: false } })
-            .select('nome id').lean();
-        const existente = turmas.find(t => normalizar(t.nome || t.id) === normalizar(turmaLimpa));
+            .select('nome id')
+            .lean();
+        const existente = turmas.find((t) => normalizar(t.nome || t.id) === normalizar(turmaLimpa));
         if (!existente) {
-            throw new ErroPermissao(`Não encontrei a turma "${turmaLimpa}" nesta escola. Confirme o nome com a pessoa.`);
+            throw new ErroPermissao(
+                `Não encontrei a turma "${turmaLimpa}" nesta escola. Confirme o nome com a pessoa.`
+            );
         }
 
         const tipoLimpo = TIPOS.includes(String(tipo || '').toLowerCase())
@@ -105,13 +122,14 @@ module.exports = {
             descricao: descricao ? String(descricao).trim() : undefined,
             dataEntrega: prazo ? prazo.toISOString() : undefined,
             valor: Number.isFinite(Number(valor)) ? Number(valor) : undefined,
-            bimestre: Number(bimestre) || undefined
+            bimestre: Number(bimestre) || undefined,
         };
 
         return {
-            resumo: `Criar ${tipoLimpo} "${tituloLimpo}" para a turma ${parametros.turma}`
-                + (prazo ? `, entrega em ${formatar(prazo)}` : ' (sem prazo definido)'),
-            parametros
+            resumo:
+                `Criar ${tipoLimpo} "${tituloLimpo}" para a turma ${parametros.turma}` +
+                (prazo ? `, entrega em ${formatar(prazo)}` : ' (sem prazo definido)'),
+            parametros,
         };
     },
 
@@ -128,7 +146,7 @@ module.exports = {
             dataEntrega: parametros.dataEntrega ? new Date(parametros.dataEntrega) : undefined,
             criadoPor: ctx.usuarioId,
             criadoPorNome: ctx.nome,
-            ativo: true
+            ativo: true,
         });
 
         return {
@@ -138,8 +156,8 @@ module.exports = {
                 titulo: atividade.titulo,
                 turma: atividade.turma,
                 tipo: atividade.tipo,
-                entrega: atividade.dataEntrega
-            }
+                entrega: atividade.dataEntrega,
+            },
         };
-    }
+    },
 };

@@ -19,7 +19,9 @@ const SolicitacaoFerramenta = require('../../models/SolicitacaoFerramenta');
 const Usuario = require('../../models/Usuario');
 const Professor = require('../../models/Professor');
 const { turmasDoProfessorNaEscola } = require('../turmasDoProfessor');
+const mongoose = require('mongoose');
 const { ferramentaPorId, FERRAMENTAS } = require('./catalogo');
+const { notificarSolicitacao, notificarDecisao } = require('./notificacoesFerramenta');
 
 const PERFIS_CONTROLADOS = new Set(['professor']);
 
@@ -389,7 +391,7 @@ async function salvarAutorizacoes({ escolaId, diretorId, alteracoes, auditar }) 
             continue;
         }
 
-        await SolicitacaoFerramenta.updateMany(
+        const { modifiedCount: pedidosEncerrados } = await SolicitacaoFerramenta.updateMany(
             { escolaId: escola, professorId, ferramentaId, status: 'pendente' },
             {
                 $set: {
@@ -410,10 +412,212 @@ async function salvarAutorizacoes({ escolaId, diretorId, alteracoes, auditar }) 
             descricao: `${ferramenta.nome} ${autorizado ? 'autorizado' : 'revogado'} para o professor ${professorId}.`,
         });
 
+        // Aviso ao professor (Issue #733). Retirar com pedido pendente é recusar
+        // o pedido; sem pedido, é revogar uma autorização que ele tinha.
+        await notificarDecisao({
+            escolaId: escola,
+            professorId,
+            ferramenta,
+            resultado: autorizado ? 'autorizado' : pedidosEncerrados > 0 ? 'recusado' : 'revogado',
+        });
+
         alteradas.push({ professorId, ferramentaId, autorizado, antes });
     }
 
     return { alteradas, inalteradas };
+}
+
+/**
+ * O professor pede uma ferramenta que a direção ainda não liberou (Issue #733).
+ *
+ * Professor, escola e ferramenta vêm da sessão e da URL conferidas — o corpo
+ * só traz a mensagem opcional. Um pendente por vez: pedir de novo devolve o
+ * pedido que já está aberto, sem duplicar nem avisar a direção outra vez.
+ *
+ * @returns {Promise<{solicitacao: object, nova: boolean}>}
+ */
+async function solicitarFerramenta({ usuario, escolaId, ferramentaId, mensagem, auditar }) {
+    const ferramenta = ferramentaPorId(ferramentaId);
+    if (!ferramenta) {
+        throw erroDeEntrada('Ferramenta desconhecida.', 404, 'FERRAMENTA_DESCONHECIDA');
+    }
+    if (!PERFIS_CONTROLADOS.has(perfilDe(usuario))) {
+        throw erroDeEntrada(
+            'Só professores pedem autorização de ferramenta.',
+            403,
+            'PEDIDO_SO_DE_PROFESSOR'
+        );
+    }
+    if (!escolaId) {
+        throw erroDeEntrada('Selecione a escola antes de pedir.', 400, 'ESCOLA_NAO_INFORMADA');
+    }
+
+    const escola = String(escolaId);
+    const professorId = idDe(usuario);
+    if ((await checkToolPermission(usuario, escola, ferramenta.id)).liberado) {
+        throw erroDeEntrada('Você já tem autorização para esta ferramenta.', 409, 'JA_AUTORIZADO');
+    }
+
+    const pendente = {
+        escolaId: escola,
+        professorId,
+        ferramentaId: ferramenta.id,
+        status: 'pendente',
+    };
+    const existente = await SolicitacaoFerramenta.findOne(pendente).lean();
+    if (existente) return { solicitacao: existente, nova: false };
+
+    const texto = typeof mensagem === 'string' ? mensagem.trim().slice(0, 500) : '';
+    let solicitacao;
+    try {
+        solicitacao = (
+            await SolicitacaoFerramenta.create({ ...pendente, mensagem: texto || undefined })
+        ).toObject();
+    } catch (e) {
+        // Dois cliques ao mesmo tempo: o índice único parcial deixa um passar.
+        if (e?.code !== 11000) throw e;
+        return { solicitacao: await SolicitacaoFerramenta.findOne(pendente).lean(), nova: false };
+    }
+
+    await auditar('FERRAMENTA_SOLICITADA', {
+        recursoId: String(solicitacao._id),
+        valorNovo: { professorId, ferramentaId: ferramenta.id, status: 'pendente' },
+        descricao: `Pedido de autorização de ${ferramenta.nome} pelo professor ${professorId}.`,
+    });
+    await notificarSolicitacao({
+        escolaId: escola,
+        solicitacao,
+        professor: { id: professorId, nome: usuario?.nome || 'Um professor' },
+        ferramenta,
+    });
+    return { solicitacao, nova: true };
+}
+
+/** Pedidos da escola para a direção, mais recentes primeiro. */
+async function listarSolicitacoes(escolaId, status = 'pendente') {
+    const filtro = { escolaId: String(escolaId) };
+    if (status !== 'todas') filtro.status = status;
+    const pedidos = await SolicitacaoFerramenta.find(filtro)
+        .sort({ createdAt: -1 })
+        .limit(200)
+        .lean();
+
+    const pessoas = [
+        ...new Set(pedidos.flatMap((p) => [p.professorId, p.decididaPor]).filter(Boolean)),
+    ];
+    const nomes = new Map(
+        (pessoas.length
+            ? await Usuario.find({ _id: { $in: pessoas } })
+                  .select('_id nome')
+                  .lean()
+            : []
+        ).map((u) => [String(u._id), u.nome])
+    );
+
+    return pedidos.map((p) => ({
+        id: String(p._id),
+        professor: { id: p.professorId, nome: nomes.get(p.professorId) || 'Conta removida' },
+        ferramenta: {
+            id: p.ferramentaId,
+            nome: ferramentaPorId(p.ferramentaId)?.nome || p.ferramentaId,
+        },
+        mensagem: p.mensagem || '',
+        status: p.status,
+        criadaEm: p.createdAt,
+        decididaEm: p.decididaEm,
+        decididaPor: p.decididaPor
+            ? { id: p.decididaPor, nome: nomes.get(p.decididaPor) || 'Conta removida' }
+            : null,
+        motivoDecisao: p.motivoDecisao || '',
+    }));
+}
+
+/**
+ * A direção autoriza ou recusa um pedido da PRÓPRIA escola (Issue #733).
+ * Pedido de outra escola é "não encontrado" — não revela que existe.
+ */
+async function decidirSolicitacao({
+    escolaId,
+    diretorId,
+    solicitacaoId,
+    decisao,
+    motivo,
+    auditar,
+}) {
+    if (!['autorizar', 'recusar'].includes(decisao)) {
+        throw erroDeEntrada('Informe decisao: "autorizar" ou "recusar".');
+    }
+    const naoEncontrado = () =>
+        erroDeEntrada('Pedido não encontrado.', 404, 'SOLICITACAO_NAO_ENCONTRADA');
+    if (!mongoose.isValidObjectId(solicitacaoId)) throw naoEncontrado();
+
+    const escola = String(escolaId);
+    const pedido = await SolicitacaoFerramenta.findOne({
+        _id: solicitacaoId,
+        escolaId: escola,
+    }).lean();
+    if (!pedido) throw naoEncontrado();
+    if (pedido.status !== 'pendente') {
+        throw erroDeEntrada('Este pedido já foi decidido.', 409, 'SOLICITACAO_JA_DECIDIDA');
+    }
+    const ferramenta = ferramentaPorId(pedido.ferramentaId);
+    const motivoDecisao = typeof motivo === 'string' ? motivo.trim().slice(0, 500) : '';
+
+    if (decisao === 'autorizar') {
+        // Mesmo caminho do "Salvar autorizações": confere que o professor é da
+        // escola, grava, audita, encerra o pedido e avisa o professor.
+        await salvarAutorizacoes({
+            escolaId: escola,
+            diretorId,
+            alteracoes: [
+                {
+                    professorId: pedido.professorId,
+                    ferramentaId: pedido.ferramentaId,
+                    autorizado: true,
+                },
+            ],
+            auditar,
+        });
+        // Já estava autorizado por outro caminho: só encerra o pedido.
+        await SolicitacaoFerramenta.updateOne(
+            { _id: pedido._id, status: 'pendente' },
+            { $set: { status: 'autorizada', decididaPor: diretorId, decididaEm: new Date() } }
+        );
+    } else {
+        const recusado = await SolicitacaoFerramenta.findOneAndUpdate(
+            { _id: pedido._id, status: 'pendente' },
+            {
+                $set: {
+                    status: 'recusada',
+                    decididaPor: diretorId,
+                    decididaEm: new Date(),
+                    motivoDecisao: motivoDecisao || undefined,
+                },
+            },
+            { new: true }
+        ).lean();
+        if (!recusado) {
+            throw erroDeEntrada('Este pedido já foi decidido.', 409, 'SOLICITACAO_JA_DECIDIDA');
+        }
+        await auditar('FERRAMENTA_SOLICITACAO_RECUSADA', {
+            recursoId: String(pedido._id),
+            valorAnterior: { status: 'pendente' },
+            valorNovo: {
+                professorId: pedido.professorId,
+                ferramentaId: pedido.ferramentaId,
+                status: 'recusada',
+            },
+            descricao: `Pedido de ${ferramenta?.nome || pedido.ferramentaId} do professor ${pedido.professorId} recusado.`,
+        });
+        await notificarDecisao({
+            escolaId: escola,
+            professorId: pedido.professorId,
+            ferramenta,
+            resultado: 'recusado',
+        });
+    }
+
+    return SolicitacaoFerramenta.findById(pedido._id).lean();
 }
 
 module.exports = {
@@ -423,4 +627,7 @@ module.exports = {
     quadroDaEscola,
     situacaoDoUsuario,
     salvarAutorizacoes,
+    solicitarFerramenta,
+    listarSolicitacoes,
+    decidirSolicitacao,
 };

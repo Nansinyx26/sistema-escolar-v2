@@ -43,6 +43,8 @@ function exigirFerramenta(ferramentaId) {
                 error: `A ferramenta "${ferramenta.nome}" precisa de autorização da direção.`,
                 ferramenta: { id: ferramenta.id, nome: ferramenta.nome },
                 solicitacaoPendente: pendente,
+                // A tela oferece "Solicitar autorização" (Issue #733).
+                podeSolicitar: !pendente,
             });
         } catch (e) {
             // Sem conseguir ler a decisão, nega: liberar por falha de banco

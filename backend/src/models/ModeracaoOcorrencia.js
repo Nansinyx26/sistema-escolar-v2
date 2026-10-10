@@ -113,6 +113,46 @@ const ModeracaoOcorrenciaSchema = new mongoose.Schema(
             default: undefined,
         },
 
+        // ─── Apuração da denúncia do canal aberto (Issue #726) ──────────────
+        // Separada de `statusAtual` de propósito: `statusAtual` é o ciclo da
+        // fila de moderação, e `expirarPendencias` marca como `expirada` a
+        // denúncia moderada que ninguém decidiu em 24h. A apuração de um
+        // bullying não termina porque um prazo de fila venceu. Denúncia gravada
+        // antes desta Issue não tem o campo e é tratada como `nova`.
+        // Quem anotou fica guardado por id; o nome é resolvido na leitura.
+        apuracao: {
+            type: new mongoose.Schema(
+                {
+                    situacao: {
+                        type: String,
+                        enum: ['nova', 'em_apuracao', 'concluida'],
+                        default: 'nova',
+                    },
+                    atualizadoEm: Date,
+                    andamentos: {
+                        type: [
+                            new mongoose.Schema(
+                                {
+                                    situacao: {
+                                        type: String,
+                                        enum: ['nova', 'em_apuracao', 'concluida'],
+                                    },
+                                    anotacao: { type: String, trim: true, maxlength: 1000 },
+                                    porId: String,
+                                    porPerfil: String,
+                                    em: { type: Date, default: Date.now },
+                                },
+                                { _id: false }
+                            ),
+                        ],
+                        default: undefined,
+                    },
+                },
+                { _id: false }
+            ),
+            default: undefined,
+        },
+
         provedor: { type: String },
         provedorLatenciaMs: { type: Number },
         provedorVersao: { type: String },
@@ -161,6 +201,11 @@ ModeracaoOcorrenciaSchema.index({ escolaId: 1, statusAtual: 1, criadoEm: -1 });
 // Reincidência (§5.1): "quantas ocorrências deste remetente nos últimos 30
 // dias". É a query mais quente do caminho de análise — roda a cada bloqueio.
 ModeracaoOcorrenciaSchema.index({ remetenteId: 1, criadoEm: -1 });
+
+// A página de denúncias recebidas (Issue #726): "as denúncias desta escola,
+// mais recente primeiro". A coleção cresce com cada bloqueio do filtro léxico;
+// sem o `camada` no índice, listar meia dúzia de denúncias varreria tudo isso.
+ModeracaoOcorrenciaSchema.index({ escolaId: 1, camada: 1, criadoEm: -1 });
 
 // Detecção de reenvio do mesmo conteúdo sem guardar o conteúdo.
 ModeracaoOcorrenciaSchema.index({ escolaId: 1, conteudoHash: 1 });
