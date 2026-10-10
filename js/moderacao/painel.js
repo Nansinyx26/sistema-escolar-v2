@@ -12,7 +12,7 @@
  * `authorize.estrito` + `filtrarPorEscola`; aqui só se desenha o que a API
  * devolveu. Esconder um botão não protege nada.
  *
- * Motion: tudo vem de css/motion.css (`.skeleton`, `.motion-reveal`, tokens de
+ * Motion: tudo vem de css/motion.css (`.skeleton`, `Motion.reveal` sobre `data-reveal`, tokens de
  * duração). Nenhuma animação declarada aqui — ver AGENTS.md §8 e docs/MOTION.md.
  */
 
@@ -95,7 +95,11 @@
      */
     function montarCartao(ocorrencia, indice) {
         const cartao = document.createElement('article');
-        cartao.className = 'mod-card motion-reveal';
+        // `data-reveal`, e não a classe `motion-reveal` direto: a classe esconde
+        // o elemento, e só quem passa por `Motion.reveal` ganha o `is-visible`
+        // (Issue #731).
+        cartao.className = 'mod-card';
+        cartao.setAttribute('data-reveal', '');
         cartao.style.setProperty('--motion-i', String(indice));
         cartao.dataset.id = ocorrencia.id;
 
