@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * resumoDashboard — panorama numérico da escola em uma chamada.
  *

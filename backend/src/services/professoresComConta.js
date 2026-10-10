@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * professoresComConta.js — o professor que o assistente pode citar (Issue #735).
  *

@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  * listarProfessores — quadro docente da escola.
  *
