@@ -23,6 +23,17 @@ const { emitirParaMensagem } = require('../utils/realtime');
 async function assertAcessoAThread(req, { comunicadoId, notificacaoId }) {
     const perfil = String(req.user?.perfil || '').toLowerCase();
 
+    // Uma thread por pedido (Issue #745). Com os dois ids, só o comunicado era
+    // conferido e o comentário era gravado também na notificação — de outra
+    // escola, inclusive.
+    if (comunicadoId && notificacaoId) {
+        return {
+            ok: false,
+            status: 400,
+            error: 'Informe o comunicado ou a notificação, não os dois.',
+        };
+    }
+
     if (comunicadoId) {
         const { podeVerComunicado, escopoEscola } = require('./ComunicadoController');
 
@@ -52,16 +63,25 @@ async function assertAcessoAThread(req, { comunicadoId, notificacaoId }) {
             return { ok: false, status: 404, error: 'Notificação não encontrada.' };
         }
 
-        // Notificação não tem a regra de destinatários modelada como o
-        // comunicado (o campo é Mixed e cada emissor grava num formato). O que
-        // dá para impor com segurança aqui é a fronteira de tenant, que é
-        // justamente o que faltava. Admin é global por definição.
-        if (
-            perfil !== 'admin' &&
-            req.escolaId &&
-            notificacao.escolaId &&
-            String(notificacao.escolaId) !== String(req.escolaId)
-        ) {
+        // Admin é global por definição.
+        if (perfil === 'admin') return { ok: true };
+
+        // Fronteira de tenant. Sem escola resolvida na sessão (a conta do
+        // login Google sem filho, por exemplo), a notificação de uma escola
+        // não é de ninguém: falha fechada (Issue #745).
+        if (notificacao.escolaId && String(notificacao.escolaId) !== String(req.escolaId || '')) {
+            return { ok: false, status: 404, error: 'Notificação não encontrada.' };
+        }
+
+        // Quem vê a thread é quem vê a notificação no sino (Issue #745): a
+        // escola só não basta — o aviso interno da equipe e o das famílias de
+        // outra turma não são do responsável. A regra é a do sino, importada
+        // em vez de reescrita.
+        const { filtroDaSessao } = require('./NotificacaoController');
+        const visivel = await Notificacao.exists({
+            $and: [{ _id: notificacao._id }, await filtroDaSessao(req)],
+        });
+        if (!visivel) {
             return { ok: false, status: 404, error: 'Notificação não encontrada.' };
         }
         return { ok: true };

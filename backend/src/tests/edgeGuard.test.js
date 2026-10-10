@@ -209,6 +209,57 @@ describe('edgeGuard — armadilhas', () => {
         expect(registro.resumo().banidos).toBe(1);
         expect(depois.status).toBe(429);
     });
+
+    // Issue #738: a escola inteira sai por um IP. Um <img> de outra página, ou
+    // um aluno digitando o endereço, não pode tirar o sistema do ar para todos.
+    describe('requisicao de navegador por outra pagina ou pela barra de endereco', () => {
+        const comoNavegador = (req, site) =>
+            req
+                .set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0) Chrome/129.0 Safari/537.36')
+                .set('Sec-Fetch-Site', site)
+                .set('X-Forwarded-For', '200.100.50.25');
+
+        it.each(['cross-site', 'same-site', 'none'])(
+            'isca com Sec-Fetch-Site %s recebe 404 e NAO bane',
+            async (site) => {
+                const registro = criarRegistro();
+                const mini = appDeBorda({ registro });
+
+                const isca = await comoNavegador(request(mini).get('/painel-interno'), site);
+                const depois = await comoNavegador(request(mini).get('/'), 'same-origin');
+
+                expect(isca.status).toBe(404);
+                expect(registro.resumo().banidos).toBe(0);
+                expect(depois.status).toBe(200);
+            }
+        );
+
+        it('imagens de outra pagina com "<script" na query nao acumulam ate banir', async () => {
+            const registro = criarRegistro();
+            const mini = appDeBorda({ registro });
+
+            for (let i = 0; i < 10; i++) {
+                const r = await comoNavegador(
+                    request(mini).get(`/html/login.html?q=%3Cscript%3E${i}`),
+                    'cross-site'
+                );
+                expect(r.status).toBe(404);
+            }
+            const depois = await comoNavegador(request(mini).get('/'), 'same-origin');
+
+            expect(registro.resumo().banidos).toBe(0);
+            expect(depois.status).toBe(200);
+        });
+
+        it('a mesma isca vinda da propria origem continua banindo', async () => {
+            const registro = criarRegistro();
+            const mini = appDeBorda({ registro });
+
+            await comoNavegador(request(mini).get('/painel-interno'), 'same-origin');
+
+            expect(registro.resumo().banidos).toBe(1);
+        });
+    });
 });
 
 describe('edgeGuard — metodos HTTP', () => {

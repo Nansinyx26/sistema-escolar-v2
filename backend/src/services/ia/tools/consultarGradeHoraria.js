@@ -16,6 +16,7 @@
 
 const GradeHoraria = require('../../../models/GradeHoraria');
 const Professor = require('../../../models/Professor');
+const { soComConta } = require('../../professoresComConta');
 const { alunosDoResponsavel } = require('../../vinculoDoResponsavel');
 const { variantesDasTurmas } = require('../../publicoDoComunicado');
 const {
@@ -125,12 +126,16 @@ module.exports = {
             .lean();
 
         // Só o NOME do professor, nunca e-mail ou telefone — o mesmo que a
-        // tela de grade mostra ao responsável (Issue #675).
+        // tela de grade mostra ao responsável (Issue #675). E só de quem tem
+        // conta de professor (Issue #735): aula ligada a cadastro sem conta
+        // sai sem nome, em vez de citar alguém que não existe no sistema.
         const ids = [...new Set(aulas.map((a) => String(a.professorId || '')).filter(Boolean))];
         const professores = ids.length
-            ? await Professor.find({ _id: { $in: ids } })
-                  .select('nome')
-                  .lean()
+            ? await soComConta(
+                  await Professor.find({ _id: { $in: ids } })
+                      .select('nome idUsuario')
+                      .lean()
+              )
             : [];
         const nomes = new Map(professores.map((p) => [String(p._id), p.nome]));
 

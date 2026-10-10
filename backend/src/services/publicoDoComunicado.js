@@ -48,16 +48,13 @@ function variantesDasTurmas(turmas) {
     return [...lista];
 }
 
-/** Contas de responsável dos alunos das turmas, na escola. */
-async function responsaveisDasTurmas(escolaId, turmas) {
-    const nomes = variantesDasTurmas(turmas);
-    const alunos = await Aluno.find({
-        escolaId: String(escolaId),
-        $or: [{ turma: { $in: nomes } }, { turmaId: { $in: nomes } }],
-    })
-        .select('responsavel responsavelDados.email responsaveis.email restricoesAcesso')
-        .lean();
+const CAMPOS_DA_FAMILIA = 'responsavel responsavelDados.email responsaveis.email restricoesAcesso';
 
+/**
+ * E-mails (minúsculos) dos responsáveis dos alunos, nos três campos da ficha,
+ * fora o bloqueado por decisão judicial naquele aluno (Issue #491).
+ */
+function emailsDasFamilias(alunos) {
     const emails = new Set();
     for (const aluno of alunos) {
         const candidatos = [
@@ -69,6 +66,20 @@ async function responsaveisDasTurmas(escolaId, turmas) {
             if (email && !restritoPara(aluno, email)) emails.add(String(email).toLowerCase());
         }
     }
+    return emails;
+}
+
+/** Contas de responsável dos alunos das turmas, na escola. */
+async function responsaveisDasTurmas(escolaId, turmas) {
+    const nomes = variantesDasTurmas(turmas);
+    const alunos = await Aluno.find({
+        escolaId: String(escolaId),
+        $or: [{ turma: { $in: nomes } }, { turmaId: { $in: nomes } }],
+    })
+        .select(CAMPOS_DA_FAMILIA)
+        .lean();
+
+    const emails = emailsDasFamilias(alunos);
     if (!emails.size) return [];
 
     const contas = await Usuario.find({ email: { $in: [...emails] }, perfil: 'responsavel' })
@@ -120,6 +131,40 @@ async function contasDasTurmas(escolaId, turmas, { incluirResponsaveis = true } 
         for (const id of await responsaveisDasTurmas(escolaId, turmas)) contas.add(id);
     }
     return [...contas];
+}
+
+/**
+ * Quem pertence à escola, para os públicos amplos (`todos`, `professores`,
+ * `responsaveis`, `diretores`) — Issue #745.
+ *
+ * O `Usuario.escolaId` não basta: a conta que o login Google cria nasce sem
+ * ele, e a do primeiro acesso do professor também. A entrega por push e
+ * e-mail aceitava toda conta sem escola como "legado", e essas contas
+ * recebiam os avisos de TODAS as escolas da rede. Aqui a escola é provada
+ * como no mural e no sino (#687): a família por filho matriculado nela, a
+ * equipe pelo cadastro de cargo com vínculo nela.
+ *
+ * @returns {Promise<{familias: Set<string>, equipeIds: Set<string>, equipeEmails: Set<string>}>}
+ */
+async function membrosDaEscola(escolaId) {
+    const escola = String(escolaId);
+    const alunos = await Aluno.find({ escolaId: escola }).select(CAMPOS_DA_FAMILIA).lean();
+
+    const equipeIds = new Set();
+    const equipeEmails = new Set();
+    const cargos = [Professor, require('../models/Diretor'), require('../models/Secretaria')];
+    for (const Cargo of cargos) {
+        const docs = await Cargo.find({
+            $or: [{ escolaId: escola }, { 'vinculos.escolaId': escola }],
+        })
+            .select('idUsuario email')
+            .lean();
+        for (const d of docs) {
+            if (d.idUsuario) equipeIds.add(String(d.idUsuario));
+            if (d.email) equipeEmails.add(String(d.email).toLowerCase());
+        }
+    }
+    return { familias: emailsDasFamilias(alunos), equipeIds, equipeEmails };
 }
 
 /**
@@ -182,5 +227,6 @@ module.exports = {
     emitirComunicadoNovo,
     turmasDosDestinatarios,
     contasDasTurmas,
+    membrosDaEscola,
     variantesDasTurmas,
 };
