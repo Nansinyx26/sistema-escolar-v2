@@ -137,7 +137,11 @@
         fundo.setAttribute('aria-labelledby', 'termo-titulo');
 
         const caixa = document.createElement('div');
-        caixa.className = 'termo-modal motion-reveal';
+        // `data-reveal`, e não a classe `motion-reveal` direto: a classe esconde
+        // o elemento, e só quem passa por `Motion.reveal` ganha o `is-visible`
+        // (Issue #731).
+        caixa.className = 'termo-modal';
+        caixa.setAttribute('data-reveal', '');
 
         const titulo = document.createElement('h2');
         titulo.id = 'termo-titulo';
