@@ -119,8 +119,17 @@ const verifyTimetable = async (req, res, next) => {
         let targetProfessorId = professorId;
         let targetTurmaId = turmaId;
 
-        // 3. Lookup: Professor (Se veio string nomeProfessor)
-        if (!targetProfessorId && nomeProfessor) {
+        // 3. Lookup: Professor. Para o perfil professor, é SEMPRE o da sessão
+        // (Issue #759): o corpo dizia quem dava a aula, e bastava mandar o
+        // nome de um colega sem grade para passar pela conferência.
+        if (req.user?.perfil === 'professor') {
+            const daSessao = await Professor.findOne({
+                idUsuario: String(req.user.id || req.user._id),
+            })
+                .select('_id')
+                .lean();
+            targetProfessorId = daSessao?._id || null;
+        } else if (!targetProfessorId && nomeProfessor) {
             const profDoc = await acharProfessor(nomeProfessor, req.escolaId);
             if (profDoc) targetProfessorId = profDoc._id;
         }
