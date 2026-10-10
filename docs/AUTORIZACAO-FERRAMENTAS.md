@@ -165,10 +165,10 @@ tira o clique de quem o tem, e o clique é o que abre o pedido.
 | `html/selecionar.html`, `html/turma.html` | Cadeado no atalho do Assistente |
 | Copiloto (`direcao/ia-assistant.html`) | Abre já com o aviso e a caixa de texto desligada; libera sozinho quando a direção autoriza |
 | Autorizações da turma (`detalhes/autorizacoes-turma.html`) | O 403 vira o aviso com o pedido; a lista carrega sozinha quando a direção libera |
+| Planos com IA (`html/planos-ia.html`, #761) | Cada aba (plano de aula, plano de estudo) troca o formulário pelo aviso enquanto a ferramenta dela estiver trancada |
 
-Plano de aula e plano de estudo com IA ainda não têm tela no front; a barreira
-e o pedido já valem pela API. Geração de atividades não tem atalho próprio:
-quando bloqueada, o assistente nem oferece a ação.
+Geração de atividades não tem atalho próprio: quando bloqueada, o assistente
+nem oferece a ação.
 
 ## Etapas
 

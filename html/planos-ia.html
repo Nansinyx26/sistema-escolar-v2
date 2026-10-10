@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+
+<head>
+    <!-- Trava de acesso por perfil. SEM defer e antes de tudo: a decisão
+         precisa acontecer antes do primeiro pixel. Ver js/guarda-acesso.js. -->
+    <script src="/js/guarda-acesso.js?v=1.0"></script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Sistema Escolar - Plano de aula e plano de estudo com IA">
+    <title>Planos com IA - Sistema Escolar</title>
+
+    <link rel="icon" type="image/png" href="/favicon/favicon.png">
+    <link rel="apple-touch-icon" href="/favicon/favicon.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#09090b">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="preload" href="/js/libs/fonts/bootstrap-icons.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="/js/libs/bootstrap-icons.min.css">
+
+    <script defer src="/js/theme.js"></script>
+
+    <link rel="stylesheet" href="/css/variables.css">
+    <link rel="stylesheet" href="/css/components.css">
+    <link rel="stylesheet" href="/css/botao-voltar.css">
+    <link rel="stylesheet" href="/css/watermark.css">
+    <link rel="stylesheet" href="/css/system-global.css?v=1.0">
+    <link rel="stylesheet" href="/css/motion.css">
+    <link rel="stylesheet" href="/css/ferramentas-professor.css">
+    <link rel="stylesheet" href="/css/planos-ia.css">
+    <link rel="stylesheet" href="/css/acessibilidade.css">
+</head>
+
+<body>
+    <div class="pi-pagina">
+        <header class="pi-topo">
+            <a href="javascript:void(0)" class="btn-voltar-global" id="btnVoltarNav" aria-label="Voltar">
+                <i class="bi bi-arrow-left" aria-hidden="true"></i> Voltar
+            </a>
+            <span class="pi-marca"><i class="bi bi-mortarboard-fill" aria-hidden="true"></i> Sistema Escolar</span>
+        </header>
+
+        <main class="pi-conteudo" id="conteudo">
+            <div class="pi-cabecalho">
+                <h1><i class="bi bi-stars" aria-hidden="true"></i> Planos com IA</h1>
+                <p>
+                    Gere um plano de aula pronto para usar ou um plano de estudo para um aluno da sua turma.
+                    Confira o texto antes de usar: respostas de IA podem conter erros.
+                </p>
+            </div>
+
+            <div class="pi-abas" role="tablist" aria-label="Tipo de plano">
+                <button type="button" class="pi-aba" role="tab" id="abaAula" aria-controls="painelAula"
+                    aria-selected="true" data-aba="aula">
+                    <i class="bi bi-journal-text" aria-hidden="true"></i> Plano de aula
+                </button>
+                <button type="button" class="pi-aba" role="tab" id="abaEstudo" aria-controls="painelEstudo"
+                    aria-selected="false" tabindex="-1" data-aba="estudo">
+                    <i class="bi bi-person-lines-fill" aria-hidden="true"></i> Plano de estudo (PEI)
+                </button>
+            </div>
+
+            <!-- Plano de aula -->
+            <section class="pi-painel" role="tabpanel" id="painelAula" aria-labelledby="abaAula"
+                data-ferramenta-painel="ia.plano-aula">
+                <div class="pi-bloqueio-alvo"></div>
+                <form class="pi-form" id="formAula" novalidate>
+                    <div class="pi-grade">
+                        <label class="pi-campo">
+                            <span>Disciplina *</span>
+                            <input type="text" name="materia" required maxlength="80" placeholder="Ex.: Matemática" autocomplete="off">
+                        </label>
+                        <label class="pi-campo">
+                            <span>Ano / turma *</span>
+                            <input type="text" name="ano" required maxlength="40" placeholder="Ex.: 6º ano" autocomplete="off">
+                        </label>
+                    </div>
+                    <label class="pi-campo">
+                        <span>Tema da aula *</span>
+                        <input type="text" name="tema" required maxlength="160" placeholder="Ex.: Frações equivalentes" autocomplete="off">
+                    </label>
+                    <label class="pi-campo">
+                        <span>Objetivos (opcional)</span>
+                        <textarea name="objetivos" rows="3" maxlength="600" placeholder="O que os alunos devem saber fazer ao fim da aula"></textarea>
+                    </label>
+                    <p class="pi-erro" role="alert"></p>
+                    <button type="submit" class="pi-gerar">
+                        <i class="bi bi-stars" aria-hidden="true"></i> Gerar plano de aula
+                    </button>
+                </form>
+            </section>
+
+            <!-- Plano de estudo -->
+            <section class="pi-painel" role="tabpanel" id="painelEstudo" aria-labelledby="abaEstudo"
+                data-ferramenta-painel="ia.plano-estudo" hidden>
+                <div class="pi-bloqueio-alvo"></div>
+                <form class="pi-form" id="formEstudo" novalidate>
+                    <div class="pi-campo pi-busca-aluno">
+                        <label for="buscaAluno">Aluno *</label>
+                        <input type="search" id="buscaAluno" maxlength="80" placeholder="Digite o nome do aluno"
+                            autocomplete="off" role="combobox" aria-autocomplete="list"
+                            aria-controls="listaAlunos" aria-expanded="false">
+                        <ul class="pi-sugestoes" id="listaAlunos" role="listbox" hidden></ul>
+                        <p class="pi-aluno-escolhido" id="alunoEscolhido" hidden></p>
+                    </div>
+                    <label class="pi-campo">
+                        <span>Objetivo (opcional)</span>
+                        <textarea name="objetivos" rows="3" maxlength="600" placeholder="Ex.: recuperar a média de Matemática no bimestre"></textarea>
+                    </label>
+                    <p class="pi-erro" role="alert"></p>
+                    <button type="submit" class="pi-gerar">
+                        <i class="bi bi-stars" aria-hidden="true"></i> Gerar plano de estudo
+                    </button>
+                </form>
+            </section>
+
+            <!-- Resultado (compartilhado pelas duas abas) -->
+            <section class="pi-resultado" id="resultado" aria-live="polite" hidden>
+                <div class="pi-resultado-topo">
+                    <h2 id="resultadoTitulo">Plano gerado</h2>
+                    <div class="pi-resultado-acoes">
+                        <button type="button" class="pi-acao" id="btnCopiar">
+                            <i class="bi bi-clipboard" aria-hidden="true"></i> Copiar
+                        </button>
+                        <button type="button" class="pi-acao" id="btnImprimir">
+                            <i class="bi bi-printer" aria-hidden="true"></i> Imprimir
+                        </button>
+                    </div>
+                </div>
+                <p class="pi-offline" id="avisoOffline" hidden>
+                    <i class="bi bi-wifi-off" aria-hidden="true"></i>
+                    A IA não respondeu agora. Este é um modelo básico, sem IA — revise antes de usar ou tente de novo.
+                </p>
+                <article class="pi-plano" id="plano"></article>
+            </section>
+        </main>
+    </div>
+
+    <div class="watermark" aria-hidden="true">
+        <span class="watermark-icon"><i class="bi bi-laptop"></i></span>
+        <span class="watermark-text">Desenvolvido por NanDev</span>
+    </div>
+
+    <!-- api-config.js SEM defer e antes de todos: define window.API_BASE_URL. -->
+    <script src="/js/api-config.js"></script>
+    <script src="/js/libs/purify.min.js"></script>
+    <script defer src="/js/botao-voltar.js"></script>
+    <script defer src="/js/ferramentas-professor.js"></script>
+    <script defer src="/js/planos-ia.js"></script>
+    <script defer src="/js/acessibilidade.js"></script>
+</body>
+
+</html>
