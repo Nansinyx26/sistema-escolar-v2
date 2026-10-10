@@ -11,7 +11,11 @@
 const bcrypt = require('bcryptjs');
 const Usuario = require('../models/Usuario');
 const trocaEmail = require('../services/trocaEmail');
-const { invalidarCacheDeVerificacao } = require('../services/verificacaoEmail');
+const {
+    invalidarCacheDeVerificacao,
+    exigeVerificacao,
+    aguardaConfirmacao,
+} = require('../services/verificacaoEmail');
 const { mascarar } = require('../services/EnvioEmail');
 const { notificarPedidoTrocaEmail, notificarEmailTrocado } = require('../utils/emailNotifications');
 const { logAction } = require('../utils/auditHelper');
@@ -164,7 +168,9 @@ exports.confirmar = async (req, res) => {
                   _id: id,
                   emailTrocaTokenHash: trocaEmail.hashDoToken(token),
                   emailTrocaExpiry: { $gt: new Date() },
-              }).select('+emailTrocaPendente email nome')
+              }).select(
+                  '+emailTrocaPendente email nome perfil emailVerificado createdAt confirmacaoEmailObrigatoria'
+              )
             : null;
 
         if (!conta?.emailTrocaPendente) {
@@ -178,6 +184,12 @@ exports.confirmar = async (req, res) => {
 
         const antigo = String(conta.email || '').toLowerCase();
         const novo = conta.emailTrocaPendente;
+        // As fichas apontam para o e-mail ANTIGO. Só leva os vínculos dele para
+        // o novo quem provou ser dono do antigo (Issue #412/#716): sem isto,
+        // quem criava a conta com o e-mail de outra família, sem confirmar, e
+        // trocava para um endereço próprio recebia os filhos dela já com o
+        // e-mail novo confirmado (Issue #754).
+        const provouOAntigo = !exigeVerificacao(conta) && !aguardaConfirmacao(conta);
 
         // Entre o pedido e a confirmação alguém pode ter criado conta com o
         // endereço. O índice único cobre a mesma grafia; a consulta, as demais.
@@ -215,11 +227,9 @@ exports.confirmar = async (req, res) => {
         encerrarConexoesDaConta(String(atualizada._id));
 
         invalidarCacheDeVerificacao(atualizada._id);
-        const { alterados, falhas } = await trocaEmail.migrarVinculos({
-            usuarioId: atualizada._id,
-            antigo,
-            novo,
-        });
+        const { alterados, falhas } = provouOAntigo
+            ? await trocaEmail.migrarVinculos({ usuarioId: atualizada._id, antigo, novo })
+            : { alterados: {}, falhas: [] };
         emitirTokenSessao(res, atualizada);
 
         const migrados = Object.entries(alterados)
@@ -232,7 +242,9 @@ exports.confirmar = async (req, res) => {
             valorNovo: mascarar(novo),
             descricao: [
                 'E-mail da conta trocado pela própria pessoa, com o link enviado ao endereço novo.',
-                `Vínculos migrados: ${migrados || 'nenhum'}.`,
+                provouOAntigo
+                    ? `Vínculos migrados: ${migrados || 'nenhum'}.`
+                    : 'Vínculos NÃO migrados: o e-mail antigo nunca foi confirmado pela conta.',
                 falhas.length ? `Não migrados (conferir as fichas): ${falhas.join(', ')}.` : '',
             ]
                 .filter(Boolean)
