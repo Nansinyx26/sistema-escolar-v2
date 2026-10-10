@@ -434,3 +434,66 @@ describe('vínculos acompanham a troca', () => {
         expect(pendentes.map((p) => p.email)).toEqual([NOVO]);
     });
 });
+
+// Issue #754: as fichas apontam para o e-mail antigo. Quem nunca provou ser
+// dono dele — criou a conta com o e-mail de outra família e não confirmou —
+// não leva os filhos dela ao trocar para um endereço próprio.
+describe('conta que não provou o e-mail antigo', () => {
+    async function naoConfirmada(extra = {}) {
+        const c = await criarUsuario({
+            email: 'mae.vitima@familia.test',
+            perfil: 'responsavel',
+            emailVerificado: false,
+            ...extra,
+        });
+        await Usuario.collection.updateOne(
+            { _id: c._id },
+            { $set: { createdAt: new Date('2026-10-01T00:00:00Z') } }
+        );
+        return c;
+    }
+
+    it('troca o login, mas as fichas do endereço antigo ficam onde estão', async () => {
+        const atacante = await naoConfirmada();
+        const filho = await Aluno.create({
+            nome: 'Filho da vítima',
+            turma: '5A',
+            escolaId: 'escola-a',
+            responsavel: 'mae.vitima@familia.test',
+        });
+        const token = await pedirComSucesso(atacante, 'atacante@familia.test');
+
+        const res = await confirmar(cookieDe(atacante), token);
+
+        expect(res.status).toBe(200);
+        expect((await Aluno.findById(filho._id).lean()).responsavel).toBe(
+            'mae.vitima@familia.test'
+        );
+        const lista = await request(app)
+            .get('/api/responsavel/alunos')
+            .set(
+                'Cookie',
+                res.headers['set-cookie'].map((c) => c.split(';')[0])
+            );
+        expect(JSON.stringify(lista.body)).not.toContain('Filho da vítima');
+
+        const auditoria = await AuditLog.findOne({ acao: 'EMAIL_TROCADO' }).lean();
+        expect(auditoria.detalhes?.descricao || JSON.stringify(auditoria)).toMatch(/NÃO migrados/);
+    });
+
+    it('conta do autocadastro da equipe ainda não confirmada também não migra', async () => {
+        const conta716 = await naoConfirmada({
+            perfil: 'professor',
+            confirmacaoEmailObrigatoria: true,
+        });
+        await Professor.create({ nome: 'Ficha', email: 'mae.vitima@familia.test' });
+        // A sessão desta conta é recusada pelo authJWT (#716): o pedido nem
+        // chega. Garantia extra no serviço: sem prova, nada migra.
+        const res = await pedir(cookieDe(conta716), {
+            novoEmail: 'outro@familia.test',
+            senhaAtual: SENHA_TESTE,
+        });
+        expect(res.status).toBe(403);
+        expect((await Professor.findOne({}).lean()).email).toBe('mae.vitima@familia.test');
+    });
+});
