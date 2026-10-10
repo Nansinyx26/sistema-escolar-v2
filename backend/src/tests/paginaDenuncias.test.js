@@ -58,6 +58,24 @@ describe('html/denuncias.html', () => {
         expect(dashboard).toContain('href="denuncias.html" class="sidebar-item director-only"');
     });
 
+    it('tem link nas barras do painel da direção (Issue #743)', () => {
+        // O painel da direção tem barra própria, separada da do dashboard: é
+        // para lá que o botão Voltar leva o diretor.
+        for (const arquivo of [
+            'html/direcao/index.html',
+            'html/direcao/gerenciar-secretaria.html',
+        ]) {
+            const pagina = fs.readFileSync(path.join(RAIZ, arquivo), 'utf8');
+            expect({
+                arquivo,
+                temLink: pagina.includes('href="/html/denuncias.html" class="sidebar-item"'),
+            }).toEqual({
+                arquivo,
+                temLink: true,
+            });
+        }
+    });
+
     it('não usa innerHTML: relato e anotação são texto livre', () => {
         expect(script).not.toMatch(/\.innerHTML\s*=/);
         expect(script).not.toContain('insertAdjacentHTML');

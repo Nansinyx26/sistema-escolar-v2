@@ -462,6 +462,47 @@ async function mostrarAjuda(controlador, paleta) {
     controlador.renderer.rolarParaFim();
 }
 
+// ── Autorização da direção (Issue #753) ─────────────────────────────────────
+
+const FERRAMENTA_ASSISTENTE = 'ia.assistente';
+
+/**
+ * Professor sem o Assistente liberado já abre a página vendo o cadeado e o
+ * pedido, em vez de descobrir só depois de digitar. Quando a direção libera,
+ * a conversa abre na hora. Quem decide continua sendo o servidor: isto só
+ * evita a pergunta perdida.
+ */
+async function vigiarAutorizacao(controlador, mensagens) {
+    const ferramentas = window.FerramentasProfessor;
+    if (!ferramentas) return;
+    const entrada = document.getElementById('inputBox');
+    const enviar = document.getElementById('sendBtn');
+    let bloqueado = false;
+
+    function refletir() {
+        const trancada = ferramentas.trancada(FERRAMENTA_ASSISTENTE);
+        if (trancada && !bloqueado) {
+            bloqueado = true;
+            mensagens.innerHTML = '';
+            mensagens.appendChild(ferramentas.criarBloqueio({ id: FERRAMENTA_ASSISTENTE }));
+            entrada.disabled = true;
+            enviar.disabled = true;
+        } else if (!trancada && bloqueado) {
+            bloqueado = false;
+            entrada.disabled = false;
+            enviar.disabled = false;
+            controlador.novaConversa();
+            avisar('A direção liberou o Assistente de IA para você.');
+        }
+    }
+
+    document.addEventListener('ferramentas:mudou', (e) => {
+        if (e.detail?.ferramentaId === FERRAMENTA_ASSISTENTE) refletir();
+    });
+    await ferramentas.iniciar();
+    refletir();
+}
+
 // ── Inicialização ────────────────────────────────────────────────────────────
 
 async function iniciar() {
@@ -506,6 +547,7 @@ async function iniciar() {
     );
 
     controladorAtivo = controlador;
+    vigiarAutorizacao(controlador, mensagens);
 
     // ── Conversas anteriores ────────────────────────────────────────────────
     const painelSidebar = document.getElementById('iaSidebar');

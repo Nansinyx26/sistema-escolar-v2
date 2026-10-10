@@ -49,6 +49,7 @@
     <!-- Rolagem e performance mobile — deve ser o ÚLTIMO stylesheet -->
     <link rel="stylesheet" href="../css/mobile-scroll.css?v=1.0">
     <link rel="stylesheet" href="../css/motion.css">
+    <link rel="stylesheet" href="../css/ferramentas-professor.css">
     <script src="../js/scroll-lock.js?v=1.0"></script>
     <!-- Acessibilidade (LBI/eMAG) — ver docs/CONFORMIDADE-LEGAL.md -->
     <link rel="stylesheet" href="../css/acessibilidade.css">
@@ -115,7 +116,7 @@
                         </div>
                     </div>
                     <div class="turma-actions">
-                        <a href="direcao/ia-assistant.html" class="btn btn-outline" id="btnIaAssistant" title="Assistente da Escola (IA)" style="border-color: rgba(16,185,129,0.5); color: #10b981; text-decoration: none;">
+                        <a href="direcao/ia-assistant.html" class="btn btn-outline" id="btnIaAssistant" data-ferramenta="ia.assistente" title="Assistente da Escola (IA)" style="border-color: rgba(16,185,129,0.5); color: #10b981; text-decoration: none;">
                             <i class="bi bi-stars"></i> Assistente IA
                         </a>
                         <button class="btn btn-outline" id="btnExportCsv">
@@ -259,6 +260,7 @@
     <script defer src="../js/observability.js"></script>
     <script defer src="../js/motion.js"></script>
     <script defer src="../js/acessibilidade.js"></script>
+    <script defer src="../js/ferramentas-professor.js"></script>
 </body>
 
 </html>
