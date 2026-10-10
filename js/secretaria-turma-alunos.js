@@ -1488,8 +1488,7 @@
         });
 
         // Delegação: cobre botões criados dinamicamente sem handler inline
-        // (`onclick=` no HTML depende de `script-src-attr: unsafe-inline`, que
-        // é dívida legada da CSP — código novo não aumenta essa superfície).
+        // (`onclick=` no HTML não roda: a CSP tem `script-src-attr 'none'`).
         document.addEventListener('click', function (evento) {
             var remover = evento.target.closest('[data-remover]');
             if (remover) return removerAluno(remover.getAttribute('data-remover'), remover);

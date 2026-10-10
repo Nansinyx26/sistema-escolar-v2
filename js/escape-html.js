@@ -16,9 +16,9 @@
  *     `<div title="${descricao}" data-id="${id}">`
  *
  * Com o textContent, um valor contendo `"` fecha o atributo e permite injetar
- * outro atributo — inclusive um handler de evento, que a CSP ainda aceita
- * (script-src-attr). Ou seja: o caminho de XSS mais provável passava exatamente
- * pelo ponto que a função não cobria.
+ * outro atributo — inclusive um handler de evento, que a CSP aceitava até a
+ * Issue #619 (script-src-attr). Ou seja: o caminho de XSS mais provável passava
+ * exatamente pelo ponto que a função não cobria.
  *
  * REGRA DE USO: atributos SEMPRE entre aspas — `id="${escapeHtml(x)}"`.
  * Atributo sem aspas não é seguro nem com este escape.

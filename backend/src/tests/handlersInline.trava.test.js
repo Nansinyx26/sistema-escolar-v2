@@ -1,35 +1,29 @@
 /**
- * handlersInline.trava.test.js — Issue #613 (épico #612)
+ * handlersInline.trava.test.js — Issues #613 e #619 (épico #612)
  *
- * Os handlers inline (`onclick="..."`) são o motivo de a CSP ainda ter
- * `script-src-attr 'unsafe-inline'`. Enquanto o épico tira os que existem,
- * esta trava impede que entrem novos: cada arquivo tem um teto gravado em
- * `scripts/handlers-inline.json`.
- *
- * Baixou? Atualize a trava (`node scripts/handlers-inline.js --gravar`): ela
- * precisa dizer quanto falta, não quanto havia.
+ * A CSP tem `script-src-attr 'none'`: um `onclick="..."` no frontend não roda
+ * no navegador — o botão fica morto em produção sem erro nenhum no servidor.
+ * Esta trava pega o atributo antes do merge.
  */
-const { contar, lerTrava } = require('../../../scripts/handlers-inline');
+const request = require('supertest');
+const app = require('../app');
+const { contar } = require('../../../scripts/handlers-inline');
 
-describe('trava dos handlers inline (Issue #613)', () => {
-    const atual = contar();
-    const trava = lerTrava();
-
-    it('nenhum arquivo ganhou handler inline', () => {
-        const subiram = Object.entries(atual)
-            .filter(([arquivo, n]) => n > (trava[arquivo] || 0))
-            .map(([arquivo, n]) => `${arquivo}: ${trava[arquivo] || 0} → ${n}`);
-
+describe('handlers inline (Issue #619)', () => {
+    it('nenhum arquivo do frontend tem handler inline', () => {
         // Use `data-acao` (js/acoes.js) ou addEventListener no lugar do atributo.
-        expect(subiram).toEqual([]);
+        expect(contar()).toEqual({});
     });
 
-    it('a trava acompanha o que já saiu', () => {
-        const baixaram = Object.entries(trava)
-            .filter(([arquivo, n]) => (atual[arquivo] || 0) < n)
-            .map(([arquivo, n]) => `${arquivo}: ${n} → ${atual[arquivo] || 0}`);
+    it.each(['/index.html', '/html/login.html', '/api/ping'])(
+        '%s traz a CSP que bloqueia atributo de evento',
+        async (caminho) => {
+            const res = await request(app).get(caminho);
 
-        // Rode `node scripts/handlers-inline.js --gravar` e commite a trava.
-        expect(baixaram).toEqual([]);
-    });
+            const csp = res.headers['content-security-policy'];
+            expect(csp).toContain("script-src-attr 'none'");
+            expect(csp).not.toMatch(/script-src-attr[^;]*'unsafe-inline'/);
+            expect(res.headers['content-security-policy-report-only']).toBeUndefined();
+        }
+    );
 });

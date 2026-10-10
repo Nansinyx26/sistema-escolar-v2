@@ -7,7 +7,8 @@
 // ============================================
 // Todos os campos abaixo entram em `value="${...}"`, DENTRO de atributo. Um
 // nome contendo aspas fecha o atributo e permite injetar outro no lugar —
-// inclusive um handler de evento, que a CSP ainda aceita (script-src-attr).
+// inclusive um handler de evento (a CSP bloqueia — script-src-attr 'none' —,
+// mas o escape é a primeira barreira, não a CSP).
 // Ver js/escape-html.js.
 const _ESC_MAP_LP = {
     '&': '&amp;',
