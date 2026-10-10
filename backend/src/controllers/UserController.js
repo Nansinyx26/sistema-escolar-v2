@@ -2467,7 +2467,10 @@ exports.registerResponsavel = async (req, res) => {
         const Notificacao = require('../models/Notificacao');
 
         // 1. Validar o código secreto — buscar o aluno correspondente
-        const aluno = await Aluno.findOne({ codigoSecreto: codigoSecreto.trim().toUpperCase() });
+        const aluno = await Aluno.findOne({
+            codigoSecreto: codigoSecreto.trim().toUpperCase(),
+            ativo: { $ne: false },
+        });
         if (!aluno) {
             return res.status(400).json({
                 success: false,
@@ -2475,8 +2478,11 @@ exports.registerResponsavel = async (req, res) => {
             });
         }
 
-        // 2. Verificar se o aluno já possui um responsável vinculado (se for um email válido)
-        if (aluno.responsavel && validateEmail(aluno.responsavel)) {
+        // 2. O código só faz o primeiro vínculo, ou o de quem já está na ficha
+        // (Issue #756). Conferir só `responsavel` com e-mail deixava passar
+        // a ficha da secretaria, que grava ali o nome.
+        const { codigoPodeVincular } = require('../services/vinculosResponsavel');
+        if (!codigoPodeVincular(aluno, email).ok) {
             return res.status(400).json({
                 success: false,
                 error: 'Este aluno já possui um responsável vinculado. Entre em contato com a direção da escola.',
@@ -2517,9 +2523,16 @@ exports.registerResponsavel = async (req, res) => {
             ...assinaturasDoCadastro(req),
         });
 
-        // 3. Vincular o aluno ao responsável automaticamente
-        aluno.responsavel = email.toLowerCase();
-        await aluno.save();
+        // 3. Vincular o aluno ao responsável automaticamente — só se o campo
+        // continua vazio (dois cadastros simultâneos com o mesmo código não
+        // podem os dois ganhar a ficha). Quem já estava na ficha não precisa.
+        await Aluno.updateOne(
+            {
+                _id: aluno._id,
+                $or: [{ responsavel: { $exists: false } }, { responsavel: { $in: [null, ''] } }],
+            },
+            { $set: { responsavel: email.toLowerCase() } }
+        );
         console.log(
             `🔗 [VINCULAÇÃO] Aluno "${aluno.nome}" vinculado ao responsável "${nome}" (${email}) via código secreto.`
         );

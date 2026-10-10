@@ -419,7 +419,10 @@ exports.vincularAluno = async (req, res) => {
         // o código. Antes o vínculo era sobrescrito com um simples warning no
         // log — o responsável legítimo era desvinculado e o atacante passava a
         // ler notas/frequência e a editar quem pode retirar a criança da escola.
-        if (aluno.responsavel && String(aluno.responsavel).toLowerCase() !== targetEmail) {
+        // A ficha da secretaria grava o NOME em `responsavel` e o e-mail em
+        // `responsaveis[]`; quem já está na ficha pode refazer o vínculo,
+        // ninguém mais (Issue #756). O bloqueio judicial também vale aqui.
+        if (!vinculos.codigoPodeVincular(aluno, targetEmail).ok) {
             await logAction(req, 'LINK_STUDENT_BLOCKED', 'Alunos', {
                 recursoId: aluno._id,
                 descricao: `Tentativa de vínculo por ${mascarar(targetEmail)} em aluno já vinculado a outro responsável.`,
@@ -440,23 +443,31 @@ exports.vincularAluno = async (req, res) => {
             updateConta.escolaId = aluno.escolaId;
         }
         await Usuario.updateOne({ _id: usuarioId }, { $set: updateConta });
-        aluno.responsavel = targetEmail;
 
-        // Atualiza responsavelDados se necessário
-        if (!aluno.responsavelDados) {
-            aluno.responsavelDados = {};
-        }
-        aluno.responsavelDados.email = targetEmail;
-
-        await Aluno.updateOne(
-            { _id: aluno._id },
-            {
-                $set: {
-                    responsavel: targetEmail,
-                    responsavelDados: aluno.responsavelDados,
+        // Quem já está na ficha não muda nada nela: o nome que a secretaria
+        // gravou em `responsavel` fica onde está.
+        if (!vinculos.emailsDaFicha(aluno).has(targetEmail)) {
+            aluno.responsavel = targetEmail;
+            if (!aluno.responsavelDados) aluno.responsavelDados = {};
+            aluno.responsavelDados.email = targetEmail;
+            // Só grava se a ficha continua sem responsável: dois pedidos
+            // simultâneos com o mesmo código não ganham os dois.
+            await Aluno.updateOne(
+                {
+                    _id: aluno._id,
+                    $or: [
+                        { responsavel: { $exists: false } },
+                        { responsavel: { $in: [null, ''] } },
+                    ],
                 },
-            }
-        );
+                {
+                    $set: {
+                        responsavel: targetEmail,
+                        responsavelDados: aluno.responsavelDados,
+                    },
+                }
+            );
+        }
 
         // O código secreto NUNCA vai para o log de auditoria — ele continua
         // válido depois do vínculo e dá acesso à conta do aluno.
