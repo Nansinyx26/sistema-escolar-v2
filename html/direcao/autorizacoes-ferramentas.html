@@ -8,8 +8,8 @@
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
-    <meta name="description" content="Gerenciamento de Contas da Secretaria - Painel de Direção">
-    <title>Gerenciar Secretaria - Sistema Escolar</title>
+    <meta name="description" content="Autorizações de ferramentas dos professores - Painel de Direção">
+    <title>Autorizações de Ferramentas - Sistema Escolar</title>
 
     <!-- PWA -->
     <meta name="theme-color" content="#10b981">
@@ -494,6 +494,63 @@
             .stats-grid { grid-template-columns: 1fr; }
             .stat-card { padding: 1.1rem 1.25rem; }
         }
+
+        /* ── Autorizações de Ferramentas (Issue #741) ─────────────────── */
+        .af-card-topo {
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 1.1rem;
+        }
+        .af-titulo { font-size: 1.15rem; font-weight: 700; margin: 0; color: #fff !important; -webkit-text-fill-color: #fff !important; display: flex; gap: .5rem; align-items: center; }
+        .af-filtros { display: grid; grid-template-columns: 2fr 1.4fr 1.4fr 1fr; gap: .75rem; margin-top: 1.25rem; }
+        .af-busca { position: relative; }
+        .af-busca .bi { position: absolute; pointer-events: none; left: 1rem; top: 50%; transform: translateY(-50%); color: #64748b; }
+        .af-busca input { padding-left: 2.5rem; width: 100%; }
+        .af-filtros select { width: 100%; }
+        .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+        .af-prof-nome { font-weight: 600; }
+        .af-sub { display: block; font-size: .8rem; color: #94a3b8 !important; -webkit-text-fill-color: #94a3b8 !important; margin-top: .15rem; }
+        .af-cat { display: block; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: #64748b !important; -webkit-text-fill-color: #64748b !important; }
+
+        .af-status { display: inline-flex; align-items: center; gap: .35rem; padding: .3rem .7rem; border-radius: 12px; font-size: .8rem; font-weight: 600; border: 1px solid; white-space: nowrap; }
+        .af-status-autorizado { background: rgba(16,185,129,.12); color: #10b981 !important; -webkit-text-fill-color: #10b981 !important; border-color: rgba(16,185,129,.3); }
+        .af-status-bloqueado { background: rgba(239,68,68,.1); color: #f87171 !important; -webkit-text-fill-color: #f87171 !important; border-color: rgba(239,68,68,.25); }
+        .af-status-pendente { background: rgba(245,158,11,.12); color: #fbbf24 !important; -webkit-text-fill-color: #fbbf24 !important; border-color: rgba(245,158,11,.3); }
+
+        /* Linha com alteração ainda não salva */
+        .af-tabela tr.af-alterada td { background: rgba(16,185,129,.07); }
+        .af-tabela tr.af-alterada td:first-child { box-shadow: inset 3px 0 0 #10b981; }
+        .af-nao-salvo { display: block; font-size: .72rem; color: #6ee7b7 !important; -webkit-text-fill-color: #6ee7b7 !important; margin-top: .2rem; }
+
+        .af-acao { min-width: 7.5rem; justify-content: center; }
+        .btn-action.af-acao-autorizar:hover { border-color: #10b981; color: #10b981 !important; -webkit-text-fill-color: #10b981 !important; }
+        .btn-action.af-acao-revogar:hover { border-color: #ef4444; color: #f87171 !important; -webkit-text-fill-color: #f87171 !important; }
+
+        .af-contador { display: inline-grid; place-items: center; min-width: 1.4rem; height: 1.4rem; padding: 0 .35rem; border-radius: 999px; background: rgba(0,0,0,.25); font-size: .75rem; margin-left: .35rem; }
+
+        /* Pedidos */
+        .af-pedidos { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: .75rem; }
+        .af-pedido { display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center; padding: 1rem 1.15rem; border-radius: 14px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); }
+        .af-pedido.af-destaque { border-color: rgba(16,185,129,.55); box-shadow: 0 0 0 3px rgba(16,185,129,.15); }
+        .af-pedido-quem { font-weight: 600; color: #e2e8f0 !important; -webkit-text-fill-color: #e2e8f0 !important; }
+        .af-pedido-msg { margin: .35rem 0 0; font-size: .88rem; color: #cbd5e1 !important; -webkit-text-fill-color: #cbd5e1 !important; font-style: italic; }
+        .af-pedido-acoes { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: flex-end; }
+        .af-pedido-acoes .btn-action { width: auto; min-width: 0; padding: 0 .75rem; white-space: nowrap; gap: .35rem; font-size: .85rem; text-decoration: none; }
+        .af-btn-perigo { background: #dc2626 !important; border-color: #dc2626 !important; }
+        .af-recusa-texto { color: #cbd5e1 !important; -webkit-text-fill-color: #cbd5e1 !important; margin: 0 0 1rem; }
+
+        /* Skeleton do carregamento: forma da página, brilho de css/motion.css (docs/MOTION.md) */
+        .af-skel { display: block; height: .9rem; border-radius: 6px; background-color: rgba(255,255,255,.06); }
+
+        @media (max-width: 900px) {
+            .af-filtros { grid-template-columns: 1fr 1fr; }
+            .af-busca { grid-column: 1 / -1; }
+        }
+        @media (max-width: 640px) {
+            .af-filtros { grid-template-columns: 1fr; }
+            .af-pedido { grid-template-columns: 1fr; }
+            .af-pedido-acoes { justify-content: flex-start; }
+        }
     </style>
     <link rel="stylesheet" href="../../css/splash-screen.css?v=1.0">
     <link rel="stylesheet" href="../../css/reactions.css?v=1.0">
@@ -525,7 +582,7 @@
             <div class="splash-progress-track">
                 <div class="splash-progress-bar"></div>
             </div>
-            <div class="splash-progress-text">Carregando painel administrativo...</div>
+            <div class="splash-progress-text">Carregando autorizações...</div>
         </div>
         <div class="splash-version">v3.0</div>
     </div>
@@ -606,18 +663,13 @@
                 <i class="bi bi-robot"></i>
                 <span>Assistente IA</span>
             </a>
-            <a href="gerenciar-secretaria.html" class="sidebar-item active" data-page="gerenciar-secretaria">
+            <a href="gerenciar-secretaria.html" class="sidebar-item" data-page="gerenciar-secretaria">
                 <i class="bi bi-people-fill"></i>
                 <span>Gerenciar Secretaria</span>
             </a>
-            <a href="autorizacoes-ferramentas.html" class="sidebar-item" data-page="autorizacoes-ferramentas">
+            <a href="autorizacoes-ferramentas.html" class="sidebar-item active" data-page="autorizacoes-ferramentas" aria-current="page">
                 <i class="bi bi-shield-lock-fill"></i>
                 <span>Autorizações de Ferramentas</span>
-            </a>
-            <!-- Issue #743: denúncias do canal aberto (ver html/denuncias.html). -->
-            <a href="/html/denuncias.html" class="sidebar-item" data-page="denuncias">
-                <i class="bi bi-shield-exclamation"></i>
-                <span>Denúncias</span>
             </a>
         </nav>
         <div class="sidebar-footer">
@@ -649,74 +701,98 @@
             <div class="container">
                 <div class="direcao-header" style="margin-bottom: 2rem;">
                     <div>
-                        <h1><i class="bi bi-people-fill"></i> Gerenciar Secretaria</h1>
-                        <p>Controle de contas, criação de usuários administrativos e status de acessos da Secretaria.</p>
+                        <h1><i class="bi bi-shield-lock-fill"></i> Autorizações de Ferramentas</h1>
+                        <p>Decida quais professores usam cada ferramenta que depende da direção. A decisão vale na hora e fica registrada na auditoria.</p>
                         <span class="escola-badge" id="escolaAtivaBadge" hidden>
                             <i class="bi bi-building"></i> <span id="escolaAtivaNomeTexto"></span>
                         </span>
                     </div>
                     <div class="direcao-actions">
-                        <button class="btn btn-primary" id="btnNovaSecretaria">
-                            <i class="bi bi-person-plus-fill"></i> Novo Cadastro
+                        <button type="button" class="btn btn-primary" id="btnSalvar" disabled>
+                            <i class="bi bi-check2-circle"></i> Salvar autorizações
+                            <span class="af-contador" id="contadorPendentes" hidden></span>
                         </button>
                     </div>
                 </div>
 
-                <!-- Resumo das contas -->
-                <div class="stats-grid" id="statsGrid">
+                <!-- Resumo -->
+                <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-icon stat-icon-total"><i class="bi bi-people-fill"></i></div>
                         <div class="stat-body">
-                            <span class="stat-value" id="statTotal">—</span>
-                            <span class="stat-label">Contas cadastradas</span>
+                            <span class="stat-value" id="statProfessores">—</span>
+                            <span class="stat-label">Professores</span>
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon stat-icon-ativas"><i class="bi bi-check-circle-fill"></i></div>
+                        <div class="stat-icon stat-icon-ativas"><i class="bi bi-unlock-fill"></i></div>
                         <div class="stat-body">
-                            <span class="stat-value" id="statAtivas">—</span>
-                            <span class="stat-label">Ativas</span>
+                            <span class="stat-value" id="statAutorizadas">—</span>
+                            <span class="stat-label">Autorizações ativas</span>
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon stat-icon-suspensas"><i class="bi bi-pause-circle-fill"></i></div>
+                        <div class="stat-icon stat-icon-suspensas"><i class="bi bi-hourglass-split"></i></div>
                         <div class="stat-body">
-                            <span class="stat-value" id="statSuspensas">—</span>
-                            <span class="stat-label">Suspensas</span>
+                            <span class="stat-value" id="statPedidos">—</span>
+                            <span class="stat-label">Pedidos pendentes</span>
                         </div>
                     </div>
                 </div>
 
-                <div class="management-card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 1.25rem;">
-                        <h2 style="font-size: 1.15rem; font-weight: 700; margin: 0; color: #fff;">Contas Administrativas</h2>
-                        <div style="position: relative; width: 100%; max-width: 300px;">
-                            <input type="text" id="filtroNome" class="sc-input" placeholder="Buscar por nome ou email..." style="padding-left: 2.5rem;">
-                            <i class="bi bi-search" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #64748b;"></i>
+                <!-- Pedidos pendentes -->
+                <section class="management-card" id="cardPedidos" hidden aria-labelledby="tituloPedidos">
+                    <div class="af-card-topo">
+                        <h2 id="tituloPedidos" class="af-titulo"><i class="bi bi-inbox-fill"></i> Pedidos dos professores</h2>
+                    </div>
+                    <ul class="af-pedidos" id="listaPedidos"></ul>
+                </section>
+
+                <!-- Quadro -->
+                <section class="management-card" aria-labelledby="tituloQuadro">
+                    <div class="af-card-topo">
+                        <h2 id="tituloQuadro" class="af-titulo">Professores e ferramentas</h2>
+                    </div>
+
+                    <div class="af-filtros" role="search">
+                        <div class="af-busca">
+                            <label class="sr-only" for="filtroBusca">Buscar professor</label>
+                            <i class="bi bi-search" aria-hidden="true"></i>
+                            <input type="search" id="filtroBusca" class="sc-input" placeholder="Buscar professor...">
                         </div>
+                        <label class="sr-only" for="filtroProfessor">Professor</label>
+                        <select id="filtroProfessor" class="sc-input">
+                            <option value="">Todos os professores</option>
+                        </select>
+                        <label class="sr-only" for="filtroFerramenta">Ferramenta</label>
+                        <select id="filtroFerramenta" class="sc-input">
+                            <option value="">Todas as ferramentas</option>
+                        </select>
+                        <label class="sr-only" for="filtroStatus">Status</label>
+                        <select id="filtroStatus" class="sc-input">
+                            <option value="">Todos os status</option>
+                            <option value="autorizado">Autorizado</option>
+                            <option value="bloqueado">Não autorizado</option>
+                            <option value="pendente">Pendente</option>
+                        </select>
                     </div>
 
                     <div class="table-responsive">
-                        <table class="custom-table" id="tabelaSecretaria">
+                        <table class="custom-table af-tabela">
                             <thead>
                                 <tr>
-                                    <th>Nome</th>
-                                    <th>E-mail</th>
-                                    <th>Telefone</th>
-                                    <th>Status</th>
-                                    <th style="text-align: right;">Ações</th>
+                                    <th scope="col">Professor</th>
+                                    <th scope="col">Turmas / Disciplinas</th>
+                                    <th scope="col">Ferramenta</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">Última alteração</th>
+                                    <th scope="col" style="text-align: right;">Ação</th>
                                 </tr>
                             </thead>
-                            <tbody id="listaSecretarias">
-                                <tr>
-                                    <td colspan="5" class="empty-state">
-                                        <i class="bi bi-arrow-repeat spin"></i> Carregando contas...
-                                    </td>
-                                </tr>
-                            </tbody>
+                            <tbody id="corpoTabela" aria-live="polite"></tbody>
                         </table>
                     </div>
-                </div>
+                </section>
             </div>
         </main>
 
@@ -727,81 +803,25 @@
         </div>
     </div>
 
-    <!-- Modals -->
-    <!-- Cadastro/Edição Modal -->
-    <div class="sc-modal" id="modalCadastro">
+    <!-- Recusar pedido: motivo opcional, enviado ao registro do pedido -->
+    <div class="sc-modal" id="modalRecusa" role="dialog" aria-modal="true" aria-labelledby="tituloRecusa">
         <div class="sc-modal-card">
             <div class="sc-modal-header">
-                <h3 id="modalTitle">Novo Cadastro</h3>
-                <button type="button" class="sc-modal-close" data-acao="fecharModal">&times;</button>
+                <h3 id="tituloRecusa"><i class="bi bi-x-octagon-fill"></i> Recusar pedido</h3>
+                <button type="button" class="sc-modal-close" id="fecharRecusa" aria-label="Fechar"><i class="bi bi-x-lg"></i></button>
             </div>
-            <form id="formSecretaria">
-                <input type="hidden" id="userId">
-                <div class="sc-form-group">
-                    <label class="sc-label" for="nome">Nome Completo</label>
-                    <input type="text" id="nome" class="sc-input" placeholder="Ex: Ana Souza" required>
-                </div>
-                <div class="sc-form-group">
-                    <label class="sc-label" for="email">E-mail corporativo</label>
-                    <input type="email" id="email" class="sc-input" placeholder="Ex: ana.secretaria@escola.com" required>
-                </div>
-                <div class="sc-form-group">
-                    <label class="sc-label" for="telefone">Telefone / Celular</label>
-                    <input type="text" id="telefone" class="sc-input" placeholder="(00) 00000-0000" required>
-                </div>
-                <div class="sc-form-group">
-                    <label class="sc-label" for="escola">Instituição de Ensino</label>
-                    <input type="text" id="escola" class="sc-input" placeholder="Ex: Escola Estadual Jaguari">
-                    <small class="sc-hint" id="escolaHint" hidden>
-                        A conta é criada na escola em que você está trabalhando agora.
-                    </small>
-                </div>
-                <div class="sc-form-group" id="senhaGroup">
-                    <label class="sc-label" for="senha">Senha Inicial</label>
-                    <input type="password" id="senha" class="sc-input" placeholder="Min. 8 caracteres com Maiúsculas e Especiais">
-                </div>
-                <div class="sc-form-group" id="statusGroup" style="display:none;">
-                    <label class="sc-label" for="ativo">Status da Conta</label>
-                    <select id="ativo" class="sc-input" style="background:#09090b; color:#10b981; border: 1px solid rgba(255,255,255,0.08);">
-                        <option value="true">Ativo / Regular</option>
-                        <option value="false">Suspenso / Inativo</option>
-                    </select>
-                </div>
-                <div class="actions-flex">
-                    <button type="button" class="btn btn-outline" data-acao="fecharModal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary" id="btnSalvar">Salvar Alterações</button>
-                </div>
-            </form>
+            <p class="af-recusa-texto" id="textoRecusa"></p>
+            <div class="sc-form-group">
+                <label class="sc-label" for="motivoRecusa">Motivo (opcional)</label>
+                <textarea id="motivoRecusa" class="sc-input" rows="3" maxlength="500" placeholder="Ex.: aguardar a formação sobre o uso da ferramenta."></textarea>
+            </div>
+            <div class="actions-flex" style="justify-content: flex-end;">
+                <button type="button" class="btn btn-outline" id="cancelarRecusa">Cancelar</button>
+                <button type="button" class="btn btn-primary af-btn-perigo" id="confirmarRecusa">Recusar pedido</button>
+            </div>
         </div>
     </div>
 
-    <!-- Mudar Senha Modal -->
-    <div class="sc-modal" id="modalSenha">
-        <div class="sc-modal-card">
-            <div class="sc-modal-header">
-                <h3>Enviar redefinição de senha</h3>
-                <button type="button" class="sc-modal-close" data-acao="fecharModalSenha">&times;</button>
-            </div>
-            <form id="formRedefinirSenha">
-                <input type="hidden" id="senhaUserId">
-                <div class="sc-form-group">
-                    <label class="sc-label">E-mail da Conta</label>
-                    <input type="text" id="emailSenha" class="sc-input" disabled style="opacity: 0.65;">
-                </div>
-                <p style="margin:0 0 1rem;line-height:1.5">
-                    A senha é escolhida pela própria pessoa. Enviamos um código de
-                    redefinição para o e-mail acima, e ela conclui a troca sozinha —
-                    assim ninguém mais chega a conhecer a senha dela.
-                </p>
-                <div class="actions-flex">
-                    <button type="button" class="btn btn-outline" data-acao="fecharModalSenha">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Enviar redefinição</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Toast Component -->
     <div id="toast-container" class="toast-container" style="position: fixed; top: 20px; right: 20px; z-index: 10100;"></div>
 
     <!-- Scripts -->
@@ -813,7 +833,9 @@
     <script src="../../js/utils.js"></script>
     <!-- Delegação por data-acao (épico #612). -->
     <script src="../../js/acoes.js"></script>
-    <script src="gerenciar-secretaria.js"></script>
+    <!-- realtime.js publica window.socket: a tela recarrega quando chega pedido novo. -->
+    <script defer src="../../js/realtime.js"></script>
+    <script defer src="autorizacoes-ferramentas.js"></script>
     <script defer src="../../js/escola-switcher.js"></script>
     <script defer src="../../js/watermark.js"></script>
     <script defer src="../../js/parallax.js"></script>

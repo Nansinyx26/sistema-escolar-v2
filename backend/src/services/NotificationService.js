@@ -4,7 +4,11 @@ const EmailService = require('./EmailService');
 const WebPushService = require('./WebPushService');
 const logger = require('../utils/logger');
 const obs = require('../observability');
-const { contasDasTurmas, turmasDosDestinatarios } = require('./publicoDoComunicado');
+const {
+    contasDasTurmas,
+    membrosDaEscola,
+    turmasDosDestinatarios,
+} = require('./publicoDoComunicado');
 
 /**
  * Hub central de notificações.
@@ -398,11 +402,30 @@ exports.getTargetUsers = async (
         for (const u of contas) userMap.set(String(u._id), u);
     }
 
+    // Públicos amplos só alcançam quem é da escola (Issue #745): a família
+    // com filho matriculado nela, a equipe com vínculo nela. Calculado uma vez,
+    // e só se algum destinatário precisar.
+    let membros = null;
+    const daEscola = async (u) => {
+        const perfil = String(u.perfil || '').toLowerCase();
+        if (perfil === 'admin') return true; // a rede inteira é dele
+        if (!membros) membros = await membrosDaEscola(escolaId);
+        const email = String(u.email || '').toLowerCase();
+        if (perfil === 'responsavel') return membros.familias.has(email);
+        return (
+            String(u.escolaId || '') === String(escolaId) ||
+            membros.equipeIds.has(String(u._id)) ||
+            membros.equipeEmails.has(email)
+        );
+    };
+
     for (const dest of destList) {
         const query = { ativo: true };
-        // Multi-tenant: prioriza usuários da mesma escola, mas inclui os
-        // legados sem escolaId (ex.: contas da Jaguari anteriores à migração)
-        // para não deixar de notificar quem já existe.
+        // Multi-tenant: a conta da escola ou sem escola gravada (a do login
+        // Google e a do primeiro acesso nascem assim). Quem é desta escola de
+        // fato decide `daEscola`, logo abaixo — o "legado sem escolaId" aceito
+        // sem conferência entregava os avisos de todas as escolas a essas
+        // contas.
         if (escolaId) {
             query.$or = [{ escolaId }, { escolaId: { $exists: false } }, { escolaId: null }];
         }
@@ -429,7 +452,11 @@ exports.getTargetUsers = async (
         }
 
         const users = await Usuario.find(query).lean();
-        for (const u of users) userMap.set(String(u._id), u);
+        const pessoal = String(dest).startsWith('usuario:');
+        for (const u of users) {
+            if (escolaId && !pessoal && !(await daEscola(u))) continue;
+            userMap.set(String(u._id), u);
+        }
     }
 
     return Array.from(userMap.values());

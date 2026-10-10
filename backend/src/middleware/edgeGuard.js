@@ -396,6 +396,11 @@ const PADROES_NA_URL = [
  * neles é ler o robots.txt procurando o que parece interessante, ou adivinhar
  * nome de painel. Crawler que respeita robots.txt não entra; gente também não.
  * Quem entra é bot, e o banimento é imediato, sem acumular pontos.
+ *
+ * Exceção (Issue #738): o NAVEGADOR também chega aqui, mandado por um `<img>`
+ * de outra página ou pela pessoa digitando o endereço — e banir o IP dele tira
+ * a escola inteira do ar. Essa requisição recebe o 404, mas não bane: ver
+ * `feitaPorNavegadorDeTerceiro`.
  */
 const ARMADILHAS = new Set([
     '/painel-interno',
@@ -660,6 +665,26 @@ function criarGuardaDeBanimento({ registro = registroPadrao, ativo = !isTest } =
 }
 
 /**
+ * A requisição foi feita por um NAVEGADOR em nome de outra página, ou digitada
+ * por uma pessoa? (Issue #738)
+ *
+ * O navegador informa a origem em `Sec-Fetch-Site`: `cross-site` quando outra
+ * página mandou carregar (um `<img>`, um link), `same-site` de um subdomínio
+ * vizinho, `none` quando a pessoa digitou o endereço ou abriu um favorito.
+ * Scanner e bot não mandam o cabeçalho. A escola inteira sai por um IP (NAT):
+ * banir por uma requisição dessas deixava qualquer página de terceiro — ou um
+ * aluno curioso — tirar o sistema do ar para todo mundo.
+ *
+ * Quem forja o cabeçalho para escapar da pontuação continua recebendo o 404
+ * em cada sondagem e esbarra no teto de taxa: perde o banimento rápido, não o
+ * bloqueio.
+ */
+function feitaPorNavegadorDeTerceiro(req) {
+    const site = String((req.get ? req.get('sec-fetch-site') : '') || '').toLowerCase();
+    return site === 'cross-site' || site === 'same-site' || site === 'none';
+}
+
+/**
  * ETAPAS 2 a 5 — método, armadilha, sondagem e user-agent.
  *
  * Estes filtros são DETERMINÍSTICOS (não dependem de contador), então ficam
@@ -703,9 +728,14 @@ function criarGuardaDeFiltros({ registro = registroPadrao, pontuar = !isTest } =
             req.originalUrl || req.url || '/'
         );
         if (veredictoCaminho) {
-            punir(veredictoCaminho.motivo, veredictoCaminho.pontos, {
-                armadilha: veredictoCaminho.armadilha,
-            });
+            // Bloqueia sempre; pontua (e bane) só o que não veio de navegador
+            // por outra página ou pela barra de endereço — ver
+            // `feitaPorNavegadorDeTerceiro`.
+            if (!feitaPorNavegadorDeTerceiro(req)) {
+                punir(veredictoCaminho.motivo, veredictoCaminho.pontos, {
+                    armadilha: veredictoCaminho.armadilha,
+                });
+            }
             logarBloqueio(obterChave(), veredictoCaminho.motivo, req);
 
             // Codificação quebrada (`%ZZ`) recebe 400, não o 404 opaco: é o

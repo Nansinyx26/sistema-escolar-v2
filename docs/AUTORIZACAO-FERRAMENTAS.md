@@ -31,6 +31,7 @@ pode usar. A decisão fica no MongoDB, é conferida no backend a cada uso e vai 
 | API | `backend/src/routes/ferramentas.js` + `controllers/FerramentasController.js` |
 | Estado atual por professor | `models/PermissaoFerramenta.js` (coleção `permissoes_ferramentas`) |
 | Pedidos do professor | `models/SolicitacaoFerramenta.js` (coleção `solicitacoes_ferramentas`) |
+| Página da direção | `html/direcao/autorizacoes-ferramentas.html` + `.js` (link no menu lateral do diretor) |
 | Testes | `backend/src/tests/ferramentasAutorizacao.regressao.test.js` |
 
 ## API (`/api/ferramentas`)
@@ -142,6 +143,6 @@ seguintes usam esses eventos para se atualizar sem recarregar. Auditoria do flux
 |---|---|---|
 | Backend básico: coleções, catálogo, verificação, rotas da direção, auditoria | #721 | Pronto |
 | Barreira nas ferramentas de IA e em Autorizações dos Pais; migração da chave da #496 | #727 | Pronto |
-| Pedidos e notificações (professor → direção → professor) em tempo real | #733 | Este PR |
-| Página "Autorizações de Ferramentas" da direção | — | A fazer |
+| Pedidos e notificações (professor → direção → professor) em tempo real | #733 | Pronto |
+| Página "Autorizações de Ferramentas" da direção, com atalho no menu lateral | #741 | Este PR |
 | Cadeados e "Solicitar autorização" na conta do professor | — | A fazer |
