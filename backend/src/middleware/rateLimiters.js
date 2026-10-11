@@ -487,17 +487,6 @@ const trocaEmailConfirmacaoLimiter = limiterPorUsuario({
     },
 });
 
-// ── Relatório de violação da CSP (Issue #613) ────────────────────────────────
-// Chega sem sessão e sem token, de qualquer navegador. Uma página com muitos
-// handlers inline manda vários avisos de uma vez ao abrir; 60 por minuto por
-// IP cobre a escola inteira saindo pelo mesmo endereço e corta a inundação.
-const cspRelatorioLimiter = limiterPorIp({
-    nome: 'csp-relatorio',
-    windowMs: UM_MINUTO,
-    maxProd: tetoEnv('RATE_LIMIT_CSP_RELATORIO', 60),
-    maxDev: 600,
-});
-
 // ── Copiloto de IA ───────────────────────────────────────────────────────────
 // Mesma natureza do TTS: cada mensagem gasta cota de uma API externa PAGA, e o
 // custo pertence ao projeto. Por isso o teto principal é por CONTA — o
@@ -603,7 +592,6 @@ module.exports = {
     iaChatIpLimiter,
     trocaEmailPedidoLimiter,
     trocaEmailConfirmacaoLimiter,
-    cspRelatorioLimiter,
     // exportados para teste
     chaveIp,
     identificadorDaConta,

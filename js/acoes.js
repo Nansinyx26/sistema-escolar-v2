@@ -3,11 +3,9 @@
  *
  * POR QUE EXISTE
  * --------------
- * A CSP ainda tem `script-src-attr 'unsafe-inline'` por causa dos handlers
- * inline do frontend legado (`onclick="excluir('123')"`). Enquanto ela existir,
- * HTML injetado que escape do `escapeHtml` executa script por um atributo de
- * evento. Este arquivo é o caminho da troca: o HTML diz QUAL ação, o JS diz O
- * QUE ela faz.
+ * A CSP tem `script-src-attr 'none'` (Issue #619): um handler inline
+ * (`onclick="excluir('123')"`) não executa. Este arquivo é o que o substitui:
+ * o HTML diz QUAL ação, o JS diz O QUE ela faz.
  *
  *   <button data-acao="excluirAluno" data-id="123">Excluir</button>
  *   Acoes.registrar('excluirAluno', function (evento, alvo) {

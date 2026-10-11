@@ -3,8 +3,8 @@
  *
  * O sanitizador global tira as tags mas deixa as aspas passarem, e o frontend
  * monta `<img src="${foto}">` por interpolação. Um valor como
- * `x" onerror="..."` fechava o atributo e virava handler — que a CSP deixa
- * rodar (`script-src-attr 'unsafe-inline'`). O professor gravava isso no
+ * `x" onerror="..."` fechava o atributo e virava handler — que a CSP deixava
+ * rodar (`script-src-attr 'unsafe-inline'`, fechado na Issue #619). O professor gravava isso no
  * próprio cadastro e o script rodava no navegador do diretor.
  *
  * Aqui só passa o que uma foto legítima do sistema é:
