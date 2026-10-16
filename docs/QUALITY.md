@@ -258,13 +258,21 @@ esquecimento a custo quase zero e não fecha a porta para isso.
 
 ## Handlers inline e a CSP
 
-A CSP autoriza os blocos `<script>` inline por hash, mas ainda tem
-`script-src-attr 'unsafe-inline'` por causa dos handlers inline do frontend
-legado (`onclick="..."`). O épico #612 tira esses handlers e depois fecha a
-diretiva com `'none'`. Até lá, três peças seguram o caminho:
+A CSP autoriza os blocos `<script>` inline por hash e fecha os atributos de
+evento com `script-src-attr 'none'` (épico #612): um `onclick="..."` no
+frontend **não roda** no navegador. Duas peças seguram isso:
 
 | Peça | Arquivo | O que faz |
 |---|---|---|
+| Delegação | `js/acoes.js` | `data-acao="nome"` chama a função registrada com `Acoes.registrar`. Só ação registrada roda, nunca uma global com o mesmo nome. |
+| Trava | `scripts/handlers-inline.js` | O teste `handlersInline.trava.test.js` reprova se qualquer arquivo do frontend tiver handler inline, e confere o cabeçalho com `'none'`. |
+
+`node scripts/handlers-inline.js` lista os que existirem, por arquivo. Ele acha
+o atributo seguido de aspas, no HTML e nas strings que o JS joga em
+`innerHTML`; atributo montado por concatenação escapa da contagem — e quebra
+calado na tela. Use `data-acao` ou `addEventListener`.
+
+---|---|---|
 | Delegação | `js/acoes.js` | `data-acao="nome"` chama a função registrada com `Acoes.registrar`. Só ação registrada roda, nunca uma global com o mesmo nome. |
 | Trava da contagem | `scripts/handlers-inline.js` + `scripts/handlers-inline.json` | O teste `handlersInline.trava.test.js` reprova se um arquivo **ganhar** handler inline, e também se **perder** sem a trava acompanhar. |
 | CSP em relatório | `backend/src/middleware/cspRelatorio.js` | A mesma restrição (`script-src-attr 'none'`) em `Content-Security-Policy-Report-Only`. O navegador não bloqueia nada e avisa em `POST /api/csp-relatorio`. O log `csp.violacao` diz página, arquivo e linha, só com caminhos. |

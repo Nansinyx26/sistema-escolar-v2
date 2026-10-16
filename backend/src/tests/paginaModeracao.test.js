@@ -76,6 +76,35 @@ describe('html/direcao/moderacao.html', () => {
             const motionJs = fs.readFileSync(path.join(RAIZ, 'js/motion.js'), 'utf8');
             expect(motionJs).toContain('reveal');
         });
+
+        it('nenhum script põe a classe motion-reveal à mão (Issue #731)', () => {
+            // `.motion-reveal` nasce com `opacity: 0` e só ganha `is-visible`
+            // pelo `Motion.reveal`, que procura `[data-reveal]`. Posta à mão, a
+            // classe deixava os cartões da fila — e o modal do Termo — invisíveis
+            // para sempre, sem erro nenhum. O certo é marcar com `data-reveal`.
+            const arquivos = [];
+            const varrer = (dir) => {
+                for (const nome of fs.readdirSync(dir, { withFileTypes: true })) {
+                    const caminho = path.join(dir, nome.name);
+                    if (nome.isDirectory()) {
+                        if (nome.name !== 'libs') varrer(caminho);
+                    } else if (nome.name.endsWith('.js') && nome.name !== 'motion.js') {
+                        arquivos.push(caminho);
+                    }
+                }
+            };
+            varrer(path.join(RAIZ, 'js'));
+
+            const comClasseAMao = arquivos
+                .filter((arquivo) =>
+                    /className\s*=\s*['"`][^'"`]*\bmotion-reveal\b/.test(
+                        fs.readFileSync(arquivo, 'utf8')
+                    )
+                )
+                .map((arquivo) => path.relative(RAIZ, arquivo));
+
+            expect(comClasseAMao).toEqual([]);
+        });
     });
 });
 

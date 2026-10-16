@@ -367,6 +367,26 @@ function disciplinasDoDocente(docente, disciplinas) {
 }
 
 /**
+ * O professor logado responde por esta disciplina? (Issue #759)
+ *
+ * A mesma regra de `disciplinasDoDocente`: o regente responde por todas as da
+ * sala; o especialista, só pelas que declarou. A criação de avaliação já
+ * conferia; a chamada, o lançamento e a correção de nota não — o especialista
+ * de Educação Física reescrevia a chamada da "Sala Principal" e a nota de
+ * Matemática da mesma turma.
+ */
+async function professorRespondePor(usuarioId, escolaId, materia) {
+    const docente = await docenteDoUsuario(usuarioId, escolaId);
+    if (!docente) return false;
+    if (!docente.especialista || docente.disciplinas.length === 0) return true;
+    // A avaliação grava o id da disciplina; a chamada e a nota, o nome.
+    const nome =
+        resolverDisciplina(await disciplinasDaEscola(escolaId), materia)?.nome ||
+        canonizarDisciplina(materia)?.nome;
+    return Boolean(nome) && docente.disciplinas.includes(nome);
+}
+
+/**
  * Quem responde pela avaliação quando a gestão não escolheu: o especialista
  * da disciplina naquela turma; senão, o regente da sala; senão, ninguém.
  */
@@ -391,5 +411,6 @@ module.exports = {
     docentesDaEscola,
     docenteDoUsuario,
     disciplinasDoDocente,
+    professorRespondePor,
     professorResponsavel,
 };

@@ -20,9 +20,15 @@ const GradeHoraria = require('../models/GradeHoraria');
 const ESCOLA_A = new mongoose.Types.ObjectId().toString();
 const ESCOLA_B = new mongoose.Types.ObjectId().toString();
 
-/** Executa o middleware e devolve o que ele decidiu, sem servidor HTTP. */
-async function rodar(body, escolaId = ESCOLA_A) {
-    const req = { body, escolaId, user: { perfil: 'professor' } };
+/**
+ * Executa o middleware e devolve o que ele decidiu, sem servidor HTTP.
+ *
+ * O professor indicado no corpo (`nomeProfessor`) só vale quando quem lança é
+ * a gestão; para o perfil professor, é sempre o da sessão (Issue #759). Por
+ * isso o padrão aqui é a secretaria lançando a chamada de um professor.
+ */
+async function rodar(body, escolaId = ESCOLA_A, user = { perfil: 'secretaria' }) {
+    const req = { body, escolaId, user };
 
     let statusCode = 200;
     let payload = null;
@@ -206,5 +212,53 @@ describe('verifyTimetable — busca da turma', () => {
         });
 
         expect(r.passou).toBe(true);
+    });
+});
+
+describe('verifyTimetable — professor da sessão (Issue #759)', () => {
+    test('para o perfil professor, o nome do corpo é ignorado: vale o da sessão', async () => {
+        const usuarioId = new mongoose.Types.ObjectId().toString();
+        await Professor.create({
+            nome: 'Especialista Sem Grade',
+            idUsuario: usuarioId,
+            vinculos: [{ escolaId: ESCOLA_A, cargo: 'professor' }],
+            ativo: true,
+        });
+        const regente = await criarProfessor('Regente Com Grade');
+        await Turma.create({ _id: '5A', nome: '5A', escolaId: ESCOLA_A });
+        await GradeHoraria.create({
+            escolaId: ESCOLA_A,
+            professorId: String(regente._id),
+            turmaId: '5A',
+            diaSemana: 1,
+            horaInicio: '07:00',
+            horaFim: '08:00',
+            ativo: true,
+        }).catch(() => null);
+
+        const r = await rodar(
+            { nomeProfessor: 'Regente Com Grade', turma: '5A', data: '2026-03-10' },
+            ESCOLA_A,
+            { perfil: 'professor', id: usuarioId }
+        );
+
+        // Conferido como ele mesmo (sem grade, passa marcado), não como o
+        // regente do corpo — que tem grade só na segunda e seria barrado na terça.
+        expect(r.passou).toBe(true);
+        expect(r.req.gradeAusente).toBe(true);
+    });
+
+    test('professor sem cadastro pedagógico não passa, nem citando um colega', async () => {
+        await criarProfessor('Colega');
+        await Turma.create({ _id: '5A', nome: '5A', escolaId: ESCOLA_A });
+
+        const r = await rodar(
+            { nomeProfessor: 'Colega', turma: '5A', data: '2026-03-10' },
+            ESCOLA_A,
+            { perfil: 'professor', id: new mongoose.Types.ObjectId().toString() }
+        );
+
+        expect(r.passou).toBe(false);
+        expect(r.statusCode).toBe(400);
     });
 });

@@ -2,6 +2,7 @@ const Falta = require('../models/Falta');
 const Aluno = require('../models/Aluno');
 const assertAcessoAoAluno = require('../middleware/assertAcessoAoAluno');
 const { projetarAluno } = require('../utils/projecaoAluno');
+const { professorRespondePor } = require('../services/avaliacoes/estruturaEscolar');
 
 // O que o cliente pode gravar num registro de chamada (Issue #397). `escolaId`
 // não está aqui de propósito: ele vem do contexto da sessão, nunca do corpo —
@@ -16,6 +17,24 @@ const CAMPOS_FALTA = [
     'justificada',
     'motivo',
 ];
+
+// Falta justificada nasce do fluxo da secretaria (análise da justificativa),
+// não da chamada do professor (Issue #759).
+const SO_DA_GESTAO = ['justificada', 'motivo'];
+
+/** 403 quando o professor não responde pela disciplina da chamada. */
+async function recusaDisciplina(req, res, materia) {
+    if (req.user?.perfil !== 'professor') return false;
+    if (await professorRespondePor(req.user.id || req.user._id, req.escolaId, materia)) {
+        return false;
+    }
+    res.status(403).json({
+        success: false,
+        codigo: 'DISCIPLINA_DE_OUTRO_PROFESSOR',
+        error: 'Acesso negado. Esta disciplina não está entre as suas nesta turma.',
+    });
+    return true;
+}
 
 /**
  * O `populate('aluno')` traria o cadastro inteiro da criança em cada registro
@@ -82,6 +101,12 @@ exports.create = async (req, res) => {
             }
         }
         // -------------------------------------------------------------------------
+        if (req.user?.perfil === 'professor') {
+            for (const campo of SO_DA_GESTAO) delete corpo[campo];
+            // Explícito, como no sync: o relatório consulta `justificada: false`.
+            corpo.justificada = false;
+        }
+        if (await recusaDisciplina(req, res, corpo.materia)) return;
 
         // O aluno da chamada passa pela mesma guarda das rotas de aluno: sem
         // ela, dava para lançar falta no nome de criança de outra turma.
@@ -128,6 +153,7 @@ exports.sync = async (req, res) => {
             }
         }
         // -------------------------------------------------------------------------
+        if (await recusaDisciplina(req, res, materia)) return;
 
         const dataBusca = new Date(data);
         const start = new Date(dataBusca);
@@ -158,8 +184,6 @@ exports.sync = async (req, res) => {
             ? { $in: [String(req.escolaId), null, ''] }
             : { $in: [null, ''] };
 
-        await Falta.deleteMany(filtroLimpeza);
-
         // Todo aluno da lista precisa ser da turma (e da escola) da chamada.
         // Sem esta conferência, uma sincronização podia gravar presença e falta
         // no nome de criança de outra turma — dado escolar de terceiro.
@@ -188,6 +212,11 @@ exports.sync = async (req, res) => {
                 });
             }
         }
+
+        // A chamada antiga só sai depois que a nova passou por todas as
+        // conferências (Issue #759): antes, um pedido recusado com 403 já
+        // tinha apagado a chamada do dia.
+        await Falta.deleteMany(filtroLimpeza);
 
         // 2. Prepara novos documentos
         const docs = presencas.map((p) => ({

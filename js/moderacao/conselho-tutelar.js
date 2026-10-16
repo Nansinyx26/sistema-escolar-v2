@@ -82,7 +82,11 @@
 
     function montarCartao(item, indice) {
         const cartao = document.createElement('article');
-        cartao.className = 'mod-card motion-reveal';
+        // `data-reveal`, e não a classe `motion-reveal` direto: a classe esconde
+        // o elemento, e só quem passa por `Motion.reveal` ganha o `is-visible`
+        // (Issue #731).
+        cartao.className = 'mod-card';
+        cartao.setAttribute('data-reveal', '');
         cartao.style.setProperty('--motion-i', String(indice));
 
         const topo = document.createElement('header');

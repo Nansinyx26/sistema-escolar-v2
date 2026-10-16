@@ -128,6 +128,18 @@ function ehDoProfessor(req, avaliacao) {
     );
 }
 
+/**
+ * O professor mexe na avaliação que é dele, ou na de uma disciplina pela qual
+ * responde (Issue #759). A criação já conferia a disciplina; a edição e o
+ * lançamento de notas conferiam só a turma.
+ */
+async function professorPodeMexer(req, avaliacao) {
+    if (!ehProfessor(req)) return true;
+    if (!professorLecionaNaTurma(req, avaliacao.turmaId)) return false;
+    if (ehDoProfessor(req, avaliacao)) return true;
+    return estrutura.professorRespondePor(idDoUsuario(req), req.escolaId, avaliacao.materiaId);
+}
+
 function podeGerenciar(req, avaliacao) {
     if (PERFIS_GESTAO.includes(req.user?.perfil)) return true;
     return ehProfessor(req) && ehDoProfessor(req, avaliacao);
@@ -647,7 +659,7 @@ exports.update = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Avaliação não encontrada.' });
         }
 
-        if (ehProfessor(req) && !professorLecionaNaTurma(req, avaliacao.turmaId)) {
+        if (!(await professorPodeMexer(req, avaliacao))) {
             return res
                 .status(403)
                 .json({ success: false, error: 'Acesso negado para esta avaliação.' });
@@ -818,10 +830,10 @@ exports.lancarNotas = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Avaliação não encontrada.' });
         }
 
-        if (ehProfessor(req) && !professorLecionaNaTurma(req, avaliacao.turmaId)) {
+        if (!(await professorPodeMexer(req, avaliacao))) {
             return res.status(403).json({
                 success: false,
-                error: 'Acesso negado para lançar notas nesta turma.',
+                error: 'Acesso negado para lançar notas nesta avaliação.',
             });
         }
 

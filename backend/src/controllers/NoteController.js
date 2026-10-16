@@ -13,6 +13,28 @@ const Nota = require('../models/Nota');
 const Aluno = require('../models/Aluno');
 const AuditoriaService = require('../services/AuditoriaService'); // Adicionado para Roadmap #4
 const assertAcessoAoAluno = require('../middleware/assertAcessoAoAluno');
+const { professorRespondePor } = require('../services/avaliacoes/estruturaEscolar');
+
+/**
+ * O professor só lança e corrige nota das disciplinas pelas quais responde
+ * (Issue #759): o especialista de uma matéria reescrevia a nota de outra na
+ * mesma turma. Vale para cada disciplina envolvida (a gravada e a nova).
+ */
+async function recusaDisciplina(req, res, ...materias) {
+    if (req.user?.perfil !== 'professor') return false;
+    for (const materia of materias) {
+        if (materia === undefined) continue;
+        if (!(await professorRespondePor(req.user.id || req.user._id, req.escolaId, materia))) {
+            res.status(403).json({
+                success: false,
+                codigo: 'DISCIPLINA_DE_OUTRO_PROFESSOR',
+                error: 'Acesso negado. Esta disciplina não está entre as suas.',
+            });
+            return true;
+        }
+    }
+    return false;
+}
 
 // Whitelist de campos permitidos
 const NOTE_WHITELIST = [
@@ -128,6 +150,8 @@ exports.create = async (req, res) => {
             body.nota = check.valor;
         }
 
+        if (await recusaDisciplina(req, res, body.materiaId ?? null)) return;
+
         // Escola, turma do professor e matrícula, para qualquer perfil (Issue #661).
         const acessoAluno = await alunoDaNota(req, body);
         if (!acessoAluno.ok) {
@@ -216,6 +240,8 @@ exports.update = async (req, res) => {
             }
         }
         // -------------------------------------------------------------------------
+        if (await recusaDisciplina(req, res, existingNota.materiaId ?? null, body.materiaId))
+            return;
 
         // Trocar o aluno (ou a matrícula) da nota confere o aluno novo, para
         // qualquer perfil, e a matrícula volta a sair do cadastro (Issue #661).
@@ -284,6 +310,7 @@ exports.delete = async (req, res) => {
             }
         }
         // -------------------------------------------------------------------------
+        if (await recusaDisciplina(req, res, existingNota.materiaId ?? null)) return;
 
         await Nota.findOneAndDelete({ $or: [{ _id: req.params.id }, { id: req.params.id }] });
 
